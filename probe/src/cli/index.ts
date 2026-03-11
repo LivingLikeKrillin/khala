@@ -13,7 +13,6 @@
  * 규정 문서: docs/karax-v0.2-scope.md § 3.4
  */
 
-import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { analyzeScope } from '../core/scope-analyzer.js';
 import { loadConfigAsync, applyConfigOverrides } from '../core/config-loader.js';
@@ -26,6 +25,7 @@ import type { ApiDiffResult } from '../api/types.js';
 import type { ReviewChecklist } from '../review/types.js';
 import type { SeverityLevel } from '../profiles/types.js';
 import { logger } from '../utils/logger.js';
+import { getChangedFiles, getDiffLines, getBaseFileContent } from '../utils/git.js';
 
 type OutputFormat = 'markdown' | 'json' | 'brief';
 
@@ -71,91 +71,6 @@ function parseArgs(args: string[]): CliOptions {
   }
 
   return options;
-}
-
-// ─── Git 연동 ───
-
-/**
- * git diff로 변경 파일 목록을 가져온다.
- */
-function getChangedFiles(base: string): string[] {
-  try {
-    const diffOutput = execSync(`git diff --name-only ${base}...HEAD`, {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-
-    const files = diffOutput
-      .split('\n')
-      .map((f) => f.trim())
-      .filter((f) => f.length > 0);
-
-    const stagedOutput = execSync('git diff --name-only --cached', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-
-    const stagedFiles = stagedOutput
-      .split('\n')
-      .map((f) => f.trim())
-      .filter((f) => f.length > 0);
-
-    return [...new Set([...files, ...stagedFiles])];
-  } catch {
-    try {
-      const output = execSync('git diff --name-only HEAD', {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
-      return output
-        .split('\n')
-        .map((f) => f.trim())
-        .filter((f) => f.length > 0);
-    } catch {
-      return [];
-    }
-  }
-}
-
-/**
- * 총 diff 라인 수를 가져온다.
- */
-function getDiffLines(base: string): number {
-  try {
-    const output = execSync(`git diff --shortstat ${base}...HEAD`, {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-
-    const match = output.match(/(\d+) insertions?.*?(\d+) deletions?/);
-    if (match?.[1] && match[2]) {
-      return parseInt(match[1], 10) + parseInt(match[2], 10);
-    }
-
-    const insertMatch = output.match(/(\d+) insertions?/);
-    if (insertMatch?.[1]) return parseInt(insertMatch[1], 10);
-
-    const deleteMatch = output.match(/(\d+) deletions?/);
-    if (deleteMatch?.[1]) return parseInt(deleteMatch[1], 10);
-
-    return 0;
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * base 브랜치의 파일 내용을 가져온다.
- */
-function getBaseFileContent(base: string, filePath: string): string | undefined {
-  try {
-    return execSync(`git show ${base}:${filePath}`, {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-  } catch {
-    return undefined;
-  }
 }
 
 // ─── 출력 포맷 ───
@@ -631,7 +546,7 @@ switch (command) {
     void runReview(args.slice(1));
     break;
   case 'version':
-    logger.info('karax v0.2.0');
+    logger.info('karax v0.3.0');
     break;
   default:
     logger.info(`\u2699\uFE0F Karax \u2014 프로덕트 개발 워크플로 자동 검증 도구
