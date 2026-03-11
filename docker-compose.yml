@@ -1,0 +1,107 @@
+services:
+  # ── PostgreSQL + pgvector ──
+  khala-db:
+    image: pgvector/pgvector:pg16
+    container_name: khala-db
+    environment:
+      POSTGRES_DB: khala
+      POSTGRES_USER: khala
+      POSTGRES_PASSWORD: khala
+    ports:
+      - "5432:5432"
+    volumes:
+      - khala-db-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U khala -d khala"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Ollama (embedding model) ──
+  khala-ollama:
+    image: ollama/ollama
+    container_name: khala-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - khala-ollama-data:/root/.ollama
+    # GPU 사용 시 아래 주석 해제
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities: [gpu]
+
+  # ── OTel Collector ──
+  khala-otel:
+    image: otel/opentelemetry-collector:latest
+    container_name: khala-otel
+    command: ["--config=/etc/otel/config.yaml"]
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./otel-config.yaml:/etc/otel/config.yaml:ro
+    depends_on:
+      - khala-tempo
+
+  # ── Grafana Tempo (trace storage) ──
+  khala-tempo:
+    image: grafana/tempo:latest
+    container_name: khala-tempo
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    ports:
+      - "3200:3200"   # Tempo query API
+      - "4320:4317"   # OTLP gRPC (Tempo 직접)
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo/config.yaml:ro
+      - khala-tempo-data:/var/tempo
+
+  # ── Grafana (선택: trace 시각화) ──
+  khala-grafana:
+    image: grafana/grafana:latest
+    container_name: khala-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - khala-grafana-data:/var/lib/grafana
+    depends_on:
+      - khala-tempo
+    profiles:
+      - grafana  # docker-compose --profile grafana up 으로 선택 기동
+
+  # ── Khala App ──
+  khala-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: khala-app
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://khala:khala@khala-db:5432/khala
+      OLLAMA_URL: http://khala-ollama:11434
+      TEMPO_URL: http://khala-tempo:3200
+      OTEL_COLLECTOR_URL: http://khala-otel:4318
+      DEFAULT_TENANT: default
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - .:/app                    # 개발 중 코드 변경 반영 (hot reload)
+      - ./docs:/app/docs:ro       # 인덱싱할 문서 폴더
+    depends_on:
+      khala-db:
+        condition: service_healthy
+      khala-ollama:
+        condition: service_started
+      khala-otel:
+        condition: service_started
+
+volumes:
+  khala-db-data:
+  khala-ollama-data:
+  khala-tempo-data:
+  khala-grafana-data:

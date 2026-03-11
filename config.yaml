@@ -1,0 +1,88 @@
+# Khala Configuration
+
+# 문서 소스
+sources:
+  docs_path: "./docs"                    # 인덱싱할 문서 폴더
+  glob_pattern: "**/*.md"                # Markdown만
+
+# Classification 규칙 (순서대로 평가, 먼저 매치된 것 우선)
+path_rules:
+  - pattern: "**/security/**"
+    classification: RESTRICTED
+  - pattern: "**/credentials/**"
+    classification: RESTRICTED
+  - pattern: "**/secrets/**"
+    classification: RESTRICTED
+  - pattern: "**/public/**"
+    classification: PUBLIC
+
+file_type_rules:
+  - extensions: [".rego", ".pem", ".key", ".crt", ".env"]
+    classification: RESTRICTED
+
+# PII/Secret 패턴 (정규식)
+pii_patterns:
+  aws_key: 'AKIA[0-9A-Z]{16}'
+  jwt: 'eyJ[A-Za-z0-9\-_]+\.eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_.+/=]+'
+  credit_card: '\b[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}\b'
+  korean_ssn: '\b[0-9]{6}-[1-4][0-9]{6}\b'
+
+# Chunking
+chunking:
+  korean_tokens: 1100          # 한국어 문서 목표 토큰 수
+  english_tokens: 700          # 영어 문서 목표 토큰 수
+  overlap_ratio: 0.15          # 오버랩 비율
+
+# Embedding
+embedding:
+  model: "nomic-embed-text"
+  dimensions: 768
+  document_prefix: "search_document: "  # nomic 모델 규칙
+  query_prefix: "search_query: "        # nomic 모델 규칙
+  batch_size: 10
+  max_retries: 3
+
+# Search
+search:
+  bm25_top_k: 20
+  vector_top_k: 20
+  rrf_k: 60                    # RRF fusion 파라미터
+  final_top_k: 10              # 최종 반환 수
+
+# Graph
+graph:
+  max_hops: 2
+  relation_types:
+    - CALLS
+    - PUBLISHES
+    - SUBSCRIBES
+
+# Graph extraction triggers (한국어 + 영어)
+extraction_triggers:
+  CALLS:
+    ko: ["호출한다", "호출하는", "요청한다", "요청하는", "연동", "통신"]
+    en: ["calls", "invokes", "requests", "connects to"]
+  PUBLISHES:
+    ko: ["발행한다", "발행하는", "전송한다", "보낸다", "publish"]
+    en: ["publishes", "emits", "sends", "produces"]
+  SUBSCRIBES:
+    ko: ["구독한다", "구독하는", "수신한다", "받는다", "consume"]
+    en: ["subscribes", "consumes", "listens", "receives"]
+
+# OTel
+otel:
+  window_minutes: 5
+  default_lookback_minutes: 60
+
+# Evidence weights
+evidence_weights:
+  STRUCTURED_SPEC: 0.30
+  POLICY_CONFIG: 0.25
+  OBSERVATION: 0.25
+  DESIGN_DOC: 0.15
+  MEETING_NOTE: 0.05
+
+# LLM
+llm:
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 2048
