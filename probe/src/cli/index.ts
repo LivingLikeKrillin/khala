@@ -15,7 +15,7 @@
 
 import { existsSync } from 'node:fs';
 import { analyzeScope } from '../core/scope-analyzer.js';
-import { loadConfigAsync, applyConfigOverrides } from '../core/config-loader.js';
+import { loadConfigAsync, applyConfigOverrides, resolveKhalaConfig } from '../core/config-loader.js';
 import { detectPlatform, getProfileForPlatform } from '../profiles/detector.js';
 import { lintApiSpec } from '../core/api-linter.js';
 import { generateReviewChecklist } from '../core/review-checklist.js';
@@ -26,6 +26,8 @@ import type { ReviewChecklist } from '../review/types.js';
 import type { SeverityLevel } from '../profiles/types.js';
 import { logger } from '../utils/logger.js';
 import { getChangedFiles, getDiffLines, getBaseFileContent } from '../utils/git.js';
+import { KhalaClient } from '../khala/client.js';
+import { analyzeImpact } from '../khala/impact-analyzer.js';
 
 type OutputFormat = 'markdown' | 'json' | 'brief';
 
@@ -527,6 +529,152 @@ async function runReview(args: string[]): Promise<void> {
   }
 }
 
+// ─── Khala Commands (v0.4) ───
+
+async function runKhalaSearch(args: string[]): Promise<void> {
+  const query = args.filter((a) => !a.startsWith('--')).join(' ');
+  if (!query) {
+    logger.error('검색 쿼리를 입력하세요 (Usage: karax khala:search <query>)');
+    process.exitCode = 1;
+    return;
+  }
+
+  const config = await loadConfigAsync();
+  const khalaConfig = resolveKhalaConfig(config);
+
+  if (khalaConfig.disabled) {
+    logger.warn('칼라 연동이 비활성화되어 있습니다');
+    return;
+  }
+
+  const client = new KhalaClient(khalaConfig);
+  const available = await client.isAvailable();
+  if (!available) {
+    logger.error('칼라 서버에 연결할 수 없습니다 (Cannot connect to Khala)');
+    process.exitCode = 1;
+    return;
+  }
+
+  const result = await client.search(query, { topK: khalaConfig.searchTopK });
+  if (!result || result.results.length === 0) {
+    logger.info('검색 결과가 없습니다');
+    return;
+  }
+
+  const format = parseArgs(args).format;
+  if (format === 'json') {
+    logger.info(JSON.stringify(result, null, 2));
+  } else {
+    logger.info(`🔍 칼라 검색 결과 (${result.results.length}건)\n`);
+    for (const hit of result.results) {
+      logger.info(`  📄 ${hit.doc_title} > ${hit.section_path}`);
+      logger.info(`     ${hit.snippet.slice(0, 120)}...`);
+      logger.info(`     score: ${hit.score.toFixed(3)} | ${hit.classification}\n`);
+    }
+  }
+}
+
+async function runKhalaImpact(args: string[]): Promise<void> {
+  const config = await loadConfigAsync();
+  const khalaConfig = resolveKhalaConfig(config);
+
+  if (khalaConfig.disabled) {
+    logger.warn('칼라 연동이 비활성화되어 있습니다');
+    return;
+  }
+
+  const client = new KhalaClient(khalaConfig);
+  const available = await client.isAvailable();
+  if (!available) {
+    logger.error('칼라 서버에 연결할 수 없습니다');
+    process.exitCode = 1;
+    return;
+  }
+
+  // 현재 변경에서 서비스명 추출
+  const options = parseArgs(args);
+  const { profile } = await resolveProfileForCli(config);
+  if (!profile) {
+    logger.error('플랫폼을 감지할 수 없습니다');
+    process.exitCode = 1;
+    return;
+  }
+
+  const changedFiles = getChangedFiles(options.base);
+  const diffLines = getDiffLines(options.base);
+  const scopeResult = analyzeScope(changedFiles, profile, diffLines);
+
+  const { extractServiceNames } = await import('../khala/context-enricher.js');
+  const serviceNames = extractServiceNames(scopeResult.groups);
+
+  if (serviceNames.length === 0) {
+    logger.info('변경에서 서비스명을 추출할 수 없습니다');
+    return;
+  }
+
+  const impact = await analyzeImpact(client, serviceNames, { hops: khalaConfig.graphHops });
+
+  const format = options.format;
+  if (format === 'json') {
+    logger.info(JSON.stringify(impact, null, 2));
+  } else {
+    logger.info(`📊 영향 분석: ${impact.summary}\n`);
+    if (impact.directImpact.length > 0) {
+      logger.info('  직접 영향:');
+      for (const svc of impact.directImpact) {
+        const obs = svc.observed ? ` (${svc.observed.callCount}회, error ${(svc.observed.errorRate * 100).toFixed(1)}%)` : '';
+        logger.info(`    → ${svc.name} [${svc.relationship}]${obs}`);
+      }
+    }
+    if (impact.indirectImpact.length > 0) {
+      logger.info('  간접 영향:');
+      for (const svc of impact.indirectImpact) {
+        logger.info(`    → ${svc.name} [${svc.relationship}]`);
+      }
+    }
+  }
+}
+
+async function runKhalaStatus(): Promise<void> {
+  const config = await loadConfigAsync();
+  const khalaConfig = resolveKhalaConfig(config);
+
+  if (khalaConfig.disabled) {
+    logger.info('칼라 연동: 비활성화');
+    return;
+  }
+
+  logger.info(`칼라 서버: ${khalaConfig.baseUrl}`);
+
+  const client = new KhalaClient(khalaConfig);
+  const available = await client.isAvailable();
+
+  if (available) {
+    logger.info('연결 상태: ✅ 정상');
+  } else {
+    logger.info('연결 상태: ❌ 연결 불가');
+  }
+}
+
+/**
+ * CLI용 프로파일 resolve 헬퍼.
+ */
+async function resolveProfileForCli(config: Awaited<ReturnType<typeof loadConfigAsync>>) {
+  const configPlatform = config.platform;
+  const platform = configPlatform && configPlatform !== 'custom'
+    ? configPlatform
+    : detectPlatform();
+
+  const baseProfile = configPlatform === 'custom' && config.customProfile
+    ? config.customProfile
+    : getProfileForPlatform(platform);
+
+  if (!baseProfile) return { profile: null, platform };
+
+  const profile = applyConfigOverrides(baseProfile, config);
+  return { profile, platform };
+}
+
 // ─── Entry Point ───
 
 const args = process.argv.slice(2);
@@ -545,18 +693,30 @@ switch (command) {
   case 'review':
     void runReview(args.slice(1));
     break;
+  case 'khala:search':
+    void runKhalaSearch(args.slice(1));
+    break;
+  case 'khala:impact':
+    void runKhalaImpact(args.slice(1));
+    break;
+  case 'khala:status':
+    void runKhalaStatus();
+    break;
   case 'version':
-    logger.info('karax v0.3.0');
+    logger.info('karax v0.4.0');
     break;
   default:
     logger.info(`\u2699\uFE0F Karax \u2014 프로덕트 개발 워크플로 자동 검증 도구
 
 Usage:
-  karax check       현재 브랜치의 변경 범위 + 리뷰 체크리스트
-  karax api:lint     API 스펙 린트
-  karax api:diff     API 스펙 diff (breaking 변경 감지)
-  karax review       리뷰 체크리스트 생성
-  karax version      버전 출력
+  karax check          현재 브랜치의 변경 범위 + 리뷰 체크리스트
+  karax api:lint        API 스펙 린트
+  karax api:diff        API 스펙 diff (breaking 변경 감지)
+  karax review          리뷰 체크리스트 생성
+  karax khala:search    칼라 지식베이스 검색
+  karax khala:impact    서비스 영향 분석
+  karax khala:status    칼라 연결 상태 확인
+  karax version         버전 출력
 
 Options:
   --base <ref>       기준 브랜치 (기본: origin/main)

@@ -63,6 +63,27 @@ export interface KaraxConfig {
 
   /** 리뷰 체크리스트 설정 (v0.2) */
   review?: ReviewConfig;
+
+  /** 칼라 연동 설정 (v0.4) */
+  khala?: KhalaConfig;
+}
+
+/** 칼라 연동 설정 (v0.4) */
+export interface KhalaConfig {
+  /** 칼라 API 서버 URL (기본: http://localhost:8000) */
+  baseUrl?: string;
+  /** 요청 타임아웃 ms (기본: 3000) */
+  timeoutMs?: number;
+  /** 테넌트 (기본: "default") */
+  tenant?: string;
+  /** 최대 분류 등급 (기본: "INTERNAL") */
+  classificationMax?: string;
+  /** 칼라 연동 비활성화 (기본: false) */
+  disabled?: boolean;
+  /** 검색 결과 최대 건수 (기본: 5) */
+  searchTopK?: number;
+  /** 그래프 탐색 홉 수 (기본: 1) */
+  graphHops?: number;
 }
 
 /**
@@ -148,6 +169,22 @@ export async function loadConfigAsync(projectRoot?: string): Promise<KaraxConfig
   }
 
   return {};
+}
+
+/**
+ * 칼라 설정을 resolve한다 (config 파일 > 환경 변수 > 기본값).
+ */
+export function resolveKhalaConfig(config: KaraxConfig): KhalaConfig & { disabled: boolean } {
+  const env = process.env;
+  return {
+    baseUrl: config.khala?.baseUrl ?? env['KHALA_BASE_URL'] ?? 'http://localhost:8000',
+    timeoutMs: config.khala?.timeoutMs ?? (env['KHALA_TIMEOUT_MS'] ? Number(env['KHALA_TIMEOUT_MS']) : 3000),
+    tenant: config.khala?.tenant ?? env['KHALA_TENANT'] ?? 'default',
+    classificationMax: config.khala?.classificationMax ?? 'INTERNAL',
+    disabled: config.khala?.disabled ?? (env['KHALA_DISABLED'] === 'true'),
+    searchTopK: config.khala?.searchTopK ?? 5,
+    graphHops: config.khala?.graphHops ?? 1,
+  };
 }
 
 /**

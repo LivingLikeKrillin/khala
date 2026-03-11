@@ -20,10 +20,10 @@ import { registerPrompts } from './prompts.js';
 
 const server = new McpServer({
   name: 'karax',
-  version: '0.3.0',
+  version: '0.4.0',
 });
 
-// 도구 등록 (5개)
+// 도구 등록 (6개)
 registerTools(server);
 
 // 리소스 등록 (3개)

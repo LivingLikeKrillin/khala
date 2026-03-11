@@ -2,21 +2,23 @@
  * MCP 도구 핸들러
  *
  * Karax 코어 엔진을 MCP 도구로 노출한다.
- * 5개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform
+ * 6개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform, queryKhala
  *
- * 규정 문서: docs/karax-v0.3-scope.md § 3
+ * 규정 문서: docs/karax-v0.3-scope.md § 3, docs/karax-v0.4-scope.md § 6
  */
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { analyzeScope } from '../core/scope-analyzer.js';
-import { loadConfigAsync, applyConfigOverrides } from '../core/config-loader.js';
+import { loadConfigAsync, applyConfigOverrides, resolveKhalaConfig } from '../core/config-loader.js';
 import { detectPlatform, getProfileForPlatform } from '../profiles/detector.js';
 import { generateReviewChecklist } from '../core/review-checklist.js';
 import { lintSpec } from '../api/spec-linter.js';
 import { diffSpecs } from '../api/spec-differ.js';
 import { parseOpenApiSpec, parseOpenApiSpecFromString } from '../api/openapi-parser.js';
 import { getChangedFiles, getDiffLines, getBaseFileContent } from '../utils/git.js';
+import { enrichWithKhala } from '../khala/context-enricher.js';
+import { KhalaClient } from '../khala/client.js';
 import { existsSync } from 'node:fs';
 
 /**
@@ -40,7 +42,7 @@ async function resolveProfile() {
 }
 
 /**
- * MCP 서버에 5개 도구를 등록한다.
+ * MCP 서버에 6개 도구를 등록한다.
  */
 export function registerTools(server: McpServer): void {
   // ─── karax.analyzeScope ───
@@ -67,7 +69,18 @@ export function registerTools(server: McpServer): void {
       const diffLines = getDiffLines(baseRef);
       const result = analyzeScope(filteredFiles, profile, diffLines);
 
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+      // v0.4: 칼라 컨텍스트 보강
+      const khalaConfig = resolveKhalaConfig(config);
+      let khalaEnrichment = null;
+      if (!khalaConfig.disabled) {
+        khalaEnrichment = await enrichWithKhala(result.groups, filteredFiles, {
+          khalaConfig,
+          searchTopK: khalaConfig.searchTopK,
+          graphHops: khalaConfig.graphHops,
+        });
+      }
+
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ ...result, khalaEnrichment }, null, 2) }] };
     },
   );
 
@@ -129,11 +142,12 @@ export function registerTools(server: McpServer): void {
   // ─── karax.reviewChecklist ───
   server.tool(
     'karax.reviewChecklist',
-    '변경 내용을 분석하여 PR 타입을 추론하고, 해당 타입의 리뷰 체크리스트를 생성한다.',
+    '변경 내용을 분석하여 PR 타입을 추론하고, 해당 타입의 리뷰 체크리스트를 생성한다. 칼라가 가용하면 관련 규정과 영향 분석을 포함한다.',
     {
       base: z.string().optional().describe('기준 브랜치 (기본: origin/main)'),
+      enrichWithKhala: z.boolean().optional().describe('칼라 맥락 보강 여부 (기본: true)'),
     },
-    async ({ base }) => {
+    async ({ base, enrichWithKhala: shouldEnrich }) => {
       const { profile, config } = await resolveProfile();
       if (!profile) {
         return { content: [{ type: 'text' as const, text: '플랫폼을 감지할 수 없습니다' }] };
@@ -158,7 +172,18 @@ export function registerTools(server: McpServer): void {
         customItems: config.review?.customItems,
       });
 
-      return { content: [{ type: 'text' as const, text: JSON.stringify(checklist, null, 2) }] };
+      // v0.4: 칼라 컨텍스트 보강
+      const khalaConfig = resolveKhalaConfig(config);
+      let khalaEnrichment = null;
+      if ((shouldEnrich ?? true) && !khalaConfig.disabled) {
+        khalaEnrichment = await enrichWithKhala(scopeResult.groups, filteredFiles, {
+          khalaConfig,
+          searchTopK: khalaConfig.searchTopK,
+          graphHops: khalaConfig.graphHops,
+        });
+      }
+
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ ...checklist, khalaEnrichment }, null, 2) }] };
     },
   );
 
@@ -176,6 +201,63 @@ export function registerTools(server: McpServer): void {
           text: JSON.stringify({ platform, profile }, null, 2),
         }],
       };
+    },
+  );
+
+  // ─── karax.queryKhala ───
+  server.tool(
+    'karax.queryKhala',
+    '칼라 지식베이스에 자연어로 질의한다. 규정, 아키텍처, 서비스 관계를 검색한다.',
+    {
+      query: z.string().describe('검색 쿼리 (자연어, 한국어/영어)'),
+      mode: z.enum(['search', 'answer', 'graph', 'diff']).optional().describe('검색 모드 (기본: search)'),
+      entityName: z.string().optional().describe('그래프/diff 모드에서 대상 엔티티명'),
+    },
+    async ({ query, mode, entityName }) => {
+      const config = await loadConfigAsync();
+      const khalaConfig = resolveKhalaConfig(config);
+
+      if (khalaConfig.disabled) {
+        return { content: [{ type: 'text' as const, text: '칼라 연동이 비활성화되어 있습니다 (Khala integration disabled)' }] };
+      }
+
+      const client = new KhalaClient({
+        baseUrl: khalaConfig.baseUrl,
+        timeoutMs: khalaConfig.timeoutMs,
+        tenant: khalaConfig.tenant,
+        classificationMax: khalaConfig.classificationMax,
+      });
+
+      const available = await client.isAvailable();
+      if (!available) {
+        return { content: [{ type: 'text' as const, text: '칼라 서버에 연결할 수 없습니다 (Cannot connect to Khala server)' }] };
+      }
+
+      const selectedMode = mode ?? 'search';
+
+      switch (selectedMode) {
+        case 'search': {
+          const result = await client.search(query, { topK: khalaConfig.searchTopK });
+          return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        }
+        case 'answer': {
+          const result = await client.searchAnswer(query, { topK: khalaConfig.searchTopK });
+          return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        }
+        case 'graph': {
+          if (!entityName) {
+            return { content: [{ type: 'text' as const, text: '그래프 모드에는 entityName이 필요합니다' }] };
+          }
+          const result = await client.getGraph(`ent_${entityName}`, { hops: khalaConfig.graphHops });
+          return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        }
+        case 'diff': {
+          const result = await client.getDiff();
+          return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+        }
+        default:
+          return { content: [{ type: 'text' as const, text: `알 수 없는 모드: ${selectedMode as string}` }] };
+      }
     },
   );
 }
