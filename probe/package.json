@@ -1,7 +1,7 @@
 {
   "name": "karax",
-  "version": "0.1.0",
-  "description": "플랫폼 인식 PR 범위 분석 도구 — 칼라(Khala)의 기술자",
+  "version": "0.2.0",
+  "description": "플랫폼 인식 PR 범위 분석 + API 계약 검증 + 리뷰 체크리스트 — 칼라(Khala)의 기술자",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
