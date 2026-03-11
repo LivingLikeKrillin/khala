@@ -12,6 +12,33 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { PlatformProfile, PrThresholds } from '../profiles/types.js';
 
+/** API 설정 (v0.2) */
+export interface ApiConfig {
+  /** OpenAPI 스펙 파일 경로 (기본: 'api/openapi.json') */
+  specPath?: string;
+
+  /** Spectral 사용 여부 ('auto' | true | false) */
+  useSpectral?: 'auto' | boolean;
+
+  /** oasdiff 사용 여부 ('auto' | true | false) */
+  useOasdiff?: 'auto' | boolean;
+
+  /** 비활성화할 린트 룰 ID 목록 */
+  disableRules?: string[];
+
+  /** 룰별 심각도 오버라이드 */
+  ruleSeverity?: Record<string, 'error' | 'warn' | 'off'>;
+}
+
+/** 리뷰 설정 (v0.2) */
+export interface ReviewConfig {
+  /** 체크리스트 비활성화할 PR 타입 */
+  disableChecklists?: string[];
+
+  /** 타입별 커스텀 체크리스트 항목 */
+  customItems?: Record<string, Array<{ id: string; description: string }>>;
+}
+
 export interface KaraxConfig {
   /** 플랫폼 프로파일 (자동 감지 또는 수동 지정) */
   platform?: 'spring-boot' | 'nextjs' | 'react-spa' | 'custom';
@@ -30,6 +57,12 @@ export interface KaraxConfig {
     /** 범위 경고 최소 레벨 (이 레벨 이상만 표시) */
     minLevel?: 'info' | 'warn' | 'error';
   };
+
+  /** API 분석 설정 (v0.2) */
+  api?: ApiConfig;
+
+  /** 리뷰 체크리스트 설정 (v0.2) */
+  review?: ReviewConfig;
 }
 
 /**
