@@ -7,7 +7,7 @@
 
 export { analyzeScope, type ScopeAnalysisResult, type DetectedGroup, type AnalyzedFile, type MixedConcernWarning, type SplitSuggestion, type ProposedPr } from './core/scope-analyzer.js';
 export { detectPlatform, getProfileForPlatform, type DetectedPlatform } from './profiles/detector.js';
-export { loadConfig, loadConfigAsync, applyConfigOverrides, type KaraxConfig, type ApiConfig, type ReviewConfig } from './core/config-loader.js';
+export { loadConfig, loadConfigAsync, applyConfigOverrides, resolveKhalaConfig, type KaraxConfig, type ApiConfig, type ReviewConfig, type KhalaConfig } from './core/config-loader.js';
 export type { PlatformProfile, CohesionGroup, PrThresholds, FileRolePattern, MixedConcernRule, SeverityLevel } from './profiles/types.js';
 export { springBootProfile } from './profiles/spring-boot.js';
 export { nextjsProfile } from './profiles/nextjs.js';
@@ -25,3 +25,9 @@ export { generateReviewChecklist, type ReviewOptions } from './core/review-check
 export { detectPrType } from './review/pr-type-detector.js';
 export { generateChecklist } from './review/checklist-generator.js';
 export type { PrType, ReviewChecklist, ChecklistItem, VerifiedItem } from './review/types.js';
+
+// v0.4 — 칼라 연동
+export { KhalaClient, withKhalaFallback } from './khala/client.js';
+export { enrichWithKhala, extractServiceNames } from './khala/context-enricher.js';
+export { analyzeImpact } from './khala/impact-analyzer.js';
+export type { KhalaClientConfig, EnrichmentResult, RelevantDoc, ImpactedService, DesignGap, ImpactAnalysis, KhalaSearchResult, KhalaGraphResult, KhalaDiffResult } from './khala/types.js';
