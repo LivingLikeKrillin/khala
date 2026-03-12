@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ./scripts/check-scope.sh 2>/dev/null || true"
+            "command": "node ./scripts/check-concern-drift.js 2>/dev/null || true"
           }
         ]
       }

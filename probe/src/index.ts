@@ -26,6 +26,9 @@ export { detectPrType } from './review/pr-type-detector.js';
 export { generateChecklist } from './review/checklist-generator.js';
 export type { PrType, ReviewChecklist, ChecklistItem, VerifiedItem } from './review/types.js';
 
+// v0.4 — 관심사 드리프트 감지
+export { detectConcernDrift, type DriftResult } from './core/concern-drift.js';
+
 // v0.4 — 칼라 연동
 export { KhalaClient, withKhalaFallback } from './khala/client.js';
 export { enrichWithKhala, extractServiceNames } from './khala/context-enricher.js';
