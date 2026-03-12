@@ -21,23 +21,22 @@ Karax는 **하이브리드 구조**다.
 - 테스트: vitest
 - 빌드: tsup
 
-## 현재 버전: v0.1
+## 현재 버전: v0.4
 
-v0.1의 핵심 기능은 **플랫폼 인식 PR 범위 분석**이다.
+- **v0.1** — 플랫폼 인식 PR 범위 분석 (scope-analyzer + 3개 프로파일)
+- **v0.2** — API 스펙 린트/diff (10개 룰) + PR 타입별 리뷰 체크리스트
+- **v0.3** — MCP 서버 (Claude Code 네이티브 연동, 6개 도구)
+- **v0.4** — 칼라 연동 (맥락 기반 리뷰 + 영향 분석)
 
-- 변경 파일을 플랫폼 프로파일(spring-boot, nextjs, react-spa)로 분석
-- 파일 수가 아니라 **논리적 응집도**로 PR 범위를 판단
-- 관심사가 섞이면 분할을 제안
-
-상세 범위: `docs/karax-v0.1-scope.md`
+각 버전 상세: `docs/karax-v{N}-scope.md`
 
 ## 로드맵
 
 ```
-v0.1  PR 범위 분석 + 플랫폼 프로파일          ← 현재
-v0.2  API 스펙 린트/diff + 테스트/리뷰 서브에이전트
-v0.3  MCP 서버 (Claude Code 연동 강화)
-v0.4  칼라 연동 — 맥락 기반 리뷰/트러블슈팅
+v0.1  PR 범위 분석 + 플랫폼 프로파일          ✅
+v0.2  API 스펙 린트/diff + 리뷰 체크리스트     ✅
+v0.3  MCP 서버 (Claude Code 연동)            ✅
+v0.4  칼라 연동 — 맥락 기반 리뷰             ✅ 현재
 v0.5+ UI 확장팩 (토큰/VRT/접근성) — 별도 플러그인
 ```
 
@@ -46,29 +45,52 @@ v0.5+ UI 확장팩 (토큰/VRT/접근성) — 별도 플러그인
 ```
 karax/
 ├── src/                           ← 코어 엔진 (CI 독립 실행)
-│   ├── core/                      ← 핵심 분석 로직
+│   ├── core/                      ← 분석 오케스트레이션
 │   │   ├── scope-analyzer.ts      ← PR 범위 + 응집 그룹 분석
-│   │   ├── config-loader.ts       ← karax.config.ts 로더
-│   │   ├── api-analyzer.ts        ← (v0.2) API diff 해석
-│   │   └── review-checklist.ts    ← (v0.2) 리뷰 체크리스트 생성
+│   │   ├── api-analyzer.ts        ← API diff 해석
+│   │   ├── api-linter.ts          ← API 린트 오케스트레이션
+│   │   ├── review-checklist.ts    ← 리뷰 체크리스트 오케스트레이션
+│   │   └── config-loader.ts       ← karax.config.ts 로더
+│   ├── api/                       ← API 스펙 분석
+│   │   ├── spec-linter.ts         ← 10개 룰 기반 린트
+│   │   ├── spec-differ.ts         ← breaking change 감지
+│   │   ├── openapi-parser.ts      ← OpenAPI 파서
+│   │   ├── rules/                 ← 린트 룰 (nullable, naming 등)
+│   │   ├── oasdiff-runner.ts      ← oasdiff 래퍼
+│   │   └── spectral-runner.ts     ← spectral 래퍼
+│   ├── review/                    ← 리뷰 체크리스트
+│   │   ├── pr-type-detector.ts    ← PR 타입 추론
+│   │   ├── checklist-generator.ts ← 체크리스트 생성
+│   │   └── checklists/            ← 타입별 템플릿
+│   ├── khala/                     ← 칼라 연동
+│   │   ├── client.ts              ← 칼라 API 클라이언트
+│   │   ├── context-enricher.ts    ← 규정/문서 맥락 보강
+│   │   └── impact-analyzer.ts     ← 서비스 영향 분석
 │   ├── profiles/                  ← 플랫폼 프로파일
-│   │   ├── types.ts               ← PlatformProfile 타입
+│   │   ├── detector.ts            ← 프로파일 자동 감지
 │   │   ├── spring-boot.ts
 │   │   ├── nextjs.ts
-│   │   ├── react-spa.ts
-│   │   └── detector.ts            ← 프로파일 자동 감지
+│   │   └── react-spa.ts
+│   ├── mcp/                       ← MCP 서버
+│   │   ├── server.ts              ← 서버 진입점
+│   │   ├── tools.ts               ← 6개 도구
+│   │   ├── resources.ts           ← 3개 리소스
+│   │   └── prompts.ts             ← 2개 프롬프트
 │   ├── cli/                       ← CLI 진입점
-│   │   └── index.ts               ← npx karax check
-│   └── mcp/                       ← (v0.3) MCP 서버
+│   │   └── index.ts               ← npx karax check/api:lint/khala:*
+│   └── utils/                     ← 공용 유틸
+│       ├── logger.ts              ← 로깅 래퍼
+│       ├── git.ts                 ← git 연동
+│       └── glob-match.ts          ← 파일 글롭 매칭
 ├── .claude/                       ← Claude Code 어댑터
 │   ├── settings.json              ← hooks 정의
 │   ├── rules/                     ← 프롬프트 규칙
-│   ├── agents/                    ← 서브에이전트
-│   └── skills/                    ← 워크플로우
+│   ├── agents/                    ← scope-guard, code-reviewer, test-writer
+│   └── skills/                    ← check-scope, split-pr, state-matrix
 ├── scripts/                       ← hook/CI 공용 래퍼
 ├── .github/workflows/             ← CI 파이프라인
-├── tests/                         ← 테스트
-└── docs/                          ← 규정 문서 + 설계 문서
+├── tests/                         ← 테스트 (10개 파일)
+└── docs/                          ← 스코프 문서 + 규정 문서
 ```
 
 ## 코딩 규칙
@@ -108,6 +130,7 @@ chore: 빌드/설정
 2. **정상일 때는 아무 말도 하지 않는다** — 노이즈는 신뢰를 죽인다.
 3. **경고할 때는 분할 방법까지 제안한다** — "크다"만 말하면 쓸모없다.
 4. **코드로 강제할 수 있는 건 hook으로, 나머지만 프롬프트로** — 3계층 원칙.
+5. **칼라는 선택적이다** — 없어도 모든 기능이 동작하고, 있으면 결과가 풍부해진다.
 
 ## 관련 규정 문서
 
