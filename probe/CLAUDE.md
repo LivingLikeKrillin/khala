@@ -47,6 +47,7 @@ karax/
 ├── src/                           ← 코어 엔진 (CI 독립 실행)
 │   ├── core/                      ← 분석 오케스트레이션
 │   │   ├── scope-analyzer.ts      ← PR 범위 + 응집 그룹 분석
+│   │   ├── concern-drift.ts       ← 관심사 드리프트 감지
 │   │   ├── api-analyzer.ts        ← API diff 해석
 │   │   ├── api-linter.ts          ← API 린트 오케스트레이션
 │   │   ├── review-checklist.ts    ← 리뷰 체크리스트 오케스트레이션
@@ -77,7 +78,9 @@ karax/
 │   │   ├── resources.ts           ← 3개 리소스
 │   │   └── prompts.ts             ← 2개 프롬프트
 │   ├── cli/                       ← CLI 진입점
-│   │   └── index.ts               ← npx karax check/api:lint/khala:*
+│   │   ├── index.ts               ← npx karax check/api:lint/khala:*
+│   │   ├── parse-args.ts          ← CLI 인자 파서
+│   │   └── formatters.ts          ← 출력 포맷터 (markdown/json/brief)
 │   └── utils/                     ← 공용 유틸
 │       ├── logger.ts              ← 로깅 래퍼
 │       ├── git.ts                 ← git 연동
@@ -89,7 +92,7 @@ karax/
 │   └── skills/                    ← check-scope, split-pr, state-matrix
 ├── scripts/                       ← hook/CI 공용 래퍼
 ├── .github/workflows/             ← CI 파이프라인
-├── tests/                         ← 테스트 (10개 파일)
+├── tests/                         ← 테스트 (13개 파일, 145개 케이스)
 └── docs/                          ← 스코프 문서 + 규정 문서
 ```
 
