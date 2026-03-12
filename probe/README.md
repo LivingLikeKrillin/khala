@@ -104,6 +104,47 @@ npx karax check --silent         # 정상이면 출력 없음
 
 ---
 
+## 사용 시나리오
+
+### "PR 올리기 전에 범위 확인하고 싶다"
+
+```bash
+npx karax check
+```
+
+변경 파일을 플랫폼에 맞게 분석해서, 관심사가 섞여 있으면 분할을 제안한다.
+정상이면 아무 말도 안 한다.
+
+### "API 스펙 바꿨는데 빠뜨린 게 없나 확인하고 싶다"
+
+```bash
+npx karax api:lint api/openapi.json     # 스펙 자체 검사 (nullable, 네이밍 등)
+npx karax api:diff --base origin/main   # main 대비 breaking change 감지
+```
+
+### "PR 리뷰 올릴 때 체크리스트를 자동으로 만들고 싶다"
+
+```bash
+npx karax review
+```
+
+변경 파일의 역할(CRUD, 마이그레이션, UI 등)을 보고 PR 타입을 추론한 뒤, 해당 타입에 맞는 리뷰 체크리스트를 생성한다.
+
+### "Claude Code에서 대화하면서 자동으로 검증받고 싶다"
+
+`.mcp.json`에 Karax MCP 서버를 등록하면, Claude Code가 대화 맥락에 따라 범위 분석·API 린트·체크리스트를 알아서 호출한다. 자세한 설정은 [CI 연동 > Claude Code](#claude-code) 참조.
+
+### "칼라 지식베이스에서 관련 규정을 찾고 싶다"
+
+```bash
+npx karax khala:search "결제 서비스 에러 처리 규정"
+npx karax khala:impact   # 현재 변경이 영향을 주는 서비스 분석
+```
+
+칼라가 연결되어 있으면 리뷰 결과에 관련 규정과 영향 범위가 자동으로 붙는다. 칼라 없이도 나머지 기능은 전부 동작한다.
+
+---
+
 ## 기능 상세
 
 ### v0.1 — PR 범위 분석
@@ -355,16 +396,6 @@ pnpm test:run         # 테스트 (1회)
 pnpm typecheck        # 타입 체크
 pnpm build            # 빌드
 ```
-
----
-
-## 이름의 유래
-
-> 카락스(Karax)는 스타크래프트 프로토스의 위상 기술자(Phase-smith)다.
-> 전장에서 구조물을 수리하고, 시스템을 진단하고, 기술적 문제를 해결한다.
->
-> 이 도구도 같은 일을 한다 — 코드베이스의 구조적 건강을 진단하고,
-> 문제가 커지기 전에 알려준다.
 
 ---
 
