@@ -329,3 +329,74 @@ class DiffSummary(BaseModel):
     observed_only_count: int
     conflict_count: int
 ```
+
+---
+
+## 9. POST /search/answer/stream — 스트리밍 답변 (SSE)
+
+검색 결과를 먼저 전송하고, LLM 답변을 SSE로 스트리밍한다. 2.0 UI 채팅에서 사용.
+
+### Request
+SearchRequest와 동일한 AnswerRequest 사용.
+
+### SSE 이벤트
+
+| Event | Payload | 전송 시점 |
+|-------|---------|-----------|
+| `evidence` | `{evidence_snippets, provenance, route_used}` | 검색 완료 직후 |
+| `graph` | `{center, designed_edges, observed_edges}` | 그래프 조회 완료 시 |
+| `answer_delta` | `{text}` | LLM 스트리밍 중 (incremental) |
+| `done` | `{timing_ms}` | 완료 |
+| `error` | `{error}` | 예외 발생 |
+
+---
+
+## 10. GET /entities/suggest — 엔티티 자동완성
+
+### Query Parameters
+```
+q: str           # 검색어 (최소 1글자)
+tenant: str = "default"
+limit: int = 10  # 최대 50
+```
+
+### Response
+```python
+class EntitySuggestion(BaseModel):
+    rid: str
+    name: str
+    type: str         # Service | API | Topic | DB | Term
+    aliases: list[str]
+    description: str | None
+```
+
+---
+
+## 11. GET /documents — 문서 목록
+
+### Query Parameters
+```
+tenant: str = "default"
+classification_max: str = "INTERNAL"
+offset: int = 0
+limit: int = 20   # 최대 100
+```
+
+### Response
+```python
+class DocumentListItem(BaseModel):
+    rid: str
+    title: str
+    source_uri: str
+    source_version: str
+    classification: str
+    doc_type: str
+    language: str
+    chunk_count: int
+    updated_at: str | None
+```
+
+### Meta
+```python
+meta: { "total": int, "offset": int, "limit": int }
+```
