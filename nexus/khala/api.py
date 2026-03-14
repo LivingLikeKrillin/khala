@@ -12,7 +12,8 @@ from typing import Any
 import yaml
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from khala import db
@@ -853,3 +854,22 @@ async def status() -> KhalaResponse:
             pass
 
     return KhalaResponse(data=data)
+
+
+# ── Web UI 서빙 ──
+
+@app.get("/")
+async def serve_ui():
+    """Web UI SPA 진입점."""
+    from pathlib import Path
+    ui_path = Path(__file__).parent / "web" / "index.html"
+    if not ui_path.exists():
+        raise HTTPException(status_code=404, detail="Web UI가 설치되지 않았습니다.")
+    return FileResponse(str(ui_path))
+
+
+# Static 파일 마운트 (모든 API 라우트 이후에 위치해야 함)
+from pathlib import Path as _Path
+_web_dir = _Path(__file__).parent / "web"
+if _web_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(_web_dir)), name="static")
