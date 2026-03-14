@@ -41,6 +41,9 @@ slack = [
     "slack-bolt[async]>=1.20.0",
     "slack-sdk>=3.33.0",
 ]
+mcp = [
+    "mcp[cli]>=1.0.0",
+]
 
 [project.scripts]
 khala = "khala.cli:app"
@@ -56,3 +59,6 @@ line-length = 120
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: 실제 DB 연결이 필요한 통합 테스트 (KHALA_TEST_DB_URL 필요)",
+]
