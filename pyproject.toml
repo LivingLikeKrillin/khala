@@ -37,6 +37,10 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.8.0",
 ]
+slack = [
+    "slack-bolt[async]>=1.20.0",
+    "slack-sdk>=3.33.0",
+]
 
 [project.scripts]
 khala = "khala.cli:app"
