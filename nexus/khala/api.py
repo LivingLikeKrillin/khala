@@ -11,6 +11,9 @@ from typing import Any
 
 import yaml
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from khala import db
@@ -18,13 +21,14 @@ from khala.index.bm25 import tokenize_korean
 from khala.index.graph_extractor import find_entities_in_text, _build_entity_patterns, _load_gazetteer
 from khala.ingest.pipeline import run_ingest
 from khala.llm.answer import generate_answer
+from khala.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from khala.otel.aggregator import run_otel_aggregation
 from khala.otel.diff_engine import run_diff
 from khala.providers.embedding import EmbeddingService
 from khala.providers.llm import LLMService
 from khala.repositories.graph import PostgresGraphRepository
 from khala.rid import canonicalize_entity_name, entity_rid
-from khala.search.evidence_packet import assemble_packet
+from khala.search.evidence_packet import assemble_packet, format_for_llm
 from khala.search.hybrid import hybrid_search
 from khala.search.router import determine_route
 
@@ -60,6 +64,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Khala", version="0.1.0", lifespan=lifespan)
 
+# CORS: 2.0 Web UI에서 접근 허용
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 운영 시 허용 도메인으로 제한
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # ── Config ──
 def _load_config() -> dict:
@@ -85,6 +98,7 @@ class SearchRequest(BaseModel):
     top_k: int = 10
     route: str = "auto"
     classification_max: str = "INTERNAL"
+    tenant: str = "default"
     include_graph: bool = True
     include_evidence: bool = True
 
@@ -94,6 +108,7 @@ class AnswerRequest(BaseModel):
     top_k: int = 10
     route: str = "auto"
     classification_max: str = "INTERNAL"
+    tenant: str = "default"
 
 
 class IngestRequest(BaseModel):
@@ -132,7 +147,7 @@ async def search(req: SearchRequest) -> KhalaResponse:
         patterns = _build_entity_patterns(gazetteer)
         detected = find_entities_in_text(req.query, patterns)
         entity_rids = [
-            entity_rid("default", e.entity_type, e.name)
+            entity_rid(req.tenant, e.entity_type, e.name)
             for e in detected
         ]
 
@@ -141,7 +156,7 @@ async def search(req: SearchRequest) -> KhalaResponse:
 
         result = await hybrid_search(
             query=req.query,
-            tenant="default",
+            tenant=req.tenant,
             clearance=req.classification_max,
             top_k=req.top_k,
             embedding_svc=embedding_svc,
@@ -156,7 +171,7 @@ async def search(req: SearchRequest) -> KhalaResponse:
         if result.graph:
             diff_items = []
             try:
-                diff_items = await graph_repo.get_diff("default")
+                diff_items = await graph_repo.get_diff(req.tenant)
             except Exception:
                 pass
             graph_findings = {
@@ -226,7 +241,7 @@ async def search_answer(req: AnswerRequest) -> KhalaResponse:
         patterns = _build_entity_patterns(gazetteer)
         detected = find_entities_in_text(req.query, patterns)
         entity_rids = [
-            entity_rid("default", e.entity_type, e.name)
+            entity_rid(req.tenant, e.entity_type, e.name)
             for e in detected
         ]
 
@@ -235,7 +250,7 @@ async def search_answer(req: AnswerRequest) -> KhalaResponse:
         # 검색
         search_result = await hybrid_search(
             query=req.query,
-            tenant="default",
+            tenant=req.tenant,
             clearance=req.classification_max,
             top_k=req.top_k,
             embedding_svc=embedding_svc,
@@ -362,12 +377,34 @@ async def get_graph(
     entity_rid_param: str,
     hops: int = Query(default=1, ge=1, le=2),
     tenant: str = Query(default="default"),
+    classification_max: str = Query(default="INTERNAL"),
+    include_evidence: bool = Query(default=True),
 ) -> KhalaResponse:
-    """엔티티 관계 그래프 조회."""
+    """엔티티 관계 그래프 조회.
+
+    entity_rid_param은 rid (ent_로 시작) 또는 엔티티 이름을 받는다.
+    이름으로 전달 시 내부에서 rid를 변환한다.
+    """
     try:
         pool = await db.get_pool()
         graph_repo = PostgresGraphRepository(pool)
-        subgraph = await graph_repo.get_neighbors(entity_rid_param, hops=hops)
+
+        # 이름 기반 조회 지원: rid가 아니면 이름→rid 변환
+        rid = entity_rid_param
+        if not entity_rid_param.startswith("ent_"):
+            # 이름으로 entity 검색
+            row = await db.fetch_one(
+                "SELECT rid FROM entities WHERE name = $1 AND tenant = $2 AND status = 'active'",
+                entity_rid_param, tenant,
+            )
+            if not row:
+                # canonicalize 후 재시도
+                canonical = canonicalize_entity_name(entity_rid_param, "Service")
+                rid = entity_rid(tenant, "Service", canonical)
+            else:
+                rid = row["rid"]
+
+        subgraph = await graph_repo.get_neighbors(rid, hops=hops)
 
         if not subgraph.edges and not subgraph.observed_edges:
             raise HTTPException(status_code=404, detail="엔티티를 찾을 수 없습니다.")
@@ -375,7 +412,7 @@ async def get_graph(
         # 엔티티 상세 정보 조회
         entity_row = await db.fetch_one(
             "SELECT rid, name, entity_type, aliases, description FROM entities WHERE rid = $1",
-            entity_rid_param,
+            rid,
         )
         center_entity = {
             "rid": subgraph.center_rid,
@@ -392,24 +429,25 @@ async def get_graph(
         edge_data = []
         for e in subgraph.edges:
             evidence_snippets = []
-            evi_rows = await db.fetch_all(
-                """
-                SELECT ev.note, c.chunk_text, c.section_path, d.title as doc_title
-                FROM evidence ev
-                LEFT JOIN chunks c ON ev.evidence_rid = c.rid
-                LEFT JOIN documents d ON c.doc_rid = d.rid
-                WHERE ev.subject_rid = $1 AND ev.status = 'active'
-                """,
-                e.rid,
-            )
-            for er in evi_rows:
-                snippet_text = er["chunk_text"][:200] if er["chunk_text"] else ""
-                evidence_snippets.append({
-                    "doc_title": er["doc_title"] or "",
-                    "section_path": er["section_path"] or "",
-                    "text": snippet_text,
-                    "note": er["note"] or "",
-                })
+            if include_evidence:
+                evi_rows = await db.fetch_all(
+                    """
+                    SELECT ev.note, c.chunk_text, c.section_path, d.title as doc_title
+                    FROM evidence ev
+                    LEFT JOIN chunks c ON ev.evidence_rid = c.rid
+                    LEFT JOIN documents d ON c.doc_rid = d.rid
+                    WHERE ev.subject_rid = $1 AND ev.status = 'active'
+                    """,
+                    e.rid,
+                )
+                for er in evi_rows:
+                    snippet_text = er["chunk_text"][:200] if er["chunk_text"] else ""
+                    evidence_snippets.append({
+                        "doc_title": er["doc_title"] or "",
+                        "section_path": er["section_path"] or "",
+                        "text": snippet_text,
+                        "note": er["note"] or "",
+                    })
             edge_data.append({
                 "rid": e.rid, "edge_type": e.edge_type,
                 "from_rid": e.from_rid, "from_name": e.from_name,
@@ -445,6 +483,7 @@ async def get_graph(
 async def get_diff(
     tenant: str = Query(default="default"),
     flag_filter: str | None = Query(default=None),
+    entity_filter: str | None = Query(default=None, description="특정 엔티티 관련 diff만 조회"),
 ) -> KhalaResponse:
     """설계-관측 diff 보고서 (evidence 포함)."""
     try:
@@ -452,6 +491,9 @@ async def get_diff(
 
         diffs_with_evidence = []
         for d in report.diffs:
+            # entity_filter 적용: 특정 엔티티 관련 diff만 반환
+            if entity_filter and entity_filter not in (d.from_name, d.to_name):
+                continue
             item: dict = {
                 "flag": d.flag,
                 "edge_rid": d.edge_rid,
@@ -525,6 +567,211 @@ async def otel_aggregate(req: OtelAggregateRequest) -> KhalaResponse:
                 "unresolved_services": result.unresolved_services,
                 "timing_ms": result.timing_ms,
             },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/search/answer/stream")
+async def search_answer_stream(req: AnswerRequest) -> StreamingResponse:
+    """검색 + LLM 스트리밍 답변 (SSE). 2.0 UI용."""
+    if not req.query.strip():
+        raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
+
+    async def event_stream():
+        import json
+        import time
+
+        try:
+            config = _load_config()
+            embedding_svc = EmbeddingService()
+            llm_svc = LLMService()
+            pool = await db.get_pool()
+            graph_repo = PostgresGraphRepository(pool)
+
+            # 엔티티 감지
+            gazetteer = _load_gazetteer()
+            patterns = _build_entity_patterns(gazetteer)
+            detected = find_entities_in_text(req.query, patterns)
+            entity_rids = [
+                entity_rid(req.tenant, e.entity_type, e.name)
+                for e in detected
+            ]
+
+            route = determine_route(req.query, req.route, [e.name for e in detected])
+
+            # 검색 (검색 완료 시 evidence 먼저 전송)
+            search_result = await hybrid_search(
+                query=req.query,
+                tenant=req.tenant,
+                clearance=req.classification_max,
+                top_k=req.top_k,
+                embedding_svc=embedding_svc,
+                graph_repo=graph_repo,
+                route=route,
+                entity_rids=entity_rids,
+                config=config,
+            )
+
+            packet = assemble_packet(search_result.hits, search_result.graph)
+
+            # 1) evidence 이벤트 전송
+            evidence_data = {
+                "evidence_snippets": [
+                    {
+                        "chunk_rid": s.chunk_rid,
+                        "doc_title": s.doc_title,
+                        "section_path": s.section_path,
+                        "source_uri": s.source_uri,
+                        "text": s.text,
+                        "score": s.score,
+                    }
+                    for s in packet.snippets
+                ],
+                "provenance": [
+                    {"doc_rid": p.doc_rid, "source_uri": p.source_uri, "source_version": p.source_version}
+                    for p in packet.provenance
+                ],
+                "route_used": route,
+            }
+            yield f"event: evidence\ndata: {json.dumps(evidence_data, ensure_ascii=False)}\n\n"
+
+            # 2) graph 이벤트 전송
+            if search_result.graph:
+                graph_data = {
+                    "center": search_result.graph.center_name,
+                    "designed_edges": [
+                        {"type": e.edge_type, "from": e.from_name, "to": e.to_name, "confidence": e.confidence}
+                        for e in search_result.graph.edges
+                    ],
+                    "observed_edges": [
+                        {"type": o.edge_type, "from": o.from_name, "to": o.to_name,
+                         "call_count": o.call_count, "error_rate": o.error_rate}
+                        for o in search_result.graph.observed_edges
+                    ],
+                }
+                yield f"event: graph\ndata: {json.dumps(graph_data, ensure_ascii=False)}\n\n"
+
+            # 3) LLM 스트리밍 답변
+            if not packet.snippets:
+                yield f"event: answer_delta\ndata: {json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)}\n\n"
+            else:
+                evidence_text = format_for_llm(packet)
+                user_prompt = build_user_prompt(req.query, evidence_text)
+
+                try:
+                    async for chunk in llm_svc.stream(SYSTEM_PROMPT, user_prompt):
+                        yield f"event: answer_delta\ndata: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
+                except Exception:
+                    yield f"event: answer_delta\ndata: {json.dumps({'text': '답변을 생성할 수 없습니다. 위 근거를 직접 확인해주세요.'}, ensure_ascii=False)}\n\n"
+
+            # 4) 완료 이벤트
+            yield f"event: done\ndata: {json.dumps({'timing_ms': search_result.timing_ms})}\n\n"
+
+        except Exception as e:
+            yield f"event: error\ndata: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.get("/entities/suggest", response_model=KhalaResponse)
+async def suggest_entities(
+    q: str = Query(..., min_length=1, description="엔티티 검색어"),
+    tenant: str = Query(default="default"),
+    limit: int = Query(default=10, ge=1, le=50),
+) -> KhalaResponse:
+    """엔티티 자동완성. UI 검색창에서 사용."""
+    try:
+        rows = await db.fetch_all(
+            """
+            SELECT rid, name, entity_type, aliases, description
+            FROM entities
+            WHERE status = 'active' AND tenant = $1
+              AND (
+                name ILIKE $2
+                OR $3 = ANY(aliases)
+                OR name % $4
+              )
+            ORDER BY similarity(name, $4) DESC
+            LIMIT $5
+            """,
+            tenant, f"%{q}%", q, q, limit,
+        )
+        return KhalaResponse(
+            data=[
+                {
+                    "rid": r["rid"],
+                    "name": r["name"],
+                    "type": r["entity_type"],
+                    "aliases": list(r["aliases"] or []),
+                    "description": r["description"] or "",
+                }
+                for r in rows
+            ],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/documents", response_model=KhalaResponse)
+async def list_documents(
+    tenant: str = Query(default="default"),
+    classification_max: str = Query(default="INTERNAL"),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> KhalaResponse:
+    """인덱싱된 문서 목록 조회. UI 문서 브라우저용."""
+    try:
+        rows = await db.fetch_all(
+            """
+            SELECT d.rid, d.title, d.source_uri, d.source_version,
+                   d.classification, d.doc_type, d.language,
+                   d.is_quarantined, d.updated_at,
+                   (SELECT COUNT(*) FROM chunks c WHERE c.doc_rid = d.rid AND c.status = 'active') as chunk_count
+            FROM documents d
+            WHERE d.tenant = $1
+              AND d.classification <= $2::classification_level
+              AND d.is_quarantined = false
+              AND d.status = 'active'
+            ORDER BY d.updated_at DESC
+            OFFSET $3 LIMIT $4
+            """,
+            tenant, classification_max, offset, limit,
+        )
+
+        total = await db.fetch_val(
+            """
+            SELECT COUNT(*) FROM documents
+            WHERE tenant = $1 AND classification <= $2::classification_level
+              AND is_quarantined = false AND status = 'active'
+            """,
+            tenant, classification_max,
+        )
+
+        return KhalaResponse(
+            data=[
+                {
+                    "rid": r["rid"],
+                    "title": r["title"],
+                    "source_uri": r["source_uri"],
+                    "source_version": r["source_version"] or "",
+                    "classification": r["classification"],
+                    "doc_type": r["doc_type"],
+                    "language": r["language"],
+                    "chunk_count": r["chunk_count"],
+                    "updated_at": r["updated_at"].isoformat() if r["updated_at"] else None,
+                }
+                for r in rows
+            ],
+            meta={"total": total or 0, "offset": offset, "limit": limit},
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -607,3 +854,22 @@ async def status() -> KhalaResponse:
             pass
 
     return KhalaResponse(data=data)
+
+
+# ── Web UI 서빙 ──
+
+@app.get("/")
+async def serve_ui():
+    """Web UI SPA 진입점."""
+    from pathlib import Path
+    ui_path = Path(__file__).parent / "web" / "index.html"
+    if not ui_path.exists():
+        raise HTTPException(status_code=404, detail="Web UI가 설치되지 않았습니다.")
+    return FileResponse(str(ui_path))
+
+
+# Static 파일 마운트 (모든 API 라우트 이후에 위치해야 함)
+from pathlib import Path as _Path
+_web_dir = _Path(__file__).parent / "web"
+if _web_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(_web_dir)), name="static")
