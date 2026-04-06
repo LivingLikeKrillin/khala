@@ -2,7 +2,7 @@
  * Spring Boot 플랫폼 프로파일
  *
  * Spring Boot에서 하나의 논리적 변경이 통상 어떤 파일 패턴으로 나타나는지 정의.
- * 규정 문서: docs/karax-v0.1-scope.md § 2.2
+ * 규정 문서: docs/probe-v0.1-scope.md § 2.2
  */
 
 import type { PlatformProfile } from './types.js';

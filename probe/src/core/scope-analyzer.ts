@@ -6,7 +6,7 @@
  * 2. 응집 그룹(Cohesion Group) 매칭
  * 3. 경고 레벨 판단 + 분할 제안 생성
  *
- * 규정 문서: docs/karax-v0.1-scope.md § 3
+ * 규정 문서: docs/probe-v0.1-scope.md § 3
  */
 
 import type { PlatformProfile, SeverityLevel } from '../profiles/types.js';
@@ -388,7 +388,7 @@ function detectMixedConcerns(
 /**
  * 분석 결과를 기반으로 경고 레벨을 결정한다.
  *
- * 규정 문서: docs/karax-v0.1-scope.md § 3.2
+ * 규정 문서: docs/probe-v0.1-scope.md § 3.2
  * - ok:    1~2개 group, 임계치 이내
  * - info:  2개 group + mixedConcerns 해당
  * - warn:  3개 이상 group 또는 파일 수 임계치 초과
@@ -434,7 +434,7 @@ function determineSeverity(
 /**
  * 경고 시 분할 제안을 생성한다.
  *
- * 규정 문서: docs/karax-v0.1-scope.md § 3.3
+ * 규정 문서: docs/probe-v0.1-scope.md § 3.3
  */
 function generateSplitSuggestion(
   groups: DetectedGroup[],

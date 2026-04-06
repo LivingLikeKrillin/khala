@@ -8,7 +8,7 @@ allowed-tools: Read, Bash, Grep, Glob
 
 ## 1단계: 분석
 
-1. `npx karax check --json`으로 변경 분석
+1. `npx probe check --json`으로 변경 분석
 2. 각 관심사 그룹별로 파일 목록을 나열
 3. 의존 관계를 고려한 머지 순서 제안
 

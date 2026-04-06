@@ -1,5 +1,5 @@
 /**
- * karax/deprecated-lifecycle 룰
+ * probe/deprecated-lifecycle 룰
  *
  * deprecated 표시 없이 삭제하면 안 된다.
  * 이 룰은 단일 스펙 린트에서는 "deprecated 필드에 설명이 있는지"만 검사한다.
@@ -13,7 +13,7 @@ import type { LintRule, OpenApiSpec, ApiLintViolation } from '../types.js';
 const METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 
 export const deprecatedLifecycleRule: LintRule = {
-  id: 'karax/deprecated-lifecycle',
+  id: 'probe/deprecated-lifecycle',
   defaultSeverity: 'error',
   guidelineRef: '§ 2.4.3',
   description: 'deprecated 표시 없이 삭제 금지 (no removal without deprecation notice)',
@@ -37,7 +37,7 @@ export const deprecatedLifecycleRule: LintRule = {
 
         if (!hasDeprecationNote) {
           violations.push({
-            ruleId: 'karax/deprecated-lifecycle',
+            ruleId: 'probe/deprecated-lifecycle',
             severity: this.defaultSeverity,
             path,
             message: `deprecated 오퍼레이션에 폐기 안내가 없습니다 (deprecated operation missing deprecation notice)`,

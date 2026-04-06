@@ -1,10 +1,10 @@
 /**
  * oasdiff 래퍼
  *
- * oasdiff CLI를 래핑하여 Karax 형식의 결과를 반환한다.
+ * oasdiff CLI를 래핑하여 Probe 형식의 결과를 반환한다.
  * 설치되지 않은 환경에서는 graceful하게 비활성화.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.2
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.2
  */
 
 import { execSync } from 'node:child_process';
@@ -37,7 +37,7 @@ interface OasdiffBreakingResult {
 }
 
 /**
- * oasdiff를 실행하고 결과를 Karax 형식으로 변환한다.
+ * oasdiff를 실행하고 결과를 Probe 형식으로 변환한다.
  *
  * @param baseSpecPath 기준 스펙 경로
  * @param headSpecPath 현재 스펙 경로
@@ -95,7 +95,7 @@ export async function runOasdiff(
 }
 
 /**
- * oasdiff 출력을 Karax ApiChange로 변환한다.
+ * oasdiff 출력을 Probe ApiChange로 변환한다.
  */
 function parseOasdiffOutput(
   summaryJson: string,

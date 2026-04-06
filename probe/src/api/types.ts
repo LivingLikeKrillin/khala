@@ -4,7 +4,7 @@
  * v0.2 핵심 타입. API 스펙 린트 결과, diff 결과,
  * 린트 룰 인터페이스를 정의한다.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.1, 3.2
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.1, 3.2
  */
 
 // ─── API 린트 ───

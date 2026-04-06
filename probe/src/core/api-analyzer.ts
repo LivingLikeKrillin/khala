@@ -4,7 +4,7 @@
  * oasdiff(외부) 또는 내장 diff 엔진을 사용하여
  * 두 버전의 OpenAPI 스펙을 비교한다.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.2
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.2
  */
 
 import { existsSync } from 'node:fs';

@@ -4,7 +4,7 @@
  * 변경된 서비스의 upstream/downstream을 칼라 그래프에서 조회하고,
  * 영향 범위와 심각도를 판단한다.
  *
- * 규정 문서: docs/karax-v0.4-scope.md § 5
+ * 규정 문서: docs/probe-v0.4-scope.md § 5
  */
 
 import type { KhalaClient } from './client.js';

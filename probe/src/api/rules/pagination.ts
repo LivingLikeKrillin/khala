@@ -1,5 +1,5 @@
 /**
- * karax/pagination-required 룰
+ * probe/pagination-required 룰
  *
  * 배열 응답에 페이지네이션이 있는지 검사한다.
  * 200 응답의 schema가 array이거나, items를 포함하면 대상.
@@ -13,7 +13,7 @@ const METHODS = ['get'] as const; // GET만 대상
 const PAGINATION_FIELDS = ['page', 'size', 'totalPages', 'totalElements', 'cursor', 'nextCursor', 'offset', 'limit', 'total'];
 
 export const paginationRequiredRule: LintRule = {
-  id: 'karax/pagination-required',
+  id: 'probe/pagination-required',
   defaultSeverity: 'warn',
   guidelineRef: '§ 2.3.3',
   description: '배열 응답에 페이지네이션 필수 (array responses must include pagination)',
@@ -42,7 +42,7 @@ export const paginationRequiredRule: LintRule = {
             const hasPagination = checkPaginationFields(schema, spec);
             if (!hasPagination) {
               violations.push({
-                ruleId: 'karax/pagination-required',
+                ruleId: 'probe/pagination-required',
                 severity: this.defaultSeverity,
                 path: `paths.${pathKey}.${method}.responses.200`,
                 message: `배열 응답에 페이지네이션이 없습니다 (array response missing pagination)`,

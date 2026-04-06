@@ -4,7 +4,7 @@
  * v0.1의 scope 분석 결과를 받아서 PR 타입을 추론하고,
  * 해당 타입의 DoD 체크리스트를 생성한다.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.3
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.3
  */
 
 import type { ScopeAnalysisResult } from './scope-analyzer.js';

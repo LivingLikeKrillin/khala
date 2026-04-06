@@ -4,7 +4,7 @@
  * 사전 정의된 상호작용 템플릿.
  * 2개 프롬프트: prReview, splitPr
  *
- * 규정 문서: docs/karax-v0.3-scope.md § 5
+ * 규정 문서: docs/probe-v0.3-scope.md § 5
  */
 
 import { z } from 'zod';
@@ -20,10 +20,10 @@ import { enrichWithKhala } from '../khala/context-enricher.js';
  * MCP 서버에 프롬프트를 등록한다.
  */
 export function registerPrompts(server: McpServer): void {
-  // ─── karax.prReview ───
+  // ─── probe.prReview ───
   server.prompt(
-    'karax.prReview',
-    '현재 변경에 대해 karax 분석 결과를 기반으로 구조화된 코드 리뷰를 수행한다.',
+    'probe.prReview',
+    '현재 변경에 대해 probe 분석 결과를 기반으로 구조화된 코드 리뷰를 수행한다.',
     { base: z.string().optional().describe('기준 브랜치 (기본: origin/main)') },
     async ({ base }) => {
       const baseRef = base ?? 'origin/main';
@@ -107,10 +107,10 @@ export function registerPrompts(server: McpServer): void {
           role: 'user' as const,
           content: {
             type: 'text' as const,
-            text: `다음은 Karax가 분석한 현재 PR의 범위와 리뷰 체크리스트입니다.
+            text: `다음은 Probe가 분석한 현재 PR의 범위와 리뷰 체크리스트입니다.
 이 분석 결과를 기반으로 구조화된 코드 리뷰를 수행해주세요.
 
-## Karax 분석 결과
+## Probe 분석 결과
 \`\`\`json
 ${analysisJson}
 \`\`\`${khalaSection}
@@ -130,9 +130,9 @@ ${analysisJson}
     },
   );
 
-  // ─── karax.splitPr ───
+  // ─── probe.splitPr ───
   server.prompt(
-    'karax.splitPr',
+    'probe.splitPr',
     '현재 변경을 여러 PR로 분할하는 방법을 안내한다.',
     { base: z.string().optional().describe('기준 브랜치 (기본: origin/main)') },
     async ({ base }) => {
@@ -169,10 +169,10 @@ ${analysisJson}
           role: 'user' as const,
           content: {
             type: 'text' as const,
-            text: `다음은 Karax가 분석한 현재 변경의 범위입니다.
+            text: `다음은 Probe가 분석한 현재 변경의 범위입니다.
 이 분석 결과를 기반으로 PR 분할 방법을 안내해주세요.
 
-## Karax 범위 분석
+## Probe 범위 분석
 \`\`\`json
 ${analysisJson}
 \`\`\`

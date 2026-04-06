@@ -1,5 +1,5 @@
 /**
- * Karax 로거 유틸
+ * Probe 로거 유틸
  *
  * console.log 직접 사용 금지 규칙에 따른 래퍼.
  */
@@ -39,7 +39,7 @@ function shouldLog(level: LogLevel): boolean {
 /** 디버그 로그 */
 export function debug(message: string, ...args: unknown[]): void {
   if (shouldLog('debug')) {
-    process.stderr.write(`[karax:debug] ${message} ${args.map(String).join(' ')}\n`);
+    process.stderr.write(`[probe:debug] ${message} ${args.map(String).join(' ')}\n`);
   }
 }
 

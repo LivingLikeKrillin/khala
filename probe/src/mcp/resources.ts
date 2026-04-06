@@ -4,7 +4,7 @@
  * Claude에게 참조 데이터를 제공한다.
  * 3개 리소스: profiles, config, guidelines
  *
- * 규정 문서: docs/karax-v0.3-scope.md § 4
+ * 규정 문서: docs/probe-v0.3-scope.md § 4
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -33,10 +33,10 @@ const GUIDELINE_FILES: Record<string, string> = {
  * MCP 서버에 리소스를 등록한다.
  */
 export function registerResources(server: McpServer): void {
-  // ─── karax://profiles/{platform} ───
+  // ─── probe://profiles/{platform} ───
   server.resource(
     'profiles',
-    new ResourceTemplate('karax://profiles/{platform}', { list: undefined }),
+    new ResourceTemplate('probe://profiles/{platform}', { list: undefined }),
     async (uri, { platform }) => {
       const platformName = Array.isArray(platform) ? platform[0] : platform;
       const profile = platformName ? PROFILES[platformName] : undefined;
@@ -61,10 +61,10 @@ export function registerResources(server: McpServer): void {
     },
   );
 
-  // ─── karax://config ───
+  // ─── probe://config ───
   server.resource(
     'config',
-    'karax://config',
+    'probe://config',
     async (uri) => {
       const config = await loadConfigAsync();
 
@@ -78,10 +78,10 @@ export function registerResources(server: McpServer): void {
     },
   );
 
-  // ─── karax://guidelines/{name} ───
+  // ─── probe://guidelines/{name} ───
   server.resource(
     'guidelines',
-    new ResourceTemplate('karax://guidelines/{name}', { list: undefined }),
+    new ResourceTemplate('probe://guidelines/{name}', { list: undefined }),
     async (uri, { name }) => {
       const guideName = Array.isArray(name) ? name[0] : name;
       const filePath = guideName ? GUIDELINE_FILES[guideName] : undefined;

@@ -3,7 +3,7 @@
  *
  * 변경 파일의 역할(role) 분포를 분석하여 PR 타입을 결정한다.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.3
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.3
  */
 
 import type { PrType } from './types.js';

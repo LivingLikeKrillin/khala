@@ -4,7 +4,7 @@
  * 칼라 API를 호출하는 fetch 기반 클라이언트.
  * 모든 호출에 타임아웃(기본 3초)과 graceful degradation을 적용한다.
  *
- * 규정 문서: docs/karax-v0.4-scope.md § 3
+ * 규정 문서: docs/probe-v0.4-scope.md § 3
  */
 
 import { logger } from '../utils/logger.js';

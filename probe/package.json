@@ -1,13 +1,13 @@
 {
-  "name": "karax",
+  "name": "probe",
   "version": "0.4.0",
-  "description": "플랫폼 인식 PR 분석 + API 검증 + MCP 서버 + 칼라 연동 — 칼라(Khala)의 기술자",
+  "description": "플랫폼 인식 PR 분석 + API 검증 + MCP 서버 + 칼라 연동",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "karax": "dist/cli/index.js",
-    "karax-mcp": "dist/mcp/server.js"
+    "probe": "dist/cli/index.js",
+    "probe-mcp": "dist/mcp/server.js"
   },
   "scripts": {
     "build": "tsup",

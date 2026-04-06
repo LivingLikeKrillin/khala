@@ -1,10 +1,10 @@
 /**
  * Spectral 래퍼
  *
- * @stoplight/spectral-cli를 래핑하여 Karax 형식의 결과를 반환한다.
+ * @stoplight/spectral-cli를 래핑하여 Probe 형식의 결과를 반환한다.
  * 설치되지 않은 환경에서는 graceful하게 비활성화.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.1
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.1
  */
 
 import { execSync } from 'node:child_process';
@@ -39,7 +39,7 @@ interface SpectralResult {
 }
 
 /**
- * Spectral을 실행하고 결과를 Karax 형식으로 변환한다.
+ * Spectral을 실행하고 결과를 Probe 형식으로 변환한다.
  *
  * @param specPath 스펙 파일 경로
  * @returns 린트 결과

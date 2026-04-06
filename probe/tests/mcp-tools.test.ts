@@ -95,7 +95,7 @@ describe('MCP 도구 — lintApiSpec', () => {
     const result = lintSpec(spec, 'api/openapi.json');
 
     expect(result.violations.length).toBeGreaterThan(0);
-    expect(result.violations.some((v) => v.ruleId === 'karax/path-naming')).toBe(true);
+    expect(result.violations.some((v) => v.ruleId === 'probe/path-naming')).toBe(true);
   });
 });
 

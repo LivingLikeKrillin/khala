@@ -4,7 +4,7 @@
  * PR 타입을 기반으로 DoD 체크리스트를 생성하고,
  * 자동 검증 가능한 항목은 검증 결과를 제공한다.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.3
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.3
  */
 
 import type { PrType, ReviewChecklist, ChecklistItem, VerifiedItem } from './types.js';

@@ -8,7 +8,7 @@ describe('platform-detector', () => {
   let testDir: string;
 
   beforeEach(() => {
-    testDir = join(tmpdir(), `karax-test-${Date.now()}`);
+    testDir = join(tmpdir(), `probe-test-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
   });
 

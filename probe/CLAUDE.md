@@ -1,14 +1,13 @@
-# CLAUDE.md — Karax
+# CLAUDE.md — Probe
 
-> Karax는 프로덕트 팀의 개발 워크플로를 자동 검증하는 도구다.
-> 칼라(Khala)의 맥락을 기반으로 PR 검증, 영향 분석, 규칙 집행을 수행한다.
-> 스타크래프트 프로토스의 기술자 카락스에서 이름을 따왔다.
+> Probe는 프로덕트 팀의 개발 워크플로를 자동 검증하는 도구다.
+> 칼라(Khala) 지식 시스템과 연동하여 PR 검증, 영향 분석, 규칙 집행을 수행한다.
 
 ## 아키텍처
 
-Karax는 **하이브리드 구조**다.
+Probe는 **하이브리드 구조**다.
 
-- `src/` — 코어 엔진. CI에서 `npx karax check`로 독립 실행 가능.
+- `src/` — 코어 엔진. CI에서 `npx probe check`로 독립 실행 가능.
 - `.claude/` — Claude Code 어댑터. hooks, agents, skills, rules로 구성. Claude Code 환경에서 코어 엔진을 실시간으로 활용.
 
 코어 엔진이 모든 가치의 실체이고, `.claude/`는 그 엔진을 Claude Code에서 편하게 쓰게 해주는 레이어다.
@@ -28,7 +27,7 @@ Karax는 **하이브리드 구조**다.
 - **v0.3** — MCP 서버 (Claude Code 네이티브 연동, 6개 도구)
 - **v0.4** — 칼라 연동 (맥락 기반 리뷰 + 영향 분석)
 
-각 버전 상세: `docs/karax-v{N}-scope.md`
+각 버전 상세: `docs/probe-v{N}-scope.md`
 
 ## 로드맵
 
@@ -43,7 +42,7 @@ v0.5+ UI 확장팩 (토큰/VRT/접근성) — 별도 플러그인
 ## 프로젝트 구조
 
 ```
-karax/
+probe/
 ├── src/                           ← 코어 엔진 (CI 독립 실행)
 │   ├── core/                      ← 분석 오케스트레이션
 │   │   ├── scope-analyzer.ts      ← PR 범위 + 응집 그룹 분석
@@ -51,7 +50,7 @@ karax/
 │   │   ├── api-analyzer.ts        ← API diff 해석
 │   │   ├── api-linter.ts          ← API 린트 오케스트레이션
 │   │   ├── review-checklist.ts    ← 리뷰 체크리스트 오케스트레이션
-│   │   └── config-loader.ts       ← karax.config.ts 로더
+│   │   └── config-loader.ts       ← probe.config.ts 로더
 │   ├── api/                       ← API 스펙 분석
 │   │   ├── spec-linter.ts         ← 10개 룰 기반 린트
 │   │   ├── spec-differ.ts         ← breaking change 감지
@@ -78,7 +77,7 @@ karax/
 │   │   ├── resources.ts           ← 3개 리소스
 │   │   └── prompts.ts             ← 2개 프롬프트
 │   ├── cli/                       ← CLI 진입점
-│   │   ├── index.ts               ← npx karax check/api:lint/khala:*
+│   │   ├── index.ts               ← npx probe check/api:lint/khala:*
 │   │   ├── parse-args.ts          ← CLI 인자 파서
 │   │   └── formatters.ts          ← 출력 포맷터 (markdown/json/brief)
 │   └── utils/                     ← 공용 유틸
@@ -137,7 +136,7 @@ chore: 빌드/설정
 
 ## 관련 규정 문서
 
-Karax가 검증하는 규칙의 근거:
+Probe가 검증하는 규칙의 근거:
 - `docs/guidelines/product-change-safety-net-framework.md` — 전체 프레임워크
 - `docs/guidelines/state-matrix-guidelines.md` — 규정 ①
 - `docs/guidelines/api-contract-guidelines.md` — 규정 ②

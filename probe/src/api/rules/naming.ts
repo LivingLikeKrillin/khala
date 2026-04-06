@@ -1,5 +1,5 @@
 /**
- * karax/path-naming, karax/property-naming 룰
+ * probe/path-naming, probe/property-naming 룰
  *
  * - 엔드포인트 경로: kebab-case
  * - 스키마 필드명: camelCase
@@ -16,7 +16,7 @@ const KEBAB_SEGMENT = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const CAMEL_CASE = /^[a-z][a-zA-Z0-9]*$/;
 
 export const pathNamingRule: LintRule = {
-  id: 'karax/path-naming',
+  id: 'probe/path-naming',
   defaultSeverity: 'error',
   guidelineRef: '§ 3.1',
   description: '엔드포인트 kebab-case (endpoints must use kebab-case)',
@@ -35,7 +35,7 @@ export const pathNamingRule: LintRule = {
 
         if (!KEBAB_SEGMENT.test(segment)) {
           violations.push({
-            ruleId: 'karax/path-naming',
+            ruleId: 'probe/path-naming',
             severity: this.defaultSeverity,
             path: `paths.${pathKey}`,
             message: `경로 세그먼트 '${segment}'가 kebab-case가 아닙니다 (path segment '${segment}' is not kebab-case)`,
@@ -51,7 +51,7 @@ export const pathNamingRule: LintRule = {
 };
 
 export const propertyNamingRule: LintRule = {
-  id: 'karax/property-naming',
+  id: 'probe/property-naming',
   defaultSeverity: 'error',
   guidelineRef: '§ 3.1',
   description: '필드명 camelCase (property names must use camelCase)',
@@ -85,7 +85,7 @@ function checkPropertyNaming(
 
     if (!CAMEL_CASE.test(propName)) {
       violations.push({
-        ruleId: 'karax/property-naming',
+        ruleId: 'probe/property-naming',
         severity,
         path,
         message: `필드명 '${propName}'이 camelCase가 아닙니다 (property '${propName}' is not camelCase)`,

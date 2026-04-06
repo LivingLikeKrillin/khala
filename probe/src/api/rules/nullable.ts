@@ -1,5 +1,5 @@
 /**
- * karax/nullable-explicit, karax/no-nullable-optional 룰
+ * probe/nullable-explicit, probe/no-nullable-optional 룰
  *
  * - nullable 필드에 nullable: true가 명시되어 있는지 검사
  * - nullable + optional 동시 적용 금지 검사
@@ -17,7 +17,7 @@ import type { LintRule, OpenApiSpec, SchemaObject, ApiLintViolation } from '../t
  * 내장 엔진 한계로, example에 null이 있는 경우만 탐지한다.
  */
 export const nullableExplicitRule: LintRule = {
-  id: 'karax/nullable-explicit',
+  id: 'probe/nullable-explicit',
   defaultSeverity: 'error',
   guidelineRef: '§ 2.3.1',
   description: 'nullable 필드는 nullable: true 명시 (nullable fields must declare nullable: true)',
@@ -41,7 +41,7 @@ export const nullableExplicitRule: LintRule = {
  * 필드가 nullable: true이면서 required 배열에 포함되지 않은 경우 경고.
  */
 export const noNullableOptionalRule: LintRule = {
-  id: 'karax/no-nullable-optional',
+  id: 'probe/no-nullable-optional',
   defaultSeverity: 'warn',
   guidelineRef: '§ 2.3.1',
   description: 'nullable + optional 동시 적용 금지 (no nullable + optional combination)',
@@ -73,7 +73,7 @@ function checkNullableFields(
     // example이 null인데 nullable: true가 없는 경우
     if (propSchema.example === null && !propSchema.nullable) {
       violations.push({
-        ruleId: 'karax/nullable-explicit',
+        ruleId: 'probe/nullable-explicit',
         severity,
         path,
         message: `nullable 필드 '${propName}'에 nullable: true가 없습니다 (nullable field '${propName}' missing nullable: true)`,
@@ -103,7 +103,7 @@ function checkNullableOptional(
 
     if (propSchema.nullable === true && !requiredFields.includes(propName)) {
       violations.push({
-        ruleId: 'karax/no-nullable-optional',
+        ruleId: 'probe/no-nullable-optional',
         severity,
         path,
         message: `필드 '${propName}'이 nullable이면서 optional입니다 (field '${propName}' is both nullable and optional)`,

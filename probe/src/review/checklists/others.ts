@@ -1,7 +1,7 @@
 /**
  * config-change, db-migration, test-only, docs-only, design-system, general 체크리스트
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.3
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.3
  */
 
 import type { ChecklistItem } from '../types.js';

@@ -54,7 +54,7 @@ describe('api-linter (내장 엔진)', () => {
 
     const result = lintSpec(spec, 'api/openapi.json');
 
-    expect(result.violations.some((v) => v.ruleId === 'karax/field-type-required')).toBe(true);
+    expect(result.violations.some((v) => v.ruleId === 'probe/field-type-required')).toBe(true);
   });
 
   it('$ref 필드는 type 없어도 위반이 아니다', () => {
@@ -72,7 +72,7 @@ describe('api-linter (내장 엔진)', () => {
     });
 
     const result = lintSpec(spec, 'api/openapi.json');
-    const fieldTypeViolations = result.violations.filter((v) => v.ruleId === 'karax/field-type-required');
+    const fieldTypeViolations = result.violations.filter((v) => v.ruleId === 'probe/field-type-required');
 
     expect(fieldTypeViolations.length).toBe(0);
   });
@@ -93,7 +93,7 @@ describe('api-linter (내장 엔진)', () => {
 
     const result = lintSpec(spec, 'api/openapi.json');
 
-    expect(result.violations.some((v) => v.ruleId === 'karax/nullable-explicit')).toBe(true);
+    expect(result.violations.some((v) => v.ruleId === 'probe/nullable-explicit')).toBe(true);
   });
 
   it('nullable + optional 동시 적용을 경고한다 (no-nullable-optional)', () => {
@@ -114,7 +114,7 @@ describe('api-linter (내장 엔진)', () => {
 
     const result = lintSpec(spec, 'api/openapi.json');
 
-    expect(result.violations.some((v) => v.ruleId === 'karax/no-nullable-optional')).toBe(true);
+    expect(result.violations.some((v) => v.ruleId === 'probe/no-nullable-optional')).toBe(true);
   });
 
   it('4xx 응답에 ErrorResponse 미참조를 탐지한다 (error-response-schema)', () => {
@@ -140,7 +140,7 @@ describe('api-linter (내장 엔진)', () => {
 
     const result = lintSpec(spec, 'api/openapi.json');
 
-    expect(result.violations.some((v) => v.ruleId === 'karax/error-response-schema')).toBe(true);
+    expect(result.violations.some((v) => v.ruleId === 'probe/error-response-schema')).toBe(true);
   });
 
   it('ErrorResponse 참조 4xx 응답은 위반이 아니다', () => {
@@ -164,7 +164,7 @@ describe('api-linter (내장 엔진)', () => {
     });
 
     const result = lintSpec(spec, 'api/openapi.json');
-    const errorViolations = result.violations.filter((v) => v.ruleId === 'karax/error-response-schema');
+    const errorViolations = result.violations.filter((v) => v.ruleId === 'probe/error-response-schema');
 
     expect(errorViolations.length).toBe(0);
   });
@@ -180,7 +180,7 @@ describe('api-linter (내장 엔진)', () => {
 
     const result = lintSpec(spec, 'api/openapi.json');
 
-    expect(result.violations.some((v) => v.ruleId === 'karax/path-naming')).toBe(true);
+    expect(result.violations.some((v) => v.ruleId === 'probe/path-naming')).toBe(true);
   });
 
   it('kebab-case 경로는 위반이 아니다', () => {
@@ -193,7 +193,7 @@ describe('api-linter (내장 엔진)', () => {
     });
 
     const result = lintSpec(spec, 'api/openapi.json');
-    const pathViolations = result.violations.filter((v) => v.ruleId === 'karax/path-naming');
+    const pathViolations = result.violations.filter((v) => v.ruleId === 'probe/path-naming');
 
     expect(pathViolations.length).toBe(0);
   });
@@ -214,7 +214,7 @@ describe('api-linter (내장 엔진)', () => {
 
     const result = lintSpec(spec, 'api/openapi.json');
 
-    expect(result.violations.some((v) => v.ruleId === 'karax/property-naming')).toBe(true);
+    expect(result.violations.some((v) => v.ruleId === 'probe/property-naming')).toBe(true);
   });
 
   it('날짜 필드에 example 누락을 탐지한다 (example-required)', () => {
@@ -233,7 +233,7 @@ describe('api-linter (내장 엔진)', () => {
 
     const result = lintSpec(spec, 'api/openapi.json');
 
-    expect(result.violations.some((v) => v.ruleId === 'karax/example-required')).toBe(true);
+    expect(result.violations.some((v) => v.ruleId === 'probe/example-required')).toBe(true);
   });
 
   it('룰 비활성화(disableRules)가 동작한다', () => {
@@ -251,10 +251,10 @@ describe('api-linter (내장 엔진)', () => {
     });
 
     const result = lintSpec(spec, 'api/openapi.json', {
-      disableRules: ['karax/property-naming'],
+      disableRules: ['probe/property-naming'],
     });
 
-    expect(result.violations.some((v) => v.ruleId === 'karax/property-naming')).toBe(false);
+    expect(result.violations.some((v) => v.ruleId === 'probe/property-naming')).toBe(false);
   });
 
   it('심각도 오버라이드(ruleSeverity)가 동작한다', () => {
@@ -272,10 +272,10 @@ describe('api-linter (내장 엔진)', () => {
     });
 
     const result = lintSpec(spec, 'api/openapi.json', {
-      ruleSeverity: { 'karax/example-required': 'error' },
+      ruleSeverity: { 'probe/example-required': 'error' },
     });
 
-    const exampleViolation = result.violations.find((v) => v.ruleId === 'karax/example-required');
+    const exampleViolation = result.violations.find((v) => v.ruleId === 'probe/example-required');
     expect(exampleViolation?.severity).toBe('error');
   });
 
@@ -294,9 +294,9 @@ describe('api-linter (내장 엔진)', () => {
     });
 
     const result = lintSpec(spec, 'api/openapi.json', {
-      ruleSeverity: { 'karax/property-naming': 'off' },
+      ruleSeverity: { 'probe/property-naming': 'off' },
     });
 
-    expect(result.violations.some((v) => v.ruleId === 'karax/property-naming')).toBe(false);
+    expect(result.violations.some((v) => v.ruleId === 'probe/property-naming')).toBe(false);
   });
 });

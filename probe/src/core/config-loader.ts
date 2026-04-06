@@ -1,10 +1,10 @@
 /**
- * karax.config.ts 로더
+ * probe.config.ts 로더
  *
- * 프로젝트 루트의 karax.config.ts (또는 .js, .mjs, .json)를 읽어서 설정을 반환한다.
+ * 프로젝트 루트의 probe.config.ts (또는 .js, .mjs, .json)를 읽어서 설정을 반환한다.
  * 설정 파일이 없으면 기본값을 사용한다.
  *
- * 규정 문서: docs/karax-v0.1-scope.md § 5
+ * 규정 문서: docs/probe-v0.1-scope.md § 5
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -39,7 +39,7 @@ export interface ReviewConfig {
   customItems?: Record<string, Array<{ id: string; description: string }>>;
 }
 
-export interface KaraxConfig {
+export interface ProbeConfig {
   /** 플랫폼 프로파일 (자동 감지 또는 수동 지정) */
   platform?: 'spring-boot' | 'nextjs' | 'react-spa' | 'custom';
 
@@ -91,31 +91,31 @@ export interface KhalaConfig {
  * TypeScript/JS 파일은 동적 import, JSON은 직접 파싱.
  */
 const CONFIG_CANDIDATES = [
-  { name: 'karax.config.ts', type: 'module' as const },
-  { name: 'karax.config.js', type: 'module' as const },
-  { name: 'karax.config.mjs', type: 'module' as const },
-  { name: 'karax.config.json', type: 'json' as const },
+  { name: 'probe.config.ts', type: 'module' as const },
+  { name: 'probe.config.js', type: 'module' as const },
+  { name: 'probe.config.mjs', type: 'module' as const },
+  { name: 'probe.config.json', type: 'json' as const },
 ];
 
 /**
  * JSON 설정 파일을 동기적으로 로드한다.
  */
-function loadJsonConfig(configPath: string): KaraxConfig | undefined {
+function loadJsonConfig(configPath: string): ProbeConfig | undefined {
   try {
     const content = readFileSync(configPath, 'utf-8');
-    return JSON.parse(content) as KaraxConfig;
+    return JSON.parse(content) as ProbeConfig;
   } catch {
     return undefined;
   }
 }
 
 /**
- * karax.config를 동기적으로 로드한다.
+ * probe.config를 동기적으로 로드한다.
  *
  * TS/JS 모듈 설정 파일은 비동기 API인 `loadConfigAsync()`를 사용해야 한다.
  * 동기 버전은 JSON 파일만 로드하고, TS/JS 파일이 존재하면 경로만 반환한다.
  */
-export function loadConfig(projectRoot?: string): KaraxConfig {
+export function loadConfig(projectRoot?: string): ProbeConfig {
   const root = projectRoot ?? process.cwd();
 
   for (const candidate of CONFIG_CANDIDATES) {
@@ -134,19 +134,19 @@ export function loadConfig(projectRoot?: string): KaraxConfig {
 }
 
 /**
- * karax.config를 비동기로 로드한다.
+ * probe.config를 비동기로 로드한다.
  * TS/JS 모듈 설정 파일(export default)을 지원한다.
  *
  * @example
  * ```typescript
- * // karax.config.ts
+ * // probe.config.ts
  * export default {
  *   platform: 'spring-boot',
  *   thresholds: { maxFilesPerPr: 25 },
  * };
  * ```
  */
-export async function loadConfigAsync(projectRoot?: string): Promise<KaraxConfig> {
+export async function loadConfigAsync(projectRoot?: string): Promise<ProbeConfig> {
   const root = projectRoot ?? process.cwd();
 
   for (const candidate of CONFIG_CANDIDATES) {
@@ -161,7 +161,7 @@ export async function loadConfigAsync(projectRoot?: string): Promise<KaraxConfig
     try {
       const absPath = resolve(configPath);
       const fileUrl = pathToFileURL(absPath).href;
-      const mod = await import(fileUrl) as { default?: KaraxConfig };
+      const mod = await import(fileUrl) as { default?: ProbeConfig };
       return mod.default ?? {};
     } catch {
       // import 실패 시 다음 후보로
@@ -174,7 +174,7 @@ export async function loadConfigAsync(projectRoot?: string): Promise<KaraxConfig
 /**
  * 칼라 설정을 resolve한다 (config 파일 > 환경 변수 > 기본값).
  */
-export function resolveKhalaConfig(config: KaraxConfig): KhalaConfig & { disabled: boolean } {
+export function resolveKhalaConfig(config: ProbeConfig): KhalaConfig & { disabled: boolean } {
   const env = process.env;
   return {
     baseUrl: config.khala?.baseUrl ?? env['KHALA_BASE_URL'] ?? 'http://localhost:8000',
@@ -192,7 +192,7 @@ export function resolveKhalaConfig(config: KaraxConfig): KhalaConfig & { disable
  */
 export function applyConfigOverrides(
   profile: PlatformProfile,
-  config: KaraxConfig,
+  config: ProbeConfig,
 ): PlatformProfile {
   if (!config.thresholds) return profile;
 

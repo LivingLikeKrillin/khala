@@ -1,4 +1,4 @@
-# Karax v0.1 — 범위 정의
+# Probe v0.1 — 범위 정의
 
 > **핵심 가치**: 개발 중에 "지금 이 작업이 PR 하나로 리뷰 가능한 범위인가?"를 알려준다.
 > **차별점**: 플랫폼/프레임워크별 개발 패턴을 이해하고, 그 맥락에서 판단한다.
@@ -50,7 +50,7 @@
 
 ## 2. 플랫폼 프로파일 (Platform Profile)
 
-Karax는 프레임워크별 "개발 패턴"을 프로파일로 정의한다.
+Probe는 프레임워크별 "개발 패턴"을 프로파일로 정의한다.
 프로파일은 해당 프레임워크에서 하나의 논리적 변경이 통상 어떤 파일 패턴으로 나타나는지를 기술한다.
 
 ### 2.1 프로파일 구조
@@ -243,7 +243,7 @@ const reactSpa: PlatformProfile = {
 
 ### 2.5 프로파일 자동 감지
 
-Karax는 프로젝트 루트의 파일을 보고 프로파일을 자동으로 추론한다.
+Probe는 프로젝트 루트의 파일을 보고 프로파일을 자동으로 추론한다.
 
 ```
 build.gradle.kts 또는 pom.xml    → spring-boot
@@ -254,7 +254,7 @@ package.json의 dependencies 분석  → 추가 판단
 
 수동 지정도 가능:
 ```typescript
-// karax.config.ts
+// probe.config.ts
 export default {
   platform: 'spring-boot',  // 또는 'nextjs', 'react-spa', 'custom'
   // ...
@@ -298,7 +298,7 @@ export default {
 ### 3.3 분할 제안 예시
 
 ```
-🔶 Karax — PR 범위 경고
+🔶 Probe — PR 범위 경고
 
 현재 변경이 3개의 서로 다른 관심사에 걸쳐 있습니다.
 
@@ -333,8 +333,8 @@ export default {
 | **PR 범위 분석** | 변경 파일 → 역할 부여 → 응집 분석 → 경고/제안 | 코어 로직 |
 | **Claude Code hook: 실시간 모니터** | 작업 중 변경 파일이 쌓일 때 범위 경고 | hook |
 | **Claude Code hook: pr-create** | PR 생성 시 최종 범위 검증 + DoD 체크 | hook |
-| **CLI: `karax check`** | 현재 브랜치의 변경을 분석하여 리포트 출력 | CLI |
-| **설정: `karax.config.ts`** | 플랫폼, 경로, 임계치 커스터마이징 | 설정 파일 |
+| **CLI: `probe check`** | 현재 브랜치의 변경을 분석하여 리포트 출력 | CLI |
+| **설정: `probe.config.ts`** | 플랫폼, 경로, 임계치 커스터마이징 | 설정 파일 |
 
 ### 4.2 미포함 (v0.2 이후)
 
@@ -358,10 +358,10 @@ export default {
 
 ---
 
-## 5. karax.config.ts 최소 스펙 (v0.1)
+## 5. probe.config.ts 최소 스펙 (v0.1)
 
 ```typescript
-export interface KaraxConfig {
+export interface ProbeConfig {
   /** 플랫폼 프로파일 (자동 감지 또는 수동 지정) */
   platform?: 'spring-boot' | 'nextjs' | 'react-spa' | 'custom';
 
@@ -391,14 +391,14 @@ export interface KaraxConfig {
 ```
 개발자: (User CRUD를 만들다가 SecurityConfig도 고치기 시작)
 
-⚙️ Karax: 현재 작업이 2개 관심사에 걸쳐 있습니다.
+⚙️ Probe: 현재 작업이 2개 관심사에 걸쳐 있습니다.
   - User 도메인 CRUD (6개 파일)
   - 인증 설정 변경 (1개 파일)
   인증 설정 변경은 별도 PR로 분리하는 것을 권장합니다.
 
 개발자: (무시하고 계속 작업, Order 도메인도 건드리기 시작)
 
-🔶 Karax: PR 범위 경고 — 3개 관심사가 섞여 있습니다.
+🔶 Probe: PR 범위 경고 — 3개 관심사가 섞여 있습니다.
   1. User 도메인 CRUD (6개 파일)
   2. 인증 설정 변경 (1개 파일)
   3. Order 도메인 변경 (2개 파일)
@@ -411,7 +411,7 @@ export interface KaraxConfig {
 ```
 개발자: (대시보드 페이지를 만들면서 API 라우트와 인증 미들웨어도 수정)
 
-⚠️ Karax: API 라우트와 페이지 UI 변경은 분리를 권장합니다.
+⚠️ Probe: API 라우트와 페이지 UI 변경은 분리를 권장합니다.
   - 대시보드 페이지 (page.tsx, layout.tsx, StatsCard.tsx) — 4개 파일
   - API 라우트 (app/api/dashboard/route.ts) — 1개 파일
   - 인증 미들웨어 (middleware.ts, lib/auth/session.ts) — 2개 파일
@@ -423,9 +423,9 @@ export interface KaraxConfig {
 ```
 개발자: (User CRUD만 깔끔하게 작업)
 
-(Karax: 아무 경고 없음. 정상 범위.)
+(Probe: 아무 경고 없음. 정상 범위.)
 
-개발자: karax check
+개발자: probe check
 
 ✅ 현재 변경: User 도메인 CRUD (7개 파일, +280줄)
    응집도: 높음 (단일 도메인, 단일 관심사)
@@ -443,10 +443,10 @@ export interface KaraxConfig {
 | 3 | 파일 → 역할 매핑 엔진 | ~150줄 |
 | 4 | 응집 그룹 분석 엔진 | ~300줄 |
 | 5 | 경고 레벨 판단 + 분할 제안 생성 | ~200줄 |
-| 6 | CLI: `karax check` | ~100줄 |
+| 6 | CLI: `probe check` | ~100줄 |
 | 7 | Claude Code hook: pr-create | ~150줄 (프롬프트) |
 | 8 | Claude Code hook: 실시간 모니터 | ~100줄 (프롬프트) |
-| 9 | `karax.config.ts` 로더 | ~100줄 |
+| 9 | `probe.config.ts` 로더 | ~100줄 |
 | 10 | 테스트 (core 로직) | ~400줄 |
 
 **총 예상**: ~1,900줄 (테스트 포함)

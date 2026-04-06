@@ -1,10 +1,10 @@
 /**
  * 칼라(Khala) 연동 타입 정의
  *
- * Karax가 칼라 API를 호출할 때 사용하는 요청/응답 타입.
+ * Probe가 칼라 API를 호출할 때 사용하는 요청/응답 타입.
  * 칼라 API 계약(API_CONTRACT.md)에 기반한다.
  *
- * 규정 문서: docs/karax-v0.4-scope.md § 3
+ * 규정 문서: docs/probe-v0.4-scope.md § 3
  */
 
 // ─── 공통 ───

@@ -3,7 +3,7 @@
  *
  * PR 타입 추론 및 체크리스트 생성에 사용되는 타입.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.3
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.3
  */
 
 /** PR 타입 */
@@ -27,7 +27,7 @@ export interface ReviewChecklist {
   /** 체크리스트 항목 */
   items: ChecklistItem[];
 
-  /** 자동 검증된 항목 (karax가 확인 가능한 것) */
+  /** 자동 검증된 항목 (probe가 확인 가능한 것) */
   autoVerified: VerifiedItem[];
 
   /** 수동 확인 필요 항목 */

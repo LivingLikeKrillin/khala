@@ -4,7 +4,7 @@
  * PR 분석 결과에 칼라의 맥락(관련 규정, 영향 서비스, 설계-관측 갭)을 추가한다.
  * 칼라가 없으면 빈 결과를 반환한다 (graceful degradation).
  *
- * 규정 문서: docs/karax-v0.4-scope.md § 4
+ * 규정 문서: docs/probe-v0.4-scope.md § 4
  */
 
 import { KhalaClient, withKhalaFallback } from './client.js';

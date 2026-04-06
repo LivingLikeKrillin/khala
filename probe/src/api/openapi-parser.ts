@@ -4,7 +4,7 @@
  * JSON/YAML 파일을 읽어 OpenApiSpec 타입으로 파싱한다.
  * YAML은 JSON 변환이 필요하므로, JSON만 기본 지원.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.1
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.1
  */
 
 import { readFileSync } from 'node:fs';

@@ -1,11 +1,11 @@
-name: Karax PR Check
+name: Probe PR Check
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  karax-check:
+  probe-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,13 +23,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build Karax
+      - name: Build Probe
         run: pnpm build
 
-      - name: Run Karax Check
-        id: karax
+      - name: Run Probe Check
+        id: probe
         run: |
-          RESULT=$(npx karax check --base origin/${{ github.base_ref }} --format markdown)
+          RESULT=$(npx probe check --base origin/${{ github.base_ref }} --format markdown)
           echo "report<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -39,17 +39,17 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const report = `${{ steps.karax.outputs.report }}`;
+            const report = `${{ steps.probe.outputs.report }}`;
             if (report && report.trim()) {
-              // 기존 Karax 코멘트 찾기
+              // 기존 Probe 코멘트 찾기
               const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
               });
-              const existing = comments.find(c => c.body.includes('⚙️ Karax'));
+              const existing = comments.find(c => c.body.includes('⚙️ Probe'));
 
-              const body = `⚙️ Karax — PR 범위 분석\n\n${report}`;
+              const body = `⚙️ Probe — PR 범위 분석\n\n${report}`;
 
               if (existing) {
                 await github.rest.issues.updateComment({

@@ -77,11 +77,11 @@ function makeWarnScopeResult(): ScopeAnalysisResult {
 // ─── formatScopeMarkdown ───
 
 describe('formatScopeMarkdown', () => {
-  it('정상 결과에서 Karax 헤더와 그룹 요약을 포함한다', () => {
+  it('정상 결과에서 Probe 헤더와 그룹 요약을 포함한다', () => {
     const result = makeOkScopeResult();
     const output = formatScopeMarkdown(result);
 
-    expect(output).toContain('Karax');
+    expect(output).toContain('Probe');
     expect(output).toContain('정상 범위');
     expect(output).toContain('domain-crud (User)');
     expect(output).toContain('2개 파일');
@@ -196,7 +196,7 @@ describe('formatLintMarkdown', () => {
     const result: ApiLintResult = {
       violations: [
         {
-          ruleId: 'karax/nullable',
+          ruleId: 'probe/nullable',
           severity: 'error',
           path: '#/paths/~1users/get/responses/200',
           message: 'nullable 필드가 명시되지 않았습니다',
@@ -208,7 +208,7 @@ describe('formatLintMarkdown', () => {
     const output = formatLintMarkdown(result);
 
     expect(output).toContain('1개 에러');
-    expect(output).toContain('karax/nullable');
+    expect(output).toContain('probe/nullable');
     expect(output).toContain('nullable 필드가 명시되지 않았습니다');
     expect(output).toContain('수정:');
   });

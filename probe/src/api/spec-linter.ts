@@ -4,7 +4,7 @@
  * OpenAPI JSON을 직접 파싱하여 내장 룰셋으로 검사한다.
  * Spectral이 없어도 동작하는 폴백 엔진.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.1
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.1
  */
 
 import type { OpenApiSpec, ApiLintResult, ApiLintViolation } from './types.js';

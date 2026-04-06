@@ -11,7 +11,7 @@
  * - 필드 타입 변경
  * - enum 값 제거
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.2
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.2
  */
 
 import type {

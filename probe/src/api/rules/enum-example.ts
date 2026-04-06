@@ -1,5 +1,5 @@
 /**
- * karax/enum-required, karax/example-required 룰
+ * probe/enum-required, probe/example-required 룰
  *
  * - 유한 집합 값은 enum 사용 권장
  * - 날짜/금액/ID에 example 필수
@@ -14,7 +14,7 @@ const EXAMPLE_FORMATS = ['date', 'date-time', 'uuid', 'uri', 'email'];
 const EXAMPLE_NAME_PATTERNS = [/id$/i, /at$/i, /date/i, /amount/i, /price/i, /cost/i];
 
 export const enumRequiredRule: LintRule = {
-  id: 'karax/enum-required',
+  id: 'probe/enum-required',
   defaultSeverity: 'warn',
   guidelineRef: '§ 2.4.1',
   description: '유한 집합 값은 enum 사용 (finite value sets should use enum)',
@@ -33,7 +33,7 @@ export const enumRequiredRule: LintRule = {
 };
 
 export const exampleRequiredRule: LintRule = {
-  id: 'karax/example-required',
+  id: 'probe/example-required',
   defaultSeverity: 'warn',
   guidelineRef: '§ 2.4.2',
   description: '날짜/금액/ID에 example 필수 (date/amount/ID fields require example)',
@@ -66,7 +66,7 @@ function checkEnumUsage(
     const enumNames = ['status', 'type', 'role', 'category', 'state', 'kind', 'level', 'priority'];
     if (propSchema.type === 'string' && enumNames.includes(propName.toLowerCase()) && !propSchema.enum) {
       violations.push({
-        ruleId: 'karax/enum-required',
+        ruleId: 'probe/enum-required',
         severity,
         path,
         message: `필드 '${propName}'에 enum이 없습니다 (field '${propName}' should use enum)`,
@@ -97,7 +97,7 @@ function checkExampleRequired(
 
     if (needsExample && propSchema.example === undefined) {
       violations.push({
-        ruleId: 'karax/example-required',
+        ruleId: 'probe/example-required',
         severity,
         path,
         message: `필드 '${propName}'에 example이 없습니다 (field '${propName}' missing example)`,

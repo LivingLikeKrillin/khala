@@ -1,10 +1,10 @@
 /**
  * MCP 도구 핸들러
  *
- * Karax 코어 엔진을 MCP 도구로 노출한다.
+ * Probe 코어 엔진을 MCP 도구로 노출한다.
  * 6개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform, queryKhala
  *
- * 규정 문서: docs/karax-v0.3-scope.md § 3, docs/karax-v0.4-scope.md § 6
+ * 규정 문서: docs/probe-v0.3-scope.md § 3, docs/probe-v0.4-scope.md § 6
  */
 
 import { z } from 'zod';
@@ -45,9 +45,9 @@ async function resolveProfile() {
  * MCP 서버에 6개 도구를 등록한다.
  */
 export function registerTools(server: McpServer): void {
-  // ─── karax.analyzeScope ───
+  // ─── probe.analyzeScope ───
   server.tool(
-    'karax.analyzeScope',
+    'probe.analyzeScope',
     '변경 파일 목록으로 PR 범위를 분석한다. 응집 그룹, 관심사 혼재, 분할 제안을 반환한다.',
     {
       base: z.string().optional().describe('기준 브랜치 (기본: origin/main)'),
@@ -84,9 +84,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── karax.lintApiSpec ───
+  // ─── probe.lintApiSpec ───
   server.tool(
-    'karax.lintApiSpec',
+    'probe.lintApiSpec',
     'OpenAPI 스펙 파일의 품질을 검증한다. 10개 내장 룰로 필드 타입, nullable, 에러 응답, 네이밍 규칙을 검사한다.',
     {
       specPath: z.string().optional().describe('OpenAPI 스펙 파일 경로 (기본: api/openapi.json)'),
@@ -109,9 +109,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── karax.diffApiSpecs ───
+  // ─── probe.diffApiSpecs ───
   server.tool(
-    'karax.diffApiSpecs',
+    'probe.diffApiSpecs',
     '기준 브랜치와 현재 브랜치의 API 스펙을 비교한다. breaking 변경, additive 변경, deprecation을 분류한다.',
     {
       base: z.string().optional().describe('기준 브랜치 (기본: origin/main)'),
@@ -139,9 +139,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── karax.reviewChecklist ───
+  // ─── probe.reviewChecklist ───
   server.tool(
-    'karax.reviewChecklist',
+    'probe.reviewChecklist',
     '변경 내용을 분석하여 PR 타입을 추론하고, 해당 타입의 리뷰 체크리스트를 생성한다. 칼라가 가용하면 관련 규정과 영향 분석을 포함한다.',
     {
       base: z.string().optional().describe('기준 브랜치 (기본: origin/main)'),
@@ -187,9 +187,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── karax.detectPlatform ───
+  // ─── probe.detectPlatform ───
   server.tool(
-    'karax.detectPlatform',
+    'probe.detectPlatform',
     '프로젝트 파일 구조를 분석하여 플랫폼(spring-boot, nextjs, react-spa)을 감지한다.',
     {},
     async () => {
@@ -204,9 +204,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── karax.queryKhala ───
+  // ─── probe.queryKhala ───
   server.tool(
-    'karax.queryKhala',
+    'probe.queryKhala',
     '칼라 지식베이스에 자연어로 질의한다. 규정, 아키텍처, 서비스 관계를 검색한다.',
     {
       query: z.string().describe('검색 쿼리 (자연어, 한국어/영어)'),

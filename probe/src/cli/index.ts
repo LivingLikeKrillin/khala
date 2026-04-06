@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Karax CLI
+ * Probe CLI
  *
  * Usage:
- *   karax check    [--base <ref>] [--format <markdown|json|brief>] [--silent]
- *   karax api:lint [spec-path] [--format <markdown|json|brief>]
- *   karax api:diff [--base <ref>] [--spec <path>] [--format <markdown|json|brief>]
- *   karax review   [--base <ref>] [--format <markdown|json|brief>]
- *   karax version
+ *   probe check    [--base <ref>] [--format <markdown|json|brief>] [--silent]
+ *   probe api:lint [spec-path] [--format <markdown|json|brief>]
+ *   probe api:diff [--base <ref>] [--spec <path>] [--format <markdown|json|brief>]
+ *   probe review   [--base <ref>] [--format <markdown|json|brief>]
+ *   probe version
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.4
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.4
  */
 
 import { existsSync } from 'node:fs';
@@ -52,7 +52,7 @@ async function runCheck(args: string[]): Promise<void> {
     : getProfileForPlatform(platform);
 
   if (!baseProfile) {
-    logger.warn(`플랫폼을 감지할 수 없습니다 (Platform not detected). karax.config.ts에서 platform을 지정하세요.`);
+    logger.warn(`플랫폼을 감지할 수 없습니다 (Platform not detected). probe.config.ts에서 platform을 지정하세요.`);
     process.exitCode = 1;
     return;
   }
@@ -283,7 +283,7 @@ async function runReview(args: string[]): Promise<void> {
 async function runKhalaSearch(args: string[]): Promise<void> {
   const query = args.filter((a) => !a.startsWith('--')).join(' ');
   if (!query) {
-    logger.error('검색 쿼리를 입력하세요 (Usage: karax khala:search <query>)');
+    logger.error('검색 쿼리를 입력하세요 (Usage: probe khala:search <query>)');
     process.exitCode = 1;
     return;
   }
@@ -452,20 +452,20 @@ switch (command) {
     void runKhalaStatus();
     break;
   case 'version':
-    logger.info('karax v0.4.0');
+    logger.info('probe v0.4.0');
     break;
   default:
-    logger.info(`\u2699\uFE0F Karax \u2014 프로덕트 개발 워크플로 자동 검증 도구
+    logger.info(`\u2699\uFE0F Probe \u2014 프로덕트 개발 워크플로 자동 검증 도구
 
 Usage:
-  karax check          현재 브랜치의 변경 범위 + 리뷰 체크리스트
-  karax api:lint        API 스펙 린트
-  karax api:diff        API 스펙 diff (breaking 변경 감지)
-  karax review          리뷰 체크리스트 생성
-  karax khala:search    칼라 지식베이스 검색
-  karax khala:impact    서비스 영향 분석
-  karax khala:status    칼라 연결 상태 확인
-  karax version         버전 출력
+  probe check          현재 브랜치의 변경 범위 + 리뷰 체크리스트
+  probe api:lint        API 스펙 린트
+  probe api:diff        API 스펙 diff (breaking 변경 감지)
+  probe review          리뷰 체크리스트 생성
+  probe khala:search    칼라 지식베이스 검색
+  probe khala:impact    서비스 영향 분석
+  probe khala:status    칼라 연결 상태 확인
+  probe version         버전 출력
 
 Options:
   --base <ref>       기준 브랜치 (기본: origin/main)

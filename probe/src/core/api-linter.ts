@@ -4,7 +4,7 @@
  * Spectral(외부) 또는 내장 린트 엔진을 사용하여
  * OpenAPI 스펙의 품질을 검증한다.
  *
- * 규정 문서: docs/karax-v0.2-scope.md § 3.1
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.1
  */
 
 import { existsSync } from 'node:fs';

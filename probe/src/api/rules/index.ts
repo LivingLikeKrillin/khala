@@ -2,7 +2,7 @@
  * 내장 린트 룰 레지스트리
  *
  * 모든 내장 룰을 하나의 배열로 export한다.
- * 규정 문서: docs/karax-v0.2-scope.md § 3.1
+ * 규정 문서: docs/probe-v0.2-scope.md § 3.1
  */
 
 import type { LintRule } from '../types.js';
