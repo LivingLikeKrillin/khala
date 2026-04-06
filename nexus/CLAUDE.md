@@ -3,7 +3,6 @@
 > Khala는 조직 내부 지식(문서/정책/설정)과 운영 사실(OTel trace/metric)을 결합하여,
 > 근거 기반(grounded)으로 검색·추론하는 Enterprise RAG + GraphRAG 시스템이다.
 > 맥락 기반 AI Agent(Code Review / Troubleshooting)의 context provider가 최종 목표다.
-> 프로토스의 칼라처럼, 조직의 모든 생각과 사실을 공유한다.
 
 ---
 
