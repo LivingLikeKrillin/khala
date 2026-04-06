@@ -1,28 +1,24 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/⚙️_Probe-PR_Analyzer-blue?style=for-the-badge&labelColor=1a1a2e&color=4361ee">
-    <img alt="Probe" src="https://img.shields.io/badge/⚙️_Probe-PR_Analyzer-blue?style=for-the-badge&labelColor=f0f0f0&color=4361ee">
-  </picture>
+  <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-%3E%3D20-339933?style=for-the-badge&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/MCP-Server-4361ee?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
 </p>
 
-<p align="center">
-  <strong>리뷰의 반복 노동을 코드가 대신하고, 사람은 설계 판단에만 집중한다.</strong><br>
-  <sub>플랫폼 인식 PR 분석 + API 검증 + 맥락 기반 리뷰</sub>
-</p>
+<h1 align="center">Probe</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.4.0-4361ee" alt="version">
-  <img src="https://img.shields.io/badge/node-%3E%3D20-339933" alt="node">
-  <img src="https://img.shields.io/badge/typescript-strict-3178c6" alt="typescript">
-  <img src="https://img.shields.io/badge/tests-110%20passing-brightgreen" alt="tests">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="license">
+  <strong>Platform-Aware PR Analyzer + API Contract Validator</strong><br/>
+  플랫폼별 응집도 기반 PR 범위 분석, API 스펙 린트/diff, 리뷰 체크리스트 자동 생성
 </p>
 
 ---
 
-## 문제
+## What is Probe?
 
-코드 리뷰에서 반복되는 세 가지 문제:
+Probe는 PR의 범위, API 계약, 리뷰 체크리스트를 자동으로 검증하는 도구입니다.
+
+코드 리뷰에서 반복되는 세 가지 문제를 해결합니다:
 
 **1. "이 PR 범위가 적절한가?"**
 
@@ -409,6 +405,12 @@ pnpm build            # 빌드
 
 ---
 
-## 라이선스
+## License
 
 MIT
+
+---
+
+<p align="center">
+  <sub>Built with Claude Code</sub>
+</p>
