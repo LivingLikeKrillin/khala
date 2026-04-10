@@ -48,7 +48,7 @@ Khala는 단독 검색 도구가 아니라, 다음 AI Agent들의 초석이다:
 
 > MVP 설계 당시 1.0/2.0으로 구분했으나, Web UI/Slack Bot/MCP Server가 이미 구현되어
 > 경계가 무의미해졌다. 테마 기반 페이즈로 재정의하였다.
-> 최신 로드맵은 [에코시스템 ROADMAP.md](../../ROADMAP.md) 참조.
+> 최신 로드맵은 [에코시스템 ROADMAP.md](../ROADMAP.md) 참조.
 
 ### 1.3 설계-관측 diff가 핵심인 이유
 
@@ -688,7 +688,7 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 ## 10. 로드맵
 
 > MVP 설계 당시의 확장 계획은 테마 기반 페이즈로 재정의되었다.
-> 최신 로드맵은 [에코시스템 ROADMAP.md](../../ROADMAP.md) 참조.
+> 최신 로드맵은 [에코시스템 ROADMAP.md](../ROADMAP.md) 참조.
 
 ### MVP에서 완료된 확장 항목
 
