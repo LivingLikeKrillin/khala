@@ -19,7 +19,7 @@
 
 ## 로드맵 — 테마 기반 페이즈
 
-전체 로드맵은 [에코시스템 ROADMAP.md](../ROADMAP.md) 참조.
+전체 로드맵은 [에코시스템 ROADMAP.md](./ROADMAP.md) 참조.
 
 ```
 Phase 1 — 팀 맞춤형

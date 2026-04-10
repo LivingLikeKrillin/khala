@@ -506,7 +506,7 @@ python -m khala.mcp --transport http   # streamable-http (원격)
 
 ## Roadmap
 
-테마 기반 페이즈로 진화한다. 전체 로드맵은 [에코시스템 ROADMAP.md](../ROADMAP.md) 참조.
+테마 기반 페이즈로 진화한다. 전체 로드맵은 [에코시스템 ROADMAP.md](./ROADMAP.md) 참조.
 
 ```
 Phase 1 — 팀 맞춤형
