@@ -44,22 +44,11 @@ Khala는 단독 검색 도구가 아니라, 다음 AI Agent들의 초석이다:
 | 맥락 기반 Troubleshooting | 장애 경로가 문서 경로와 다른가? 어디서 갈라졌나? | CALLS_OBSERVED 경로 + 문서 경로 + semantic mismatch |
 | 문서 검색 (Q&A) | 이 개념/정책/구조가 문서에서 어떻게 정의되어 있는가? | Hybrid Search + 근거 chunk + 출처 |
 
-### 1.2 1.0과 2.0의 관계
+### 1.2 로드맵 체계
 
-```
-Khala 1.0 (MVP)                         Khala 2.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-주체:  AI Agent                          주체:  사람 + Agent
-
-인터페이스:                               인터페이스:
-  ├ FastAPI (Agent가 호출)                  ├ Web UI (검색 + 채팅)
-  ├ CLI (개발자 검증용)                      ├ Slack Bot
-  └ (MCP는 확장에서)                        ├ MCP Server
-                                           └ FastAPI (기존 유지)
-```
-
-Agent가 MCP로 질의해서 맥락을 확보하는 것과 사람이 자연어로 질의해서 정보를 얻는 것은
-**같은 기능이다. 주체만 다르다.** 1.0에서 코어를 완성하고, 2.0에서 사람용 인터페이스를 붙인다.
+> MVP 설계 당시 1.0/2.0으로 구분했으나, Web UI/Slack Bot/MCP Server가 이미 구현되어
+> 경계가 무의미해졌다. 테마 기반 페이즈로 재정의하였다.
+> 최신 로드맵은 [에코시스템 ROADMAP.md](../../ROADMAP.md) 참조.
 
 ### 1.3 설계-관측 diff가 핵심인 이유
 
@@ -696,42 +685,31 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 
 ---
 
-## 10. MVP → 2.0 로드맵
+## 10. 로드맵
 
-### 확장 계획
+> MVP 설계 당시의 확장 계획은 테마 기반 페이즈로 재정의되었다.
+> 최신 로드맵은 [에코시스템 ROADMAP.md](../../ROADMAP.md) 참조.
 
-| 단계 | 내용 | 기간 | 관련 추상화 |
-|------|------|------|-----------|
-| 확장 1 | Code Review Agent: PR diff → Khala 검색 → 정합성 판단 | 1주 | API 추가 |
-| 확장 2 | Troubleshooting Agent: 장애 trace → graph + diff → 근본 원인 | 1주 | API 추가 |
-| 확장 3 | Cross-encoder reranking + query expansion | 3–5일 | search.py 수정 |
-| 확장 4 | Neo4j 전환 + Leiden community detection | 1주 | **GraphRepository 교체** |
-| 확장 5 | OpenAPI/Proto/Rego 파서 (결정적 추출) | 1주 | extract_relations.py 수정 |
-| 확장 6 | MCP Server + Structured query syntax | 3–5일 | API 래퍼 추가 |
-| 확장 7 | OPA PDP + quarantine SLA + 에스컬레이션 | 1주 | UserContext 확장 |
-| 확장 8 | Git-backed wiki + Slack Bot | 1주 | ingest.py source_kind 분기 |
+### MVP에서 완료된 확장 항목
 
-### 2.0 전환 시 추상화 활용 지점
+| 당초 계획 | 상태 |
+|----------|------|
+| MCP Server | **Done** (MVP 중 구현) |
+| Slack Bot | **Done** (MVP 중 구현) |
+| Web UI | **Done** (MVP 중 구현) |
+
+### 추상화 활용 지점 (여전히 유효)
 
 ```
-확장 항목          활용하는 추상화              변경 방법
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-확장 3 Reranking   search.py                  search.py에 rerank 단계 삽입
-확장 4 Neo4j       GraphRepository Protocol   Neo4jGraphRepository 구현체 교체
-확장 5 파서 추가    extract_relations.py       파일 내 추출 로직 교체/확장
-확장 8 Slack/Wiki  ingest.py                  source_kind 분기 추가
-모델 교체          EmbeddingService 래퍼       클래스 내부 교체
-Multi-LLM         LLMService 래퍼             클래스 내부 교체
-Contextual Enrich get_search_text() 함수      함수 1개 수정 → 재인덱싱
-Entity 추출 변경   canonicalize_entity_name()  rid 안정성 유지
+Phase 항목             활용하는 추상화              변경 방법
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phase 2 Reranking      search.py                  rerank 단계 삽입
+보류: Neo4j            GraphRepository Protocol   구현체 교체
+보류: 모델 교체         EmbeddingService 래퍼       클래스 내부 교체
+보류: Multi-LLM        LLMService 래퍼             클래스 내부 교체
+Phase 2 Enrichment     get_search_text() 함수      함수 수정 → 재인덱싱
+Entity 추출 변경       canonicalize_entity_name()  rid 안정성 유지
 ```
-
-### 우선순위 판단
-
-1. **Code Review / Troubleshooting Agent가 최우선** → Khala의 존재 이유.
-2. 검색 품질 부족 시 → reranking + query expansion.
-3. Graph 복잡도 증가 시 → Neo4j 전환.
-4. 비개발자 협업 필요 시 → wiki + Slack.
 
 ---
 
