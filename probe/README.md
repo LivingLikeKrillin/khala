@@ -393,6 +393,21 @@ probe/
 
 ---
 
+## Roadmap
+
+전체 로드맵은 [에코시스템 ROADMAP.md](../ROADMAP.md) 참조.
+
+| 버전 | 내용 | 상태 |
+|------|------|------|
+| v0.1 | PR 범위 분석 + 플랫폼 프로파일 | **Done** |
+| v0.2 | API 스펙 린트/diff + 리뷰 체크리스트 | **Done** |
+| v0.3 | MCP 서버 (Claude Code 연동) | **Done** |
+| v0.4 | Khala 연동 — 맥락 기반 리뷰 | **Done** |
+| v0.5 | UI 확장팩 (토큰/VRT/접근성) | Not Started |
+| v0.6 | 팀별 린트 프로파일 (Khala Phase 1 연동) | Not Started |
+
+---
+
 ## 개발
 
 ```bash
