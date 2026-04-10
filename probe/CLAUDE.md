@@ -31,7 +31,7 @@ Probe는 **하이브리드 구조**다.
 
 ## 로드맵
 
-전체 로드맵은 [에코시스템 ROADMAP.md](../ROADMAP.md) 참조.
+전체 로드맵은 [에코시스템 ROADMAP.md](https://github.com/LivingLikeKrillin/khala/blob/master/ROADMAP.md) 참조.
 
 ```
 v0.1  PR 범위 분석 + 플랫폼 프로파일          ✅

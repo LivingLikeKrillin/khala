@@ -395,7 +395,7 @@ probe/
 
 ## Roadmap
 
-전체 로드맵은 [에코시스템 ROADMAP.md](../ROADMAP.md) 참조.
+전체 로드맵은 [에코시스템 ROADMAP.md](https://github.com/LivingLikeKrillin/khala/blob/master/ROADMAP.md) 참조.
 
 | 버전 | 내용 | 상태 |
 |------|------|------|
