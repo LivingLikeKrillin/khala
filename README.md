@@ -504,17 +504,25 @@ python -m khala.mcp --transport http   # streamable-http (원격)
 
 ---
 
-## Roadmap: 1.0 → 2.0
+## Roadmap
+
+테마 기반 페이즈로 진화한다. 전체 로드맵은 [에코시스템 ROADMAP.md](../ROADMAP.md) 참조.
 
 ```
-Khala 1.0 (현재)                        Khala 2.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-인터페이스:                              추가 예정:
-  ├ FastAPI (11개 엔드포인트)               ├ 인증/인가 (JWT)
-  ├ Web UI (채팅/그래프/문서/Diff)          ├ Multi-tenant 관리
-  ├ Slack Bot (멘션/DM)                    └ Neo4j 그래프 DB 전환
-  ├ MCP Server (AI Agent 도구)
-  └ CLI (개발자용)
+Phase 1 — 팀 맞춤형
+  ├ tenant별 검색 프로파일 (BM25/Vector/Graph 가중치 조정)
+  ├ tenant별 문서 풀 격리 (팀 전용 + 공유)
+  └ 역할별 결과 reranking
+
+Phase 2 — 검색 지능화
+  ├ Adaptive 검색 깊이 (simple/standard/deep)
+  ├ router.py 확장 (쿼리 복잡도 자동 판정)
+  └ Cross-Encoder Reranking
+
+Phase 3 — 거버넌스
+  ├ JWT 인증/인가
+  ├ 감사 추적
+  └ tenant 관리 UI
 ```
 
 ---

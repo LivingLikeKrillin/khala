@@ -17,22 +17,23 @@
 
 ---
 
-## 1.0과 2.0의 관계
+## 로드맵 — 테마 기반 페이즈
+
+전체 로드맵은 [에코시스템 ROADMAP.md](../ROADMAP.md) 참조.
 
 ```
-Khala 1.0 (MVP)                        Khala 2.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-주체:  AI Agent                         주체:  사람 + Agent
+Phase 1 — 팀 맞춤형
+  tenant별 검색 프로파일, 문서 풀 격리, 역할별 reranking
 
-인터페이스:                              인터페이스:
-  ├ FastAPI (Agent가 호출)                 ├ Web UI (검색 + 채팅)
-  ├ CLI (개발자 검증용)                     ├ Slack Bot
-  └ (MCP는 확장에서)                       ├ MCP Server
-                                          └ FastAPI (기존 유지)
+Phase 2 — 검색 지능화
+  Adaptive 검색 깊이 (simple/standard/deep), Cross-Encoder Reranking
+
+Phase 3 — 거버넌스
+  JWT 인증/인가, 감사 추적, tenant 관리 UI
 ```
 
-Agent가 MCP로 질의해서 맥락을 확보하는 것과 사람이 자연어로 질의하는 것은
-**같은 기능이다. 주체만 다르다.** 1.0에서 코어를 완성하고, 2.0에서 사람용 인터페이스를 붙인다.
+핵심 관점: **전체 조직이 하나의 RAG를 공유하는 것은 비효율적이다.**
+팀마다 문서 구조, 용어, 검색 패턴이 다르므로 tenant 기반 맞춤형으로 진화한다.
 
 ---
 
