@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="logo.png" alt="Probe" width="180" />
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
   <img src="https://img.shields.io/badge/Node.js-%3E%3D20-339933?style=for-the-badge&logo=node.js&logoColor=white" />
   <img src="https://img.shields.io/badge/MCP-Server-4361ee?style=for-the-badge" />
