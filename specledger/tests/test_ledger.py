@@ -90,3 +90,21 @@ def test_supersede_rejects_non_adr(docs_root):
     aid = led.record("adr", "A")
     with pytest.raises(ImmutableArtifactError):
         led.supersede(sid, aid)
+
+
+# ── Task 10: Ledger.index ────────────────────────────────────────────────────
+
+def test_index_groups_by_status(docs_root):
+    led = make_ledger(docs_root)
+    led.record("spec", "Draft One")
+    sid = led.record("spec", "Approved One")
+    a = Artifact.load(docs_root / "specs" / f"{sid}.md")
+    a.meta["status"] = "approved"
+    a.meta["content_hash"] = a.recompute_hash()
+    a.save()
+    out = led.index()
+    text = out.read_text(encoding="utf-8")
+    assert out.name == "INDEX.md"
+    assert "🟢" in text and "🔴" in text
+    assert "SPEC-approved-one" in text
+    assert text.index("🔴") < text.index("🟢")
