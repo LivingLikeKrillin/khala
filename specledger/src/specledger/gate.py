@@ -36,7 +36,10 @@ class Gate:
         with (self._dir / "exempt.log").open("a", encoding="utf-8") as f:
             f.write(json.dumps({"ts": self._now(), "path": path, "tool": tool}) + "\n")
 
-    def check_gate(self, paths, ledger, config) -> dict:
+    def check_gate(self, paths: list[str], ledger, config, tool_name: str = "") -> dict:
+        # NOTE (MVP): paths must already be normalized/relative (the hook resolves
+        # them). check_gate does NOT itself defend against ".." traversal — callers
+        # other than the hook must normalize before calling.
         active = self.active_spec()
         spec_status = None
         open_count = 0
@@ -49,9 +52,10 @@ class Gate:
                 from .sidecar import Sidecar
                 open_count = Sidecar.read(sc_path).open_issue_count()
 
+        # empty paths -> allowed (vacuous); real Write/Edit payloads always have >=1
         for path in paths:
             if self._matches(path, config.exempt_paths):
-                self._log_exempt(path)
+                self._log_exempt(path, tool_name)
                 continue
             if self._matches(path, config.allow_globs):
                 continue

@@ -2,9 +2,11 @@ from pathlib import Path
 import importlib.util
 
 
+_HOOK_PATH = Path(__file__).resolve().parent.parent / "hooks" / "pretooluse_gate.py"
+
+
 def load_hook():
-    spec = importlib.util.spec_from_file_location(
-        "pretooluse_gate", Path("hooks/pretooluse_gate.py"))
+    spec = importlib.util.spec_from_file_location("pretooluse_gate", _HOOK_PATH)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -46,3 +48,13 @@ def test_decide_denies_source_without_marker(tmp_path):
                      "cwd": str(tmp_path)}, now=lambda: "t")
     assert d["allow"] is False
     assert "활성 spec" in d["reason"]
+
+
+def test_decide_blocks_path_traversal_disguised_as_docs(tmp_path):
+    # "docs/../src/evil.py" must NOT be let through as a docs/** allow-glob match
+    (tmp_path / "docs").mkdir()
+    hook = load_hook()
+    sneaky = str(tmp_path / "docs" / ".." / "src" / "evil.py")
+    d = hook.decide({"tool_name": "Write", "tool_input": {"file_path": sneaky},
+                     "cwd": str(tmp_path)}, now=lambda: "t")
+    assert d["allow"] is False  # normalized to src/evil.py -> default-deny

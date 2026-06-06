@@ -67,7 +67,16 @@ def test_exempt_path_allows_and_logs(tmp_path):
     led = Ledger(tmp_path / "docs", now=lambda: "t")
     g = Gate(tmp_path, now=lambda: "t")
     cfg = SpecledgerConfig(exempt_paths=["scripts/**"])
-    res = g.check_gate(["scripts/gen.py"], led, cfg)
+    res = g.check_gate(["scripts/gen.py"], led, cfg, tool_name="Write")
     assert res["allowed"] is True
     log = (tmp_path / ".specledger" / "exempt.log").read_text(encoding="utf-8")
     assert "scripts/gen.py" in log
+    assert "Write" in log  # tool name threaded into the exempt audit log
+
+
+def test_mixed_allowed_and_denied_paths_denies(tmp_path):
+    # one allow-glob path + one ungoverned source path -> whole call denied
+    led = Ledger(tmp_path / "docs", now=lambda: "t")
+    g = Gate(tmp_path, now=lambda: "t")
+    res = g.check_gate(["docs/readme.md", "src/evil.py"], led, SpecledgerConfig())
+    assert res["allowed"] is False
