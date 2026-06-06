@@ -571,7 +571,7 @@ switch (command) {
     void runReviewGroundCmd(args.slice(1));
     break;
   case 'version':
-    logger.info('probe v0.5.0');
+    logger.info('probe v0.6.0');
     break;
   default:
     logger.info(`\u2699\uFE0F Probe \u2014 프로덕트 개발 워크플로 자동 검증 도구
@@ -585,6 +585,7 @@ Usage:
   probe khala:impact    서비스 영향 분석
   probe khala:status    칼라 연결 상태 확인
   probe troubleshoot    에러/스택트레이스 → 트러블슈팅 그라운딩
+  probe review:ground   git diff → 리뷰 그라운딩 (설계-관측 갭·규정·토폴로지·승인 스펙)
   probe version         버전 출력
 
 Options:

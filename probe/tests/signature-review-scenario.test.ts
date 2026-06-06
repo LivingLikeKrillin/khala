@@ -25,6 +25,24 @@ describe('시그니처 리뷰 시나리오', () => {
     }
   });
 
+  it('SR2 (T1 승인 스펙 정합): payment 변경에 대해 승인 스펙을 specRefs로 제시한다', async () => {
+    // 문서만 있고(T1) 엣지 0 — /search가 승인 스펙(제목에 spec 마커)을 반환
+    globalThis.fetch = vi.fn((url: string) => {
+      const u = new URL(url);
+      if (u.pathname.startsWith('/status')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { db_connected: true, documents_count: 4, edges_count: 0 }, error: null, meta: {} }) });
+      if (u.pathname.startsWith('/search')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { results: [{ doc_title: 'Payment Idempotency Spec', section_path: '2.3', snippet: '멱등 키 필수', score: 0.91, classification: 'INTERNAL' }] }, error: null, meta: {} }) });
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { diffs: [], center_entity: { rid: 'e', name: 'payment-service' }, edges: [], observed_edges: [] }, error: null, meta: {} }) });
+    }) as unknown as typeof globalThis.fetch;
+
+    const r = await runReviewGround([{ entityName: 'payment-service', changedFiles: ['PaymentRetry.java'] }], new KhalaClient({ baseUrl: 'http://t:8000' }));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.pack.tier).toBe(1);
+      const spec = r.pack.specRefs?.find((s) => s.docTitle === 'Payment Idempotency Spec');
+      expect(spec).toBeDefined(); // diff↔스펙 대조용 참조를 Claude에 제시
+    }
+  });
+
   it('SR3 (T0 정직성): Khala 미가용이면 changedEntities만 + T0 명시', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('down')) as unknown as typeof globalThis.fetch;
     const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['a.ts'] }], new KhalaClient({ baseUrl: 'http://t:8000' }));
