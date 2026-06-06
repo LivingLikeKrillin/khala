@@ -216,7 +216,7 @@ Claude Code에서 자연어 대화 중 Probe 분석을 **자동으로** 호출�
 }
 ```
 
-**7개 MCP 도구:**
+**8개 MCP 도구:**
 
 | 도구 | 설명 |
 |------|------|
@@ -227,6 +227,7 @@ Claude Code에서 자연어 대화 중 Probe 분석을 **자동으로** 호출�
 | `probe.detectPlatform` | 플랫폼 감지 |
 | `probe.queryKhala` | 칼라 지식베이스 질의 |
 | `probe.groundTroubleshooting` | 에러→트러블슈팅 그라운딩 (토폴로지·관측·갭·규정) |
+| `probe.groundReview` | diff→리뷰 그라운딩 (설계-관측 갭·규정·토폴로지·승인 스펙) |
 
 **3개 리소스:** 프로파일 정보, 설정, 가이드라인
 **2개 프롬프트:** 구조화된 PR 리뷰, PR 분할 가이드
@@ -411,7 +412,7 @@ probe/
 | v0.3 | MCP 서버 (Claude Code 연동) | **Done** |
 | v0.4 | Khala 연동 — 맥락 기반 리뷰 | **Done** |
 | v0.5 | 트러블슈팅 그라운딩 | **Done** |
-| v0.6 | 그라운디드 코드 리뷰 (diff ↔ 승인 스펙·규정·그래프·claim 정합성) | Not Started |
+| v0.6 | 그라운디드 코드 리뷰 (diff ↔ 승인 스펙·규정·그래프·claim 정합성) | **Done** |
 
 ---
 
