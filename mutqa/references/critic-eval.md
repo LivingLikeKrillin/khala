@@ -31,27 +31,24 @@ specledger `review.py`의 `approve()` 내 disposition 기록 루프 무력화. P
   green → 그 부수효과를 검증하는 행위검증이 없다.
 - **기대 suggested_test_intent:** "approve()가 각 disposition을 ledger에 기록하는지(기록 호출/결과 상태) 검증."
 
-## EVAL-2 — 반드시 `equivalent` (M1 합성, Task 9에서 실데이터로 확정)
+## EVAL-2 — 반드시 `equivalent` (실데이터 확정, 2026-06-06 dogfood)
 
-**현재(M1): 합성 케이스.** 도달 불가능한 분기 안의 상수 변경처럼 관측 차이가 없는 변이.
+**실 cosmic-ray survivor.** specledger `review.py` line 47의 enum 비교 연산자 변이.
+Task 9 dogfood에서 깨끗한 동치 survivor로 채집·확정(폴백 발동 안 함). Critic이 실제로 `equivalent` 판정함.
 
-- **module:** `(합성)`
+- **module:** `src/specledger/review.py`
+- **line:** 47
+- **operator:** `core/ReplaceComparisonOperator_Is_Eq`
 - **mutation diff:**
 ```
-@@ @@
- if False:            # 도달 불가능
--    limit = 100
-+    limit = 101
- return compute()     # limit를 쓰지 않음
+-    final = Status.ACCEPTED if art.type is ArtifactType.ADR else Status.APPROVED
++    final = Status.ACCEPTED if art.type == ArtifactType.ADR else Status.APPROVED
 ```
-- **suite outcome:** 전부 통과
+- **suite outcome:** 69개 전부 통과
 - **기대 verdict:** `equivalent`
-- **기대 근거 요지:** 변경된 분기는 도달 불가능하고 `limit`는 이후 사용되지 않음 → 관측 가능한 행위 차이 0.
+- **기대 근거 요지:** `ArtifactType`은 enum이고 멤버는 싱글톤이라 `is`와 `==`가 항상 일치 →
+  관측 가능한 행위 차이 0. (테스트의 잘못이 아님 — 잡을 차이 자체가 없음.)
 - **suggested_test_intent:** `null`
-
-> **▶ Task 9 폴백 규칙:** specledger 실제 실행에서 *깨끗한 동치 survivor*(명확히 관측 차이 없음을
-> 논증 가능한 것)를 1건 찾으면 그것으로 이 EVAL-2를 교체해 실데이터 회귀로 고정한다. 못 찾으면
-> **위 합성 케이스를 그대로 유지**하고 "합성"임을 명시한다(Task 9가 외부 경험 조건에 막히지 않게).
 
 ## EVAL-3 — 반드시 `low-value`
 
