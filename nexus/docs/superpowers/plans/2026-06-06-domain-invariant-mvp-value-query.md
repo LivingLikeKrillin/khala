@@ -13,7 +13,8 @@
 
 > **실행 진행 (2026-06-06):** 태스크 **1·2·3·4·5·6·7·8·9 완료** — 코어 + **DB 통합 + CLI end-to-end**. 실 Postgres(테스트 DB) + fixtures로 검증: `khala claim-value 준회원` → "현재 5", `재생곡` → "현재 360". **단위 18 + 통합 2 = 20 tests green.**
 > **환경 메모:** 이 환경(Windows)에서 pytest-asyncio **async-generator fixture가 깨짐** → conftest `db_pool` 의존 통합테스트 불가. Archon 통합테스트는 자체 asyncio 루프로 우회(`tests/test_claim_integration.py`). (pytest 8.4.2 / pytest-asyncio 0.26.0로 업그레이드 — pyproject 선언 충족.)
-> **남음:** **10**(MCP 도구 `claim_value` — AI/기획자 NL 경로) · **11**(실제 기획자 가치검증). Notion 적재는 별도 계획(`2026-06-06-notion-source-adapter.md`).
+> **태스크 10 완료:** `/claims/value` API + `archon_claim_value` MCP 도구 — TestClient로 검증(준회원→5, high, fresh). **AI/기획자 NL 경로 완성.** (Tasks 1–10 전부 완료.)
+> **남음:** **11**(실제 기획자 가치검증 — pfplay 실제 상수 + 기획자 섭외). Notion 적재는 별도 계획(`2026-06-06-notion-source-adapter.md`).
 
 ---
 
