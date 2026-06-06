@@ -28,3 +28,16 @@ def test_malformed_line_raises_clear_error():
     with pytest.raises(ValueError) as exc:
         extract_survivors(bad)
     assert "Malformed" in str(exc.value)
+
+
+def test_module_path_separators_normalized():
+    # cosmic-ray on Windows emits backslash module_path; key/module must be forward-slash
+    line = (
+        '[{"job_id":"x","mutations":[{"module_path":"src\\\\pkg\\\\review.py",'
+        '"operator_name":"core/Op","occurrence":0,"start_pos":[5,0],"end_pos":[5,1],'
+        '"operator_args":{},"definition_name":"f"}]},'
+        '{"worker_outcome":"normal","output":"ok","test_outcome":"survived","diff":"d"}]'
+    )
+    [s] = extract_survivors(line)
+    assert s.module == "src/pkg/review.py"
+    assert s.key == "src/pkg/review.py:5:core/Op"

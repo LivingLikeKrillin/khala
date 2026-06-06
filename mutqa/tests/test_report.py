@@ -30,3 +30,9 @@ def test_missing_verdict_treated_as_unknown():
     survivors = [_surv(10)]
     md = build_report(survivors, verdicts=[])
     assert "unknown" in md.lower()  # verdict 없는 survivor도 누락되지 않음
+
+
+def test_empty_survivors_reports_zero_gaps():
+    md = build_report([], [])
+    assert "real-gap: 0" in md
+    assert "survivor 총 0" in md

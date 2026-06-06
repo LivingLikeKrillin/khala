@@ -24,10 +24,11 @@ def extract_survivors(dump_text: str) -> list[Survivor]:
             continue
         if result.get("test_outcome") != "survived":
             continue
+        # cosmic-ray's local distributor emits one mutation per work_item; [0] is that mutation.
         mutation = work_item["mutations"][0]
         survivors.append(
             Survivor(
-                module=mutation["module_path"],
+                module=mutation["module_path"].replace("\\", "/"),
                 lineno=mutation["start_pos"][0],
                 operator=mutation["operator_name"],
                 mutation_diff=result.get("diff", ""),
