@@ -117,6 +117,19 @@ describe('analyzeImpact', () => {
     expect(result.severity).toBe('none');
   });
 
+  it('getGraph를 ent_ 접두사 없이 이름으로 호출한다 (스펙 §3.3)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ success: true, data: { center_entity: { rid: 'x', name: 'order-service' }, edges: [], observed_edges: [] }, error: null, meta: {} }),
+    });
+    globalThis.fetch = fetchMock;
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    await analyzeImpact(client, ['order-service']);
+    const calledUrl = String(fetchMock.mock.calls[0]![0]);
+    expect(calledUrl).toContain('/graph/order-service');
+    expect(calledUrl).not.toContain('ent_');
+  });
+
   it('높은 error rate + 3개 이상 서비스면 high 심각도를 반환한다', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       mockGraphResponse(
