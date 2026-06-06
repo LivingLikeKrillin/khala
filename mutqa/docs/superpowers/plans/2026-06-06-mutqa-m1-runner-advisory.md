@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-06-06-mutation-test-quality-harness-design.md`
 
+> **⚠ 실행 중 스키마 정정 (2026-06-06):** Task 2/4의 코드 블록은 cosmic-ray dump를 **flat** work_item으로 가정했으나, 실측(8.4.6)에서 변이 필드는 `work_item["mutations"][0]`에 **중첩**되며 distributor 이름은 `"local"`(전체 클래스경로 아님)이었다. Task 5 통합에서 `KeyError`로 잡혀 정정 커밋(`fix: parse cosmic-ray 8.4.6 nested mutations schema`)으로 해결. **실제 스키마·gotcha는 메모리 [[cosmic-ray-dump-schema]] 참조** — 아래 Task 2/4 코드 블록은 역사적 기록(현 source of truth는 repo 코드).
+
 ---
 
 ## 파일 구조 (M1)
@@ -736,3 +738,7 @@ git commit -m "test: dogfood mutqa on specledger, confirm survivors surface"
 - `Survivor.key`(`module:lineno:operator`)는 이미 원장 매칭용으로 존재 → M2 `ledger.py`가 소비.
 - `surviving_tests` 정밀화(coverage 기반 per-line 매핑)는 M2. M1은 suite 요약(개수)만 Critic에 전달.
 - 라인 이동 키 깨짐 완화(정규화 해시 보조 키)는 M2.
+- **최종 리뷰 연기 항목(M2에서 흡수):** (M-2) `run_mutation`이 고정 파일명 `mutqa.sqlite`/`mutqa.cfg.toml`을
+  소비자 cwd에 씀 → 다중 모듈 루프 시 세션 덮어씀(현재는 모듈별 즉시 추출이라 무해). 모듈별 temp 서브디렉토리로.
+  (M-3) `build_config`가 `module_path`/`test_command`를 TOML 문자열에 이스케이프 없이 보간 → `/` 정규화로
+  당장은 안전하나 `"`/`\` 포함 값에 취약. `tomli_w` 또는 최소 이스케이프로 경화. 둘 다 M1 정상범위·비차단.
