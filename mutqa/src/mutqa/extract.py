@@ -24,11 +24,12 @@ def extract_survivors(dump_text: str) -> list[Survivor]:
             continue
         if result.get("test_outcome") != "survived":
             continue
+        mutation = work_item["mutations"][0]
         survivors.append(
             Survivor(
-                module=work_item["module_path"],
-                lineno=work_item["start_pos"][0],
-                operator=work_item["operator_name"],
+                module=mutation["module_path"],
+                lineno=mutation["start_pos"][0],
+                operator=mutation["operator_name"],
                 mutation_diff=result.get("diff", ""),
             )
         )
