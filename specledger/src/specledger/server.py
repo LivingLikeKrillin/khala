@@ -55,7 +55,7 @@ def build_app(ledger: Ledger, gate: Gate, critic, config: SpecledgerConfig) -> F
 
     @app.tool()
     def check_gate(paths: list[str]) -> dict:
-        return gate.check_gate(paths, ledger, config)
+        return gate.check_gate(paths, ledger, config, tool_name="mcp:check_gate")
 
     @app.tool()
     def index() -> str:
