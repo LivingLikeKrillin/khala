@@ -411,7 +411,7 @@ probe/
 | v0.3 | MCP 서버 (Claude Code 연동) | **Done** |
 | v0.4 | Khala 연동 — 맥락 기반 리뷰 | **Done** |
 | v0.5 | 트러블슈팅 그라운딩 | **Done** |
-| v0.6 | 팀별 린트 프로파일 (Khala Phase 1 연동) | Not Started |
+| v0.6 | 그라운디드 코드 리뷰 (diff ↔ 승인 스펙·규정·그래프·claim 정합성) | Not Started |
 
 ---
 
