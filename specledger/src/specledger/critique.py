@@ -66,7 +66,9 @@ class AnthropicCritic:
         self._model = model
         self._max_tokens = max_tokens
 
-    def find_issues(self, body, linked_adr_bodies, rubric):
+    def find_issues(
+        self, body: str, linked_adr_bodies: list[str], rubric: list[str]
+    ) -> list[tuple[str, str, str]]:
         prompt = _PROMPT.format(
             rubric=", ".join(rubric), body=body,
             adrs="\n---\n".join(linked_adr_bodies) or "(none)",

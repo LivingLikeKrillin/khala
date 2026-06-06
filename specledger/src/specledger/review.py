@@ -36,7 +36,9 @@ def approve(ledger, artifact_id, dispositions, approver, now: Callable[[], str])
         raise ReviewError("accepted 했으나 문서 미수정 (본문 해시 불변)")
 
     for i in sc.issues:
-        if i.issue_id in by_id:
+        # only mutate issues that were actually open and dispositioned this round;
+        # never overwrite an already-closed issue's historical record
+        if i.status == "open" and i.issue_id in by_id:
             i.status = by_id[i.issue_id]["disposition"]
             i.disposition_reason = by_id[i.issue_id].get("reason")
     sc.approved_by = approver
