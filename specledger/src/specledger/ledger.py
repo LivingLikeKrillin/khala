@@ -1,0 +1,108 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from pathlib import Path
+
+from . import ids
+from .artifacts import Artifact, ArtifactType, Status
+from .frontmatter import render
+
+
+class Ledger:
+    def __init__(self, root: Path, now: Callable[[], str]):
+        self.root = Path(root)
+        self.specs = self.root / "specs"
+        self.adr = self.root / "adr"
+        self.reviews = self.root / ".reviews"
+        for d in (self.specs, self.adr, self.reviews):
+            d.mkdir(parents=True, exist_ok=True)
+        self._now = now
+
+    def record(self, type: str, title: str, slug: str | None = None) -> str:
+        atype = ArtifactType(type)
+        if atype is ArtifactType.ADR:
+            aid = ids.next_adr_id(self.adr)
+            status = Status.PROPOSED
+            path = self.adr / f"{aid}-{ids.slugify(title)}.md"
+        else:
+            aid = ids.make_spec_id(self.specs, title, slug)
+            status = Status.DRAFT
+            path = self.specs / f"{aid}.md"
+        meta = {
+            "id": aid, "type": str(atype), "title": title,
+            "status": str(status), "date": self._now(),
+        }
+        path.write_text(render(meta, f"# {title}\n\n"), encoding="utf-8")
+        return aid
+
+    def _resolve(self, artifact_id: str) -> Path:
+        for d in (self.specs, self.adr):
+            for p in d.glob(f"{artifact_id}*.md"):
+                if Artifact.load(p).id == artifact_id:
+                    return p
+        from .errors import ArtifactNotFoundError
+        raise ArtifactNotFoundError(artifact_id)
+
+    def _all_paths(self):
+        yield from self.specs.glob("*.md")
+        yield from self.adr.glob("*.md")
+
+    def status(self, artifact_id: str | None = None) -> list[dict]:
+        paths = [self._resolve(artifact_id)] if artifact_id else list(self._all_paths())
+        report = []
+        for p in paths:
+            a = Artifact.load(p)
+            entry = {"id": a.id, "type": str(a.type), "status": str(a.status),
+                     "needs_review": False, "tampered": False}
+            stored = a.meta.get("content_hash")
+            if a.status in (Status.APPROVED, Status.ACCEPTED) and stored:
+                if a.recompute_hash() != stored:
+                    if a.type is ArtifactType.SPEC:
+                        a.meta["status"] = str(Status.IN_REVIEW)
+                        a.save()
+                        entry["status"] = str(Status.IN_REVIEW)
+                        entry["needs_review"] = True
+                    else:
+                        entry["tampered"] = True
+            report.append(entry)
+        return report
+
+    def supersede(self, old_id: str, new_id: str) -> None:
+        a_old = Artifact.load(self._resolve(old_id))
+        a_new = Artifact.load(self._resolve(new_id))
+        if a_old.type is not ArtifactType.ADR or a_new.type is not ArtifactType.ADR:
+            from .errors import ImmutableArtifactError
+            raise ImmutableArtifactError("supersede applies to ADRs only")
+        a_old.meta["status"] = str(Status.SUPERSEDED)
+        a_old.meta["superseded_by"] = new_id
+        a_old.save()
+        a_new.meta["supersedes"] = old_id
+        a_new.save()
+
+    _GROUPS = [
+        ("🔴 미검토", {Status.DRAFT, Status.PROPOSED}),
+        ("🟡 검토중", {Status.IN_REVIEW}),
+        ("🟢 승인", {Status.APPROVED, Status.ACCEPTED}),
+    ]
+
+    def index(self) -> Path:
+        self.status()  # repair first
+        arts = [Artifact.load(p) for p in self._all_paths()]
+        lines = ["# Specledger Index", ""]
+        for label, statuses in self._GROUPS:
+            members = [a for a in arts if a.status in statuses]
+            lines.append(f"## {label} ({len(members)})")
+            lines.append("")
+            if members:
+                lines.append("| id | title | approved_by | date | linked_adrs |")
+                lines.append("|---|---|---|---|---|")
+                for a in members:
+                    linked = ", ".join(a.meta.get("linked_adrs") or [])
+                    lines.append(
+                        f"| {a.id} | {a.meta.get('title','')} | {a.meta.get('approved_by','')} "
+                        f"| {a.meta.get('date','')} | {linked} |"
+                    )
+            lines.append("")
+        out = self.root / "INDEX.md"
+        out.write_text("\n".join(lines), encoding="utf-8")
+        return out
