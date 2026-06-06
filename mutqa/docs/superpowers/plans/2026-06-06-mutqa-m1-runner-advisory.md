@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-06-06-mutation-test-quality-harness-design.md`
 
+> **⚠ 실행 중 스키마 정정 (2026-06-06):** Task 2/4의 코드 블록은 cosmic-ray dump를 **flat** work_item으로 가정했으나, 실측(8.4.6)에서 변이 필드는 `work_item["mutations"][0]`에 **중첩**되며 distributor 이름은 `"local"`(전체 클래스경로 아님)이었다. Task 5 통합에서 `KeyError`로 잡혀 정정 커밋(`fix: parse cosmic-ray 8.4.6 nested mutations schema`)으로 해결. **실제 스키마·gotcha는 메모리 [[cosmic-ray-dump-schema]] 참조** — 아래 Task 2/4 코드 블록은 역사적 기록(현 source of truth는 repo 코드).
+
 ---
 
 ## 파일 구조 (M1)
