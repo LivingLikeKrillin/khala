@@ -7,11 +7,13 @@ import {
   formatReviewMarkdown,
   formatGroundingPackMarkdown,
   formatGroundingPackBrief,
+  formatReviewGroundingPackMarkdown,
+  formatReviewGroundingPackBrief,
 } from '../src/cli/formatters.js';
 import type { ScopeAnalysisResult } from '../src/core/scope-analyzer.js';
 import type { ApiLintResult, ApiDiffResult } from '../src/api/types.js';
 import type { ReviewChecklist } from '../src/review/types.js';
-import type { GroundingPack } from '../src/khala/types.js';
+import type { GroundingPack, ReviewGroundingPack } from '../src/khala/types.js';
 
 // ─── 테스트 데이터 팩토리 ───
 
@@ -335,4 +337,25 @@ describe('formatGroundingPack', () => {
   it('brief는 한 줄 요약', () => {
     expect(formatGroundingPackBrief(pack)).toContain('order-service');
   });
+});
+
+const reviewPack: ReviewGroundingPack = {
+  tier: 3, tierReason: 'r',
+  changedEntities: [{ entityName: 'order-service', changedFiles: ['a.ts'] }],
+  designObservationGaps: [{ flag: 'observed_only', fromName: 'order-service', toName: 'inventory-service', edgeType: 'CALLS_OBSERVED', detail: 'd' }],
+  specRefs: [{ docTitle: 'Order Spec', sectionPath: '2', snippet: 's', classification: 'INTERNAL' }],
+  caveats: ['c1'],
+};
+
+it('리뷰 그라운딩 마크다운에 엔티티/갭/스펙/한계가 포함된다', () => {
+  const md = formatReviewGroundingPackMarkdown(reviewPack);
+  expect(md).toContain('order-service');
+  expect(md).toContain('observed_only');
+  expect(md).toContain('Order Spec');
+  expect(md).toContain('c1');
+  expect(md).toMatch(/판정|증거/);
+});
+
+it('리뷰 그라운딩 brief는 한 줄 요약이다', () => {
+  expect(formatReviewGroundingPackBrief(reviewPack)).toContain('T3');
 });

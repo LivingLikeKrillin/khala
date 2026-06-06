@@ -9,7 +9,7 @@ import type { ScopeAnalysisResult } from '../core/scope-analyzer.js';
 import type { ApiLintResult, ApiDiffResult } from '../api/types.js';
 import type { ReviewChecklist } from '../review/types.js';
 import type { SeverityLevel } from '../profiles/types.js';
-import type { GroundingPack } from '../khala/types.js';
+import type { GroundingPack, ReviewGroundingPack } from '../khala/types.js';
 
 export const SEVERITY_ICONS: Record<SeverityLevel, string> = {
   ok: '\u2705',
@@ -246,6 +246,65 @@ export function formatGroundingPackBrief(pack: GroundingPack): string {
   const names = pack.suspects.map((s) => s.entityName).join(', ') || '(국소화 실패)';
   const gaps = pack.designObservationGaps?.length ?? 0;
   return `트러블슈팅 T${pack.tier}: 의심 [${names}], 설계-관측 갭 ${gaps}개`;
+}
+
+/** ReviewGroundingPack → 마크다운 (증거만, 정합 판정은 Claude) */
+export function formatReviewGroundingPackMarkdown(pack: ReviewGroundingPack): string {
+  const lines: string[] = [];
+  lines.push(`## 🧭 리뷰 그라운딩 (T${pack.tier})`);
+  lines.push('');
+  lines.push(`> ${pack.tierReason}`);
+  lines.push('> ⚠️ 이건 조직 컨텍스트 증거 모음입니다 — diff↔스펙/그래프/claim 정합 판정은 Claude/리뷰어가 합니다.');
+  lines.push('');
+  lines.push('### 변경 엔티티');
+  for (const e of pack.changedEntities) {
+    lines.push(`- \`${e.entityName}\`${e.cohesionGroup ? ` (${e.cohesionGroup})` : ''} — ${e.changedFiles.length}개 파일`);
+  }
+  lines.push('');
+  if (pack.designObservationGaps?.length) {
+    lines.push('### ⚠️ 설계-관측 갭 (제네릭 리뷰가 구조적으로 못 보는 발견)');
+    for (const g of pack.designObservationGaps) {
+      lines.push(`- **${g.flag}**: ${g.fromName} → ${g.toName} (${g.edgeType}) — ${g.detail}`);
+      if (g.observedEvidence?.length) lines.push(`  - trace: ${g.observedEvidence.join(', ')}`);
+    }
+    lines.push('');
+  }
+  if (pack.specRefs?.length) {
+    lines.push('### 승인 스펙 참조 (diff를 이 스펙에 비춰 검토)');
+    for (const s of pack.specRefs) {
+      lines.push(`- ${s.docTitle} > ${s.sectionPath}${s.approvedHash ? ` (hash ${s.approvedHash})` : ''}`);
+    }
+    lines.push('');
+  }
+  if (pack.applicableGuidelines?.length) {
+    lines.push('### 적용 규정/문서');
+    for (const d of pack.applicableGuidelines) lines.push(`- ${d.docTitle} > ${d.sectionPath} (score ${d.score.toFixed(2)})`);
+    lines.push('');
+  }
+  if (pack.topology) {
+    lines.push(`### 토폴로지 영향: ${pack.topology.summary}`);
+    lines.push('');
+  }
+  if (pack.claimDrift?.length) {
+    lines.push('### 도메인 claim drift (Archon)');
+    for (const c of pack.claimDrift) {
+      lines.push(`- \`${c.boundSymbol}\` → ${c.kind} \`${c.id}\` (${c.criticality}, status=${c.status}, drift=${c.codeDrift})`);
+    }
+    lines.push('');
+  }
+  if (pack.caveats.length) {
+    lines.push('### 한계 (caveats)');
+    for (const c of pack.caveats) lines.push(`- ${c}`);
+  }
+  return lines.join('\n');
+}
+
+/** ReviewGroundingPack → 한 줄 요약 */
+export function formatReviewGroundingPackBrief(pack: ReviewGroundingPack): string {
+  const names = pack.changedEntities.map((e) => e.entityName).join(', ') || '(엔티티 없음)';
+  const gaps = pack.designObservationGaps?.length ?? 0;
+  const specs = pack.specRefs?.length ?? 0;
+  return `리뷰 그라운딩 T${pack.tier}: 엔티티 [${names}], 설계-관측 갭 ${gaps}개, 승인 스펙 ${specs}개`;
 }
 
 /**
