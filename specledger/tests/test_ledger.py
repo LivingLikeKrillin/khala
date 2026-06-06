@@ -68,3 +68,25 @@ def test_status_flags_tampered_accepted_adr_without_reset(docs_root):
     rep = {r["id"]: r for r in led.status()}
     assert rep[aid]["tampered"] is True
     assert Artifact.load(p).status == Status.ACCEPTED
+
+
+# ── Task 9: Ledger.supersede ─────────────────────────────────────────────────
+
+def test_supersede_links_both(docs_root):
+    led = make_ledger(docs_root)
+    old = led.record("adr", "Old")
+    new = led.record("adr", "New")
+    led.supersede(old, new)
+    a_old = Artifact.load(led._resolve(old))
+    a_new = Artifact.load(led._resolve(new))
+    assert a_old.status == Status.SUPERSEDED
+    assert a_old.meta["superseded_by"] == new
+    assert a_new.meta["supersedes"] == old
+
+
+def test_supersede_rejects_non_adr(docs_root):
+    led = make_ledger(docs_root)
+    sid = led.record("spec", "S")
+    aid = led.record("adr", "A")
+    with pytest.raises(ImmutableArtifactError):
+        led.supersede(sid, aid)
