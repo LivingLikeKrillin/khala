@@ -46,7 +46,16 @@ export function partitionDocs(
   return { specRefs, guidelines };
 }
 
-/** 변경 엔티티에 대한 Review Grounding Pack을 조립한다 (티어가 허용하는 섹션까지). */
+/**
+ * 변경 엔티티에 대한 Review Grounding Pack을 조립한다 (티어가 허용하는 섹션까지).
+ *
+ * 증거만 모은다 — 정합(합/불) 판정은 하지 않는다. 각 섹션은 독립 실패해도
+ * 나머지를 막지 않으며(withKhalaFallback), 강등/부재는 caveats에 명시한다.
+ *
+ * @param client Khala 클라이언트
+ * @param changedEntities diff에서 라우팅된 변경 엔티티
+ * @param options 티어·검색 topK·그래프 홉·스펙 마커
+ */
 export async function groundReview(
   client: KhalaClient,
   changedEntities: ChangedEntity[],
@@ -57,6 +66,9 @@ export async function groundReview(
     tier: options.tier, tierReason: '', changedEntities, caveats,
   };
   const names = changedEntities.map((e) => e.entityName);
+  if (names.length === 0) {
+    caveats.push('변경 엔티티가 없어 조직 그라운딩을 생략함 (No changed entities to ground)');
+  }
 
   // §2/§3 지식 → 규정 + 승인 스펙 분리 (T1+)
   if (options.tier >= 1 && names.length > 0) {
@@ -98,10 +110,9 @@ export async function groundReview(
     }
   }
 
-  // §6 도메인 claim drift — Archon seam (미연동 시 생략 + caveat)
-  if (!pack.claimDrift) {
-    caveats.push('도메인 claim drift 그라운딩은 Archon 미연동으로 생략됨 (Archon not integrated)');
-  }
+  // §6 도메인 claim drift — Archon seam. v0.6은 Archon 미연동이라 항상 생략하고 caveat을 남긴다.
+  // (Archon 연동 시 이 위에서 pack.claimDrift를 채우고 이 caveat을 조건부로 바꾼다.)
+  caveats.push('도메인 claim drift 그라운딩은 Archon 미연동으로 생략됨 (Archon not integrated)');
 
   return pack;
 }
