@@ -80,6 +80,39 @@ describe('groundTroubleshooting', () => {
     expect(pack.caveats.some((c) => c.includes('지식') || c.toLowerCase().includes('search'))).toBe(true);
   });
 
+  it('운영신호 fromName은 changedServices[0]이 아니라 실제 관측 엣지 소스를 쓴다', async () => {
+    // 의심 지점이 둘(payment-service 먼저, order-service 뒤)인데
+    // 실제 관측 이상은 order-service→inventory-service 엣지에서 발생.
+    globalThis.fetch = mockFetchByPath({
+      '/diff': { diffs: [] },
+      '/graph': {
+        center_entity: { rid: 'e', name: 'order-service' },
+        edges: [{ rid: 'e1', edge_type: 'CALLS', from_name: 'order-service', to_name: 'inventory-service', from_rid: 'a', to_rid: 'b', confidence: 0.9, hop: 1, evidence: [] }],
+        observed_edges: [{
+          rid: 'o1', edge_type: 'CALLS_OBSERVED', from_name: 'order-service', to_name: 'inventory-service',
+          call_count: 100, error_rate: 0.2, latency_p95: 800, sample_trace_ids: [], trace_query_ref: '',
+        }],
+      },
+      '/search': { results: [] },
+    }) as unknown as typeof globalThis.fetch;
+
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const pack = await groundTroubleshooting(
+      client,
+      [
+        { entityName: 'payment-service', evidence: [], confidence: 0.9 },
+        { entityName: 'order-service', evidence: [], confidence: 0.9 },
+      ],
+      { signal: 'NPE', tier: 3 },
+    );
+
+    const sig = pack.operationalSignals?.find((s) => s.toName === 'inventory-service');
+    expect(sig).toBeDefined();
+    expect(sig!.fromName).toBe('order-service');
+    // '?' 플레이스홀더가 새어나오지 않는다
+    expect(pack.operationalSignals?.every((s) => s.fromName !== '?')).toBe(true);
+  });
+
   it('changedServices가 주어지면 의심 토폴로지와 상관시킨다', async () => {
     globalThis.fetch = mockFetchByPath({ '/search': { results: [] }, '/diff': { diffs: [] },
       '/graph': { center_entity: { rid: 'e', name: 'order-service' }, edges: [], observed_edges: [] } }) as unknown as typeof globalThis.fetch;

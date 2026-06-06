@@ -122,6 +122,51 @@ export function extractServiceNames(groups: DetectedGroup[]): string[] {
 }
 
 /**
+ * 변경 파일이 특정 서비스에 속하는지 경계(세그먼트/토큰) 기준으로 판정한다.
+ *
+ * 단순 substring 매칭(`f.includes(service.replace(/-/g,''))`)은 과대매칭한다.
+ * 예: 서비스 "api"가 "rapid"/"therapist"에, "order-service"→"orderservice"가
+ * "reorderserviceutil"에 잘못 매칭됐다. 여기서는 경로 세그먼트를 토큰화하고
+ * 서비스명을 토큰 경계로만 매칭한다.
+ *
+ * @param file 변경 파일 경로 (예: "services/order-service/checkout.ts")
+ * @param service 서비스명 (예: "order-service")
+ */
+export function fileBelongsToService(file: string, service: string): boolean {
+  const svc = service.toLowerCase();
+  const svcCompact = svc.replace(/-/g, '');
+  const svcTokens = svc.split('-').filter(Boolean);
+  if (svcTokens.length === 0) return false;
+
+  for (const seg of file.split(/[/\\]/).filter(Boolean)) {
+    const segLower = seg.toLowerCase();
+    // 1) 세그먼트 자체가 서비스명/하이픈제거형 (order-service/ 또는 orderservice/ 디렉터리)
+    if (segLower === svc || segLower === svcCompact) return true;
+    // 2) 세그먼트를 토큰화(camelCase + 구분자)했을 때 서비스 토큰열이 연속 부분열로 등장
+    const tokens = seg
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .split(/[._\-\s]+/)
+      .map((t) => t.toLowerCase())
+      .filter(Boolean);
+    if (containsContiguous(tokens, svcTokens)) return true;
+  }
+  return false;
+}
+
+/** needle 토큰열이 haystack 토큰열에 연속 부분열로 등장하는지 확인한다. */
+function containsContiguous(haystack: string[], needle: string[]): boolean {
+  if (needle.length === 0 || needle.length > haystack.length) return false;
+  for (let i = 0; i <= haystack.length - needle.length; i++) {
+    let match = true;
+    for (let j = 0; j < needle.length; j++) {
+      if (haystack[i + j] !== needle[j]) { match = false; break; }
+    }
+    if (match) return true;
+  }
+  return false;
+}
+
+/**
  * 관련 규정/문서를 검색한다.
  */
 async function searchRelevantDocs(

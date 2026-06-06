@@ -46,9 +46,22 @@ export interface TierDecision {
 
 /**
  * /status 카운트로 그라운딩 티어를 결정한다 (스펙 §5.2).
+ *
+ * @param status /status 응답 (실패 시 null)
+ * @param failure status가 null일 때의 실패 사유 — 'timeout'(느림/콜드스타트)과
+ *   'unreachable'(미가용)을 구분해 T0 사유 문구를 다르게 남긴다.
  */
-export function determineTier(status: KhalaStatusResult | null): TierDecision {
+export function determineTier(
+  status: KhalaStatusResult | null,
+  failure?: 'timeout' | 'unreachable',
+): TierDecision {
   if (!status || !status.db_connected) {
+    if (failure === 'timeout') {
+      return {
+        tier: 0,
+        reason: 'Khala 응답 시간 초과 → T0 (느림/콜드스타트 가능 — 재시도 권장, Khala timeout)',
+      };
+    }
     return { tier: 0, reason: 'Khala 미가용 → T0 (국소화·프로파일만)' };
   }
   const obs = status.observed_edges_count ?? 0;
@@ -74,8 +87,9 @@ export async function runTroubleshoot(
   const kind = input.kind ?? inferKind(v.signal!);
   const suspects = localizeError({ ...input, signal: v.signal!, kind });
 
-  const status = await client.getStatus();
-  const tierDecision = determineTier(status);
+  const probe = await client.getStatusProbe();
+  const status = probe.ok ? probe.status : null;
+  const tierDecision = determineTier(status, probe.ok ? undefined : probe.reason);
 
   if (suspects.length === 0) {
     return {

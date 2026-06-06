@@ -2,7 +2,7 @@
  * 칼라(Khala) HTTP 클라이언트
  *
  * 칼라 API를 호출하는 fetch 기반 클라이언트.
- * 모든 호출에 타임아웃(기본 3초)과 graceful degradation을 적용한다.
+ * 모든 호출에 타임아웃(기본 10초)과 graceful degradation을 적용한다.
  *
  * 규정 문서: docs/probe-v0.4-scope.md § 3
  */
@@ -21,10 +21,21 @@ import type {
 /** 기본 설정 */
 const DEFAULT_CONFIG: KhalaClientConfig = {
   baseUrl: 'http://localhost:8000',
-  timeoutMs: 3000,
+  // 콜드 스타트한 도커 칼라는 첫 응답까지 ~8-9초가 걸린다. 3초는 너무 짧아
+  // 멀쩡한 칼라를 "미가용"으로 오판(→ T0 강등)했다. 10초로 상향.
+  timeoutMs: 10_000,
   tenant: 'default',
   classificationMax: 'INTERNAL',
 };
+
+/**
+ * /status 프로브 결과 — 가용성과 함께 실패 사유(느림 vs 단절)를 구분해 반환한다.
+ * 단순 null 반환으로는 "타임아웃(느림)"과 "연결 불가(단절)"를 구분할 수 없어
+ * 티어 강등 사유가 모호해지는 문제를 해결한다.
+ */
+export type KhalaStatusProbe =
+  | { ok: true; status: KhalaStatusResult }
+  | { ok: false; reason: 'timeout' | 'unreachable' };
 
 /**
  * 칼라 API 클라이언트.
@@ -56,6 +67,30 @@ export class KhalaClient {
    */
   async getStatus(): Promise<KhalaStatusResult | null> {
     return this.get<KhalaStatusResult>('/status', 'getStatus');
+  }
+
+  /**
+   * 시스템 상태를 조회하되, 실패 시 사유(timeout vs unreachable)를 함께 반환한다.
+   * 티어 결정 시 "느림(콜드스타트)"과 "단절(미가용)"을 구분하기 위해 사용한다.
+   */
+  async getStatusProbe(): Promise<KhalaStatusProbe> {
+    try {
+      const response = await this.fetchWithTimeout('/status', { method: 'GET' });
+      if (!response.ok) {
+        logger.debug(`칼라 getStatusProbe 실패: HTTP ${response.status}`);
+        return { ok: false, reason: 'unreachable' };
+      }
+      const body = await response.json() as KhalaResponse<KhalaStatusResult>;
+      if (!body.success || !body.data) {
+        logger.debug(`칼라 getStatusProbe 실패: ${body.error}`);
+        return { ok: false, reason: 'unreachable' };
+      }
+      return { ok: true, status: body.data };
+    } catch (error) {
+      const reason = isTimeoutError(error) ? 'timeout' : 'unreachable';
+      logger.debug(`칼라 getStatusProbe 에러(${reason}):`, String(error));
+      return { ok: false, reason };
+    }
   }
 
   /**
@@ -188,6 +223,20 @@ export class KhalaClient {
       clearTimeout(timeout);
     }
   }
+}
+
+/**
+ * 에러가 타임아웃(AbortController abort)에서 비롯됐는지 판별한다.
+ * fetch가 abort되면 name이 'AbortError'인 예외를 던지고,
+ * 연결 거부(ECONNREFUSED 등)는 그 외 TypeError로 떨어진다.
+ */
+function isTimeoutError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name?: unknown }).name === 'AbortError'
+  );
 }
 
 /**

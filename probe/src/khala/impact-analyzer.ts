@@ -116,6 +116,9 @@ export async function analyzeImpact(
           callCount: obs.call_count,
           errorRate: obs.error_rate,
           latencyP95: obs.latency_p95,
+          // 실제 관측 엣지 방향을 보존 — 운영신호가 의심 지점 추정에 의존하지 않게 한다
+          fromName: obs.from_name,
+          toName: obs.to_name,
         };
       }
     }
