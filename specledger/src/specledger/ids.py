@@ -3,7 +3,7 @@ from pathlib import Path
 
 _SLUG_STRIP = re.compile(r"[^a-z0-9가-힣-]")
 _SLUG_COLLAPSE = re.compile(r"-+")
-_SLUG_CAP = 56  # leaves room for "-NN" collision suffix within a 60-char budget
+_SLUG_CAP = 56  # caps slug length; full "SPEC-<slug>" id is ~61 chars (~63 with -NN suffix)
 
 
 def slugify(title: str) -> str:
@@ -15,6 +15,8 @@ def slugify(title: str) -> str:
 
 
 def make_spec_id(specs_dir: Path, title: str, slug: str | None = None) -> str:
+    # NOTE: an explicit `slug` bypasses slugify — callers must pre-validate it
+    # (slug charset, length); the server layer is responsible for that.
     base = slug if slug else slugify(title)
     candidate = f"SPEC-{base}"
     n = 2
