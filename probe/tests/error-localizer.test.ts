@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { localizeError } from '../src/khala/error-localizer.js';
+import { localizeError, inferKind } from '../src/khala/error-localizer.js';
 
 describe('localizeError — Java 스택트레이스', () => {
   it('클래스명을 kebab service로 정규화한다', () => {
@@ -25,5 +25,18 @@ describe('localizeError — Java 스택트레이스', () => {
 
   it('의심 지점이 없으면 빈 배열을 반환한다', () => {
     expect(localizeError({ signal: '그냥 텍스트' })).toEqual([]);
+  });
+});
+
+describe('localizeError — TS/JS 경로 + kind 휴리스틱', () => {
+  it('TS 파일 경로에서 service를 추출한다', () => {
+    const signal = 'TypeError: undefined\n    at checkout (src/order/order-service.ts:88:10)';
+    const suspects = localizeError({ signal });
+    expect(suspects.some((s) => s.entityName === 'order-service')).toBe(true);
+  });
+
+  it('kind 미지정 시 프레임 존재로 stacktrace를 추론한다 (inferKind)', () => {
+    expect(inferKind('\tat com.x.Y.z(Y.java:1)')).toBe('stacktrace');
+    expect(inferKind('결제가 안 됩니다')).toBe('incident');
   });
 });

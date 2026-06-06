@@ -71,3 +71,13 @@ export function localizeError(input: TroubleshootInput): Suspect[] {
 
   return [...byName.values()].sort((a, b) => b.confidence - a.confidence);
 }
+
+/**
+ * kind 힌트가 없을 때 신호 본문으로 종류를 추론한다.
+ */
+export function inferKind(signal: string): NonNullable<TroubleshootInput['kind']> {
+  if (/\bat\s+[\w$.]+\(|\n\s+at\s/.test(signal)) return 'stacktrace';
+  if (/\b(FAIL|AssertionError|expected .* to|✗|✕)\b/.test(signal)) return 'test-failure';
+  if (/\b(Error|Exception|errno|stack)\b/i.test(signal)) return 'error';
+  return 'incident';
+}
