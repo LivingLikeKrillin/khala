@@ -24,7 +24,7 @@ import { getChangedFiles, getDiffLines, getBaseFileContent } from '../utils/git.
 import { KhalaClient } from '../khala/client.js';
 import { analyzeImpact } from '../khala/impact-analyzer.js';
 import { runTroubleshoot } from '../core/troubleshoot.js';
-import { parseArgs, parseTroubleshootArgs } from './parse-args.js';
+import { parseArgs, parseTroubleshootArgs, parseReviewGroundArgs } from './parse-args.js';
 import {
   formatScopeMarkdown,
   formatScopeBrief,
@@ -33,7 +33,10 @@ import {
   formatReviewMarkdown,
   formatGroundingPackMarkdown,
   formatGroundingPackBrief,
+  formatReviewGroundingPackMarkdown,
+  formatReviewGroundingPackBrief,
 } from './formatters.js';
+import { buildChangedEntities, runReviewGround } from '../core/review-ground.js';
 
 // ─── 커맨드 ───
 
@@ -474,6 +477,48 @@ async function runTroubleshootCmd(args: string[]): Promise<void> {
 }
 
 /**
+ * review:ground 커맨드 — git diff → Review Grounding Pack
+ */
+async function runReviewGroundCmd(args: string[]): Promise<void> {
+  const o = parseReviewGroundArgs(args);
+  const config = await loadConfigAsync();
+  const { profile } = await resolveProfileForCli(config);
+  if (!profile) {
+    logger.error('플랫폼을 감지할 수 없습니다 (Platform not detected)');
+    process.exitCode = 1;
+    return;
+  }
+
+  const changedFiles = getChangedFiles(o.base);
+  if (changedFiles.length === 0) {
+    logger.info('변경 파일이 없습니다 (No changed files).');
+    return;
+  }
+
+  const scope = analyzeScope(changedFiles, profile, getDiffLines(o.base));
+  const entities = buildChangedEntities(scope.groups, changedFiles);
+
+  const khalaConfig = resolveKhalaConfig(config);
+  const client = new KhalaClient(khalaConfig);
+  const result = await runReviewGround(entities, client, {
+    searchTopK: khalaConfig.searchTopK, graphHops: khalaConfig.graphHops,
+  });
+
+  if (!result.ok) {
+    logger.error(result.reason);
+    process.exitCode = 1;
+    return;
+  }
+
+  switch (o.format) {
+    case 'json': logger.info(JSON.stringify(result.pack, null, 2)); break;
+    case 'brief': logger.info(formatReviewGroundingPackBrief(result.pack)); break;
+    case 'markdown':
+    default: logger.info(formatReviewGroundingPackMarkdown(result.pack)); break;
+  }
+}
+
+/**
  * CLI용 프로파일 resolve 헬퍼.
  */
 async function resolveProfileForCli(config: Awaited<ReturnType<typeof loadConfigAsync>>) {
@@ -521,6 +566,9 @@ switch (command) {
     break;
   case 'troubleshoot':
     void runTroubleshootCmd(args.slice(1));
+    break;
+  case 'review:ground':
+    void runReviewGroundCmd(args.slice(1));
     break;
   case 'version':
     logger.info('probe v0.5.0');
