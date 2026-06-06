@@ -251,3 +251,85 @@ export interface ImpactAnalysis {
   /** 심각도 */
   severity: 'none' | 'low' | 'medium' | 'high';
 }
+
+// ─── 트러블슈팅 그라운딩 (v0.5) ───
+
+/**
+ * /status 응답 (가용성·티어 진단용).
+ * 필드는 khala api.py status() (812~852행)가 반환하는 카운트와 일치:
+ * documents_count/edges_count/observed_edges_count/diff_summary는 db_connected일 때만 채워짐.
+ */
+export interface KhalaStatusResult {
+  db_connected: boolean;
+  ollama_connected?: boolean;
+  tempo_connected?: boolean;
+  documents_count?: number;
+  chunks_count?: number;
+  entities_count?: number;
+  edges_count?: number;
+  observed_edges_count?: number;
+  diff_summary?: {
+    doc_only_count: number;
+    observed_only_count: number;
+    conflict_count: number;
+  };
+}
+
+/** 트러블슈팅 입력 */
+export interface TroubleshootInput {
+  signal: string;
+  kind?: 'stacktrace' | 'error' | 'test-failure' | 'incident';
+  diffBase?: string;
+  suspectServices?: string[];
+}
+
+/** 국소화 산출물 — §1 / localizer→grounder 계약 */
+export interface Suspect {
+  entityName: string;
+  evidence: { kind: 'frame' | 'path' | 'user' | 'keyword'; raw: string }[];
+  confidence: number;
+}
+
+/** Archon claim의 읽기 전용 투영 (Archon 연동 시에만) */
+export interface ClaimRef {
+  id: string;
+  kind: 'goal' | 'invariant' | 'requirement';
+  statement: string;
+  status: string;
+  criticality: 'core' | 'peripheral';
+  confidence: 'high' | 'medium' | 'low';
+  codeDrift: boolean;
+  owner: string;
+  boundSymbol: string;
+}
+
+/** 운영 신호 이상치 (§4) */
+export interface OperationalSignal {
+  fromName: string;
+  toName: string;
+  callCount: number;
+  errorRate: number;
+  latencyP95: number;
+  anomaly: string;
+}
+
+/** 최근 변경 상관 (§6) */
+export interface ChangeLink {
+  service: string;
+  changedFiles: string[];
+  relationship: string;
+}
+
+/** 트러블슈팅 그라운딩 결과 */
+export interface GroundingPack {
+  tier: 0 | 1 | 2 | 3;
+  tierReason: string;
+  suspects: Suspect[];
+  knowledge?: RelevantDoc[];
+  topology?: ImpactAnalysis;
+  designObservationGaps?: DesignGap[];
+  operationalSignals?: OperationalSignal[];
+  changeCorrelation?: ChangeLink[];
+  domainInvariants?: ClaimRef[];
+  caveats: string[];
+}
