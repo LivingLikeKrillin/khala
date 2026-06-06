@@ -112,7 +112,7 @@ concepts: [준회원, 플레이리스트]   # 척추 개념 참조
 statement: "준회원은 플레이리스트를 최대 N개 가질 수 있다"
 value:                     # value-bearing: 복사 말고 가리킴 (claim-로컬 하위필드)
   source: "PlaylistPolicy.ASSOCIATE_MAX_PLAYLISTS"
-  ref_kind: code_constant  # code_constant|config_key|db_default — Resource의 CRM source_kind=code 와 구분되는 claim-로컬 분류
+  ref_kind: code_constant  # claim-로컬 분류: code_constant|config_key|db_default. (Resource의 CRM source_kind=code 와 구분. CRM enum = git|wiki|file|otel|manual + 신규 code)
 criticality: core          # core | peripheral   (생명주기 축1)
 activity: active           # active | dormant | archived  (축2)
 status: held               # invariant: held|violated|unverified
@@ -182,7 +182,7 @@ owner: "@backend-lead"     # CRM 공통 owner 재사용. claim에 한해 큐레�
 stale = tier ≠ deterministic  AND  code_links/value.source 중 하나라도 last_verified.commit 이후 변경됨
 ```
 
-> 변경 판정은 §4.2-2의 **(파일경로+심볼명) hash diff**로 한다. 그리고 **값 조회 답변은 조회 시점에 `value.source`를 재읽기**하므로 항상 fresh다 — 캐시할 경우엔 조회 시 hash 재확인 필수(미확인 캐시는 stale 가능). 이 "조회 시 재실행" 전제가 §11 "드리프트 0" 주장의 근거다.
+> **두 경로 구분:** (1) 위 공식은 *저장된 claim status*(boolean 불변식·요구)의 신선도용 — 코드가 바뀌면 stale 표기. (2) **값 조회**는 답변 시점에 `value.source`를 **재읽기**하므로 항상 fresh(캐시하면 stale 가능 — 캐시 시 hash 재확인 필수). 변경 판정은 둘 다 §4.2-2의 **(파일경로+심볼명) hash diff**. 이 "조회 시 재실행"이 §11 "드리프트 0" 주장의 근거다.
 
 ### "core인데 비결정론" 자동 플래그
 
