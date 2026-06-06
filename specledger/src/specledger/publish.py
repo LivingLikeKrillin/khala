@@ -40,5 +40,8 @@ def publish(ledger, artifact_id, config, sink: KhalaSink | None = None) -> dict:
         "body": art.body,
         "source": str(art.path),
     }
-    sink.ingest(payload)
+    try:
+        sink.ingest(payload)
+    except Exception as exc:  # noqa: BLE001 - optional sink; return a structured signal
+        return {"published": False, "reason": str(exc)}
     return {"published": True, "reason": "ok"}
