@@ -91,6 +91,8 @@ npx probe khala:impact
 
 # 칼라 연결 상태
 npx probe khala:status
+
+npx probe troubleshoot "<에러/스택트레이스>"   # 트러블슈팅 그라운딩
 ```
 
 ### 출력 포맷
@@ -214,7 +216,7 @@ Claude Code에서 자연어 대화 중 Probe 분석을 **자동으로** 호출�
 }
 ```
 
-**6개 MCP 도구:**
+**7개 MCP 도구:**
 
 | 도구 | 설명 |
 |------|------|
@@ -224,6 +226,7 @@ Claude Code에서 자연어 대화 중 Probe 분석을 **자동으로** 호출�
 | `probe.reviewChecklist` | 리뷰 체크리스트 생성 |
 | `probe.detectPlatform` | 플랫폼 감지 |
 | `probe.queryKhala` | 칼라 지식베이스 질의 |
+| `probe.groundTroubleshooting` | 에러→트러블슈팅 그라운딩 (토폴로지·관측·갭·규정) |
 
 **3개 리소스:** 프로파일 정보, 설정, 가이드라인
 **2개 프롬프트:** 구조화된 PR 리뷰, PR 분할 가이드
@@ -407,7 +410,7 @@ probe/
 | v0.2 | API 스펙 린트/diff + 리뷰 체크리스트 | **Done** |
 | v0.3 | MCP 서버 (Claude Code 연동) | **Done** |
 | v0.4 | Khala 연동 — 맥락 기반 리뷰 | **Done** |
-| v0.5 | UI 확장팩 (토큰/VRT/접근성) | Not Started |
+| v0.5 | 트러블슈팅 그라운딩 | **Done** |
 | v0.6 | 팀별 린트 프로파일 (Khala Phase 1 연동) | Not Started |
 
 ---
