@@ -82,6 +82,14 @@ export async function groundTroubleshooting(
     }
   }
 
+  // §6 최근 변경 상관: 변경 service ∩ 의심 service (스펙 §3.4: T2 — 설계 그래프 필요)
+  if (options.tier >= 2 && options.changedServices?.length) {
+    const suspectSet = new Set(names);
+    pack.changeCorrelation = options.changedServices
+      .filter((c) => suspectSet.has(c.service))
+      .map((c) => ({ service: c.service, changedFiles: c.changedFiles, relationship: 'changed∩suspect' }));
+  }
+
   return pack;
 }
 
