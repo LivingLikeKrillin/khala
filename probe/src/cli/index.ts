@@ -13,7 +13,7 @@
  * 규정 문서: docs/probe-v0.2-scope.md § 3.4
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { analyzeScope } from '../core/scope-analyzer.js';
 import { loadConfigAsync, applyConfigOverrides, resolveKhalaConfig } from '../core/config-loader.js';
 import { detectPlatform, getProfileForPlatform } from '../profiles/detector.js';
@@ -23,13 +23,16 @@ import { logger } from '../utils/logger.js';
 import { getChangedFiles, getDiffLines, getBaseFileContent } from '../utils/git.js';
 import { KhalaClient } from '../khala/client.js';
 import { analyzeImpact } from '../khala/impact-analyzer.js';
-import { parseArgs } from './parse-args.js';
+import { runTroubleshoot } from '../core/troubleshoot.js';
+import { parseArgs, parseTroubleshootArgs } from './parse-args.js';
 import {
   formatScopeMarkdown,
   formatScopeBrief,
   formatLintMarkdown,
   formatDiffMarkdown,
   formatReviewMarkdown,
+  formatGroundingPackMarkdown,
+  formatGroundingPackBrief,
 } from './formatters.js';
 
 // ─── 커맨드 ───
@@ -406,6 +409,71 @@ async function runKhalaStatus(): Promise<void> {
 }
 
 /**
+ * troubleshoot 커맨드 — 에러/스택트레이스 → Grounding Pack
+ */
+async function runTroubleshootCmd(args: string[]): Promise<void> {
+  const o = parseTroubleshootArgs(args);
+
+  // 인자 우선, 없으면 stdin (파이프) fallback (스펙 Q4)
+  let signal = o.signal;
+  if (!signal && !process.stdin.isTTY) {
+    try {
+      signal = readFileSync(0, 'utf-8').trim();
+    } catch {
+      // stdin 읽기 실패 시 무시 (아래 빈 신호 안내로 처리)
+    }
+  }
+  if (!signal) {
+    logger.error('에러 신호를 입력하세요 (Usage: probe troubleshoot "<에러/스택트레이스>" [--kind] [--suspect] [--diff-base])');
+    process.exitCode = 1;
+    return;
+  }
+
+  const config = await loadConfigAsync();
+  const khalaConfig = resolveKhalaConfig(config);
+  const client = new KhalaClient(khalaConfig);
+
+  let changedServices: { service: string; changedFiles: string[] }[] | undefined;
+  if (o.diffBase) {
+    const { profile } = await resolveProfileForCli(config);
+    if (profile) {
+      const changedFiles = getChangedFiles(o.diffBase);
+      const scope = analyzeScope(changedFiles, profile, getDiffLines(o.diffBase));
+      const { extractServiceNames } = await import('../khala/context-enricher.js');
+      changedServices = extractServiceNames(scope.groups).map((service) => ({
+        service,
+        changedFiles: changedFiles.filter((f) => f.toLowerCase().includes(service.replace(/-/g, ''))),
+      }));
+    }
+  }
+
+  const result = await runTroubleshoot(
+    { signal, kind: o.kind, diffBase: o.diffBase, suspectServices: o.suspectServices },
+    client,
+    changedServices,
+  );
+
+  if (!result.ok) {
+    logger.error(result.reason);
+    process.exitCode = 1;
+    return;
+  }
+
+  switch (o.format) {
+    case 'json':
+      logger.info(JSON.stringify(result.pack, null, 2));
+      break;
+    case 'brief':
+      logger.info(formatGroundingPackBrief(result.pack));
+      break;
+    case 'markdown':
+    default:
+      logger.info(formatGroundingPackMarkdown(result.pack));
+      break;
+  }
+}
+
+/**
  * CLI용 프로파일 resolve 헬퍼.
  */
 async function resolveProfileForCli(config: Awaited<ReturnType<typeof loadConfigAsync>>) {
@@ -451,6 +519,9 @@ switch (command) {
   case 'khala:status':
     void runKhalaStatus();
     break;
+  case 'troubleshoot':
+    void runTroubleshootCmd(args.slice(1));
+    break;
   case 'version':
     logger.info('probe v0.4.0');
     break;
@@ -465,6 +536,7 @@ Usage:
   probe khala:search    칼라 지식베이스 검색
   probe khala:impact    서비스 영향 분석
   probe khala:status    칼라 연결 상태 확인
+  probe troubleshoot    에러/스택트레이스 → 트러블슈팅 그라운딩
   probe version         버전 출력
 
 Options:
