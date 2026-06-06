@@ -44,6 +44,9 @@ const EMPTY_ENRICHMENT: EnrichmentResult = {
  * groundReview에 위임하고 결과를 레거시 EnrichmentResult 형태로 투영한다.
  * 엔티티 스코프 /diff를 사용해 글로벌 diff보다 노이즈가 적다.
  *
+ * 주의: 칼라가 가용하지만 인덱싱 데이터가 부족해 티어가 T0이면(엔티티명은 있어도)
+ * 빈 배열 + `khalaAvailable: true`를 반환한다 — 빈 결과를 "미가용"으로 오독하지 말 것.
+ *
  * @param groups scope 분석에서 감지된 응집 그룹
  * @param changedFiles 변경 파일 목록
  * @param options 보강 옵션
