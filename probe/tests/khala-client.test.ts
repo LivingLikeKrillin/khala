@@ -128,6 +128,33 @@ describe('KhalaClient', () => {
   });
 });
 
+describe('KhalaClient.getStatus', () => {
+  let originalFetch: typeof globalThis.fetch;
+  beforeEach(() => { originalFetch = globalThis.fetch; });
+  afterEach(() => { globalThis.fetch = originalFetch; });
+
+  it('상태 카운트를 반환한다', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: () => Promise.resolve({
+        success: true,
+        data: { db_connected: true, edges_count: 12, observed_edges_count: 3 },
+        error: null, meta: {},
+      }),
+    });
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const status = await client.getStatus();
+    expect(status?.observed_edges_count).toBe(3);
+    expect(status?.edges_count).toBe(12);
+  });
+
+  it('서버 장애 시 null을 반환한다', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('conn refused'));
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    expect(await client.getStatus()).toBeNull();
+  });
+});
+
 describe('withKhalaFallback', () => {
   it('성공 시 결과를 반환한다', async () => {
     const result = await withKhalaFallback(

@@ -15,6 +15,7 @@ import type {
   KhalaAnswerResult,
   KhalaGraphResult,
   KhalaDiffResult,
+  KhalaStatusResult,
 } from './types.js';
 
 /** 기본 설정 */
@@ -48,6 +49,13 @@ export class KhalaClient {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * 시스템 상태를 조회한다 (가용성·티어 진단용).
+   */
+  async getStatus(): Promise<KhalaStatusResult | null> {
+    return this.get<KhalaStatusResult>('/status', 'getStatus');
   }
 
   /**
