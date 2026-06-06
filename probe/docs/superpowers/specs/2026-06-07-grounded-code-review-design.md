@@ -346,3 +346,11 @@ v0.6  그라운디드 코드 리뷰 (본 문서)                     ← 신규 
 - Q3. `enrichWithKhala` 수렴 시 레거시 `EnrichmentResult` 호출부(MCP scope 도구, prompts)의
   마이그레이션 범위 — 어댑터 투영 유지 vs scope 도구를 ReviewGroundingPack 직접 소비로 전환.
 - Q4. specRefs/claimDrift seam의 부재 caveat 문구 표준화.
+- Q5. **specRefs ↔ applicableGuidelines 분할 규칙** — §2와 §3은 동일 `/search` 호출을
+  공유하므로(중복 fetch 방지), 한 문서가 양쪽에 중복 투영되지 않도록 분배 규칙(스펙 타입 →
+  specRefs, 그 외 → applicableGuidelines)을 구현 계획에서 명시한다. (리뷰어 권고)
+- Q6. **enrichWithKhala 어댑터 투영 회귀 고정** — `ReviewGroundingPack.topology`(ImpactAnalysis)
+  → 레거시 `EnrichmentResult.impactedServices`(`directImpact.concat(indirectImpact)`) 평탄화
+  투영을 회귀 테스트로 핀(§9). (리뷰어 권고)
+- Q7. **MCP 표면 에러 계약 일관성** — `runTroubleshoot`의 판별 유니온(`{ok:false}`)을
+  리뷰 경로도 미러해 MCP 도구가 throw하지 않도록 한다. (리뷰어 권고)
