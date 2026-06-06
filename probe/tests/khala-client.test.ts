@@ -128,6 +128,24 @@ describe('KhalaClient', () => {
   });
 });
 
+describe('KhalaClient.getDiff entityFilter', () => {
+  let originalFetch: typeof globalThis.fetch;
+  beforeEach(() => { originalFetch = globalThis.fetch; });
+  afterEach(() => { globalThis.fetch = originalFetch; });
+
+  it('entityFilter를 쿼리 파라미터로 전송한다', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ success: true, data: { diffs: [] }, error: null, meta: {} }),
+    });
+    globalThis.fetch = fetchMock;
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    await client.getDiff({ entityFilter: 'order-service' });
+    const calledUrl = String(fetchMock.mock.calls[0]![0]);
+    expect(calledUrl).toContain('entity_filter=order-service');
+  });
+});
+
 describe('KhalaClient.getStatus', () => {
   let originalFetch: typeof globalThis.fetch;
   beforeEach(() => { originalFetch = globalThis.fetch; });

@@ -112,10 +112,14 @@ export class KhalaClient {
    */
   async getDiff(options?: {
     flagFilter?: string;
+    entityFilter?: string;
   }): Promise<KhalaDiffResult | null> {
     const params = new URLSearchParams({ tenant: this.config.tenant });
     if (options?.flagFilter) {
       params.set('flag_filter', options.flagFilter);
+    }
+    if (options?.entityFilter) {
+      params.set('entity_filter', options.entityFilter);
     }
     return this.get<KhalaDiffResult>(`/diff?${params.toString()}`, 'getDiff');
   }
