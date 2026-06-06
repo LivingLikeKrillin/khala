@@ -17,7 +17,8 @@ def grade_authority(gates: list[GateFact], levels: dict[str, int]) -> dict[str, 
     # 액션(class.method) → 요구 최고 레벨
     required: dict[str, int] = {}
     for g in gates:
-        if g.kind == "fixed" and g.grade in levels:
+        # 액션 차단(throw-guard) 고정 게이트만 여집합에 사용. filter(가시성)·other 제외.
+        if g.kind == "fixed" and g.guard == "throw_guard" and g.grade in levels:
             key = f"{g.class_name}.{g.method}"
             required[key] = max(required.get(key, 0), levels[g.grade])
 

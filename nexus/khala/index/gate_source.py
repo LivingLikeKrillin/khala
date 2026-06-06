@@ -25,6 +25,7 @@ class GateFact:
     check: str
     grade: str | None  # 고정 임계면 GradeType.X 의 X, 상대 비교면 None
     kind: str  # "fixed" | "relative"
+    guard: str = "other"  # "throw_guard"(액션 차단) | "filter"(가시성) | "other"
     arg: str = ""
 
 
@@ -48,6 +49,33 @@ def _enclosing(node, types: set[str]):
 def _name(decl, src: bytes) -> str:
     n = decl.child_by_field_name("name") if decl else None
     return _txt(src, n) if n else "?"
+
+
+def _contains(outer, inner) -> bool:
+    return outer.start_byte <= inner.start_byte and inner.end_byte <= outer.end_byte
+
+
+def _subtree_has(node, type_name: str) -> bool:
+    st = [node]
+    while st:
+        x = st.pop()
+        if x.type == type_name:
+            return True
+        st.extend(x.children)
+    return False
+
+
+def _classify_guard(n) -> str:
+    """게이트 호출의 구문 맥락으로 분류: if-throw 가드(액션 차단) vs 람다/필터(가시성)."""
+    ifs = _enclosing(n, {"if_statement"})
+    if ifs is not None:
+        cond = ifs.child_by_field_name("condition")
+        cons = ifs.child_by_field_name("consequence")
+        if cond is not None and _contains(cond, n) and cons is not None and _subtree_has(cons, "throw_statement"):
+            return "throw_guard"
+    if _enclosing(n, {"lambda_expression"}) is not None:
+        return "filter"
+    return "other"
 
 
 def _iter_java(repo_path, subpath: str = ""):
@@ -82,7 +110,8 @@ def extract_gates(repo_path, subpath: str = "") -> list[GateFact]:
                         GateFact(
                             class_name=cls, method=meth, check=_txt(src, nm),
                             grade=(m.group(1) if m else None),
-                            kind=("fixed" if m else "relative"), arg=at.strip(),
+                            kind=("fixed" if m else "relative"),
+                            guard=_classify_guard(n), arg=at.strip(),
                         )
                     )
             stack.extend(n.children)

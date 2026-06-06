@@ -30,3 +30,11 @@ def test_extract_relative_gate():
 def test_ungated_method_absent():
     gates = extract_gates(FIX)
     assert all(g.method != "join" for g in gates)
+
+
+def test_guard_classification_throw_vs_filter():
+    gates = extract_gates(FIX)
+    kick = next(g for g in gates if g.method == "kick")
+    assert kick.guard == "throw_guard"  # if(...) throw → 액션 차단
+    mgr = next(g for g in gates if g.method == "managers")
+    assert mgr.kind == "fixed" and mgr.guard == "filter"  # 스트림 필터 → 가시성

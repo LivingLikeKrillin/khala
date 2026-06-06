@@ -825,7 +825,8 @@ async def grade_authority_endpoint(
         data={
             "levels": levels,
             "fixed_gates": [
-                {"action": f"{g.class_name}.{g.method}", "check": g.check, "grade": g.grade}
+                {"action": f"{g.class_name}.{g.method}", "check": g.check,
+                 "grade": g.grade, "guard": g.guard}
                 for g in gates
                 if g.kind == "fixed"
             ],
