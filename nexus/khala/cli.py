@@ -78,6 +78,54 @@ def ingest(
     _run(_ingest())
 
 
+@app.command("claim-seed")
+def claim_seed(
+    path: str = typer.Argument("claims.yaml", help="claims.yaml 경로"),
+    config_path: str = typer.Option("config.yaml", "--config", "-c"),
+) -> None:
+    """도메인 claim(불변식·값)을 적재. value_source의 현재 코드 hash를 스냅샷."""
+
+    async def _seed() -> None:
+        from khala import db
+        from khala.claims.repository import ClaimRepository
+        from khala.claims.seed import seed_claims
+        from khala.index.code_source import CodeValueResolver
+
+        cfg = _load_config(config_path)
+        repo_path = cfg.get("code_source", {}).get("repo_path", "")
+        pool = await db.get_pool()
+        n = await seed_claims(path, ClaimRepository(pool), CodeValueResolver(repo_path))
+        typer.echo(f"{n}건 적재")
+        await db.close_pool()
+
+    _run(_seed())
+
+
+@app.command("claim-value")
+def claim_value(
+    concept: str = typer.Argument(..., help="개념(예: 준회원)"),
+    config_path: str = typer.Option("config.yaml", "--config", "-c"),
+    tenant: str = typer.Option("default", "--tenant", "-t"),
+) -> None:
+    """개념의 도메인 값을 코드에서 읽어 신뢰등급·신선도와 함께 답한다."""
+
+    async def _q() -> None:
+        from khala import db
+        from khala.claims.answer import format_value_answer
+        from khala.claims.repository import ClaimRepository
+        from khala.claims.value_query import ValueQueryService
+        from khala.index.code_source import CodeValueResolver
+
+        cfg = _load_config(config_path)
+        repo_path = cfg.get("code_source", {}).get("repo_path", "")
+        svc = ValueQueryService(ClaimRepository(await db.get_pool()), CodeValueResolver(repo_path))
+        answers = await svc.query_value(concept, tenant, "INTERNAL")
+        typer.echo(format_value_answer(concept, answers))
+        await db.close_pool()
+
+    _run(_q())
+
+
 @app.command()
 def query(
     q: str = typer.Argument(..., help="검색 쿼리"),

@@ -1,0 +1,18 @@
+# Archon 도메인 claim 시드 — `khala claim-seed claims.yaml`
+# value_source는 code_source.repo_path 기준 코드 상수. seed 시 현재 hash 스냅샷.
+- claim_id: associate-max-playlists
+  kind: invariant
+  concepts: [준회원, 플레이리스트]
+  statement: "준회원은 플레이리스트를 최대 N개 가질 수 있다"
+  value_source: "PlaylistPolicy.ASSOCIATE_MAX_PLAYLISTS"
+  value_ref_kind: code_constant
+  criticality: core
+  owner: "@backend-lead"
+- claim_id: track-time-limit
+  kind: invariant
+  concepts: [파티룸, 재생곡]
+  statement: "파티룸 재생곡은 최대 N초까지 재생된다"
+  value_source: "PlaylistPolicy.TRACK_TIME_LIMIT_SECONDS"
+  value_ref_kind: code_constant
+  criticality: core
+  owner: "@backend-lead"
