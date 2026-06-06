@@ -65,7 +65,11 @@
 - `scope.py` — git diff로 변경된 소스 모듈 식별 → cosmic-ray 대상 산출. (전체 스윕은 옵션 플래그.)
 - `run.py` — cosmic-ray config 생성(`test-command="python -m pytest -q -x"`) → `init`→`exec` 오케스트레이션 → dump.
 - `extract.py` — dump JSON 파싱 → survivor 정규화(소문자 `survived`).
-  각 survivor = `{module, lineno, operator, mutation_diff, occurrence}`.
+  각 survivor = `{module, lineno, operator, mutation_diff, surviving_tests}`.
+  - **`surviving_tests` 출처:** cosmic-ray의 변이별 dump는 "어떤 테스트가 통과했나"를 직접 주지
+    않으므로(통과/실패 집계만), M1 러너는 그 변이를 적용한 채 `pytest --collect-only`로 대상
+    모듈을 커버하는 테스트를 수집해 Critic 입력으로 첨부한다(= "이 변이에도 green인 테스트들").
+    정밀 매핑(변이 라인을 실제로 실행한 테스트만)은 coverage 기반으로 M2에서 좁힌다.
 - `ledger.py` — baseline/waiver 원장 읽기·쓰기·대조. "새 survivor" = 원장에 없는 것만.
 
 ### Critic 서브에이전트 (스킬이 dispatch)
@@ -77,6 +81,11 @@
 ### 스킬 (`[claude] skills/mutqa/`)
 - 오케스트레이션 프로즈: 러너 호출 → 새 survivor마다 Critic dispatch → verdict를 원장에 반영
   → real-gap 요약 + 게이트 상태 제시.
+- **파일 흐름:** 러너가 휘발성 `survivors.json`(새 survivor) 산출 → 스킬이 Critic을 돌려
+  `verdicts.json`(triage 결과) 산출 → 스킬이 이를 영속 `mutqa-ledger.yaml`에 흡수(§5).
+  즉 `*.json`은 한 실행의 작업 산출물, `mutqa-ledger.yaml`은 커밋되는 판정 기록.
+- **Critic dispatch 비용:** survivor는 건별 독립 dispatch(병렬 가능). 첫 dogfood 기준 ≈17건 ×
+  1콜이 비용 상한 가정. equivalent가 원장에 흡수되면 재실행 시 새 survivor만 남아 콜 수가 급감.
 
 ### 게이트 (소비자 repo의 `hooks/`)
 - pre-commit: unwaived real-gap survivor 존재 시 실패 + 어떤 행위에 테스트가 없는지 출력.
@@ -159,3 +168,5 @@ specledger에 통째로 돌려서: disposition-loop 갭을 surface → 게이트
 - CI 배치 서비스 / 변이 점수 추세 추적 (접근법 C) — 가치 검증 후로 보류.
 - 스토리→불변식 자동도출류 — 범위 밖.
 - 전체 변이 스윕 기본화 — diff-scoped가 기본, 전체는 옵션.
+- **뮤테이션 엔진 추상화** — cosmic-ray에 의도적 강결합(§8). 다중 엔진 플러그인 레이어는
+  명시적 YAGNI. 필요해지면 그때 추출.
