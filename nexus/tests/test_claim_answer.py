@@ -19,6 +19,17 @@ def test_drift_is_surfaced():
     assert "10" in s and "변경" in s
 
 
+def test_resolved_suppresses_unresolved_for_same_concept():
+    answers = [
+        ValueAnswer("broken", "준회원 (옛)", None, "PlaylistPolicy.OLD", "low", False,
+                    note="소스 심볼을 코드에서 찾지 못함"),
+        ValueAnswer("real", "준회원(AM)", "1", "PlaylistCreationPolicy.AM_MAX", "high", True),
+    ]
+    s = format_value_answer("준회원", answers)
+    assert "현재 1" in s
+    assert "값 확인 실패" not in s and "찾지 못" not in s  # 깨진 cruft 숨김
+
+
 def test_unknown_is_not_fabricated():
     s = format_value_answer(
         "x",

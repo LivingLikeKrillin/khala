@@ -12,8 +12,12 @@ from khala.claims.value_query import ValueAnswer
 def format_value_answer(concept: str, answers: list[ValueAnswer]) -> str:
     if not answers:
         return f"'{concept}'에 등록된 값 claim이 없습니다. (모름 — 추측하지 않음)"
+    # 해결된(값 있는) 답이 하나라도 있으면 그것만 보여 신뢰를 지킨다.
+    # 전부 미해결(소스 못 찾음 등)일 때만 정직하게 그대로 표기.
+    resolved = [a for a in answers if a.value is not None]
+    shown = resolved if resolved else answers
     lines: list[str] = []
-    for a in answers:
+    for a in shown:
         if a.value is not None and a.confidence == "high" and a.fresh:
             base = (
                 f"- {a.statement}: **현재 {a.value}** "
