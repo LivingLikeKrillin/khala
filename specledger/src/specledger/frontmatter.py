@@ -4,7 +4,9 @@ _DELIM = "---"
 
 
 def split(text: str) -> tuple[dict, str]:
-    if not text.startswith(_DELIM):
+    # require an exact "---\n" opener so markdown starting with "----" or
+    # "--- heading" (Setext rules / headings) is NOT misread as frontmatter
+    if not text.startswith(_DELIM + "\n"):
         return {}, text
     parts = text.split("\n")
     for i in range(1, len(parts)):

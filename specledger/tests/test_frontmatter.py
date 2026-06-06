@@ -15,6 +15,12 @@ def test_split_no_frontmatter_returns_empty_meta():
     assert body == "no frontmatter here"
 
 
+def test_split_ignores_markdown_horizontal_rule_and_heading():
+    # "----" and "--- heading" must NOT be treated as a frontmatter opener
+    assert split("----\nid: x\n---\nbody\n") == ({}, "----\nid: x\n---\nbody\n")
+    assert split("--- heading\nid: x\n---\nbody\n") == ({}, "--- heading\nid: x\n---\nbody\n")
+
+
 def test_render_roundtrips():
     meta = {"id": "SPEC-x", "status": "draft"}
     body = "# Title\n\ncontent\n"
