@@ -10,26 +10,29 @@ Critic 프롬프트(`critic-prompt.md`)를 바꿀 때마다 **회귀 검사**로
 
 ---
 
-## EVAL-1 — 반드시 `real-gap` (핵심 ground-truth)
+## EVAL-1 — 반드시 `real-gap` (핵심 ground-truth, 실데이터)
 
-specledger `review.py`의 `approve()` 내 disposition 기록 루프 무력화. PoC에서 이 변이는 **69 테스트
-전부 green인데도 살아남았다** — 핵심 부수효과(disposition 기록)에 행위검증이 0개라는 결정론적 증거.
+specledger `review.py:38` `approve()` 내 **이슈 상태 갱신 루프 무력화**. PoC + 2026-06-06 dogfood에서
+이 변이는 **69 테스트 전부 green인데도 살아남았다** — 상태 갱신 부수효과에 행위검증이 0개라는 결정론적 증거.
+dogfood에서 Critic이 실제로 `real-gap` 판정함.
 
 - **module:** `src/specledger/review.py`
-- **operator:** 루프 무력화 (예: `ReplaceCollectionWithEmpty` 류)
+- **line:** 38
+- **operator:** `core/ZeroIterationForLoop`
 - **mutation diff:**
 ```
 @@ approve() @@
--        for d in dispositions:
--            ledger.record(d)
-+        for d in []:
-+            ledger.record(d)
+-    for i in sc.issues:
++    for i in []:
+         if i.status == "open" and i.issue_id in by_id:
+             i.status = by_id[i.issue_id]["disposition"]
+             i.disposition_reason = by_id[i.issue_id].get("reason")
 ```
 - **suite outcome:** 69개 전부 통과
 - **기대 verdict:** `real-gap`
-- **기대 근거 요지:** 변이가 disposition 기록이라는 관측 가능한 부수효과를 통째로 제거했는데 스위트가
-  green → 그 부수효과를 검증하는 행위검증이 없다.
-- **기대 suggested_test_intent:** "approve()가 각 disposition을 ledger에 기록하는지(기록 호출/결과 상태) 검증."
+- **기대 근거 요지:** 변이가 이슈 status/disposition_reason 갱신이라는 관측 가능한 상태변화를 통째로
+  제거했는데 스위트가 green → 그 부수효과를 검증하는 행위검증이 없다.
+- **기대 suggested_test_intent:** "approve() 후 각 이슈의 status/disposition_reason이 입력 disposition을 반영하는지 검증."
 
 ## EVAL-2 — 반드시 `equivalent` (실데이터 확정, 2026-06-06 dogfood)
 

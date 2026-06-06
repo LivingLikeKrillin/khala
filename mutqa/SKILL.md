@@ -39,6 +39,9 @@ Path("survivors.json").write_text(
     json.dumps([dataclasses.asdict(s) for s in survivors], ensure_ascii=False, indent=2)
 )
 ```
+- `survivors.json`은 **사람이 보는 산출물 아티팩트**다. 후속 단계는 메모리의 `survivors` 객체를 그대로
+  쓴다(`asdict`는 `key` 프로퍼티를 직렬화하지 않음). 만약 별도 세션에서 `survivors.json`을 재로드하면
+  `.key`가 없으니 **`f"{module}:{lineno}:{operator}"`로 재구성**하라(module은 이미 `/`로 정규화돼 있다 — OS 무관).
 - `run_mutation`은 cosmic-ray `init`/`exec`/`dump`를 돌리고 살아남은 변이만 돌려준다. **실패는 예외로
   전파**된다(게이트 fail-open 금지) — 에러가 나면 멈추고 원인을 보고하라, 빈 결과로 위장하지 마라.
 - survivor가 0건이면: 변경 모듈의 행위가 현재 스위트로 충분히 고정돼 있다는 뜻 → 리포트에 "갭 없음" 보고하고 종료.

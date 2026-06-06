@@ -738,3 +738,7 @@ git commit -m "test: dogfood mutqa on specledger, confirm survivors surface"
 - `Survivor.key`(`module:lineno:operator`)는 이미 원장 매칭용으로 존재 → M2 `ledger.py`가 소비.
 - `surviving_tests` 정밀화(coverage 기반 per-line 매핑)는 M2. M1은 suite 요약(개수)만 Critic에 전달.
 - 라인 이동 키 깨짐 완화(정규화 해시 보조 키)는 M2.
+- **최종 리뷰 연기 항목(M2에서 흡수):** (M-2) `run_mutation`이 고정 파일명 `mutqa.sqlite`/`mutqa.cfg.toml`을
+  소비자 cwd에 씀 → 다중 모듈 루프 시 세션 덮어씀(현재는 모듈별 즉시 추출이라 무해). 모듈별 temp 서브디렉토리로.
+  (M-3) `build_config`가 `module_path`/`test_command`를 TOML 문자열에 이스케이프 없이 보간 → `/` 정규화로
+  당장은 안전하나 `"`/`\` 포함 값에 취약. `tomli_w` 또는 최소 이스케이프로 경화. 둘 다 M1 정상범위·비차단.
