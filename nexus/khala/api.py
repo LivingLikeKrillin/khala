@@ -804,6 +804,37 @@ async def claim_value(
     )
 
 
+@app.get("/claims/grade-authority", response_model=KhalaResponse)
+async def grade_authority_endpoint(
+    enum_name: str = Query(default="GradeType"),
+    subpath: str = Query(default=""),
+) -> KhalaResponse:
+    """Archon — 등급 계층 권한을 코드 게이트에서 라이브 도출 (tree-sitter 무료, CodeQL 불필요).
+
+    값 조회와 동일하게 조회 시점에 코드를 읽어 도출(드리프트 0). 영속화 안 함.
+    """
+    from khala.claims.grade_authority import grade_authority as derive
+    from khala.index.gate_source import extract_gates, extract_grade_levels
+
+    config = _load_config()
+    repo = config.get("code_source", {}).get("repo_path", "")
+    levels = extract_grade_levels(repo, enum_name)
+    gates = extract_gates(repo, subpath)
+    cap = derive(gates, levels)
+    return KhalaResponse(
+        data={
+            "levels": levels,
+            "fixed_gates": [
+                {"action": f"{g.class_name}.{g.method}", "check": g.check, "grade": g.grade}
+                for g in gates
+                if g.kind == "fixed"
+            ],
+            "relative_gate_count": sum(1 for g in gates if g.kind == "relative"),
+            "capabilities": cap,
+        }
+    )
+
+
 @app.get("/status", response_model=KhalaResponse)
 async def status() -> KhalaResponse:
     """시스템 상태 확인."""
