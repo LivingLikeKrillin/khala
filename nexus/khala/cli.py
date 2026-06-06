@@ -8,10 +8,18 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 
 import typer
 import yaml
+
+# Windows 콘솔에서 한글(UTF-8) 출력 보장 (codepage 무관)
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 app = typer.Typer(
     name="khala",
