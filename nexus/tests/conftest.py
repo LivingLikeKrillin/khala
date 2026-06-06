@@ -28,7 +28,13 @@ def db_url() -> str:
 
 @pytest.fixture(scope="session")
 async def db_pool(db_url: str):
-    """세션 스코프 asyncpg 연결 풀. integration 테스트에서만 사용."""
+    """세션 스코프 asyncpg 연결 풀. integration 테스트에서만 사용.
+
+    NOTE(2026-06-06): 이 환경(Windows + pytest-asyncio)에서 async-generator fixture가
+    `run_until_complete` 재진입으로 깨진다("This event loop is already running"). 따라서
+    이 fixture에 의존하는 통합테스트는 현재 동작하지 않는다. Archon 통합테스트는
+    pytest-asyncio를 우회해 자체 asyncio 루프를 쓴다(tests/test_claim_integration.py 참고).
+    """
     import asyncpg
 
     pool = await asyncpg.create_pool(db_url, min_size=2, max_size=5)
@@ -46,7 +52,7 @@ async def clean_db(request):
     pool = request.getfixturevalue("db_pool")
     async with pool.acquire() as conn:
         await conn.execute("""
-            TRUNCATE evidence, edges, observed_edges, chunks, documents, entities
+            TRUNCATE evidence, edges, observed_edges, chunks, documents, entities, claims
             CASCADE
         """)
 

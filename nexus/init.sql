@@ -333,3 +333,51 @@ WITH RECURSIVE neighbors AS (
 )
 SELECT * FROM neighbors;
 $$ LANGUAGE sql STABLE;
+
+-- ============================================================
+-- 7. claims (Archon — 도메인 불변식·값 거버넌스)
+-- ============================================================
+-- source_kind enum에 'code' 추가 (psql 자동커밋 → 다음 CREATE에서 DEFAULT 사용 가능)
+ALTER TYPE source_kind ADD VALUE IF NOT EXISTS 'code';
+
+CREATE TABLE claims (
+    -- CRM 공통 (documents와 동일 타입/기본값)
+    rid             TEXT PRIMARY KEY,
+    rtype           TEXT NOT NULL DEFAULT 'claim',
+    tenant          TEXT NOT NULL DEFAULT 'default',
+    classification  classification_level NOT NULL DEFAULT 'INTERNAL',
+    owner           TEXT NOT NULL DEFAULT 'unknown',
+    source_uri      TEXT NOT NULL DEFAULT '',
+    source_version  TEXT NOT NULL DEFAULT '',
+    source_kind     source_kind NOT NULL DEFAULT 'code',
+    hash            TEXT NOT NULL DEFAULT '',
+    labels          TEXT[] DEFAULT '{}',
+    is_quarantined  BOOLEAN NOT NULL DEFAULT false,
+    quality_flags   TEXT[] DEFAULT '{}',
+    status          resource_status NOT NULL DEFAULT 'active',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    prov_pipeline   TEXT NOT NULL DEFAULT 'claim-v1',
+    prov_inputs     TEXT[] DEFAULT '{}',
+    prov_transform  TEXT NOT NULL DEFAULT '',
+    -- claim 고유
+    claim_id        TEXT NOT NULL,
+    kind            TEXT NOT NULL,                      -- goal|invariant|requirement
+    concepts        TEXT[] DEFAULT '{}',
+    statement       TEXT NOT NULL,
+    value_source    TEXT,
+    value_ref_kind  TEXT,
+    criticality     TEXT NOT NULL DEFAULT 'peripheral',
+    activity        TEXT NOT NULL DEFAULT 'active',
+    claim_status    TEXT NOT NULL DEFAULT 'unverified', -- 검증상태 (CRM status와 분리)
+    confidence      TEXT NOT NULL DEFAULT 'low',
+    value_symbol_hash    TEXT,
+    last_verified_commit TEXT,
+    last_verified_at     TIMESTAMPTZ,
+    CONSTRAINT chk_claim_rtype CHECK (rtype = 'claim'),
+    CONSTRAINT uq_claim UNIQUE (tenant, claim_id)
+);
+CREATE INDEX idx_claims_concepts ON claims USING gin (concepts) WHERE status = 'active';
+CREATE INDEX idx_claims_quality ON claims USING gin (quality_flags) WHERE status = 'active';
+CREATE INDEX idx_claims_tenant_class ON claims (tenant, classification)
+    WHERE status = 'active' AND is_quarantined = false;
