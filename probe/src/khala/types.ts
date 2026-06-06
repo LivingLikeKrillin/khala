@@ -220,6 +220,9 @@ export interface ImpactedService {
     callCount: number;
     errorRate: number;
     latencyP95: number;
+    /** 관측 엣지의 실제 호출 방향 (운영신호 fromName/toName 정확도용) */
+    fromName?: string;
+    toName?: string;
   };
 }
 

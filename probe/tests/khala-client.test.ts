@@ -173,6 +173,42 @@ describe('KhalaClient.getStatus', () => {
   });
 });
 
+describe('KhalaClient.getStatusProbe', () => {
+  let originalFetch: typeof globalThis.fetch;
+  beforeEach(() => { originalFetch = globalThis.fetch; });
+  afterEach(() => { globalThis.fetch = originalFetch; });
+
+  it('성공 시 ok:true + status를 담는다', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: () => Promise.resolve({
+        success: true, data: { db_connected: true, edges_count: 5 }, error: null, meta: {},
+      }),
+    });
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const probe = await client.getStatusProbe();
+    expect(probe.ok).toBe(true);
+    if (probe.ok) expect(probe.status.edges_count).toBe(5);
+  });
+
+  it('연결 거부는 unreachable로 분류한다', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const probe = await client.getStatusProbe();
+    expect(probe.ok).toBe(false);
+    if (!probe.ok) expect(probe.reason).toBe('unreachable');
+  });
+
+  it('Abort(타임아웃)는 timeout으로 분류한다', async () => {
+    const abortErr = Object.assign(new Error('aborted'), { name: 'AbortError' });
+    globalThis.fetch = vi.fn().mockRejectedValue(abortErr);
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const probe = await client.getStatusProbe();
+    expect(probe.ok).toBe(false);
+    if (!probe.ok) expect(probe.reason).toBe('timeout');
+  });
+});
+
 describe('withKhalaFallback', () => {
   it('성공 시 결과를 반환한다', async () => {
     const result = await withKhalaFallback(

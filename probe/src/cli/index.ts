@@ -439,10 +439,10 @@ async function runTroubleshootCmd(args: string[]): Promise<void> {
     if (profile) {
       const changedFiles = getChangedFiles(o.diffBase);
       const scope = analyzeScope(changedFiles, profile, getDiffLines(o.diffBase));
-      const { extractServiceNames } = await import('../khala/context-enricher.js');
+      const { extractServiceNames, fileBelongsToService } = await import('../khala/context-enricher.js');
       changedServices = extractServiceNames(scope.groups).map((service) => ({
         service,
-        changedFiles: changedFiles.filter((f) => f.toLowerCase().includes(service.replace(/-/g, ''))),
+        changedFiles: changedFiles.filter((f) => fileBelongsToService(f, service)),
       }));
     }
   }

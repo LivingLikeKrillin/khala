@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { enrichWithKhala, extractServiceNames } from '../src/khala/context-enricher.js';
+import { enrichWithKhala, extractServiceNames, fileBelongsToService } from '../src/khala/context-enricher.js';
 import type { DetectedGroup } from '../src/core/scope-analyzer.js';
 
 /**
@@ -14,6 +14,30 @@ function makeGroups(keys: string[]): DetectedGroup[] {
     files: [{ path: `src/service/${key}Service.ts`, role: 'Service' }],
   }));
 }
+
+describe('fileBelongsToService', () => {
+  it('서비스 디렉터리 세그먼트에 속하면 매칭한다', () => {
+    expect(fileBelongsToService('services/order-service/checkout.ts', 'order-service')).toBe(true);
+    expect(fileBelongsToService('apps/payment/src/index.ts', 'payment')).toBe(true);
+  });
+
+  it('CamelCase 파일명을 kebab 서비스명과 매칭한다', () => {
+    expect(fileBelongsToService('src/order/OrderService.java', 'order-service')).toBe(true);
+  });
+
+  it('하이픈 제거 substring 과대매칭을 하지 않는다', () => {
+    // 'api'가 'rapid'/'therapist' 안에 substring으로 들어가도 매칭하지 않는다
+    expect(fileBelongsToService('src/rapid-loader.ts', 'api')).toBe(false);
+    expect(fileBelongsToService('src/therapist.ts', 'api')).toBe(false);
+    // 'order-service' → 'orderservice'가 무관 파일에 매칭되지 않는다
+    expect(fileBelongsToService('src/reorderserviceutil.ts', 'order-service')).toBe(false);
+  });
+
+  it('경계가 맞는 compact/세그먼트 형태는 매칭한다', () => {
+    expect(fileBelongsToService('src/api/routes.ts', 'api')).toBe(true);
+    expect(fileBelongsToService('src/orderservice/index.ts', 'order-service')).toBe(true);
+  });
+});
 
 describe('extractServiceNames', () => {
   it('cohesionKeyValue에서 서비스명을 추출한다', () => {

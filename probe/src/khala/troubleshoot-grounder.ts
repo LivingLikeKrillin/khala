@@ -137,18 +137,27 @@ async function fetchGaps(client: KhalaClient, names: string[]): Promise<DesignGa
 /** §4: 토폴로지 관측치에서 이상 신호 추출 */
 function extractSignals(topology?: ImpactAnalysis): OperationalSignal[] {
   if (!topology) return [];
+  // 변경 서비스가 단 하나일 때만 그것을 엣지 소스 후보로 쓴다(여럿이면 모호).
+  const singleSource = topology.changedServices.length === 1
+    ? topology.changedServices[0]
+    : undefined;
   const signals: OperationalSignal[] = [];
   for (const svc of [...topology.directImpact, ...topology.indirectImpact]) {
-    if (svc.observed && svc.observed.errorRate >= ERROR_RATE_THRESHOLD) {
-      signals.push({
-        fromName: topology.changedServices[0] ?? '?',
-        toName: svc.name,
-        callCount: svc.observed.callCount,
-        errorRate: svc.observed.errorRate,
-        latencyP95: svc.observed.latencyP95,
-        anomaly: `error_rate ${svc.observed.errorRate.toFixed(2)} > 임계 ${ERROR_RATE_THRESHOLD}`,
-      });
-    }
+    const o = svc.observed;
+    if (!o || o.errorRate < ERROR_RATE_THRESHOLD) continue;
+    // 의심 지점이 호출받는 쪽(downstream)이면 svc가 호출자(소스).
+    const svcIsCaller = svc.relationship === 'called_by' || svc.relationship === 'subscribes_from';
+    // 1순위: 실제 관측 엣지 방향. 2순위: 관계로 추정. 최후: svc.name (절대 '?' 누출 안 함).
+    const fromName = o.fromName ?? (svcIsCaller ? svc.name : singleSource) ?? svc.name;
+    const toName = o.toName ?? (svcIsCaller ? singleSource : svc.name) ?? svc.name;
+    signals.push({
+      fromName,
+      toName,
+      callCount: o.callCount,
+      errorRate: o.errorRate,
+      latencyP95: o.latencyP95,
+      anomaly: `error_rate ${o.errorRate.toFixed(2)} > 임계 ${ERROR_RATE_THRESHOLD}`,
+    });
   }
   return signals;
 }

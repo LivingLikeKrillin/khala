@@ -18,6 +18,14 @@ describe('determineTier', () => {
     const s: KhalaStatusResult = { db_connected: true, edges_count: 3, observed_edges_count: 2 };
     expect(determineTier(s).tier).toBe(3);
   });
+  it('타임아웃 실패는 T0이지만 미가용과 사유를 구분한다', () => {
+    const slow = determineTier(null, 'timeout');
+    const down = determineTier(null, 'unreachable');
+    expect(slow.tier).toBe(0);
+    expect(down.tier).toBe(0);
+    expect(slow.reason).toMatch(/시간 초과|타임아웃|느림|timeout/i);
+    expect(slow.reason).not.toBe(down.reason);
+  });
 });
 
 describe('validateInput', () => {
