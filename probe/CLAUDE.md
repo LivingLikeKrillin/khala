@@ -20,12 +20,13 @@ Probe는 **하이브리드 구조**다.
 - 테스트: vitest
 - 빌드: tsup
 
-## 현재 버전: v0.4
+## 현재 버전: v0.5
 
 - **v0.1** — 플랫폼 인식 PR 범위 분석 (scope-analyzer + 3개 프로파일)
 - **v0.2** — API 스펙 린트/diff (10개 룰) + PR 타입별 리뷰 체크리스트
 - **v0.3** — MCP 서버 (Claude Code 네이티브 연동, 6개 도구)
 - **v0.4** — 칼라 연동 (맥락 기반 리뷰 + 영향 분석)
+- **v0.5** — 트러블슈팅 그라운딩 (error-localizer + troubleshoot-grounder + core/troubleshoot, MCP 7번째 도구)
 
 각 버전 상세: `docs/probe-v{N}-scope.md`
 
@@ -37,8 +38,8 @@ Probe는 **하이브리드 구조**다.
 v0.1  PR 범위 분석 + 플랫폼 프로파일          ✅
 v0.2  API 스펙 린트/diff + 리뷰 체크리스트     ✅
 v0.3  MCP 서버 (Claude Code 연동)            ✅
-v0.4  칼라 연동 — 맥락 기반 리뷰             ✅ 현재
-v0.5  UI 확장팩 (토큰/VRT/접근성)
+v0.4  칼라 연동 — 맥락 기반 리뷰             ✅
+v0.5  트러블슈팅 그라운딩                    ✅ 현재
 v0.6  팀별 린트 프로파일 (Khala Phase 1 연동)
 ```
 
@@ -53,6 +54,7 @@ probe/
 │   │   ├── api-analyzer.ts        ← API diff 해석
 │   │   ├── api-linter.ts          ← API 린트 오케스트레이션
 │   │   ├── review-checklist.ts    ← 리뷰 체크리스트 오케스트레이션
+│   │   ├── troubleshoot.ts        ← 트러블슈팅 그라운딩 오케스트레이션
 │   │   └── config-loader.ts       ← probe.config.ts 로더
 │   ├── api/                       ← API 스펙 분석
 │   │   ├── spec-linter.ts         ← 10개 룰 기반 린트
@@ -68,7 +70,9 @@ probe/
 │   ├── khala/                     ← 칼라 연동
 │   │   ├── client.ts              ← 칼라 API 클라이언트
 │   │   ├── context-enricher.ts    ← 규정/문서 맥락 보강
-│   │   └── impact-analyzer.ts     ← 서비스 영향 분석
+│   │   ├── impact-analyzer.ts     ← 서비스 영향 분석
+│   │   ├── error-localizer.ts     ← 에러 신호 → 의심 엔티티 국소화
+│   │   └── troubleshoot-grounder.ts ← 의심 엔티티 → Grounding Pack 수집
 │   ├── profiles/                  ← 플랫폼 프로파일
 │   │   ├── detector.ts            ← 프로파일 자동 감지
 │   │   ├── spring-boot.ts
@@ -76,7 +80,7 @@ probe/
 │   │   └── react-spa.ts
 │   ├── mcp/                       ← MCP 서버
 │   │   ├── server.ts              ← 서버 진입점
-│   │   ├── tools.ts               ← 6개 도구
+│   │   ├── tools.ts               ← 7개 도구
 │   │   ├── resources.ts           ← 3개 리소스
 │   │   └── prompts.ts             ← 2개 프롬프트
 │   ├── cli/                       ← CLI 진입점

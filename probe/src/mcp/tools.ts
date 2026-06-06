@@ -2,7 +2,7 @@
  * MCP 도구 핸들러
  *
  * Probe 코어 엔진을 MCP 도구로 노출한다.
- * 6개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform, queryKhala
+ * 7개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform, queryKhala, groundTroubleshooting
  *
  * 규정 문서: docs/probe-v0.3-scope.md § 3, docs/probe-v0.4-scope.md § 6
  */
@@ -19,6 +19,7 @@ import { parseOpenApiSpec, parseOpenApiSpecFromString } from '../api/openapi-par
 import { getChangedFiles, getDiffLines, getBaseFileContent } from '../utils/git.js';
 import { enrichWithKhala } from '../khala/context-enricher.js';
 import { KhalaClient } from '../khala/client.js';
+import { runTroubleshoot } from '../core/troubleshoot.js';
 import { existsSync } from 'node:fs';
 
 /**
@@ -42,7 +43,7 @@ async function resolveProfile() {
 }
 
 /**
- * MCP 서버에 6개 도구를 등록한다.
+ * MCP 서버에 7개 도구를 등록한다.
  */
 export function registerTools(server: McpServer): void {
   // ─── probe.analyzeScope ───
@@ -248,7 +249,7 @@ export function registerTools(server: McpServer): void {
           if (!entityName) {
             return { content: [{ type: 'text' as const, text: '그래프 모드에는 entityName이 필요합니다' }] };
           }
-          const result = await client.getGraph(`ent_${entityName}`, { hops: khalaConfig.graphHops });
+          const result = await client.getGraph(entityName, { hops: khalaConfig.graphHops });
           return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
         }
         case 'diff': {
@@ -258,6 +259,26 @@ export function registerTools(server: McpServer): void {
         default:
           return { content: [{ type: 'text' as const, text: `알 수 없는 모드: ${selectedMode as string}` }] };
       }
+    },
+  );
+
+  // ─── probe.groundTroubleshooting (v0.5) ───
+  server.tool(
+    'probe.groundTroubleshooting',
+    '에러/스택트레이스/실패 테스트를 받아 조직 컨텍스트(토폴로지·관측·설계-관측 갭·규정)를 묶은 Grounding Pack을 반환한다. 근본원인은 단정하지 않는다 — 추론은 호출자가 한다.',
+    {
+      signal: z.string().describe('에러 메시지 | 스택트레이스 | 실패 테스트 출력 | 인시던트 설명'),
+      kind: z.enum(['stacktrace', 'error', 'test-failure', 'incident']).optional().describe('신호 종류 힌트 (생략 시 자동 추론)'),
+      suspectServices: z.array(z.string()).optional().describe('사용자가 지목한 의심 서비스'),
+      diffBase: z.string().optional().describe('최근 변경 상관 분석용 git base (예: origin/main)'),
+    },
+    async ({ signal, kind, suspectServices, diffBase }) => {
+      const config = await loadConfigAsync();
+      const khalaConfig = resolveKhalaConfig(config);
+      const client = new KhalaClient(khalaConfig);
+      const result = await runTroubleshoot({ signal, kind, suspectServices, diffBase }, client);
+      const payload = result.ok ? result.pack : { error: result.reason };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };
     },
   );
 }

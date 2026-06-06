@@ -9,6 +9,7 @@ import type { ScopeAnalysisResult } from '../core/scope-analyzer.js';
 import type { ApiLintResult, ApiDiffResult } from '../api/types.js';
 import type { ReviewChecklist } from '../review/types.js';
 import type { SeverityLevel } from '../profiles/types.js';
+import type { GroundingPack } from '../khala/types.js';
 
 export const SEVERITY_ICONS: Record<SeverityLevel, string> = {
   ok: '\u2705',
@@ -173,6 +174,78 @@ export function formatDiffMarkdown(result: ApiDiffResult): string {
   }
 
   return lines.join('\n');
+}
+
+/** GroundingPack → markdown (근본원인 단정 없이 증거만) */
+export function formatGroundingPackMarkdown(pack: GroundingPack): string {
+  const lines: string[] = [];
+  lines.push(`## 🔬 트러블슈팅 그라운딩 (T${pack.tier})`);
+  lines.push('');
+  lines.push(`> ${pack.tierReason}`);
+  lines.push('> ⚠️ 이건 근거 모음이지 근본원인 판정이 아닙니다 — 추론은 분석자/Claude가 합니다.');
+  lines.push('');
+
+  lines.push('### 의심 지점');
+  for (const s of pack.suspects) {
+    lines.push(`- \`${s.entityName}\` (confidence ${s.confidence.toFixed(2)})`);
+  }
+  lines.push('');
+
+  if (pack.designObservationGaps?.length) {
+    lines.push('### ⚠️ 설계-관측 갭 (제네릭 리뷰가 구조적으로 못 보는 발견)');
+    for (const g of pack.designObservationGaps) {
+      lines.push(`- **${g.flag}**: ${g.fromName} → ${g.toName} (${g.edgeType}) — ${g.detail}`);
+      if (g.observedEvidence?.length) lines.push(`  - trace: ${g.observedEvidence.join(', ')}`);
+    }
+    lines.push('');
+  }
+
+  if (pack.operationalSignals?.length) {
+    lines.push('### 운영 신호');
+    for (const s of pack.operationalSignals) {
+      lines.push(`- ${s.fromName} → ${s.toName}: ${s.anomaly} (${s.callCount}회, p95 ${s.latencyP95}ms)`);
+    }
+    lines.push('');
+  }
+
+  if (pack.topology) {
+    lines.push(`### 토폴로지 영향: ${pack.topology.summary}`);
+    lines.push('');
+  }
+
+  if (pack.knowledge?.length) {
+    lines.push('### 관련 규정/문서');
+    for (const d of pack.knowledge) lines.push(`- ${d.docTitle} > ${d.sectionPath} (score ${d.score.toFixed(2)})`);
+    lines.push('');
+  }
+
+  if (pack.changeCorrelation?.length) {
+    lines.push('### 최근 변경 상관');
+    for (const c of pack.changeCorrelation) lines.push(`- ${c.service}: ${c.changedFiles.join(', ')}`);
+    lines.push('');
+  }
+
+  if (pack.domainInvariants?.length) {
+    lines.push('### 도메인 불변식 (Archon)');
+    for (const c of pack.domainInvariants) {
+      lines.push(`- \`${c.boundSymbol}\` → ${c.kind} \`${c.id}\` (${c.criticality}, status=${c.status}, drift=${c.codeDrift})`);
+    }
+    lines.push('');
+  }
+
+  if (pack.caveats.length) {
+    lines.push('### 한계 (caveats)');
+    for (const c of pack.caveats) lines.push(`- ${c}`);
+  }
+
+  return lines.join('\n');
+}
+
+/** GroundingPack → 한 줄 요약 */
+export function formatGroundingPackBrief(pack: GroundingPack): string {
+  const names = pack.suspects.map((s) => s.entityName).join(', ') || '(국소화 실패)';
+  const gaps = pack.designObservationGaps?.length ?? 0;
+  return `트러블슈팅 T${pack.tier}: 의심 [${names}], 설계-관측 갭 ${gaps}개`;
 }
 
 /**

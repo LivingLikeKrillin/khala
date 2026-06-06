@@ -54,7 +54,7 @@ export async function analyzeImpact(
   const graphResults = await Promise.all(
     serviceNames.map((name) =>
       withKhalaFallback(
-        () => client.getGraph(buildEntityRid(name), { hops }),
+        () => client.getGraph(name, { hops }),
         null,
         `graph lookup: ${name}`,
       ),
@@ -252,19 +252,3 @@ function buildSummary(
   return `${changed.join(', ')} 변경 영향 [${severityLabel}]: ${parts.join(' / ')}`;
 }
 
-/**
- * 서비스명에서 칼라 entity RID를 생성한다.
- *
- * 칼라의 rid.py 로직과 동일하게:
- * SHA256(canonical_name)[:12]
- *
- * 단, 정확한 RID를 알 수 없으므로 칼라의 형식에 맞춰 추정한다.
- * 실제로는 칼라 검색에서 이름 매칭으로 엔티티를 찾는다.
- */
-function buildEntityRid(serviceName: string): string {
-  // 칼라의 entity_rid 형식: "ent_" + SHA256(tenant:entity_type:canonical_name)[:12]
-  // 정확한 해시를 구하려면 crypto가 필요하지만,
-  // 칼라 API는 rid로 직접 조회하므로 이름 기반 검색이 더 안정적.
-  // 여기서는 일단 RID 형식으로 구성하고, 404 시 검색 fallback을 사용.
-  return `ent_${serviceName}`;
-}

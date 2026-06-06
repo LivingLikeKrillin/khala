@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseArgs } from '../src/cli/parse-args.js';
+import { parseArgs, parseTroubleshootArgs } from '../src/cli/parse-args.js';
 
 describe('parseArgs', () => {
   it('인자 없으면 기본값을 반환한다', () => {
@@ -71,5 +71,19 @@ describe('parseArgs', () => {
     expect(result.format).toBe('brief');
     expect(result.silent).toBe(true);
     expect(result.spec).toBe('api/spec.json');
+  });
+});
+
+describe('parseTroubleshootArgs', () => {
+  it('인자 신호와 플래그를 파싱한다', () => {
+    const o = parseTroubleshootArgs(['NPE at X', '--kind', 'stacktrace', '--suspect', 'order-service', '--format', 'json']);
+    expect(o.signal).toBe('NPE at X');
+    expect(o.kind).toBe('stacktrace');
+    expect(o.suspectServices).toContain('order-service');
+    expect(o.format).toBe('json');
+  });
+  it('--diff-base를 받는다', () => {
+    const o = parseTroubleshootArgs(['err', '--diff-base', 'origin/main']);
+    expect(o.diffBase).toBe('origin/main');
   });
 });
