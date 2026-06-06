@@ -11,8 +11,9 @@
 **Spec:** `docs/superpowers/specs/2026-06-06-domain-invariant-governance-design.md`
 **검증 프로토콜:** `docs/superpowers/specs/2026-06-06-value-validation-protocol.md`
 
-> **실행 진행 (2026-06-06):** 인프라-무관 태스크 **1·2·5·7·8 완료** (TDD red→green, 12 tests passing, 각 커밋됨). 코어 엔진(Claim 모델·claim_rid·CodeValueResolver·ValueQueryService·답변 조립) 동작 검증 완료.
-> **남음(인프라 필요):** 3·4·6·9·10 (Docker Postgres + `KHALA_TEST_DB_URL` 통합테스트), 9-수동검증(pfplay 코드 checkout 경로), 11(실제 기획자 가치검증). DB가 올라오면 TDD로 이어서 검증.
+> **실행 진행 (2026-06-06):** 태스크 **1·2·3·4·5·6·7·8·9 완료** — 코어 + **DB 통합 + CLI end-to-end**. 실 Postgres(테스트 DB) + fixtures로 검증: `khala claim-value 준회원` → "현재 5", `재생곡` → "현재 360". **단위 18 + 통합 2 = 20 tests green.**
+> **환경 메모:** 이 환경(Windows)에서 pytest-asyncio **async-generator fixture가 깨짐** → conftest `db_pool` 의존 통합테스트 불가. Archon 통합테스트는 자체 asyncio 루프로 우회(`tests/test_claim_integration.py`). (pytest 8.4.2 / pytest-asyncio 0.26.0로 업그레이드 — pyproject 선언 충족.)
+> **남음:** **10**(MCP 도구 `claim_value` — AI/기획자 NL 경로) · **11**(실제 기획자 가치검증). Notion 적재는 별도 계획(`2026-06-06-notion-source-adapter.md`).
 
 ---
 
