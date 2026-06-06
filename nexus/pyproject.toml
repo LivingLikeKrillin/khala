@@ -28,6 +28,9 @@ dependencies = [
     "tiktoken>=0.8.0",
     "python-frontmatter>=1.1.0",
     "structlog>=24.4.0",
+    # Archon — 코드 구조 분석(권한 게이트 추출) via AST (무료, CodeQL 대체)
+    "tree-sitter>=0.21",
+    "tree-sitter-java>=0.21",
 ]
 
 [project.optional-dependencies]
