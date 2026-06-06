@@ -10,8 +10,9 @@
 
 import { KhalaClient, withKhalaFallback } from './client.js';
 import { analyzeImpact } from './impact-analyzer.js';
+import { fetchEntityGaps, searchDocs } from './grounding-sections.js';
 import type {
-  Suspect, GroundingPack, DesignGap, OperationalSignal, RelevantDoc, ImpactAnalysis,
+  Suspect, GroundingPack, OperationalSignal, ImpactAnalysis,
 } from './types.js';
 
 /** 운영 신호 이상치 임계 (impact-analyzer와 동일치 재사용 — 스펙 Q3) */
@@ -47,7 +48,8 @@ export async function groundTroubleshooting(
   // §5 지식 (T1+)
   if (options.tier >= 1) {
     const knowledge = await withKhalaFallback(
-      () => fetchKnowledge(client, options.signal, options.searchTopK ?? 5),
+      // 검색 쿼리는 앞 500자만 사용 (저장 신호의 8000자 절단과는 별개 — 쿼리 품질·길이 제한용)
+      () => searchDocs(client, options.signal.slice(0, 500), options.searchTopK ?? 5),
       null, 'search',
     );
     if (knowledge) pack.knowledge = knowledge;
@@ -66,7 +68,7 @@ export async function groundTroubleshooting(
   // §3 설계-관측 갭 (doc_only는 T2+, observed_only/conflict는 T3)
   if (options.tier >= 2 && names.length > 0) {
     const gaps = await withKhalaFallback(
-      () => fetchGaps(client, names),
+      () => fetchEntityGaps(client, names),
       null, 'diff',
     );
     if (gaps) {
@@ -91,47 +93,6 @@ export async function groundTroubleshooting(
   }
 
   return pack;
-}
-
-/** §5: 의심 지점 + 신호로 관련 문서 검색 */
-async function fetchKnowledge(
-  client: KhalaClient, signal: string, topK: number,
-): Promise<RelevantDoc[] | null> {
-  // 검색 쿼리는 앞 500자만 사용 (저장 신호의 8000자 절단과는 별개 — 쿼리 품질·길이 제한용)
-  const result = await client.search(signal.slice(0, 500), { topK });
-  if (!result) return null;
-  return result.results.map((h) => ({
-    docTitle: h.doc_title, sectionPath: h.section_path,
-    snippet: h.snippet, score: h.score, classification: h.classification,
-  }));
-}
-
-/** §3: 각 의심 service의 diff를 합쳐 DesignGap[]으로 변환.
- *  모든 diff 조회가 null을 반환하면 에러를 던져 상위 withKhalaFallback이 caveat을 남기게 한다. */
-async function fetchGaps(client: KhalaClient, names: string[]): Promise<DesignGap[]> {
-  const results = await Promise.all(
-    names.map((n) => client.getDiff({ entityFilter: n })),
-  );
-  const successResults = results.filter((r) => r !== null);
-  // 모든 요청이 실패(null)하면 상위로 에러를 던진다
-  if (successResults.length === 0 && names.length > 0) {
-    throw new Error('diff 조회 전체 실패 (All diff lookups failed)');
-  }
-  const gaps: DesignGap[] = [];
-  for (const r of successResults) {
-    for (const d of r.diffs) {
-      gaps.push({
-        flag: d.flag, fromName: d.from_name, toName: d.to_name,
-        edgeType: d.edge_type, detail: d.detail,
-        // 기존 context-enricher.ts 패턴과 일관: 모든 설계 근거를 join
-        designedEvidence: d.designed_evidence.length > 0
-          ? d.designed_evidence.map((e) => e.text).join('; ')
-          : undefined,
-        observedEvidence: d.observed_evidence?.sample_trace_ids,
-      });
-    }
-  }
-  return gaps;
 }
 
 /** §4: 토폴로지 관측치에서 이상 신호 추출 */
