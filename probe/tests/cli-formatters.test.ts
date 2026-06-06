@@ -5,10 +5,13 @@ import {
   formatLintMarkdown,
   formatDiffMarkdown,
   formatReviewMarkdown,
+  formatGroundingPackMarkdown,
+  formatGroundingPackBrief,
 } from '../src/cli/formatters.js';
 import type { ScopeAnalysisResult } from '../src/core/scope-analyzer.js';
 import type { ApiLintResult, ApiDiffResult } from '../src/api/types.js';
 import type { ReviewChecklist } from '../src/review/types.js';
+import type { GroundingPack } from '../src/khala/types.js';
 
 // ─── 테스트 데이터 팩토리 ───
 
@@ -312,5 +315,24 @@ describe('formatReviewMarkdown', () => {
 
     expect(output).not.toContain('자동 검증 결과');
     expect(output).toContain('## 필수');
+  });
+});
+
+describe('formatGroundingPack', () => {
+  const pack: GroundingPack = {
+    tier: 3, tierReason: '관측 엣지 1개 → T3',
+    suspects: [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
+    designObservationGaps: [{ flag: 'observed_only', fromName: 'order-service', toName: 'inventory-service', edgeType: 'CALLS_OBSERVED', detail: '설계에 없음' }],
+    caveats: ['도메인 불변식 그라운딩은 Archon 미연동으로 생략됨'],
+  };
+  it('markdown에 티어·갭·caveat가 들어간다', () => {
+    const md = formatGroundingPackMarkdown(pack);
+    expect(md).toContain('T3');
+    expect(md).toContain('observed_only');
+    expect(md).toContain('inventory-service');
+    expect(md).toContain('Archon 미연동');
+  });
+  it('brief는 한 줄 요약', () => {
+    expect(formatGroundingPackBrief(pack)).toContain('order-service');
   });
 });
