@@ -39,6 +39,29 @@ export function parseTroubleshootArgs(args: string[]): TroubleshootCliOptions {
   return o;
 }
 
+export interface ReviewGroundCliOptions {
+  base?: string;
+  format: OutputFormat;
+}
+
+/**
+ * review-ground 커맨드 인자를 파싱한다.
+ * --base: diff 기준 브랜치 (선택). --format: 출력 형식 (기본: markdown).
+ */
+export function parseReviewGroundArgs(args: string[]): ReviewGroundCliOptions {
+  const o: ReviewGroundCliOptions = { format: 'markdown' };
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    if (arg === '--base' && i + 1 < args.length) {
+      o.base = args[++i]!;
+    } else if (arg === '--format' && i + 1 < args.length) {
+      const f = args[++i]!;
+      if (f === 'markdown' || f === 'json' || f === 'brief') o.format = f;
+    }
+  }
+  return o;
+}
+
 export interface CliOptions {
   base: string;
   format: OutputFormat;
