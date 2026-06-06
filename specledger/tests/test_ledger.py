@@ -1,8 +1,8 @@
-import pytest  # noqa: F401
+import pytest
 
 from specledger.ledger import Ledger
 from specledger.artifacts import Artifact, Status
-from specledger.errors import ImmutableArtifactError  # noqa: F401
+from specledger.errors import ImmutableArtifactError
 
 
 def make_ledger(docs_root):
