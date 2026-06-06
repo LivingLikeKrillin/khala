@@ -336,3 +336,38 @@ export interface GroundingPack {
   domainInvariants?: ClaimRef[];
   caveats: string[];
 }
+
+// ─── 리뷰 그라운딩 (v0.6) ───
+
+/** 변경 엔티티 — diff→service/entity 라우팅 산출 (v0.6) */
+export interface ChangedEntity {
+  /** grounder가 /graph·/diff에 넘길 정규화 service/entity명 */
+  entityName: string;
+  /** fileBelongsToService로 이 엔티티에 귀속된 변경 파일 */
+  changedFiles: string[];
+  /** scope-analyzer 응집 그룹명 (추적용, 선택) */
+  cohesionGroup?: string;
+}
+
+/** specledger가 Khala에 발행한 승인 스펙의 읽기전용 투영 (v0.6) */
+export interface SpecRef {
+  docTitle: string;
+  sectionPath: string;
+  /** specledger content-hash 스탬프 (있으면) */
+  approvedHash?: string;
+  snippet: string;
+  classification: string;
+}
+
+/** 리뷰 그라운딩 결과 — 증거만, 정합 판정은 Claude가 한다 (v0.6) */
+export interface ReviewGroundingPack {
+  tier: 0 | 1 | 2 | 3;
+  tierReason: string;
+  changedEntities: ChangedEntity[];
+  applicableGuidelines?: RelevantDoc[];
+  specRefs?: SpecRef[];
+  topology?: ImpactAnalysis;
+  designObservationGaps?: DesignGap[];
+  claimDrift?: ClaimRef[];
+  caveats: string[];
+}
