@@ -96,10 +96,10 @@ export async function groundTroubleshooting(
 /** §5: 의심 지점 + 신호로 관련 문서 검색 */
 async function fetchKnowledge(
   client: KhalaClient, signal: string, topK: number,
-): Promise<RelevantDoc[]> {
+): Promise<RelevantDoc[] | null> {
   // 검색 쿼리는 앞 500자만 사용 (저장 신호의 8000자 절단과는 별개 — 쿼리 품질·길이 제한용)
   const result = await client.search(signal.slice(0, 500), { topK });
-  if (!result) return [];
+  if (!result) return null;
   return result.results.map((h) => ({
     docTitle: h.doc_title, sectionPath: h.section_path,
     snippet: h.snippet, score: h.score, classification: h.classification,

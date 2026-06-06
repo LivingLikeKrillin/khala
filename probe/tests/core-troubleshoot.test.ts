@@ -58,4 +58,15 @@ describe('runTroubleshoot 경로', () => {
       expect(r.pack.suspects[0]!.entityName).toBe('order-service');
     }
   });
+
+  it('kind 힌트가 본문과 모순되면 caveat를 남긴다', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('down'));
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    // 본문은 스택트레이스인데 kind=incident로 모순 지정
+    const r = await runTroubleshoot(
+      { signal: 'at com.shop.order.OrderService.checkout(OrderService.java:88)', kind: 'incident' }, client,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.pack.caveats.some((c) => c.includes('kind'))).toBe(true);
+  });
 });

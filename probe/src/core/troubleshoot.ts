@@ -100,6 +100,9 @@ export async function runTroubleshoot(
   if (!pack.domainInvariants) {
     pack.caveats.push('도메인 불변식 그라운딩은 Archon 미연동으로 생략됨');
   }
+  if (input.kind && input.kind !== inferKind(v.signal!)) {
+    pack.caveats.push(`입력 kind 힌트(${input.kind})가 본문 추론(${inferKind(v.signal!)})과 달라 힌트를 무시함 (kind hint overridden)`);
+  }
 
   return { ok: true, pack };
 }

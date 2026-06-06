@@ -523,7 +523,7 @@ switch (command) {
     void runTroubleshootCmd(args.slice(1));
     break;
   case 'version':
-    logger.info('probe v0.4.0');
+    logger.info('probe v0.5.0');
     break;
   default:
     logger.info(`\u2699\uFE0F Probe \u2014 프로덕트 개발 워크플로 자동 검증 도구

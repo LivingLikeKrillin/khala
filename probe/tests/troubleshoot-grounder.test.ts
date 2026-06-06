@@ -66,6 +66,20 @@ describe('groundTroubleshooting', () => {
     expect(pack.caveats.some((c) => c.includes('diff'))).toBe(true);
   });
 
+  it('search 실패 시 지식 그라운딩 caveat를 남긴다', async () => {
+    globalThis.fetch = vi.fn((url: string) =>
+      String(url).includes('/search')
+        ? Promise.reject(new Error('500'))
+        : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { diffs: [] }, error: null, meta: {} }) }),
+    ) as unknown as typeof globalThis.fetch;
+    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const pack = await groundTroubleshooting(
+      client, [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
+      { signal: 'NPE', tier: 1 },
+    );
+    expect(pack.caveats.some((c) => c.includes('지식') || c.toLowerCase().includes('search'))).toBe(true);
+  });
+
   it('changedServices가 주어지면 의심 토폴로지와 상관시킨다', async () => {
     globalThis.fetch = mockFetchByPath({ '/search': { results: [] }, '/diff': { diffs: [] },
       '/graph': { center_entity: { rid: 'e', name: 'order-service' }, edges: [], observed_edges: [] } }) as unknown as typeof globalThis.fetch;
