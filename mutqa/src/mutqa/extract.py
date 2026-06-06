@@ -14,7 +14,10 @@ def extract_survivors(dump_text: str) -> list[Survivor]:
         line = line.strip()
         if not line:
             continue
-        work_item, result = json.loads(line)
+        try:
+            work_item, result = json.loads(line)
+        except (json.JSONDecodeError, ValueError, TypeError) as exc:
+            raise ValueError(f"Malformed JSONL line: {line!r}") from exc
         if result is None:
             continue
         if result.get("worker_outcome") != "normal":
