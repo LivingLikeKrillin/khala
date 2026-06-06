@@ -2,7 +2,7 @@
  * MCP 도구 핸들러
  *
  * Probe 코어 엔진을 MCP 도구로 노출한다.
- * 7개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform, queryKhala, groundTroubleshooting
+ * 8개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform, queryKhala, groundTroubleshooting, groundReview
  *
  * 규정 문서: docs/probe-v0.3-scope.md § 3, docs/probe-v0.4-scope.md § 6
  */
@@ -20,6 +20,7 @@ import { getChangedFiles, getDiffLines, getBaseFileContent } from '../utils/git.
 import { enrichWithKhala } from '../khala/context-enricher.js';
 import { KhalaClient } from '../khala/client.js';
 import { runTroubleshoot } from '../core/troubleshoot.js';
+import { runReviewGround, buildChangedEntities } from '../core/review-ground.js';
 import { existsSync } from 'node:fs';
 
 /**
@@ -43,7 +44,7 @@ async function resolveProfile() {
 }
 
 /**
- * MCP 서버에 7개 도구를 등록한다.
+ * MCP 서버에 8개 도구를 등록한다.
  */
 export function registerTools(server: McpServer): void {
   // ─── probe.analyzeScope ───
@@ -277,6 +278,34 @@ export function registerTools(server: McpServer): void {
       const khalaConfig = resolveKhalaConfig(config);
       const client = new KhalaClient(khalaConfig);
       const result = await runTroubleshoot({ signal, kind, suspectServices, diffBase }, client);
+      const payload = result.ok ? result.pack : { error: result.reason };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };
+    },
+  );
+
+  // ─── probe.groundReview (v0.6) ───
+  server.tool(
+    'probe.groundReview',
+    'git diff를 받아 변경 엔티티의 조직 컨텍스트(설계-관측 갭·규정·토폴로지·승인 스펙·claim drift)를 묶은 Review Grounding Pack을 반환한다. diff의 소스 의미 분석/정합 판정은 하지 않는다 — 그건 호출자(Claude)가 한다.',
+    {
+      base: z.string().optional().describe('git diff base (예: origin/main)'),
+    },
+    async ({ base }) => {
+      const { profile, config } = await resolveProfile();
+      if (!profile) {
+        return { content: [{ type: 'text' as const, text: '플랫폼을 감지할 수 없습니다 (Platform not detected)' }] };
+      }
+      const changedFiles = getChangedFiles(base);
+      if (changedFiles.length === 0) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: '변경 파일 없음 (No changed files)' }) }] };
+      }
+      const scope = analyzeScope(changedFiles, profile, getDiffLines(base));
+      const entities = buildChangedEntities(scope.groups, changedFiles);
+      const khalaConfig = resolveKhalaConfig(config);
+      const client = new KhalaClient(khalaConfig);
+      const result = await runReviewGround(entities, client, {
+        searchTopK: khalaConfig.searchTopK, graphHops: khalaConfig.graphHops,
+      });
       const payload = result.ok ? result.pack : { error: result.reason };
       return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };
     },
