@@ -12,7 +12,7 @@ _DEFAULT_ALLOW = ["docs/**", "tests/**"]
 class SpecledgerConfig:
     exempt_paths: list[str] = field(default_factory=list)
     allow_globs: list[str] = field(default_factory=lambda: list(_DEFAULT_ALLOW))
-    khala: dict | None = None
+    nexus: dict | None = None
 
     @classmethod
     def load(cls, project_root: Path) -> "SpecledgerConfig":
@@ -23,5 +23,5 @@ class SpecledgerConfig:
         return cls(
             exempt_paths=data.get("exempt_paths", []),
             allow_globs=data.get("allow_globs", list(_DEFAULT_ALLOW)),
-            khala=data.get("khala"),
+            nexus=data.get("nexus"),
         )

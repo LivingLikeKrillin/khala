@@ -1,6 +1,6 @@
 # Specledger
 
-Specledger is a Python MCP server and Claude Code `PreToolUse` hook that records AI-generated ADRs and design specs in a consistent Markdown+frontmatter format, enforces accountable review (AI critique → human issue-disposition → sign-off) before any code edits are written, and optionally publishes approved documents to an external Khala sink. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it. Until a spec is approved and stamped with a content hash, all `Write`/`Edit`/`MultiEdit` calls targeting non-exempt source paths are blocked.
+Specledger is a Python MCP server and Claude Code `PreToolUse` hook that records AI-generated ADRs and design specs in a consistent Markdown+frontmatter format, enforces accountable review (AI critique → human issue-disposition → sign-off) before any code edits are written, and optionally publishes approved documents to an external Nexus sink. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it. Until a spec is approved and stamped with a content hash, all `Write`/`Edit`/`MultiEdit` calls targeting non-exempt source paths are blocked.
 
 ---
 
@@ -79,7 +79,7 @@ The hook reads the tool payload from stdin and exits `0` (allow) or `2` (block).
 | `end_implementation` | Disarm the gate |
 | `check_gate` | Query whether a list of paths is currently allowed |
 | `index` | Regenerate `INDEX.md` |
-| `publish` | Push an approved doc to the Khala sink (no-op if not configured) |
+| `publish` | Push an approved doc to the Nexus sink (no-op if not configured) |
 
 ---
 
@@ -110,16 +110,16 @@ The hook reads the tool payload from stdin and exits `0` (allow) or `2` (block).
 
 ---
 
-## Khala Integration (optional)
+## Nexus Integration (optional)
 
 Add to `.specledger/config.yaml`:
 
 ```yaml
-khala:
-  url: "https://your-khala-instance/ingest"
+nexus:
+  url: "https://your-nexus-instance/ingest"
 ```
 
-Then call the `publish` tool. Without this config, `publish` is a safe no-op that returns `{"published": false, "reason": "khala not configured"}`.
+Then call the `publish` tool. Without this config, `publish` is a safe no-op that returns `{"published": false, "reason": "nexus not configured"}`.
 
 ---
 

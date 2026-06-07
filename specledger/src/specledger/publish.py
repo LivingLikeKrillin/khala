@@ -7,11 +7,11 @@ from typing import Protocol
 from .artifacts import Artifact
 
 
-class KhalaSink(Protocol):
+class NexusSink(Protocol):
     def ingest(self, payload: dict) -> dict: ...
 
 
-class KhalaHttpSink:
+class NexusHttpSink:
     def __init__(self, url: str):
         self._url = url
 
@@ -26,12 +26,12 @@ class KhalaHttpSink:
             return {"status": resp.status}
 
 
-def publish(ledger, artifact_id, config, sink: KhalaSink | None = None) -> dict:
-    if config.khala is None:
-        return {"published": False, "reason": "khala not configured"}
+def publish(ledger, artifact_id, config, sink: NexusSink | None = None) -> dict:
+    if config.nexus is None:
+        return {"published": False, "reason": "nexus not configured"}
     art = Artifact.load(ledger._resolve(artifact_id))
     if sink is None:
-        sink = KhalaHttpSink(config.khala["url"])
+        sink = NexusHttpSink(config.nexus["url"])
     payload = {
         "id": art.id,
         "title": art.meta.get("title", ""),

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build specledger — a Python MCP server + Claude Code PreToolUse hook that records AI-generated ADRs/design-specs in a consistent format, enforces accountable review (AI critique → human issue-disposition → sign-off) before code is written, and optionally publishes approved docs to Khala.
+**Goal:** Build specledger — a Python MCP server + Claude Code PreToolUse hook that records AI-generated ADRs/design-specs in a consistent format, enforces accountable review (AI critique → human issue-disposition → sign-off) before code is written, and optionally publishes approved docs to Nexus.
 
 **Architecture:** A pure, fully unit-testable **core library** (`src/specledger/`) holds all logic: id/hash primitives, a frontmatter+sidecar data layer, ledger operations, the review gate, and the enforcement gate. A thin **MCP adapter** (`server.py`) exposes the core as MCP tools. A standalone **PreToolUse hook** (`hooks/pretooluse_gate.py`) calls the gate to block unapproved code edits. Files are the single source of truth; `.specledger/` holds per-consumer-project runtime state.
 
@@ -31,7 +31,7 @@ specledger/
     critique.py          # Critic protocol, AnthropicCritic, RUBRIC, critique()
     review.py            # approve(): disposition validation + edit-proof + atomic stamp
     gate.py              # active marker, begin/end_implementation, check_gate()
-    publish.py           # Khala publish (optional, no-op without config)
+    publish.py           # Nexus publish (optional, no-op without config)
     server.py            # FastMCP wiring: exposes all tools
   hooks/
     pretooluse_gate.py   # PreToolUse entrypoint: stdin JSON -> allow/deny via gate
@@ -1332,7 +1332,7 @@ git commit -m "feat: approve gate (disposition validation + edit-proof + atomic 
 - Create: `src/specledger/config.py`
 - Test: `tests/test_config.py`
 
-Spec ref: §7. Loads `<project>/.specledger/config.yaml`. Keys: `exempt_paths` (globs), `allow_globs` (default `["docs/**", "tests/**"]`), `khala` (optional dict). Missing file → defaults.
+Spec ref: §7. Loads `<project>/.specledger/config.yaml`. Keys: `exempt_paths` (globs), `allow_globs` (default `["docs/**", "tests/**"]`), `nexus` (optional dict). Missing file → defaults.
 
 - [ ] **Step 1: Write failing tests**
 
@@ -1345,16 +1345,16 @@ def test_defaults_when_missing(tmp_path):
     cfg = SpecledgerConfig.load(tmp_path)
     assert cfg.allow_globs == ["docs/**", "tests/**"]
     assert cfg.exempt_paths == []
-    assert cfg.khala is None
+    assert cfg.nexus is None
 
 
 def test_loads_yaml(tmp_path):
     d = tmp_path / ".specledger"; d.mkdir()
     (d / "config.yaml").write_text(
-        "exempt_paths: ['scripts/**']\nkhala: {url: 'http://x'}\n", encoding="utf-8")
+        "exempt_paths: ['scripts/**']\nnexus: {url: 'http://x'}\n", encoding="utf-8")
     cfg = SpecledgerConfig.load(tmp_path)
     assert cfg.exempt_paths == ["scripts/**"]
-    assert cfg.khala == {"url": "http://x"}
+    assert cfg.nexus == {"url": "http://x"}
     assert cfg.allow_globs == ["docs/**", "tests/**"]  # default retained
 ```
 
@@ -1376,7 +1376,7 @@ _DEFAULT_ALLOW = ["docs/**", "tests/**"]
 class SpecledgerConfig:
     exempt_paths: list[str] = field(default_factory=list)
     allow_globs: list[str] = field(default_factory=lambda: list(_DEFAULT_ALLOW))
-    khala: dict | None = None
+    nexus: dict | None = None
 
     @classmethod
     def load(cls, project_root: Path) -> "SpecledgerConfig":
@@ -1387,7 +1387,7 @@ class SpecledgerConfig:
         return cls(
             exempt_paths=data.get("exempt_paths", []),
             allow_globs=data.get("allow_globs", list(_DEFAULT_ALLOW)),
-            khala=data.get("khala"),
+            nexus=data.get("nexus"),
         )
 ```
 
@@ -1740,13 +1740,13 @@ git commit -m "feat: PreToolUse hook gating code edits on spec approval"
 
 ## Chunk 6: Wiring (publish, MCP server, integration, docs)
 
-### Task 17: `publish.py` — optional Khala sink
+### Task 17: `publish.py` — optional Nexus sink
 
 **Files:**
 - Create: `src/specledger/publish.py`
 - Test: `tests/test_publish.py`
 
-Spec ref: §8. `publish(ledger, artifact_id, config, sink=None)`. If `config.khala is None` → return `{"published": False, "reason": "khala not configured"}` (no-op). Else build an ingest payload `{id, title, status, approved_by, body, source}` and hand to `sink.ingest(payload)` (a `KhalaSink` protocol). `KhalaHttpSink` posts to `config.khala['url']`. Tests use a FakeSink; no network.
+Spec ref: §8. `publish(ledger, artifact_id, config, sink=None)`. If `config.nexus is None` → return `{"published": False, "reason": "nexus not configured"}` (no-op). Else build an ingest payload `{id, title, status, approved_by, body, source}` and hand to `sink.ingest(payload)` (a `NexusSink` protocol). `NexusHttpSink` posts to `config.nexus['url']`. Tests use a FakeSink; no network.
 
 - [ ] **Step 1: Write failing tests**
 
@@ -1762,7 +1762,7 @@ class FakeSink:
     def ingest(self, payload): self.payloads.append(payload); return {"ok": True}
 
 
-def test_publish_noop_without_khala(tmp_path):
+def test_publish_noop_without_nexus(tmp_path):
     led = Ledger(tmp_path, now=lambda: "t")
     sid = led.record("spec", "A")
     res = publish(led, sid, SpecledgerConfig(), sink=FakeSink())
@@ -1773,7 +1773,7 @@ def test_publish_sends_payload(tmp_path):
     led = Ledger(tmp_path, now=lambda: "t")
     sid = led.record("spec", "A")
     sink = FakeSink()
-    cfg = SpecledgerConfig(khala={"url": "http://x"})
+    cfg = SpecledgerConfig(nexus={"url": "http://x"})
     res = publish(led, sid, cfg, sink=sink)
     assert res["published"] is True
     assert sink.payloads[0]["id"] == sid
@@ -1791,11 +1791,11 @@ from typing import Protocol
 from .artifacts import Artifact
 
 
-class KhalaSink(Protocol):
+class NexusSink(Protocol):
     def ingest(self, payload: dict) -> dict: ...
 
 
-class KhalaHttpSink:
+class NexusHttpSink:
     def __init__(self, url: str):
         self._url = url
 
@@ -1810,12 +1810,12 @@ class KhalaHttpSink:
             return {"status": resp.status}
 
 
-def publish(ledger, artifact_id, config, sink: KhalaSink | None = None) -> dict:
-    if config.khala is None:
-        return {"published": False, "reason": "khala not configured"}
+def publish(ledger, artifact_id, config, sink: NexusSink | None = None) -> dict:
+    if config.nexus is None:
+        return {"published": False, "reason": "nexus not configured"}
     art = Artifact.load(ledger._resolve(artifact_id))
     if sink is None:
-        sink = KhalaHttpSink(config.khala["url"])
+        sink = NexusHttpSink(config.nexus["url"])
     payload = {
         "id": art.id, "title": art.meta.get("title", ""), "status": str(art.status),
         "approved_by": art.meta.get("approved_by"), "body": art.body,
@@ -1831,7 +1831,7 @@ def publish(ledger, artifact_id, config, sink: KhalaSink | None = None) -> dict:
 
 ```bash
 git add src/specledger/publish.py tests/test_publish.py
-git commit -m "feat: optional Khala publish (no-op without config)"
+git commit -m "feat: optional Nexus publish (no-op without config)"
 ```
 
 ### Task 18: `server.py` — FastMCP wiring
@@ -2063,7 +2063,7 @@ git commit -m "docs: README with install, MCP + hook registration"
 
 - `pytest -q` green; `ruff check .` clean.
 - All 10 MCP tools exposed by `build_app`; hook blocks source edits unless the active spec is approved; tamper-after-approval re-blocks via report-and-repair.
-- Khala publish is a no-op without config; never a hard dependency.
+- Nexus publish is a no-op without config; never a hard dependency.
 - First real use: register Engception's scattered specs and drive one through record → critique → disposition → approve.
 
 ## Deferred (per spec §1 Non-goals — do NOT build here)
