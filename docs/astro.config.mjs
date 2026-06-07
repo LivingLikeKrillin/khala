@@ -4,8 +4,10 @@ import starlight from '@astrojs/starlight';
 import { visit } from 'unist-util-visit';
 
 // Browser-free `pre-mermaid` strategy: rewrite ```mermaid fenced code blocks
-// into `<pre class="mermaid">…</pre>` so the client-side mermaid script (loaded
-// from a CDN in the Starlight `head` below) renders them in the browser.
+// into `<pre class="mermaid">…</pre>` so a page-scoped, locally-bundled mermaid
+// script (imported from node_modules inside ecosystem.mdx) renders them in the
+// browser. Mermaid is bundled at build time (same origin, versioned by
+// package-lock) — no unpinned third-party CDN / SRI exposure.
 //
 // NOTE: rehype-mermaid's own `pre-mermaid` strategy is NOT used because its
 // module statically imports `mermaid-isomorphic`, which imports Playwright at
@@ -40,14 +42,6 @@ export default defineConfig({
       title: 'Khala',
       tagline: 'AI 시대의 캘리브레이션 — 도구들의 연합',
       logo: { src: './src/assets/logo.png', alt: 'Khala' },
-      head: [
-        {
-          tag: 'script',
-          attrs: { type: 'module' },
-          content:
-            "import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs'; mermaid.initialize({ startOnLoad: true });",
-        },
-      ],
       defaultLocale: 'root',
       locales: {
         root: { label: 'English', lang: 'en' },

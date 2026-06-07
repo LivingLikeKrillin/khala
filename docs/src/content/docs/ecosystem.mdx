@@ -3,6 +3,8 @@ title: Ecosystem
 description: How the tools connect — only through Khala.
 ---
 
+import Mermaid from '../../components/Mermaid.astro';
+
 The three producer tools never call each other directly. They connect **only through Khala**.
 
 ```mermaid
@@ -20,3 +22,5 @@ graph TD
 - **Archon** is the single authority window: people and agents come to it to ask for domain truth.
 - **Probe** is one client of that window, alongside developers.
 - **specledger** publishes approved specs into Khala; it is not the source of truth (frontmatter is).
+
+<Mermaid />

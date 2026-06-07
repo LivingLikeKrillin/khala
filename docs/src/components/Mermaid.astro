@@ -1,0 +1,18 @@
+---
+// Page-scoped, locally-bundled mermaid renderer.
+//
+// The <script> below is processed by Astro's component script pipeline (.astro
+// files bundle & hash their scripts), so `mermaid` is imported from node_modules
+// and emitted as a same-origin /_astro/*.js asset — versioned by package-lock,
+// no unpinned third-party CDN / SRI exposure.
+//
+// Used from ecosystem.mdx (content-collection MDX <script> tags are rendered as
+// raw markdown, not bundled — so the import must live in a real .astro component).
+// It renders the diagrams produced by the rehypeMermaidPre plugin
+// (<pre class="mermaid">) elsewhere on the page.
+---
+
+<script>
+  import mermaid from 'mermaid';
+  mermaid.initialize({ startOnLoad: true });
+</script>
