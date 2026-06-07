@@ -220,25 +220,28 @@ Expected: 각 기준선과 동일 통과(개명 전이므로 이름 변화 없�
 Run: `cd "C:/Users/Eisen/Desktop/Labs/_bmono/khala" && git mv nexus/khala nexus/nexus`
 Expected: `nexus/nexus/` 존재(`__init__.py` 등). (실 하위경로는 `ls nexus`로 확인 후 조정.)
 
-- [ ] **Step 2: 코드+설정 전체 치환 (마크다운 제외)**
+- [ ] **Step 2: 전체 트리 일괄 치환 (md 포함)**
 
-⚠️ **리뷰 반영:** 좁은 glob(py/toml만)은 `docker-compose*.yml`의 `POSTGRES_USER/PASSWORD/DB: khala`·`DATABASE_URL`·healthcheck, `init.sql`, `.env.example`, `Dockerfile`, `khala/web/*.js`·`*.html`를 놓쳐 **부분개명=깨진 상태**가 되고 단위테스트는 못 잡는다(통합테스트=Docker=owner). → **마크다운 외 모든 텍스트 파일을 일괄 치환**(코드+config 정합 유지).
+⚠️ **리뷰 반영(2차):** md를 제외하면 컴포넌트 의미 md(`docs/MCP_SERVER.md`·`docs/khala-mvp-design.md`·`docs/SLACK_BOT.md` 등 다수)가 미개명으로 남는다. → **md 포함 전체 텍스트 일괄 치환** 후, 생태계 의미 문자열(아래 Step 3)만 **복원**. 이렇게 해야 컴포넌트 일관(코드·compose·DB·web·문서) + 생태계 보존을 동시에 달성.
 
 Run(검토 후):
 ```bash
 cd "C:/Users/Eisen/Desktop/Labs/_bmono/khala/nexus"
-grep -rIl 'khala\|Khala\|KHALA' . --exclude-dir=.git --exclude='*.md' | while read f; do sed -i 's/khala/nexus/g; s/Khala/Nexus/g; s/KHALA/NEXUS/g' "$f"; done
+grep -rIl 'khala\|Khala\|KHALA' . --exclude-dir=.git | while read f; do sed -i 's/khala/nexus/g; s/Khala/Nexus/g; s/KHALA/NEXUS/g' "$f"; done
 ```
-이렇게 하면 DB 자격(POSTGRES_*·DATABASE_URL), web 자산, Dockerfile, init.sql까지 nexus로 정합. `archon_*`는 "khala" 문자열 없음 → 불변. 수동 확인: pyproject `name="nexus"`·`[project.scripts] nexus="nexus.cli:app"`, MCP 도구 `nexus_search/answer/graph/suggest/diff/status`, compose DB=nexus.
+DB 자격(POSTGRES_*·DATABASE_URL)·web 자산·Dockerfile·init.sql·docs까지 nexus 정합. `archon_*`는 "khala" 문자열 없음 → 불변. 수동 확인: pyproject `name="nexus"`·CLI `nexus.cli:app`, MCP `nexus_search/answer/graph/suggest/diff/status`, compose DB=nexus.
 
-- [ ] **Step 3: 마크다운 sense-aware 수정 (수동 — 생태계 의미·URL 보존)**
+- [ ] **Step 3: 생태계 문자열 복원 (URL·생태계명 → khala 되돌림)**
 
-⚠️ **리뷰 반영:** nexus의 `README.md`·`ROADMAP.md`·`CLAUDE.md`에는 *생태계 의미* "Khala"와 *생태계 repo URL*이 섞여 있어 blanket-sed하면 오염된다. **수동 규칙:**
-- `github.com/LivingLikeKrillin/khala`(생태계 repo URL) → **유지**(B 후 이 URL = 새 모노레포 `khala`를 가리킴). nexus README의 clone 안내는 "모노레포 clone 후 `cd nexus`"로 문구 갱신.
-- "Khala Ecosystem"/생태계 제품명 "Khala" → **유지**.
-- *컴포넌트* 의미 khala(패키지·CLI·DB·env 설명) → `nexus`로(코드와 정합).
-- CLAUDE.md의 env/DB 자격 예시 → `nexus`(compose와 일치).
-검토: `grep -n 'khala\|Khala' README.md ROADMAP.md CLAUDE.md` 후 위 규칙으로 각 라인 판정·수정.
+Step 2가 생태계 repo URL과 생태계명까지 nexus로 바꿨으므로 **알려진 생태계 문자열만 복원:**
+```bash
+cd "C:/Users/Eisen/Desktop/Labs/_bmono/khala/nexus"
+# 생태계 repo URL (B 후 새 모노레포 khala를 가리킴)
+grep -rIl 'LivingLikeKrillin/nexus' . --exclude-dir=.git | xargs -r sed -i 's#LivingLikeKrillin/nexus#LivingLikeKrillin/khala#g'
+# 생태계 제품명
+grep -rIl 'Nexus Ecosystem\|Nexus 에코시스템\|Nexus 생태계' . --exclude-dir=.git | xargs -r sed -i 's/Nexus Ecosystem/Khala Ecosystem/g; s/Nexus 에코시스템/Khala 에코시스템/g; s/Nexus 생태계/Khala 생태계/g'
+```
+그 후 `README.md`·`ROADMAP.md`·`CLAUDE.md`를 **육안 1회**: 컴포넌트 의미(패키지·CLI·DB·env)는 nexus 유지, 생태계 의미("Khala 생태계"·생태계 URL)는 khala 복원됐는지 확인. (nexus/ROADMAP.md는 컴포넌트 스코프 문서로 취급 — 생태계 진실원천은 루트 README+docs 사이트.) 잔여 판정은 Task 13 allow-list로.
 
 - [ ] **Step 4: 테스트**
 
@@ -268,13 +271,18 @@ Run: `cd "C:/Users/Eisen/Desktop/Labs/_bmono/khala" && git mv probe/src/khala pr
 Run(검토 후):
 ```bash
 cd "C:/Users/Eisen/Desktop/Labs/_bmono/khala/probe"
-grep -rIl 'khala\|Khala\|KHALA\|칼라' . --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude='*.md' | while read f; do sed -i 's/khala/nexus/g; s/Khala/Nexus/g; s/KHALA/NEXUS/g; s/칼라/Nexus/g' "$f"; done
+grep -rIl 'khala\|Khala\|KHALA\|칼라' . --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist | while read f; do sed -i 's/khala/nexus/g; s/Khala/Nexus/g; s/KHALA/NEXUS/g; s/칼라/Nexus/g' "$f"; done
 ```
-결과(수동 확인): CLI `nexus:search/impact/status`, env `NEXUS_BASE_URL`, config `nexus.baseUrl`, import `../nexus/...`, **MCP 도구 `probe.queryKhala`→`probe.queryNexus`**(공개 surface — 의도적, CHANGELOG 기재). 테스트 파일의 import·식별자도 함께 치환됨.
+src+tests+md(`docs/probe-v0.4-scope.md` 등 컴포넌트 의미) 전부 치환. 결과(수동 확인): CLI `nexus:search/impact/status`, env `NEXUS_BASE_URL`, config `nexus.baseUrl`, import `../nexus/...`, **MCP 도구 `probe.queryKhala`→`probe.queryNexus`**(공개 surface — 의도적, CHANGELOG 기재).
 
-- [ ] **Step 3: 마크다운 sense-aware (README·CLAUDE.md — URL/생태계 보존)**
+- [ ] **Step 3: 생태계 문자열 복원 (URL → khala)**
 
-⚠️ `probe/README.md:406`·`probe/CLAUDE.md:36`의 `github.com/LivingLikeKrillin/khala/blob/master/ROADMAP.md`는 **생태계 repo URL → 유지**(B 후 새 모노레포 khala를 가리킴). 그 외 *컴포넌트/연결대상* khala·칼라 → `nexus`. `grep -n 'khala\|칼라\|Khala' README.md CLAUDE.md` 후 라인별 판정·수정.
+```bash
+cd "C:/Users/Eisen/Desktop/Labs/_bmono/khala/probe"
+grep -rIl 'LivingLikeKrillin/nexus' . --exclude-dir=.git --exclude-dir=node_modules | xargs -r sed -i 's#LivingLikeKrillin/nexus#LivingLikeKrillin/khala#g'
+grep -rIl 'Nexus Ecosystem\|Nexus 에코시스템\|Nexus 생태계' . --exclude-dir=.git --exclude-dir=node_modules | xargs -r sed -i 's/Nexus Ecosystem/Khala Ecosystem/g; s/Nexus 에코시스템/Khala 에코시스템/g; s/Nexus 생태계/Khala 생태계/g'
+```
+`README.md`·`CLAUDE.md`의 생태계 ROADMAP URL이 khala로 복원됐는지 육안 확인.
 
 - [ ] **Step 4: 테스트**
 
@@ -329,9 +337,11 @@ BREAKING: public sink class names + config key renamed"
 
 `tools/archon.md`(+ko): `khala/claims`→`nexus/claims`, 브랜치/패키지 경로의 khala→nexus. **생태계 "Khala" 언급은 유지.** `archon_*` 도구명 유지.
 
-- [ ] **Step 3: probe/start 경로 갱신 (EN+ko 해당분)**
+- [ ] **Step 3: probe/specledger/start 경로 갱신 (EN+ko 해당분)**
 
-`tools/probe.md`·`start.md`의 설치/prereq khala 경로·`khala:*` CLI·`KHALA_BASE_URL`→nexus 대응.
+- `tools/probe.md`(+ko): 설치/prereq khala 경로·`khala:*` CLI·`KHALA_BASE_URL`→nexus 대응.
+- `tools/specledger.md`(+ko): publish **config 블록 `khala:`→`nexus:`**, `url: …/ingest` 설명, `"khala not configured"`→`"nexus not configured"`(코드 Task 11과 정합). "Khala/Nexus" prose는 생태계/컴포넌트 의미에 맞게.
+- `start.md`(+ko 있으면): prereq의 khala 경로·env 대응.
 
 - [ ] **Step 4: 빌드·링크·생태계명 보존 검증**
 
@@ -356,14 +366,17 @@ git add -A && git commit -m "docs: rename Nexus component refs khala→nexus; ke
 - [ ] **Step 1: 잔여 khala 감사 (전 파일형식 — 좁은 glob 사각 제거)**
 
 ⚠️ **리뷰 반영:** 좁은 glob(py/ts/toml/json)은 yml/sql/Dockerfile/env/js/html/md를 못 봐 Step9·10의 사각과 동일 blind spot. 전 텍스트 파일 감사:
+**허용 잔여(allow-list) — 이것만 남아야 정상:** ① 생태계 repo URL `github.com/LivingLikeKrillin/khala`, ② 생태계명 `Khala Ecosystem`/`Khala 에코시스템`/`Khala 생태계`, ③ docs 사이트 생태계 페이지(`index.mdx`·`philosophy.md`·`ecosystem.mdx`·`contributing.md` 및 ko)의 생태계 "Khala". **그 외 모든 khala = 컴포넌트 잔여 = 치환 대상.**
+
 ```bash
 cd "C:/Users/Eisen/Desktop/Labs/_bmono/khala"
-echo "=== CODE residual (target 0; archon_* 제외) ==="
-grep -rIni 'khala' nexus probe specledger mutqa --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist | grep -vi 'archon' | grep -viE 'github\.com/LivingLikeKrillin/khala' | head -40
-echo "=== DOCS residual (생태계 'Khala'는 정상; *컴포넌트/경로* khala만 0이어야) ==="
-grep -rIni 'khala' docs/src --exclude-dir=node_modules | grep -viE 'github\.com/LivingLikeKrillin/khala' | head -40
+ALLOW='archon|github\.com/LivingLikeKrillin/khala|Khala Ecosystem|Khala 에코시스템|Khala 생태계'
+echo "=== CODE residual (target: EMPTY) ==="
+grep -rIni 'khala' nexus probe specledger mutqa --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist | grep -viE "$ALLOW" | head -40
+echo "=== DOCS residual (생태계 4페이지 외 컴포넌트 khala = target EMPTY) ==="
+grep -rIni 'khala' docs/src --exclude-dir=node_modules | grep -viE "$ALLOW" | grep -viE 'docs/(ko/)?(index|philosophy|ecosystem|contributing)' | head -40
 ```
-Expected: CODE = 0에 수렴(남으면 의미 확인 — 생태계 URL/제품명이면 유지, 컴포넌트면 치환). DOCS = 랜딩·철학의 생태계 "Khala"만 남고 도구 페이지의 *컴포넌트/설치경로* khala는 0. 보고. *기억: 단위테스트는 compose/init.sql/web 자산을 검증 안 하므로, 이 감사 + owner Docker 실행이 그 부분의 실질 안전망.*
+Expected: 두 블록 **모두 빈 출력**. 비면 개명 완전. 남으면 그 줄을 위 규칙으로 판정(컴포넌트면 치환·재실행). *기억: 단위테스트는 compose/init.sql/web 자산을 검증 안 하므로, 이 감사 + owner Docker 실행이 그 부분의 실질 안전망.*
 
 - [ ] **Step 2: 전 하위 테스트 재확인** — Task 7 Step 2와 동일하게 5개 재실행, 전부 green.
 
@@ -466,10 +479,10 @@ Expected: 기존 통과 유지(불일치 다수면 .prettierrc를 probe 기존 �
 Run:
 ```bash
 cd "C:/Users/Eisen/Desktop/Labs/_bmono/khala"
-python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/ci.yml')); yaml.safe_load(open('Taskfile.yml')); print('YAML OK')"
+python -c "import yaml" 2>/dev/null && python -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml')); yaml.safe_load(open('Taskfile.yml')); print('YAML OK')" || echo "(PyYAML 미설치 — pip install pyyaml 후 재시도 또는 owner 검증)"
 command -v task >/dev/null && task --list || echo "(task CLI 미설치 — Taskfile YAML 유효성만 확인)"
 ```
-Expected: `YAML OK`. (Taskfile/CI는 *형식 유효*만 검증 — 실제 CI 실행은 push 후 owner=사용자.)
+Expected: `YAML OK`(PyYAML 있을 때). 없으면 graceful 메시지 — 차단 아님, 보고. (Taskfile/CI는 *형식 유효*만 검증 — 실제 CI 실행은 push 후 owner=사용자.)
 
 - [ ] **Step 4: 커밋** — `git add Taskfile.yml .github && git commit -m "chore: root Taskfile + CI workflow (configured, activates on push)"`
 
