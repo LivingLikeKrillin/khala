@@ -14,5 +14,8 @@
 
 <script>
   import mermaid from 'mermaid';
-  mermaid.initialize({ startOnLoad: true });
+  mermaid.initialize({ startOnLoad: false });
+  const render = () => mermaid.run({ querySelector: '.mermaid' });
+  render();
+  document.addEventListener('astro:after-swap', render);
 </script>

@@ -22,8 +22,8 @@ function rehypeMermaidPre() {
       const className = code.properties?.className;
       const classes = Array.isArray(className) ? className : className ? [className] : [];
       if (!classes.includes('language-mermaid')) return;
-      const value = code.children
-        ?.filter((child) => child.type === 'text')
+      const value = (code.children ?? [])
+        .filter((child) => child.type === 'text')
         .map((child) => child.value)
         .join('');
       node.properties = { className: ['mermaid'] };
