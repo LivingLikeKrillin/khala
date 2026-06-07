@@ -1,7 +1,7 @@
 """CRM 모델 테스트 — rid 생성, canonicalize, 접근 통제, base_filter."""
 
-from khala.models.resource import KhalaResource, is_accessible, CLASSIFICATION_LEVELS
-from khala.rid import (
+from nexus.models.resource import NexusResource, is_accessible, CLASSIFICATION_LEVELS
+from nexus.rid import (
     make_rid, doc_rid, chunk_rid, entity_rid, edge_rid,
     observed_edge_rid, evidence_rid, canonicalize_entity_name,
 )
@@ -71,7 +71,7 @@ class TestCanonicalizeEntityName:
 
 
 class TestAccessControl:
-    def _make_resource(self, **kwargs) -> KhalaResource:
+    def _make_resource(self, **kwargs) -> NexusResource:
         defaults = {
             "rid": "test_rid",
             "rtype": "document",
@@ -79,7 +79,7 @@ class TestAccessControl:
             "classification": "INTERNAL",
         }
         defaults.update(kwargs)
-        return KhalaResource(**defaults)
+        return NexusResource(**defaults)
 
     def test_accessible(self):
         r = self._make_resource()

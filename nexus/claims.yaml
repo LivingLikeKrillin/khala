@@ -1,5 +1,5 @@
 # Archon 도메인 claim 시드 (pfplay 실제 코드 상수)
-# `khala claim-seed claims.yaml` — config.code_source.repo_path를 pfplay-platform으로 설정 후.
+# `nexus claim-seed claims.yaml` — config.code_source.repo_path를 pfplay-platform으로 설정 후.
 # value_source는 pfplay 코드의 static final 상수. 조회 시점에 현재값을 재읽기.
 - claim_id: associate-member-max-playlists
   kind: invariant

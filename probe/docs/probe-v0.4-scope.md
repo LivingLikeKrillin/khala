@@ -1,13 +1,13 @@
 # Probe v0.4 — 범위 정의
 
-> **핵심 가치**: PR 리뷰 시 "왜 이렇게 만들어야 하는지"의 근거를 칼라(Khala)에서 자동으로 가져온다.
-> **v0.3과의 관계**: v0.3은 Probe를 Claude Code의 도구로 노출했다. v0.4는 그 도구가 칼라의 지식을 활용해서 맥락 있는 판단을 내리게 한다.
+> **핵심 가치**: PR 리뷰 시 "왜 이렇게 만들어야 하는지"의 근거를 Nexus에서 자동으로 가져온다.
+> **v0.3과의 관계**: v0.3은 Probe를 Claude Code의 도구로 노출했다. v0.4는 그 도구가 Nexus의 지식을 활용해서 맥락 있는 판단을 내리게 한다.
 
 ---
 
 ## 0. v0.4가 하는 일 — 한 문장
 
-**PR 변경에 관련된 규정·아키텍처 문서·서비스 의존 관계를 칼라에서 조회하여, 근거 기반의 맥락 있는 리뷰를 수행한다.**
+**PR 변경에 관련된 규정·아키텍처 문서·서비스 의존 관계를 Nexus에서 조회하여, 근거 기반의 맥락 있는 리뷰를 수행한다.**
 
 ---
 
@@ -29,14 +29,14 @@ v0.1~v0.3의 Probe는 **코드 구조만 본다**. 변경된 파일의 역할, �
   - 설계 문서에는 A→B 호출이 있는데, 실제 트레이스에는 없다 — 이 PR이 그걸 구현하는 건가?
 ```
 
-### 칼라(Khala)가 제공하는 것
+### Nexus가 제공하는 것
 
-칼라는 **Enterprise RAG + GraphRAG 시스템**이다. 두 종류의 지식을 보유한다:
+Nexus는 **Enterprise RAG + GraphRAG 시스템**이다. 두 종류의 지식을 보유한다:
 
 1. **설계 지식** (Designed) — 규정 문서, 아키텍처 문서, API 계약서 (Git → 인덱싱)
 2. **관측 지식** (Observed) — OTel 트레이스로 관측된 실제 서비스 호출 패턴
 
-| 칼라 API | Probe에서의 활용 |
+| Nexus API | Probe에서의 활용 |
 |----------|-----------------|
 | `POST /search` | 변경 관련 규정/문서 검색 → 리뷰 근거 첨부 |
 | `POST /search/answer` | 변경에 대한 근거 기반 답변 생성 |
@@ -79,7 +79,7 @@ Probe: 범위 OK, API 린트 통과, 체크리스트 5개 항목
 │   │ Probe MCP 서버 (v0.3)                      │     │
 │   │                                           │     │
 │   │   ┌─────────────┐   ┌──────────────────┐  │     │
-│   │   │ 코어 엔진    │   │ Khala 클라이언트   │  │     │
+│   │   │ 코어 엔진    │   │ Nexus 클라이언트   │  │     │
 │   │   │ (v0.1~v0.2) │   │ (v0.4 신규)      │  │     │
 │   │   └─────────────┘   └────────┬─────────┘  │     │
 │   │                              │             │     │
@@ -88,7 +88,7 @@ Probe: 범위 OK, API 린트 통과, 체크리스트 5개 항목
 └──────────────────────────────────┼───────────────────┘
                                    ↓
                     ┌──────────────────────────┐
-                    │ Khala API 서버             │
+                    │ Nexus API 서버             │
                     │ (FastAPI, PostgreSQL,     │
                     │  pgvector, mecab-ko)      │
                     └──────────────────────────┘
@@ -98,13 +98,13 @@ Probe: 범위 OK, API 린트 통과, 체크리스트 5개 항목
 
 ```
 src/
-├── khala/                         ← v0.4 신규 — 칼라 연동 레이어
+├── nexus/                         ← v0.4 신규 — Nexus 연동 레이어
 │   ├── client.ts                  ← HTTP 클라이언트 (fetch 기반)
-│   ├── types.ts                   ← 칼라 응답 타입 정의
+│   ├── types.ts                   ← Nexus 응답 타입 정의
 │   ├── context-enricher.ts        ← 리뷰 컨텍스트 보강 오케스트레이터
 │   └── impact-analyzer.ts         ← 서비스 영향 분석
 ├── core/
-│   └── review-checklist.ts        ← 수정: 칼라 컨텍스트 반영
+│   └── review-checklist.ts        ← 수정: Nexus 컨텍스트 반영
 ├── mcp/
 │   └── tools.ts                   ← 수정: enriched 결과 반환
 └── ...
@@ -112,30 +112,30 @@ src/
 
 ### 2.3 설계 원칙
 
-1. **칼라는 선택적이다** — 칼라가 없어도 v0.1~v0.3 기능은 그대로 동작한다. 칼라가 있으면 결과가 풍부해진다.
-2. **칼라 장애 시 graceful degradation** — 타임아웃 3초, 실패 시 기존 결과만 반환. 에러를 삼키되, 로그는 남긴다.
-3. **칼라는 읽기 전용** — Probe는 칼라에 데이터를 쓰지 않는다. 검색과 조회만 한다.
+1. **Nexus는 선택적이다** — Nexus가 없어도 v0.1~v0.3 기능은 그대로 동작한다. Nexus가 있으면 결과가 풍부해진다.
+2. **Nexus 장애 시 graceful degradation** — 타임아웃 3초, 실패 시 기존 결과만 반환. 에러를 삼키되, 로그는 남긴다.
+3. **Nexus는 읽기 전용** — Probe는 Nexus에 데이터를 쓰지 않는다. 검색과 조회만 한다.
 4. **응답 캐싱 없음** (v0.4) — 단순하게 시작한다. 성능이 문제가 되면 v0.5+에서 캐싱을 추가한다.
 
 ---
 
-## 3. 칼라 클라이언트
+## 3. Nexus 클라이언트
 
-### 3.1 `KhalaClient`
+### 3.1 `NexusClient`
 
-칼라 API를 호출하는 HTTP 클라이언트. Node.js 내장 `fetch`를 사용한다.
+Nexus API를 호출하는 HTTP 클라이언트. Node.js 내장 `fetch`를 사용한다.
 
 ```typescript
-// src/khala/client.ts
+// src/nexus/client.ts
 
-interface KhalaClientConfig {
+interface NexusClientConfig {
   baseUrl: string;        // 기본: http://localhost:8000
   timeoutMs: number;      // 기본: 3000
   tenant: string;         // 기본: "default"
   classificationMax: string; // 기본: "INTERNAL"
 }
 
-class KhalaClient {
+class NexusClient {
   /**
    * 하이브리드 검색 (BM25 + Vector + Graph + RRF)
    */
@@ -143,31 +143,31 @@ class KhalaClient {
     topK?: number;
     includeGraph?: boolean;
     includeEvidence?: boolean;
-  }): Promise<KhalaSearchResult>
+  }): Promise<NexusSearchResult>
 
   /**
    * 검색 + LLM 근거 기반 답변
    */
   async searchAnswer(query: string, options?: {
     topK?: number;
-  }): Promise<KhalaAnswerResult>
+  }): Promise<NexusAnswerResult>
 
   /**
    * 엔티티 그래프 조회 (1~2홉 이웃)
    */
   async getGraph(entityRid: string, options?: {
     hops?: number;
-  }): Promise<KhalaGraphResult>
+  }): Promise<NexusGraphResult>
 
   /**
    * 설계-관측 diff 보고서
    */
   async getDiff(options?: {
     flagFilter?: string;
-  }): Promise<KhalaDiffResult>
+  }): Promise<NexusDiffResult>
 
   /**
-   * 칼라 서버 상태 확인
+   * Nexus 서버 상태 확인
    */
   async isAvailable(): Promise<boolean>
 }
@@ -176,8 +176,8 @@ class KhalaClient {
 ### 3.2 에러 처리
 
 ```typescript
-// 모든 칼라 호출은 이 패턴을 따른다
-async function withKhalaFallback<T>(
+// 모든 Nexus 호출은 이 패턴을 따른다
+async function withNexusFallback<T>(
   fn: () => Promise<T>,
   fallback: T,
   context: string,
@@ -185,13 +185,13 @@ async function withKhalaFallback<T>(
   try {
     return await fn();
   } catch (error) {
-    logger.debug(`칼라 조회 실패 (${context}): ${error} — 기본값으로 진행`);
+    logger.debug(`Nexus 조회 실패 (${context}): ${error} — 기본값으로 진행`);
     return fallback;
   }
 }
 ```
 
-타임아웃(3초), 네트워크 에러, 5xx 응답 모두 동일하게 fallback으로 처리한다. 칼라가 없으면 기존 결과만 반환.
+타임아웃(3초), 네트워크 에러, 5xx 응답 모두 동일하게 fallback으로 처리한다. Nexus가 없으면 기존 결과만 반환.
 
 ---
 
@@ -199,10 +199,10 @@ async function withKhalaFallback<T>(
 
 ### 4.1 `ContextEnricher`
 
-PR 분석 결과에 칼라의 맥락을 추가하는 오케스트레이터.
+PR 분석 결과에 Nexus의 맥락을 추가하는 오케스트레이터.
 
 ```typescript
-// src/khala/context-enricher.ts
+// src/nexus/context-enricher.ts
 
 interface EnrichmentResult {
   /** 관련 규정/문서 스니펫 */
@@ -211,8 +211,8 @@ interface EnrichmentResult {
   impactedServices: ImpactedService[];
   /** 설계-관측 불일치 */
   designObservationGaps: DesignGap[];
-  /** 칼라 가용 여부 */
-  khalaAvailable: boolean;
+  /** Nexus 가용 여부 */
+  nexusAvailable: boolean;
 }
 
 interface RelevantDoc {
@@ -258,7 +258,7 @@ PR 변경 파일 분석 완료 (v0.1~v0.3)
      - 파일 경로에서 서비스/도메인명 추출
      - 예: src/main/kotlin/service/PaymentService.kt → "payment-service"
        ↓
-  ② 병렬 칼라 조회 (3개 동시)
+  ② 병렬 Nexus 조회 (3개 동시)
      ├─ search: "payment-service API 계약 규정" → 관련 문서
      ├─ graph: entity_rid("payment-service") → 의존 서비스
      └─ diff: flag_filter=null → 설계-관측 갭
@@ -278,7 +278,7 @@ PR 변경 파일 분석 완료 (v0.1~v0.3)
 ```typescript
 /**
  * 변경 파일 목록에서 서비스/도메인 키워드를 추출한다.
- * 이 키워드로 칼라에 검색 쿼리를 만든다.
+ * 이 키워드로 Nexus에 검색 쿼리를 만든다.
  */
 function extractServiceNames(
   files: string[],
@@ -296,10 +296,10 @@ function extractServiceNames(
 
 ### 5.1 `ImpactAnalyzer`
 
-변경된 서비스의 upstream/downstream을 칼라 그래프에서 조회하고, 영향 범위를 판단한다.
+변경된 서비스의 upstream/downstream을 Nexus 그래프에서 조회하고, 영향 범위를 판단한다.
 
 ```typescript
-// src/khala/impact-analyzer.ts
+// src/nexus/impact-analyzer.ts
 
 interface ImpactAnalysis {
   /** 변경된 서비스 */
@@ -330,12 +330,12 @@ interface ImpactAnalysis {
 
 ### 6.1 리뷰 체크리스트 확장
 
-`generateReviewChecklist()`의 결과에 칼라 컨텍스트를 추가한다.
+`generateReviewChecklist()`의 결과에 Nexus 컨텍스트를 추가한다.
 
 ```typescript
 // 기존 ReviewChecklist에 추가되는 필드
 interface EnrichedReviewChecklist extends ReviewChecklist {
-  /** 칼라에서 가져온 관련 규정 */
+  /** Nexus에서 가져온 관련 규정 */
   relevantDocs?: RelevantDoc[];
   /** 영향 분석 결과 */
   impact?: ImpactAnalysis;
@@ -353,9 +353,9 @@ interface EnrichedReviewChecklist extends ReviewChecklist {
 ```typescript
 // 기존 입력에 추가
 {
-  enrichWithKhala: {
+  enrichWithNexus: {
     type: "boolean",
-    description: "칼라에서 맥락을 보강할지 여부 (기본: true, 칼라 사용 가능 시)",
+    description: "Nexus에서 맥락을 보강할지 여부 (기본: true, Nexus 사용 가능 시)",
     default: true,
   }
 }
@@ -363,11 +363,11 @@ interface EnrichedReviewChecklist extends ReviewChecklist {
 // 반환에 추가
 {
   // 기존 필드...
-  khalaEnrichment: {
+  nexusEnrichment: {
     relevantDocs: [...],
     impact: {...},
     designGaps: [...],
-    khalaAvailable: true,
+    nexusAvailable: true,
   }
 }
 ```
@@ -378,23 +378,23 @@ interface EnrichedReviewChecklist extends ReviewChecklist {
 // 반환에 추가
 {
   // 기존 필드...
-  khalaEnrichment: {
+  nexusEnrichment: {
     impactedServices: [...],
-    khalaAvailable: true,
+    nexusAvailable: true,
   }
 }
 ```
 
 ### 6.3 MCP 도구 신규 (1개)
 
-#### `probe.queryKhala`
+#### `probe.queryNexus`
 
-칼라에 직접 자연어 질의를 보내는 범용 도구.
+Nexus에 직접 자연어 질의를 보내는 범용 도구.
 
 ```typescript
 {
-  name: "probe.queryKhala",
-  description: "칼라 지식베이스에 자연어로 질의한다. 규정, 아키텍처, 서비스 관계를 검색한다.",
+  name: "probe.queryNexus",
+  description: "Nexus 지식베이스에 자연어로 질의한다. 규정, 아키텍처, 서비스 관계를 검색한다.",
   inputSchema: {
     type: "object",
     properties: {
@@ -422,13 +422,13 @@ interface EnrichedReviewChecklist extends ReviewChecklist {
 
 #### `probe.prReview` 확장
 
-기존 프롬프트의 분석 결과에 칼라 컨텍스트를 포함한다:
+기존 프롬프트의 분석 결과에 Nexus 컨텍스트를 포함한다:
 
 ```
 ## Probe 분석 결과
 {기존 scope + checklist}
 
-## 칼라 맥락 (Khala Context)
+## Nexus 맥락 (Nexus Context)
 
 ### 관련 규정
 - 규정 ② 2.3.1: "nullable 필드는 스펙에 명시" (출처: api-contract-guidelines.md > 2.3)
@@ -445,10 +445,10 @@ interface EnrichedReviewChecklist extends ReviewChecklist {
 ### 6.5 CLI 확장
 
 ```
-probe check          기존 + 칼라 컨텍스트 (가용 시)
-probe khala:search   칼라 직접 검색
-probe khala:impact   영향 분석
-probe khala:status   칼라 연결 상태 확인
+probe check          기존 + Nexus 컨텍스트 (가용 시)
+probe nexus:search   Nexus 직접 검색
+probe nexus:impact   영향 분석
+probe nexus:status   Nexus 연결 상태 확인
 ```
 
 ---
@@ -461,9 +461,9 @@ probe khala:status   칼라 연결 상태 확인
 interface ProbeConfig {
   // 기존 설정...
 
-  /** 칼라 연동 설정 */
-  khala?: {
-    /** 칼라 API 서버 URL (기본: http://localhost:8000) */
+  /** Nexus 연동 설정 */
+  nexus?: {
+    /** Nexus API 서버 URL (기본: http://localhost:8000) */
     baseUrl?: string;
     /** 요청 타임아웃 (ms, 기본: 3000) */
     timeoutMs?: number;
@@ -471,7 +471,7 @@ interface ProbeConfig {
     tenant?: string;
     /** 최대 분류 등급 (기본: "INTERNAL") */
     classificationMax?: string;
-    /** 칼라 연동 비활성화 (기본: false) */
+    /** Nexus 연동 비활성화 (기본: false) */
     disabled?: boolean;
     /** 검색 결과 최대 건수 (기본: 5) */
     searchTopK?: number;
@@ -486,10 +486,10 @@ interface ProbeConfig {
 설정 파일 없이도 환경 변수로 연동할 수 있다:
 
 ```
-KHALA_BASE_URL=http://localhost:8000
-KHALA_TIMEOUT_MS=3000
-KHALA_TENANT=default
-KHALA_DISABLED=false
+NEXUS_BASE_URL=http://localhost:8000
+NEXUS_TIMEOUT_MS=3000
+NEXUS_TENANT=default
+NEXUS_DISABLED=false
 ```
 
 우선순위: `probe.config.ts` > 환경 변수 > 기본값
@@ -500,25 +500,25 @@ KHALA_DISABLED=false
 
 ### Phase 1: 기반
 
-1. `src/khala/types.ts` — 칼라 응답 타입 정의
-2. `src/khala/client.ts` — HTTP 클라이언트 + graceful degradation
-3. `src/core/config-loader.ts` — 칼라 설정 추가
-4. `tests/khala-client.test.ts` — 클라이언트 테스트 (모킹)
+1. `src/nexus/types.ts` — Nexus 응답 타입 정의
+2. `src/nexus/client.ts` — HTTP 클라이언트 + graceful degradation
+3. `src/core/config-loader.ts` — Nexus 설정 추가
+4. `tests/nexus-client.test.ts` — 클라이언트 테스트 (모킹)
 
 ### Phase 2: 컨텍스트 보강
 
-5. `src/khala/context-enricher.ts` — 보강 오케스트레이터
-6. `src/khala/impact-analyzer.ts` — 영향 분석
+5. `src/nexus/context-enricher.ts` — 보강 오케스트레이터
+6. `src/nexus/impact-analyzer.ts` — 영향 분석
 7. `tests/context-enricher.test.ts` — 보강 테스트
 8. `tests/impact-analyzer.test.ts` — 영향 분석 테스트
 
 ### Phase 3: 통합
 
-9. `src/mcp/tools.ts` — 기존 도구 확장 + `queryKhala` 신규
+9. `src/mcp/tools.ts` — 기존 도구 확장 + `queryNexus` 신규
 10. `src/mcp/prompts.ts` — prReview 프롬프트 확장
-11. `src/cli/index.ts` — CLI 확장 (`khala:*` 커맨드)
+11. `src/cli/index.ts` — CLI 확장 (`nexus:*` 커맨드)
 12. `src/index.ts` — 공개 API 확장
-13. `tests/mcp-khala.test.ts` — MCP 통합 테스트
+13. `tests/mcp-nexus.test.ts` — MCP 통합 테스트
 
 ### Phase 4: 마무리
 
@@ -532,20 +532,20 @@ KHALA_DISABLED=false
 
 | 제외 항목 | 이유 |
 |-----------|------|
-| 칼라에 데이터 쓰기 | Probe는 읽기 전용. 인덱싱은 칼라의 책임 |
+| Nexus에 데이터 쓰기 | Probe는 읽기 전용. 인덱싱은 Nexus의 책임 |
 | 응답 캐싱 | v0.4는 단순하게. 성능 문제 시 v0.5+ |
-| 칼라 인증/토큰 | v0.4는 내부 네트워크 가정. 외부 노출 시 v0.5+ |
-| 칼라 서버 관리 | 칼라의 docker-compose는 칼라 프로젝트에서 관리 |
-| OTel 직접 조회 | 칼라가 OTel을 추상화. Probe는 칼라만 호출 |
+| Nexus 인증/토큰 | v0.4는 내부 네트워크 가정. 외부 노출 시 v0.5+ |
+| Nexus 서버 관리 | Nexus의 docker-compose는 Nexus 프로젝트에서 관리 |
+| OTel 직접 조회 | Nexus가 OTel을 추상화. Probe는 Nexus만 호출 |
 | LLM 답변 생성 | `searchAnswer` 호출은 가능하지만, 기본 모드는 `search` (스니펫만) |
 
 ---
 
 ## 10. 성공 기준
 
-1. 칼라 서버가 실행 중일 때, `probe check`에 관련 규정과 영향 서비스가 표시된다
-2. 칼라 서버가 없을 때, 기존 v0.3 기능이 그대로 동작한다 (degradation)
-3. MCP 도구 `probe.reviewChecklist`가 칼라 컨텍스트를 포함한다
-4. MCP 도구 `probe.queryKhala`로 칼라에 직접 질의할 수 있다
-5. 타임아웃 3초 이내에 칼라 조회가 완료된다
-6. 모든 기존 테스트 통과 + 칼라 관련 신규 테스트 통과
+1. Nexus 서버가 실행 중일 때, `probe check`에 관련 규정과 영향 서비스가 표시된다
+2. Nexus 서버가 없을 때, 기존 v0.3 기능이 그대로 동작한다 (degradation)
+3. MCP 도구 `probe.reviewChecklist`가 Nexus 컨텍스트를 포함한다
+4. MCP 도구 `probe.queryNexus`로 Nexus에 직접 질의할 수 있다
+5. 타임아웃 3초 이내에 Nexus 조회가 완료된다
+6. 모든 기존 테스트 통과 + Nexus 관련 신규 테스트 통과

@@ -4,17 +4,17 @@
  * 규정 문서: docs/superpowers/specs/2026-06-06-troubleshooting-grounding-design.md §5, §6
  */
 
-import { KhalaClient } from '../khala/client.js';
-import { localizeError, inferKind } from '../khala/error-localizer.js';
-import { groundTroubleshooting } from '../khala/troubleshoot-grounder.js';
+import { NexusClient } from '../nexus/client.js';
+import { localizeError, inferKind } from '../nexus/error-localizer.js';
+import { groundTroubleshooting } from '../nexus/troubleshoot-grounder.js';
 import type {
   TroubleshootInput, GroundingPack,
-} from '../khala/types.js';
+} from '../nexus/types.js';
 
-// 티어 결정은 khala/tier로 이전됨 (순환 방지). back-compat re-export.
-import { determineTier } from '../khala/tier.js';
-export { determineTier } from '../khala/tier.js';
-export type { TierDecision } from '../khala/tier.js';
+// 티어 결정은 nexus/tier로 이전됨 (순환 방지). back-compat re-export.
+import { determineTier } from '../nexus/tier.js';
+export { determineTier } from '../nexus/tier.js';
+export type { TierDecision } from '../nexus/tier.js';
 
 const MAX_SIGNAL_LEN = 8_000;
 
@@ -27,7 +27,7 @@ export interface ValidatedInput {
 }
 
 /**
- * 입력을 검증한다 (Khala 호출 전).
+ * 입력을 검증한다 (Nexus 호출 전).
  */
 export function validateInput(input: TroubleshootInput): ValidatedInput {
   const caveats: string[] = [];
@@ -48,7 +48,7 @@ export function validateInput(input: TroubleshootInput): ValidatedInput {
  */
 export async function runTroubleshoot(
   input: TroubleshootInput,
-  client: KhalaClient,
+  client: NexusClient,
   changedServices?: { service: string; changedFiles: string[] }[],
 ): Promise<{ ok: false; reason: string } | { ok: true; pack: GroundingPack }> {
   const v = validateInput(input);

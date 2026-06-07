@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from khala.index.code_source import CodeValueResolver
+from nexus.index.code_source import CodeValueResolver
 
 FIX = Path(__file__).parent / "fixtures"
 

@@ -43,4 +43,4 @@ RUN echo "결제 서비스가 알림을 보낸다" | mecab || echo "mecab test s
 
 EXPOSE 8000
 
-CMD ["uvicorn", "khala.api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "nexus.api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

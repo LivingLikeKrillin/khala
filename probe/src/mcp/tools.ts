@@ -2,7 +2,7 @@
  * MCP 도구 핸들러
  *
  * Probe 코어 엔진을 MCP 도구로 노출한다.
- * 8개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform, queryKhala, groundTroubleshooting, groundReview
+ * 8개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform, queryNexus, groundTroubleshooting, groundReview
  *
  * 규정 문서: docs/probe-v0.3-scope.md § 3, docs/probe-v0.4-scope.md § 6
  */
@@ -10,15 +10,15 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { analyzeScope } from '../core/scope-analyzer.js';
-import { loadConfigAsync, applyConfigOverrides, resolveKhalaConfig } from '../core/config-loader.js';
+import { loadConfigAsync, applyConfigOverrides, resolveNexusConfig } from '../core/config-loader.js';
 import { detectPlatform, getProfileForPlatform } from '../profiles/detector.js';
 import { generateReviewChecklist } from '../core/review-checklist.js';
 import { lintSpec } from '../api/spec-linter.js';
 import { diffSpecs } from '../api/spec-differ.js';
 import { parseOpenApiSpec, parseOpenApiSpecFromString } from '../api/openapi-parser.js';
 import { getChangedFiles, getDiffLines, getBaseFileContent } from '../utils/git.js';
-import { enrichWithKhala } from '../khala/context-enricher.js';
-import { KhalaClient } from '../khala/client.js';
+import { enrichWithNexus } from '../nexus/context-enricher.js';
+import { NexusClient } from '../nexus/client.js';
 import { runTroubleshoot } from '../core/troubleshoot.js';
 import { runReviewGround, buildChangedEntities } from '../core/review-ground.js';
 import { existsSync } from 'node:fs';
@@ -71,18 +71,18 @@ export function registerTools(server: McpServer): void {
       const diffLines = getDiffLines(baseRef);
       const result = analyzeScope(filteredFiles, profile, diffLines);
 
-      // v0.4: 칼라 컨텍스트 보강
-      const khalaConfig = resolveKhalaConfig(config);
-      let khalaEnrichment = null;
-      if (!khalaConfig.disabled) {
-        khalaEnrichment = await enrichWithKhala(result.groups, filteredFiles, {
-          khalaConfig,
-          searchTopK: khalaConfig.searchTopK,
-          graphHops: khalaConfig.graphHops,
+      // v0.4: Nexus 컨텍스트 보강
+      const nexusConfig = resolveNexusConfig(config);
+      let nexusEnrichment = null;
+      if (!nexusConfig.disabled) {
+        nexusEnrichment = await enrichWithNexus(result.groups, filteredFiles, {
+          nexusConfig,
+          searchTopK: nexusConfig.searchTopK,
+          graphHops: nexusConfig.graphHops,
         });
       }
 
-      return { content: [{ type: 'text' as const, text: JSON.stringify({ ...result, khalaEnrichment }, null, 2) }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ ...result, nexusEnrichment }, null, 2) }] };
     },
   );
 
@@ -144,12 +144,12 @@ export function registerTools(server: McpServer): void {
   // ─── probe.reviewChecklist ───
   server.tool(
     'probe.reviewChecklist',
-    '변경 내용을 분석하여 PR 타입을 추론하고, 해당 타입의 리뷰 체크리스트를 생성한다. 칼라가 가용하면 관련 규정과 영향 분석을 포함한다.',
+    '변경 내용을 분석하여 PR 타입을 추론하고, 해당 타입의 리뷰 체크리스트를 생성한다. Nexus가 가용하면 관련 규정과 영향 분석을 포함한다.',
     {
       base: z.string().optional().describe('기준 브랜치 (기본: origin/main)'),
-      enrichWithKhala: z.boolean().optional().describe('칼라 맥락 보강 여부 (기본: true)'),
+      enrichWithNexus: z.boolean().optional().describe('Nexus 맥락 보강 여부 (기본: true)'),
     },
-    async ({ base, enrichWithKhala: shouldEnrich }) => {
+    async ({ base, enrichWithNexus: shouldEnrich }) => {
       const { profile, config } = await resolveProfile();
       if (!profile) {
         return { content: [{ type: 'text' as const, text: '플랫폼을 감지할 수 없습니다' }] };
@@ -174,18 +174,18 @@ export function registerTools(server: McpServer): void {
         customItems: config.review?.customItems,
       });
 
-      // v0.4: 칼라 컨텍스트 보강
-      const khalaConfig = resolveKhalaConfig(config);
-      let khalaEnrichment = null;
-      if ((shouldEnrich ?? true) && !khalaConfig.disabled) {
-        khalaEnrichment = await enrichWithKhala(scopeResult.groups, filteredFiles, {
-          khalaConfig,
-          searchTopK: khalaConfig.searchTopK,
-          graphHops: khalaConfig.graphHops,
+      // v0.4: Nexus 컨텍스트 보강
+      const nexusConfig = resolveNexusConfig(config);
+      let nexusEnrichment = null;
+      if ((shouldEnrich ?? true) && !nexusConfig.disabled) {
+        nexusEnrichment = await enrichWithNexus(scopeResult.groups, filteredFiles, {
+          nexusConfig,
+          searchTopK: nexusConfig.searchTopK,
+          graphHops: nexusConfig.graphHops,
         });
       }
 
-      return { content: [{ type: 'text' as const, text: JSON.stringify({ ...checklist, khalaEnrichment }, null, 2) }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ ...checklist, nexusEnrichment }, null, 2) }] };
     },
   );
 
@@ -206,10 +206,10 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── probe.queryKhala ───
+  // ─── probe.queryNexus ───
   server.tool(
-    'probe.queryKhala',
-    '칼라 지식베이스에 자연어로 질의한다. 규정, 아키텍처, 서비스 관계를 검색한다.',
+    'probe.queryNexus',
+    'Nexus 지식베이스에 자연어로 질의한다. 규정, 아키텍처, 서비스 관계를 검색한다.',
     {
       query: z.string().describe('검색 쿼리 (자연어, 한국어/영어)'),
       mode: z.enum(['search', 'answer', 'graph', 'diff']).optional().describe('검색 모드 (기본: search)'),
@@ -217,40 +217,40 @@ export function registerTools(server: McpServer): void {
     },
     async ({ query, mode, entityName }) => {
       const config = await loadConfigAsync();
-      const khalaConfig = resolveKhalaConfig(config);
+      const nexusConfig = resolveNexusConfig(config);
 
-      if (khalaConfig.disabled) {
-        return { content: [{ type: 'text' as const, text: '칼라 연동이 비활성화되어 있습니다 (Khala integration disabled)' }] };
+      if (nexusConfig.disabled) {
+        return { content: [{ type: 'text' as const, text: 'Nexus 연동이 비활성화되어 있습니다 (Nexus integration disabled)' }] };
       }
 
-      const client = new KhalaClient({
-        baseUrl: khalaConfig.baseUrl,
-        timeoutMs: khalaConfig.timeoutMs,
-        tenant: khalaConfig.tenant,
-        classificationMax: khalaConfig.classificationMax,
+      const client = new NexusClient({
+        baseUrl: nexusConfig.baseUrl,
+        timeoutMs: nexusConfig.timeoutMs,
+        tenant: nexusConfig.tenant,
+        classificationMax: nexusConfig.classificationMax,
       });
 
       const available = await client.isAvailable();
       if (!available) {
-        return { content: [{ type: 'text' as const, text: '칼라 서버에 연결할 수 없습니다 (Cannot connect to Khala server)' }] };
+        return { content: [{ type: 'text' as const, text: 'Nexus 서버에 연결할 수 없습니다 (Cannot connect to Nexus server)' }] };
       }
 
       const selectedMode = mode ?? 'search';
 
       switch (selectedMode) {
         case 'search': {
-          const result = await client.search(query, { topK: khalaConfig.searchTopK });
+          const result = await client.search(query, { topK: nexusConfig.searchTopK });
           return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
         }
         case 'answer': {
-          const result = await client.searchAnswer(query, { topK: khalaConfig.searchTopK });
+          const result = await client.searchAnswer(query, { topK: nexusConfig.searchTopK });
           return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
         }
         case 'graph': {
           if (!entityName) {
             return { content: [{ type: 'text' as const, text: '그래프 모드에는 entityName이 필요합니다' }] };
           }
-          const result = await client.getGraph(entityName, { hops: khalaConfig.graphHops });
+          const result = await client.getGraph(entityName, { hops: nexusConfig.graphHops });
           return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
         }
         case 'diff': {
@@ -275,8 +275,8 @@ export function registerTools(server: McpServer): void {
     },
     async ({ signal, kind, suspectServices, diffBase }) => {
       const config = await loadConfigAsync();
-      const khalaConfig = resolveKhalaConfig(config);
-      const client = new KhalaClient(khalaConfig);
+      const nexusConfig = resolveNexusConfig(config);
+      const client = new NexusClient(nexusConfig);
       const result = await runTroubleshoot({ signal, kind, suspectServices, diffBase }, client);
       const payload = result.ok ? result.pack : { error: result.reason };
       return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };
@@ -301,10 +301,10 @@ export function registerTools(server: McpServer): void {
       }
       const scope = analyzeScope(changedFiles, profile, getDiffLines(base));
       const entities = buildChangedEntities(scope.groups, changedFiles);
-      const khalaConfig = resolveKhalaConfig(config);
-      const client = new KhalaClient(khalaConfig);
+      const nexusConfig = resolveNexusConfig(config);
+      const client = new NexusClient(nexusConfig);
       const result = await runReviewGround(entities, client, {
-        searchTopK: khalaConfig.searchTopK, graphHops: khalaConfig.graphHops,
+        searchTopK: nexusConfig.searchTopK, graphHops: nexusConfig.graphHops,
       });
       const payload = result.ok ? result.pack : { error: result.reason };
       return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };

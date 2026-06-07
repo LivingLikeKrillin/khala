@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { buildChangedEntities, runReviewGround } from '../src/core/review-ground.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { NexusClient } from '../src/nexus/client.js';
 import type { DetectedGroup } from '../src/core/scope-analyzer.js';
 
 describe('buildChangedEntities', () => {
@@ -22,14 +22,14 @@ describe('runReviewGround', () => {
   afterEach(() => { globalThis.fetch = orig; });
 
   it('엔티티 0개면 ok:false', async () => {
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const r = await runReviewGround([], client);
     expect(r.ok).toBe(false);
   });
 
-  it('Khala 미가용이면 T0 + changedEntities만', async () => {
+  it('Nexus 미가용이면 T0 + changedEntities만', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('down')) as unknown as typeof globalThis.fetch;
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['a.ts'] }], client);
     expect(r.ok).toBe(true);
     if (r.ok) {

@@ -13,7 +13,7 @@ import {
 import type { ScopeAnalysisResult } from '../src/core/scope-analyzer.js';
 import type { ApiLintResult, ApiDiffResult } from '../src/api/types.js';
 import type { ReviewChecklist } from '../src/review/types.js';
-import type { GroundingPack, ReviewGroundingPack } from '../src/khala/types.js';
+import type { GroundingPack, ReviewGroundingPack } from '../src/nexus/types.js';
 
 // ─── 테스트 데이터 팩토리 ───
 

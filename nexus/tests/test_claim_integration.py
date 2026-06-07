@@ -12,11 +12,11 @@ import sys
 
 import pytest
 
-from khala.claims.repository import ClaimRepository
-from khala.models.claim import Claim
+from nexus.claims.repository import ClaimRepository
+from nexus.models.claim import Claim
 
-DB_URL = os.getenv("KHALA_TEST_DB_URL")
-pytestmark = pytest.mark.skipif(not DB_URL, reason="KHALA_TEST_DB_URL 필요 (통합 테스트)")
+DB_URL = os.getenv("NEXUS_TEST_DB_URL")
+pytestmark = pytest.mark.skipif(not DB_URL, reason="NEXUS_TEST_DB_URL 필요 (통합 테스트)")
 
 
 def _run(coro_fn):

@@ -1,6 +1,6 @@
-# Khala 2.0 — UI 연동 규격
+# Nexus 2.0 — UI 연동 규격
 
-> Web UI / Slack Bot / MCP 클라이언트가 Khala API를 사용할 때의 연동 규격.
+> Web UI / Slack Bot / MCP 클라이언트가 Nexus API를 사용할 때의 연동 규격.
 > 모든 인터페이스는 동일한 FastAPI 백엔드를 공유한다.
 
 ---
@@ -19,7 +19,7 @@
    SSE Stream    REST GET       REST GET
         │            │              │
 ┌───────┴────────────┴──────────────┴──────────┐
-│  Khala FastAPI Backend                       │
+│  Nexus FastAPI Backend                       │
 │  POST /search/answer/stream  (SSE)           │
 │  POST /search                (JSON)          │
 │  POST /search/answer         (JSON)          │
@@ -37,7 +37,7 @@
 
 ### 2.1 공통 응답 포맷
 
-모든 REST 엔드포인트는 `KhalaResponse`로 감싼다.
+모든 REST 엔드포인트는 `NexusResponse`로 감싼다.
 
 ```json
 {
@@ -236,7 +236,7 @@ GET /documents?tenant=default&offset=0&limit=20
     {
       "rid": "doc_f1e2d3c4b5a6",
       "title": "결제 서비스 설계 문서",
-      "source_uri": "git://khala-docs/docs/payment-design.md",
+      "source_uri": "git://nexus-docs/docs/payment-design.md",
       "source_version": "abc123",
       "classification": "INTERNAL",
       "doc_type": "design_doc",
@@ -387,7 +387,7 @@ tenant: "default"
 
 ```
 ┌──────────────────────────────────────────────────┐
-│ [상태 표시등]  Khala  [문서 수: 42]  [Diff: 3 ⚠️] │
+│ [상태 표시등]  Nexus  [문서 수: 42]  [Diff: 3 ⚠️] │
 ├──────────┬───────────────────────────────────────┤
 │          │                                       │
 │  사이드바  │         메인 영역                      │
@@ -399,7 +399,7 @@ tenant: "default"
 │ │      │ │  │  │       발행하는 토픽?         │   │  │
 │ │ 문서  │ │  │  └───────────────────────────┘   │  │
 │ │      │ │  │  ┌───────────────────────────┐   │  │
-│ │ Diff │ │  │  │ Khala: payment.completed  │   │  │
+│ │ Diff │ │  │  │ Nexus: payment.completed  │   │  │
 │ │      │ │  │  │ 토픽을 발행합니다. [1][2]   │   │  │
 │ └──────┘ │  │  └───────────────────────────┘   │  │
 │          │  └─────────────────────────────────┘  │
@@ -445,7 +445,7 @@ tenant: "default"
 allow_origins=["*"]
 
 # 운영 배포 시
-allow_origins=["https://khala.internal.company.com"]
+allow_origins=["https://nexus.internal.company.com"]
 ```
 
 ---
@@ -455,9 +455,9 @@ allow_origins=["https://khala.internal.company.com"]
 Slack Bot은 `/search/answer` 엔드포인트를 호출한다 (비스트리밍).
 
 ```
-사용자 → Slack: @khala 결제 서비스 장애 원인?
+사용자 → Slack: @nexus 결제 서비스 장애 원인?
 Slack Bot → POST /search/answer { "query": "결제 서비스 장애 원인?" }
-Slack Bot ← KhalaResponse { "answer": "...", "evidence_snippets": [...] }
+Slack Bot ← NexusResponse { "answer": "...", "evidence_snippets": [...] }
 Slack Bot → Slack: 답변 + 출처 링크
 ```
 
@@ -470,12 +470,12 @@ Slack Bot → Slack: 답변 + 출처 링크
 
 ## 15. MCP Server 연동 (2.0 계획)
 
-AI Agent가 Khala를 tool로 사용한다. MCP(Model Context Protocol) 서버는 내부적으로 동일한 FastAPI 엔드포인트를 호출한다.
+AI Agent가 Nexus를 tool로 사용한다. MCP(Model Context Protocol) 서버는 내부적으로 동일한 FastAPI 엔드포인트를 호출한다.
 
 ```json
 // MCP Tool 정의
 {
-  "name": "khala_search",
+  "name": "nexus_search",
   "description": "조직 내부 문서와 운영 데이터를 검색하여 근거 기반 답변을 제공합니다.",
   "input_schema": {
     "type": "object",
@@ -489,6 +489,6 @@ AI Agent가 Khala를 tool로 사용한다. MCP(Model Context Protocol) 서버는
 ```
 
 **Agent 활용 시나리오:**
-1. Code Review Agent → `khala_search("결제 서비스 API 스펙")` → 설계 문서 기반 리뷰
-2. Troubleshooting Agent → `khala_search("payment-service 의존성")` → 그래프 + OTel 기반 원인 분석
-3. Onboarding Agent → `khala_search("신규 입사자 가이드")` → 문서 기반 온보딩 안내
+1. Code Review Agent → `nexus_search("결제 서비스 API 스펙")` → 설계 문서 기반 리뷰
+2. Troubleshooting Agent → `nexus_search("payment-service 의존성")` → 그래프 + OTel 기반 원인 분석
+3. Onboarding Agent → `nexus_search("신규 입사자 가이드")` → 문서 기반 온보딩 안내

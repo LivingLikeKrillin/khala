@@ -346,13 +346,13 @@ export default {
 | ui:impact (영향 범위 분석) | v0.3 |
 | MCP 서버 | v0.4 |
 | VRT 연동 | v0.5 |
-| 칼라 연동 | v1.0 |
+| Nexus 연동 | v1.0 |
 
 ### 4.3 미포함이지만 인터페이스만 정의 (v0.1)
 
 | 인터페이스 | 이유 |
 |------------|------|
-| `KhalaClient` | 칼라 연동 구조를 미리 확보. 구현은 mock/stub |
+| `NexusClient` | Nexus 연동 구조를 미리 확보. 구현은 mock/stub |
 | `McpToolSchema` | MCP 서버 tool 스키마 미리 확보. 실제 서버는 v0.4 |
 | `PlatformProfile` | 커스텀 프로파일 추가를 위한 인터페이스 공개 |
 
@@ -461,7 +461,7 @@ v0.2  API 스펙 린트 + diff (Spectral, oasdiff)
 v0.3  토큰 린트 + UI 영향 분석
 v0.4  MCP 서버 (Claude Code 연동 강화)
 v0.5  VRT 연동 + 접근성 검사
-v1.0  칼라 연동 — 맥락 기반 리뷰/트러블슈팅
+v1.0  Nexus 연동 — 맥락 기반 리뷰/트러블슈팅
 ```
 
 ---

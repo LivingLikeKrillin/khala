@@ -34,7 +34,7 @@ the final review). None block the MVP; all are tracked here.
 
 ## Drift
 - **`stale` auto-detection:** detect spec↔code drift (e.g. spec-derived tests failing,
-  or Khala design-vs-observation diff) and auto-flag artifacts `stale`.
+  or Nexus design-vs-observation diff) and auto-flag artifacts `stale`.
 
 ## Team
 - **Multi-user / real approver identity:** `approved_by` is recorded but unauthenticated

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runReviewGround } from '../src/core/review-ground.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 describe('시그니처 리뷰 시나리오', () => {
   let orig: typeof globalThis.fetch;
@@ -16,7 +16,7 @@ describe('시그니처 리뷰 시나리오', () => {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { results: [] }, error: null, meta: {} }) });
     }) as unknown as typeof globalThis.fetch;
 
-    const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['OrderService.java'] }], new KhalaClient({ baseUrl: 'http://t:8000' }));
+    const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['OrderService.java'] }], new NexusClient({ baseUrl: 'http://t:8000' }));
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.pack.tier).toBe(3);
@@ -34,7 +34,7 @@ describe('시그니처 리뷰 시나리오', () => {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { diffs: [], center_entity: { rid: 'e', name: 'payment-service' }, edges: [], observed_edges: [] }, error: null, meta: {} }) });
     }) as unknown as typeof globalThis.fetch;
 
-    const r = await runReviewGround([{ entityName: 'payment-service', changedFiles: ['PaymentRetry.java'] }], new KhalaClient({ baseUrl: 'http://t:8000' }));
+    const r = await runReviewGround([{ entityName: 'payment-service', changedFiles: ['PaymentRetry.java'] }], new NexusClient({ baseUrl: 'http://t:8000' }));
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.pack.tier).toBe(1);
@@ -43,9 +43,9 @@ describe('시그니처 리뷰 시나리오', () => {
     }
   });
 
-  it('SR3 (T0 정직성): Khala 미가용이면 changedEntities만 + T0 명시', async () => {
+  it('SR3 (T0 정직성): Nexus 미가용이면 changedEntities만 + T0 명시', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('down')) as unknown as typeof globalThis.fetch;
-    const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['a.ts'] }], new KhalaClient({ baseUrl: 'http://t:8000' }));
+    const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['a.ts'] }], new NexusClient({ baseUrl: 'http://t:8000' }));
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.pack.tier).toBe(0);

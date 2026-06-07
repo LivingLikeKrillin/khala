@@ -4,12 +4,12 @@
 드러냄을 증명.
 
 ## 절차
-1. Khala 기동: `cd ../../khala && docker-compose up -d`
+1. Nexus 기동: `cd ../../nexus && docker-compose up -d`
 2. 설계 문서 인덱싱:
-   `khala ingest ../probe/tests/fixtures/order-service-design.md --force`
+   `nexus ingest ../probe/tests/fixtures/order-service-design.md --force`
 3. 관측 엣지 시드:
-   `docker exec -i khala-postgres psql -U khala -d khala < scripts/seed-signature-scenario.sql`
-4. 가용성 확인: `npx probe khala:status` → observed_edges_count ≥ 1
+   `docker exec -i nexus-postgres psql -U nexus -d nexus < scripts/seed-signature-scenario.sql`
+4. 가용성 확인: `npx probe nexus:status` → observed_edges_count ≥ 1
 5. 실증:
    `npx probe troubleshoot "NPE at com.shop.order.OrderService.checkout(OrderService.java:88)"`
    기대 출력: designObservationGaps에 `observed_only: order-service → inventory-service`

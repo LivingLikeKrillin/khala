@@ -1,4 +1,4 @@
-# Archon(집정관) — 도메인 불변식·값 거버넌스 (Khala 확장) — 설계 문서
+# Archon(집정관) — 도메인 불변식·값 거버넌스 (Nexus 확장) — 설계 문서
 
 > 작성일: 2026-06-06
 > 상태: Draft (브레인스토밍 합의 통합)
@@ -8,7 +8,7 @@
 
 ## 0. 한 줄 요약
 
-서비스 전체에 걸친 **용어·액터·객체(개념)의 이름을 고정·추적**하고, 그 개념에 매달린 **도메인 불변식·값·요구의 현재 상태를 사람(특히 비엔지니어 기획자)과 AI가 근거 기반으로 조회·검증**할 수 있게 하는 시스템. **Khala의 확장**으로 구현한다.
+서비스 전체에 걸친 **용어·액터·객체(개념)의 이름을 고정·추적**하고, 그 개념에 매달린 **도메인 불변식·값·요구의 현재 상태를 사람(특히 비엔지니어 기획자)과 AI가 근거 기반으로 조회·검증**할 수 있게 하는 시스템. **Nexus의 확장**으로 구현한다.
 
 ---
 
@@ -60,16 +60,16 @@ deep-research(소스 26개, 적대적 검증)와 사전 타당성 분석으로 �
 1. **개념이 척추, 사실은 매달린다.** 개념 레지스트리(용어/액터/객체)가 토대. 값·불변식·요구는 개념을 참조하는 사실.
 2. **신뢰성 = 캘리브레이션(정직함).** "항상 정답"은 불가능. 달성 가능하고 충분한 정의: **시스템이 결코 거짓말하지 않는다 — soft하거나 낡은 답을 hard한 답인 척 내놓지 않는다.** (Notion이 못 하는 것이 바로 이것.)
 3. **복사하지 말고 가리켜라 (anti-shelfware).** 값·정의를 복사 저장하면 썩는다. 권위 있는 출처(코드 상수, 문서 chunk)를 *가리켜* 현재값을 읽고 신선도를 표기.
-4. **System decides, LLM narrates.** (Khala 원칙 계승) 분류·검증·경로 판정은 코드(결정론). LLM은 제안·요약만, 최종 권한 없음.
+4. **System decides, LLM narrates.** (Nexus 원칙 계승) 분류·검증·경로 판정은 코드(결정론). LLM은 제안·요약만, 최종 권한 없음.
 5. **Grounded only.** 근거 없는 주장·관계는 존재하지 않는 것으로 취급.
 
 ---
 
-## 4. 아키텍처 — Khala 확장
+## 4. 아키텍처 — Nexus 확장
 
-### 4.1 Khala가 이미 제공하는 것 (재사용)
+### 4.1 Nexus가 이미 제공하는 것 (재사용)
 
-| 필요 기능 | Khala의 기존 자산 |
+| 필요 기능 | Nexus의 기존 자산 |
 |---|---|
 | 개념 레지스트리(척추) | `entities` (type=`Term`, `aliases[]`, `description`) |
 | 근거 바인딩 **메커니즘** | Evidence 모델(`rid→rid`) + "Evidence 없는 edge 금지" — *패턴만 재사용. 코드앵커 자체는 §4.2 net-new* |
@@ -81,20 +81,20 @@ deep-research(소스 26개, 적대적 검증)와 사전 타당성 분석으로 �
 ### 4.2 #17이 추가하는 것 (net-new)
 
 1. **신규 rtype `claim`** — CRM enum(`document|chunk|entity|edge|observed_edge|evidence`)에 없음 → **enum 확장**. `kind` 필드로 `goal|invariant|requirement` 세분(rtype 자체는 단일 `claim`). value-bearing은 `value` 하위필드로.
-2. **★ 코드 소스 (가장 중요한 net-new).** CRM `source_kind` enum(`git|wiki|file|otel|manual`)에 **`code` 추가**. 코드 상수·설정·강제 메커니즘을 파싱해 Resource로 인덱싱하고, 각 코드 심볼의 **(파일경로+심볼명) 단위 hash**를 저장 → commit 간 hash diff로 변경/stale 판정. Khala는 코드를 인덱싱하지 않으므로 추출기·hash 저장 전부 신규. (Khala 드리프트는 문서↔트레이스이지 문서↔코드상수가 아님.)
-3. **claim↔code diff** — claim의 `value.source`/`enforcement` 링크가 가리키는 코드 심볼 hash가 `last_verified.commit` 이후 바뀌면 claim에 `quality_flags`(예: `claim_code_drift`) 태깅. 별도 엔진 없이 Khala diff 패턴(SQL+flag) 재사용. (기존 design↔observed와 다른 새 차원.)
+2. **★ 코드 소스 (가장 중요한 net-new).** CRM `source_kind` enum(`git|wiki|file|otel|manual`)에 **`code` 추가**. 코드 상수·설정·강제 메커니즘을 파싱해 Resource로 인덱싱하고, 각 코드 심볼의 **(파일경로+심볼명) 단위 hash**를 저장 → commit 간 hash diff로 변경/stale 판정. Nexus는 코드를 인덱싱하지 않으므로 추출기·hash 저장 전부 신규. (Nexus 드리프트는 문서↔트레이스이지 문서↔코드상수가 아님.)
+3. **claim↔code diff** — claim의 `value.source`/`enforcement` 링크가 가리키는 코드 심볼 hash가 `last_verified.commit` 이후 바뀌면 claim에 `quality_flags`(예: `claim_code_drift`) 태깅. 별도 엔진 없이 Nexus diff 패턴(SQL+flag) 재사용. (기존 design↔observed와 다른 새 차원.)
 4. **기획문서 → claim 전처리기** — 기존 ingestion 위에 claim 추출 + 조작화 게이트 + 사람 큐레이션.
 5. **기획자 질문 패턴/답변 템플릿** — 값/보장/반영 3종 질문에 대한 캘리브레이션 답변.
 
 ### 4.3 결합 방식
 
-**Khala 내부 확장** (선택됨). CRM에 rtype 추가, 새 source/diff를 Khala 파이프라인에 통합. entities/evidence/grounding/검색/MCP를 그대로 재사용. (Probe식 외부 소비 아님 — 중복 회피, 가장 타이트한 통합.)
+**Nexus 내부 확장** (선택됨). CRM에 rtype 추가, 새 source/diff를 Nexus 파이프라인에 통합. entities/evidence/grounding/검색/MCP를 그대로 재사용. (Probe식 외부 소비 아님 — 중복 회피, 가장 타이트한 통합.)
 
 ---
 
 ## 5. 데이터 모델
 
-### 5.1 척추: 개념 (= Khala entity, type=Term 확장)
+### 5.1 척추: 개념 (= Nexus entity, type=Term 확장)
 
 기존 `entities`를 그대로 사용하되 도메인 개념(액터/객체/용어)을 1급으로:
 - `name` (canonical), `aliases[]`, `description`(근거 chunk에 grounding)
@@ -214,7 +214,7 @@ core는 항상 검증돼야 하나 모든 core가 실행단언화 가능하진 �
    ▼ ③ 조작화 게이트   모호 → "기준 정의하라" 강제
    ▼ ④ 연결 제안   concept ↔ 강제조치/코드(ⓐⓑⓒ) 매핑을 LLM이 제안
    ▼ ⑤ 큐레이션(사람)   제안된 claim diff를 검토·수정·승인  ← 필수 관문
-   ▼ [Khala claim store] → 검증 → 조회
+   ▼ [Nexus claim store] → 검증 → 조회
 ```
 
 ### 정직한 한계 (프로젝트 생사가 여기)
@@ -227,7 +227,7 @@ core는 항상 검증돼야 하나 모든 core가 실행단언화 가능하진 �
 
 ## 10. 출력: 기획자 자연어 조회
 
-Khala의 기존 Web UI/Slack/MCP를 통해. 3종 질문에 **캘리브레이션 답변**:
+Nexus의 기존 Web UI/Slack/MCP를 통해. 3종 질문에 **캘리브레이션 답변**:
 
 | 질문 유형 | 예 | 답하는 법 | 신뢰 |
 |---|---|---|---|
@@ -244,10 +244,10 @@ Khala의 기존 Web UI/Slack/MCP를 통해. 3종 질문에 **캘리브레이션 
 
 **값 조회(value-bearing claim의 현재값)부터.** 가장 높은 가치·가장 낮은 위험·결정론적.
 
-- pfplay 핵심 개념 8~10개를 Khala entity로 + 코드앵커.
+- pfplay 핵심 개념 8~10개를 Nexus entity로 + 코드앵커.
 - 그 위에 value-bearing claim 5~10개 (실제 상수: 준회원 플레이리스트 한도, 재생곡 제한시간 등).
 - `code` source 추출기 최소 구현 (상수 읽기).
-- Khala MCP/Web으로 기획자가 자연어 조회.
+- Nexus MCP/Web으로 기획자가 자연어 조회.
 
 **검증할 가치 가설:** *"기획자가 '준회원 플레이리스트 몇 개?'를 이걸로 묻고, 코드앵커 답을 낡은 Notion보다 믿고 쓰는가."* (= 리서치가 지목한 핵심 미검증 #4. 단 사용자는 "신뢰성만 보장되면 쓴다"고 가치 판단 내림.)
 
@@ -276,14 +276,14 @@ boolean 불변식 검증·요구 반영·기획문서 전처리는 그 위에 �
 - 도메인 스토리 → 불변식 자동도출
 - SLO·동시성·분산 불변식의 **검증·집행** (엔지니어 관심사). 단 도메인 불변식 *구현*의 동시성 잔여는 `enforcement.residual_risk`로 **표기만** 함 — 검증·집행 대상이 아님(§5.2/§7과 일관)
 - 런타임/동적 값 실시간 읽기 (Phase 2)
-- 그래프 DB 전환 (Khala가 이미 pgvector, 필요 시 GraphRepository로 교체)
-- 권한/인증 (Khala 기존 classification 재사용)
+- 그래프 DB 전환 (Nexus가 이미 pgvector, 필요 시 GraphRepository로 교체)
+- 권한/인증 (Nexus 기존 classification 재사용)
 
 ---
 
 ## 부록 A — 용어
 
-- **개념(concept)**: 서비스에서 쓰이는 액터·객체·용어. = Khala entity(Term).
+- **개념(concept)**: 서비스에서 쓰이는 액터·객체·용어. = Nexus entity(Term).
 - **claim**: 개념에 매달린 사실. goal/invariant/requirement.
 - **value-bearing**: 값을 품은 claim. 값은 출처를 가리켜 현재값을 읽음.
 - **조치 반영**: 불변식을 강제하는 메커니즘이 코드에 존재·우회불가·로컬정확.

@@ -1,6 +1,6 @@
 """OTel 테스트 — 서비스 이름 해석."""
 
-from khala.otel.resolver import resolve_service_name
+from nexus.otel.resolver import resolve_service_name
 
 
 class TestServiceNameResolution:

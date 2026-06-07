@@ -1,11 +1,11 @@
 """API 엔드포인트 테스트 — Request 모델 검증, 라우팅 로직, 응답 구조."""
 
-from khala.api import (
+from nexus.api import (
     SearchRequest,
     AnswerRequest,
     IngestRequest,
     OtelAggregateRequest,
-    KhalaResponse,
+    NexusResponse,
 )
 
 
@@ -70,19 +70,19 @@ class TestOtelAggregateRequest:
         assert req.tenant == "default"
 
 
-class TestKhalaResponse:
+class TestNexusResponse:
     def test_success(self):
-        resp = KhalaResponse(data={"key": "value"})
+        resp = NexusResponse(data={"key": "value"})
         assert resp.success is True
         assert resp.data == {"key": "value"}
         assert resp.error is None
 
     def test_error(self):
-        resp = KhalaResponse(success=False, error="DB 연결 실패")
+        resp = NexusResponse(success=False, error="DB 연결 실패")
         assert resp.success is False
         assert resp.error == "DB 연결 실패"
         assert resp.data is None
 
     def test_meta(self):
-        resp = KhalaResponse(data=[], meta={"total": 42, "offset": 0})
+        resp = NexusResponse(data=[], meta={"total": 42, "offset": 0})
         assert resp.meta["total"] == 42

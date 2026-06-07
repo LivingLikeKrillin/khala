@@ -1,4 +1,4 @@
-# Khala Entity Gazetteer
+# Nexus Entity Gazetteer
 # name은 canonical name, aliases에 한국어 변형 포함.
 # 조사 변형(서비스가/서비스를)은 넣지 않아도 됨 - mecab-ko가 분리함.
 

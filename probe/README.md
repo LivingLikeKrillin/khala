@@ -55,7 +55,7 @@ PR 타입 추론 → DoD 체크리스트 자동 생성          ← v0.2
        ↓
 MCP 서버로 Claude Code에 도구 노출              ← v0.3
        ↓
-칼라 연동: 규정 검색 + 영향 분석 + 설계-관측 갭   ← v0.4
+Nexus 연동: 규정 검색 + 영향 분석 + 설계-관측 갭   ← v0.4
 ```
 
 ---
@@ -83,14 +83,14 @@ npx probe api:diff --base origin/main
 # 리뷰 체크리스트 생성
 npx probe review
 
-# 칼라 지식베이스 검색
-npx probe khala:search "payment-service 규정"
+# Nexus 지식베이스 검색
+npx probe nexus:search "payment-service 규정"
 
 # 서비스 영향 분석
-npx probe khala:impact
+npx probe nexus:impact
 
-# 칼라 연결 상태
-npx probe khala:status
+# Nexus 연결 상태
+npx probe nexus:status
 
 npx probe troubleshoot "<에러/스택트레이스>"   # 트러블슈팅 그라운딩
 ```
@@ -136,14 +136,14 @@ npx probe review
 
 `.mcp.json`에 Probe MCP 서버를 등록하면, Claude Code가 대화 맥락에 따라 범위 분석·API 린트·체크리스트를 알아서 호출한다. 자세한 설정은 [CI 연동 > Claude Code](#claude-code) 참조.
 
-### "칼라 지식베이스에서 관련 규정을 찾고 싶다"
+### "Nexus 지식베이스에서 관련 규정을 찾고 싶다"
 
 ```bash
-npx probe khala:search "결제 서비스 에러 처리 규정"
-npx probe khala:impact   # 현재 변경이 영향을 주는 서비스 분석
+npx probe nexus:search "결제 서비스 에러 처리 규정"
+npx probe nexus:impact   # 현재 변경이 영향을 주는 서비스 분석
 ```
 
-칼라가 연결되어 있으면 리뷰 결과에 관련 규정과 영향 범위가 자동으로 붙는다. 칼라 없이도 나머지 기능은 전부 동작한다.
+Nexus가 연결되어 있으면 리뷰 결과에 관련 규정과 영향 범위가 자동으로 붙는다. Nexus 없이도 나머지 기능은 전부 동작한다.
 
 ---
 
@@ -225,16 +225,16 @@ Claude Code에서 자연어 대화 중 Probe 분석을 **자동으로** 호출�
 | `probe.diffApiSpecs` | API 스펙 diff |
 | `probe.reviewChecklist` | 리뷰 체크리스트 생성 |
 | `probe.detectPlatform` | 플랫폼 감지 |
-| `probe.queryKhala` | 칼라 지식베이스 질의 |
+| `probe.queryNexus` | Nexus 지식베이스 질의 |
 | `probe.groundTroubleshooting` | 에러→트러블슈팅 그라운딩 (토폴로지·관측·갭·규정) |
 | `probe.groundReview` | diff→리뷰 그라운딩 (설계-관측 갭·규정·토폴로지·승인 스펙) |
 
 **3개 리소스:** 프로파일 정보, 설정, 가이드라인
 **2개 프롬프트:** 구조화된 PR 리뷰, PR 분할 가이드
 
-### v0.4 — 칼라(Khala) 연동
+### v0.4 — Nexus 연동
 
-칼라 RAG 시스템과 연동하여 리뷰에 맥락을 추가한다.
+Nexus RAG 시스템과 연동하여 리뷰에 맥락을 추가한다.
 
 ```
 사용자: "PR 리뷰해줘"
@@ -246,7 +246,7 @@ Probe:
   + ⚠️ 설계-관측 갭: payment → inventory 호출이 트레이스에 없음
 ```
 
-**칼라가 없어도 기존 기능은 100% 동작한다.** 칼라가 있으면 결과가 풍부해진다.
+**Nexus가 없어도 기존 기능은 100% 동작한다.** Nexus가 있으면 결과가 풍부해진다.
 
 ---
 
@@ -278,8 +278,8 @@ export default {
     disableChecklists: ['docs-only'],
   },
 
-  // 칼라 연동
-  khala: {
+  // Nexus 연동
+  nexus: {
     baseUrl: 'http://localhost:8000',
     timeoutMs: 3000,
     disabled: false,
@@ -287,12 +287,12 @@ export default {
 };
 ```
 
-**환경 변수로도 칼라 연동 가능:**
+**환경 변수로도 Nexus 연동 가능:**
 
 ```
-KHALA_BASE_URL=http://localhost:8000
-KHALA_TIMEOUT_MS=3000
-KHALA_DISABLED=false
+NEXUS_BASE_URL=http://localhost:8000
+NEXUS_TIMEOUT_MS=3000
+NEXUS_DISABLED=false
 ```
 
 ---
@@ -376,7 +376,7 @@ probe/
 │   ├── api/                       OpenAPI 파서, 린트 룰, diff 엔진
 │   ├── profiles/                  Spring Boot, Next.js, React SPA
 │   ├── review/                    PR 타입 추론, 체크리스트 생성
-│   ├── khala/                     칼라 클라이언트, 컨텍스트 보강, 영향 분석
+│   ├── nexus/                     Nexus 클라이언트, 컨텍스트 보강, 영향 분석
 │   ├── mcp/                       MCP 서버 (도구, 리소스, 프롬프트)
 │   ├── cli/                       npx probe check
 │   └── utils/                     Logger, git, glob
@@ -397,7 +397,7 @@ probe/
 1. **파일 수가 아니라 논리적 응집도로 판단한다** — 같은 7개 파일이라도 프레임워크마다 의미가 다르다.
 2. **정상일 때는 아무 말도 하지 않는다** — 노이즈는 신뢰를 죽인다.
 3. **경고할 때는 분할 방법까지 제안한다** — "크다"만 말하면 쓸모없다.
-4. **칼라는 선택적이다** — 없어도 동작하고, 있으면 풍부해진다.
+4. **Nexus는 선택적이다** — 없어도 동작하고, 있으면 풍부해진다.
 
 ---
 
@@ -410,7 +410,7 @@ probe/
 | v0.1 | PR 범위 분석 + 플랫폼 프로파일 | **Done** |
 | v0.2 | API 스펙 린트/diff + 리뷰 체크리스트 | **Done** |
 | v0.3 | MCP 서버 (Claude Code 연동) | **Done** |
-| v0.4 | Khala 연동 — 맥락 기반 리뷰 | **Done** |
+| v0.4 | Nexus 연동 — 맥락 기반 리뷰 | **Done** |
 | v0.5 | 트러블슈팅 그라운딩 | **Done** |
 | v0.6 | 그라운디드 코드 리뷰 (diff ↔ 승인 스펙·규정·그래프·claim 정합성) | **Done** |
 

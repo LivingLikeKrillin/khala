@@ -1,5 +1,5 @@
-from khala.ingest.sources.base import PageRef
-from khala.ingest.sources.notion import NotionSource
+from nexus.ingest.sources.base import PageRef
+from nexus.ingest.sources.notion import NotionSource
 
 
 class FakeClient:

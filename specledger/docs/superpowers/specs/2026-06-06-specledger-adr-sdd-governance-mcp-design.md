@@ -15,7 +15,7 @@ AI가 생성한 설계 결정·스펙을 **(1) 일관된 ADR/SDD 형식으로 �
 
 ### 비목표 (범위 밖)
 - 팀/다중 사용자 인증, 실제 승인자 신원 검증 (솔로 우선 — 필드 구조만 마련)
-- Confluence/Backstage 등 외부 위키 동기화 (→ 옵셔널 Khala publish로 대체)
+- Confluence/Backstage 등 외부 위키 동기화 (→ 옵셔널 Nexus publish로 대체)
 - 코드-스펙 drift 자동 감지(`stale` 자동 전이)
 - 이해도 확인 질문의 기본 탑재 (옵션 플래그로만 설계, MVP 미구현)
 - spec-as-source 코드 생성 (기존 손작성 코드베이스에 부적합)
@@ -30,7 +30,7 @@ AI가 생성한 설계 결정·스펙을 **(1) 일관된 ADR/SDD 형식으로 �
 | D4 | 리뷰 게이트 정의 | **AI 크리틱 선행 + 이슈 처리 + 사인오프 기록 (D)** |
 | D5 | 진실원천 | **각 문서의 frontmatter** (git-native, diff 추적) |
 | D6 | 강제 메커니즘 | **MCP 서버 + Claude Code PreToolUse 훅** (협조 아닌 강제) |
-| D7 | 위키/추적 | **Khala = 옵셔널 발행 대상(sink)**, 진실원천 아님 |
+| D7 | 위키/추적 | **Nexus = 옵셔널 발행 대상(sink)**, 진실원천 아님 |
 
 ## 3. 아키텍처 개요
 
@@ -48,7 +48,7 @@ AI가 생성한 설계 결정·스펙을 **(1) 일관된 ADR/SDD 형식으로 �
         │ publish (옵셔널)
         ▼
    ┌──────────┐
-   │  Khala   │  승인 문서를 ingest → 검색·근거 회수 (goal #2)
+   │  Nexus   │  승인 문서를 ingest → 검색·근거 회수 (goal #2)
    └──────────┘
 ```
 
@@ -56,7 +56,7 @@ AI가 생성한 설계 결정·스펙을 **(1) 일관된 ADR/SDD 형식으로 �
 - **진실원천 (frontmatter)**: 문서 자체가 상태를 들고 있음(D5).
 - **강제 훅 (손발)**: 구현 경계를 가로채 상태를 강제(D6) — rubber-stamp 차단의 teeth.
 - **인덱서**: frontmatter를 긁어 솔로용 추적 대시보드 생성.
-- **Khala (옵셔널 sink)**: specledger는 파일만으로 100% 동작, Khala 있으면 검색·추적 풍부(에코시스템 원칙 — "Probe는 Khala 없이도 100% 동작").
+- **Nexus (옵셔널 sink)**: specledger는 파일만으로 100% 동작, Nexus 있으면 검색·추적 풍부(에코시스템 원칙 — "Probe는 Nexus 없이도 100% 동작").
 
 ## 4. 아티팩트 모델 (D3)
 
@@ -121,7 +121,7 @@ approved_at:
 
 ## 5. MCP 도구 (API 표면)
 
-언어: **Python** (Khala·re-mcp 선례, frontmatter/markdown, Anthropic SDK 연동).
+언어: **Python** (Nexus·re-mcp 선례, frontmatter/markdown, Anthropic SDK 연동).
 
 | 도구 | 시그니처 | 동작 | 비고 |
 |---|---|---|---|
@@ -134,7 +134,7 @@ approved_at:
 | `begin_implementation` | `(spec_id)` | 활성 spec 마커 설정 | 아래 마커 계약 |
 | `end_implementation` | `()` | 활성 마커 해제 | |
 | `index` | `() -> path` | frontmatter 스캔 → 대시보드 생성 | |
-| `publish` | `(id)` | 승인 문서를 Khala ingest | **MVP에선 항상 수동 호출** (approve가 자동 호출하지 않음), Khala 미설정 시 no-op |
+| `publish` | `(id)` | 승인 문서를 Nexus ingest | **MVP에선 항상 수동 호출** (approve가 자동 호출하지 않음), Nexus 미설정 시 no-op |
 
 ### `id` 생성 규칙
 - **ADR**: `ADR-NNNN` (4자리 zero-pad, 단조 증가, 재사용 금지 — Nygard). 다음 번호 = 기존 ADR 최대치 + 1.
@@ -176,15 +176,15 @@ approved_at:
 - **평가 순서 (명시)**: ① `exempt_paths` 매칭 → allow + 로그 → ② `docs/`·`tests/` allow-glob 매칭 → allow → ③ 그 외(소스) → `check_gate(paths)`. (exempt가 항상 최우선 — 의도된 탈출구이므로.)
 - **동작**: ③에서 `check_gate(paths)` 호출 → 지배 spec이 approved 아니면 **차단**, 반환 필드(spec_id·status·open_issue_count·reason)로 메시지 구성.
 - **지배 spec 매핑 (MVP)**: §5의 활성 spec 마커 계약 사용. 정밀한 path-glob 매핑(spec frontmatter `governs: [src/**]`)은 향후 확장.
-- **default-deny**: 소스 디렉터리는 미승인 시 차단(Khala의 Default-Deny 철학과 동일). `docs/`·`tests/`는 기본 허용(설정의 allow-glob).
+- **default-deny**: 소스 디렉터리는 미승인 시 차단(Nexus의 Default-Deny 철학과 동일). `docs/`·`tests/`는 기본 허용(설정의 allow-glob).
 - **탈출구(exempt)**: `.specledger/config.yaml`의 `exempt_paths` 글롭에 매칭되는 경로는 게이트 면제. 면제 적용 시 `.specledger/exempt.log`에 `{ts, path, tool}` 한 줄 append(묵시적 우회 금지 — 흔적 남김).
 - **한계 명시**: MCP만으로는 강제 불가 → 훅이 강제를 담당하므로 Claude Code 환경에 종속(솔로 환경상 수용).
 
 ## 8. 인덱스 / 추적 (goal #2)
 
 - `index()`가 모든 frontmatter를 스캔 → `docs/INDEX.md` 대시보드 생성: 🔴 미검토 / 🟡 검토중 / 🟢 승인 그룹, 각 항목에 승인자·날짜·링크·linked ADR.
-- **Khala publish (옵셔널)**: **MVP에선 명시적 `publish(id)` 호출로만** 승인 문서를 Khala에 ingest(approve가 자동 호출하지 않음 — §5와 일치) → 검색 가능한 조직 지식 + 근거 회수. provenance 보존. Khala 미설정 시 전체 흐름 영향 없음. (자동 발행은 향후 옵션.)
-- 닫힌 루프: **기록 → 리뷰 → 발행 → (Probe/Khala로) 근거와 함께 회수.**
+- **Nexus publish (옵셔널)**: **MVP에선 명시적 `publish(id)` 호출로만** 승인 문서를 Nexus에 ingest(approve가 자동 호출하지 않음 — §5와 일치) → 검색 가능한 조직 지식 + 근거 회수. provenance 보존. Nexus 미설정 시 전체 흐름 영향 없음. (자동 발행은 향후 옵션.)
+- 닫힌 루프: **기록 → 리뷰 → 발행 → (Probe/Nexus로) 근거와 함께 회수.**
 
 ## 9. 에러 처리 / 엣지 케이스
 
@@ -196,7 +196,7 @@ approved_at:
 | 훅이 지배 spec 못 찾음 | 소스 → 차단(명확 메시지), docs/tests → 허용 |
 | id 충돌/재사용 | 에러 (단조 증가, 재사용 금지 — Nygard) |
 | frontmatter ↔ 사이드카 불일치 | frontmatter가 상태의 권위, 사이드카는 증거. `status`가 보고 |
-| Khala 미설정/다운 | publish no-op, 핵심 흐름 무영향 |
+| Nexus 미설정/다운 | publish no-op, 핵심 흐름 무영향 |
 | 미승인/없는 spec에 `begin_implementation` | 허용됨(마커만 설정). 실패는 구현 시작 시 `check_gate`에서 발생 — 의도된 동작(마커 설정 ≠ 승인) |
 
 ## 10. 테스트 전략 (TDD red-first, 하네스 #13 원칙)

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { localizeError } from '../src/khala/error-localizer.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { localizeError } from '../src/nexus/error-localizer.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 describe('시그니처 시나리오 S1 — observed_only 갭 데이터패스', () => {
   let originalFetch: typeof globalThis.fetch;
@@ -32,7 +32,7 @@ describe('시그니처 시나리오 S1 — observed_only 갭 데이터패스', (
       }),
     });
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const diff = await client.getDiff({ entityFilter: suspects[0]!.entityName });
 
     const gap = diff?.diffs.find((d) => d.flag === 'observed_only');

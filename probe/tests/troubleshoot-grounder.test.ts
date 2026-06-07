@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { groundTroubleshooting } from '../src/khala/troubleshoot-grounder.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { groundTroubleshooting } from '../src/nexus/troubleshoot-grounder.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 function mockFetchByPath(handlers: Record<string, unknown>) {
   return vi.fn((url: string) => {
@@ -40,7 +40,7 @@ describe('groundTroubleshooting', () => {
       '/search': { results: [] },
     }) as unknown as typeof globalThis.fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const pack = await groundTroubleshooting(
       client,
       [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
@@ -58,7 +58,7 @@ describe('groundTroubleshooting', () => {
         : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { results: [] }, error: null, meta: {} }) }),
     ) as unknown as typeof globalThis.fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const pack = await groundTroubleshooting(
       client, [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
       { signal: 'NPE', tier: 3 },
@@ -72,7 +72,7 @@ describe('groundTroubleshooting', () => {
         ? Promise.reject(new Error('500'))
         : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { diffs: [] }, error: null, meta: {} }) }),
     ) as unknown as typeof globalThis.fetch;
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const pack = await groundTroubleshooting(
       client, [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
       { signal: 'NPE', tier: 1 },
@@ -96,7 +96,7 @@ describe('groundTroubleshooting', () => {
       '/search': { results: [] },
     }) as unknown as typeof globalThis.fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const pack = await groundTroubleshooting(
       client,
       [
@@ -116,7 +116,7 @@ describe('groundTroubleshooting', () => {
   it('changedServices가 주어지면 의심 토폴로지와 상관시킨다', async () => {
     globalThis.fetch = mockFetchByPath({ '/search': { results: [] }, '/diff': { diffs: [] },
       '/graph': { center_entity: { rid: 'e', name: 'order-service' }, edges: [], observed_edges: [] } }) as unknown as typeof globalThis.fetch;
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const pack = await groundTroubleshooting(
       client, [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
       { signal: 'NPE', tier: 2, changedServices: [{ service: 'order-service', changedFiles: ['OrderService.java'] }] },

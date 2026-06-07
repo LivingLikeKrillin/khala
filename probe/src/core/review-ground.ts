@@ -4,11 +4,11 @@
  * Probe는 diff 소스를 의미 분석하지 않는다 — 변경 파일→엔티티 라우팅까지만.
  * 규정 문서: docs/superpowers/specs/2026-06-07-grounded-code-review-design.md
  */
-import { KhalaClient } from '../khala/client.js';
-import { determineTier } from '../khala/tier.js';
-import { groundReview, type ReviewGroundOptions } from '../khala/review-grounder.js';
-import { extractServiceNames, fileBelongsToService } from '../khala/context-enricher.js';
-import type { ChangedEntity, ReviewGroundingPack } from '../khala/types.js';
+import { NexusClient } from '../nexus/client.js';
+import { determineTier } from '../nexus/tier.js';
+import { groundReview, type ReviewGroundOptions } from '../nexus/review-grounder.js';
+import { extractServiceNames, fileBelongsToService } from '../nexus/context-enricher.js';
+import type { ChangedEntity, ReviewGroundingPack } from '../nexus/types.js';
 import type { DetectedGroup } from './scope-analyzer.js';
 
 /**
@@ -37,16 +37,16 @@ export function buildChangedEntities(
 /**
  * 리뷰 그라운딩 전체 실행.
  *
- * Khala 상태를 프로브해 티어를 결정하고, groundReview를 호출해 ReviewGroundingPack을 반환한다.
+ * Nexus 상태를 프로브해 티어를 결정하고, groundReview를 호출해 ReviewGroundingPack을 반환한다.
  * 변경 엔티티가 없으면 ok:false를 반환한다.
  *
  * @param changedEntities buildChangedEntities로 라우팅된 변경 엔티티
- * @param client Khala 클라이언트
+ * @param client Nexus 클라이언트
  * @param options 검색 topK·그래프 홉·스펙 마커 등 부분 옵션
  */
 export async function runReviewGround(
   changedEntities: ChangedEntity[],
-  client: KhalaClient,
+  client: NexusClient,
   options?: Partial<ReviewGroundOptions>,
 ): Promise<{ ok: false; reason: string } | { ok: true; pack: ReviewGroundingPack }> {
   if (changedEntities.length === 0) {

@@ -1,6 +1,6 @@
-# Khala — Project Context for Claude Code
+# Nexus — Project Context for Claude Code
 
-> Khala는 조직 내부 지식(문서/정책/설정)과 운영 사실(OTel trace/metric)을 결합하여,
+> Nexus는 조직 내부 지식(문서/정책/설정)과 운영 사실(OTel trace/metric)을 결합하여,
 > 근거 기반(grounded)으로 검색·추론하는 Enterprise RAG + GraphRAG 시스템이다.
 > 맥락 기반 AI Agent(Code Review / Troubleshooting)의 context provider가 최종 목표다.
 
@@ -12,7 +12,7 @@
 2. **System decides, LLM narrates**: 접근 통제, 분류, 경로 판정은 코드(deterministic). LLM은 요약/설명만.
 3. **Default-deny + Quarantine**: 분류 불확실 또는 PII 감지 → `is_quarantined=true`, 인덱싱 중단. 검색에 절대 포함 금지.
 4. **한국어 first**: 모든 텍스트 파이프라인이 한국어 형태소 특성(조사/어미 결합)을 고려. mecab-ko로 BM25 인덱싱.
-5. **Khala는 인덱스, 저장소가 아님**: 원본 문서는 Git, 원본 trace는 Tempo. Khala DB에는 파생 데이터만.
+5. **Nexus는 인덱스, 저장소가 아님**: 원본 문서는 Git, 원본 trace는 Tempo. Nexus DB에는 파생 데이터만.
 6. **Evidence 없는 edge 금지**: 근거 없는 관계는 존재하지 않는 관계.
 
 ---
@@ -53,7 +53,7 @@ Phase 3 — 거버넌스
 ## 프로젝트 구조
 
 ```
-khala/
+nexus/
 ├── CLAUDE.md                           ← 이 파일
 ├── README.md
 ├── docker-compose.yml
@@ -66,15 +66,15 @@ khala/
 ├── tempo-config.yaml
 │
 ├── docs/                               ← 설계/명세 문서
-│   ├── khala-mvp-design.md             ← MVP 설계 문서 (마스터)
+│   ├── nexus-mvp-design.md             ← MVP 설계 문서 (마스터)
 │   ├── API_CONTRACT.md                 ← API 계약서
 │   └── PIPELINE_SPEC.md               ← 파이프라인 상세
 │
-├── khala/
+├── nexus/
 │   ├── __init__.py
 │   │
 │   ├── models/                         ← CRM 기반 도메인 모델
-│   │   ├── resource.py                 ← KhalaResource base class
+│   │   ├── resource.py                 ← NexusResource base class
 │   │   ├── document.py
 │   │   ├── chunk.py
 │   │   ├── entity.py
@@ -162,11 +162,11 @@ Protocol이 필요한 경우:  구현이 여러 파일에 흩어지는 것
 
 ## Canonical Resource Model (CRM)
 
-모든 Khala 리소스의 공통 필드. 새로운 모델을 만들 때 반드시 `KhalaResource`를 상속.
+모든 Nexus 리소스의 공통 필드. 새로운 모델을 만들 때 반드시 `NexusResource`를 상속.
 
 ```python
 @dataclass
-class KhalaResource:
+class NexusResource:
     rid: str              # make_rid()로 생성. 직접 문자열 생성 금지
     rtype: str            # document|chunk|entity|edge|observed_edge|evidence
     tenant: str = "default"
@@ -261,7 +261,7 @@ def base_filter() -> str:
 - DB 연결 실패: 503. partial result 반환 금지
 
 ### OTel 관련
-- Raw trace는 Khala DB에 절대 저장 금지. Tempo에 포인터만
+- Raw trace는 Nexus DB에 절대 저장 금지. Tempo에 포인터만
 - CALLS_OBSERVED rid: window를 rid에 넣지 않음. 같은 from→to = 같은 rid
 - Service name resolution: peer.service → k8s metadata → reverse DNS → hash fallback
 
@@ -274,7 +274,7 @@ def base_filter() -> str:
 3. **rid를 직접 문자열로 생성 금지** → `make_rid()` 필수
 4. **SQL에 f-string 사용 금지** → parameterized query만
 5. **원문 전체를 DB에 저장 금지** → chunk_text만, 원문은 Git
-6. **Raw trace를 Khala DB에 저장 금지** → 집계 + 포인터만
+6. **Raw trace를 Nexus DB에 저장 금지** → 집계 + 포인터만
 7. **Evidence 없는 edge 생성 금지**
 8. **Neo4j, Redis, Elasticsearch 추가 금지** (MVP)
 9. **영어 전용 embedding model 사용 금지** → multilingual 필수
@@ -293,28 +293,28 @@ def base_filter() -> str:
 docker-compose up -d
 
 # Ollama 모델 pull (최초 1회)
-docker exec khala-ollama ollama pull multilingual-e5-base
+docker exec nexus-ollama ollama pull multilingual-e5-base
 
 # 문서 인덱싱
-khala ingest ./docs
-khala ingest ./docs --force          # hash 무시, 전체 재인덱싱
+nexus ingest ./docs
+nexus ingest ./docs --force          # hash 무시, 전체 재인덱싱
 
 # 검색
-khala query "결제 서비스가 발행하는 토픽이 뭐야?"
+nexus query "결제 서비스가 발행하는 토픽이 뭐야?"
 
 # Graph 조회
-khala graph payment-service
-khala graph payment-service --hops 2
+nexus graph payment-service
+nexus graph payment-service --hops 2
 
 # OTel 집계
-khala otel-aggregate
+nexus otel-aggregate
 
 # Diff 보고서
-khala diff
-khala diff --type observed_only
+nexus diff
+nexus diff --type observed_only
 
 # 상태 확인
-khala status
+nexus status
 ```
 
 ## 테스트
@@ -327,7 +327,7 @@ pytest tests/test_bm25_korean.py -v
 ## 환경 변수
 
 ```
-DATABASE_URL=postgresql://khala:khala@localhost:5432/khala
+DATABASE_URL=postgresql://nexus:nexus@localhost:5432/nexus
 OLLAMA_URL=http://localhost:11434
 ANTHROPIC_API_KEY=sk-ant-...
 TEMPO_URL=http://localhost:3200

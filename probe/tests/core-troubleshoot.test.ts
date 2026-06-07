@@ -1,21 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { determineTier, validateInput } from '../src/core/troubleshoot.js';
-import type { KhalaStatusResult } from '../src/khala/types.js';
+import type { NexusStatusResult } from '../src/nexus/types.js';
 
 describe('determineTier', () => {
-  it('Khala 미가용이면 T0', () => {
+  it('Nexus 미가용이면 T0', () => {
     expect(determineTier(null).tier).toBe(0);
   });
   it('문서만 있으면 T1', () => {
-    const s: KhalaStatusResult = { db_connected: true, documents_count: 5, edges_count: 0 };
+    const s: NexusStatusResult = { db_connected: true, documents_count: 5, edges_count: 0 };
     expect(determineTier(s).tier).toBe(1);
   });
   it('설계 엣지가 있으면 T2', () => {
-    const s: KhalaStatusResult = { db_connected: true, documents_count: 5, edges_count: 3, observed_edges_count: 0 };
+    const s: NexusStatusResult = { db_connected: true, documents_count: 5, edges_count: 3, observed_edges_count: 0 };
     expect(determineTier(s).tier).toBe(2);
   });
   it('관측 엣지가 있으면 T3', () => {
-    const s: KhalaStatusResult = { db_connected: true, edges_count: 3, observed_edges_count: 2 };
+    const s: NexusStatusResult = { db_connected: true, edges_count: 3, observed_edges_count: 2 };
     expect(determineTier(s).tier).toBe(3);
   });
   it('타임아웃 실패는 T0이지만 미가용과 사유를 구분한다', () => {
@@ -41,7 +41,7 @@ describe('validateInput', () => {
 });
 
 import { runTroubleshoot } from '../src/core/troubleshoot.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 describe('runTroubleshoot 경로', () => {
   let originalFetch: typeof globalThis.fetch;
@@ -49,14 +49,14 @@ describe('runTroubleshoot 경로', () => {
   afterEach(() => { globalThis.fetch = originalFetch; });
 
   it('빈 입력은 ok:false', async () => {
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const r = await runTroubleshoot({ signal: '' }, client);
     expect(r.ok).toBe(false);
   });
 
-  it('Khala 미가용이면 T0 + 국소화만', async () => {
+  it('Nexus 미가용이면 T0 + 국소화만', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('down'));
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const r = await runTroubleshoot(
       { signal: 'at com.shop.order.OrderService.checkout(OrderService.java:88)' }, client,
     );
@@ -69,7 +69,7 @@ describe('runTroubleshoot 경로', () => {
 
   it('kind 힌트가 본문과 모순되면 caveat를 남긴다', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('down'));
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     // 본문은 스택트레이스인데 kind=incident로 모순 지정
     const r = await runTroubleshoot(
       { signal: 'at com.shop.order.OrderService.checkout(OrderService.java:88)', kind: 'incident' }, client,

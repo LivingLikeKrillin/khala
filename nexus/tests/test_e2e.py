@@ -2,7 +2,7 @@
 
 실행 조건:
     1. docker compose -f docker-compose.test.yml up -d
-    2. KHALA_TEST_DB_URL=postgresql://khala:khala@localhost:5433/khala_test pytest tests/test_e2e.py -v
+    2. NEXUS_TEST_DB_URL=postgresql://nexus:nexus@localhost:5433/nexus_test pytest tests/test_e2e.py -v
 
 테스트 시나리오:
     - CRM 모델 CRUD
@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import pytest
 
-from khala.rid import (
+from nexus.rid import (
     doc_rid, chunk_rid, entity_rid, edge_rid, evidence_rid,
     observed_edge_rid, canonicalize_entity_name,
 )

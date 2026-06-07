@@ -20,7 +20,7 @@ One-line identity: the tool that keeps PR review honest by grounding scope, cont
 - **Concern drift.** As you edit, Probe watches for files belonging to a *different* concern than the current change and warns immediately.
 - **API lint + diff.** Ten built-in rules (`probe/nullable`, `probe/error-response`, `probe/path-naming`, `probe/field-naming`, `probe/pagination`, and more) check the spec; the differ detects breaking changes against a base.
 - **PR type → checklist.** Ten PR types (`domain-crud`, `api-change`, `ui-feature`, `config-change`, `db-migration`, `test-only`, `docs-only`, …) each map to a review checklist; passing checks are auto-verified.
-- **Khala (Nexus) is optional.** Without it, every feature still works; with it, results gain related guidelines, service impact, and design-observation gaps.
+- **Nexus is optional.** Without it, every feature still works; with it, results gain related guidelines, service impact, and design-observation gaps.
 
 ## Quickstart
 
@@ -93,7 +93,7 @@ Register Probe's MCP server so Claude Code calls scope analysis, API lint, and c
 }
 ```
 
-The MCP server exposes eight tools, including `probe.analyzeScope`, `probe.lintApiSpec`, `probe.diffApiSpecs`, `probe.reviewChecklist`, `probe.detectPlatform`, `probe.queryKhala`, `probe.groundTroubleshooting`, and `probe.groundReview`.
+The MCP server exposes eight tools, including `probe.analyzeScope`, `probe.lintApiSpec`, `probe.diffApiSpecs`, `probe.reviewChecklist`, `probe.detectPlatform`, `probe.queryNexus`, `probe.groundTroubleshooting`, and `probe.groundReview`.
 
 ### Gate scope in CI (GitHub Actions)
 

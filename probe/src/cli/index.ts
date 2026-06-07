@@ -15,14 +15,14 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { analyzeScope } from '../core/scope-analyzer.js';
-import { loadConfigAsync, applyConfigOverrides, resolveKhalaConfig } from '../core/config-loader.js';
+import { loadConfigAsync, applyConfigOverrides, resolveNexusConfig } from '../core/config-loader.js';
 import { detectPlatform, getProfileForPlatform } from '../profiles/detector.js';
 import { lintApiSpec } from '../core/api-linter.js';
 import { generateReviewChecklist } from '../core/review-checklist.js';
 import { logger } from '../utils/logger.js';
 import { getChangedFiles, getDiffLines, getBaseFileContent } from '../utils/git.js';
-import { KhalaClient } from '../khala/client.js';
-import { analyzeImpact } from '../khala/impact-analyzer.js';
+import { NexusClient } from '../nexus/client.js';
+import { analyzeImpact } from '../nexus/impact-analyzer.js';
 import { runTroubleshoot } from '../core/troubleshoot.js';
 import { parseArgs, parseTroubleshootArgs, parseReviewGroundArgs } from './parse-args.js';
 import {
@@ -284,33 +284,33 @@ async function runReview(args: string[]): Promise<void> {
   }
 }
 
-// ─── Khala Commands (v0.4) ───
+// ─── Nexus Commands (v0.4) ───
 
-async function runKhalaSearch(args: string[]): Promise<void> {
+async function runNexusSearch(args: string[]): Promise<void> {
   const query = args.filter((a) => !a.startsWith('--')).join(' ');
   if (!query) {
-    logger.error('검색 쿼리를 입력하세요 (Usage: probe khala:search <query>)');
+    logger.error('검색 쿼리를 입력하세요 (Usage: probe nexus:search <query>)');
     process.exitCode = 1;
     return;
   }
 
   const config = await loadConfigAsync();
-  const khalaConfig = resolveKhalaConfig(config);
+  const nexusConfig = resolveNexusConfig(config);
 
-  if (khalaConfig.disabled) {
-    logger.warn('칼라 연동이 비활성화되어 있습니다');
+  if (nexusConfig.disabled) {
+    logger.warn('Nexus 연동이 비활성화되어 있습니다');
     return;
   }
 
-  const client = new KhalaClient(khalaConfig);
+  const client = new NexusClient(nexusConfig);
   const available = await client.isAvailable();
   if (!available) {
-    logger.error('칼라 서버에 연결할 수 없습니다 (Cannot connect to Khala)');
+    logger.error('Nexus 서버에 연결할 수 없습니다 (Cannot connect to Nexus)');
     process.exitCode = 1;
     return;
   }
 
-  const result = await client.search(query, { topK: khalaConfig.searchTopK });
+  const result = await client.search(query, { topK: nexusConfig.searchTopK });
   if (!result || result.results.length === 0) {
     logger.info('검색 결과가 없습니다');
     return;
@@ -320,7 +320,7 @@ async function runKhalaSearch(args: string[]): Promise<void> {
   if (format === 'json') {
     logger.info(JSON.stringify(result, null, 2));
   } else {
-    logger.info(`🔍 칼라 검색 결과 (${result.results.length}건)\n`);
+    logger.info(`🔍 Nexus 검색 결과 (${result.results.length}건)\n`);
     for (const hit of result.results) {
       logger.info(`  📄 ${hit.doc_title} > ${hit.section_path}`);
       logger.info(`     ${hit.snippet.slice(0, 120)}...`);
@@ -329,19 +329,19 @@ async function runKhalaSearch(args: string[]): Promise<void> {
   }
 }
 
-async function runKhalaImpact(args: string[]): Promise<void> {
+async function runNexusImpact(args: string[]): Promise<void> {
   const config = await loadConfigAsync();
-  const khalaConfig = resolveKhalaConfig(config);
+  const nexusConfig = resolveNexusConfig(config);
 
-  if (khalaConfig.disabled) {
-    logger.warn('칼라 연동이 비활성화되어 있습니다');
+  if (nexusConfig.disabled) {
+    logger.warn('Nexus 연동이 비활성화되어 있습니다');
     return;
   }
 
-  const client = new KhalaClient(khalaConfig);
+  const client = new NexusClient(nexusConfig);
   const available = await client.isAvailable();
   if (!available) {
-    logger.error('칼라 서버에 연결할 수 없습니다');
+    logger.error('Nexus 서버에 연결할 수 없습니다');
     process.exitCode = 1;
     return;
   }
@@ -359,7 +359,7 @@ async function runKhalaImpact(args: string[]): Promise<void> {
   const diffLines = getDiffLines(options.base);
   const scopeResult = analyzeScope(changedFiles, profile, diffLines);
 
-  const { extractServiceNames } = await import('../khala/context-enricher.js');
+  const { extractServiceNames } = await import('../nexus/context-enricher.js');
   const serviceNames = extractServiceNames(scopeResult.groups);
 
   if (serviceNames.length === 0) {
@@ -367,7 +367,7 @@ async function runKhalaImpact(args: string[]): Promise<void> {
     return;
   }
 
-  const impact = await analyzeImpact(client, serviceNames, { hops: khalaConfig.graphHops });
+  const impact = await analyzeImpact(client, serviceNames, { hops: nexusConfig.graphHops });
 
   const format = options.format;
   if (format === 'json') {
@@ -390,18 +390,18 @@ async function runKhalaImpact(args: string[]): Promise<void> {
   }
 }
 
-async function runKhalaStatus(): Promise<void> {
+async function runNexusStatus(): Promise<void> {
   const config = await loadConfigAsync();
-  const khalaConfig = resolveKhalaConfig(config);
+  const nexusConfig = resolveNexusConfig(config);
 
-  if (khalaConfig.disabled) {
-    logger.info('칼라 연동: 비활성화');
+  if (nexusConfig.disabled) {
+    logger.info('Nexus 연동: 비활성화');
     return;
   }
 
-  logger.info(`칼라 서버: ${khalaConfig.baseUrl}`);
+  logger.info(`Nexus 서버: ${nexusConfig.baseUrl}`);
 
-  const client = new KhalaClient(khalaConfig);
+  const client = new NexusClient(nexusConfig);
   const available = await client.isAvailable();
 
   if (available) {
@@ -433,8 +433,8 @@ async function runTroubleshootCmd(args: string[]): Promise<void> {
   }
 
   const config = await loadConfigAsync();
-  const khalaConfig = resolveKhalaConfig(config);
-  const client = new KhalaClient(khalaConfig);
+  const nexusConfig = resolveNexusConfig(config);
+  const client = new NexusClient(nexusConfig);
 
   let changedServices: { service: string; changedFiles: string[] }[] | undefined;
   if (o.diffBase) {
@@ -442,7 +442,7 @@ async function runTroubleshootCmd(args: string[]): Promise<void> {
     if (profile) {
       const changedFiles = getChangedFiles(o.diffBase);
       const scope = analyzeScope(changedFiles, profile, getDiffLines(o.diffBase));
-      const { extractServiceNames, fileBelongsToService } = await import('../khala/context-enricher.js');
+      const { extractServiceNames, fileBelongsToService } = await import('../nexus/context-enricher.js');
       changedServices = extractServiceNames(scope.groups).map((service) => ({
         service,
         changedFiles: changedFiles.filter((f) => fileBelongsToService(f, service)),
@@ -498,10 +498,10 @@ async function runReviewGroundCmd(args: string[]): Promise<void> {
   const scope = analyzeScope(changedFiles, profile, getDiffLines(o.base));
   const entities = buildChangedEntities(scope.groups, changedFiles);
 
-  const khalaConfig = resolveKhalaConfig(config);
-  const client = new KhalaClient(khalaConfig);
+  const nexusConfig = resolveNexusConfig(config);
+  const client = new NexusClient(nexusConfig);
   const result = await runReviewGround(entities, client, {
-    searchTopK: khalaConfig.searchTopK, graphHops: khalaConfig.graphHops,
+    searchTopK: nexusConfig.searchTopK, graphHops: nexusConfig.graphHops,
   });
 
   if (!result.ok) {
@@ -555,14 +555,14 @@ switch (command) {
   case 'review':
     void runReview(args.slice(1));
     break;
-  case 'khala:search':
-    void runKhalaSearch(args.slice(1));
+  case 'nexus:search':
+    void runNexusSearch(args.slice(1));
     break;
-  case 'khala:impact':
-    void runKhalaImpact(args.slice(1));
+  case 'nexus:impact':
+    void runNexusImpact(args.slice(1));
     break;
-  case 'khala:status':
-    void runKhalaStatus();
+  case 'nexus:status':
+    void runNexusStatus();
     break;
   case 'troubleshoot':
     void runTroubleshootCmd(args.slice(1));
@@ -581,9 +581,9 @@ Usage:
   probe api:lint        API 스펙 린트
   probe api:diff        API 스펙 diff (breaking 변경 감지)
   probe review          리뷰 체크리스트 생성
-  probe khala:search    칼라 지식베이스 검색
-  probe khala:impact    서비스 영향 분석
-  probe khala:status    칼라 연결 상태 확인
+  probe nexus:search    Nexus 지식베이스 검색
+  probe nexus:impact    서비스 영향 분석
+  probe nexus:status    Nexus 연결 상태 확인
   probe troubleshoot    에러/스택트레이스 → 트러블슈팅 그라운딩
   probe review:ground   git diff → 리뷰 그라운딩 (설계-관측 갭·규정·토폴로지·승인 스펙)
   probe version         버전 출력

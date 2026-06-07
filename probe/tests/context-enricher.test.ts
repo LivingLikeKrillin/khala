@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { enrichWithKhala, extractServiceNames, fileBelongsToService } from '../src/khala/context-enricher.js';
+import { enrichWithNexus, extractServiceNames, fileBelongsToService } from '../src/nexus/context-enricher.js';
 import type { DetectedGroup } from '../src/core/scope-analyzer.js';
 
 /**
- * 칼라 컨텍스트 보강 테스트
+ * Nexus 컨텍스트 보강 테스트
  */
 
 // 테스트용 응집 그룹
@@ -91,7 +91,7 @@ describe('extractServiceNames', () => {
   });
 });
 
-describe('enrichWithKhala', () => {
+describe('enrichWithNexus', () => {
   let originalFetch: typeof globalThis.fetch;
 
   beforeEach(() => {
@@ -102,22 +102,22 @@ describe('enrichWithKhala', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('칼라 미가용 시 빈 결과와 khalaAvailable=false를 반환한다', async () => {
+  it('Nexus 미가용 시 빈 결과와 nexusAvailable=false를 반환한다', async () => {
     // 모든 fetch 호출이 실패하도록
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED')) as unknown as typeof fetch;
 
     const groups = makeGroups(['Payment']);
-    const result = await enrichWithKhala(groups, ['src/PaymentService.ts'], {
-      khalaConfig: { baseUrl: 'http://fake:9999', timeoutMs: 100 },
+    const result = await enrichWithNexus(groups, ['src/PaymentService.ts'], {
+      nexusConfig: { baseUrl: 'http://fake:9999', timeoutMs: 100 },
     });
 
-    expect(result.khalaAvailable).toBe(false);
+    expect(result.nexusAvailable).toBe(false);
     expect(result.relevantDocs).toHaveLength(0);
     expect(result.impactedServices).toHaveLength(0);
     expect(result.designObservationGaps).toHaveLength(0);
   });
 
-  it('서비스명을 추출할 수 없으면 빈 결과와 khalaAvailable=true를 반환한다', async () => {
+  it('서비스명을 추출할 수 없으면 빈 결과와 nexusAvailable=true를 반환한다', async () => {
     // getStatusProbe 성공 (json 포함)
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true, status: 200,
@@ -125,15 +125,15 @@ describe('enrichWithKhala', () => {
     }) as unknown as typeof fetch;
 
     const groups = makeGroups(['unknown']);
-    const result = await enrichWithKhala(groups, [], {
-      khalaConfig: { baseUrl: 'http://fake:8000', timeoutMs: 100 },
+    const result = await enrichWithNexus(groups, [], {
+      nexusConfig: { baseUrl: 'http://fake:8000', timeoutMs: 100 },
     });
 
-    expect(result.khalaAvailable).toBe(true);
+    expect(result.nexusAvailable).toBe(true);
     expect(result.relevantDocs).toHaveLength(0);
   });
 
-  it('칼라가 가용하면 3개 조회를 병렬 수행한다', async () => {
+  it('Nexus가 가용하면 3개 조회를 병렬 수행한다', async () => {
     let callCount = 0;
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       callCount++;
@@ -186,11 +186,11 @@ describe('enrichWithKhala', () => {
     }) as unknown as typeof fetch;
 
     const groups = makeGroups(['Payment']);
-    const result = await enrichWithKhala(groups, ['src/PaymentService.ts'], {
-      khalaConfig: { baseUrl: 'http://fake:8000', timeoutMs: 1000 },
+    const result = await enrichWithNexus(groups, ['src/PaymentService.ts'], {
+      nexusConfig: { baseUrl: 'http://fake:8000', timeoutMs: 1000 },
     });
 
-    expect(result.khalaAvailable).toBe(true);
+    expect(result.nexusAvailable).toBe(true);
     expect(result.relevantDocs).toHaveLength(1);
     expect(result.relevantDocs[0].docTitle).toBe('API Guide');
     // /status + /search + /graph(payment) + /graph(payment-service) + /diff = 최소 4회
@@ -210,8 +210,8 @@ describe('enrichWithKhala', () => {
     }) as unknown as typeof globalThis.fetch;
 
     const groups = makeGroups(['Order']);
-    const result = await enrichWithKhala(groups, ['src/order/OrderService.java'], { khalaConfig: { baseUrl: 'http://t:8000' } });
-    expect(result.khalaAvailable).toBe(true);
+    const result = await enrichWithNexus(groups, ['src/order/OrderService.java'], { nexusConfig: { baseUrl: 'http://t:8000' } });
+    expect(result.nexusAvailable).toBe(true);
     expect(result.designObservationGaps.some((g) => g.flag === 'observed_only')).toBe(true);
     expect(result.impactedServices.some((s) => s.name === 'inventory-service')).toBe(true);
   });

@@ -3,14 +3,14 @@
 # 목적: (1) Ollama 임베딩 모델 자동 pull, (2) 앱에 NOTION_TOKEN 주입, (3) pfplay 코드 마운트.
 services:
   # ── Ollama 임베딩 모델 자동 pull (한 번 실행 후 종료) ──
-  khala-ollama-init:
+  nexus-ollama-init:
     image: ollama/ollama
-    container_name: khala-ollama-init
+    container_name: nexus-ollama-init
     depends_on:
-      khala-ollama:
+      nexus-ollama:
         condition: service_started
     environment:
-      OLLAMA_HOST: http://khala-ollama:11434   # CLI가 메인 ollama 서버를 타겟
+      OLLAMA_HOST: http://nexus-ollama:11434   # CLI가 메인 ollama 서버를 타겟
     entrypoint:
       - /bin/sh
       - -c
@@ -18,7 +18,7 @@ services:
     restart: "no"
 
   # ── 앱: Notion 토큰 주입 + pfplay 코드 마운트 ──
-  khala-app:
+  nexus-app:
     environment:
       NOTION_TOKEN: ${NOTION_TOKEN:-}
     volumes:

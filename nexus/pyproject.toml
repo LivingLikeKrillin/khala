@@ -1,5 +1,5 @@
 [project]
-name = "khala"
+name = "nexus"
 version = "0.1.0"
 description = "Enterprise RAG + GraphRAG - grounded knowledge retrieval with Korean NLP + OTel integration"
 requires-python = ">=3.11"
@@ -49,7 +49,7 @@ mcp = [
 ]
 
 [project.scripts]
-khala = "khala.cli:app"
+nexus = "nexus.cli:app"
 
 [build-system]
 requires = ["hatchling"]
@@ -64,5 +64,5 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 markers = [
-    "integration: 실제 DB 연결이 필요한 통합 테스트 (KHALA_TEST_DB_URL 필요)",
+    "integration: 실제 DB 연결이 필요한 통합 테스트 (NEXUS_TEST_DB_URL 필요)",
 ]

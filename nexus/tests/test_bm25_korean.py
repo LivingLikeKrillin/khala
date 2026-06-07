@@ -1,6 +1,6 @@
 """한국어 BM25 토큰화 테스트."""
 
-from khala.index.bm25 import tokenize_korean, tokens_to_tsquery
+from nexus.index.bm25 import tokenize_korean, tokens_to_tsquery
 
 
 class TestTokenizeKorean:
