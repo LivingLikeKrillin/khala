@@ -368,15 +368,19 @@ git add -A && git commit -m "docs: rename Nexus component refs khala→nexus; ke
 ⚠️ **리뷰 반영:** 좁은 glob(py/ts/toml/json)은 yml/sql/Dockerfile/env/js/html/md를 못 봐 Step9·10의 사각과 동일 blind spot. 전 텍스트 파일 감사:
 **허용 잔여(allow-list) — 이것만 남아야 정상:** ① 생태계 repo URL `github.com/LivingLikeKrillin/khala`, ② 생태계명 `Khala Ecosystem`/`Khala 에코시스템`/`Khala 생태계`, ③ docs 사이트 생태계 페이지(`index.mdx`·`philosophy.md`·`ecosystem.mdx`·`contributing.md` 및 ko)의 생태계 "Khala". **그 외 모든 khala = 컴포넌트 잔여 = 치환 대상.**
 
+⚠️ **리뷰 반영:** allow-list를 **줄 단위 `-v`로 빼면 위험** — 컴포넌트 `khala`가 허용 토큰과 같은 줄에 있으면 통째로 숨는다. → **토큰 근방(±40자)만 추출**해 평가(`grep -o`). 또 `archon`은 allow에서 제외(archon_*엔 "khala" 문자열 자체가 없어 불필요·억제만 넓힘). URL은 복원형(bare `LivingLikeKrillin/khala`)에 맞춤.
+
 ```bash
 cd "C:/Users/Eisen/Desktop/Labs/_bmono/khala"
-ALLOW='archon|github\.com/LivingLikeKrillin/khala|Khala Ecosystem|Khala 에코시스템|Khala 생태계'
+ALLOW='LivingLikeKrillin/khala|Khala Ecosystem|Khala 에코시스템|Khala 생태계'
 echo "=== CODE residual (target: EMPTY) ==="
-grep -rIni 'khala' nexus probe specledger mutqa --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist | grep -viE "$ALLOW" | head -40
+grep -rInioE '.{0,40}khala.{0,40}' nexus probe specledger mutqa --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist | grep -viE "$ALLOW" | head -40
 echo "=== DOCS residual (생태계 4페이지 외 컴포넌트 khala = target EMPTY) ==="
-grep -rIni 'khala' docs/src --exclude-dir=node_modules | grep -viE "$ALLOW" | grep -viE 'docs/(ko/)?(index|philosophy|ecosystem|contributing)' | head -40
+grep -rInioE '.{0,40}khala.{0,40}' docs/src --exclude-dir=node_modules | grep -viE "$ALLOW" | grep -viE 'docs/(ko/)?(index|philosophy|ecosystem|contributing)' | head -40
+echo "=== POSITIVE: 생태계 'Khala'가 docs 사이트에 살아있는지(over-restore/over-sed 역방향 검출) ==="
+grep -rIl 'Khala' docs/src/content/docs/index.mdx docs/src/content/docs/philosophy.md | wc -l
 ```
-Expected: 두 블록 **모두 빈 출력**. 비면 개명 완전. 남으면 그 줄을 위 규칙으로 판정(컴포넌트면 치환·재실행). *기억: 단위테스트는 compose/init.sql/web 자산을 검증 안 하므로, 이 감사 + owner Docker 실행이 그 부분의 실질 안전망.*
+Expected: 앞 두 블록 **빈 출력**(개명 완전), 세 번째는 **≥1**(생태계명 보존). 남으면 그 토큰을 규칙으로 판정(컴포넌트면 치환·재실행). *기억: 단위테스트는 compose/init.sql/web 자산을 검증 안 하므로, 이 감사 + owner Docker 실행이 그 부분의 실질 안전망.*
 
 - [ ] **Step 2: 전 하위 테스트 재확인** — Task 7 Step 2와 동일하게 5개 재실행, 전부 green.
 
