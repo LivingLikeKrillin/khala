@@ -1,0 +1,207 @@
+/**
+ * probe.config.ts 로더
+ *
+ * 프로젝트 루트의 probe.config.ts (또는 .js, .mjs, .json)를 읽어서 설정을 반환한다.
+ * 설정 파일이 없으면 기본값을 사용한다.
+ *
+ * 규정 문서: docs/probe-v0.1-scope.md § 5
+ */
+
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import type { PlatformProfile, PrThresholds } from '../profiles/types.js';
+
+/** API 설정 (v0.2) */
+export interface ApiConfig {
+  /** OpenAPI 스펙 파일 경로 (기본: 'api/openapi.json') */
+  specPath?: string;
+
+  /** Spectral 사용 여부 ('auto' | true | false) */
+  useSpectral?: 'auto' | boolean;
+
+  /** oasdiff 사용 여부 ('auto' | true | false) */
+  useOasdiff?: 'auto' | boolean;
+
+  /** 비활성화할 린트 룰 ID 목록 */
+  disableRules?: string[];
+
+  /** 룰별 심각도 오버라이드 */
+  ruleSeverity?: Record<string, 'error' | 'warn' | 'off'>;
+}
+
+/** 리뷰 설정 (v0.2) */
+export interface ReviewConfig {
+  /** 체크리스트 비활성화할 PR 타입 */
+  disableChecklists?: string[];
+
+  /** 타입별 커스텀 체크리스트 항목 */
+  customItems?: Record<string, Array<{ id: string; description: string }>>;
+}
+
+export interface ProbeConfig {
+  /** 플랫폼 프로파일 (자동 감지 또는 수동 지정) */
+  platform?: 'spring-boot' | 'nextjs' | 'react-spa' | 'custom';
+
+  /** 커스텀 프로파일 (platform: 'custom' 시) */
+  customProfile?: PlatformProfile;
+
+  /** 프로파일 임계치 오버라이드 */
+  thresholds?: Partial<PrThresholds>;
+
+  /** 무시할 파일 패턴 */
+  ignore?: string[];
+
+  /** 경고 레벨 설정 */
+  severity?: {
+    /** 범위 경고 최소 레벨 (이 레벨 이상만 표시) */
+    minLevel?: 'info' | 'warn' | 'error';
+  };
+
+  /** API 분석 설정 (v0.2) */
+  api?: ApiConfig;
+
+  /** 리뷰 체크리스트 설정 (v0.2) */
+  review?: ReviewConfig;
+
+  /** 칼라 연동 설정 (v0.4) */
+  khala?: KhalaConfig;
+}
+
+/** 칼라 연동 설정 (v0.4) */
+export interface KhalaConfig {
+  /** 칼라 API 서버 URL (기본: http://localhost:8000) */
+  baseUrl?: string;
+  /** 요청 타임아웃 ms (기본: 3000) */
+  timeoutMs?: number;
+  /** 테넌트 (기본: "default") */
+  tenant?: string;
+  /** 최대 분류 등급 (기본: "INTERNAL") */
+  classificationMax?: string;
+  /** 칼라 연동 비활성화 (기본: false) */
+  disabled?: boolean;
+  /** 검색 결과 최대 건수 (기본: 5) */
+  searchTopK?: number;
+  /** 그래프 탐색 홉 수 (기본: 1) */
+  graphHops?: number;
+}
+
+/**
+ * 설정 파일 후보 (우선순위 순).
+ * TypeScript/JS 파일은 동적 import, JSON은 직접 파싱.
+ */
+const CONFIG_CANDIDATES = [
+  { name: 'probe.config.ts', type: 'module' as const },
+  { name: 'probe.config.js', type: 'module' as const },
+  { name: 'probe.config.mjs', type: 'module' as const },
+  { name: 'probe.config.json', type: 'json' as const },
+];
+
+/**
+ * JSON 설정 파일을 동기적으로 로드한다.
+ */
+function loadJsonConfig(configPath: string): ProbeConfig | undefined {
+  try {
+    const content = readFileSync(configPath, 'utf-8');
+    return JSON.parse(content) as ProbeConfig;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * probe.config를 동기적으로 로드한다.
+ *
+ * TS/JS 모듈 설정 파일은 비동기 API인 `loadConfigAsync()`를 사용해야 한다.
+ * 동기 버전은 JSON 파일만 로드하고, TS/JS 파일이 존재하면 경로만 반환한다.
+ */
+export function loadConfig(projectRoot?: string): ProbeConfig {
+  const root = projectRoot ?? process.cwd();
+
+  for (const candidate of CONFIG_CANDIDATES) {
+    const configPath = join(root, candidate.name);
+    if (!existsSync(configPath)) continue;
+
+    if (candidate.type === 'json') {
+      return loadJsonConfig(configPath) ?? {};
+    }
+
+    // TS/JS 모듈은 동기 로드 불가 — JSON fallback 탐색 계속
+    // 사용자는 loadConfigAsync()를 써야 한다
+  }
+
+  return {};
+}
+
+/**
+ * probe.config를 비동기로 로드한다.
+ * TS/JS 모듈 설정 파일(export default)을 지원한다.
+ *
+ * @example
+ * ```typescript
+ * // probe.config.ts
+ * export default {
+ *   platform: 'spring-boot',
+ *   thresholds: { maxFilesPerPr: 25 },
+ * };
+ * ```
+ */
+export async function loadConfigAsync(projectRoot?: string): Promise<ProbeConfig> {
+  const root = projectRoot ?? process.cwd();
+
+  for (const candidate of CONFIG_CANDIDATES) {
+    const configPath = join(root, candidate.name);
+    if (!existsSync(configPath)) continue;
+
+    if (candidate.type === 'json') {
+      return loadJsonConfig(configPath) ?? {};
+    }
+
+    // TS/JS 모듈 동적 import
+    try {
+      const absPath = resolve(configPath);
+      const fileUrl = pathToFileURL(absPath).href;
+      const mod = await import(fileUrl) as { default?: ProbeConfig };
+      return mod.default ?? {};
+    } catch {
+      // import 실패 시 다음 후보로
+    }
+  }
+
+  return {};
+}
+
+/**
+ * 칼라 설정을 resolve한다 (config 파일 > 환경 변수 > 기본값).
+ */
+export function resolveKhalaConfig(config: ProbeConfig): KhalaConfig & { disabled: boolean } {
+  const env = process.env;
+  return {
+    baseUrl: config.khala?.baseUrl ?? env['KHALA_BASE_URL'] ?? 'http://localhost:8000',
+    timeoutMs: config.khala?.timeoutMs ?? (env['KHALA_TIMEOUT_MS'] ? Number(env['KHALA_TIMEOUT_MS']) : 3000),
+    tenant: config.khala?.tenant ?? env['KHALA_TENANT'] ?? 'default',
+    classificationMax: config.khala?.classificationMax ?? 'INTERNAL',
+    disabled: config.khala?.disabled ?? (env['KHALA_DISABLED'] === 'true'),
+    searchTopK: config.khala?.searchTopK ?? 5,
+    graphHops: config.khala?.graphHops ?? 1,
+  };
+}
+
+/**
+ * 설정의 임계치 오버라이드를 프로파일에 적용한다.
+ */
+export function applyConfigOverrides(
+  profile: PlatformProfile,
+  config: ProbeConfig,
+): PlatformProfile {
+  if (!config.thresholds) return profile;
+
+  return {
+    ...profile,
+    thresholds: {
+      ...profile.thresholds,
+      ...config.thresholds,
+      mixedConcerns: config.thresholds.mixedConcerns ?? profile.thresholds.mixedConcerns,
+    },
+  };
+}
