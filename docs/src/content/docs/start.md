@@ -16,4 +16,4 @@ description: Pick your goal; it routes you to the right tool.
 
 ## Prerequisites
 - Common: git, a recent runtime.
-- Nexus: Docker + Postgres. Probe: Node ≥20. specledger / mutqa: Python (mutqa needs `cosmic-ray`).
+- Nexus: Docker (Postgres etc. run inside the compose stack — no separate install). Probe: Node ≥20. specledger / mutqa: Python (mutqa needs `cosmic-ray`).

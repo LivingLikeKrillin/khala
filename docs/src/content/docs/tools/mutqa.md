@@ -89,5 +89,5 @@ When you change the Critic prompt, re-run the golden cases in `references/critic
 - Package modules: `mutqa.scope`, `mutqa.run`, `mutqa.ledger`, `mutqa.report`; Critic prompt + eval under `references/`.
 
 :::note[Last verified]
-Source repo README (site re-run verification pending).
+Transcribed from the skill's `SKILL.md` (and dogfood notes). Site re-run verification pending.
 :::
