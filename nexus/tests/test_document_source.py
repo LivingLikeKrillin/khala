@@ -1,4 +1,4 @@
-from khala.ingest.sources.base import ConvertedDoc, DocumentSource, PageRef
+from nexus.ingest.sources.base import ConvertedDoc, DocumentSource, PageRef
 
 
 def test_types_and_protocol():

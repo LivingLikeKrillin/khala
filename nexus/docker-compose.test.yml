@@ -1,18 +1,18 @@
 # 통합 테스트용 Docker Compose — 운영 인프라와 포트 충돌 방지
 services:
-  khala-test-db:
+  nexus-test-db:
     image: pgvector/pgvector:pg16
-    container_name: khala-test-db
+    container_name: nexus-test-db
     environment:
-      POSTGRES_DB: khala_test
-      POSTGRES_USER: khala
-      POSTGRES_PASSWORD: khala
+      POSTGRES_DB: nexus_test
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus
     ports:
       - "5433:5432"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U khala -d khala_test"]
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_test"]
       interval: 3s
       timeout: 3s
       retries: 10

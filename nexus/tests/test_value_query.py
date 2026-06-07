@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from khala.claims.value_query import ValueQueryService
-from khala.index.code_source import CodeValueResolver
-from khala.models.claim import Claim
+from nexus.claims.value_query import ValueQueryService
+from nexus.index.code_source import CodeValueResolver
+from nexus.models.claim import Claim
 
 FIX = Path(__file__).parent / "fixtures"
 

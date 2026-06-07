@@ -1,6 +1,6 @@
 """Diff 테스트 — DiffItem 구조 검증."""
 
-from khala.repositories.graph import DiffItem
+from nexus.repositories.graph import DiffItem
 
 
 class TestDiffItem:

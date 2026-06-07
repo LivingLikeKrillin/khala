@@ -1,7 +1,7 @@
 """Slack Bot 테스트 — 포매터, 쿼리 추출."""
 
-from khala.slack.formatter import format_answer, format_error
-from khala.slack.bot import _extract_query
+from nexus.slack.formatter import format_answer, format_error
+from nexus.slack.bot import _extract_query
 
 
 class TestExtractQuery:

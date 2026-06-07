@@ -1,4 +1,4 @@
-from khala.ingest.sources.notion_convert import blocks_to_markdown
+from nexus.ingest.sources.notion_convert import blocks_to_markdown
 
 
 def _rt(text, **ann):

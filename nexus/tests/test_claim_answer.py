@@ -1,5 +1,5 @@
-from khala.claims.answer import format_value_answer
-from khala.claims.value_query import ValueAnswer
+from nexus.claims.answer import format_value_answer
+from nexus.claims.value_query import ValueAnswer
 
 
 def test_high_conf_states_value_and_cites_source():

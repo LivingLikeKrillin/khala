@@ -1,4 +1,4 @@
-# Khala Pipeline 상세 명세
+# Nexus Pipeline 상세 명세
 
 > 각 파이프라인의 input/output/단계/에러 처리를 정확히 정의한다.
 > Claude Code는 이 문서를 보고 각 모듈의 함수 시그니처와 에러 핸들링을 생성해야 한다.
@@ -8,7 +8,7 @@
 ## 1. Ingestion Pipeline
 
 ### 개요
-Git repo의 Markdown 문서를 수집하여 Khala DB에 인덱싱한다.
+Git repo의 Markdown 문서를 수집하여 Nexus DB에 인덱싱한다.
 
 ### 전체 흐름
 ```

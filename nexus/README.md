@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Khala" width="180" />
+  <img src="logo.png" alt="Nexus" width="180" />
 </p>
 
 <p align="center">
@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/Korean_NLP-mecab--ko-FF6F00?style=for-the-badge" />
 </p>
 
-<h1 align="center">Khala</h1>
+<h1 align="center">Nexus</h1>
 
 <p align="center">
   <strong>Enterprise RAG + GraphRAG for Grounded Knowledge Retrieval</strong><br/>
@@ -19,9 +19,9 @@
 
 ---
 
-## What is Khala?
+## What is Nexus?
 
-Khala는 조직 내부 지식(문서, 정책, 설정)과 운영 사실(OTel trace, metric)을 결합하여 **근거 기반(grounded)으로 검색하고 추론하는 시스템**입니다.
+Nexus는 조직 내부 지식(문서, 정책, 설정)과 운영 사실(OTel trace, metric)을 결합하여 **근거 기반(grounded)으로 검색하고 추론하는 시스템**입니다.
 
 AI Agent(Code Review, Troubleshooting)의 **context provider**로서, 추측이 아닌 실제 문서와 관측 데이터에 기반한 답변을 제공합니다.
 
@@ -34,9 +34,9 @@ AI Agent(Code Review, Troubleshooting)의 **context provider**로서, 추측이 
          + 출처 링크 + trace 포인터
 ```
 
-### Why Khala?
+### Why Nexus?
 
-| 기존 RAG | Khala |
+| 기존 RAG | Nexus |
 |:--------:|:-----:|
 | 문서만 검색 | 문서 + 실시간 trace 결합 |
 | 추측 기반 답변 | 근거(evidence) 필수 |
@@ -175,7 +175,7 @@ Classification: PUBLIC < INTERNAL < RESTRICTED
 
 ```bash
 git clone https://github.com/LivingLikeKrillin/khala.git
-cd khala
+cd nexus
 
 cp .env.example .env
 # .env에서 ANTHROPIC_API_KEY 설정 (LLM 답변 기능 사용 시)
@@ -191,23 +191,23 @@ docker compose up -d
 
 | Container | Role | Port |
 |-----------|------|------|
-| khala-db | PostgreSQL 16 + pgvector | 5432 |
-| khala-ollama | Embedding model | 11434 |
-| khala-tempo | Trace storage | 3200 |
-| khala-otel | OTel Collector | 4317/4318 |
-| khala-app | FastAPI server | **8000** |
+| nexus-db | PostgreSQL 16 + pgvector | 5432 |
+| nexus-ollama | Embedding model | 11434 |
+| nexus-tempo | Trace storage | 3200 |
+| nexus-otel | OTel Collector | 4317/4318 |
+| nexus-app | FastAPI server | **8000** |
 
 ### 3. Pull Embedding Model (first time only)
 
 ```bash
-docker exec khala-ollama ollama pull nomic-embed-text
+docker exec nexus-ollama ollama pull nomic-embed-text
 ```
 
 ### 4. Index Documents
 
 ```bash
 # 컨테이너 내 CLI 사용
-docker exec khala-app khala ingest ./docs
+docker exec nexus-app nexus ingest ./docs
 
 # 또는 API 호출
 curl -X POST http://localhost:8000/ingest \
@@ -219,7 +219,7 @@ curl -X POST http://localhost:8000/ingest \
 
 ```bash
 # CLI
-docker exec khala-app khala query "결제 서비스 의존성"
+docker exec nexus-app nexus query "결제 서비스 의존성"
 
 # API
 curl -X POST http://localhost:8000/search \
@@ -275,14 +275,14 @@ Response includes evidence snippets with source URIs and provenance.
 ## CLI Commands
 
 ```bash
-khala ingest ./docs              # 문서 인덱싱
-khala ingest ./docs --force      # 전체 재인덱싱 (hash 무시)
-khala query "검색어"              # 검색
-khala graph payment-service      # 그래프 조회
-khala graph payment-service -h 2 # 2-hop 그래프
-khala otel-aggregate             # OTel 집계
-khala diff                       # 설계-관측 diff
-khala status                     # 시스템 상태
+nexus ingest ./docs              # 문서 인덱싱
+nexus ingest ./docs --force      # 전체 재인덱싱 (hash 무시)
+nexus query "검색어"              # 검색
+nexus graph payment-service      # 그래프 조회
+nexus graph payment-service -h 2 # 2-hop 그래프
+nexus otel-aggregate             # OTel 집계
+nexus diff                       # 설계-관측 diff
+nexus status                     # 시스템 상태
 ```
 
 ---
@@ -290,10 +290,10 @@ khala status                     # 시스템 상태
 ## Project Structure
 
 ```
-khala/
-├── khala/
+nexus/
+├── nexus/
 │   ├── models/              # CRM 도메인 모델 (7 models)
-│   │   ├── resource.py      #   KhalaResource base class
+│   │   ├── resource.py      #   NexusResource base class
 │   │   ├── document.py      #   Document, Chunk, Entity
 │   │   ├── edge.py          #   Edge, ObservedEdge, Evidence
 │   │   └── ...
@@ -378,9 +378,9 @@ khala/
 
 접근 통제, 분류, 검색 경로 판정은 모두 **deterministic 코드**가 수행합니다. LLM은 검색된 evidence를 바탕으로 요약/설명만 담당합니다.
 
-### 3. Khala is an Index, Not Storage
+### 3. Nexus is an Index, Not Storage
 
-원본 문서는 Git에, 원본 trace는 Tempo에 있습니다. Khala DB에는 파생 데이터(chunks, embeddings, graph edges)만 저장됩니다.
+원본 문서는 Git에, 원본 trace는 Tempo에 있습니다. Nexus DB에는 파생 데이터(chunks, embeddings, graph edges)만 저장됩니다.
 
 ### 4. Evidence-Driven Edges
 
@@ -404,22 +404,22 @@ MVP 단계부터 교체 가능한 추상화를 적용하여, 2.0 전환 시 재�
 
 ```bash
 # 전체 테스트 (151 tests — e2e는 DB 연결 시 실행)
-docker exec khala-app pytest tests/ -v
+docker exec nexus-app pytest tests/ -v
 
 # 카테고리별
-docker exec khala-app pytest tests/test_bm25_korean.py -v   # 한국어 BM25
-docker exec khala-app pytest tests/test_quarantine.py -v    # PII/보안
-docker exec khala-app pytest tests/test_hybrid.py -v        # 검색
-docker exec khala-app pytest tests/test_graph.py -v         # 그래프
-docker exec khala-app pytest tests/test_otel.py -v          # OTel
-docker exec khala-app pytest tests/test_api.py -v           # API 모델
-docker exec khala-app pytest tests/test_streaming.py -v     # SSE 스트리밍
-docker exec khala-app pytest tests/test_slack.py -v         # Slack Bot
-docker exec khala-app pytest tests/test_mcp.py -v           # MCP Server
+docker exec nexus-app pytest tests/test_bm25_korean.py -v   # 한국어 BM25
+docker exec nexus-app pytest tests/test_quarantine.py -v    # PII/보안
+docker exec nexus-app pytest tests/test_hybrid.py -v        # 검색
+docker exec nexus-app pytest tests/test_graph.py -v         # 그래프
+docker exec nexus-app pytest tests/test_otel.py -v          # OTel
+docker exec nexus-app pytest tests/test_api.py -v           # API 모델
+docker exec nexus-app pytest tests/test_streaming.py -v     # SSE 스트리밍
+docker exec nexus-app pytest tests/test_slack.py -v         # Slack Bot
+docker exec nexus-app pytest tests/test_mcp.py -v           # MCP Server
 
 # 통합 테스트 (실제 DB 필요)
 docker compose -f docker-compose.test.yml up -d
-KHALA_TEST_DB_URL=postgresql://khala:khala@localhost:5433/khala_test \
+NEXUS_TEST_DB_URL=postgresql://nexus:nexus@localhost:5433/nexus_test \
   pytest tests/test_e2e.py -v
 docker compose -f docker-compose.test.yml down
 ```
@@ -481,11 +481,11 @@ entities:
 
 ## Slack Bot
 
-Slack에서 `@khala`로 멘션하거나 DM으로 질문하면 근거 기반 답변을 받을 수 있습니다.
+Slack에서 `@nexus`로 멘션하거나 DM으로 질문하면 근거 기반 답변을 받을 수 있습니다.
 
 ```bash
 pip install -e '.[slack]'
-python -m khala.slack.app
+python -m nexus.slack.app
 ```
 
 설정 및 사용법: [docs/SLACK_BOT.md](docs/SLACK_BOT.md)
@@ -494,15 +494,15 @@ python -m khala.slack.app
 
 ## MCP Server
 
-AI Agent(Claude, Cursor 등)가 MCP 프로토콜로 Khala에 질의할 수 있습니다.
+AI Agent(Claude, Cursor 등)가 MCP 프로토콜로 Nexus에 질의할 수 있습니다.
 
 ```bash
 pip install -e '.[mcp]'
-python -m khala.mcp                    # stdio (로컬)
-python -m khala.mcp --transport http   # streamable-http (원격)
+python -m nexus.mcp                    # stdio (로컬)
+python -m nexus.mcp --transport http   # streamable-http (원격)
 ```
 
-6개 도구 제공: `khala_search`, `khala_answer`, `khala_graph`, `khala_suggest`, `khala_diff`, `khala_status`
+6개 도구 제공: `nexus_search`, `nexus_answer`, `nexus_graph`, `nexus_suggest`, `nexus_diff`, `nexus_status`
 
 설정 및 사용법: [docs/MCP_SERVER.md](docs/MCP_SERVER.md)
 
@@ -551,7 +551,7 @@ Phase 3 — 거버넌스
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATABASE_URL` | `postgresql://khala:khala@localhost:5432/khala` | PostgreSQL 연결 |
+| `DATABASE_URL` | `postgresql://nexus:nexus@localhost:5432/nexus` | PostgreSQL 연결 |
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama API |
 | `ANTHROPIC_API_KEY` | — | Claude API key (LLM 답변용) |
 | `TEMPO_URL` | `http://localhost:3200` | Grafana Tempo |
@@ -559,7 +559,7 @@ Phase 3 — 거버넌스
 | `DEFAULT_TENANT` | `default` | 기본 테넌트 |
 | `SLACK_BOT_TOKEN` | — | Slack Bot OAuth Token (Slack Bot용) |
 | `SLACK_APP_TOKEN` | — | Slack App-Level Token (Socket Mode) |
-| `KHALA_API_URL` | `http://localhost:8000` | Slack Bot → Khala API 주소 |
+| `NEXUS_API_URL` | `http://localhost:8000` | Slack Bot → Nexus API 주소 |
 
 ---
 

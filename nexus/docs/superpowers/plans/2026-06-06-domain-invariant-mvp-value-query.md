@@ -2,16 +2,16 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 기획자가 자연어로 "준회원 플레이리스트 몇 개?"를 물으면, 코드 상수에서 현재값을 읽어 신뢰등급·신선도와 함께 답하는 Khala 확장 MVP를 만든다.
+**Goal:** 기획자가 자연어로 "준회원 플레이리스트 몇 개?"를 물으면, 코드 상수에서 현재값을 읽어 신뢰등급·신선도와 함께 답하는 Nexus 확장 MVP를 만든다.
 
-**Architecture:** Khala CRM에 신규 rtype `claim`(value-bearing) + `source_kind` enum에 `code` 추가. 값 조회는 claim → 코드 상수 재읽기로 *현재값*을 결정론적으로 반환하고, (파일+심볼) hash로 신선도를 판정한다. 표면은 CLI 우선 → 기존 MCP 서버에 도구 1개. 마지막 마일스톤은 가치 검증 프로토콜 실행(게이트).
+**Architecture:** Nexus CRM에 신규 rtype `claim`(value-bearing) + `source_kind` enum에 `code` 추가. 값 조회는 claim → 코드 상수 재읽기로 *현재값*을 결정론적으로 반환하고, (파일+심볼) hash로 신선도를 판정한다. 표면은 CLI 우선 → 기존 MCP 서버에 도구 1개. 마지막 마일스톤은 가치 검증 프로토콜 실행(게이트).
 
 **Tech Stack:** Python 3.11+, Typer CLI, PostgreSQL 16 + **asyncpg**(`$N` placeholder), dataclass CRM, pytest(integration 마커). mecab/embedding 불필요(검색 아닌 결정론 값 조회).
 
 **Spec:** `docs/superpowers/specs/2026-06-06-domain-invariant-governance-design.md`
 **검증 프로토콜:** `docs/superpowers/specs/2026-06-06-value-validation-protocol.md`
 
-> **실행 진행 (2026-06-06):** 태스크 **1·2·3·4·5·6·7·8·9 완료** — 코어 + **DB 통합 + CLI end-to-end**. 실 Postgres(테스트 DB) + fixtures로 검증: `khala claim-value 준회원` → "현재 5", `재생곡` → "현재 360". **단위 18 + 통합 2 = 20 tests green.**
+> **실행 진행 (2026-06-06):** 태스크 **1·2·3·4·5·6·7·8·9 완료** — 코어 + **DB 통합 + CLI end-to-end**. 실 Postgres(테스트 DB) + fixtures로 검증: `nexus claim-value 준회원` → "현재 5", `재생곡` → "현재 360". **단위 18 + 통합 2 = 20 tests green.**
 > **환경 메모:** 이 환경(Windows)에서 pytest-asyncio **async-generator fixture가 깨짐** → conftest `db_pool` 의존 통합테스트 불가. Archon 통합테스트는 자체 asyncio 루프로 우회(`tests/test_claim_integration.py`). (pytest 8.4.2 / pytest-asyncio 0.26.0로 업그레이드 — pyproject 선언 충족.)
 > **태스크 10 완료:** `/claims/value` API + `archon_claim_value` MCP 도구 — TestClient로 검증(준회원→5, high, fresh). **AI/기획자 NL 경로 완성.** (Tasks 1–10 전부 완료.)
 > **남음:** **11**(실제 기획자 가치검증 — pfplay 실제 상수 + 기획자 섭외). Notion 적재는 별도 계획(`2026-06-06-notion-source-adapter.md`).
@@ -20,28 +20,28 @@
 
 ## 확인된 실제 스키마 사실 (리뷰로 검증 완료 — 반드시 준수)
 
-- `KhalaResource`(models/resource.py): `rid`,`rtype`는 **기본값 없는 필수 필드**. 나머지는 기본값 보유. `status` 기본 `"active"`, `source_kind` 기본 `"git"`.
+- `NexusResource`(models/resource.py): `rid`,`rtype`는 **기본값 없는 필수 필드**. 나머지는 기본값 보유. `status` 기본 `"active"`, `source_kind` 기본 `"git"`.
 - DB enum: `classification_level(PUBLIC|INTERNAL|RESTRICTED)`, `resource_status(active|superseded|soft_deleted)`, `source_kind(git|wiki|file|otel|manual)`. **컬럼은 enum 타입**.
 - 각 테이블에 `CONSTRAINT chk_X_rtype CHECK (rtype='X')`.
 - **드라이버 = asyncpg** (conftest `asyncpg.create_pool`). `base_filter_sql()`는 psycopg `%(..)s` 스타일이므로 **그대로 쓰지 말고**, asyncpg `$N` + `::classification_level` 캐스트로 직접 작성.
-- 통합테스트: `@pytest.mark.integration` 필수 + `KHALA_TEST_DB_URL` 없으면 자동 skip. `db_pool`은 session-scope asyncpg 풀. `clean_db`는 고정 목록 TRUNCATE(**claims 미포함 → 추가 필요**).
+- 통합테스트: `@pytest.mark.integration` 필수 + `NEXUS_TEST_DB_URL` 없으면 자동 skip. `db_pool`은 session-scope asyncpg 풀. `clean_db`는 고정 목록 TRUNCATE(**claims 미포함 → 추가 필요**).
 - `rid` 생성: `make_rid(prefix, *parts)` → `f"{prefix}_{hash12}"`. **prefix에 콜론 금지**(`make_rid("claim", ...)` → `claim_<hash>`).
 
 ## 파일 구조
 
 | 파일 | 책임 | 신규/수정 |
 |---|---|---|
-| `khala/models/claim.py` | `Claim(KhalaResource)` dataclass | 신규 |
-| `khala/rid.py` | `claim_rid()` 추가 | 수정 |
+| `nexus/models/claim.py` | `Claim(NexusResource)` dataclass | 신규 |
+| `nexus/rid.py` | `claim_rid()` 추가 | 수정 |
 | `init.sql` | `ALTER TYPE source_kind ADD 'code'` + `claims` 테이블 | 수정 |
 | `tests/conftest.py` | `clean_db` TRUNCATE에 `claims` 추가 | 수정 |
-| `khala/index/code_source.py` | 코드 상수 값+hash 추출 | 신규 |
-| `khala/claims/repository.py` | claim CRUD (asyncpg, CRM 필터) | 신규 |
-| `khala/claims/value_query.py` | claim → 현재값+신선도+신뢰등급 | 신규 |
-| `khala/claims/answer.py` | 캘리브레이션 답변 조립 | 신규 |
-| `khala/claims/seed.py` | claims.yaml 로더 (seed 시 hash 스냅샷) | 신규 |
-| `khala/cli.py` | `claim-value`/`claim-seed` 커맨드 | 수정 |
-| `khala/api.py` | MCP 도구 `claim_value` 1개 | 수정 |
+| `nexus/index/code_source.py` | 코드 상수 값+hash 추출 | 신규 |
+| `nexus/claims/repository.py` | claim CRUD (asyncpg, CRM 필터) | 신규 |
+| `nexus/claims/value_query.py` | claim → 현재값+신선도+신뢰등급 | 신규 |
+| `nexus/claims/answer.py` | 캘리브레이션 답변 조립 | 신규 |
+| `nexus/claims/seed.py` | claims.yaml 로더 (seed 시 hash 스냅샷) | 신규 |
+| `nexus/cli.py` | `claim-value`/`claim-seed` 커맨드 | 수정 |
+| `nexus/api.py` | MCP 도구 `claim_value` 1개 | 수정 |
 | `claims.yaml`, `config.yaml` | 시드 + 코드경로 | 신규/수정 |
 | `tests/test_claim_model.py` 등 | 테스트 | 신규 |
 
@@ -51,13 +51,13 @@
 
 ### Task 1: Claim 데이터 모델
 
-**Files:** Create `khala/models/claim.py`; Test `tests/test_claim_model.py`
+**Files:** Create `nexus/models/claim.py`; Test `tests/test_claim_model.py`
 
 - [ ] **Step 1: 실패 테스트**
 
 ```python
 # tests/test_claim_model.py
-from khala.models.claim import Claim
+from nexus.models.claim import Claim
 
 def test_claim_defaults_and_crm_separation():
     c = Claim(
@@ -82,13 +82,13 @@ def test_claim_defaults_and_crm_separation():
 - [ ] **Step 3: 구현** (rid/rtype 기본값 재선언 → 키워드만으로 생성 가능. CRM `status`는 건드리지 않음.)
 
 ```python
-# khala/models/claim.py
+# nexus/models/claim.py
 from dataclasses import dataclass, field
-from khala.models.resource import KhalaResource
-from khala.rid import claim_rid
+from nexus.models.resource import NexusResource
+from nexus.rid import claim_rid
 
 @dataclass
-class Claim(KhalaResource):
+class Claim(NexusResource):
     # 기본값 부여로 키워드 생성 허용 (base에선 필수였음). __post_init__에서 채움.
     rid: str = ""
     rtype: str = "claim"
@@ -117,16 +117,16 @@ class Claim(KhalaResource):
 
 - [ ] **Step 4: 통과 확인** — Run: `pytest tests/test_claim_model.py -v` → PASS
 
-- [ ] **Step 5: 커밋** — `git add khala/models/claim.py tests/test_claim_model.py && git commit -m "feat(claim): Claim 모델 (CRM status 분리, code source)"`
+- [ ] **Step 5: 커밋** — `git add nexus/models/claim.py tests/test_claim_model.py && git commit -m "feat(claim): Claim 모델 (CRM status 분리, code source)"`
 
 ### Task 2: claim_rid
 
-**Files:** Modify `khala/rid.py`; Test `tests/test_claim_model.py`
+**Files:** Modify `nexus/rid.py`; Test `tests/test_claim_model.py`
 
 - [ ] **Step 1: 실패 테스트 추가**
 
 ```python
-from khala.rid import claim_rid
+from nexus.rid import claim_rid
 
 def test_claim_rid_stable_and_prefixed():
     a = claim_rid("default", "associate-max-playlists")
@@ -138,7 +138,7 @@ def test_claim_rid_stable_and_prefixed():
 - [ ] **Step 3: 구현**
 
 ```python
-# khala/rid.py 에 추가 (기존 편의함수 패턴: prefix 콜론 없음)
+# nexus/rid.py 에 추가 (기존 편의함수 패턴: prefix 콜론 없음)
 def claim_rid(tenant: str, claim_id: str) -> str:
     return make_rid("claim", tenant, claim_id)
 ```
@@ -201,7 +201,7 @@ CREATE INDEX idx_claims_tenant_class ON claims (tenant, classification)
     WHERE status = 'active' AND is_quarantined = false;
 ```
 
-- [ ] **Step 2: 적용 확인** — Run: `docker compose up -d khala-db && docker exec khala-db psql -U khala -d khala -f /docker-entrypoint-initdb.d/init.sql` (또는 재초기화) `&& docker exec khala-db psql -U khala -d khala -c "\d claims"` → claims 테이블 + `code` enum 값 확인
+- [ ] **Step 2: 적용 확인** — Run: `docker compose up -d nexus-db && docker exec nexus-db psql -U nexus -d nexus -f /docker-entrypoint-initdb.d/init.sql` (또는 재초기화) `&& docker exec nexus-db psql -U nexus -d nexus -c "\d claims"` → claims 테이블 + `code` enum 값 확인
 
 - [ ] **Step 3: 커밋** — `git commit -m "feat(claim): claims 테이블 + source_kind 'code' enum"`
 
@@ -219,7 +219,7 @@ await conn.execute("""
 """)
 ```
 
-- [ ] **Step 2: 확인** — (DB 환경에서) `KHALA_TEST_DB_URL` 설정 후 빈 통합테스트 1건이 claims TRUNCATE를 타는지 확인. 또한 **테스트 DB에 claims DDL이 적용**돼야 함 — `docker-compose.test.yml`의 init 스크립트(또는 마이그레이션)가 `init.sql`을 로드하는지 확인하고, 아니면 테스트 DB에도 Task 3 DDL을 적용하는 단계를 추가.
+- [ ] **Step 2: 확인** — (DB 환경에서) `NEXUS_TEST_DB_URL` 설정 후 빈 통합테스트 1건이 claims TRUNCATE를 타는지 확인. 또한 **테스트 DB에 claims DDL이 적용**돼야 함 — `docker-compose.test.yml`의 init 스크립트(또는 마이그레이션)가 `init.sql`을 로드하는지 확인하고, 아니면 테스트 DB에도 Task 3 DDL을 적용하는 단계를 추가.
 - [ ] **Step 3: 커밋** — `git commit -m "test(claim): clean_db TRUNCATE에 claims 추가"`
 
 ---
@@ -228,7 +228,7 @@ await conn.execute("""
 
 ### Task 5: CodeValueResolver — 상수 값+hash 추출
 
-**Files:** Create `khala/index/code_source.py`; Test `tests/test_code_source.py`; Fixture `tests/fixtures/PlaylistPolicy.java`
+**Files:** Create `nexus/index/code_source.py`; Test `tests/test_code_source.py`; Fixture `tests/fixtures/PlaylistPolicy.java`
 
 - [ ] **Step 1: 픽스처 + 실패 테스트**
 
@@ -244,7 +244,7 @@ public class PlaylistPolicy {
 ```python
 # tests/test_code_source.py
 from pathlib import Path
-from khala.index.code_source import CodeValueResolver
+from nexus.index.code_source import CodeValueResolver
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -276,7 +276,7 @@ def test_missing_symbol_not_found():
 - [ ] **Step 3: 구현** (hash 입력에 **repo 상대경로 전체** 사용 → 동명파일 충돌 방지)
 
 ```python
-# khala/index/code_source.py
+# nexus/index/code_source.py
 import hashlib
 import re
 from dataclasses import dataclass
@@ -324,17 +324,17 @@ class CodeValueResolver:
 
 ### Task 6: ClaimRepository (asyncpg, CRM 필터)
 
-**Files:** Create `khala/claims/repository.py`; Test `tests/test_claim_integration.py`
+**Files:** Create `nexus/claims/repository.py`; Test `tests/test_claim_integration.py`
 
 - [ ] **Step 1: 실패 통합테스트** (integration 마커 필수)
 
 ```python
 # tests/test_claim_integration.py
 import pytest
-from khala.models.claim import Claim
-from khala.claims.repository import ClaimRepository
+from nexus.models.claim import Claim
+from nexus.claims.repository import ClaimRepository
 
-pytestmark = pytest.mark.integration   # KHALA_TEST_DB_URL 없으면 자동 skip
+pytestmark = pytest.mark.integration   # NEXUS_TEST_DB_URL 없으면 자동 skip
 
 @pytest.mark.asyncio
 async def test_upsert_and_find_by_concept(db_pool):
@@ -357,8 +357,8 @@ async def test_upsert_and_find_by_concept(db_pool):
 - [ ] **Step 3: 구현** (asyncpg `$N`, `::classification_level` 캐스트, 전체 CRM 필터)
 
 ```python
-# khala/claims/repository.py
-from khala.models.claim import Claim
+# nexus/claims/repository.py
+from nexus.models.claim import Claim
 
 class ClaimRepository:
     def __init__(self, pool):
@@ -427,7 +427,7 @@ def _row_to_claim(r) -> Claim:
 
 ### Task 7: ValueQueryService — 현재값+신선도+드리프트
 
-**Files:** Create `khala/claims/value_query.py`; Test `tests/test_value_query.py`
+**Files:** Create `nexus/claims/value_query.py`; Test `tests/test_value_query.py`
 
 - [ ] **Step 1: 실패 테스트** (단위 — FakeRepo로 DB 불필요)
 
@@ -435,9 +435,9 @@ def _row_to_claim(r) -> Claim:
 # tests/test_value_query.py
 from pathlib import Path
 import pytest
-from khala.claims.value_query import ValueQueryService
-from khala.index.code_source import CodeValueResolver
-from khala.models.claim import Claim
+from nexus.claims.value_query import ValueQueryService
+from nexus.index.code_source import CodeValueResolver
+from nexus.models.claim import Claim
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -478,7 +478,7 @@ async def test_missing_source_is_honest():
 - [ ] **Step 3: 구현**
 
 ```python
-# khala/claims/value_query.py
+# nexus/claims/value_query.py
 from dataclasses import dataclass
 
 @dataclass
@@ -530,14 +530,14 @@ class ValueQueryService:
 
 ### Task 8: 캘리브레이션 답변
 
-**Files:** Create `khala/claims/answer.py`; Test `tests/test_claim_answer.py`
+**Files:** Create `nexus/claims/answer.py`; Test `tests/test_claim_answer.py`
 
 - [ ] **Step 1: 실패 테스트**
 
 ```python
 # tests/test_claim_answer.py
-from khala.claims.answer import format_value_answer
-from khala.claims.value_query import ValueAnswer
+from nexus.claims.answer import format_value_answer
+from nexus.claims.value_query import ValueAnswer
 
 def test_high_conf_states_value_and_cites_source():
     s = format_value_answer("준회원", [ValueAnswer("a", "준회원 최대 N개", "5",
@@ -559,8 +559,8 @@ def test_unknown_is_not_fabricated():
 - [ ] **Step 3: 구현**
 
 ```python
-# khala/claims/answer.py
-from khala.claims.value_query import ValueAnswer
+# nexus/claims/answer.py
+from nexus.claims.value_query import ValueAnswer
 
 def format_value_answer(concept: str, answers: list[ValueAnswer]) -> str:
     if not answers:
@@ -585,7 +585,7 @@ def format_value_answer(concept: str, answers: list[ValueAnswer]) -> str:
 
 ### Task 9: 시드 로더 + CLI
 
-**Files:** Create `khala/claims/seed.py`, `claims.yaml`; Modify `khala/cli.py`, `config.yaml`
+**Files:** Create `nexus/claims/seed.py`, `claims.yaml`; Modify `nexus/cli.py`, `config.yaml`
 
 - [ ] **Step 1: 시드 + config**
 
@@ -618,11 +618,11 @@ code_source:
 - [ ] **Step 2: 시드 로더** (seed 시 resolver로 현재 hash를 스냅샷 → 이후 drift 판정 기준. owner 비-unknown 강제.)
 
 ```python
-# khala/claims/seed.py
+# nexus/claims/seed.py
 import yaml
-from khala.models.claim import Claim
-from khala.index.code_source import CodeValueResolver
-from khala.claims.repository import ClaimRepository
+from nexus.models.claim import Claim
+from nexus.index.code_source import CodeValueResolver
+from nexus.claims.repository import ClaimRepository
 
 async def seed_claims(yaml_path: str, repo: ClaimRepository, resolver: CodeValueResolver) -> int:
     items = yaml.safe_load(open(yaml_path, encoding="utf-8")) or []
@@ -645,7 +645,7 @@ async def seed_claims(yaml_path: str, repo: ClaimRepository, resolver: CodeValue
 - [ ] **Step 3: CLI 커맨드** (기존 Typer `app` + `_run(coro)`/`db.get_pool()`/`_load_config()` 패턴은 P0에서 확인 후 사용)
 
 ```python
-# khala/cli.py 에 추가
+# nexus/cli.py 에 추가
 @app.command("claim-seed")
 def claim_seed(path: str = "claims.yaml"):
     """claims.yaml을 적재(현재 코드 hash 스냅샷 포함)."""
@@ -654,22 +654,22 @@ def claim_seed(path: str = "claims.yaml"):
 @app.command("claim-value")
 def claim_value(concept: str):
     """개념의 도메인 값 claim 현재값 조회."""
-    from khala.claims.answer import format_value_answer
+    from nexus.claims.answer import format_value_answer
     print(format_value_answer(concept, _run(_query(concept))))
 
 # wiring 헬퍼 (기존 풀/config 패턴 사용)
 async def _wire():
     cfg = _load_config()                       # 기존 함수
     pool = await db.get_pool()                 # 기존 함수
-    from khala.claims.repository import ClaimRepository
-    from khala.index.code_source import CodeValueResolver
-    from khala.claims.value_query import ValueQueryService
+    from nexus.claims.repository import ClaimRepository
+    from nexus.index.code_source import CodeValueResolver
+    from nexus.claims.value_query import ValueQueryService
     repo = ClaimRepository(pool)
     resolver = CodeValueResolver(cfg["code_source"]["repo_path"])
     return repo, resolver, ValueQueryService(repo, resolver)
 
 async def _seed(path):
-    from khala.claims.seed import seed_claims
+    from nexus.claims.seed import seed_claims
     repo, resolver, _ = await _wire(); return await seed_claims(path, repo, resolver)
 
 async def _query(concept):
@@ -678,7 +678,7 @@ async def _query(concept):
 
 - [ ] **Step 4: 수동 검증**
 
-Run: `docker compose up -d && khala claim-seed ./claims.yaml && khala claim-value 준회원`
+Run: `docker compose up -d && nexus claim-seed ./claims.yaml && nexus claim-value 준회원`
 Expected: `- 준회원은 플레이리스트를 최대 N개 가질 수 있다: **현재 5** (확실: 코드 상수 PlaylistPolicy.ASSOCIATE_MAX_PLAYLISTS, 조회 시점 기준)`
 (repo_path에 PlaylistPolicy.java가 있어야 함 — 없으면 테스트 픽스처 경로로 임시 검증.)
 
@@ -686,7 +686,7 @@ Expected: `- 준회원은 플레이리스트를 최대 N개 가질 수 있다: *
 
 ### Task 10: MCP 도구 `claim_value`
 
-**Files:** Modify `khala/api.py`; Test `tests/test_claim_integration.py`
+**Files:** Modify `nexus/api.py`; Test `tests/test_claim_integration.py`
 
 - [ ] **Step 1: 실패 e2e 테스트** (integration) — MCP 도구 `claim_value(concept="준회원")` 호출 → 답변에 "5" 포함.
 - [ ] **Step 2: 실패 확인** → FAIL

@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans. Steps use checkbox (`- [ ]`).
 
-**Goal:** Notion 기획문서를 증분 동기화로 Khala에 적재해, 기획자가 개념·정의를 자연어로 조회(grounding)할 수 있게 한다.
+**Goal:** Notion 기획문서를 증분 동기화로 Nexus에 적재해, 기획자가 개념·정의를 자연어로 조회(grounding)할 수 있게 한다.
 
-**Architecture:** 소스-무관 `DocumentSource` Protocol + `NotionSource`(블록→Markdown+frontmatter, 텍스트우선·이미지갭표기, last_edited_time 증분). 기존 `run_ingest` 재사용. `_save_document`/`_save_chunks`를 frontmatter 오버라이드 가능하게 소폭 수정(git 적재 불변). `khala notion-sync` CLI.
+**Architecture:** 소스-무관 `DocumentSource` Protocol + `NotionSource`(블록→Markdown+frontmatter, 텍스트우선·이미지갭표기, last_edited_time 증분). 기존 `run_ingest` 재사용. `_save_document`/`_save_chunks`를 frontmatter 오버라이드 가능하게 소폭 수정(git 적재 불변). `nexus notion-sync` CLI.
 
-**Tech Stack:** Python 3.11+, `notion-client` SDK(신규 의존성), 기존 Khala ingest, pytest.
+**Tech Stack:** Python 3.11+, `notion-client` SDK(신규 의존성), 기존 Nexus ingest, pytest.
 
 **Spec:** `docs/superpowers/specs/2026-06-06-notion-source-adapter-design.md`
 
@@ -14,20 +14,20 @@
 
 ## P0 — 시작 전 확인 (코드 아님)
 
-- [ ] `khala/ingest/pipeline.py`의 `_save_document`(L50-92)·`_save_chunks`(L95-) INSERT/ON CONFLICT 실제 컬럼·`$`번호 재확인. `classifier.py`의 frontmatter 우선순위(`doc_type`/`classification`/`owner`) 확인. `cli.py` Typer 패턴·`run_ingest` 시그니처(`docs_path, force, tenant, config_path`) 확인.
+- [ ] `nexus/ingest/pipeline.py`의 `_save_document`(L50-92)·`_save_chunks`(L95-) INSERT/ON CONFLICT 실제 컬럼·`$`번호 재확인. `classifier.py`의 frontmatter 우선순위(`doc_type`/`classification`/`owner`) 확인. `cli.py` Typer 패턴·`run_ingest` 시그니처(`docs_path, force, tenant, config_path`) 확인.
 - [ ] `pyproject.toml`에 `notion-client>=2.2.1` 추가 후 설치.
 
 ## 파일 구조
 
 | 파일 | 책임 | 신규/수정 |
 |---|---|---|
-| `khala/ingest/sources/__init__.py` | 패키지 | 신규 |
-| `khala/ingest/sources/base.py` | `DocumentSource` Protocol + `PageRef`/`ConvertedDoc` | 신규 |
-| `khala/ingest/sources/notion_convert.py` | 블록→Markdown + image_count (순수함수, 단위테스트 핵심) | 신규 |
-| `khala/ingest/sources/notion.py` | `NotionSource` (API 폴링·fetch·live_ids) | 신규 |
-| `khala/ingest/pipeline.py` | `_save_document`/`_save_chunks` frontmatter 오버라이드 + chunks metadata | 수정 |
-| `khala/ingest/sync_state.py` | 마지막 동기화 시각 저장/로드 | 신규 |
-| `khala/cli.py` | `notion-sync` 커맨드 | 수정 |
+| `nexus/ingest/sources/__init__.py` | 패키지 | 신규 |
+| `nexus/ingest/sources/base.py` | `DocumentSource` Protocol + `PageRef`/`ConvertedDoc` | 신규 |
+| `nexus/ingest/sources/notion_convert.py` | 블록→Markdown + image_count (순수함수, 단위테스트 핵심) | 신규 |
+| `nexus/ingest/sources/notion.py` | `NotionSource` (API 폴링·fetch·live_ids) | 신규 |
+| `nexus/ingest/pipeline.py` | `_save_document`/`_save_chunks` frontmatter 오버라이드 + chunks metadata | 수정 |
+| `nexus/ingest/sync_state.py` | 마지막 동기화 시각 저장/로드 | 신규 |
+| `nexus/cli.py` | `notion-sync` 커맨드 | 수정 |
 | `config.yaml` | `notion:` 블록 | 수정 |
 | `pyproject.toml` | notion-client 의존성 | 수정 |
 
@@ -37,13 +37,13 @@
 
 ### Task 1: DocumentSource Protocol + 타입
 
-**Files:** Create `khala/ingest/sources/__init__.py`, `khala/ingest/sources/base.py`; Test `tests/test_document_source.py`
+**Files:** Create `nexus/ingest/sources/__init__.py`, `nexus/ingest/sources/base.py`; Test `tests/test_document_source.py`
 
 - [ ] **Step 1: 실패 테스트** — `PageRef`/`ConvertedDoc` 생성 + `DocumentSource` Protocol을 만족하는 더미 클래스가 런타임 체크 통과.
 
 ```python
 # tests/test_document_source.py
-from khala.ingest.sources.base import PageRef, ConvertedDoc, DocumentSource
+from nexus.ingest.sources.base import PageRef, ConvertedDoc, DocumentSource
 
 def test_types_and_protocol():
     ref = PageRef(id="p1", url="https://notion.so/p1", last_edited="2026-06-06T00:00:00Z")
@@ -61,7 +61,7 @@ def test_types_and_protocol():
 - [ ] **Step 3: 구현**
 
 ```python
-# khala/ingest/sources/base.py
+# nexus/ingest/sources/base.py
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
@@ -91,13 +91,13 @@ class DocumentSource(Protocol):
 
 ### Task 2: 블록 → Markdown 변환 (단위테스트 핵심)
 
-**Files:** Create `khala/ingest/sources/notion_convert.py`; Test `tests/test_notion_convert.py`
+**Files:** Create `nexus/ingest/sources/notion_convert.py`; Test `tests/test_notion_convert.py`
 
 - [ ] **Step 1: 실패 테스트** (Notion 블록 dict 픽스처 — 토큰 불필요)
 
 ```python
 # tests/test_notion_convert.py
-from khala.ingest.sources.notion_convert import blocks_to_markdown
+from nexus.ingest.sources.notion_convert import blocks_to_markdown
 
 def _rt(text, **ann):
     return {"type": "text", "text": {"content": text},
@@ -135,7 +135,7 @@ def test_code_block():
 - [ ] **Step 3: 구현** (텍스트 충실 / 이미지 카운트. best-effort, 미지원 블록은 무시+무손실로 텍스트만.)
 
 ```python
-# khala/ingest/sources/notion_convert.py
+# nexus/ingest/sources/notion_convert.py
 from __future__ import annotations
 
 def _rich_to_md(rich: list[dict]) -> str:
@@ -198,14 +198,14 @@ def blocks_to_markdown(blocks: list[dict]) -> tuple[str, int]:
 
 ### Task 3: NotionSource (fake client 단위테스트)
 
-**Files:** Create `khala/ingest/sources/notion.py`; Test `tests/test_notion_source.py`
+**Files:** Create `nexus/ingest/sources/notion.py`; Test `tests/test_notion_source.py`
 
 - [ ] **Step 1: 실패 테스트** (notion 클라이언트 주입 → API 불필요)
 
 ```python
 # tests/test_notion_source.py
-from khala.ingest.sources.notion import NotionSource
-from khala.ingest.sources.base import PageRef
+from nexus.ingest.sources.notion import NotionSource
+from nexus.ingest.sources.base import PageRef
 
 class FakeClient:
     def __init__(self):
@@ -237,11 +237,11 @@ def test_fetch_markdown_builds_frontmatter_and_counts():
 - [ ] **Step 3: 구현** (`list_changed`/`live_ids`는 실제 search/query API; 단위테스트는 `fetch_markdown` 위주. 블록 페이지네이션 처리.)
 
 ```python
-# khala/ingest/sources/notion.py
+# nexus/ingest/sources/notion.py
 from __future__ import annotations
 import os
-from khala.ingest.sources.base import PageRef, ConvertedDoc
-from khala.ingest.sources.notion_convert import blocks_to_markdown
+from nexus.ingest.sources.base import PageRef, ConvertedDoc
+from nexus.ingest.sources.notion_convert import blocks_to_markdown
 
 class NotionSource:
     def __init__(self, client=None, token_env="NOTION_TOKEN", roots=None,
@@ -300,7 +300,7 @@ class NotionSource:
 
 ### Task 4: _save_document / _save_chunks 수정 + git 불변 회귀
 
-**Files:** Modify `khala/ingest/pipeline.py`; Test `tests/test_pipeline_frontmatter_override.py` (integration)
+**Files:** Modify `nexus/ingest/pipeline.py`; Test `tests/test_pipeline_frontmatter_override.py` (integration)
 
 - [ ] **Step 1: 실패 통합테스트** (`@pytest.mark.integration`)
   - (a) **git 회귀:** frontmatter 없는 .md 적재 → documents.source_kind='git', owner='indexer' (현행 유지). **+ 동일 문서 재적재(ON CONFLICT 경로)에서도 git/indexer 유지** 케이스 포함.
@@ -330,21 +330,21 @@ pytestmark = pytest.mark.integration
 
 ### Task 5: sync_state (단위)
 
-**Files:** Create `khala/ingest/sync_state.py`; Test `tests/test_sync_state.py`
+**Files:** Create `nexus/ingest/sync_state.py`; Test `tests/test_sync_state.py`
 
-- [ ] **Step 1~5:** 마지막 동기화 시각을 JSON 파일에 저장/로드(`load(source)->ts|None`, `save(source, ts)`). 기본 경로 `.khala/sync_state.json`(없으면 생성). `load`가 None이면 호출측에서 full 동기화로 폴백. tmp_path로 단위테스트. 커밋.
+- [ ] **Step 1~5:** 마지막 동기화 시각을 JSON 파일에 저장/로드(`load(source)->ts|None`, `save(source, ts)`). 기본 경로 `.nexus/sync_state.json`(없으면 생성). `load`가 None이면 호출측에서 full 동기화로 폴백. tmp_path로 단위테스트. 커밋.
 
 ### Task 6: NotionSource.list_changed / live_ids (실제 API — integration)
 
-**Files:** Modify `khala/ingest/sources/notion.py`; Test `tests/test_notion_source.py` (integration, NOTION_TOKEN 필요)
+**Files:** Modify `nexus/ingest/sources/notion.py`; Test `tests/test_notion_source.py` (integration, NOTION_TOKEN 필요)
 
 - [ ] **Step 1: 실패 테스트** — `@pytest.mark.integration` + `NOTION_TOKEN` 없으면 skip. roots 1개로 list_changed(None)이 PageRef 반환, live_ids가 비지 않음.
 - [ ] **Step 2~4:** **root별 object type을 먼저 조회**(`client.pages.retrieve`/`databases.retrieve` 또는 search의 object 필드)해 분기 — **database면 `databases.query`(`last_edited_time` 필터·정렬 지원), page면 `search` 또는 자식 재귀**. 페이지네이션·백오프. last_edited_time으로 since 필터. live_ids는 roots 전체 열거(증분 아님 → --full 시).
 - [ ] **Step 5: 커밋**
 
-### Task 7: `khala notion-sync` CLI
+### Task 7: `nexus notion-sync` CLI
 
-**Files:** Modify `khala/cli.py`, `config.yaml`, `pyproject.toml`
+**Files:** Modify `nexus/cli.py`, `config.yaml`, `pyproject.toml`
 
 - [ ] **Step 1: config + 의존성**
 
@@ -368,7 +368,7 @@ notion:
     ```
   - `run_ingest(staging, force=bool(--full), tenant=config.notion.tenant)` → `sync_state.save("notion", now)`.
   - `--full`이면 `live_ids()`로 삭제 감지 → 사라진 doc soft_delete.
-- [ ] **Step 3: 수동 검증** (사용자 토큰·roots 설정 후): `khala notion-sync --full` → 적재 → `khala query "준회원 정책"` 근거 답변.
+- [ ] **Step 3: 수동 검증** (사용자 토큰·roots 설정 후): `nexus notion-sync --full` → 적재 → `nexus query "준회원 정책"` 근거 답변.
 - [ ] **Step 4: 커밋**
 
 ---
@@ -378,7 +378,7 @@ notion:
 ### Task 8: 실제 동기화 → 값/개념 조회 가치 테스트 투입
 
 - [ ] 사용자: Notion integration 토큰 발급 + 기획 페이지 공유 + `config.notion.roots` 설정.
-- [ ] `khala notion-sync --full`로 기획문서 적재.
+- [ ] `nexus notion-sync --full`로 기획문서 적재.
 - [ ] 가치 검증 프로토콜(`specs/2026-06-06-value-validation-protocol.md`)에 **개념·정의 질문**을 포함해 실행. miss 분석에서 **"이미지-only 내용 때문에 막힌 비율"**을 별도 집계 → 비전 강화(후속) 필요성 판단.
 
 ---

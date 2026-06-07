@@ -1,5 +1,5 @@
-from khala.claims.grade_authority import grade_authority
-from khala.index.gate_source import GateFact
+from nexus.claims.grade_authority import grade_authority
+from nexus.index.gate_source import GateFact
 
 
 def test_blocks_below_threshold():

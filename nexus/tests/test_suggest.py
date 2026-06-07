@@ -1,6 +1,6 @@
 """엔티티 자동완성/문서 목록 관련 로직 테스트."""
 
-from khala.rid import canonicalize_entity_name, entity_rid
+from nexus.rid import canonicalize_entity_name, entity_rid
 
 
 class TestEntitySuggestLogic:

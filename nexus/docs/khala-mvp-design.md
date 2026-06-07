@@ -1,4 +1,4 @@
-# Khala Mini MVP 설계 문서
+# Nexus Mini MVP 설계 문서
 
 > **10일 시범 구축 — Hybrid Search + Graph + OTel Diff**
 > 맥락 기반 AI Agent (Code Review / Troubleshooting)의 초석
@@ -31,14 +31,14 @@
 
 ## 1. 목적과 비전
 
-Khala는 조직 내부 지식(문서/정책/설정)과 운영 사실(OTel trace/metric)을 결합하여,
+Nexus는 조직 내부 지식(문서/정책/설정)과 운영 사실(OTel trace/metric)을 결합하여,
 근거 기반으로 검색하고 관계를 추론하는 시스템이다.
 
 ### 1.1 최종 목표: AI Agent의 Context Provider
 
-Khala는 단독 검색 도구가 아니라, 다음 AI Agent들의 초석이다:
+Nexus는 단독 검색 도구가 아니라, 다음 AI Agent들의 초석이다:
 
-| 목표 Agent | 필요한 컨텍스트 | Khala가 제공하는 것 |
+| 목표 Agent | 필요한 컨텍스트 | Nexus가 제공하는 것 |
 |-----------|---------------|-------------------|
 | 맥락 기반 Code Review | PR이 변경하는 서비스 간 호출이 실제 프로덕션과 일치하는가? | 설계 edge (CALLS) + 관측 edge (CALLS_OBSERVED) + diff flag |
 | 맥락 기반 Troubleshooting | 장애 경로가 문서 경로와 다른가? 어디서 갈라졌나? | CALLS_OBSERVED 경로 + 문서 경로 + semantic mismatch |
@@ -74,11 +74,11 @@ Khala는 단독 검색 도구가 아니라, 다음 AI Agent들의 초석이다:
 
 ### 2.2 경계 설계
 
-Khala의 유일한 인터페이스는 FastAPI이다. 모든 클라이언트는 API를 통해 접근한다:
+Nexus의 유일한 인터페이스는 FastAPI이다. 모든 클라이언트는 API를 통해 접근한다:
 
 | 클라이언트 | 접근 방식 | 시점 |
 |-----------|----------|------|
-| CLI | `khala query/ingest/diff` 명령어 (FastAPI 호출) | MVP |
+| CLI | `nexus query/ingest/diff` 명령어 (FastAPI 호출) | MVP |
 | Code Review Agent | `POST /search` + `GET /diff` | 확장 1 |
 | Troubleshooting Agent | `POST /search` + `GET /graph/{rid}` + `GET /diff` | 확장 2 |
 | Slack Bot | `POST /search` wrapper | 2.0 |
@@ -87,15 +87,15 @@ Khala의 유일한 인터페이스는 FastAPI이다. 모든 클라이언트는 A
 
 ### 2.3 원본 저장소
 
-Khala는 인덱스(index)이지 저장소(storage)가 아니다. Source of Truth는 외부에 있다.
+Nexus는 인덱스(index)이지 저장소(storage)가 아니다. Source of Truth는 외부에 있다.
 
 | 구분 | 역할 | 위치 |
 |------|------|------|
 | 원본 (Source of Truth) | Markdown 문서 버전 관리 | Git repo (로컬 checkout) |
 | 관측 (Source of Truth) | Trace/span 원본 | Tempo |
-| Khala DB (인덱스) | 파생: chunk, embedding, graph, evidence, OTel 집계 | PostgreSQL |
+| Nexus DB (인덱스) | 파생: chunk, embedding, graph, evidence, OTel 집계 | PostgreSQL |
 
-**Khala DB에 원문 전체를 저장하지 않는다:**
+**Nexus DB에 원문 전체를 저장하지 않는다:**
 
 - `documents` 테이블: metadata + `source_uri` + `source_version`만.
 - `chunk_text`: 검색 단위 부분만 저장.
@@ -106,7 +106,7 @@ Khala는 인덱스(index)이지 저장소(storage)가 아니다. Source of Truth
 
 ## 3. Canonical Resource Model (CRM)
 
-Khala의 모든 데이터는 Resource라는 공용 모델을 따른다.
+Nexus의 모든 데이터는 Resource라는 공용 모델을 따른다.
 문서/청크/그래프/OTel 집계/도메인 스토리 모두 동일한 규칙으로 식별/권한/근거/수명주기를 다룬다.
 
 ### 3.1 Resource 공통 필드
@@ -324,7 +324,7 @@ GraphRepository.upsert_edges(observed_edges)
 evidence: trace_query_ref + sample_trace_ids (원문은 Tempo에)
 ```
 
-**Raw trace는 Khala DB에 절대 저장하지 않음.**
+**Raw trace는 Nexus DB에 절대 저장하지 않음.**
 
 ### 5.5 설계-관측 Diff
 
@@ -360,7 +360,7 @@ Graph 쿼리는 search.py, diff_engine.py, api.py, otel_aggregator.py 4곳에서
 PostgreSQL → Neo4j 전환 시 4곳을 모두 수정해야 하므로 Protocol 필수.
 
 ```python
-# khala/repositories/graph.py
+# nexus/repositories/graph.py
 from typing import Protocol
 
 class GraphRepository(Protocol):
@@ -401,7 +401,7 @@ class PostgresGraphRepository:
 2.0 Contextual Enrichment 시 이 함수만 수정하면 전체 재인덱싱 로직은 그대로.
 
 ```python
-# khala/utils.py
+# nexus/utils.py
 def get_search_text(chunk) -> str:
     """청크의 검색/임베딩용 텍스트 생성.
     1.0: section_path 접두사
@@ -426,7 +426,7 @@ tsvector = mecab_to_tsvector(get_search_text(chunk))  # ← 이 함수 경유
 외부 API 직접 호출을 한 곳에 모아서, 2.0에서 프로바이더 교체 시 이 클래스만 수정.
 
 ```python
-# khala/providers/embedding.py
+# nexus/providers/embedding.py
 class EmbeddingService:
     """임베딩 생성. Ollama 직접 호출을 격리."""
 
@@ -446,7 +446,7 @@ class EmbeddingService:
 ```
 
 ```python
-# khala/providers/llm.py
+# nexus/providers/llm.py
 class LLMService:
     """LLM 답변 생성. Claude API 직접 호출을 격리."""
 
@@ -478,7 +478,7 @@ class LLMService:
 name 정규화를 추출기와 독립적으로 분리한다.
 
 ```python
-# khala/rid.py
+# nexus/rid.py
 def canonicalize_entity_name(raw_name: str, entity_type: str) -> str:
     """entity name → canonical form. 추출기가 바뀌어도 rid 안정성 보장."""
     name = raw_name.strip().lower()
@@ -515,12 +515,12 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 |------|------------|
 | 프로젝트 초기화 (Python + FastAPI + Typer CLI) | pyproject.toml + 기본 구조 |
 | docker-compose: PostgreSQL(pgvector) + Ollama + OTel Collector + Tempo | docker-compose.yml |
-| CRM base class (Python dataclass) | khala/models/resource.py |
+| CRM base class (Python dataclass) | nexus/models/resource.py |
 | DB 스키마 DDL (6개 테이블 + index) | init.sql |
-| rid 생성 함수 + `canonicalize_entity_name()` | khala/rid.py |
-| `GraphRepository` Protocol + PostgreSQL 구현체 | khala/repositories/graph.py |
-| `EmbeddingService` 래퍼 + `LLMService` 래퍼 | khala/providers/ |
-| `get_search_text()` 함수 | khala/utils.py |
+| rid 생성 함수 + `canonicalize_entity_name()` | nexus/rid.py |
+| `GraphRepository` Protocol + PostgreSQL 구현체 | nexus/repositories/graph.py |
+| `EmbeddingService` 래퍼 + `LLMService` 래퍼 | nexus/providers/ |
+| `get_search_text()` 함수 | nexus/utils.py |
 | mecab-ko 검증 (한국어 형태소 분석 테스트) | test 통과 |
 | config.yaml (경로 규칙, PII 패턴, doc_type) | config.yaml |
 
@@ -555,10 +555,10 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 | Pre-filter (classification + quarantine) | search.py 내 |
 | Evidence Packet 조립 | evidence.py |
 | `LLMService` 연동 + 근거 기반 답변 | answer.py |
-| CLI: `khala query '질문'` → 답변 + 출처 | cli.py |
+| CLI: `nexus query '질문'` → 답변 + 출처 | cli.py |
 
 > **Day 4 완료 (★ 첫 번째 마일스톤)**:
-> `khala query '결제 서비스가 발행하는 토픽?'` → Hybrid 검색 → LLM 답변 + 출처.
+> `nexus query '결제 서비스가 발행하는 토픽?'` → Hybrid 검색 → LLM 답변 + 출처.
 
 ### === 구간 2: Graph + OTel (Day 5–8) ===
 
@@ -593,11 +593,11 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 |------|------------|
 | `GraphRepository.get_diff()`로 edges vs observed_edges 비교 | diff_engine.py |
 | quality_flags 자동 태깅 (doc_only, observed_only, conflict) | diff_engine.py 내 |
-| Diff 보고서 CLI: `khala diff` → 불일치 목록 + 양쪽 evidence | cli.py 확장 |
+| Diff 보고서 CLI: `nexus diff` → 불일치 목록 + 양쪽 evidence | cli.py 확장 |
 | Diff API: `GET /diff` → JSON 보고서 | api.py |
 
 > **Day 7 완료 (★ 두 번째 마일스톤)**:
-> `khala diff` → Dead Doc / Shadow Dependency / Semantic Mismatch 목록.
+> `nexus diff` → Dead Doc / Shadow Dependency / Semantic Mismatch 목록.
 
 #### Day 8: Graph + OTel 검색 통합
 
@@ -651,12 +651,12 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 
 | 컨테이너 | 이미지 | 포트 |
 |---------|-------|------|
-| khala-db | postgres:16 + pgvector 확장 | 5432 |
-| khala-ollama | ollama/ollama | 11434 |
-| khala-otel | otel/opentelemetry-collector | 4317 (gRPC), 4318 (HTTP) |
-| khala-tempo | grafana/tempo | 3200 (query), 4317 (OTLP) |
-| khala-app | Custom (Python + mecab-ko) | 8000 (FastAPI) |
-| khala-grafana (선택) | grafana/grafana | 3000 (trace 시각화) |
+| nexus-db | postgres:16 + pgvector 확장 | 5432 |
+| nexus-ollama | ollama/ollama | 11434 |
+| nexus-otel | otel/opentelemetry-collector | 4317 (gRPC), 4318 (HTTP) |
+| nexus-tempo | grafana/tempo | 3200 (query), 4317 (OTLP) |
+| nexus-app | Custom (Python + mecab-ko) | 8000 (FastAPI) |
+| nexus-grafana (선택) | grafana/grafana | 3000 (trace 시각화) |
 
 ---
 
@@ -678,7 +678,7 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 | 12 | Dead Doc | 문서: A→B, trace: 없음 | doc_only flag |
 | 13 | Shadow Dep | trace: A→C, 문서: 없음 | observed_only flag |
 | 14 | Semantic Mismatch | 문서: sync, trace: async | conflict flag |
-| 15 | Diff 보고서 | `khala diff` 실행 | 3개 유형 모두 표시 |
+| 15 | Diff 보고서 | `nexus diff` 실행 | 3개 유형 모두 표시 |
 | 16 | rid 안정성 | 문서 수정 후 재인덱싱 | doc rid 유지, chunk rid 재생성 |
 | 17 | Provenance | Edge provenance 확인 | prov_inputs에 source chunk rid |
 | 18 | CRM 필터 | 모든 rtype에 classification 필터 | RESTRICTED이면 rtype 무관 미반환 |

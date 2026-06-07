@@ -13,7 +13,7 @@
 팀마다 문서 구조, 용어, 검색 패턴이 다르다.
 단일 팀 또는 동일 범주 서비스로 묶인 조직을 위한 맞춤형 RAG가 정답이다.
 
-이를 위해 Khala는 tenant 기반 격리 위에 팀별 검색 프로파일을 얹어,
+이를 위해 Nexus는 tenant 기반 격리 위에 팀별 검색 프로파일을 얹어,
 하나의 인스턴스에서 팀마다 다른 검색 경험을 제공하는 방향으로 진화한다.
 
 ---
@@ -22,14 +22,14 @@
 
 | 프로젝트 | 역할 | 기술 |
 |---------|------|------|
-| **Khala** | 근거 기반 지식 검색 시스템 (RAG + GraphRAG) | Python, FastAPI, PostgreSQL, mecab-ko |
+| **Nexus** | 근거 기반 지식 검색 시스템 (RAG + GraphRAG) | Python, FastAPI, PostgreSQL, mecab-ko |
 | **Probe** | 플랫폼 인식 PR 분석 + API 검증 도구 | TypeScript, Node.js, MCP |
 
-Probe는 Khala 없이도 100% 동작한다. Khala가 있으면 조직 맥락이 풍부해진다.
+Probe는 Nexus 없이도 100% 동작한다. Nexus가 있으면 조직 맥락이 풍부해진다.
 
 ---
 
-## Khala 로드맵 — 테마 기반 페이즈
+## Nexus 로드맵 — 테마 기반 페이즈
 
 ### 완료
 
@@ -48,7 +48,7 @@ Probe는 Khala 없이도 100% 동작한다. Khala가 있으면 조직 맥락이 
 
 ### Phase 1 — 팀 맞춤형
 
-> 같은 Khala 인스턴스에서 팀마다 다른 검색 경험을 제공한다.
+> 같은 Nexus 인스턴스에서 팀마다 다른 검색 경험을 제공한다.
 
 | 항목 | 설명 |
 |------|------|
@@ -97,20 +97,20 @@ Probe는 Khala 없이도 100% 동작한다. Khala가 있으면 조직 맥락이 
 | **v0.1** | 플랫폼 인식 PR 범위 분석 (Spring Boot, Next.js, React SPA) |
 | **v0.2** | API 스펙 린트/diff (10개 룰) + PR 타입별 리뷰 체크리스트 |
 | **v0.3** | MCP 서버 (Claude Code 네이티브 연동, 6개 도구) |
-| **v0.4** | Khala 연동 — 맥락 기반 리뷰 + 영향 분석 |
+| **v0.4** | Nexus 연동 — 맥락 기반 리뷰 + 영향 분석 |
 
 ### 예정
 
-| 버전 | 내용 | Khala 연동 |
+| 버전 | 내용 | Nexus 연동 |
 |------|------|-----------|
 | **v0.5** | UI 확장팩 (토큰 검증 / VRT / 접근성 린트) | — |
-| **v0.6** | 팀별 린트 프로파일 — tenant의 검색 프로파일과 연동하여 팀별 리뷰 규칙 적용 | Khala Phase 1 연동 |
+| **v0.6** | 팀별 린트 프로파일 — tenant의 검색 프로파일과 연동하여 팀별 리뷰 규칙 적용 | Nexus Phase 1 연동 |
 
 ---
 
 ## 동향 분석 — 흡수/제외 근거
 
-2026년 RAG 동향을 조사하여, Khala 방향성과 일치하되 꼭 필요한 컨셉만 흡수한다.
+2026년 RAG 동향을 조사하여, Nexus 방향성과 일치하되 꼭 필요한 컨셉만 흡수한다.
 
 ### 흡수
 
@@ -125,8 +125,8 @@ Probe는 Khala 없이도 100% 동작한다. Khala가 있으면 조직 맥락이 
 | 동향 | 근거 |
 |------|------|
 | **Agentic RAG** (LLM in search loop) | "System decides, LLM narrates" 원칙과 충돌. 검색 판정에 LLM을 넣으면 비결정적 + 비용 급증 |
-| **PageIndex Tree Search** | 구조화된 장문 문서(금융 보고서, 법률 문서)에 최적화. Khala는 팀 문서 100-500개 규모에 Hybrid+Graph로 이미 충분 |
-| **Self-RAG** (자체 신뢰도 평가) | Khala는 evidence 필수 + quarantine 원칙이 아키텍처 수준에서 할루시네이션을 방지. 별도 자기평가 계층 불필요 |
+| **PageIndex Tree Search** | 구조화된 장문 문서(금융 보고서, 법률 문서)에 최적화. Nexus는 팀 문서 100-500개 규모에 Hybrid+Graph로 이미 충분 |
+| **Self-RAG** (자체 신뢰도 평가) | Nexus는 evidence 필수 + quarantine 원칙이 아키텍처 수준에서 할루시네이션을 방지. 별도 자기평가 계층 불필요 |
 | **도메인 특화 임베딩 모델** | Phase 1 수준에서는 단일 multilingual 모델로 충분. EmbeddingService 래퍼가 있으므로 필요 시 교체 가능 |
 
 ### 참고 자료
@@ -144,4 +144,4 @@ Probe는 Khala 없이도 100% 동작한다. Khala가 있으면 조직 맥락이 
 2. **System decides, LLM narrates** — 접근 통제/분류/검색 경로는 코드가 결정. LLM은 요약만
 3. **팀 맞춤형 > 범용** — 전체 조직이 하나의 설정을 공유하는 것은 비효율적이다
 4. **정상일 때는 조용히** — 노이즈는 신뢰를 죽인다 (Probe)
-5. **없어도 동작, 있으면 풍부** — Probe는 Khala 없이도 100% 동작한다
+5. **없어도 동작, 있으면 풍부** — Probe는 Nexus 없이도 100% 동작한다

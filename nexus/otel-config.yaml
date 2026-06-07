@@ -13,7 +13,7 @@ processors:
 
 exporters:
   otlp/tempo:
-    endpoint: khala-tempo:4317
+    endpoint: nexus-tempo:4317
     tls:
       insecure: true
   logging:

@@ -1,6 +1,6 @@
-# Khala Slack Bot 설정 가이드
+# Nexus Slack Bot 설정 가이드
 
-> Slack에서 `@khala`로 멘션하거나 DM으로 질문하면, Khala의 하이브리드 검색 + LLM 답변을 Slack 메시지로 받을 수 있습니다.
+> Slack에서 `@nexus`로 멘션하거나 DM으로 질문하면, Nexus의 하이브리드 검색 + LLM 답변을 Slack 메시지로 받을 수 있습니다.
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Scope | 용도 |
 |-------|------|
-| `app_mentions:read` | @khala 멘션 감지 |
+| `app_mentions:read` | @nexus 멘션 감지 |
 | `chat:write` | 채널/DM에 메시지 전송 |
 | `im:history` | DM 메시지 읽기 |
 | `im:read` | DM 채널 접근 |
@@ -32,7 +32,7 @@ App-Level Token을 생성한다 (scope: `connections:write`). 이 토큰이 `SLA
 **Event Subscriptions** → **Enable Events** (Socket Mode 사용 시 Request URL 불필요)
 
 **Subscribe to bot events**에서 추가:
-- `app_mention` — 채널에서 @khala 멘션
+- `app_mention` — 채널에서 @nexus 멘션
 - `message.im` — DM 메시지
 
 ### 1.4 워크스페이스에 설치
@@ -51,7 +51,7 @@ SLACK_BOT_TOKEN=xoxb-...          # Bot User OAuth Token
 SLACK_APP_TOKEN=xapp-...          # App-Level Token (Socket Mode)
 SLACK_SIGNING_SECRET=...          # Basic Information → App Credentials
 
-KHALA_API_URL=http://localhost:8000  # Khala API 주소 (Docker 내부: http://khala-app:8000)
+NEXUS_API_URL=http://localhost:8000  # Nexus API 주소 (Docker 내부: http://nexus-app:8000)
 ```
 
 ---
@@ -62,16 +62,16 @@ KHALA_API_URL=http://localhost:8000  # Khala API 주소 (Docker 내부: http://k
 # slack 의존성 설치
 pip install -e '.[slack]'
 
-# Khala API가 먼저 실행 중이어야 함
+# Nexus API가 먼저 실행 중이어야 함
 docker compose up -d
 
 # Slack Bot 실행
-python -m khala.slack.app
+python -m nexus.slack.app
 ```
 
 정상 시작 로그:
 ```
-2026-03-15 12:00:00 khala.slack.app INFO Khala Slack Bot 시작 (Socket Mode)
+2026-03-15 12:00:00 nexus.slack.app INFO Nexus Slack Bot 시작 (Socket Mode)
 ```
 
 ### Docker로 실행 (선택)
@@ -79,12 +79,12 @@ python -m khala.slack.app
 docker-compose.yml에 서비스를 추가할 수 있다:
 
 ```yaml
-khala-slack:
+nexus-slack:
   build: .
-  command: python -m khala.slack.app
+  command: python -m nexus.slack.app
   env_file: .env
   depends_on:
-    khala-app:
+    nexus-app:
       condition: service_healthy
   restart: unless-stopped
 ```
@@ -96,16 +96,16 @@ khala-slack:
 ### 채널에서 멘션
 
 ```
-@khala 결제 서비스가 발행하는 토픽이 뭐야?
+@nexus 결제 서비스가 발행하는 토픽이 뭐야?
 ```
 
 ```
-@khala payment-service와 notification-service의 관계는?
+@nexus payment-service와 notification-service의 관계는?
 ```
 
 ### DM으로 직접 질문
 
-Khala 봇에게 DM을 보내면 멘션 없이 바로 질문할 수 있다.
+Nexus 봇에게 DM을 보내면 멘션 없이 바로 질문할 수 있다.
 
 ```
 결제 서비스 장애 원인 분석해줘
@@ -154,7 +154,7 @@ Slack Block Kit으로 구성된 응답:
 ### 에러 시
 
 ```
-⚠️ 오류: Khala 데이터베이스에 연결할 수 없습니다
+⚠️ 오류: Nexus 데이터베이스에 연결할 수 없습니다
 ```
 
 LLM 호출 실패 시에도 근거 snippet은 그대로 제공된다 (CLAUDE.md 규칙 준수).
@@ -164,7 +164,7 @@ LLM 호출 실패 시에도 근거 snippet은 그대로 제공된다 (CLAUDE.md 
 ## 6. 아키텍처
 
 ```
-사용자 → Slack → Socket Mode → khala.slack.app
+사용자 → Slack → Socket Mode → nexus.slack.app
                                     │
                               handle_mention()
                               handle_dm()
@@ -172,7 +172,7 @@ LLM 호출 실패 시에도 근거 snippet은 그대로 제공된다 (CLAUDE.md 
                               _extract_query()
                                     │
                               POST /search/answer
-                              (httpx → Khala API)
+                              (httpx → Nexus API)
                                     │
                               format_answer()
                               (Block Kit 변환)
@@ -185,11 +185,11 @@ LLM 호출 실패 시에도 근거 snippet은 그대로 제공된다 (CLAUDE.md 
 ### 파일 구조
 
 ```
-khala/slack/
+nexus/slack/
 ├── __init__.py
 ├── app.py          # Slack Bolt AsyncApp + Socket Mode 진입점
 ├── bot.py          # 이벤트 핸들러 + API 호출
-└── formatter.py    # KhalaResponse → Slack Block Kit 변환
+└── formatter.py    # NexusResponse → Slack Block Kit 변환
 ```
 
 ---
@@ -200,12 +200,12 @@ khala/slack/
 1. `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN` 확인
 2. Event Subscriptions에서 `app_mention`, `message.im` 구독 확인
 3. Socket Mode가 활성화되어 있는지 확인
-4. Khala API (`http://localhost:8000/status`)가 정상인지 확인
+4. Nexus API (`http://localhost:8000/status`)가 정상인지 확인
 
 ### "데이터베이스 연결 실패" 에러
 - `docker compose up -d`로 인프라가 실행 중인지 확인
-- `KHALA_API_URL` 환경 변수가 올바른지 확인
+- `NEXUS_API_URL` 환경 변수가 올바른지 확인
 
 ### 답변이 "검색할 내용을 입력해주세요"
-- `@khala` 뒤에 실제 질문을 포함해야 함
-- `@khala`만 보내면 안내 메시지가 표시됨
+- `@nexus` 뒤에 실제 질문을 포함해야 함
+- `@nexus`만 보내면 안내 메시지가 표시됨

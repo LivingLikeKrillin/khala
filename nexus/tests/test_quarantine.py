@@ -1,7 +1,7 @@
 """Quarantine 테스트 — PII 감지, classification, 격리."""
 
-from khala.ingest.scanner import scan_content, _luhn_check
-from khala.ingest.classifier import classify, _detect_language
+from nexus.ingest.scanner import scan_content, _luhn_check
+from nexus.ingest.classifier import classify, _detect_language
 
 
 class TestPIIScanner:

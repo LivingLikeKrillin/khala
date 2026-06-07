@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from khala.index.gate_source import extract_gates, extract_grade_levels
+from nexus.index.gate_source import extract_gates, extract_grade_levels
 
 FIX = Path(__file__).parent / "fixtures" / "grade"
 

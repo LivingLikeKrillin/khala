@@ -1,18 +1,18 @@
-# Khala API 계약서
+# Nexus API 계약서
 
 > 모든 엔드포인트의 request/response 스키마를 정의한다.
 > FastAPI + Pydantic v2 기준. Claude Code는 이 문서를 보고 정확한 Pydantic 모델을 생성해야 한다.
 
 ## 공통 규칙
 
-- 모든 응답은 `KhalaResponse` wrapper로 감싼다
+- 모든 응답은 `NexusResponse` wrapper로 감싼다
 - 에러는 HTTP status code + `error` 필드로 반환
 - 모든 검색/조회에 `tenant` + `classification` 필터 자동 적용
 - timestamp는 ISO 8601 형식 (UTC)
 - rid는 항상 `make_rid()` 함수로 생성된 값
 
 ```python
-class KhalaResponse(BaseModel):
+class NexusResponse(BaseModel):
     success: bool
     data: Any | None = None
     error: str | None = None
@@ -177,7 +177,7 @@ Markdown 파일을 업로드하면 Git repo에 저장 + 자동 인덱싱.
 ```python
 class UploadResponse(BaseModel):
     doc_rid: str
-    source_uri: str                     # git://khala-docs/guides/onboarding.md
+    source_uri: str                     # git://nexus-docs/guides/onboarding.md
     indexed: bool
     quarantined: bool
     message: str

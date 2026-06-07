@@ -2,15 +2,15 @@
 
 import json
 
-from khala.search.evidence_packet import (
+from nexus.search.evidence_packet import (
     EvidenceSnippet,
     EvidencePacket,
     Provenance,
     assemble_packet,
     format_for_llm,
 )
-from khala.search.hybrid import SearchHit
-from khala.repositories.graph import SubGraph, EdgeResult, ObservedEdgeResult
+from nexus.search.hybrid import SearchHit
+from nexus.repositories.graph import SubGraph, EdgeResult, ObservedEdgeResult
 
 
 class TestSSEEventFormat:

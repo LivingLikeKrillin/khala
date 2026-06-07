@@ -1,6 +1,6 @@
 """Graph 추출 테스트 — 엔티티 감지, 관계 추출, 부정 표현 필터."""
 
-from khala.index.graph_extractor import (
+from nexus.index.graph_extractor import (
     find_entities_in_text,
     extract_relations,
     _build_entity_patterns,

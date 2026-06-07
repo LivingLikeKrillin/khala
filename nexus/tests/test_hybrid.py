@@ -1,7 +1,7 @@
 """Hybrid 검색 테스트 — RRF fusion, route 판별."""
 
-from khala.search.hybrid import _rrf_fusion
-from khala.search.router import determine_route
+from nexus.search.hybrid import _rrf_fusion
+from nexus.search.router import determine_route
 
 
 class TestRRFFusion:

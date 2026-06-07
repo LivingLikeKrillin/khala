@@ -1,10 +1,10 @@
 """통합 테스트 — Chunking, Evidence Packet, Search Text."""
 
-from khala.ingest.chunker import chunk_document, _estimate_tokens
-from khala.models.chunk import Chunk
-from khala.search.evidence_packet import assemble_packet, format_for_llm
-from khala.search.hybrid import SearchHit
-from khala.utils import get_search_text
+from nexus.ingest.chunker import chunk_document, _estimate_tokens
+from nexus.models.chunk import Chunk
+from nexus.search.evidence_packet import assemble_packet, format_for_llm
+from nexus.search.hybrid import SearchHit
+from nexus.utils import get_search_text
 
 
 class TestChunker:

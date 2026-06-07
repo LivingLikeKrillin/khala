@@ -1,5 +1,5 @@
-from khala.models.claim import Claim
-from khala.rid import claim_rid
+from nexus.models.claim import Claim
+from nexus.rid import claim_rid
 
 
 def test_claim_defaults_and_crm_separation():

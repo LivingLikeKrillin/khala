@@ -1,7 +1,7 @@
 -- ============================================================
--- Khala DB Schema (PostgreSQL 16 + pgvector + pg_trgm)
+-- Nexus DB Schema (PostgreSQL 16 + pgvector + pg_trgm)
 -- Canonical Resource Model (CRM) 기반
--- khala-mvp-design.md 4장과 동기화
+-- nexus-mvp-design.md 4장과 동기화
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS vector;
