@@ -184,9 +184,8 @@ export default defineConfig({
         root: { label: 'English', lang: 'en' },
         ko: { label: '한국어', lang: 'ko' },
       },
-      social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/LivingLikeKrillin' },
-      ],
+      social: { github: 'https://github.com/LivingLikeKrillin' },
+      // 주: Starlight 0.30.x는 social을 record(`{ github: 'url' }`)로 받음(배열형 아님 — 배열은 Zod 검증 에러).
       sidebar: [
         {
           label: 'Overview',
