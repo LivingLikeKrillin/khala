@@ -29,10 +29,7 @@ export interface ChecklistOptions {
  * @param options 체크리스트 옵션
  * @returns 리뷰 체크리스트
  */
-export function generateChecklist(
-  prType: PrType,
-  options?: ChecklistOptions,
-): ReviewChecklist {
+export function generateChecklist(prType: PrType, options?: ChecklistOptions): ReviewChecklist {
   const disabled = new Set(options?.disableChecklists ?? []);
 
   if (disabled.has(prType)) {
@@ -76,11 +73,7 @@ export function generateChecklist(
 /**
  * 자동 검증 가능한 항목을 검증한다.
  */
-function runAutoVerification(
-  items: ChecklistItem[],
-  prType: PrType,
-  changedFiles: string[],
-): VerifiedItem[] {
+function runAutoVerification(items: ChecklistItem[], prType: PrType, changedFiles: string[]): VerifiedItem[] {
   const verified: VerifiedItem[] = [];
   const automatableItems = items.filter((item) => item.automatable);
 
@@ -97,41 +90,31 @@ function runAutoVerification(
 /**
  * 개별 항목을 검증한다.
  */
-function verifyItem(
-  item: ChecklistItem,
-  _prType: PrType,
-  changedFiles: string[],
-): VerifiedItem | undefined {
+function verifyItem(item: ChecklistItem, _prType: PrType, changedFiles: string[]): VerifiedItem | undefined {
   switch (item.id) {
     case 'dc-service-test':
     case 'dc-controller-test':
     case 'gen-test': {
-      const hasTestFile = changedFiles.some((f) =>
-        f.includes('test') || f.includes('Test') || f.includes('spec') || f.includes('Spec'),
+      const hasTestFile = changedFiles.some(
+        (f) => f.includes('test') || f.includes('Test') || f.includes('spec') || f.includes('Spec'),
       );
       return {
         id: item.id,
         description: item.description,
         passed: hasTestFile,
-        detail: hasTestFile
-          ? `테스트 파일 발견 (test file found)`
-          : `테스트 파일 없음 (no test file found)`,
+        detail: hasTestFile ? `테스트 파일 발견 (test file found)` : `테스트 파일 없음 (no test file found)`,
       };
     }
 
     case 'uf-story':
     case 'uc-story':
     case 'ds-story': {
-      const hasStory = changedFiles.some((f) =>
-        f.includes('.stories.') || f.includes('.story.'),
-      );
+      const hasStory = changedFiles.some((f) => f.includes('.stories.') || f.includes('.story.'));
       return {
         id: item.id,
         description: item.description,
         passed: hasStory,
-        detail: hasStory
-          ? `스토리 파일 발견 (story file found)`
-          : `스토리 파일 없음 (no story file found)`,
+        detail: hasStory ? `스토리 파일 발견 (story file found)` : `스토리 파일 없음 (no story file found)`,
       };
     }
 

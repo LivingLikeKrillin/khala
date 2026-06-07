@@ -185,4 +185,4 @@ export interface SchemaObject {
 
 /** HTTP 메서드 */
 export const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
-export type HttpMethod = typeof HTTP_METHODS[number];
+export type HttpMethod = (typeof HTTP_METHODS)[number];

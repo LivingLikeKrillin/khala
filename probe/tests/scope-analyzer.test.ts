@@ -55,7 +55,9 @@ describe('scope-analyzer', () => {
     const result = analyzeScope(files, springBootProfile);
 
     expect(result.mixedConcerns.length).toBeGreaterThan(0);
-    expect(result.mixedConcerns.some((mc) => mc.roles.includes('migration') && mc.roles.includes('controller'))).toBe(true);
+    expect(result.mixedConcerns.some((mc) => mc.roles.includes('migration') && mc.roles.includes('controller'))).toBe(
+      true,
+    );
   });
 
   // ─── Next.js ───
@@ -89,15 +91,13 @@ describe('scope-analyzer', () => {
   });
 
   it('middleware + component 조합은 분리를 제안한다 (nextjs)', () => {
-    const files = [
-      'middleware.ts',
-      'lib/auth/session.ts',
-      'components/dashboard/StatsCard.tsx',
-    ];
+    const files = ['middleware.ts', 'lib/auth/session.ts', 'components/dashboard/StatsCard.tsx'];
 
     const result = analyzeScope(files, nextjsProfile);
 
-    expect(result.mixedConcerns.some((mc) => mc.roles.includes('middleware') && mc.roles.includes('component'))).toBe(true);
+    expect(result.mixedConcerns.some((mc) => mc.roles.includes('middleware') && mc.roles.includes('component'))).toBe(
+      true,
+    );
   });
 
   // ─── React SPA ───
@@ -131,9 +131,7 @@ describe('scope-analyzer', () => {
 
   it('파일 수 임계치 초과 시 경고한다', () => {
     // spring-boot maxFilesPerPr = 20, 21개 파일 생성
-    const files = Array.from({ length: 21 }, (_, i) =>
-      `src/main/kotlin/service/Service${i}.kt`,
-    );
+    const files = Array.from({ length: 21 }, (_, i) => `src/main/kotlin/service/Service${i}.kt`);
 
     const result = analyzeScope(files, springBootProfile);
 
@@ -141,9 +139,7 @@ describe('scope-analyzer', () => {
   });
 
   it('diff 라인 수 임계치 초과 시 경고한다', () => {
-    const files = [
-      'src/main/kotlin/service/UserService.kt',
-    ];
+    const files = ['src/main/kotlin/service/UserService.kt'];
 
     // spring-boot maxDiffLinesPerPr = 800
     const result = analyzeScope(files, springBootProfile, 1000);
@@ -167,10 +163,7 @@ describe('scope-analyzer', () => {
   });
 
   it('정상 범위에서는 severity가 ok이다', () => {
-    const files = [
-      'src/main/kotlin/entity/User.kt',
-      'src/main/kotlin/service/UserService.kt',
-    ];
+    const files = ['src/main/kotlin/entity/User.kt', 'src/main/kotlin/service/UserService.kt'];
 
     const result = analyzeScope(files, springBootProfile, 100);
 

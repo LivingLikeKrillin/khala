@@ -51,9 +51,8 @@ export function formatScopeMarkdown(result: ScopeAnalysisResult, checklist?: Rev
 
     for (let i = 0; i < result.groups.length; i++) {
       const group = result.groups[i]!;
-      const groupLabel = group.groupName === 'unmatched'
-        ? '기타 파일'
-        : `${group.groupName} (${group.cohesionKeyValue})`;
+      const groupLabel =
+        group.groupName === 'unmatched' ? '기타 파일' : `${group.groupName} (${group.cohesionKeyValue})`;
 
       lines.push(`  그룹 ${i + 1}: ${groupLabel} (${group.files.length}개 파일)`);
 
@@ -153,14 +152,21 @@ export function formatDiffMarkdown(result: ApiDiffResult): string {
   const label = result.summary.hasBreaking ? 'breaking 변경 포함' : '호환 변경';
   lines.push(`${icon} API 변경 감지 \u2014 ${label}`);
   lines.push('');
-  lines.push(`변경 요약: ${result.summary.added}개 추가, ${result.summary.modified}개 수정, ${result.summary.removed}개 삭제`);
+  lines.push(
+    `변경 요약: ${result.summary.added}개 추가, ${result.summary.modified}개 수정, ${result.summary.removed}개 삭제`,
+  );
   lines.push('');
 
   for (const change of result.changes) {
-    const changeIcon = change.breaking ? '\u26A0\uFE0F' :
-      change.type === 'added' ? '\u2705' :
-      change.type === 'removed' ? '\uD83D\uDD34' :
-      change.type === 'deprecated' ? '\u26A0\uFE0F' : '\uD83D\uDD36';
+    const changeIcon = change.breaking
+      ? '\u26A0\uFE0F'
+      : change.type === 'added'
+        ? '\u2705'
+        : change.type === 'removed'
+          ? '\uD83D\uDD34'
+          : change.type === 'deprecated'
+            ? '\u26A0\uFE0F'
+            : '\uD83D\uDD36';
 
     lines.push(`  ${changeIcon} ${change.endpoint}`);
     for (const detail of change.details) {
@@ -228,7 +234,9 @@ export function formatGroundingPackMarkdown(pack: GroundingPack): string {
   if (pack.domainInvariants?.length) {
     lines.push('### 도메인 불변식 (Archon)');
     for (const c of pack.domainInvariants) {
-      lines.push(`- \`${c.boundSymbol}\` → ${c.kind} \`${c.id}\` (${c.criticality}, status=${c.status}, drift=${c.codeDrift})`);
+      lines.push(
+        `- \`${c.boundSymbol}\` → ${c.kind} \`${c.id}\` (${c.criticality}, status=${c.status}, drift=${c.codeDrift})`,
+      );
     }
     lines.push('');
   }
@@ -258,7 +266,9 @@ export function formatReviewGroundingPackMarkdown(pack: ReviewGroundingPack): st
   lines.push('');
   lines.push('### 변경 엔티티');
   for (const e of pack.changedEntities) {
-    lines.push(`- \`${e.entityName}\`${e.cohesionGroup ? ` (${e.cohesionGroup})` : ''} — ${e.changedFiles.length}개 파일`);
+    lines.push(
+      `- \`${e.entityName}\`${e.cohesionGroup ? ` (${e.cohesionGroup})` : ''} — ${e.changedFiles.length}개 파일`,
+    );
   }
   lines.push('');
   if (pack.designObservationGaps?.length) {
@@ -278,7 +288,8 @@ export function formatReviewGroundingPackMarkdown(pack: ReviewGroundingPack): st
   }
   if (pack.applicableGuidelines?.length) {
     lines.push('### 적용 규정/문서');
-    for (const d of pack.applicableGuidelines) lines.push(`- ${d.docTitle} > ${d.sectionPath} (score ${d.score.toFixed(2)})`);
+    for (const d of pack.applicableGuidelines)
+      lines.push(`- ${d.docTitle} > ${d.sectionPath} (score ${d.score.toFixed(2)})`);
     lines.push('');
   }
   if (pack.topology) {
@@ -288,7 +299,9 @@ export function formatReviewGroundingPackMarkdown(pack: ReviewGroundingPack): st
   if (pack.claimDrift?.length) {
     lines.push('### 도메인 claim drift (Archon)');
     for (const c of pack.claimDrift) {
-      lines.push(`- \`${c.boundSymbol}\` → ${c.kind} \`${c.id}\` (${c.criticality}, status=${c.status}, drift=${c.codeDrift})`);
+      lines.push(
+        `- \`${c.boundSymbol}\` → ${c.kind} \`${c.id}\` (${c.criticality}, status=${c.status}, drift=${c.codeDrift})`,
+      );
     }
     lines.push('');
   }

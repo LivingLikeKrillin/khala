@@ -10,9 +10,7 @@
 import { NexusClient, withNexusFallback } from './client.js';
 import { analyzeImpact } from './impact-analyzer.js';
 import { fetchEntityGaps, searchDocs } from './grounding-sections.js';
-import type {
-  ChangedEntity, ReviewGroundingPack, SpecRef, RelevantDoc, ImpactAnalysis,
-} from './types.js';
+import type { ChangedEntity, ReviewGroundingPack, SpecRef, RelevantDoc, ImpactAnalysis } from './types.js';
 
 /** 승인 스펙 식별 기본 마커 (production 마커는 추후 튜닝) */
 const DEFAULT_SPEC_MARKERS = ['spec', '스펙', 'adr', 'rfc'];
@@ -28,7 +26,8 @@ export interface ReviewGroundOptions {
 /** 검색 문서를 승인 스펙(specRefs)과 일반 규정(guidelines)으로 분리한다.
  *  한 문서가 양쪽에 중복되지 않도록 배타 분배한다. */
 export function partitionDocs(
-  docs: RelevantDoc[], specMarkers: string[],
+  docs: RelevantDoc[],
+  specMarkers: string[],
 ): { specRefs: SpecRef[]; guidelines: RelevantDoc[] } {
   const specRefs: SpecRef[] = [];
   const guidelines: RelevantDoc[] = [];
@@ -36,8 +35,10 @@ export function partitionDocs(
     const hay = `${d.docTitle} ${d.sectionPath}`.toLowerCase();
     if (specMarkers.some((m) => hay.includes(m.toLowerCase()))) {
       specRefs.push({
-        docTitle: d.docTitle, sectionPath: d.sectionPath,
-        snippet: d.snippet, classification: d.classification,
+        docTitle: d.docTitle,
+        sectionPath: d.sectionPath,
+        snippet: d.snippet,
+        classification: d.classification,
       });
     } else {
       guidelines.push(d);
@@ -63,7 +64,10 @@ export async function groundReview(
 ): Promise<ReviewGroundingPack> {
   const caveats: string[] = [];
   const pack: ReviewGroundingPack = {
-    tier: options.tier, tierReason: '', changedEntities, caveats,
+    tier: options.tier,
+    tierReason: '',
+    changedEntities,
+    caveats,
   };
   const names = changedEntities.map((e) => e.entityName);
   if (names.length === 0) {
@@ -74,7 +78,8 @@ export async function groundReview(
   if (options.tier >= 1 && names.length > 0) {
     const docs = await withNexusFallback(
       () => searchDocs(client, names.join(' '), options.searchTopK ?? 5),
-      null, 'search',
+      null,
+      'search',
     );
     if (docs) {
       const { specRefs, guidelines } = partitionDocs(docs, options.specMarkers ?? DEFAULT_SPEC_MARKERS);
@@ -90,21 +95,17 @@ export async function groundReview(
   if (options.tier >= 2 && names.length > 0) {
     const topology = await withNexusFallback<ImpactAnalysis | null>(
       () => analyzeImpact(client, names, { hops: options.graphHops ?? 2 }),
-      null, 'impact',
+      null,
+      'impact',
     );
     if (topology) pack.topology = topology;
   }
 
   // §5 설계-관측 갭 (doc_only는 T2+, observed_only/conflict는 T3)
   if (options.tier >= 2 && names.length > 0) {
-    const gaps = await withNexusFallback(
-      () => fetchEntityGaps(client, names),
-      null, 'diff',
-    );
+    const gaps = await withNexusFallback(() => fetchEntityGaps(client, names), null, 'diff');
     if (gaps) {
-      pack.designObservationGaps = options.tier >= 3
-        ? gaps
-        : gaps.filter((g) => g.flag === 'doc_only');
+      pack.designObservationGaps = options.tier >= 3 ? gaps : gaps.filter((g) => g.flag === 'doc_only');
     } else {
       caveats.push('설계-관측 갭(diff) 조회 실패 (Design-observation gap unavailable)');
     }

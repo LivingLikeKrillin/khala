@@ -48,9 +48,12 @@ describe('platform-detector', () => {
   });
 
   it('package.json에 next 의존성이 있으면 nextjs로 감지한다', () => {
-    writeFileSync(join(testDir, 'package.json'), JSON.stringify({
-      dependencies: { next: '^14.0.0', react: '^18.0.0' },
-    }));
+    writeFileSync(
+      join(testDir, 'package.json'),
+      JSON.stringify({
+        dependencies: { next: '^14.0.0', react: '^18.0.0' },
+      }),
+    );
 
     expect(detectPlatform(testDir)).toBe('nextjs');
   });

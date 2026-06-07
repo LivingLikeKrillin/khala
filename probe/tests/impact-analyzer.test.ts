@@ -11,16 +11,17 @@ function mockGraphResponse(edges: unknown[], observedEdges: unknown[] = []) {
   return {
     ok: true,
     status: 200,
-    json: () => Promise.resolve({
-      success: true,
-      data: {
-        center_entity: { rid: 'ent_test', name: 'test-service' },
-        edges,
-        observed_edges: observedEdges,
-      },
-      error: null,
-      meta: {},
-    }),
+    json: () =>
+      Promise.resolve({
+        success: true,
+        data: {
+          center_entity: { rid: 'ent_test', name: 'test-service' },
+          edges,
+          observed_edges: observedEdges,
+        },
+        error: null,
+        meta: {},
+      }),
   };
 }
 
@@ -47,10 +48,15 @@ describe('analyzeImpact', () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       mockGraphResponse([
         {
-          rid: 'e1', edge_type: 'CALLS',
-          from_rid: 'ent_order', from_name: 'order-service',
-          to_rid: 'ent_payment', to_name: 'payment-service',
-          confidence: 0.9, hop: 1, evidence: [],
+          rid: 'e1',
+          edge_type: 'CALLS',
+          from_rid: 'ent_order',
+          from_name: 'order-service',
+          to_rid: 'ent_payment',
+          to_name: 'payment-service',
+          confidence: 0.9,
+          hop: 1,
+          evidence: [],
         },
       ]),
     ) as unknown as typeof fetch;
@@ -67,18 +73,32 @@ describe('analyzeImpact', () => {
   it('관측 데이터로 영향 서비스를 보강한다', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       mockGraphResponse(
-        [{
-          rid: 'e1', edge_type: 'CALLS',
-          from_rid: 'ent_order', from_name: 'order-service',
-          to_rid: 'ent_payment', to_name: 'payment-service',
-          confidence: 0.9, hop: 1, evidence: [],
-        }],
-        [{
-          rid: 'o1', edge_type: 'CALLS_OBSERVED',
-          from_name: 'order-service', to_name: 'payment-service',
-          call_count: 1200, error_rate: 0.001, latency_p95: 150,
-          sample_trace_ids: [], trace_query_ref: '',
-        }],
+        [
+          {
+            rid: 'e1',
+            edge_type: 'CALLS',
+            from_rid: 'ent_order',
+            from_name: 'order-service',
+            to_rid: 'ent_payment',
+            to_name: 'payment-service',
+            confidence: 0.9,
+            hop: 1,
+            evidence: [],
+          },
+        ],
+        [
+          {
+            rid: 'o1',
+            edge_type: 'CALLS_OBSERVED',
+            from_name: 'order-service',
+            to_name: 'payment-service',
+            call_count: 1200,
+            error_rate: 0.001,
+            latency_p95: 150,
+            sample_trace_ids: [],
+            trace_query_ref: '',
+          },
+        ],
       ),
     ) as unknown as typeof fetch;
 
@@ -93,9 +113,39 @@ describe('analyzeImpact', () => {
   it('3개 이상 서비스 영향 시 medium 심각도를 반환한다', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       mockGraphResponse([
-        { rid: 'e1', edge_type: 'CALLS', from_rid: 'ent_a', from_name: 'a-service', to_rid: 'ent_payment', to_name: 'payment-service', confidence: 0.9, hop: 1, evidence: [] },
-        { rid: 'e2', edge_type: 'CALLS', from_rid: 'ent_b', from_name: 'b-service', to_rid: 'ent_payment', to_name: 'payment-service', confidence: 0.8, hop: 1, evidence: [] },
-        { rid: 'e3', edge_type: 'CALLS', from_rid: 'ent_c', from_name: 'c-service', to_rid: 'ent_payment', to_name: 'payment-service', confidence: 0.7, hop: 1, evidence: [] },
+        {
+          rid: 'e1',
+          edge_type: 'CALLS',
+          from_rid: 'ent_a',
+          from_name: 'a-service',
+          to_rid: 'ent_payment',
+          to_name: 'payment-service',
+          confidence: 0.9,
+          hop: 1,
+          evidence: [],
+        },
+        {
+          rid: 'e2',
+          edge_type: 'CALLS',
+          from_rid: 'ent_b',
+          from_name: 'b-service',
+          to_rid: 'ent_payment',
+          to_name: 'payment-service',
+          confidence: 0.8,
+          hop: 1,
+          evidence: [],
+        },
+        {
+          rid: 'e3',
+          edge_type: 'CALLS',
+          from_rid: 'ent_c',
+          from_name: 'c-service',
+          to_rid: 'ent_payment',
+          to_name: 'payment-service',
+          confidence: 0.7,
+          hop: 1,
+          evidence: [],
+        },
       ]),
     ) as unknown as typeof fetch;
 
@@ -119,8 +169,15 @@ describe('analyzeImpact', () => {
 
   it('getGraph를 ent_ 접두사 없이 이름으로 호출한다 (스펙 §3.3)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      ok: true, status: 200,
-      json: () => Promise.resolve({ success: true, data: { center_entity: { rid: 'x', name: 'order-service' }, edges: [], observed_edges: [] }, error: null, meta: {} }),
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: { center_entity: { rid: 'x', name: 'order-service' }, edges: [], observed_edges: [] },
+          error: null,
+          meta: {},
+        }),
     });
     globalThis.fetch = fetchMock;
     const client = new NexusClient({ baseUrl: 'http://test:8000' });
@@ -134,12 +191,52 @@ describe('analyzeImpact', () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       mockGraphResponse(
         [
-          { rid: 'e1', edge_type: 'CALLS', from_rid: 'ent_a', from_name: 'a-service', to_rid: 'ent_payment', to_name: 'payment-service', confidence: 0.9, hop: 1, evidence: [] },
-          { rid: 'e2', edge_type: 'CALLS', from_rid: 'ent_b', from_name: 'b-service', to_rid: 'ent_payment', to_name: 'payment-service', confidence: 0.8, hop: 1, evidence: [] },
-          { rid: 'e3', edge_type: 'CALLS', from_rid: 'ent_c', from_name: 'c-service', to_rid: 'ent_payment', to_name: 'payment-service', confidence: 0.7, hop: 1, evidence: [] },
+          {
+            rid: 'e1',
+            edge_type: 'CALLS',
+            from_rid: 'ent_a',
+            from_name: 'a-service',
+            to_rid: 'ent_payment',
+            to_name: 'payment-service',
+            confidence: 0.9,
+            hop: 1,
+            evidence: [],
+          },
+          {
+            rid: 'e2',
+            edge_type: 'CALLS',
+            from_rid: 'ent_b',
+            from_name: 'b-service',
+            to_rid: 'ent_payment',
+            to_name: 'payment-service',
+            confidence: 0.8,
+            hop: 1,
+            evidence: [],
+          },
+          {
+            rid: 'e3',
+            edge_type: 'CALLS',
+            from_rid: 'ent_c',
+            from_name: 'c-service',
+            to_rid: 'ent_payment',
+            to_name: 'payment-service',
+            confidence: 0.7,
+            hop: 1,
+            evidence: [],
+          },
         ],
         [
-          { rid: 'o1', edge_type: 'CALLS_OBSERVED', from_name: 'a-service', to_name: 'payment-service', call_count: 100, error_rate: 0.1, latency_p95: 500, sample_trace_ids: [], trace_query_ref: '' },
+          {
+            rid: 'o1',
+            edge_type: 'CALLS_OBSERVED',
+            from_name: 'a-service',
+            to_name: 'payment-service',
+            call_count: 100,
+            error_rate: 0.1,
+            latency_p95: 500,
+            sample_trace_ids: [],
+            trace_query_ref: '',
+          },
         ],
       ),
     ) as unknown as typeof fetch;

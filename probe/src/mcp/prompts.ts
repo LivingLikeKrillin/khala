@@ -30,20 +30,19 @@ export function registerPrompts(server: McpServer): void {
 
       const config = await loadConfigAsync();
       const configPlatform = config.platform;
-      const platform = configPlatform && configPlatform !== 'custom'
-        ? configPlatform
-        : detectPlatform();
+      const platform = configPlatform && configPlatform !== 'custom' ? configPlatform : detectPlatform();
 
-      const baseProfile = configPlatform === 'custom' && config.customProfile
-        ? config.customProfile
-        : getProfileForPlatform(platform);
+      const baseProfile =
+        configPlatform === 'custom' && config.customProfile ? config.customProfile : getProfileForPlatform(platform);
 
       if (!baseProfile) {
         return {
-          messages: [{
-            role: 'user' as const,
-            content: { type: 'text' as const, text: '플랫폼을 감지할 수 없어 PR 리뷰를 수행할 수 없습니다.' },
-          }],
+          messages: [
+            {
+              role: 'user' as const,
+              content: { type: 'text' as const, text: '플랫폼을 감지할 수 없어 PR 리뷰를 수행할 수 없습니다.' },
+            },
+          ],
         };
       }
 
@@ -87,7 +86,9 @@ export function registerPrompts(server: McpServer): void {
         if (nexusEnrichment.impactedServices.length > 0) {
           parts.push('### 영향 서비스');
           for (const svc of nexusEnrichment.impactedServices) {
-            const obs = svc.observed ? ` (${svc.observed.callCount}회/일, error ${(svc.observed.errorRate * 100).toFixed(1)}%)` : '';
+            const obs = svc.observed
+              ? ` (${svc.observed.callCount}회/일, error ${(svc.observed.errorRate * 100).toFixed(1)}%)`
+              : '';
             parts.push(`- ${svc.name} [${svc.relationship}]${obs}`);
           }
         }
@@ -103,11 +104,12 @@ export function registerPrompts(server: McpServer): void {
       }
 
       return {
-        messages: [{
-          role: 'user' as const,
-          content: {
-            type: 'text' as const,
-            text: `다음은 Probe가 분석한 현재 PR의 범위와 리뷰 체크리스트입니다.
+        messages: [
+          {
+            role: 'user' as const,
+            content: {
+              type: 'text' as const,
+              text: `다음은 Probe가 분석한 현재 PR의 범위와 리뷰 체크리스트입니다.
 이 분석 결과를 기반으로 구조화된 코드 리뷰를 수행해주세요.
 
 ## Probe 분석 결과
@@ -124,8 +126,9 @@ ${analysisJson}
 6. 피드백을 blocker / suggestion / nit으로 분류하세요.
 7. 각 피드백에 파일 경로와 라인 번호를 포함하세요.
 8. 규정 근거가 있으면 명시하세요 (규정 ① ② ③).`,
+            },
           },
-        }],
+        ],
       };
     },
   );
@@ -140,20 +143,19 @@ ${analysisJson}
 
       const config = await loadConfigAsync();
       const configPlatform = config.platform;
-      const platform = configPlatform && configPlatform !== 'custom'
-        ? configPlatform
-        : detectPlatform();
+      const platform = configPlatform && configPlatform !== 'custom' ? configPlatform : detectPlatform();
 
-      const baseProfile = configPlatform === 'custom' && config.customProfile
-        ? config.customProfile
-        : getProfileForPlatform(platform);
+      const baseProfile =
+        configPlatform === 'custom' && config.customProfile ? config.customProfile : getProfileForPlatform(platform);
 
       if (!baseProfile) {
         return {
-          messages: [{
-            role: 'user' as const,
-            content: { type: 'text' as const, text: '플랫폼을 감지할 수 없어 PR 분할을 안내할 수 없습니다.' },
-          }],
+          messages: [
+            {
+              role: 'user' as const,
+              content: { type: 'text' as const, text: '플랫폼을 감지할 수 없어 PR 분할을 안내할 수 없습니다.' },
+            },
+          ],
         };
       }
 
@@ -165,11 +167,12 @@ ${analysisJson}
       const analysisJson = JSON.stringify(scopeResult, null, 2);
 
       return {
-        messages: [{
-          role: 'user' as const,
-          content: {
-            type: 'text' as const,
-            text: `다음은 Probe가 분석한 현재 변경의 범위입니다.
+        messages: [
+          {
+            role: 'user' as const,
+            content: {
+              type: 'text' as const,
+              text: `다음은 Probe가 분석한 현재 변경의 범위입니다.
 이 분석 결과를 기반으로 PR 분할 방법을 안내해주세요.
 
 ## Probe 범위 분석
@@ -183,8 +186,9 @@ ${analysisJson}
 3. 의존 관계가 있는 그룹은 순서를 지켜야 합니다 (인프라 → 데이터 → 로직 → UI).
 4. git 명령어 가이드를 제공하세요 (stash, cherry-pick, branch 생성).
 5. 분할이 불필요하면 (severity: ok) 그대로 진행하라고 안내하세요.`,
+            },
           },
-        }],
+        ],
       };
     },
   );

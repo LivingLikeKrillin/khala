@@ -107,7 +107,5 @@ function toKebabCase(str: string): string {
 }
 
 function toCamelCase(str: string): string {
-  return str
-    .replace(/[-_](.)/g, (_, c: string) => c.toUpperCase())
-    .replace(/^[A-Z]/, (c) => c.toLowerCase());
+  return str.replace(/[-_](.)/g, (_, c: string) => c.toUpperCase()).replace(/^[A-Z]/, (c) => c.toLowerCase());
 }

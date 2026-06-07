@@ -60,12 +60,7 @@ describe('parseArgs', () => {
   });
 
   it('여러 옵션을 동시에 파싱한다', () => {
-    const result = parseArgs([
-      '--base', 'origin/release',
-      '--format', 'brief',
-      '--silent',
-      '--spec', 'api/spec.json',
-    ]);
+    const result = parseArgs(['--base', 'origin/release', '--format', 'brief', '--silent', '--spec', 'api/spec.json']);
 
     expect(result.base).toBe('origin/release');
     expect(result.format).toBe('brief');
@@ -76,7 +71,15 @@ describe('parseArgs', () => {
 
 describe('parseTroubleshootArgs', () => {
   it('인자 신호와 플래그를 파싱한다', () => {
-    const o = parseTroubleshootArgs(['NPE at X', '--kind', 'stacktrace', '--suspect', 'order-service', '--format', 'json']);
+    const o = parseTroubleshootArgs([
+      'NPE at X',
+      '--kind',
+      'stacktrace',
+      '--suspect',
+      'order-service',
+      '--format',
+      'json',
+    ]);
     expect(o.signal).toBe('NPE at X');
     expect(o.kind).toBe('stacktrace');
     expect(o.suspectServices).toContain('order-service');

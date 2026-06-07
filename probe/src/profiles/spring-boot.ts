@@ -53,8 +53,14 @@ export const springBootProfile: PlatformProfile = {
     maxDiffLinesPerPr: 800,
     maxCohesionGroups: 2,
     mixedConcerns: [
-      { roles: ['migration', 'controller'], reason: 'DB 마이그레이션과 API 변경은 분리하세요 (Separate DB migration from API changes)' },
-      { roles: ['config', 'service'], reason: '설정 변경과 비즈니스 로직 변경은 분리하세요 (Separate config from business logic)' },
+      {
+        roles: ['migration', 'controller'],
+        reason: 'DB 마이그레이션과 API 변경은 분리하세요 (Separate DB migration from API changes)',
+      },
+      {
+        roles: ['config', 'service'],
+        reason: '설정 변경과 비즈니스 로직 변경은 분리하세요 (Separate config from business logic)',
+      },
     ],
   },
 };

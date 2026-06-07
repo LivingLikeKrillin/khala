@@ -52,28 +52,26 @@ function makeWarnScopeResult(): ScopeAnalysisResult {
       {
         groupName: 'config-change',
         cohesionKeyValue: 'configGroup',
-        files: [
-          { path: 'src/config/AppConfig.kt', role: 'config' },
-        ],
+        files: [{ path: 'src/config/AppConfig.kt', role: 'config' }],
       },
       {
         groupName: 'migration',
         cohesionKeyValue: 'migrationGroup',
-        files: [
-          { path: 'db/V1__init.sql', role: 'migration' },
-        ],
+        files: [{ path: 'db/V1__init.sql', role: 'migration' }],
       },
     ],
-    mixedConcerns: [
-      { roles: ['migration', 'controller'], reason: '마이그레이션과 컨트롤러는 분리 필수' },
-    ],
+    mixedConcerns: [{ roles: ['migration', 'controller'], reason: '마이그레이션과 컨트롤러는 분리 필수' }],
     totalFiles: 4,
     totalDiffLines: 200,
     splitSuggestion: {
       proposedPrs: [
         { description: 'migration — migrationGroup (1개 파일)', files: ['db/V1__init.sql'], order: 1 },
         { description: 'config-change — configGroup (1개 파일)', files: ['src/config/AppConfig.kt'], order: 2 },
-        { description: 'domain-crud — User (2개 파일)', files: ['src/entity/User.kt', 'src/service/UserService.kt'], order: 3 },
+        {
+          description: 'domain-crud — User (2개 파일)',
+          files: ['src/entity/User.kt', 'src/service/UserService.kt'],
+          order: 3,
+        },
       ],
     },
   };
@@ -133,15 +131,9 @@ describe('formatScopeMarkdown', () => {
     const result = makeOkScopeResult();
     const checklist: ReviewChecklist = {
       prType: 'domain-crud',
-      items: [
-        { description: '서비스 테스트 존재', category: 'test', priority: 'required' },
-      ],
-      autoVerified: [
-        { description: '서비스 테스트 존재', passed: true },
-      ],
-      manualRequired: [
-        { description: 'Entity 필드 매핑 확인', priority: 'required' },
-      ],
+      items: [{ description: '서비스 테스트 존재', category: 'test', priority: 'required' }],
+      autoVerified: [{ description: '서비스 테스트 존재', passed: true }],
+      manualRequired: [{ description: 'Entity 필드 매핑 확인', priority: 'required' }],
     };
     const output = formatScopeMarkdown(result, checklist);
 
@@ -282,9 +274,7 @@ describe('formatReviewMarkdown', () => {
         { description: '하위 호환성 확인', category: 'api', priority: 'required' },
         { description: '문서 업데이트', category: 'docs', priority: 'recommended' },
       ],
-      autoVerified: [
-        { description: 'API 스펙 린트 통과', passed: true, detail: '0개 에러' },
-      ],
+      autoVerified: [{ description: 'API 스펙 린트 통과', passed: true, detail: '0개 에러' }],
       manualRequired: [
         { description: '하위 호환성 확인', priority: 'required', guidelineRef: '규정 ② 2.1' },
         { description: '문서 업데이트', priority: 'recommended' },
@@ -305,13 +295,9 @@ describe('formatReviewMarkdown', () => {
   it('자동 검증이 없으면 해당 섹션을 생략한다', () => {
     const checklist: ReviewChecklist = {
       prType: 'general',
-      items: [
-        { description: '테스트 확인', category: 'test', priority: 'required' },
-      ],
+      items: [{ description: '테스트 확인', category: 'test', priority: 'required' }],
       autoVerified: [],
-      manualRequired: [
-        { description: '테스트 확인', priority: 'required' },
-      ],
+      manualRequired: [{ description: '테스트 확인', priority: 'required' }],
     };
     const output = formatReviewMarkdown(checklist);
 
@@ -322,9 +308,18 @@ describe('formatReviewMarkdown', () => {
 
 describe('formatGroundingPack', () => {
   const pack: GroundingPack = {
-    tier: 3, tierReason: '관측 엣지 1개 → T3',
+    tier: 3,
+    tierReason: '관측 엣지 1개 → T3',
     suspects: [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
-    designObservationGaps: [{ flag: 'observed_only', fromName: 'order-service', toName: 'inventory-service', edgeType: 'CALLS_OBSERVED', detail: '설계에 없음' }],
+    designObservationGaps: [
+      {
+        flag: 'observed_only',
+        fromName: 'order-service',
+        toName: 'inventory-service',
+        edgeType: 'CALLS_OBSERVED',
+        detail: '설계에 없음',
+      },
+    ],
     caveats: ['도메인 불변식 그라운딩은 Archon 미연동으로 생략됨'],
   };
   it('markdown에 티어·갭·caveat가 들어간다', () => {
@@ -340,9 +335,18 @@ describe('formatGroundingPack', () => {
 });
 
 const reviewPack: ReviewGroundingPack = {
-  tier: 3, tierReason: 'r',
+  tier: 3,
+  tierReason: 'r',
   changedEntities: [{ entityName: 'order-service', changedFiles: ['a.ts'] }],
-  designObservationGaps: [{ flag: 'observed_only', fromName: 'order-service', toName: 'inventory-service', edgeType: 'CALLS_OBSERVED', detail: 'd' }],
+  designObservationGaps: [
+    {
+      flag: 'observed_only',
+      fromName: 'order-service',
+      toName: 'inventory-service',
+      edgeType: 'CALLS_OBSERVED',
+      detail: 'd',
+    },
+  ],
   specRefs: [{ docTitle: 'Order Spec', sectionPath: '2', snippet: 's', classification: 'INTERNAL' }],
   caveats: ['c1'],
 };

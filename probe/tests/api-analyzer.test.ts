@@ -315,7 +315,8 @@ describe('api-analyzer (내장 diff 엔진)', () => {
 
     const head = makeSpec({
       paths: {
-        '/orders': { // 새 경로 추가 (additive)
+        '/orders': {
+          // 새 경로 추가 (additive)
           get: { responses: { '200': { description: 'OK' } } },
         },
         // /users 삭제 (breaking)

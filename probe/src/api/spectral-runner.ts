@@ -45,14 +45,11 @@ interface SpectralResult {
  * @returns 린트 결과
  */
 export async function runSpectral(specPath: string): Promise<ApiLintResult> {
-  const output = execSync(
-    `npx spectral lint "${specPath}" --format json`,
-    {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 30000,
-    },
-  );
+  const output = execSync(`npx spectral lint "${specPath}" --format json`, {
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+    timeout: 30000,
+  });
 
   const results = JSON.parse(output) as SpectralResult[];
 
@@ -60,7 +57,7 @@ export async function runSpectral(specPath: string): Promise<ApiLintResult> {
     .filter((r) => r.severity <= 1) // error, warn만
     .map((r) => ({
       ruleId: r.code,
-      severity: r.severity === 0 ? 'error' as const : 'warn' as const,
+      severity: r.severity === 0 ? ('error' as const) : ('warn' as const),
       path: r.path.join('.'),
       message: r.message,
     }));

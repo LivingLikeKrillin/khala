@@ -10,11 +10,7 @@
 import type { NexusClient } from './client.js';
 import { withNexusFallback } from './client.js';
 import { logger } from '../utils/logger.js';
-import type {
-  ImpactAnalysis,
-  ImpactedService,
-  NexusGraphResult,
-} from './types.js';
+import type { ImpactAnalysis, ImpactedService, NexusGraphResult } from './types.js';
 
 /** 영향 분석 옵션 */
 export interface ImpactOptions {
@@ -52,19 +48,11 @@ export async function analyzeImpact(
 
   // 각 서비스에 대해 그래프 조회 (병렬)
   const graphResults = await Promise.all(
-    serviceNames.map((name) =>
-      withNexusFallback(
-        () => client.getGraph(name, { hops }),
-        null,
-        `graph lookup: ${name}`,
-      ),
-    ),
+    serviceNames.map((name) => withNexusFallback(() => client.getGraph(name, { hops }), null, `graph lookup: ${name}`)),
   );
 
   // 유효한 결과만 수집
-  const validResults = graphResults.filter(
-    (r): r is NexusGraphResult => r !== null,
-  );
+  const validResults = graphResults.filter((r): r is NexusGraphResult => r !== null);
 
   if (validResults.length === 0) {
     logger.debug('Nexus 그래프 조회 결과 없음');
@@ -105,11 +93,9 @@ export async function analyzeImpact(
 
       if (!targetName) continue;
 
-      const existing = directImpact.find(
-        (s) => s.name.toLowerCase() === targetName.toLowerCase(),
-      ) ?? indirectImpact.find(
-        (s) => s.name.toLowerCase() === targetName.toLowerCase(),
-      );
+      const existing =
+        directImpact.find((s) => s.name.toLowerCase() === targetName.toLowerCase()) ??
+        indirectImpact.find((s) => s.name.toLowerCase() === targetName.toLowerCase());
 
       if (existing) {
         existing.observed = {
@@ -175,10 +161,7 @@ function extractImpactFromEdge(
 /**
  * 엣지 타입과 방향에서 관계 유형을 결정한다.
  */
-function edgeTypeToRelationship(
-  edgeType: string,
-  direction: 'outgoing' | 'incoming',
-): ImpactedService['relationship'] {
+function edgeTypeToRelationship(edgeType: string, direction: 'outgoing' | 'incoming'): ImpactedService['relationship'] {
   switch (edgeType) {
     case 'CALLS':
     case 'CALLS_OBSERVED':
@@ -202,18 +185,13 @@ function edgeTypeToRelationship(
  * | medium | 3개 이상, 또는 error rate 높은 경로 |
  * | high   | 다수 서비스 + 높은 error rate 경로 |
  */
-function determineSeverity(
-  direct: ImpactedService[],
-  indirect: ImpactedService[],
-): ImpactAnalysis['severity'] {
+function determineSeverity(direct: ImpactedService[], indirect: ImpactedService[]): ImpactAnalysis['severity'] {
   const totalImpacted = direct.length + indirect.length;
 
   if (totalImpacted === 0) return 'none';
 
   // 높은 error rate 경로 존재 여부
-  const hasHighErrorRate = direct.some(
-    (s) => s.observed && s.observed.errorRate > 0.05,
-  );
+  const hasHighErrorRate = direct.some((s) => s.observed && s.observed.errorRate > 0.05);
 
   if (totalImpacted >= 3 && hasHighErrorRate) return 'high';
   if (totalImpacted >= 3 || hasHighErrorRate) return 'medium';
@@ -254,4 +232,3 @@ function buildSummary(
 
   return `${changed.join(', ')} 변경 영향 [${severityLabel}]: ${parts.join(' / ')}`;
 }
-

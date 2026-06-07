@@ -23,27 +23,15 @@ describe('detectConcernDrift', () => {
       'src/main/kotlin/controller/UserController.kt',
     ];
 
-    const result = detectConcernDrift(
-      files,
-      'src/main/kotlin/controller/UserController.kt',
-      springBootProfile,
-    );
+    const result = detectConcernDrift(files, 'src/main/kotlin/controller/UserController.kt', springBootProfile);
 
     expect(result.drifted).toBe(false);
   });
 
   it('Next.js 같은 페이지 내 컴포넌트 추가는 드리프트 없음', () => {
-    const files = [
-      'app/dashboard/page.tsx',
-      'app/dashboard/loading.tsx',
-      'components/dashboard/StatsCard.tsx',
-    ];
+    const files = ['app/dashboard/page.tsx', 'app/dashboard/loading.tsx', 'components/dashboard/StatsCard.tsx'];
 
-    const result = detectConcernDrift(
-      files,
-      'components/dashboard/StatsCard.tsx',
-      nextjsProfile,
-    );
+    const result = detectConcernDrift(files, 'components/dashboard/StatsCard.tsx', nextjsProfile);
 
     expect(result.drifted).toBe(false);
   });
@@ -58,11 +46,7 @@ describe('detectConcernDrift', () => {
       'src/main/resources/application.yml',
     ];
 
-    const result = detectConcernDrift(
-      files,
-      'src/main/resources/application.yml',
-      springBootProfile,
-    );
+    const result = detectConcernDrift(files, 'src/main/resources/application.yml', springBootProfile);
 
     expect(result.drifted).toBe(true);
     expect(result.primaryGroup).toContain('User');
@@ -89,17 +73,9 @@ describe('detectConcernDrift', () => {
   });
 
   it('dashboard 페이지 작업 중 middleware 편집 시 드리프트 감지 (nextjs)', () => {
-    const files = [
-      'app/dashboard/page.tsx',
-      'app/dashboard/loading.tsx',
-      'middleware.ts',
-    ];
+    const files = ['app/dashboard/page.tsx', 'app/dashboard/loading.tsx', 'middleware.ts'];
 
-    const result = detectConcernDrift(
-      files,
-      'middleware.ts',
-      nextjsProfile,
-    );
+    const result = detectConcernDrift(files, 'middleware.ts', nextjsProfile);
 
     expect(result.drifted).toBe(true);
     expect(result.message).toContain('다른 관심사');
@@ -113,11 +89,7 @@ describe('detectConcernDrift', () => {
       'app/api/users/route.ts',
     ];
 
-    const result = detectConcernDrift(
-      files,
-      'app/api/users/route.ts',
-      nextjsProfile,
-    );
+    const result = detectConcernDrift(files, 'app/api/users/route.ts', nextjsProfile);
 
     expect(result.drifted).toBe(true);
   });
@@ -132,11 +104,7 @@ describe('detectConcernDrift', () => {
       'src/main/resources/application.yml',
     ];
 
-    const result = detectConcernDrift(
-      files,
-      'src/main/resources/application.yml',
-      springBootProfile,
-    );
+    const result = detectConcernDrift(files, 'src/main/resources/application.yml', springBootProfile);
 
     expect(result.drifted).toBe(true);
     expect(result.primaryGroup).not.toBeNull();
@@ -145,16 +113,9 @@ describe('detectConcernDrift', () => {
   });
 
   it('드리프트 없을 때 message는 null', () => {
-    const files = [
-      'src/main/kotlin/entity/User.kt',
-      'src/main/kotlin/service/UserService.kt',
-    ];
+    const files = ['src/main/kotlin/entity/User.kt', 'src/main/kotlin/service/UserService.kt'];
 
-    const result = detectConcernDrift(
-      files,
-      'src/main/kotlin/service/UserService.kt',
-      springBootProfile,
-    );
+    const result = detectConcernDrift(files, 'src/main/kotlin/service/UserService.kt', springBootProfile);
 
     expect(result.message).toBeNull();
   });

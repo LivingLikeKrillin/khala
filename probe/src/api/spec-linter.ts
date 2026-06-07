@@ -27,11 +27,7 @@ export interface SpecLinterOptions {
  * @param options 린트 옵션
  * @returns 린트 결과
  */
-export function lintSpec(
-  spec: OpenApiSpec,
-  specPath: string,
-  options?: SpecLinterOptions,
-): ApiLintResult {
+export function lintSpec(spec: OpenApiSpec, specPath: string, options?: SpecLinterOptions): ApiLintResult {
   const disableRules = new Set(options?.disableRules ?? []);
   const ruleSeverity = options?.ruleSeverity ?? {};
 

@@ -38,9 +38,7 @@ export function generateReviewChecklist(
   options?: ReviewOptions,
 ): ReviewChecklist {
   // 파일 역할 추출
-  const roles = scopeResult.groups.flatMap((g) =>
-    g.files.map((f) => f.role),
-  );
+  const roles = scopeResult.groups.flatMap((g) => g.files.map((f) => f.role));
 
   // PR 타입 추론
   const prType = detectPrType(roles, options?.hasApiSpecChange ?? false);

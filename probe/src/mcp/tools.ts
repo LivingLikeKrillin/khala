@@ -29,13 +29,10 @@ import { existsSync } from 'node:fs';
 async function resolveProfile() {
   const config = await loadConfigAsync();
   const configPlatform = config.platform;
-  const platform = configPlatform && configPlatform !== 'custom'
-    ? configPlatform
-    : detectPlatform();
+  const platform = configPlatform && configPlatform !== 'custom' ? configPlatform : detectPlatform();
 
-  const baseProfile = configPlatform === 'custom' && config.customProfile
-    ? config.customProfile
-    : getProfileForPlatform(platform);
+  const baseProfile =
+    configPlatform === 'custom' && config.customProfile ? config.customProfile : getProfileForPlatform(platform);
 
   if (!baseProfile) return { profile: null, config, platform };
 
@@ -98,7 +95,9 @@ export function registerTools(server: McpServer): void {
       const path = specPath ?? config.api?.specPath ?? 'api/openapi.json';
 
       if (!existsSync(path)) {
-        return { content: [{ type: 'text' as const, text: `API 스펙 파일을 찾을 수 없습니다 (API spec not found): ${path}` }] };
+        return {
+          content: [{ type: 'text' as const, text: `API 스펙 파일을 찾을 수 없습니다 (API spec not found): ${path}` }],
+        };
       }
 
       const spec = parseOpenApiSpec(path);
@@ -130,7 +129,11 @@ export function registerTools(server: McpServer): void {
 
       const baseContent = getBaseFileContent(baseRef, path);
       if (!baseContent) {
-        return { content: [{ type: 'text' as const, text: `기준 브랜치에서 스펙 파일을 찾을 수 없습니다: ${baseRef}:${path}` }] };
+        return {
+          content: [
+            { type: 'text' as const, text: `기준 브랜치에서 스펙 파일을 찾을 수 없습니다: ${baseRef}:${path}` },
+          ],
+        };
       }
 
       const baseSpec = parseOpenApiSpecFromString(baseContent);
@@ -198,10 +201,12 @@ export function registerTools(server: McpServer): void {
       const { profile, platform } = await resolveProfile();
 
       return {
-        content: [{
-          type: 'text' as const,
-          text: JSON.stringify({ platform, profile }, null, 2),
-        }],
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ platform, profile }, null, 2),
+          },
+        ],
       };
     },
   );
@@ -220,7 +225,9 @@ export function registerTools(server: McpServer): void {
       const nexusConfig = resolveNexusConfig(config);
 
       if (nexusConfig.disabled) {
-        return { content: [{ type: 'text' as const, text: 'Nexus 연동이 비활성화되어 있습니다 (Nexus integration disabled)' }] };
+        return {
+          content: [{ type: 'text' as const, text: 'Nexus 연동이 비활성화되어 있습니다 (Nexus integration disabled)' }],
+        };
       }
 
       const client = new NexusClient({
@@ -232,7 +239,11 @@ export function registerTools(server: McpServer): void {
 
       const available = await client.isAvailable();
       if (!available) {
-        return { content: [{ type: 'text' as const, text: 'Nexus 서버에 연결할 수 없습니다 (Cannot connect to Nexus server)' }] };
+        return {
+          content: [
+            { type: 'text' as const, text: 'Nexus 서버에 연결할 수 없습니다 (Cannot connect to Nexus server)' },
+          ],
+        };
       }
 
       const selectedMode = mode ?? 'search';
@@ -269,7 +280,10 @@ export function registerTools(server: McpServer): void {
     '에러/스택트레이스/실패 테스트를 받아 조직 컨텍스트(토폴로지·관측·설계-관측 갭·규정)를 묶은 Grounding Pack을 반환한다. 근본원인은 단정하지 않는다 — 추론은 호출자가 한다.',
     {
       signal: z.string().describe('에러 메시지 | 스택트레이스 | 실패 테스트 출력 | 인시던트 설명'),
-      kind: z.enum(['stacktrace', 'error', 'test-failure', 'incident']).optional().describe('신호 종류 힌트 (생략 시 자동 추론)'),
+      kind: z
+        .enum(['stacktrace', 'error', 'test-failure', 'incident'])
+        .optional()
+        .describe('신호 종류 힌트 (생략 시 자동 추론)'),
       suspectServices: z.array(z.string()).optional().describe('사용자가 지목한 의심 서비스'),
       diffBase: z.string().optional().describe('최근 변경 상관 분석용 git base (예: origin/main)'),
     },
@@ -297,14 +311,17 @@ export function registerTools(server: McpServer): void {
       }
       const changedFiles = getChangedFiles(base);
       if (changedFiles.length === 0) {
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: '변경 파일 없음 (No changed files)' }) }] };
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({ error: '변경 파일 없음 (No changed files)' }) }],
+        };
       }
       const scope = analyzeScope(changedFiles, profile, getDiffLines(base));
       const entities = buildChangedEntities(scope.groups, changedFiles);
       const nexusConfig = resolveNexusConfig(config);
       const client = new NexusClient(nexusConfig);
       const result = await runReviewGround(entities, client, {
-        searchTopK: nexusConfig.searchTopK, graphHops: nexusConfig.graphHops,
+        searchTopK: nexusConfig.searchTopK,
+        graphHops: nexusConfig.graphHops,
       });
       const payload = result.ok ? result.pack : { error: result.reason };
       return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };

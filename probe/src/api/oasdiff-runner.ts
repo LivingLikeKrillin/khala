@@ -43,31 +43,22 @@ interface OasdiffBreakingResult {
  * @param headSpecPath 현재 스펙 경로
  * @returns diff 결과
  */
-export async function runOasdiff(
-  baseSpecPath: string,
-  headSpecPath: string,
-): Promise<ApiDiffResult> {
+export async function runOasdiff(baseSpecPath: string, headSpecPath: string): Promise<ApiDiffResult> {
   // summary 실행
-  const summaryOutput = execSync(
-    `oasdiff diff "${baseSpecPath}" "${headSpecPath}" --format json`,
-    {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 30000,
-    },
-  );
+  const summaryOutput = execSync(`oasdiff diff "${baseSpecPath}" "${headSpecPath}" --format json`, {
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+    timeout: 30000,
+  });
 
   // breaking 실행
   let breakingResults: OasdiffBreakingResult[] = [];
   try {
-    const breakingOutput = execSync(
-      `oasdiff breaking "${baseSpecPath}" "${headSpecPath}" --format json`,
-      {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: 30000,
-      },
-    );
+    const breakingOutput = execSync(`oasdiff breaking "${baseSpecPath}" "${headSpecPath}" --format json`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 30000,
+    });
     breakingResults = JSON.parse(breakingOutput) as OasdiffBreakingResult[];
   } catch {
     // breaking 분석 실패는 무시
@@ -97,10 +88,7 @@ export async function runOasdiff(
 /**
  * oasdiff 출력을 Probe ApiChange로 변환한다.
  */
-function parseOasdiffOutput(
-  summaryJson: string,
-  breakingResults: OasdiffBreakingResult[],
-): ApiChange[] {
+function parseOasdiffOutput(summaryJson: string, breakingResults: OasdiffBreakingResult[]): ApiChange[] {
   const changes: ApiChange[] = [];
 
   try {

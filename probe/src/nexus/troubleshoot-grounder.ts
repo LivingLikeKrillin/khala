@@ -11,9 +11,7 @@
 import { NexusClient, withNexusFallback } from './client.js';
 import { analyzeImpact } from './impact-analyzer.js';
 import { fetchEntityGaps, searchDocs } from './grounding-sections.js';
-import type {
-  Suspect, GroundingPack, OperationalSignal, ImpactAnalysis,
-} from './types.js';
+import type { Suspect, GroundingPack, OperationalSignal, ImpactAnalysis } from './types.js';
 
 /** 운영 신호 이상치 임계 (impact-analyzer와 동일치 재사용 — 스펙 Q3) */
 const ERROR_RATE_THRESHOLD = 0.05;
@@ -50,7 +48,8 @@ export async function groundTroubleshooting(
     const knowledge = await withNexusFallback(
       // 검색 쿼리는 앞 500자만 사용 (저장 신호의 8000자 절단과는 별개 — 쿼리 품질·길이 제한용)
       () => searchDocs(client, options.signal.slice(0, 500), options.searchTopK ?? 5),
-      null, 'search',
+      null,
+      'search',
     );
     if (knowledge) pack.knowledge = knowledge;
     else caveats.push('지식 그라운딩(search) 조회 실패 (Knowledge grounding unavailable)');
@@ -60,21 +59,17 @@ export async function groundTroubleshooting(
   if (options.tier >= 2 && names.length > 0) {
     const topology = await withNexusFallback<ImpactAnalysis | null>(
       () => analyzeImpact(client, names, { hops: options.graphHops ?? 2 }),
-      null, 'impact',
+      null,
+      'impact',
     );
     if (topology) pack.topology = topology;
   }
 
   // §3 설계-관측 갭 (doc_only는 T2+, observed_only/conflict는 T3)
   if (options.tier >= 2 && names.length > 0) {
-    const gaps = await withNexusFallback(
-      () => fetchEntityGaps(client, names),
-      null, 'diff',
-    );
+    const gaps = await withNexusFallback(() => fetchEntityGaps(client, names), null, 'diff');
     if (gaps) {
-      pack.designObservationGaps = options.tier >= 3
-        ? gaps
-        : gaps.filter((g) => g.flag === 'doc_only');
+      pack.designObservationGaps = options.tier >= 3 ? gaps : gaps.filter((g) => g.flag === 'doc_only');
       // §4 운영 신호 (T3)
       if (options.tier >= 3) {
         pack.operationalSignals = extractSignals(pack.topology);
@@ -99,9 +94,7 @@ export async function groundTroubleshooting(
 function extractSignals(topology?: ImpactAnalysis): OperationalSignal[] {
   if (!topology) return [];
   // 변경 서비스가 단 하나일 때만 그것을 엣지 소스 후보로 쓴다(여럿이면 모호).
-  const singleSource = topology.changedServices.length === 1
-    ? topology.changedServices[0]
-    : undefined;
+  const singleSource = topology.changedServices.length === 1 ? topology.changedServices[0] : undefined;
   const signals: OperationalSignal[] = [];
   for (const svc of [...topology.directImpact, ...topology.indirectImpact]) {
     const o = svc.observed;

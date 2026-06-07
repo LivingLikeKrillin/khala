@@ -43,40 +43,42 @@ export function registerResources(server: McpServer): void {
 
       if (!profile) {
         return {
-          contents: [{
-            uri: uri.href,
-            mimeType: 'application/json',
-            text: JSON.stringify({ error: `알 수 없는 플랫폼: ${platformName}` }),
-          }],
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: 'application/json',
+              text: JSON.stringify({ error: `알 수 없는 플랫폼: ${platformName}` }),
+            },
+          ],
         };
       }
 
       return {
-        contents: [{
-          uri: uri.href,
-          mimeType: 'application/json',
-          text: JSON.stringify(profile, null, 2),
-        }],
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(profile, null, 2),
+          },
+        ],
       };
     },
   );
 
   // ─── probe://config ───
-  server.resource(
-    'config',
-    'probe://config',
-    async (uri) => {
-      const config = await loadConfigAsync();
+  server.resource('config', 'probe://config', async (uri) => {
+    const config = await loadConfigAsync();
 
-      return {
-        contents: [{
+    return {
+      contents: [
+        {
           uri: uri.href,
           mimeType: 'application/json',
           text: JSON.stringify(config, null, 2),
-        }],
-      };
-    },
-  );
+        },
+      ],
+    };
+  });
 
   // ─── probe://guidelines/{name} ───
   server.resource(
@@ -88,11 +90,13 @@ export function registerResources(server: McpServer): void {
 
       if (!filePath) {
         return {
-          contents: [{
-            uri: uri.href,
-            mimeType: 'text/plain',
-            text: `알 수 없는 규정: ${guideName}\n사용 가능: ${Object.keys(GUIDELINE_FILES).join(', ')}`,
-          }],
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: 'text/plain',
+              text: `알 수 없는 규정: ${guideName}\n사용 가능: ${Object.keys(GUIDELINE_FILES).join(', ')}`,
+            },
+          ],
         };
       }
 
@@ -100,22 +104,26 @@ export function registerResources(server: McpServer): void {
 
       if (!existsSync(fullPath)) {
         return {
-          contents: [{
-            uri: uri.href,
-            mimeType: 'text/plain',
-            text: `규정 파일을 찾을 수 없습니다: ${filePath}`,
-          }],
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: 'text/plain',
+              text: `규정 파일을 찾을 수 없습니다: ${filePath}`,
+            },
+          ],
         };
       }
 
       const content = readFileSync(fullPath, 'utf-8');
 
       return {
-        contents: [{
-          uri: uri.href,
-          mimeType: 'text/markdown',
-          text: content,
-        }],
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'text/markdown',
+            text: content,
+          },
+        ],
       };
     },
   );

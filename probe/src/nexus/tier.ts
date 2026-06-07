@@ -16,10 +16,7 @@ export interface TierDecision {
  * @param failure status가 null일 때의 실패 사유 — 'timeout'(느림/콜드스타트)과
  *   'unreachable'(미가용)을 구분해 T0 사유 문구를 다르게 남긴다.
  */
-export function determineTier(
-  status: NexusStatusResult | null,
-  failure?: 'timeout' | 'unreachable',
-): TierDecision {
+export function determineTier(status: NexusStatusResult | null, failure?: 'timeout' | 'unreachable'): TierDecision {
   if (!status || !status.db_connected) {
     if (failure === 'timeout') {
       return {

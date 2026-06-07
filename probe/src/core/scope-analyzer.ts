@@ -148,11 +148,24 @@ function extractDomainName(filePath: string): string {
 
   // 일반적인 접미사 패턴 제거
   const suffixes = [
-    'Controller', 'Service', 'Repository', 'Entity',
-    'Request', 'Response', 'Dto', 'DTO', 'Mapper',
-    'Config', 'Configuration', 'Exception', 'Test',
-    'ServiceTest', 'ControllerTest', 'RepositoryTest',
-    'Spec', 'ServiceSpec',
+    'Controller',
+    'Service',
+    'Repository',
+    'Entity',
+    'Request',
+    'Response',
+    'Dto',
+    'DTO',
+    'Mapper',
+    'Config',
+    'Configuration',
+    'Exception',
+    'Test',
+    'ServiceTest',
+    'ControllerTest',
+    'RepositoryTest',
+    'Spec',
+    'ServiceSpec',
   ];
 
   // 가장 긴 접미사부터 매칭 시도
@@ -309,18 +322,13 @@ function extractApiSegment(filePath: string): string {
 /**
  * 역할이 부여된 파일들을 응집 그룹에 매칭한다.
  */
-function matchCohesionGroups(
-  roleAssignments: RoleAssignment[],
-  profile: PlatformProfile,
-): DetectedGroup[] {
+function matchCohesionGroups(roleAssignments: RoleAssignment[], profile: PlatformProfile): DetectedGroup[] {
   const groups: DetectedGroup[] = [];
   const assignedFiles = new Set<string>();
 
   for (const group of profile.cohesionGroups) {
     // 이 그룹의 역할에 해당하는 파일들을 찾는다
-    const matchingFiles = roleAssignments.filter(
-      (ra) => group.roles.includes(ra.role) && !assignedFiles.has(ra.path),
-    );
+    const matchingFiles = roleAssignments.filter((ra) => group.roles.includes(ra.role) && !assignedFiles.has(ra.path));
 
     if (matchingFiles.length === 0) continue;
 
@@ -363,10 +371,7 @@ function matchCohesionGroups(
 /**
  * mixedConcerns 규칙에 따라 관심사 혼재를 감지한다.
  */
-function detectMixedConcerns(
-  roleAssignments: RoleAssignment[],
-  profile: PlatformProfile,
-): MixedConcernWarning[] {
+function detectMixedConcerns(roleAssignments: RoleAssignment[], profile: PlatformProfile): MixedConcernWarning[] {
   const presentRoles = new Set(roleAssignments.map((ra) => ra.role));
   const warnings: MixedConcernWarning[] = [];
 
@@ -436,10 +441,7 @@ function determineSeverity(
  *
  * 규정 문서: docs/probe-v0.1-scope.md § 3.3
  */
-function generateSplitSuggestion(
-  groups: DetectedGroup[],
-  _profile: PlatformProfile,
-): SplitSuggestion {
+function generateSplitSuggestion(groups: DetectedGroup[], _profile: PlatformProfile): SplitSuggestion {
   // 머지 순서 결정: 인프라/설정 → 데이터 → 비즈니스 로직 → UI
   const priorityOrder: Record<string, number> = {
     'migration': 1,
@@ -517,18 +519,10 @@ export function analyzeScope(
   const mixedConcerns = detectMixedConcerns(roleAssignments, profile);
 
   // 4. 경고 레벨 판단
-  const severity = determineSeverity(
-    groups,
-    mixedConcerns,
-    changedFiles.length,
-    totalDiffLines,
-    profile,
-  );
+  const severity = determineSeverity(groups, mixedConcerns, changedFiles.length, totalDiffLines, profile);
 
   // 5. 분할 제안 생성 (ok가 아닐 때만)
-  const splitSuggestion = severity !== 'ok'
-    ? generateSplitSuggestion(groups, profile)
-    : undefined;
+  const splitSuggestion = severity !== 'ok' ? generateSplitSuggestion(groups, profile) : undefined;
 
   return {
     severity,

@@ -78,11 +78,13 @@ describe('extractServiceNames', () => {
   });
 
   it('-service 접미사가 이미 있으면 중복 추가하지 않는다', () => {
-    const groups: DetectedGroup[] = [{
-      groupName: 'domain-crud',
-      cohesionKeyValue: 'payment-service',
-      files: [{ path: 'src/PaymentService.ts', role: 'Service' }],
-    }];
+    const groups: DetectedGroup[] = [
+      {
+        groupName: 'domain-crud',
+        cohesionKeyValue: 'payment-service',
+        files: [{ path: 'src/PaymentService.ts', role: 'Service' }],
+      },
+    ];
     const names = extractServiceNames(groups);
 
     expect(names).toContain('payment-service');
@@ -120,8 +122,15 @@ describe('enrichWithNexus', () => {
   it('서비스명을 추출할 수 없으면 빈 결과와 nexusAvailable=true를 반환한다', async () => {
     // getStatusProbe 성공 (json 포함)
     globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true, status: 200,
-      json: () => Promise.resolve({ success: true, data: { db_connected: true, documents_count: 0, edges_count: 0 }, error: null, meta: {} }),
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: { db_connected: true, documents_count: 0, edges_count: 0 },
+          error: null,
+          meta: {},
+        }),
     }) as unknown as typeof fetch;
 
     const groups = makeGroups(['unknown']);
@@ -141,7 +150,17 @@ describe('enrichWithNexus', () => {
 
       // /status → 가용
       if (urlStr.includes('/status')) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { db_connected: true, documents_count: 5, edges_count: 3, observed_edges_count: 2 }, error: null, meta: {} }) });
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: { db_connected: true, documents_count: 5, edges_count: 3, observed_edges_count: 2 },
+              error: null,
+              meta: {},
+            }),
+        });
       }
 
       // /search → 결과
@@ -149,17 +168,31 @@ describe('enrichWithNexus', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: () => Promise.resolve({
-            success: true,
-            data: {
-              results: [{ rid: 'r1', doc_rid: 'd1', doc_title: 'API Guide', section_path: '2.3', source_uri: '', snippet: 'nullable 필드 표기', score: 0.8, bm25_rank: 1, vector_rank: 2, classification: 'INTERNAL' }],
-              graph_findings: null,
-              route_used: 'hybrid_only',
-              timing_ms: {},
-            },
-            error: null,
-            meta: {},
-          }),
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: {
+                results: [
+                  {
+                    rid: 'r1',
+                    doc_rid: 'd1',
+                    doc_title: 'API Guide',
+                    section_path: '2.3',
+                    source_uri: '',
+                    snippet: 'nullable 필드 표기',
+                    score: 0.8,
+                    bm25_rank: 1,
+                    vector_rank: 2,
+                    classification: 'INTERNAL',
+                  },
+                ],
+                graph_findings: null,
+                route_used: 'hybrid_only',
+                timing_ms: {},
+              },
+              error: null,
+              meta: {},
+            }),
         });
       }
 
@@ -173,12 +206,13 @@ describe('enrichWithNexus', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: () => Promise.resolve({
-            success: true,
-            data: { total_designed_edges: 0, total_observed_edges: 0, diffs: [], generated_at: '' },
-            error: null,
-            meta: {},
-          }),
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: { total_designed_edges: 0, total_observed_edges: 0, diffs: [], generated_at: '' },
+              error: null,
+              meta: {},
+            }),
         });
       }
 
@@ -200,17 +234,85 @@ describe('enrichWithNexus', () => {
   it('엔티티 스코프 diff로 갭과 영향 서비스를 투영한다 (수렴 + 평탄화)', async () => {
     globalThis.fetch = vi.fn((url: string) => {
       const u = new URL(url);
-      if (u.pathname.startsWith('/status')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { db_connected: true, documents_count: 1, edges_count: 3, observed_edges_count: 2 }, error: null, meta: {} }) });
+      if (u.pathname.startsWith('/status'))
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: { db_connected: true, documents_count: 1, edges_count: 3, observed_edges_count: 2 },
+              error: null,
+              meta: {},
+            }),
+        });
       if (u.pathname.startsWith('/diff')) {
         const hasFilter = u.searchParams.has('entity_filter');
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { diffs: hasFilter ? [{ flag: 'observed_only', from_name: 'order-service', to_name: 'inventory-service', edge_type: 'CALLS_OBSERVED', detail: 'd', designed_evidence: [], observed_evidence: { sample_trace_ids: ['t'], trace_query_ref: 'r' } }] : [] }, error: null, meta: {} }) });
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: {
+                diffs: hasFilter
+                  ? [
+                      {
+                        flag: 'observed_only',
+                        from_name: 'order-service',
+                        to_name: 'inventory-service',
+                        edge_type: 'CALLS_OBSERVED',
+                        detail: 'd',
+                        designed_evidence: [],
+                        observed_evidence: { sample_trace_ids: ['t'], trace_query_ref: 'r' },
+                      },
+                    ]
+                  : [],
+              },
+              error: null,
+              meta: {},
+            }),
+        });
       }
-      if (u.pathname.startsWith('/graph')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { center_entity: { rid: 'e', name: 'order-service' }, edges: [{ rid: 'e1', edge_type: 'CALLS', from_name: 'order-service', to_name: 'inventory-service', from_rid: 'a', to_rid: 'b', confidence: 0.9, hop: 1, evidence: [] }], observed_edges: [] }, error: null, meta: {} }) });
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { results: [] }, error: null, meta: {} }) });
+      if (u.pathname.startsWith('/graph'))
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: {
+                center_entity: { rid: 'e', name: 'order-service' },
+                edges: [
+                  {
+                    rid: 'e1',
+                    edge_type: 'CALLS',
+                    from_name: 'order-service',
+                    to_name: 'inventory-service',
+                    from_rid: 'a',
+                    to_rid: 'b',
+                    confidence: 0.9,
+                    hop: 1,
+                    evidence: [],
+                  },
+                ],
+                observed_edges: [],
+              },
+              error: null,
+              meta: {},
+            }),
+        });
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ success: true, data: { results: [] }, error: null, meta: {} }),
+      });
     }) as unknown as typeof globalThis.fetch;
 
     const groups = makeGroups(['Order']);
-    const result = await enrichWithNexus(groups, ['src/order/OrderService.java'], { nexusConfig: { baseUrl: 'http://t:8000' } });
+    const result = await enrichWithNexus(groups, ['src/order/OrderService.java'], {
+      nexusConfig: { baseUrl: 'http://t:8000' },
+    });
     expect(result.nexusAvailable).toBe(true);
     expect(result.designObservationGaps.some((g) => g.flag === 'observed_only')).toBe(true);
     expect(result.impactedServices.some((s) => s.name === 'inventory-service')).toBe(true);

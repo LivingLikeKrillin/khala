@@ -6,7 +6,11 @@ import type { DetectedGroup } from '../src/core/scope-analyzer.js';
 describe('buildChangedEntities', () => {
   it('응집 그룹+변경파일에서 엔티티와 귀속 파일을 만든다', () => {
     const groups: DetectedGroup[] = [
-      { groupName: 'domain-crud', cohesionKeyValue: 'Order', files: [{ path: 'src/order/OrderService.java', role: 'Service' }] },
+      {
+        groupName: 'domain-crud',
+        cohesionKeyValue: 'Order',
+        files: [{ path: 'src/order/OrderService.java', role: 'Service' }],
+      },
     ];
     const entities = buildChangedEntities(groups, ['src/order/OrderService.java', 'README.md']);
     const order = entities.find((e) => e.entityName === 'order-service');
@@ -18,8 +22,12 @@ describe('buildChangedEntities', () => {
 
 describe('runReviewGround', () => {
   let orig: typeof globalThis.fetch;
-  beforeEach(() => { orig = globalThis.fetch; });
-  afterEach(() => { globalThis.fetch = orig; });
+  beforeEach(() => {
+    orig = globalThis.fetch;
+  });
+  afterEach(() => {
+    globalThis.fetch = orig;
+  });
 
   it('엔티티 0개면 ok:false', async () => {
     const client = new NexusClient({ baseUrl: 'http://t:8000' });

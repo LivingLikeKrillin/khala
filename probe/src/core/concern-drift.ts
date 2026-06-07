@@ -54,9 +54,7 @@ export function detectConcernDrift(
   const result = analyzeScope(allChangedFiles, profile);
 
   // 의미있는 그룹만 추출 (unmatched 중 파일이 있는 것도 포함)
-  const meaningfulGroups = result.groups.filter(
-    (g) => g.files.length > 0,
-  );
+  const meaningfulGroups = result.groups.filter((g) => g.files.length > 0);
 
   // 그룹이 1개 이하면 드리프트 없음
   if (meaningfulGroups.length <= 1) {
@@ -83,9 +81,7 @@ export function detectConcernDrift(
     return noDrift;
   }
 
-  const primaryGroup = otherGroups.reduce((a, b) =>
-    a.fileCount >= b.fileCount ? a : b,
-  );
+  const primaryGroup = otherGroups.reduce((a, b) => (a.fileCount >= b.fileCount ? a : b));
 
   // 같은 그룹이면 드리프트 아님
   const editedGroupKey = groupKey(editedGroup);
@@ -126,9 +122,11 @@ function formatGroupLabel(group: DetectedGroup): string {
   if (group.groupName === 'unmatched') {
     return '기타 파일';
   }
-  if (group.cohesionKeyValue === group.groupName ||
-      group.cohesionKeyValue === 'default' ||
-      group.cohesionKeyValue.endsWith('Group')) {
+  if (
+    group.cohesionKeyValue === group.groupName ||
+    group.cohesionKeyValue === 'default' ||
+    group.cohesionKeyValue.endsWith('Group')
+  ) {
     return group.groupName;
   }
   return `${group.cohesionKeyValue} ${group.groupName}`;
