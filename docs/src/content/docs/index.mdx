@@ -2,6 +2,38 @@
 title: Khala
 description: An alliance of tools that calibrates the AI era.
 template: splash
+hero:
+  tagline: Two failure modes of the AI era — the machine lies, and the human stops judging. Khala answers both with deterministic grounding, not advice.
+  image:
+    file: ../../assets/logo.png
+  actions:
+    - text: Get Started
+      link: /start/
+      icon: right-arrow
+    - text: Philosophy
+      link: /philosophy/
+      variant: minimal
 ---
 
-_(landing coming in Chunk 2)_
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## The two failure modes
+
+<CardGrid>
+  <Card title="The machine lies" icon="warning">
+    Stale or wrong, asserted with confidence. **Archon** + **Nexus** defend by grounding answers in verifiable sources — never asserting soft answers.
+  </Card>
+  <Card title="The human stops judging" icon="approve-check">
+    AI output rubber-stamped without reading. **specledger** defends by making accountable review a gate before code is written.
+  </Card>
+</CardGrid>
+
+## The tools
+
+<CardGrid>
+  <LinkCard title="Nexus" href="/tools/nexus/" description="Grounded knowledge — RAG + GraphRAG over your docs & telemetry." />
+  <LinkCard title="Archon" href="/tools/archon/" description="Domain truth governance — values, invariants, authority, calibrated." />
+  <LinkCard title="Probe" href="/tools/probe/" description="Grounded code review — PR scope, API contracts, troubleshooting." />
+  <LinkCard title="specledger" href="/tools/specledger/" description="Decision accountability — anti-rubber-stamp spec/ADR gate." />
+  <LinkCard title="mutqa" href="/tools/mutqa/" description="Test quality — mutation-driven, catches what advisory review misses." />
+</CardGrid>

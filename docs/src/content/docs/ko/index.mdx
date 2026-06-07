@@ -2,6 +2,38 @@
 title: Khala
 description: AI 시대를 보정하는 도구들의 연합.
 template: splash
+hero:
+  tagline: AI 시대의 두 실패 모드 — 기계가 거짓말하고, 사람이 판단을 포기한다. Khala는 조언이 아니라 결정론적 그라운딩으로 둘 다에 답한다.
+  image:
+    file: ../../../assets/logo.png
+  actions:
+    - text: 시작하기
+      link: /ko/start/
+      icon: right-arrow
+    - text: 철학
+      link: /ko/philosophy/
+      variant: minimal
 ---
 
-_(landing coming in Chunk 2)_
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## 두 실패 모드
+
+<CardGrid>
+  <Card title="기계가 거짓말한다" icon="warning">
+    낡거나 틀린 답을 확신에 차서 단언한다. **Archon** + **Nexus**는 검증 가능한 출처에 답을 묶어 방어한다 — 근거 없는 답은 결코 단언하지 않는다.
+  </Card>
+  <Card title="사람이 판단을 포기한다" icon="approve-check">
+    AI 출력을 읽지도 않고 고무도장처럼 승인한다. **specledger**는 코드가 작성되기 전, 책임 있는 리뷰를 게이트로 만들어 방어한다.
+  </Card>
+</CardGrid>
+
+## 도구
+
+<CardGrid>
+  <LinkCard title="Nexus" href="/ko/tools/nexus/" description="그라운딩된 지식 — 문서와 텔레메트리 위의 RAG + GraphRAG." />
+  <LinkCard title="Archon" href="/ko/tools/archon/" description="도메인 진실 거버넌스 — 값, 불변식, 권위를 보정한다." />
+  <LinkCard title="Probe" href="/ko/tools/probe/" description="그라운딩된 코드 리뷰 — PR 범위, API 계약, 트러블슈팅." />
+  <LinkCard title="specledger" href="/ko/tools/specledger/" description="결정 책임 — 고무도장을 막는 명세/ADR 게이트." />
+  <LinkCard title="mutqa" href="/ko/tools/mutqa/" description="테스트 품질 — 변이 기반으로, 조언형 리뷰가 놓치는 것을 잡는다." />
+</CardGrid>
