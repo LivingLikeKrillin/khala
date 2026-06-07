@@ -14,17 +14,18 @@ import { visit } from 'unist-util-visit';
 // load time — that would require Chromium at build and break Cloudflare Pages.
 // This local plugin produces identical output without any browser dependency.
 function rehypeMermaidPre() {
+  /** @param {import('hast').Root} tree */
   return (tree) => {
     visit(tree, 'element', (node) => {
       if (node.tagName !== 'pre') return;
       const code = node.children?.[0];
-      if (!code || code.tagName !== 'code') return;
+      if (!code || code.type !== 'element' || code.tagName !== 'code') return;
       const className = code.properties?.className;
       const classes = Array.isArray(className) ? className : className ? [className] : [];
       if (!classes.includes('language-mermaid')) return;
       const value = (code.children ?? [])
-        .filter((child) => child.type === 'text')
-        .map((child) => child.value)
+        .map(/** @param {import('hast').ElementContent} child */ (child) =>
+          child.type === 'text' ? child.value : '')
         .join('');
       node.properties = { className: ['mermaid'] };
       node.children = [{ type: 'text', value }];
