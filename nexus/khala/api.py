@@ -777,6 +777,65 @@ async def list_documents(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/claims/value", response_model=KhalaResponse)
+async def claim_value(
+    concept: str = Query(..., min_length=1, description="개념 (예: 준회원)"),
+    tenant: str = Query(default="default"),
+    classification_max: str = Query(default="INTERNAL"),
+) -> KhalaResponse:
+    """Archon — 개념의 도메인 값(불변식) 현재값을 코드 상수에서 읽어 신뢰등급·신선도와 함께 반환."""
+    from khala.claims.repository import ClaimRepository
+    from khala.claims.value_query import ValueQueryService
+    from khala.index.code_source import CodeValueResolver
+
+    config = _load_config()
+    repo_path = config.get("code_source", {}).get("repo_path", "")
+    svc = ValueQueryService(ClaimRepository(await db.get_pool()), CodeValueResolver(repo_path))
+    answers = await svc.query_value(concept, tenant, classification_max)
+    return KhalaResponse(
+        data=[
+            {
+                "claim_id": a.claim_id, "statement": a.statement, "value": a.value,
+                "source": a.source, "confidence": a.confidence, "fresh": a.fresh,
+                "drifted": a.drifted, "note": a.note,
+            }
+            for a in answers
+        ]
+    )
+
+
+@app.get("/claims/grade-authority", response_model=KhalaResponse)
+async def grade_authority_endpoint(
+    enum_name: str = Query(default="GradeType"),
+    subpath: str = Query(default=""),
+) -> KhalaResponse:
+    """Archon — 등급 계층 권한을 코드 게이트에서 라이브 도출 (tree-sitter 무료, CodeQL 불필요).
+
+    값 조회와 동일하게 조회 시점에 코드를 읽어 도출(드리프트 0). 영속화 안 함.
+    """
+    from khala.claims.grade_authority import grade_authority as derive
+    from khala.index.gate_source import extract_gates, extract_grade_levels
+
+    config = _load_config()
+    repo = config.get("code_source", {}).get("repo_path", "")
+    levels = extract_grade_levels(repo, enum_name)
+    gates = extract_gates(repo, subpath)
+    cap = derive(gates, levels)
+    return KhalaResponse(
+        data={
+            "levels": levels,
+            "fixed_gates": [
+                {"action": f"{g.class_name}.{g.method}", "check": g.check,
+                 "grade": g.grade, "guard": g.guard}
+                for g in gates
+                if g.kind == "fixed"
+            ],
+            "relative_gate_count": sum(1 for g in gates if g.kind == "relative"),
+            "capabilities": cap,
+        }
+    )
+
+
 @app.get("/status", response_model=KhalaResponse)
 async def status() -> KhalaResponse:
     """시스템 상태 확인."""

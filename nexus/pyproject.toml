@@ -28,6 +28,9 @@ dependencies = [
     "tiktoken>=0.8.0",
     "python-frontmatter>=1.1.0",
     "structlog>=24.4.0",
+    # Archon — 코드 구조 분석(권한 게이트 추출) via AST (무료, CodeQL 대체)
+    "tree-sitter>=0.21",
+    "tree-sitter-java>=0.21",
 ]
 
 [project.optional-dependencies]
@@ -58,6 +61,7 @@ line-length = 120
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 markers = [
     "integration: 실제 DB 연결이 필요한 통합 테스트 (KHALA_TEST_DB_URL 필요)",

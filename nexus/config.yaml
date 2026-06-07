@@ -86,3 +86,7 @@ evidence_weights:
 llm:
   model: "claude-sonnet-4-20250514"
   max_tokens: 2048
+
+# Archon — 도메인 불변식·값 거버넌스 (코드 상수 해석)
+code_source:
+  repo_path: ""   # pfplay 코드 checkout 경로 (예: .../pfplay-platform). 비면 값 조회 비활성.

@@ -8,10 +8,18 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 
 import typer
 import yaml
+
+# Windows 콘솔에서 한글(UTF-8) 출력 보장 (codepage 무관)
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 app = typer.Typer(
     name="khala",
@@ -76,6 +84,86 @@ def ingest(
         await db.close_pool()
 
     _run(_ingest())
+
+
+@app.command("claim-seed")
+def claim_seed(
+    path: str = typer.Argument("claims.yaml", help="claims.yaml 경로"),
+    config_path: str = typer.Option("config.yaml", "--config", "-c"),
+) -> None:
+    """도메인 claim(불변식·값)을 적재. value_source의 현재 코드 hash를 스냅샷."""
+
+    async def _seed() -> None:
+        from khala import db
+        from khala.claims.repository import ClaimRepository
+        from khala.claims.seed import seed_claims
+        from khala.index.code_source import CodeValueResolver
+
+        cfg = _load_config(config_path)
+        repo_path = cfg.get("code_source", {}).get("repo_path", "")
+        pool = await db.get_pool()
+        n = await seed_claims(path, ClaimRepository(pool), CodeValueResolver(repo_path))
+        typer.echo(f"{n}건 적재")
+        await db.close_pool()
+
+    _run(_seed())
+
+
+@app.command("claim-value")
+def claim_value(
+    concept: str = typer.Argument(..., help="개념(예: 준회원)"),
+    config_path: str = typer.Option("config.yaml", "--config", "-c"),
+    tenant: str = typer.Option("default", "--tenant", "-t"),
+) -> None:
+    """개념의 도메인 값을 코드에서 읽어 신뢰등급·신선도와 함께 답한다."""
+
+    async def _q() -> None:
+        from khala import db
+        from khala.claims.answer import format_value_answer
+        from khala.claims.repository import ClaimRepository
+        from khala.claims.value_query import ValueQueryService
+        from khala.index.code_source import CodeValueResolver
+
+        cfg = _load_config(config_path)
+        repo_path = cfg.get("code_source", {}).get("repo_path", "")
+        svc = ValueQueryService(ClaimRepository(await db.get_pool()), CodeValueResolver(repo_path))
+        answers = await svc.query_value(concept, tenant, "INTERNAL")
+        typer.echo(format_value_answer(concept, answers))
+        await db.close_pool()
+
+    _run(_q())
+
+
+@app.command("grade-authority")
+def grade_authority_cmd(
+    enum_name: str = typer.Option("GradeType", "--enum", help="등급 enum 이름"),
+    subpath: str = typer.Option("", "--subpath", help="코드 하위경로로 범위 제한"),
+    config_path: str = typer.Option("config.yaml", "--config", "-c"),
+) -> None:
+    """등급 계층의 권한을 코드 게이트에서 도출 (무료 tree-sitter AST, CodeQL 불필요)."""
+    from khala.claims.grade_authority import grade_authority as derive
+    from khala.index.gate_source import extract_gates, extract_grade_levels
+
+    cfg = _load_config(config_path)
+    repo = cfg.get("code_source", {}).get("repo_path", "")
+    if not repo:
+        typer.echo("config.code_source.repo_path 가 비어있습니다.")
+        return
+    levels = extract_grade_levels(repo, enum_name)
+    gates = extract_gates(repo, subpath)
+    cap = derive(gates, levels)
+
+    typer.echo(f"등급 레벨: {levels}")
+    fixed = [g for g in gates if g.kind == "fixed"]
+    rel = [g for g in gates if g.kind == "relative"]
+    typer.echo(f"\n고정 게이트 {len(fixed)}개 (액션 → 요구등급):")
+    for g in fixed:
+        typer.echo(f"  {g.class_name}.{g.method}()  [{g.check}(GradeType.{g.grade})]")
+    typer.echo(f"\n상대/계층 게이트 {len(rel)}개 (동적 등급 비교)")
+    typer.echo("\n등급별 차단 액션 (도출 — 확실: 고정 게이트 여집합):")
+    for grade, info in cap.items():
+        typer.echo(f"  {grade}({info['level']}): {info['blocked']}")
+    typer.echo("\n주의: 추출은 고재현 후보. '액션가드 vs 필터' 의미확정은 확인 필요(medium).")
 
 
 @app.command()

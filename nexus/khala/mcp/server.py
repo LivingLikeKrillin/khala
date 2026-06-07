@@ -291,6 +291,89 @@ async def khala_diff(
 
 
 @mcp.tool()
+async def archon_claim_value(
+    concept: str,
+    tenant: str = "default",
+    classification_max: str = "INTERNAL",
+) -> str:
+    """Archon — 개념의 도메인 값/불변식 현재값 조회.
+
+    "준회원 플레이리스트 최대 몇 개?", "재생곡 제한 시간?" 같은 도메인 전제조건의
+    *현재 값*을 코드 상수에서 직접 읽어 답한다. 값은 조회 시점에 재읽기하므로 낡지 않으며,
+    확실한 것은 단정하고 모르는 것은 모른다고 정직히 표기한다(캘리브레이션).
+
+    Args:
+        concept: 개념 (예: 준회원, 파티룸, 재생곡)
+        tenant: 테넌트 ID
+        classification_max: 최대 접근 등급 (PUBLIC|INTERNAL|RESTRICTED)
+    """
+    result = await _api_call("get", "/claims/value", params={
+        "concept": concept,
+        "tenant": tenant,
+        "classification_max": classification_max,
+    })
+    if not result.get("success"):
+        return f"값 조회 실패: {result.get('error', '알 수 없는 오류')}"
+
+    answers = result.get("data", [])
+    if not answers:
+        return f"'{concept}'에 등록된 값 claim이 없습니다. (모름 — 추측하지 않음)"
+
+    lines = []
+    for a in answers:
+        if a["value"] is not None and a["confidence"] == "high" and a["fresh"]:
+            line = f"- {a['statement']}: 현재 {a['value']} (확실: 코드 상수 {a['source']}, 조회 시점 기준)"
+            if a.get("drifted"):
+                line += f" ⚠️ {a['note']}"
+            lines.append(line)
+        elif a["value"] is None:
+            lines.append(f"- {a['statement']}: 값 확인 실패 — {a['note']}. (확신 없음)")
+        else:
+            lines.append(f"- {a['statement']}: {a['value']} (신뢰 {a['confidence']})")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def archon_grade_authority(
+    grade: str | None = None,
+    enum_name: str = "GradeType",
+    subpath: str = "",
+) -> str:
+    """Archon — 등급 계층의 권한 도출. "CLUBBER가 뭘 할 수 있나" 같은 *창발적/여집합* 질문.
+
+    코드의 권한 게이트(예: '이 액션은 ≥MODERATOR 필요')를 추출해, 각 등급이 차단되는
+    액션을 여집합으로 도출한다. 고정 게이트 여집합은 확실(high), '액션가드 vs 필터'
+    의미확정은 확인 필요(medium) — 정직하게 구분해 표기한다.
+
+    Args:
+        grade: 특정 등급만 (예: CLUBBER). 생략 시 전체 등급.
+        enum_name: 등급 enum 이름 (기본 GradeType)
+        subpath: 코드 하위경로로 범위 제한
+    """
+    result = await _api_call("get", "/claims/grade-authority", params={
+        "enum_name": enum_name, "subpath": subpath,
+    })
+    if not result.get("success"):
+        return f"권한 도출 실패: {result.get('error', '알 수 없는 오류')}"
+
+    d = result["data"]
+    cap = d.get("capabilities", {})
+    lines = [f"등급 레벨: {d.get('levels', {})}", f"\n고정 게이트 {len(d.get('fixed_gates', []))}개 (액션 → 요구등급):"]
+    for g in d.get("fixed_gates", []):
+        lines.append(f"  - {g['action']}  [{g['check']}({g['grade']})]")
+    targets = [grade] if grade else list(cap.keys())
+    lines.append("")
+    for gr in targets:
+        if gr in cap:
+            b = cap[gr]["blocked"]
+            lines.append(f"{gr}({cap[gr]['level']}): 차단 {len(b)}개 — {b if b else '없음(고정 게이트 모두 통과)'}")
+        elif grade:
+            lines.append(f"'{gr}' 등급을 {enum_name}에서 찾지 못함. (확신 없음)")
+    lines.append("\n(확실: 고정 게이트 여집합. '액션가드 vs 필터' 의미확정은 확인 필요 — medium.)")
+    return "\n".join(lines)
+
+
+@mcp.tool()
 async def khala_status() -> str:
     """Khala 시스템 상태 확인.
 
