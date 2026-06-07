@@ -16,6 +16,6 @@ specledger가 교정하는 문제는 이렇습니다. 어시스턴트가 확신�
 - **책임 있는 리뷰 흐름** — `critique`(AI 리뷰 → 이슈 개설) → 사람이 본문 수정 → `approve`(이슈별 처분 + 본문 변경 검증 + content hash 스탬프).
 - **content-hash 스탬프 + 변조 감지** — 승인이 명세를 hash에 묶고, `status`가 상태와 변조를 보고합니다.
 - **DB 없음** — 모든 상태가 `SPECLEDGER_DOCS` 아래 Markdown과 `SPECLEDGER_ROOT`의 작은 `.specledger/` 마커에 존재합니다.
-- **선택적 Nexus 발행** — `publish`는 승인 문서를 Khala/Nexus 싱크로 보내며, 미설정 시 안전한 no-op입니다.
+- **선택적 Nexus 발행** — `publish`는 승인 문서를 Nexus 싱크로 보내며, 미설정 시 안전한 no-op입니다.
 
 설치(`pip install -e ".[dev]"`), `.mcp.json`·`settings.json` 등록, 10개 MCP 도구는 영어 페이지([specledger](/tools/specledger/))를 참고하세요.

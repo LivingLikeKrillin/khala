@@ -3,10 +3,6 @@ title: Nexus
 description: Grounded knowledge retrieval — RAG + GraphRAG that answers only from citable sources, with confidence and provenance.
 ---
 
-:::caution[Naming]
-Nexus is the knowledge-base component, formerly called "Khala". The ecosystem now carries the name **Khala**; the code/repo rename lands later. Install paths below still reference the current `khala` repo.
-:::
-
 Nexus is the grounded knowledge base of the ecosystem. It answers questions about your organization's knowledge — documents, policies, configs — and your operational reality — OpenTelemetry traces — **only from evidence it can cite**. Every answer carries a confidence and a pointer back to the source chunk or trace that grounds it.
 
 The problem it calibrates: ordinary RAG retrieves text and lets the model improvise; it will produce a plausible answer whether or not it has grounds. Nexus inverts that. The system decides what is retrievable and whether the answer is supportable; the LLM only narrates over evidence that already exists. If there is no citable source, the answer does not get made.
@@ -34,8 +30,8 @@ Nexus runs as a Docker Compose stack (PostgreSQL + Ollama + OTel Collector + Tem
 ### 1. Clone & configure
 
 ```bash
-git clone https://github.com/LivingLikeKrillin/khala.git
-cd khala
+git clone https://github.com/LivingLikeKrillin/khala.git nexus
+cd nexus
 
 cp .env.example .env
 # set ANTHROPIC_API_KEY in .env if you want LLM answer generation
@@ -52,19 +48,19 @@ This starts the containers (PostgreSQL 16 + pgvector on 5432, Ollama on 11434, T
 ### 3. Pull the embedding model (first time only)
 
 ```bash
-docker exec khala-ollama ollama pull nomic-embed-text
+docker exec nexus-ollama ollama pull nomic-embed-text
 ```
 
 ### 4. Index documents
 
 ```bash
-docker exec khala-app khala ingest ./docs
+docker exec nexus-app nexus ingest ./docs
 ```
 
 ### 5. Search
 
 ```bash
-docker exec khala-app khala query "결제 서비스 의존성"
+docker exec nexus-app nexus query "결제 서비스 의존성"
 ```
 
 The Web UI is served directly from FastAPI at `http://localhost:8000/` — no build step.
@@ -84,8 +80,8 @@ The response includes evidence snippets with source URIs and provenance. Use `/s
 ### Explore the knowledge graph
 
 ```bash
-docker exec khala-app khala graph payment-service        # 1-hop
-docker exec khala-app khala graph payment-service -h 2   # 2-hop
+docker exec nexus-app nexus graph payment-service        # 1-hop
+docker exec nexus-app nexus graph payment-service -h 2   # 2-hop
 ```
 
 Or via the API: `GET /graph/{entity}` resolves by name or rid.
@@ -93,8 +89,8 @@ Or via the API: `GET /graph/{entity}` resolves by name or rid.
 ### Find design-vs-observation drift
 
 ```bash
-docker exec khala-app khala otel-aggregate   # roll traces up into CALLS_OBSERVED
-docker exec khala-app khala diff             # report doc_only / observed_only / conflict
+docker exec nexus-app nexus otel-aggregate   # roll traces up into CALLS_OBSERVED
+docker exec nexus-app nexus diff             # report doc_only / observed_only / conflict
 ```
 
 The same report is available at `GET /diff`.
@@ -103,7 +99,7 @@ The same report is available at `GET /diff`.
 
 - Source repo README: [github.com/LivingLikeKrillin/khala](https://github.com/LivingLikeKrillin/khala) (`README.md`)
 - API contract, pipeline, MCP server, Slack bot, and UI integration docs live under that repo's `docs/` (`API_CONTRACT.md`, `PIPELINE_SPEC.md`, `MCP_SERVER.md`, `SLACK_BOT.md`, `UI_INTEGRATION.md`).
-- MCP server exposes six tools — `khala_search`, `khala_answer`, `khala_graph`, `khala_suggest`, `khala_diff`, `khala_status` — via `python -m khala.mcp`.
+- MCP server exposes six tools — `nexus_search`, `nexus_answer`, `nexus_graph`, `nexus_suggest`, `nexus_diff`, `nexus_status` — via `python -m nexus.mcp`.
 
 :::note[Last verified]
 Source repo README (site re-run verification pending).

@@ -16,7 +16,7 @@ One-line identity: a ledger that makes "who approved what, and why" a recorded, 
 - **Accountable review flow.** `critique` runs AI review and opens issues in a sidecar; the human edits the body to address each; `approve` takes per-issue dispositions, verifies the body actually changed, then stamps the content hash and sets `status=approved`.
 - **Content-hash stamping + tamper detection.** Approval binds the spec to a hash; `status` reports state and detects tampering.
 - **No database.** All state lives in Markdown files under `SPECLEDGER_DOCS` plus a small `.specledger/` marker under `SPECLEDGER_ROOT`.
-- **Optional Nexus publish.** `publish` pushes an approved doc to a configured Khala/Nexus sink — a safe no-op when not configured.
+- **Optional Nexus publish.** `publish` pushes an approved doc to a configured Nexus sink — a safe no-op when not configured.
 
 ## Quickstart
 
@@ -95,11 +95,11 @@ Use `check_gate` to query whether a list of paths would pass the gate, and `stat
 Add to `.specledger/config.yaml`:
 
 ```yaml
-khala:
-  url: "https://your-khala-instance/ingest"
+nexus:
+  url: "https://your-nexus-instance/ingest"
 ```
 
-Then call `publish`. Without this config it returns `{"published": false, "reason": "khala not configured"}`.
+Then call `publish`. Without this config it returns `{"published": false, "reason": "nexus not configured"}`.
 
 ## Reference
 
