@@ -1,8 +1,8 @@
 /**
- * 칼라 컨텍스트 보강 오케스트레이터
+ * Nexus 컨텍스트 보강 오케스트레이터
  *
- * PR 분석 결과에 칼라의 맥락(관련 규정, 영향 서비스, 설계-관측 갭)을 추가한다.
- * 칼라가 없으면 빈 결과를 반환한다 (graceful degradation).
+ * PR 분석 결과에 Nexus의 맥락(관련 규정, 영향 서비스, 설계-관측 갭)을 추가한다.
+ * Nexus가 없으면 빈 결과를 반환한다 (graceful degradation).
  *
  * v0.6: groundReview 위임 어댑터로 수렴.
  * EnrichmentResult 레거시 형태를 유지해 MCP scope-tool 호출부가 영향받지 않는다.
@@ -10,57 +10,57 @@
  * 규정 문서: docs/probe-v0.4-scope.md § 4
  */
 
-import { KhalaClient } from './client.js';
+import { NexusClient } from './client.js';
 import { determineTier } from './tier.js';
 import { groundReview } from './review-grounder.js';
 import { logger } from '../utils/logger.js';
 import type { DetectedGroup } from '../core/scope-analyzer.js';
 import type {
-  KhalaClientConfig,
+  NexusClientConfig,
   EnrichmentResult,
 } from './types.js';
 
 /** 보강 옵션 */
 export interface EnrichmentOptions {
-  /** 칼라 클라이언트 설정 */
-  khalaConfig?: Partial<KhalaClientConfig>;
+  /** Nexus 클라이언트 설정 */
+  nexusConfig?: Partial<NexusClientConfig>;
   /** 검색 결과 최대 건수 (기본: 5) */
   searchTopK?: number;
   /** 그래프 탐색 홉 수 (기본: 1) */
   graphHops?: number;
 }
 
-/** 빈 보강 결과 (칼라 미가용 시) */
+/** 빈 보강 결과 (Nexus 미가용 시) */
 const EMPTY_ENRICHMENT: EnrichmentResult = {
   relevantDocs: [],
   impactedServices: [],
   designObservationGaps: [],
-  khalaAvailable: false,
+  nexusAvailable: false,
 };
 
 /**
- * PR 변경에 대한 칼라 컨텍스트를 수집한다.
+ * PR 변경에 대한 Nexus 컨텍스트를 수집한다.
  *
  * groundReview에 위임하고 결과를 레거시 EnrichmentResult 형태로 투영한다.
  * 엔티티 스코프 /diff를 사용해 글로벌 diff보다 노이즈가 적다.
  *
- * 주의: 칼라가 가용하지만 인덱싱 데이터가 부족해 티어가 T0이면(엔티티명은 있어도)
- * 빈 배열 + `khalaAvailable: true`를 반환한다 — 빈 결과를 "미가용"으로 오독하지 말 것.
+ * 주의: Nexus가 가용하지만 인덱싱 데이터가 부족해 티어가 T0이면(엔티티명은 있어도)
+ * 빈 배열 + `nexusAvailable: true`를 반환한다 — 빈 결과를 "미가용"으로 오독하지 말 것.
  *
  * @param groups scope 분석에서 감지된 응집 그룹
  * @param changedFiles 변경 파일 목록
  * @param options 보강 옵션
  */
-export async function enrichWithKhala(
+export async function enrichWithNexus(
   groups: DetectedGroup[],
   changedFiles: string[],
   options?: EnrichmentOptions,
 ): Promise<EnrichmentResult> {
-  const client = new KhalaClient(options?.khalaConfig);
+  const client = new NexusClient(options?.nexusConfig);
 
   const probe = await client.getStatusProbe();
   if (!probe.ok) {
-    logger.debug(`칼라 미가용(${probe.reason}) — 보강 없이 진행`);
+    logger.debug(`Nexus 미가용(${probe.reason}) — 보강 없이 진행`);
     return EMPTY_ENRICHMENT;
   }
   const tier = determineTier(probe.status).tier;
@@ -68,7 +68,7 @@ export async function enrichWithKhala(
   // 변경 엔티티 빌드 (core 의존 금지 — 로컬 헬퍼 사용)
   const names = extractServiceNames(groups);
   if (names.length === 0) {
-    return { ...EMPTY_ENRICHMENT, khalaAvailable: true };
+    return { ...EMPTY_ENRICHMENT, nexusAvailable: true };
   }
   const changedEntities = names.map((name) => ({
     entityName: name,
@@ -88,7 +88,7 @@ export async function enrichWithKhala(
       ? pack.topology.directImpact.concat(pack.topology.indirectImpact)
       : [],
     designObservationGaps: pack.designObservationGaps ?? [],
-    khalaAvailable: true,
+    nexusAvailable: true,
   };
 }
 
@@ -113,7 +113,7 @@ export function extractServiceNames(groups: DetectedGroup[]): string[] {
 
     names.add(normalized);
 
-    // "-service" 접미사 버전도 추가 (칼라 검색 매칭율 향상)
+    // "-service" 접미사 버전도 추가 (Nexus 검색 매칭율 향상)
     if (!normalized.endsWith('-service')) {
       names.add(`${normalized}-service`);
     }

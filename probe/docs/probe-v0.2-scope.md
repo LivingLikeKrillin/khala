@@ -427,7 +427,7 @@ probe review [--base <ref>] [--format <markdown|json|brief>]
 | api:mock (Mock 서버) | Prism/MSW 직접 연동은 프로젝트별 | v0.3+ |
 | ws:lint (AsyncAPI 검증) | AsyncAPI 도입 팀 한정 | v0.3+ |
 | MCP 서버 | v0.3 범위 | v0.3 |
-| 칼라 연동 | v0.4 범위 | v0.4 |
+| Nexus 연동 | v0.4 범위 | v0.4 |
 
 ---
 

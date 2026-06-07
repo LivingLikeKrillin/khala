@@ -1,19 +1,19 @@
 /**
- * 칼라 기반 서비스 영향 분석
+ * Nexus 기반 서비스 영향 분석
  *
- * 변경된 서비스의 upstream/downstream을 칼라 그래프에서 조회하고,
+ * 변경된 서비스의 upstream/downstream을 Nexus 그래프에서 조회하고,
  * 영향 범위와 심각도를 판단한다.
  *
  * 규정 문서: docs/probe-v0.4-scope.md § 5
  */
 
-import type { KhalaClient } from './client.js';
-import { withKhalaFallback } from './client.js';
+import type { NexusClient } from './client.js';
+import { withNexusFallback } from './client.js';
 import { logger } from '../utils/logger.js';
 import type {
   ImpactAnalysis,
   ImpactedService,
-  KhalaGraphResult,
+  NexusGraphResult,
 } from './types.js';
 
 /** 영향 분석 옵션 */
@@ -34,15 +34,15 @@ const EMPTY_IMPACT: ImpactAnalysis = {
 /**
  * 서비스 영향 분석을 수행한다.
  *
- * 각 서비스명으로 칼라 그래프를 조회하여 이웃 서비스를 찾고,
+ * 각 서비스명으로 Nexus 그래프를 조회하여 이웃 서비스를 찾고,
  * 영향 범위와 심각도를 판단한다.
  *
- * @param client 칼라 클라이언트
+ * @param client Nexus 클라이언트
  * @param serviceNames 변경된 서비스명 목록
  * @param options 분석 옵션
  */
 export async function analyzeImpact(
-  client: KhalaClient,
+  client: NexusClient,
   serviceNames: string[],
   options?: ImpactOptions,
 ): Promise<ImpactAnalysis> {
@@ -53,7 +53,7 @@ export async function analyzeImpact(
   // 각 서비스에 대해 그래프 조회 (병렬)
   const graphResults = await Promise.all(
     serviceNames.map((name) =>
-      withKhalaFallback(
+      withNexusFallback(
         () => client.getGraph(name, { hops }),
         null,
         `graph lookup: ${name}`,
@@ -63,15 +63,15 @@ export async function analyzeImpact(
 
   // 유효한 결과만 수집
   const validResults = graphResults.filter(
-    (r): r is KhalaGraphResult => r !== null,
+    (r): r is NexusGraphResult => r !== null,
   );
 
   if (validResults.length === 0) {
-    logger.debug('칼라 그래프 조회 결과 없음');
+    logger.debug('Nexus 그래프 조회 결과 없음');
     return {
       ...EMPTY_IMPACT,
       changedServices: serviceNames,
-      summary: '칼라에서 서비스 관계를 찾을 수 없습니다 (No service relationships found)',
+      summary: 'Nexus에서 서비스 관계를 찾을 수 없습니다 (No service relationships found)',
     };
   }
 
@@ -141,7 +141,7 @@ export async function analyzeImpact(
  * 엣지에서 영향받는 서비스 정보를 추출한다.
  */
 function extractImpactFromEdge(
-  edge: KhalaGraphResult['edges'][number],
+  edge: NexusGraphResult['edges'][number],
   changedServiceNames: Set<string>,
 ): ImpactedService | null {
   const fromNorm = edge.from_name.toLowerCase();

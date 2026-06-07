@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { KhalaClient, withKhalaFallback } from '../src/khala/client.js';
+import { NexusClient, withNexusFallback } from '../src/nexus/client.js';
 
 /**
- * 칼라 클라이언트 테스트
+ * Nexus 클라이언트 테스트
  *
- * 실제 칼라 서버 없이 fetch를 모킹하여 테스트한다.
+ * 실제 Nexus 서버 없이 fetch를 모킹하여 테스트한다.
  */
 
 // fetch 모킹 헬퍼
@@ -20,7 +20,7 @@ function mockFetchError(error: string) {
   return vi.fn().mockRejectedValue(new Error(error));
 }
 
-describe('KhalaClient', () => {
+describe('NexusClient', () => {
   let originalFetch: typeof globalThis.fetch;
 
   beforeEach(() => {
@@ -34,14 +34,14 @@ describe('KhalaClient', () => {
   describe('isAvailable', () => {
     it('서버가 응답하면 true를 반환한다', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 }) as unknown as typeof fetch;
-      const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+      const client = new NexusClient({ baseUrl: 'http://test:8000' });
 
       expect(await client.isAvailable()).toBe(true);
     });
 
     it('서버가 없으면 false를 반환한다', async () => {
       globalThis.fetch = mockFetchError('ECONNREFUSED') as unknown as typeof fetch;
-      const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+      const client = new NexusClient({ baseUrl: 'http://test:8000' });
 
       expect(await client.isAvailable()).toBe(false);
     });
@@ -58,7 +58,7 @@ describe('KhalaClient', () => {
         timing_ms: { total: 100 },
       };
       globalThis.fetch = mockFetchResponse(mockData) as unknown as typeof fetch;
-      const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+      const client = new NexusClient({ baseUrl: 'http://test:8000' });
 
       const result = await client.search('test query');
 
@@ -69,7 +69,7 @@ describe('KhalaClient', () => {
 
     it('서버 에러 시 null을 반환한다', async () => {
       globalThis.fetch = mockFetchResponse(null, false, 500) as unknown as typeof fetch;
-      const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+      const client = new NexusClient({ baseUrl: 'http://test:8000' });
 
       const result = await client.search('test');
 
@@ -78,7 +78,7 @@ describe('KhalaClient', () => {
 
     it('네트워크 에러 시 null을 반환한다', async () => {
       globalThis.fetch = mockFetchError('network error') as unknown as typeof fetch;
-      const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+      const client = new NexusClient({ baseUrl: 'http://test:8000' });
 
       const result = await client.search('test');
 
@@ -96,7 +96,7 @@ describe('KhalaClient', () => {
         observed_edges: [],
       };
       globalThis.fetch = mockFetchResponse(mockData) as unknown as typeof fetch;
-      const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+      const client = new NexusClient({ baseUrl: 'http://test:8000' });
 
       const result = await client.getGraph('ent_payment');
 
@@ -117,7 +117,7 @@ describe('KhalaClient', () => {
         generated_at: '2026-03-11T00:00:00Z',
       };
       globalThis.fetch = mockFetchResponse(mockData) as unknown as typeof fetch;
-      const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+      const client = new NexusClient({ baseUrl: 'http://test:8000' });
 
       const result = await client.getDiff();
 
@@ -128,7 +128,7 @@ describe('KhalaClient', () => {
   });
 });
 
-describe('KhalaClient.getDiff entityFilter', () => {
+describe('NexusClient.getDiff entityFilter', () => {
   let originalFetch: typeof globalThis.fetch;
   beforeEach(() => { originalFetch = globalThis.fetch; });
   afterEach(() => { globalThis.fetch = originalFetch; });
@@ -139,14 +139,14 @@ describe('KhalaClient.getDiff entityFilter', () => {
       json: () => Promise.resolve({ success: true, data: { diffs: [] }, error: null, meta: {} }),
     });
     globalThis.fetch = fetchMock;
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     await client.getDiff({ entityFilter: 'order-service' });
     const calledUrl = String(fetchMock.mock.calls[0]![0]);
     expect(calledUrl).toContain('entity_filter=order-service');
   });
 });
 
-describe('KhalaClient.getStatus', () => {
+describe('NexusClient.getStatus', () => {
   let originalFetch: typeof globalThis.fetch;
   beforeEach(() => { originalFetch = globalThis.fetch; });
   afterEach(() => { globalThis.fetch = originalFetch; });
@@ -160,7 +160,7 @@ describe('KhalaClient.getStatus', () => {
         error: null, meta: {},
       }),
     });
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const status = await client.getStatus();
     expect(status?.observed_edges_count).toBe(3);
     expect(status?.edges_count).toBe(12);
@@ -168,12 +168,12 @@ describe('KhalaClient.getStatus', () => {
 
   it('서버 장애 시 null을 반환한다', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('conn refused'));
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     expect(await client.getStatus()).toBeNull();
   });
 });
 
-describe('KhalaClient.getStatusProbe', () => {
+describe('NexusClient.getStatusProbe', () => {
   let originalFetch: typeof globalThis.fetch;
   beforeEach(() => { originalFetch = globalThis.fetch; });
   afterEach(() => { globalThis.fetch = originalFetch; });
@@ -185,7 +185,7 @@ describe('KhalaClient.getStatusProbe', () => {
         success: true, data: { db_connected: true, edges_count: 5 }, error: null, meta: {},
       }),
     });
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const probe = await client.getStatusProbe();
     expect(probe.ok).toBe(true);
     if (probe.ok) expect(probe.status.edges_count).toBe(5);
@@ -193,7 +193,7 @@ describe('KhalaClient.getStatusProbe', () => {
 
   it('연결 거부는 unreachable로 분류한다', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const probe = await client.getStatusProbe();
     expect(probe.ok).toBe(false);
     if (!probe.ok) expect(probe.reason).toBe('unreachable');
@@ -202,16 +202,16 @@ describe('KhalaClient.getStatusProbe', () => {
   it('Abort(타임아웃)는 timeout으로 분류한다', async () => {
     const abortErr = Object.assign(new Error('aborted'), { name: 'AbortError' });
     globalThis.fetch = vi.fn().mockRejectedValue(abortErr);
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const probe = await client.getStatusProbe();
     expect(probe.ok).toBe(false);
     if (!probe.ok) expect(probe.reason).toBe('timeout');
   });
 });
 
-describe('withKhalaFallback', () => {
+describe('withNexusFallback', () => {
   it('성공 시 결과를 반환한다', async () => {
-    const result = await withKhalaFallback(
+    const result = await withNexusFallback(
       () => Promise.resolve('ok'),
       'fallback',
       'test',
@@ -220,7 +220,7 @@ describe('withKhalaFallback', () => {
   });
 
   it('실패 시 fallback을 반환한다', async () => {
-    const result = await withKhalaFallback(
+    const result = await withNexusFallback(
       () => Promise.reject(new Error('fail')),
       'fallback',
       'test',

@@ -1,13 +1,13 @@
 /**
- * 두 grounder(troubleshoot v0.5 / review v0.6) 공유 Khala 섹션 헬퍼.
+ * 두 grounder(troubleshoot v0.5 / review v0.6) 공유 Nexus 섹션 헬퍼.
  * 동일 호출의 중복을 막기 위해 추출됐다 — 출력 팩 조립만 각 grounder가 한다.
  */
-import type { KhalaClient } from './client.js';
+import type { NexusClient } from './client.js';
 import type { DesignGap, RelevantDoc } from './types.js';
 
 /** 각 엔티티의 엔티티 스코프 /diff를 합쳐 DesignGap[]로 변환한다.
- *  모든 diff 조회가 null이면 throw해 상위 withKhalaFallback이 caveat을 남기게 한다. */
-export async function fetchEntityGaps(client: KhalaClient, names: string[]): Promise<DesignGap[]> {
+ *  모든 diff 조회가 null이면 throw해 상위 withNexusFallback이 caveat을 남기게 한다. */
+export async function fetchEntityGaps(client: NexusClient, names: string[]): Promise<DesignGap[]> {
   const results = await Promise.all(names.map((n) => client.getDiff({ entityFilter: n })));
   const ok = results.filter((r) => r !== null);
   if (ok.length === 0 && names.length > 0) {
@@ -33,7 +33,7 @@ export async function fetchEntityGaps(client: KhalaClient, names: string[]): Pro
 /** 쿼리로 문서를 검색해 RelevantDoc[]로 매핑한다. 실패 시 null.
  *  슬라이싱 없이 주어진 쿼리를 그대로 사용한다 — 호출 측에서 필요 시 자름. */
 export async function searchDocs(
-  client: KhalaClient, query: string, topK: number,
+  client: NexusClient, query: string, topK: number,
 ): Promise<RelevantDoc[] | null> {
   const result = await client.search(query, { topK });
   if (!result) return null;

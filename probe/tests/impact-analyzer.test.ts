@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { analyzeImpact } from '../src/khala/impact-analyzer.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { analyzeImpact } from '../src/nexus/impact-analyzer.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 /**
- * 칼라 영향 분석 테스트
+ * Nexus 영향 분석 테스트
  */
 
 // fetch 모킹 헬퍼
@@ -36,7 +36,7 @@ describe('analyzeImpact', () => {
   });
 
   it('서비스명이 없으면 빈 결과를 반환한다', async () => {
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const result = await analyzeImpact(client, []);
 
     expect(result.severity).toBe('none');
@@ -55,7 +55,7 @@ describe('analyzeImpact', () => {
       ]),
     ) as unknown as typeof fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const result = await analyzeImpact(client, ['payment']);
 
     expect(result.changedServices).toContain('payment');
@@ -82,7 +82,7 @@ describe('analyzeImpact', () => {
       ),
     ) as unknown as typeof fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const result = await analyzeImpact(client, ['payment']);
 
     const orderImpact = result.directImpact.find((s) => s.name === 'order-service');
@@ -99,7 +99,7 @@ describe('analyzeImpact', () => {
       ]),
     ) as unknown as typeof fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const result = await analyzeImpact(client, ['payment']);
 
     expect(result.directImpact.length).toBeGreaterThanOrEqual(3);
@@ -109,7 +109,7 @@ describe('analyzeImpact', () => {
   it('그래프 조회 실패 시 빈 결과를 반환한다', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('network error')) as unknown as typeof fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const result = await analyzeImpact(client, ['payment']);
 
     expect(result.changedServices).toContain('payment');
@@ -123,7 +123,7 @@ describe('analyzeImpact', () => {
       json: () => Promise.resolve({ success: true, data: { center_entity: { rid: 'x', name: 'order-service' }, edges: [], observed_edges: [] }, error: null, meta: {} }),
     });
     globalThis.fetch = fetchMock;
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     await analyzeImpact(client, ['order-service']);
     const calledUrl = String(fetchMock.mock.calls[0]![0]);
     expect(calledUrl).toContain('/graph/order-service');
@@ -144,7 +144,7 @@ describe('analyzeImpact', () => {
       ),
     ) as unknown as typeof fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const result = await analyzeImpact(client, ['payment']);
 
     expect(result.severity).toBe('high');

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { groundReview, partitionDocs } from '../src/khala/review-grounder.js';
-import { KhalaClient } from '../src/khala/client.js';
-import type { RelevantDoc } from '../src/khala/types.js';
+import { groundReview, partitionDocs } from '../src/nexus/review-grounder.js';
+import { NexusClient } from '../src/nexus/client.js';
+import type { RelevantDoc } from '../src/nexus/types.js';
 
 function mockByPath(handlers: Record<string, unknown>) {
   return vi.fn((url: string) => {
@@ -40,7 +40,7 @@ describe('groundReview', () => {
       '/diff': { diffs: [{ flag: 'observed_only', from_name: 'order-service', to_name: 'inventory-service', edge_type: 'CALLS_OBSERVED', detail: '설계에 없음', designed_evidence: [], observed_evidence: { sample_trace_ids: ['t1'], trace_query_ref: 'r' } }] },
     }) as unknown as typeof globalThis.fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const pack = await groundReview(client,
       [{ entityName: 'order-service', changedFiles: ['OrderService.java'] }],
       { tier: 3 });
@@ -56,7 +56,7 @@ describe('groundReview', () => {
       '/graph': { center_entity: { rid: 'e', name: 'order-service' }, edges: [], observed_edges: [] },
       '/diff': { diffs: [] },
     }) as unknown as typeof globalThis.fetch;
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const pack = await groundReview(client, [{ entityName: 'order-service', changedFiles: [] }], { tier: 3 });
     expect(pack.caveats.some((c) => c.includes('승인 스펙') || c.toLowerCase().includes('spec'))).toBe(true);
     expect(pack.applicableGuidelines?.some((g) => g.docTitle === '결제 규정')).toBe(true);
@@ -64,7 +64,7 @@ describe('groundReview', () => {
 
   it('Archon 미연동 caveat를 항상 남긴다', async () => {
     globalThis.fetch = mockByPath({ '/search': { results: [] }, '/graph': { center_entity: { rid: 'e', name: 'x' }, edges: [], observed_edges: [] }, '/diff': { diffs: [] } }) as unknown as typeof globalThis.fetch;
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const pack = await groundReview(client, [{ entityName: 'x', changedFiles: [] }], { tier: 2 });
     expect(pack.caveats.some((c) => c.includes('Archon'))).toBe(true);
   });

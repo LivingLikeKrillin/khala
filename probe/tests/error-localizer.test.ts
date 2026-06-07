@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { localizeError, inferKind } from '../src/khala/error-localizer.js';
+import { localizeError, inferKind } from '../src/nexus/error-localizer.js';
 
 describe('localizeError — Java 스택트레이스', () => {
   it('클래스명을 kebab service로 정규화한다', () => {

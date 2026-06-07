@@ -64,13 +64,13 @@ export interface ProbeConfig {
   /** 리뷰 체크리스트 설정 (v0.2) */
   review?: ReviewConfig;
 
-  /** 칼라 연동 설정 (v0.4) */
-  khala?: KhalaConfig;
+  /** Nexus 연동 설정 (v0.4) */
+  nexus?: NexusConfig;
 }
 
-/** 칼라 연동 설정 (v0.4) */
-export interface KhalaConfig {
-  /** 칼라 API 서버 URL (기본: http://localhost:8000) */
+/** Nexus 연동 설정 (v0.4) */
+export interface NexusConfig {
+  /** Nexus API 서버 URL (기본: http://localhost:8000) */
   baseUrl?: string;
   /** 요청 타임아웃 ms (기본: 3000) */
   timeoutMs?: number;
@@ -78,7 +78,7 @@ export interface KhalaConfig {
   tenant?: string;
   /** 최대 분류 등급 (기본: "INTERNAL") */
   classificationMax?: string;
-  /** 칼라 연동 비활성화 (기본: false) */
+  /** Nexus 연동 비활성화 (기본: false) */
   disabled?: boolean;
   /** 검색 결과 최대 건수 (기본: 5) */
   searchTopK?: number;
@@ -172,18 +172,18 @@ export async function loadConfigAsync(projectRoot?: string): Promise<ProbeConfig
 }
 
 /**
- * 칼라 설정을 resolve한다 (config 파일 > 환경 변수 > 기본값).
+ * Nexus 설정을 resolve한다 (config 파일 > 환경 변수 > 기본값).
  */
-export function resolveKhalaConfig(config: ProbeConfig): KhalaConfig & { disabled: boolean } {
+export function resolveNexusConfig(config: ProbeConfig): NexusConfig & { disabled: boolean } {
   const env = process.env;
   return {
-    baseUrl: config.khala?.baseUrl ?? env['KHALA_BASE_URL'] ?? 'http://localhost:8000',
-    timeoutMs: config.khala?.timeoutMs ?? (env['KHALA_TIMEOUT_MS'] ? Number(env['KHALA_TIMEOUT_MS']) : 3000),
-    tenant: config.khala?.tenant ?? env['KHALA_TENANT'] ?? 'default',
-    classificationMax: config.khala?.classificationMax ?? 'INTERNAL',
-    disabled: config.khala?.disabled ?? (env['KHALA_DISABLED'] === 'true'),
-    searchTopK: config.khala?.searchTopK ?? 5,
-    graphHops: config.khala?.graphHops ?? 1,
+    baseUrl: config.nexus?.baseUrl ?? env['NEXUS_BASE_URL'] ?? 'http://localhost:8000',
+    timeoutMs: config.nexus?.timeoutMs ?? (env['NEXUS_TIMEOUT_MS'] ? Number(env['NEXUS_TIMEOUT_MS']) : 3000),
+    tenant: config.nexus?.tenant ?? env['NEXUS_TENANT'] ?? 'default',
+    classificationMax: config.nexus?.classificationMax ?? 'INTERNAL',
+    disabled: config.nexus?.disabled ?? (env['NEXUS_DISABLED'] === 'true'),
+    searchTopK: config.nexus?.searchTopK ?? 5,
+    graphHops: config.nexus?.graphHops ?? 1,
   };
 }
 

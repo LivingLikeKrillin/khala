@@ -4,7 +4,7 @@
 
 **Goal:** 에러/스택트레이스/실패 테스트를 입력받아, 근본원인을 단정하지 않고 조직 컨텍스트(토폴로지·관측·규정·최근변경·도메인 불변식)를 묶은 **Grounding Pack**을 만들어 Claude/사람의 디버깅 추론에 깔아주는 기능을 Probe에 추가한다.
 
-**Architecture:** 기존 하이브리드 구조(`src/` 코어 + `.claude/` 어댑터)에 정합. 신규 모듈은 `src/khala/error-localizer.ts`(에러→의심지점), `src/khala/troubleshoot-grounder.ts`(Grounding Pack 조립), `src/core/troubleshoot.ts`(오케스트레이션+티어). 기존 `KhalaClient`를 확장(`getStatus`, `getDiff` entityFilter)하고 CLI/MCP 표면을 더한다. Khala가 없거나 빈약해도 동작하는 **티어 강등(T0~T3)** 을 명시 보고한다.
+**Architecture:** 기존 하이브리드 구조(`src/` 코어 + `.claude/` 어댑터)에 정합. 신규 모듈은 `src/nexus/error-localizer.ts`(에러→의심지점), `src/nexus/troubleshoot-grounder.ts`(Grounding Pack 조립), `src/core/troubleshoot.ts`(오케스트레이션+티어). 기존 `NexusClient`를 확장(`getStatus`, `getDiff` entityFilter)하고 CLI/MCP 표면을 더한다. Nexus가 없거나 빈약해도 동작하는 **티어 강등(T0~T3)** 을 명시 보고한다.
 
 **Tech Stack:** TypeScript (strict, ESM `.js` imports) · vitest (fetch 목킹) · zod (MCP 스키마) · `@modelcontextprotocol/sdk` · Node ≥20 · pnpm
 
@@ -25,7 +25,7 @@
 
 | Chunk | 내용 | 게이트 |
 |-------|------|--------|
-| 1 | 기반 타입 + `KhalaClient` 확장(`getStatus`, `getDiff` entityFilter) | — |
+| 1 | 기반 타입 + `NexusClient` 확장(`getStatus`, `getDiff` entityFilter) | — |
 | 2 | `error-localizer` (에러→Suspect) | — |
 | **3** | **시그니처 시나리오 마일스톤** (시드 + S1/S2/S3 대조) | **★ 해자 실증 게이트 — 실패 시 중단·재검토** |
 | 4 | `troubleshoot-grounder` (6~7개 섹션 → GroundingPack) | — |
@@ -41,41 +41,41 @@
 
 | 파일 | 책임 | 신규/수정 |
 |------|------|-----------|
-| `src/khala/types.ts` | `Suspect`, `KhalaStatusResult`, `GroundingPack`, `ClaimRef` 등 타입 | 수정 |
-| `src/khala/client.ts` | `getStatus()` 신규, `getDiff({entityFilter})` 확장 | 수정 |
-| `src/khala/error-localizer.ts` | 에러/스택트레이스 → `Suspect[]` (순수 로컬) | 신규 |
-| `src/khala/troubleshoot-grounder.ts` | `Suspect[]`+`KhalaClient` → `GroundingPack` 섹션 조립 | 신규 |
+| `src/nexus/types.ts` | `Suspect`, `NexusStatusResult`, `GroundingPack`, `ClaimRef` 등 타입 | 수정 |
+| `src/nexus/client.ts` | `getStatus()` 신규, `getDiff({entityFilter})` 확장 | 수정 |
+| `src/nexus/error-localizer.ts` | 에러/스택트레이스 → `Suspect[]` (순수 로컬) | 신규 |
+| `src/nexus/troubleshoot-grounder.ts` | `Suspect[]`+`NexusClient` → `GroundingPack` 섹션 조립 | 신규 |
 | `src/core/troubleshoot.ts` | 입력 파싱·티어 결정·오케스트레이션·caveats | 신규 |
 | `src/cli/parse-args.ts` | `--kind`, `--diff-base`, `--suspect`, stdin 입력 | 수정 |
 | `src/cli/formatters.ts` | `formatGroundingPackMarkdown/Brief` | 수정 |
 | `src/cli/index.ts` | `troubleshoot` 커맨드 등록 | 수정 |
 | `src/mcp/tools.ts` | `probe.groundTroubleshooting` 도구 | 수정 |
-| `scripts/seed-signature-scenario.sql` | S1 재현용 Khala 시드 (검증 전용) | 신규 |
+| `scripts/seed-signature-scenario.sql` | S1 재현용 Nexus 시드 (검증 전용) | 신규 |
 | `tests/*.test.ts` | 각 모듈 테스트 | 신규 |
 
 ---
 
-## Chunk 1: 기반 타입 + KhalaClient 확장
+## Chunk 1: 기반 타입 + NexusClient 확장
 
 ### Task 1: Grounding 타입 정의
 
 **Files:**
-- Modify: `src/khala/types.ts` (파일 끝에 추가)
+- Modify: `src/nexus/types.ts` (파일 끝에 추가)
 - Test: `tests/troubleshoot-types.test.ts` (타입은 런타임 테스트가 없으므로, 타입 컴파일을 보장하는 최소 사용 테스트)
 
 - [ ] **Step 1: 타입 추가**
 
-`src/khala/types.ts` 끝에 추가:
+`src/nexus/types.ts` 끝에 추가:
 
 ```typescript
 // ─── 트러블슈팅 그라운딩 (v0.5) ───
 
 /**
  * /status 응답 (가용성·티어 진단용).
- * 필드는 khala `api.py` status() (812~852행)가 반환하는 카운트와 일치:
+ * 필드는 nexus `api.py` status() (812~852행)가 반환하는 카운트와 일치:
  * documents_count/edges_count/observed_edges_count/diff_summary는 db_connected일 때만 채워짐.
  */
-export interface KhalaStatusResult {
+export interface NexusStatusResult {
   db_connected: boolean;
   ollama_connected?: boolean;
   tempo_connected?: boolean;
@@ -165,14 +165,14 @@ export interface GroundingPack {
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import type { GroundingPack, Suspect } from '../src/khala/types.js';
+import type { GroundingPack, Suspect } from '../src/nexus/types.js';
 
 describe('트러블슈팅 타입', () => {
   it('GroundingPack을 최소 형태로 구성할 수 있다', () => {
     const suspect: Suspect = { entityName: 'order-service', evidence: [], confidence: 0.9 };
     const pack: GroundingPack = {
       tier: 0,
-      tierReason: 'Khala 미가용',
+      tierReason: 'Nexus 미가용',
       suspects: [suspect],
       caveats: [],
     };
@@ -195,24 +195,24 @@ Expected: 에러 없음
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/khala/types.ts tests/troubleshoot-types.test.ts
-git commit -m "feat: add troubleshooting grounding types (Suspect, GroundingPack, KhalaStatusResult)"
+git add src/nexus/types.ts tests/troubleshoot-types.test.ts
+git commit -m "feat: add troubleshooting grounding types (Suspect, GroundingPack, NexusStatusResult)"
 ```
 
 ---
 
-### Task 2: KhalaClient.getStatus()
+### Task 2: NexusClient.getStatus()
 
 **Files:**
-- Modify: `src/khala/client.ts`
-- Test: `tests/khala-client.test.ts` (기존 파일에 describe 추가)
+- Modify: `src/nexus/client.ts`
+- Test: `tests/nexus-client.test.ts` (기존 파일에 describe 추가)
 
 - [ ] **Step 1: 실패 테스트 작성**
 
-`tests/khala-client.test.ts` 끝에 추가 (기존 import 재사용; 없으면 추가):
+`tests/nexus-client.test.ts` 끝에 추가 (기존 import 재사용; 없으면 추가):
 
 ```typescript
-describe('KhalaClient.getStatus', () => {
+describe('NexusClient.getStatus', () => {
   let originalFetch: typeof globalThis.fetch;
   beforeEach(() => { originalFetch = globalThis.fetch; });
   afterEach(() => { globalThis.fetch = originalFetch; });
@@ -226,7 +226,7 @@ describe('KhalaClient.getStatus', () => {
         error: null, meta: {},
       }),
     });
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const status = await client.getStatus();
     expect(status?.observed_edges_count).toBe(3);
     expect(status?.edges_count).toBe(12);
@@ -234,7 +234,7 @@ describe('KhalaClient.getStatus', () => {
 
   it('서버 장애 시 null을 반환한다', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('conn refused'));
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     expect(await client.getStatus()).toBeNull();
   });
 });
@@ -242,12 +242,12 @@ describe('KhalaClient.getStatus', () => {
 
 - [ ] **Step 2: 실행 → 실패 확인**
 
-Run: `pnpm vitest run tests/khala-client.test.ts -t "상태 카운트를 반환한다"`
+Run: `pnpm vitest run tests/nexus-client.test.ts -t "상태 카운트를 반환한다"`
 Expected: FAIL (`getStatus` is not a function)
 
 - [ ] **Step 3: 구현**
 
-`src/khala/client.ts`의 `isAvailable()` 메서드 바로 아래에 추가하고, import에 `KhalaStatusResult` 추가:
+`src/nexus/client.ts`의 `isAvailable()` 메서드 바로 아래에 추가하고, import에 `NexusStatusResult` 추가:
 
 ```typescript
   /**
@@ -255,8 +255,8 @@ Expected: FAIL (`getStatus` is not a function)
    *
    * isAvailable()이 boolean만 주는 것과 달리, 카운트 본문을 반환한다.
    */
-  async getStatus(): Promise<KhalaStatusResult | null> {
-    return this.get<KhalaStatusResult>('/status', 'getStatus');
+  async getStatus(): Promise<NexusStatusResult | null> {
+    return this.get<NexusStatusResult>('/status', 'getStatus');
   }
 ```
 
@@ -264,40 +264,40 @@ Expected: FAIL (`getStatus` is not a function)
 
 ```typescript
 import type {
-  KhalaClientConfig,
-  KhalaResponse,
-  KhalaSearchResult,
-  KhalaAnswerResult,
-  KhalaGraphResult,
-  KhalaDiffResult,
-  KhalaStatusResult,
+  NexusClientConfig,
+  NexusResponse,
+  NexusSearchResult,
+  NexusAnswerResult,
+  NexusGraphResult,
+  NexusDiffResult,
+  NexusStatusResult,
 } from './types.js';
 ```
 
 - [ ] **Step 4: 실행 → 통과 확인**
 
-Run: `pnpm vitest run tests/khala-client.test.ts -t "KhalaClient.getStatus"`
+Run: `pnpm vitest run tests/nexus-client.test.ts -t "NexusClient.getStatus"`
 Expected: PASS (2건)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/khala/client.ts tests/khala-client.test.ts
-git commit -m "feat: add KhalaClient.getStatus() returning typed status counts"
+git add src/nexus/client.ts tests/nexus-client.test.ts
+git commit -m "feat: add NexusClient.getStatus() returning typed status counts"
 ```
 
 ---
 
-### Task 3: KhalaClient.getDiff() entityFilter 확장
+### Task 3: NexusClient.getDiff() entityFilter 확장
 
 **Files:**
-- Modify: `src/khala/client.ts`
-- Test: `tests/khala-client.test.ts`
+- Modify: `src/nexus/client.ts`
+- Test: `tests/nexus-client.test.ts`
 
 - [ ] **Step 1: 실패 테스트 작성**
 
 ```typescript
-describe('KhalaClient.getDiff entityFilter', () => {
+describe('NexusClient.getDiff entityFilter', () => {
   let originalFetch: typeof globalThis.fetch;
   beforeEach(() => { originalFetch = globalThis.fetch; });
   afterEach(() => { globalThis.fetch = originalFetch; });
@@ -308,7 +308,7 @@ describe('KhalaClient.getDiff entityFilter', () => {
       json: () => Promise.resolve({ success: true, data: { diffs: [] }, error: null, meta: {} }),
     });
     globalThis.fetch = fetchMock;
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     await client.getDiff({ entityFilter: 'order-service' });
     const calledUrl = String(fetchMock.mock.calls[0]![0]);
     expect(calledUrl).toContain('entity_filter=order-service');
@@ -318,12 +318,12 @@ describe('KhalaClient.getDiff entityFilter', () => {
 
 - [ ] **Step 2: 실행 → 실패 확인**
 
-Run: `pnpm vitest run tests/khala-client.test.ts -t "entityFilter를 쿼리"`
+Run: `pnpm vitest run tests/nexus-client.test.ts -t "entityFilter를 쿼리"`
 Expected: FAIL (entity_filter 미포함)
 
 - [ ] **Step 3: 구현**
 
-`src/khala/client.ts`의 기존 `getDiff` 메서드를 교체:
+`src/nexus/client.ts`의 기존 `getDiff` 메서드를 교체:
 
 ```typescript
   /**
@@ -332,7 +332,7 @@ Expected: FAIL (entity_filter 미포함)
   async getDiff(options?: {
     flagFilter?: string;
     entityFilter?: string;
-  }): Promise<KhalaDiffResult | null> {
+  }): Promise<NexusDiffResult | null> {
     const params = new URLSearchParams({ tenant: this.config.tenant });
     if (options?.flagFilter) {
       params.set('flag_filter', options.flagFilter);
@@ -340,20 +340,20 @@ Expected: FAIL (entity_filter 미포함)
     if (options?.entityFilter) {
       params.set('entity_filter', options.entityFilter);
     }
-    return this.get<KhalaDiffResult>(`/diff?${params.toString()}`, 'getDiff');
+    return this.get<NexusDiffResult>(`/diff?${params.toString()}`, 'getDiff');
   }
 ```
 
 - [ ] **Step 4: 실행 → 통과 확인 (기존 getDiff 테스트도 회귀 확인)**
 
-Run: `pnpm vitest run tests/khala-client.test.ts`
+Run: `pnpm vitest run tests/nexus-client.test.ts`
 Expected: PASS (신규 + 기존 전부)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/khala/client.ts tests/khala-client.test.ts
-git commit -m "feat: add entityFilter option to KhalaClient.getDiff()"
+git add src/nexus/client.ts tests/nexus-client.test.ts
+git commit -m "feat: add entityFilter option to NexusClient.getDiff()"
 ```
 
 ---
@@ -362,13 +362,13 @@ git commit -m "feat: add entityFilter option to KhalaClient.getDiff()"
 
 > **왜 필요한가 (블로커):** 현재 `impact-analyzer.ts:57`은 `client.getGraph(buildEntityRid(name), …)`로
 > 호출하는데, `buildEntityRid`(264~270)는 `ent_<serviceName>` 같은 **가짜 rid**를 만든다. 실제
-> Khala rid는 `ent_` + sha256(...)[:12]이라 이 값은 절대 매칭되지 않는다. 게다가 `/graph`
+> Nexus rid는 `ent_` + sha256(...)[:12]이라 이 값은 절대 매칭되지 않는다. 게다가 `/graph`
 > 엔드포인트는 이름 기반 조회를 지원하지만(`api.py` get_graph 392~405: `ent_`로 시작 안 하면
 > name으로 조회), `ent_` 접두사를 붙이면 서버가 rid로 오인해 404 → 토폴로지·운영신호가 **조용히
 > 빈값**이 된다. 스펙 §3.3은 "Probe는 rid를 직접 만들지 않고 이름을 그대로 넘긴다"를 명시한다.
 
 **Files:**
-- Modify: `src/khala/impact-analyzer.ts`
+- Modify: `src/nexus/impact-analyzer.ts`
 - Test: `tests/impact-analyzer.test.ts`
 
 - [ ] **Step 1: 실패 테스트 추가** — getGraph가 `ent_` 없는 이름으로 호출되는지 검증
@@ -380,7 +380,7 @@ it('getGraph를 ent_ 접두사 없이 이름으로 호출한다 (스펙 §3.3)',
     json: () => Promise.resolve({ success: true, data: { center_entity: { rid: 'x', name: 'order-service' }, edges: [], observed_edges: [] }, error: null, meta: {} }),
   });
   globalThis.fetch = fetchMock;
-  const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+  const client = new NexusClient({ baseUrl: 'http://test:8000' });
   await analyzeImpact(client, ['order-service']);
   const calledUrl = String(fetchMock.mock.calls[0]![0]);
   expect(calledUrl).toContain('/graph/order-service');
@@ -393,7 +393,7 @@ it('getGraph를 ent_ 접두사 없이 이름으로 호출한다 (스펙 §3.3)',
 Run: `pnpm vitest run tests/impact-analyzer.test.ts -t "ent_ 접두사 없이"`
 Expected: FAIL (현재 `/graph/ent_order-service`로 호출됨)
 
-- [ ] **Step 3: 구현** — `src/khala/impact-analyzer.ts`
+- [ ] **Step 3: 구현** — `src/nexus/impact-analyzer.ts`
 
 `analyzeImpact` 내부의 `() => client.getGraph(buildEntityRid(name), { hops })`를
 `() => client.getGraph(name, { hops })`로 변경하고, 이제 미사용이 된 `buildEntityRid` 함수(264~270)를 삭제한다.
@@ -406,7 +406,7 @@ Expected: PASS (신규 + 기존). 기존 테스트가 fetch를 목킹하므로 U
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/khala/impact-analyzer.ts tests/impact-analyzer.test.ts
+git add src/nexus/impact-analyzer.ts tests/impact-analyzer.test.ts
 git commit -m "fix: analyzeImpact uses name-based /graph lookup (drop fabricated rid)"
 ```
 
@@ -423,7 +423,7 @@ git commit -m "fix: analyzeImpact uses name-based /graph lookup (drop fabricated
 ### Task 4: Java 스택트레이스 국소화
 
 **Files:**
-- Create: `src/khala/error-localizer.ts`
+- Create: `src/nexus/error-localizer.ts`
 - Test: `tests/error-localizer.test.ts`
 
 - [ ] **Step 1: 실패 테스트 작성**
@@ -432,7 +432,7 @@ git commit -m "fix: analyzeImpact uses name-based /graph lookup (drop fabricated
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { localizeError } from '../src/khala/error-localizer.js';
+import { localizeError } from '../src/nexus/error-localizer.js';
 
 describe('localizeError — Java 스택트레이스', () => {
   it('클래스명을 kebab service로 정규화한다', () => {
@@ -469,13 +469,13 @@ Expected: FAIL (모듈 없음)
 
 - [ ] **Step 3: 구현**
 
-`src/khala/error-localizer.ts`:
+`src/nexus/error-localizer.ts`:
 
 ```typescript
 /**
  * 에러/스택트레이스 → 의심 지점(Suspect) 국소화
  *
- * 순수 로컬(Khala 호출 없음). 스택트레이스 프레임·파일 경로·사용자 지정에서
+ * 순수 로컬(Nexus 호출 없음). 스택트레이스 프레임·파일 경로·사용자 지정에서
  * service/entity 후보를 추출해 confidence 내림차순으로 반환한다.
  *
  * 주의(스펙 §4.2 seam): Archon 코드 심볼 인덱스가 생기면 그쪽을 결정론적 1순위로,
@@ -557,7 +557,7 @@ Expected: PASS (4건)
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/khala/error-localizer.ts tests/error-localizer.test.ts
+git add src/nexus/error-localizer.ts tests/error-localizer.test.ts
 git commit -m "feat: add error-localizer (stacktrace/error -> Suspect[])"
 ```
 
@@ -566,12 +566,12 @@ git commit -m "feat: add error-localizer (stacktrace/error -> Suspect[])"
 ### Task 5: TS/JS 경로 국소화 + kind 휴리스틱
 
 **Files:**
-- Modify: `src/khala/error-localizer.ts`
+- Modify: `src/nexus/error-localizer.ts`
 - Test: `tests/error-localizer.test.ts`
 
 - [ ] **Step 1: 실패 테스트 추가**
 
-> 파일 상단 import를 `import { localizeError, inferKind } from '../src/khala/error-localizer.js';`로
+> 파일 상단 import를 `import { localizeError, inferKind } from '../src/nexus/error-localizer.js';`로
 > 갱신한다 (ESM — `require` 금지).
 
 ```typescript
@@ -596,7 +596,7 @@ Expected: FAIL (`inferKind` 없음)
 
 - [ ] **Step 3: 구현 — `inferKind` export 추가**
 
-`src/khala/error-localizer.ts`에 추가:
+`src/nexus/error-localizer.ts`에 추가:
 
 ```typescript
 /**
@@ -618,7 +618,7 @@ Expected: PASS (전체)
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/khala/error-localizer.ts tests/error-localizer.test.ts
+git add src/nexus/error-localizer.ts tests/error-localizer.test.ts
 git commit -m "feat: add TS/JS path localization and inferKind heuristic"
 ```
 
@@ -654,7 +654,7 @@ order-service는 결제 완료 후 order 상태만 갱신한다.
 
 - [ ] **Step 2: 시드 SQL 작성**
 
-`scripts/seed-signature-scenario.sql` (Khala Postgres 대상; 설계엔 order→inventory 동기 호출이 *없고*, 관측엔 *있는* 상태를 만든다 → `/diff`가 `observed_only` 산출):
+`scripts/seed-signature-scenario.sql` (Nexus Postgres 대상; 설계엔 order→inventory 동기 호출이 *없고*, 관측엔 *있는* 상태를 만든다 → `/diff`가 `observed_only` 산출):
 
 ```sql
 -- 시그니처 시나리오 S1 시드 (검증 전용 — 프로덕션 금지)
@@ -672,7 +672,7 @@ BEGIN
   SELECT rid INTO v_to FROM entities
     WHERE name = 'inventory-service' AND tenant = 'default' AND status = 'active';
   IF v_from IS NULL OR v_to IS NULL THEN
-    RAISE EXCEPTION 'order-service/inventory-service 엔티티가 없습니다 — 먼저 khala ingest로 생성하세요 (Entities missing)';
+    RAISE EXCEPTION 'order-service/inventory-service 엔티티가 없습니다 — 먼저 nexus ingest로 생성하세요 (Entities missing)';
   END IF;
 
   INSERT INTO observed_edges
@@ -688,7 +688,7 @@ BEGIN
 END $$;
 ```
 
-> 컬럼은 `khala/init.sql` `observed_edges` DDL(189~213)과 대조 완료: `from_rid`/`to_rid`(entities FK)
+> 컬럼은 `nexus/init.sql` `observed_edges` DDL(189~213)과 대조 완료: `from_rid`/`to_rid`(entities FK)
 > 사용, `from_name`/`to_name` 없음. `ON CONFLICT (rid)`는 rid가 PRIMARY KEY라 유효.
 > entities가 없으면 runbook step 2(ingest)가 graph 추출로 생성하거나 gazetteer 부트스트랩에
 > 의존. 둘 다 실패 시 `entities.yaml`에 order-service/inventory-service를 추가 후 재-ingest.
@@ -704,12 +704,12 @@ END $$;
 드러냄을 증명.
 
 ## 절차
-1. Khala 기동: `cd ../../khala && docker-compose up -d`
+1. Nexus 기동: `cd ../../nexus && docker-compose up -d`
 2. 설계 문서 인덱싱:
-   `khala ingest ../probe/tests/fixtures/order-service-design.md --force`
+   `nexus ingest ../probe/tests/fixtures/order-service-design.md --force`
 3. 관측 엣지 시드:
-   `docker exec -i khala-postgres psql -U khala -d khala < scripts/seed-signature-scenario.sql`
-4. 가용성 확인: `npx probe khala:status` → observed_edges_count ≥ 1
+   `docker exec -i nexus-postgres psql -U nexus -d nexus < scripts/seed-signature-scenario.sql`
+4. 가용성 확인: `npx probe nexus:status` → observed_edges_count ≥ 1
 5. 실증:
    `npx probe troubleshoot "NPE at com.shop.order.OrderService.checkout(OrderService.java:88)"`
    기대 출력: designObservationGaps에 `observed_only: order-service → inventory-service`
@@ -731,14 +731,14 @@ git commit -m "test: add signature-scenario S1 seed + runbook (moat reproduction
 **Files:**
 - Test: `tests/signature-scenario.test.ts`
 
-> 라이브 실증(Task 6 런북)은 사람이 1회 수행. 여기서는 **CI에서 항상 도는 결정론적 게이트**로, 목킹된 Khala가 observed_only를 줄 때 `localizeError → getDiff(entityFilter)` 경로가 그 갭을 끌어오는지 검증한다. (full grounder 불필요 — 스펙 §8.3.)
+> 라이브 실증(Task 6 런북)은 사람이 1회 수행. 여기서는 **CI에서 항상 도는 결정론적 게이트**로, 목킹된 Nexus가 observed_only를 줄 때 `localizeError → getDiff(entityFilter)` 경로가 그 갭을 끌어오는지 검증한다. (full grounder 불필요 — 스펙 §8.3.)
 
 - [ ] **Step 1: 실패 테스트 작성**
 
 ```typescript
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { localizeError } from '../src/khala/error-localizer.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { localizeError } from '../src/nexus/error-localizer.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 describe('시그니처 시나리오 S1 — observed_only 갭 데이터패스', () => {
   let originalFetch: typeof globalThis.fetch;
@@ -753,7 +753,7 @@ describe('시그니처 시나리오 S1 — observed_only 갭 데이터패스', (
     });
     expect(suspects[0]!.entityName).toBe('order-service');
 
-    // 2) Khala /diff 목킹 (observed_only 갭)
+    // 2) Nexus /diff 목킹 (observed_only 갭)
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true, status: 200,
       json: () => Promise.resolve({
@@ -772,7 +772,7 @@ describe('시그니처 시나리오 S1 — observed_only 갭 데이터패스', (
       }),
     });
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const diff = await client.getDiff({ entityFilter: suspects[0]!.entityName });
 
     // 3) 갭이 끌려왔는가 — 제네릭 리뷰가 구조적으로 못 내는 발견
@@ -803,7 +803,7 @@ git commit -m "test: add S1 moat datapath gate (localize -> getDiff -> observed_
 ### ★ Chunk 3 게이트 결정
 
 - [ ] Task 7 자동 테스트 PASS + (가능 시) Task 6 런북으로 라이브 S1 출력 1회 확보
-- [ ] **게이트 판정:** observed_only 갭이 실증되면 → Chunk 4 진행. 실증 불가(예: Khala 데이터 구조가 스펙과 다름, /diff가 기대대로 동작 안 함)면 → **중단하고 사람에게 보고** (스펙 §8.2: 해자 미실증 시 범위 축소/중단 재검토)
+- [ ] **게이트 판정:** observed_only 갭이 실증되면 → Chunk 4 진행. 실증 불가(예: Nexus 데이터 구조가 스펙과 다름, /diff가 기대대로 동작 안 함)면 → **중단하고 사람에게 보고** (스펙 §8.2: 해자 미실증 시 범위 축소/중단 재검토)
 - [ ] plan-document-reviewer로 Chunk 3 검토 → 수정 → 재검토
 
 ---
@@ -813,15 +813,15 @@ git commit -m "test: add S1 moat datapath gate (localize -> getDiff -> observed_
 ### Task 8: 그라운더 — 지식·토폴로지·갭·운영신호 조립
 
 **Files:**
-- Create: `src/khala/troubleshoot-grounder.ts`
+- Create: `src/nexus/troubleshoot-grounder.ts`
 - Test: `tests/troubleshoot-grounder.test.ts`
 
 - [ ] **Step 1: 실패 테스트 작성**
 
 ```typescript
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { groundTroubleshooting } from '../src/khala/troubleshoot-grounder.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { groundTroubleshooting } from '../src/nexus/troubleshoot-grounder.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 function mockFetchByPath(handlers: Record<string, unknown>) {
   return vi.fn((url: string) => {
@@ -861,7 +861,7 @@ describe('groundTroubleshooting', () => {
       '/search': { results: [] },
     }) as unknown as typeof globalThis.fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const pack = await groundTroubleshooting(
       client,
       [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
@@ -879,7 +879,7 @@ describe('groundTroubleshooting', () => {
         : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { results: [] }, error: null, meta: {} }) }),
     ) as unknown as typeof globalThis.fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const pack = await groundTroubleshooting(
       client, [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
       { signal: 'NPE', tier: 3 },
@@ -896,20 +896,20 @@ Expected: FAIL (모듈 없음)
 
 - [ ] **Step 3: 구현**
 
-`src/khala/troubleshoot-grounder.ts`:
+`src/nexus/troubleshoot-grounder.ts`:
 
 ```typescript
 /**
  * 트러블슈팅 Grounding Pack 조립
  *
- * Suspect[]와 KhalaClient로 §2~§6 섹션을 병렬 조립한다.
- * 각 섹션은 독립 실패해도 나머지를 막지 않는다 (withKhalaFallback).
+ * Suspect[]와 NexusClient로 §2~§6 섹션을 병렬 조립한다.
+ * 각 섹션은 독립 실패해도 나머지를 막지 않는다 (withNexusFallback).
  * §5 지식 그라운딩은 client.search()를 직접 호출한다 (context-enricher 재사용 안 함 — 스펙 §5.1).
  *
  * 규정 문서: docs/superpowers/specs/2026-06-06-troubleshooting-grounding-design.md §2~§6
  */
 
-import { KhalaClient, withKhalaFallback } from './client.js';
+import { NexusClient, withNexusFallback } from './client.js';
 import { analyzeImpact } from './impact-analyzer.js';
 import type {
   Suspect, GroundingPack, DesignGap, OperationalSignal, RelevantDoc, ImpactAnalysis,
@@ -931,7 +931,7 @@ export interface GroundOptions {
  * Grounding Pack을 조립한다 (티어가 허용하는 섹션까지).
  */
 export async function groundTroubleshooting(
-  client: KhalaClient,
+  client: NexusClient,
   suspects: Suspect[],
   options: GroundOptions,
 ): Promise<GroundingPack> {
@@ -947,7 +947,7 @@ export async function groundTroubleshooting(
 
   // §5 지식 (T1+)
   if (options.tier >= 1) {
-    const knowledge = await withKhalaFallback(
+    const knowledge = await withNexusFallback(
       () => fetchKnowledge(client, options.signal, options.searchTopK ?? 5),
       null, 'search',
     );
@@ -957,7 +957,7 @@ export async function groundTroubleshooting(
 
   // §2 토폴로지 + §6은 core에서 diff 입력 받아 별도; 여기선 토폴로지/영향 (T2+)
   if (options.tier >= 2 && names.length > 0) {
-    const topology = await withKhalaFallback<ImpactAnalysis | null>(
+    const topology = await withNexusFallback<ImpactAnalysis | null>(
       () => analyzeImpact(client, names, { hops: options.graphHops ?? 2 }),
       null, 'impact',
     );
@@ -966,7 +966,7 @@ export async function groundTroubleshooting(
 
   // §3 설계-관측 갭 (doc_only는 T2+, observed_only/conflict는 T3)
   if (options.tier >= 2 && names.length > 0) {
-    const gaps = await withKhalaFallback(
+    const gaps = await withNexusFallback(
       () => fetchGaps(client, names),
       null, 'diff',
     );
@@ -988,7 +988,7 @@ export async function groundTroubleshooting(
 
 /** §5: 의심 지점 + 신호로 관련 문서 검색 */
 async function fetchKnowledge(
-  client: KhalaClient, signal: string, topK: number,
+  client: NexusClient, signal: string, topK: number,
 ): Promise<RelevantDoc[]> {
   // 검색 쿼리는 앞 500자만 사용 (저장 신호의 8000자 절단과는 별개 — 쿼리 품질·길이 제한용)
   const result = await client.search(signal.slice(0, 500), { topK });
@@ -1000,9 +1000,9 @@ async function fetchKnowledge(
 }
 
 /** §3: 각 의심 service의 diff를 합쳐 DesignGap[]으로 변환 */
-async function fetchGaps(client: KhalaClient, names: string[]): Promise<DesignGap[]> {
+async function fetchGaps(client: NexusClient, names: string[]): Promise<DesignGap[]> {
   const results = await Promise.all(
-    names.map((n) => withKhalaFallback(() => client.getDiff({ entityFilter: n }), null, `diff:${n}`)),
+    names.map((n) => withNexusFallback(() => client.getDiff({ entityFilter: n }), null, `diff:${n}`)),
   );
   const gaps: DesignGap[] = [];
   for (const r of results) {
@@ -1050,7 +1050,7 @@ Expected: PASS (2건)
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/khala/troubleshoot-grounder.ts tests/troubleshoot-grounder.test.ts
+git add src/nexus/troubleshoot-grounder.ts tests/troubleshoot-grounder.test.ts
 git commit -m "feat: add troubleshoot-grounder (assemble GroundingPack sections)"
 ```
 
@@ -1059,7 +1059,7 @@ git commit -m "feat: add troubleshoot-grounder (assemble GroundingPack sections)
 ### Task 9: 최근 변경 상관(§6) 통합
 
 **Files:**
-- Modify: `src/khala/troubleshoot-grounder.ts`
+- Modify: `src/nexus/troubleshoot-grounder.ts`
 - Test: `tests/troubleshoot-grounder.test.ts`
 
 - [ ] **Step 1: 실패 테스트 추가**
@@ -1068,7 +1068,7 @@ git commit -m "feat: add troubleshoot-grounder (assemble GroundingPack sections)
 it('changedServices가 주어지면 의심 토폴로지와 상관시킨다', async () => {
   globalThis.fetch = mockFetchByPath({ '/search': { results: [] }, '/diff': { diffs: [] },
     '/graph': { center_entity: { rid: 'e', name: 'order-service' }, edges: [], observed_edges: [] } }) as unknown as typeof globalThis.fetch;
-  const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+  const client = new NexusClient({ baseUrl: 'http://test:8000' });
   const pack = await groundTroubleshooting(
     client, [{ entityName: 'order-service', evidence: [], confidence: 0.9 }],
     { signal: 'NPE', tier: 2, changedServices: [{ service: 'order-service', changedFiles: ['OrderService.java'] }] },
@@ -1105,7 +1105,7 @@ Expected: PASS (전체)
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/khala/troubleshoot-grounder.ts tests/troubleshoot-grounder.test.ts
+git add src/nexus/troubleshoot-grounder.ts tests/troubleshoot-grounder.test.ts
 git commit -m "feat: correlate recent changes with suspect topology (grounding section 6)"
 ```
 
@@ -1130,22 +1130,22 @@ git commit -m "feat: correlate recent changes with suspect topology (grounding s
 ```typescript
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { determineTier, validateInput } from '../src/core/troubleshoot.js';
-import type { KhalaStatusResult } from '../src/khala/types.js';
+import type { NexusStatusResult } from '../src/nexus/types.js';
 
 describe('determineTier', () => {
-  it('Khala 미가용이면 T0', () => {
+  it('Nexus 미가용이면 T0', () => {
     expect(determineTier(null).tier).toBe(0);
   });
   it('문서만 있으면 T1', () => {
-    const s: KhalaStatusResult = { db_connected: true, documents_count: 5, edges_count: 0 };
+    const s: NexusStatusResult = { db_connected: true, documents_count: 5, edges_count: 0 };
     expect(determineTier(s).tier).toBe(1);
   });
   it('설계 엣지가 있으면 T2', () => {
-    const s: KhalaStatusResult = { db_connected: true, documents_count: 5, edges_count: 3, observed_edges_count: 0 };
+    const s: NexusStatusResult = { db_connected: true, documents_count: 5, edges_count: 3, observed_edges_count: 0 };
     expect(determineTier(s).tier).toBe(2);
   });
   it('관측 엣지가 있으면 T3', () => {
-    const s: KhalaStatusResult = { db_connected: true, edges_count: 3, observed_edges_count: 2 };
+    const s: NexusStatusResult = { db_connected: true, edges_count: 3, observed_edges_count: 2 };
     expect(determineTier(s).tier).toBe(3);
   });
 });
@@ -1179,12 +1179,12 @@ Expected: FAIL (모듈 없음)
  * 규정 문서: docs/superpowers/specs/2026-06-06-troubleshooting-grounding-design.md §5, §6
  */
 
-import { KhalaClient } from '../khala/client.js';
-import { localizeError, inferKind } from '../khala/error-localizer.js';
-import { groundTroubleshooting } from '../khala/troubleshoot-grounder.js';
+import { NexusClient } from '../nexus/client.js';
+import { localizeError, inferKind } from '../nexus/error-localizer.js';
+import { groundTroubleshooting } from '../nexus/troubleshoot-grounder.js';
 import type {
-  TroubleshootInput, GroundingPack, KhalaStatusResult,
-} from '../khala/types.js';
+  TroubleshootInput, GroundingPack, NexusStatusResult,
+} from '../nexus/types.js';
 
 const MAX_SIGNAL_LEN = 8_000;
 
@@ -1197,7 +1197,7 @@ export interface ValidatedInput {
 }
 
 /**
- * 입력을 검증한다 (Khala 호출 전).
+ * 입력을 검증한다 (Nexus 호출 전).
  */
 export function validateInput(input: TroubleshootInput): ValidatedInput {
   const caveats: string[] = [];
@@ -1222,9 +1222,9 @@ export interface TierDecision {
 /**
  * /status 카운트로 그라운딩 티어를 결정한다 (스펙 §5.2).
  */
-export function determineTier(status: KhalaStatusResult | null): TierDecision {
+export function determineTier(status: NexusStatusResult | null): TierDecision {
   if (!status || !status.db_connected) {
-    return { tier: 0, reason: 'Khala 미가용 → T0 (국소화·프로파일만)' };
+    return { tier: 0, reason: 'Nexus 미가용 → T0 (국소화·프로파일만)' };
   }
   const obs = status.observed_edges_count ?? 0;
   const edges = status.edges_count ?? 0;
@@ -1232,19 +1232,19 @@ export function determineTier(status: KhalaStatusResult | null): TierDecision {
   if (obs > 0) return { tier: 3, reason: `관측 엣지 ${obs}개 → T3 (운영신호·설계-관측 갭 포함)` };
   if (edges > 0) return { tier: 2, reason: `설계 엣지 ${edges}개, 관측 0 → T2 (토폴로지·영향)` };
   if (docs > 0) return { tier: 1, reason: `문서 ${docs}개, 엣지 0 → T1 (RAG 지식만)` };
-  return { tier: 0, reason: 'Khala 연결됐으나 인덱싱 데이터 없음 → T0' };
+  return { tier: 0, reason: 'Nexus 연결됐으나 인덱싱 데이터 없음 → T0' };
 }
 
 /**
  * 트러블슈팅 그라운딩 전체 실행.
  *
  * @param input 트러블슈팅 입력
- * @param client 칼라 클라이언트
+ * @param client Nexus 클라이언트
  * @param changedServices 선택: 최근 변경 service (CLI/MCP에서 git diff로 추출해 전달)
  */
 export async function runTroubleshoot(
   input: TroubleshootInput,
-  client: KhalaClient,
+  client: NexusClient,
   changedServices?: { service: string; changedFiles: string[] }[],
 ): Promise<{ ok: false; reason: string } | { ok: true; pack: GroundingPack }> {
   const v = validateInput(input);
@@ -1309,7 +1309,7 @@ git commit -m "feat: add core troubleshoot orchestration (tier + input validatio
 
 ```typescript
 import { runTroubleshoot } from '../src/core/troubleshoot.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 describe('runTroubleshoot 경로', () => {
   let originalFetch: typeof globalThis.fetch;
@@ -1317,14 +1317,14 @@ describe('runTroubleshoot 경로', () => {
   afterEach(() => { globalThis.fetch = originalFetch; });
 
   it('빈 입력은 ok:false', async () => {
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const r = await runTroubleshoot({ signal: '' }, client);
     expect(r.ok).toBe(false);
   });
 
-  it('Khala 미가용이면 T0 + 국소화만', async () => {
+  it('Nexus 미가용이면 T0 + 국소화만', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('down'));
-    const client = new KhalaClient({ baseUrl: 'http://test:8000' });
+    const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const r = await runTroubleshoot(
       { signal: 'at com.shop.order.OrderService.checkout(OrderService.java:88)' }, client,
     );
@@ -1453,7 +1453,7 @@ git commit -m "feat: add parseTroubleshootArgs (kind/diff-base/suspect/format)"
 
 ```typescript
 import { formatGroundingPackMarkdown, formatGroundingPackBrief } from '../src/cli/formatters.js';
-import type { GroundingPack } from '../src/khala/types.js';
+import type { GroundingPack } from '../src/nexus/types.js';
 
 describe('formatGroundingPack', () => {
   const pack: GroundingPack = {
@@ -1483,7 +1483,7 @@ Expected: FAIL
 - [ ] **Step 3: 구현** — `src/cli/formatters.ts`에 추가 (기존 포맷터 스타일 따름)
 
 ```typescript
-import type { GroundingPack } from '../khala/types.js';
+import type { GroundingPack } from '../nexus/types.js';
 
 /** GroundingPack → markdown (근본원인 단정 없이 증거만) */
 export function formatGroundingPackMarkdown(pack: GroundingPack): string {
@@ -1588,7 +1588,7 @@ import { formatGroundingPackMarkdown, formatGroundingPackBrief } from './formatt
 import { readFileSync } from 'node:fs';
 ```
 
-- [ ] **Step 2: 커맨드 함수 추가** (`runKhalaStatus` 아래)
+- [ ] **Step 2: 커맨드 함수 추가** (`runNexusStatus` 아래)
 
 ```typescript
 /**
@@ -1609,8 +1609,8 @@ async function runTroubleshootCmd(args: string[]): Promise<void> {
   }
 
   const config = await loadConfigAsync();
-  const khalaConfig = resolveKhalaConfig(config);
-  const client = new KhalaClient(khalaConfig);
+  const nexusConfig = resolveNexusConfig(config);
+  const client = new NexusClient(nexusConfig);
 
   // 선택: --diff-base 제공 시 최근 변경 service 추출
   let changedServices: { service: string; changedFiles: string[] }[] | undefined;
@@ -1619,7 +1619,7 @@ async function runTroubleshootCmd(args: string[]): Promise<void> {
     if (profile) {
       const changedFiles = getChangedFiles(o.diffBase);
       const scope = analyzeScope(changedFiles, profile, getDiffLines(o.diffBase));
-      const { extractServiceNames } = await import('../khala/context-enricher.js');
+      const { extractServiceNames } = await import('../nexus/context-enricher.js');
       changedServices = extractServiceNames(scope.groups).map((service) => ({
         service,
         changedFiles: changedFiles.filter((f) => f.toLowerCase().includes(service.replace(/-/g, ''))),
@@ -1654,7 +1654,7 @@ async function runTroubleshootCmd(args: string[]): Promise<void> {
 }
 ```
 
-- [ ] **Step 3: switch에 case 추가** (`case 'khala:status':` 아래)
+- [ ] **Step 3: switch에 case 추가** (`case 'nexus:status':` 아래)
 
 ```typescript
   case 'troubleshoot':
@@ -1674,7 +1674,7 @@ Run:
 pnpm build
 echo "java.lang.NullPointerException at com.shop.order.OrderService.checkout(OrderService.java:88)" | node dist/cli/index.js troubleshoot
 ```
-Expected: T0(또는 가용 티어) GroundingPack markdown 출력, `order-service` 의심 지점 포함. (Khala 없으면 T0 + caveat)
+Expected: T0(또는 가용 티어) GroundingPack markdown 출력, `order-service` 의심 지점 포함. (Nexus 없으면 T0 + caveat)
 
 - [ ] **Step 5: 전체 회귀 + 타입체크**
 
@@ -1733,7 +1733,7 @@ describe('probe.groundTroubleshooting 등록', () => {
 Run: `pnpm vitest run tests/mcp-troubleshoot-tool.test.ts`
 Expected: FAIL (도구 미등록)
 
-- [ ] **Step 3: 구현** — `src/mcp/tools.ts`의 `registerTools` 내부에 도구 추가, import에 `runTroubleshoot`, `KhalaClient`(이미 있음), `resolveKhalaConfig`(이미 있음) 확인
+- [ ] **Step 3: 구현** — `src/mcp/tools.ts`의 `registerTools` 내부에 도구 추가, import에 `runTroubleshoot`, `NexusClient`(이미 있음), `resolveNexusConfig`(이미 있음) 확인
 
 ```typescript
   // ─── probe.groundTroubleshooting (v0.5) ───
@@ -1748,8 +1748,8 @@ Expected: FAIL (도구 미등록)
     },
     async ({ signal, kind, suspectServices, diffBase }) => {
       const config = await loadConfigAsync();
-      const khalaConfig = resolveKhalaConfig(config);
-      const client = new KhalaClient(khalaConfig);
+      const nexusConfig = resolveNexusConfig(config);
+      const client = new NexusClient(nexusConfig);
       const result = await runTroubleshoot({ signal, kind, suspectServices, diffBase }, client);
       const payload = result.ok ? result.pack : { error: result.reason };
       return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };
@@ -1762,7 +1762,7 @@ import 추가 (파일 상단):
 import { runTroubleshoot } from '../core/troubleshoot.js';
 ```
 
-- [ ] **Step 3b: 같은 파일의 기존 `queryKhala` 가짜 rid 버그도 수정 (Task 3b와 동일 결함)**
+- [ ] **Step 3b: 같은 파일의 기존 `queryNexus` 가짜 rid 버그도 수정 (Task 3b와 동일 결함)**
 
 `src/mcp/tools.ts:251`의 `client.getGraph(\`ent_${entityName}\`, …)` 같은 패턴이 있으면
 `client.getGraph(entityName, …)`로 바꾼다 (`/graph`가 이름 조회 지원 — api.py 392~405).
@@ -1818,9 +1818,9 @@ git commit -m "docs: document v0.5 troubleshooting grounding (CLI + MCP)"
 - [ ] `pnpm typecheck` 에러 없음 (`any` 미사용)
 - [ ] `pnpm build` 성공
 - [ ] **Chunk 3 게이트 통과** — S1 observed_only 갭 데이터패스 실증 (자동 + 가능 시 라이브)
-- [ ] `probe troubleshoot` CLI 동작 (Khala 유/무 양쪽 — 티어 명시)
+- [ ] `probe troubleshoot` CLI 동작 (Nexus 유/무 양쪽 — 티어 명시)
 - [ ] `probe.groundTroubleshooting` MCP 도구 등록·동작
-- [ ] Khala 없을 때 T0로 강등하며 명시 (침묵 강등 없음)
+- [ ] Nexus 없을 때 T0로 강등하며 명시 (침묵 강등 없음)
 - [ ] README/CLAUDE 갱신
 - [ ] 모든 출력이 "근거 모음(근본원인 단정 아님)" 원칙 준수
 

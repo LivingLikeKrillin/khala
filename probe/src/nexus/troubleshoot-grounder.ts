@@ -1,14 +1,14 @@
 /**
  * 트러블슈팅 Grounding Pack 조립
  *
- * Suspect[]와 KhalaClient로 §2~§6 섹션을 병렬 조립한다.
- * 각 섹션은 독립 실패해도 나머지를 막지 않는다 (withKhalaFallback).
+ * Suspect[]와 NexusClient로 §2~§6 섹션을 병렬 조립한다.
+ * 각 섹션은 독립 실패해도 나머지를 막지 않는다 (withNexusFallback).
  * §5 지식 그라운딩은 client.search()를 직접 호출한다 (context-enricher 재사용 안 함 — 스펙 §5.1).
  *
  * 규정 문서: docs/superpowers/specs/2026-06-06-troubleshooting-grounding-design.md §2~§6
  */
 
-import { KhalaClient, withKhalaFallback } from './client.js';
+import { NexusClient, withNexusFallback } from './client.js';
 import { analyzeImpact } from './impact-analyzer.js';
 import { fetchEntityGaps, searchDocs } from './grounding-sections.js';
 import type {
@@ -31,7 +31,7 @@ export interface GroundOptions {
  * Grounding Pack을 조립한다 (티어가 허용하는 섹션까지).
  */
 export async function groundTroubleshooting(
-  client: KhalaClient,
+  client: NexusClient,
   suspects: Suspect[],
   options: GroundOptions,
 ): Promise<GroundingPack> {
@@ -47,7 +47,7 @@ export async function groundTroubleshooting(
 
   // §5 지식 (T1+)
   if (options.tier >= 1) {
-    const knowledge = await withKhalaFallback(
+    const knowledge = await withNexusFallback(
       // 검색 쿼리는 앞 500자만 사용 (저장 신호의 8000자 절단과는 별개 — 쿼리 품질·길이 제한용)
       () => searchDocs(client, options.signal.slice(0, 500), options.searchTopK ?? 5),
       null, 'search',
@@ -58,7 +58,7 @@ export async function groundTroubleshooting(
 
   // §2 토폴로지/영향 (T2+)
   if (options.tier >= 2 && names.length > 0) {
-    const topology = await withKhalaFallback<ImpactAnalysis | null>(
+    const topology = await withNexusFallback<ImpactAnalysis | null>(
       () => analyzeImpact(client, names, { hops: options.graphHops ?? 2 }),
       null, 'impact',
     );
@@ -67,7 +67,7 @@ export async function groundTroubleshooting(
 
   // §3 설계-관측 갭 (doc_only는 T2+, observed_only/conflict는 T3)
   if (options.tier >= 2 && names.length > 0) {
-    const gaps = await withKhalaFallback(
+    const gaps = await withNexusFallback(
       () => fetchEntityGaps(client, names),
       null, 'diff',
     );

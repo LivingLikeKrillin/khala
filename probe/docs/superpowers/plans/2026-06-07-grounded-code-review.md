@@ -4,9 +4,9 @@
 
 **Goal:** git diff를 입력받아 변경 엔티티에 대한 비제너럴 조직 그라운딩(설계-관측 갭·규정·토폴로지·승인 스펙·claim drift)을 `ReviewGroundingPack`(증거만, 판정 없음)으로 조립해 CLI/MCP로 노출한다.
 
-**Architecture:** v0.5 grounder 자산(`getDiff({entityFilter})`/`getStatusProbe`/`determineTier`/`analyzeImpact`/`search`)을 diff 입력으로 재사용한다. 새 `review-grounder`가 정규 조립기이고, v0.4 `enrichWithKhala`는 이 grounder에 위임하는 얇은 어댑터로 수렴(전역 diff 버그 교정). Probe는 diff 소스를 의미 분석하지 않는다 — 변경 파일→엔티티 라우팅까지만. 판정은 Claude.
+**Architecture:** v0.5 grounder 자산(`getDiff({entityFilter})`/`getStatusProbe`/`determineTier`/`analyzeImpact`/`search`)을 diff 입력으로 재사용한다. 새 `review-grounder`가 정규 조립기이고, v0.4 `enrichWithNexus`는 이 grounder에 위임하는 얇은 어댑터로 수렴(전역 diff 버그 교정). Probe는 diff 소스를 의미 분석하지 않는다 — 변경 파일→엔티티 라우팅까지만. 판정은 Claude.
 
-**Tech Stack:** TypeScript (strict), Node ≥20, vitest, tsup. 기존 `src/khala`·`src/core`·`src/cli`·`src/mcp` 구조 준수.
+**Tech Stack:** TypeScript (strict), Node ≥20, vitest, tsup. 기존 `src/nexus`·`src/core`·`src/cli`·`src/mcp` 구조 준수.
 
 **Spec:** `docs/superpowers/specs/2026-06-07-grounded-code-review-design.md`
 
@@ -15,17 +15,17 @@
 ## File Structure
 
 **Create:**
-- `src/khala/tier.ts` — `determineTier`/`TierDecision` 이전(khala 레이어). `core`/`khala` 양쪽이 순환 없이 공유.
-- `src/khala/grounding-sections.ts` — 두 grounder 공유 섹션 헬퍼: `fetchEntityGaps`, `searchDocs`.
-- `src/khala/review-grounder.ts` — `ChangedEntity[]` → `ReviewGroundingPack` 정규 조립기 + `partitionDocs`.
+- `src/nexus/tier.ts` — `determineTier`/`TierDecision` 이전(nexus 레이어). `core`/`nexus` 양쪽이 순환 없이 공유.
+- `src/nexus/grounding-sections.ts` — 두 grounder 공유 섹션 헬퍼: `fetchEntityGaps`, `searchDocs`.
+- `src/nexus/review-grounder.ts` — `ChangedEntity[]` → `ReviewGroundingPack` 정규 조립기 + `partitionDocs`.
 - `src/core/review-ground.ts` — `buildChangedEntities`(순수) + `runReviewGround`(티어→grounder→caveat).
-- `tests/khala-tier.test.ts`, `tests/grounding-sections.test.ts`, `tests/review-grounder.test.ts`, `tests/core-review-ground.test.ts`, `tests/cli-review-ground.test.ts`(포맷터), `tests/signature-review-scenario.test.ts`.
+- `tests/nexus-tier.test.ts`, `tests/grounding-sections.test.ts`, `tests/review-grounder.test.ts`, `tests/core-review-ground.test.ts`, `tests/cli-review-ground.test.ts`(포맷터), `tests/signature-review-scenario.test.ts`.
 
 **Modify:**
-- `src/khala/types.ts` — `ReviewGroundingPack`/`ChangedEntity`/`SpecRef` 추가.
-- `src/core/troubleshoot.ts` — `determineTier`/`TierDecision`를 `khala/tier.ts`에서 re-export(back-compat).
-- `src/khala/troubleshoot-grounder.ts` — `fetchGaps`→`fetchEntityGaps`, `fetchKnowledge`→`searchDocs` 위임(DRY).
-- `src/khala/context-enricher.ts` — `enrichWithKhala`를 `groundReview` 위임 어댑터로 축소(전역→엔티티 스코프 diff).
+- `src/nexus/types.ts` — `ReviewGroundingPack`/`ChangedEntity`/`SpecRef` 추가.
+- `src/core/troubleshoot.ts` — `determineTier`/`TierDecision`를 `nexus/tier.ts`에서 re-export(back-compat).
+- `src/nexus/troubleshoot-grounder.ts` — `fetchGaps`→`fetchEntityGaps`, `fetchKnowledge`→`searchDocs` 위임(DRY).
+- `src/nexus/context-enricher.ts` — `enrichWithNexus`를 `groundReview` 위임 어댑터로 축소(전역→엔티티 스코프 diff).
 - `src/cli/index.ts` — `review:ground` 서브커맨드.
 - `src/cli/parse-args.ts` — `parseReviewGroundArgs`.
 - `src/cli/formatters.ts` — `formatReviewGroundingPackMarkdown`/`Brief`.
@@ -39,14 +39,14 @@
 ### Task 1: 신규 타입 추가
 
 **Files:**
-- Modify: `src/khala/types.ts` (ImpactedService/DesignGap/ClaimRef 정의 뒤, GroundingPack 부근)
+- Modify: `src/nexus/types.ts` (ImpactedService/DesignGap/ClaimRef 정의 뒤, GroundingPack 부근)
 - Test: `tests/troubleshoot-types.test.ts` (기존 타입 컴파일 테스트에 추가)
 
 - [ ] **Step 1: 타입 컴파일 테스트 작성**
 
 `tests/troubleshoot-types.test.ts`에 추가:
 ```typescript
-import type { ReviewGroundingPack, ChangedEntity, SpecRef } from '../src/khala/types.js';
+import type { ReviewGroundingPack, ChangedEntity, SpecRef } from '../src/nexus/types.js';
 
 it('ReviewGroundingPack 타입이 구성된다', () => {
   const pack: ReviewGroundingPack = {
@@ -69,7 +69,7 @@ Expected: FAIL — `ReviewGroundingPack` 등 타입 없음 (TS2305/컴파일 에
 
 - [ ] **Step 3: 타입 구현**
 
-`src/khala/types.ts`의 `GroundingPack` 인터페이스 정의 바로 뒤에 추가:
+`src/nexus/types.ts`의 `GroundingPack` 인터페이스 정의 바로 뒤에 추가:
 ```typescript
 /** 변경 엔티티 — diff→service/entity 라우팅 산출 (v0.6) */
 export interface ChangedEntity {
@@ -81,7 +81,7 @@ export interface ChangedEntity {
   cohesionGroup?: string;
 }
 
-/** specledger가 Khala에 발행한 승인 스펙의 읽기전용 투영 (v0.6) */
+/** specledger가 Nexus에 발행한 승인 스펙의 읽기전용 투영 (v0.6) */
 export interface SpecRef {
   docTitle: string;
   sectionPath: string;
@@ -113,34 +113,34 @@ Expected: PASS
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add src/khala/types.ts tests/troubleshoot-types.test.ts
+git add src/nexus/types.ts tests/troubleshoot-types.test.ts
 git commit -m "feat: add ReviewGroundingPack/ChangedEntity/SpecRef types (v0.6)"
 ```
 
-### Task 2: determineTier를 khala/tier.ts로 이전 (순환 방지)
+### Task 2: determineTier를 nexus/tier.ts로 이전 (순환 방지)
 
-**근거:** `enrichWithKhala`(khala 레이어)가 티어를 계산하려면 `determineTier`가 필요한데, 현재 `core/troubleshoot.ts`에 있어 khala→core 순환이 생긴다. khala 레이어로 옮기고 core는 re-export한다. 기존 테스트는 `core/troubleshoot`에서 import하므로 re-export로 무변경 통과.
+**근거:** `enrichWithNexus`(nexus 레이어)가 티어를 계산하려면 `determineTier`가 필요한데, 현재 `core/troubleshoot.ts`에 있어 nexus→core 순환이 생긴다. nexus 레이어로 옮기고 core는 re-export한다. 기존 테스트는 `core/troubleshoot`에서 import하므로 re-export로 무변경 통과.
 
 **Files:**
-- Create: `src/khala/tier.ts`
+- Create: `src/nexus/tier.ts`
 - Modify: `src/core/troubleshoot.ts` (determineTier/TierDecision 정의 삭제 → re-export)
-- Test: `tests/khala-tier.test.ts`
+- Test: `tests/nexus-tier.test.ts`
 
 - [ ] **Step 1: 실패 테스트 작성**
 
-`tests/khala-tier.test.ts`:
+`tests/nexus-tier.test.ts`:
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { determineTier } from '../src/khala/tier.js';
-import type { KhalaStatusResult } from '../src/khala/types.js';
+import { determineTier } from '../src/nexus/tier.js';
+import type { NexusStatusResult } from '../src/nexus/types.js';
 
-describe('determineTier (khala/tier)', () => {
+describe('determineTier (nexus/tier)', () => {
   it('null+timeout이면 T0이고 미가용과 사유가 다르다', () => {
     expect(determineTier(null, 'timeout').tier).toBe(0);
     expect(determineTier(null, 'timeout').reason).not.toBe(determineTier(null, 'unreachable').reason);
   });
   it('관측 엣지가 있으면 T3', () => {
-    const s: KhalaStatusResult = { db_connected: true, edges_count: 3, observed_edges_count: 2 };
+    const s: NexusStatusResult = { db_connected: true, edges_count: 3, observed_edges_count: 2 };
     expect(determineTier(s).tier).toBe(3);
   });
 });
@@ -148,18 +148,18 @@ describe('determineTier (khala/tier)', () => {
 
 - [ ] **Step 2: 테스트 실패 확인**
 
-Run: `npx vitest run tests/khala-tier.test.ts`
-Expected: FAIL — `src/khala/tier.js` 없음
+Run: `npx vitest run tests/nexus-tier.test.ts`
+Expected: FAIL — `src/nexus/tier.js` 없음
 
 - [ ] **Step 3: tier.ts 작성 + core 재export**
 
-`src/khala/tier.ts` (현재 `core/troubleshoot.ts`의 `TierDecision`+`determineTier` 본문을 그대로 이동):
+`src/nexus/tier.ts` (현재 `core/troubleshoot.ts`의 `TierDecision`+`determineTier` 본문을 그대로 이동):
 ```typescript
 /**
  * 그라운딩 티어 결정 — /status 카운트와 실패 사유로 T0~T3을 판정한다.
- * v0.5(troubleshoot)와 v0.6(review)이 공유한다. khala 레이어에 둬서 순환을 피한다.
+ * v0.5(troubleshoot)와 v0.6(review)이 공유한다. nexus 레이어에 둬서 순환을 피한다.
  */
-import type { KhalaStatusResult } from './types.js';
+import type { NexusStatusResult } from './types.js';
 
 export interface TierDecision {
   tier: 0 | 1 | 2 | 3;
@@ -167,17 +167,17 @@ export interface TierDecision {
 }
 
 export function determineTier(
-  status: KhalaStatusResult | null,
+  status: NexusStatusResult | null,
   failure?: 'timeout' | 'unreachable',
 ): TierDecision {
   if (!status || !status.db_connected) {
     if (failure === 'timeout') {
       return {
         tier: 0,
-        reason: 'Khala 응답 시간 초과 → T0 (느림/콜드스타트 가능 — 재시도 권장, Khala timeout)',
+        reason: 'Nexus 응답 시간 초과 → T0 (느림/콜드스타트 가능 — 재시도 권장, Nexus timeout)',
       };
     }
-    return { tier: 0, reason: 'Khala 미가용 → T0 (국소화·프로파일만)' };
+    return { tier: 0, reason: 'Nexus 미가용 → T0 (국소화·프로파일만)' };
   }
   const obs = status.observed_edges_count ?? 0;
   const edges = status.edges_count ?? 0;
@@ -185,28 +185,28 @@ export function determineTier(
   if (obs > 0) return { tier: 3, reason: `관측 엣지 ${obs}개 → T3 (운영신호·설계-관측 갭 포함)` };
   if (edges > 0) return { tier: 2, reason: `설계 엣지 ${edges}개, 관측 0 → T2 (토폴로지·영향)` };
   if (docs > 0) return { tier: 1, reason: `문서 ${docs}개, 엣지 0 → T1 (RAG 지식만)` };
-  return { tier: 0, reason: 'Khala 연결됐으나 인덱싱 데이터 없음 → T0' };
+  return { tier: 0, reason: 'Nexus 연결됐으나 인덱싱 데이터 없음 → T0' };
 }
 ```
 
 `src/core/troubleshoot.ts`에서 `TierDecision` 인터페이스와 `determineTier` 함수 정의를 **삭제**하고, 파일 상단 import 영역에 re-export 추가:
 ```typescript
-// 티어 결정은 khala/tier로 이전됨 (순환 방지). back-compat re-export.
-export { determineTier } from '../khala/tier.js';
-export type { TierDecision } from '../khala/tier.js';
+// 티어 결정은 nexus/tier로 이전됨 (순환 방지). back-compat re-export.
+export { determineTier } from '../nexus/tier.js';
+export type { TierDecision } from '../nexus/tier.js';
 ```
 (`runTroubleshoot` 내부의 `determineTier(...)` 호출은 그대로 동작 — 같은 심볼.)
 
 - [ ] **Step 4: 전체 테스트 통과 확인 (기존 core-troubleshoot 회귀 포함)**
 
-Run: `npx vitest run tests/khala-tier.test.ts tests/core-troubleshoot.test.ts`
+Run: `npx vitest run tests/nexus-tier.test.ts tests/core-troubleshoot.test.ts`
 Expected: PASS (both) — 기존 `core-troubleshoot.test.ts`의 `determineTier` import는 re-export로 통과
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add src/khala/tier.ts src/core/troubleshoot.ts tests/khala-tier.test.ts
-git commit -m "refactor: move determineTier to khala/tier (avoid khala→core cycle)"
+git add src/nexus/tier.ts src/core/troubleshoot.ts tests/nexus-tier.test.ts
+git commit -m "refactor: move determineTier to nexus/tier (avoid nexus→core cycle)"
 ```
 
 ### Task 3: 공유 섹션 헬퍼 추출 (grounding-sections.ts)
@@ -214,8 +214,8 @@ git commit -m "refactor: move determineTier to khala/tier (avoid khala→core cy
 **근거:** `troubleshoot-grounder`의 `fetchGaps`(엔티티 스코프 /diff)와 `fetchKnowledge`(search→RelevantDoc 매핑)는 review-grounder와 동일하다. DRY로 추출하고 troubleshoot-grounder를 위임시킨다. 동작 불변이라 기존 테스트 green 유지.
 
 **Files:**
-- Create: `src/khala/grounding-sections.ts`
-- Modify: `src/khala/troubleshoot-grounder.ts` (fetchGaps/fetchKnowledge → 공유 헬퍼 위임)
+- Create: `src/nexus/grounding-sections.ts`
+- Modify: `src/nexus/troubleshoot-grounder.ts` (fetchGaps/fetchKnowledge → 공유 헬퍼 위임)
 - Test: `tests/grounding-sections.test.ts`
 
 - [ ] **Step 1: 실패 테스트 작성**
@@ -223,8 +223,8 @@ git commit -m "refactor: move determineTier to khala/tier (avoid khala→core cy
 `tests/grounding-sections.test.ts`:
 ```typescript
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchEntityGaps, searchDocs } from '../src/khala/grounding-sections.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { fetchEntityGaps, searchDocs } from '../src/nexus/grounding-sections.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 function mockByPath(handlers: Record<string, unknown>) {
   return vi.fn((url: string) => {
@@ -244,20 +244,20 @@ describe('grounding-sections', () => {
     globalThis.fetch = mockByPath({ '/diff': { diffs: [
       { flag: 'doc_only', from_name: 'a', to_name: 'b', edge_type: 'CALLS', detail: 'd', designed_evidence: [], observed_evidence: null },
     ] } }) as unknown as typeof globalThis.fetch;
-    const gaps = await fetchEntityGaps(new KhalaClient({ baseUrl: 'http://t:8000' }), ['order-service']);
+    const gaps = await fetchEntityGaps(new NexusClient({ baseUrl: 'http://t:8000' }), ['order-service']);
     expect(gaps[0]!.flag).toBe('doc_only');
   });
 
   it('fetchEntityGaps는 모든 diff가 null이면 throw한다', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({ success: false, error: 'e' }) }) as unknown as typeof globalThis.fetch;
-    await expect(fetchEntityGaps(new KhalaClient({ baseUrl: 'http://t:8000' }), ['x'])).rejects.toThrow();
+    await expect(fetchEntityGaps(new NexusClient({ baseUrl: 'http://t:8000' }), ['x'])).rejects.toThrow();
   });
 
   it('searchDocs는 검색 히트를 RelevantDoc[]로 매핑한다', async () => {
     globalThis.fetch = mockByPath({ '/search': { results: [
       { doc_title: 'T', section_path: '1', snippet: 's', score: 0.9, classification: 'INTERNAL' },
     ] } }) as unknown as typeof globalThis.fetch;
-    const docs = await searchDocs(new KhalaClient({ baseUrl: 'http://t:8000' }), 'q', 5);
+    const docs = await searchDocs(new NexusClient({ baseUrl: 'http://t:8000' }), 'q', 5);
     expect(docs?.[0]!.docTitle).toBe('T');
   });
 });
@@ -270,18 +270,18 @@ Expected: FAIL — 모듈 없음
 
 - [ ] **Step 3: grounding-sections.ts 작성**
 
-`src/khala/grounding-sections.ts` (현재 troubleshoot-grounder.ts의 `fetchGaps`/`fetchKnowledge` 본문을 일반화해 이동):
+`src/nexus/grounding-sections.ts` (현재 troubleshoot-grounder.ts의 `fetchGaps`/`fetchKnowledge` 본문을 일반화해 이동):
 ```typescript
 /**
- * 두 grounder(troubleshoot v0.5 / review v0.6) 공유 Khala 섹션 헬퍼.
+ * 두 grounder(troubleshoot v0.5 / review v0.6) 공유 Nexus 섹션 헬퍼.
  * 동일 호출의 중복을 막기 위해 추출됐다 — 출력 팩 조립만 각 grounder가 한다.
  */
-import type { KhalaClient } from './client.js';
+import type { NexusClient } from './client.js';
 import type { DesignGap, RelevantDoc } from './types.js';
 
 /** 각 엔티티의 엔티티 스코프 /diff를 합쳐 DesignGap[]로 변환한다.
- *  모든 diff 조회가 null이면 throw해 상위 withKhalaFallback이 caveat을 남기게 한다. */
-export async function fetchEntityGaps(client: KhalaClient, names: string[]): Promise<DesignGap[]> {
+ *  모든 diff 조회가 null이면 throw해 상위 withNexusFallback이 caveat을 남기게 한다. */
+export async function fetchEntityGaps(client: NexusClient, names: string[]): Promise<DesignGap[]> {
   const results = await Promise.all(names.map((n) => client.getDiff({ entityFilter: n })));
   const ok = results.filter((r) => r !== null);
   if (ok.length === 0 && names.length > 0) {
@@ -305,7 +305,7 @@ export async function fetchEntityGaps(client: KhalaClient, names: string[]): Pro
 
 /** 쿼리로 문서를 검색해 RelevantDoc[]로 매핑한다. 실패 시 null. */
 export async function searchDocs(
-  client: KhalaClient, query: string, topK: number,
+  client: NexusClient, query: string, topK: number,
 ): Promise<RelevantDoc[] | null> {
   const result = await client.search(query, { topK });
   if (!result) return null;
@@ -318,7 +318,7 @@ export async function searchDocs(
 
 - [ ] **Step 4: troubleshoot-grounder를 공유 헬퍼로 위임**
 
-`src/khala/troubleshoot-grounder.ts`:
+`src/nexus/troubleshoot-grounder.ts`:
 1. import 추가: `import { fetchEntityGaps, searchDocs } from './grounding-sections.js';`
 2. `fetchKnowledge` 본문을 `return searchDocs(client, signal.slice(0, 500), topK);`로 교체(또는 호출부를 `searchDocs(client, options.signal.slice(0,500), ...)`로 바꾸고 로컬 `fetchKnowledge` 제거).
 3. 로컬 `fetchGaps` 제거하고 호출부 `fetchGaps(client, names)` → `fetchEntityGaps(client, names)`.
@@ -331,14 +331,14 @@ Expected: PASS (both) — troubleshoot-grounder 동작 불변
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add src/khala/grounding-sections.ts src/khala/troubleshoot-grounder.ts tests/grounding-sections.test.ts
+git add src/nexus/grounding-sections.ts src/nexus/troubleshoot-grounder.ts tests/grounding-sections.test.ts
 git commit -m "refactor: extract shared grounding-sections (fetchEntityGaps/searchDocs)"
 ```
 
 ### Task 4: review-grounder.ts (정규 조립기 + partitionDocs)
 
 **Files:**
-- Create: `src/khala/review-grounder.ts`
+- Create: `src/nexus/review-grounder.ts`
 - Test: `tests/review-grounder.test.ts`
 
 - [ ] **Step 1: 실패 테스트 작성**
@@ -346,9 +346,9 @@ git commit -m "refactor: extract shared grounding-sections (fetchEntityGaps/sear
 `tests/review-grounder.test.ts`:
 ```typescript
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { groundReview, partitionDocs } from '../src/khala/review-grounder.js';
-import { KhalaClient } from '../src/khala/client.js';
-import type { RelevantDoc } from '../src/khala/types.js';
+import { groundReview, partitionDocs } from '../src/nexus/review-grounder.js';
+import { NexusClient } from '../src/nexus/client.js';
+import type { RelevantDoc } from '../src/nexus/types.js';
 
 function mockByPath(handlers: Record<string, unknown>) {
   return vi.fn((url: string) => {
@@ -387,7 +387,7 @@ describe('groundReview', () => {
       '/diff': { diffs: [{ flag: 'observed_only', from_name: 'order-service', to_name: 'inventory-service', edge_type: 'CALLS_OBSERVED', detail: '설계에 없음', designed_evidence: [], observed_evidence: { sample_trace_ids: ['t1'], trace_query_ref: 'r' } }] },
     }) as unknown as typeof globalThis.fetch;
 
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const pack = await groundReview(client,
       [{ entityName: 'order-service', changedFiles: ['OrderService.java'] }],
       { tier: 3 });
@@ -403,7 +403,7 @@ describe('groundReview', () => {
       '/graph': { center_entity: { rid: 'e', name: 'order-service' }, edges: [], observed_edges: [] },
       '/diff': { diffs: [] },
     }) as unknown as typeof globalThis.fetch;
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const pack = await groundReview(client, [{ entityName: 'order-service', changedFiles: [] }], { tier: 3 });
     expect(pack.caveats.some((c) => c.includes('승인 스펙') || c.toLowerCase().includes('spec'))).toBe(true);
     expect(pack.applicableGuidelines?.some((g) => g.docTitle === '결제 규정')).toBe(true);
@@ -411,7 +411,7 @@ describe('groundReview', () => {
 
   it('Archon 미연동 caveat를 항상 남긴다', async () => {
     globalThis.fetch = mockByPath({ '/search': { results: [] }, '/graph': { center_entity: { rid: 'e', name: 'x' }, edges: [], observed_edges: [] }, '/diff': { diffs: [] } }) as unknown as typeof globalThis.fetch;
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const pack = await groundReview(client, [{ entityName: 'x', changedFiles: [] }], { tier: 2 });
     expect(pack.caveats.some((c) => c.includes('Archon'))).toBe(true);
   });
@@ -425,18 +425,18 @@ Expected: FAIL — 모듈 없음
 
 - [ ] **Step 3: review-grounder.ts 구현**
 
-`src/khala/review-grounder.ts`:
+`src/nexus/review-grounder.ts`:
 ```typescript
 /**
  * 리뷰 Grounding Pack 조립 (v0.6)
  *
- * ChangedEntity[]와 KhalaClient로 §2~§6 섹션을 병렬 조립한다.
- * 각 섹션은 독립 실패해도 나머지를 막지 않는다 (withKhalaFallback).
+ * ChangedEntity[]와 NexusClient로 §2~§6 섹션을 병렬 조립한다.
+ * 각 섹션은 독립 실패해도 나머지를 막지 않는다 (withNexusFallback).
  * Probe는 diff 소스를 의미 분석하지 않는다 — 변경 엔티티에 대한 조직 그라운딩만 모은다.
  *
  * 규정 문서: docs/superpowers/specs/2026-06-07-grounded-code-review-design.md
  */
-import { KhalaClient, withKhalaFallback } from './client.js';
+import { NexusClient, withNexusFallback } from './client.js';
 import { analyzeImpact } from './impact-analyzer.js';
 import { fetchEntityGaps, searchDocs } from './grounding-sections.js';
 import type {
@@ -477,7 +477,7 @@ export function partitionDocs(
 
 /** 변경 엔티티에 대한 Review Grounding Pack을 조립한다 (티어가 허용하는 섹션까지). */
 export async function groundReview(
-  client: KhalaClient,
+  client: NexusClient,
   changedEntities: ChangedEntity[],
   options: ReviewGroundOptions,
 ): Promise<ReviewGroundingPack> {
@@ -489,7 +489,7 @@ export async function groundReview(
 
   // §2/§3 지식 → 규정 + 승인 스펙 분리 (T1+)
   if (options.tier >= 1 && names.length > 0) {
-    const docs = await withKhalaFallback(
+    const docs = await withNexusFallback(
       () => searchDocs(client, names.join(' '), options.searchTopK ?? 5),
       null, 'search',
     );
@@ -505,7 +505,7 @@ export async function groundReview(
 
   // §4 토폴로지/영향 (T2+)
   if (options.tier >= 2 && names.length > 0) {
-    const topology = await withKhalaFallback<ImpactAnalysis | null>(
+    const topology = await withNexusFallback<ImpactAnalysis | null>(
       () => analyzeImpact(client, names, { hops: options.graphHops ?? 2 }),
       null, 'impact',
     );
@@ -514,7 +514,7 @@ export async function groundReview(
 
   // §5 설계-관측 갭 (doc_only는 T2+, observed_only/conflict는 T3)
   if (options.tier >= 2 && names.length > 0) {
-    const gaps = await withKhalaFallback(
+    const gaps = await withNexusFallback(
       () => fetchEntityGaps(client, names),
       null, 'diff',
     );
@@ -544,13 +544,13 @@ Expected: PASS
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add src/khala/review-grounder.ts tests/review-grounder.test.ts
+git add src/nexus/review-grounder.ts tests/review-grounder.test.ts
 git commit -m "feat: add review-grounder (ChangedEntity[] -> ReviewGroundingPack)"
 ```
 
 ---
 
-## Chunk 2: core 오케스트레이션 + enrichWithKhala 수렴
+## Chunk 2: core 오케스트레이션 + enrichWithNexus 수렴
 
 ### Task 5: buildChangedEntities + runReviewGround (core/review-ground.ts)
 
@@ -564,7 +564,7 @@ git commit -m "feat: add review-grounder (ChangedEntity[] -> ReviewGroundingPack
 ```typescript
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { buildChangedEntities, runReviewGround } from '../src/core/review-ground.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { NexusClient } from '../src/nexus/client.js';
 import type { DetectedGroup } from '../src/core/scope-analyzer.js';
 
 describe('buildChangedEntities', () => {
@@ -586,14 +586,14 @@ describe('runReviewGround', () => {
   afterEach(() => { globalThis.fetch = orig; });
 
   it('엔티티 0개면 ok:false', async () => {
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const r = await runReviewGround([], client);
     expect(r.ok).toBe(false);
   });
 
-  it('Khala 미가용이면 T0 + changedEntities만', async () => {
+  it('Nexus 미가용이면 T0 + changedEntities만', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('down')) as unknown as typeof globalThis.fetch;
-    const client = new KhalaClient({ baseUrl: 'http://t:8000' });
+    const client = new NexusClient({ baseUrl: 'http://t:8000' });
     const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['a.ts'] }], client);
     expect(r.ok).toBe(true);
     if (r.ok) {
@@ -619,11 +619,11 @@ Expected: FAIL — 모듈 없음
  * Probe는 diff 소스를 의미 분석하지 않는다 — 변경 파일→엔티티 라우팅까지만.
  * 규정 문서: docs/superpowers/specs/2026-06-07-grounded-code-review-design.md
  */
-import { KhalaClient } from '../khala/client.js';
-import { determineTier } from '../khala/tier.js';
-import { groundReview, type ReviewGroundOptions } from '../khala/review-grounder.js';
-import { extractServiceNames, fileBelongsToService } from '../khala/context-enricher.js';
-import type { ChangedEntity, ReviewGroundingPack } from '../khala/types.js';
+import { NexusClient } from '../nexus/client.js';
+import { determineTier } from '../nexus/tier.js';
+import { groundReview, type ReviewGroundOptions } from '../nexus/review-grounder.js';
+import { extractServiceNames, fileBelongsToService } from '../nexus/context-enricher.js';
+import type { ChangedEntity, ReviewGroundingPack } from '../nexus/types.js';
 import type { DetectedGroup } from './scope-analyzer.js';
 
 /** 응집 그룹 + 변경 파일에서 ChangedEntity[]를 만든다 (순수 — 소스 의미분석 없음). */
@@ -647,7 +647,7 @@ export function buildChangedEntities(
 /** 리뷰 그라운딩 전체 실행. */
 export async function runReviewGround(
   changedEntities: ChangedEntity[],
-  client: KhalaClient,
+  client: NexusClient,
   options?: Partial<ReviewGroundOptions>,
 ): Promise<{ ok: false; reason: string } | { ok: true; pack: ReviewGroundingPack }> {
   if (changedEntities.length === 0) {
@@ -682,30 +682,30 @@ git add src/core/review-ground.ts tests/core-review-ground.test.ts
 git commit -m "feat: add core review-ground orchestration (buildChangedEntities/runReviewGround)"
 ```
 
-### Task 6: enrichWithKhala를 groundReview 위임 어댑터로 수렴
+### Task 6: enrichWithNexus를 groundReview 위임 어댑터로 수렴
 
-**근거(스펙 §1.3/§5.1):** v0.4 enrichWithKhala는 전역 `/diff`를 써 노이즈가 크다. groundReview에 위임해 엔티티 스코프 diff로 교정하고, 결과를 레거시 `EnrichmentResult`로 투영한다. EnrichmentResult 형태는 불변 → MCP scope 도구 호환.
+**근거(스펙 §1.3/§5.1):** v0.4 enrichWithNexus는 전역 `/diff`를 써 노이즈가 크다. groundReview에 위임해 엔티티 스코프 diff로 교정하고, 결과를 레거시 `EnrichmentResult`로 투영한다. EnrichmentResult 형태는 불변 → MCP scope 도구 호환.
 
 **Files:**
-- Modify: `src/khala/context-enricher.ts` (`enrichWithKhala` 본문 교체; `extractServiceNames`/`fileBelongsToService`/검색 헬퍼는 유지)
-- Test: `tests/context-enricher.test.ts` (기존 enrichWithKhala 테스트 + 신규 위임/투영 회귀)
+- Modify: `src/nexus/context-enricher.ts` (`enrichWithNexus` 본문 교체; `extractServiceNames`/`fileBelongsToService`/검색 헬퍼는 유지)
+- Test: `tests/context-enricher.test.ts` (기존 enrichWithNexus 테스트 + 신규 위임/투영 회귀)
 
-> ⚠️ 순환 주의: `context-enricher.ts`(khala)가 `review-grounder`(khala)·`tier`(khala)·`buildChangedEntities`(core)를 import. `buildChangedEntities`는 `context-enricher`를 import하므로 **core→khala 단방향 유지**를 위해, 어댑터는 `buildChangedEntities`를 쓰지 말고 엔티티를 `context-enricher` 로컬에서 직접 만든다(이미 `extractServiceNames`/`fileBelongsToService` 보유). 즉 core를 import하지 않는다.
+> ⚠️ 순환 주의: `context-enricher.ts`(nexus)가 `review-grounder`(nexus)·`tier`(nexus)·`buildChangedEntities`(core)를 import. `buildChangedEntities`는 `context-enricher`를 import하므로 **core→nexus 단방향 유지**를 위해, 어댑터는 `buildChangedEntities`를 쓰지 말고 엔티티를 `context-enricher` 로컬에서 직접 만든다(이미 `extractServiceNames`/`fileBelongsToService` 보유). 즉 core를 import하지 않는다.
 
-- [ ] **Step 1: 기존 enrichWithKhala 테스트의 `/status` 목 갱신 (필수 — 회귀 방지)**
+- [ ] **Step 1: 기존 enrichWithNexus 테스트의 `/status` 목 갱신 (필수 — 회귀 방지)**
 
 신규 어댑터는 `isAvailable()`(`.ok`만 검사) 대신 `getStatusProbe()`(`await response.json()` + `{success,data}` 요구)를 쓴다. 기존 테스트 2개는 `/status`(또는 availability)를 `{ ok: true, status: 200 }`(json 메서드 없음)로 목킹해 **신규 코드에서 깨진다**. `tests/context-enricher.test.ts`에서 다음을 갱신한다:
 
-1. **"서비스명을 추출할 수 없으면 빈 결과와 khalaAvailable=true를 반환한다"** — `globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 })`를 아래로 교체:
+1. **"서비스명을 추출할 수 없으면 빈 결과와 nexusAvailable=true를 반환한다"** — `globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 })`를 아래로 교체:
 ```typescript
 globalThis.fetch = vi.fn().mockResolvedValue({
   ok: true, status: 200,
   json: () => Promise.resolve({ success: true, data: { db_connected: true, documents_count: 0, edges_count: 0 }, error: null, meta: {} }),
 }) as unknown as typeof fetch;
 ```
-(엔티티 추출 0개라 grounder 호출 전에 `{ ...EMPTY_ENRICHMENT, khalaAvailable: true }` 반환 — 단언 유지.)
+(엔티티 추출 0개라 grounder 호출 전에 `{ ...EMPTY_ENRICHMENT, nexusAvailable: true }` 반환 — 단언 유지.)
 
-2. **"칼라가 가용하면 3개 조회를 병렬 수행한다"** — `/status` 분기 `return Promise.resolve({ ok: true, status: 200 });`를 아래로 교체(T3 도달해 search/impact/diff 모두 실행):
+2. **"Nexus가 가용하면 3개 조회를 병렬 수행한다"** — `/status` 분기 `return Promise.resolve({ ok: true, status: 200 });`를 아래로 교체(T3 도달해 search/impact/diff 모두 실행):
 ```typescript
 if (urlStr.includes('/status')) {
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { db_connected: true, documents_count: 5, edges_count: 3, observed_edges_count: 2 }, error: null, meta: {} }) });
@@ -715,7 +715,7 @@ if (urlStr.includes('/status')) {
 
 - [ ] **Step 2: 위임/투영 회귀 테스트 작성**
 
-`tests/context-enricher.test.ts`의 `enrichWithKhala` describe에 추가:
+`tests/context-enricher.test.ts`의 `enrichWithNexus` describe에 추가:
 ```typescript
 it('엔티티 스코프 diff로 갭과 영향 서비스를 투영한다 (수렴 + Q6 평탄화)', async () => {
   // T3, /diff는 entity_filter 쿼리에서만 갭 반환 (전역 호출이면 빈 결과)
@@ -731,8 +731,8 @@ it('엔티티 스코프 diff로 갭과 영향 서비스를 투영한다 (수렴 
   }) as unknown as typeof globalThis.fetch;
 
   const groups = makeGroups(['Order']);
-  const result = await enrichWithKhala(groups, ['src/order/OrderService.java'], { khalaConfig: { baseUrl: 'http://t:8000' } });
-  expect(result.khalaAvailable).toBe(true);
+  const result = await enrichWithNexus(groups, ['src/order/OrderService.java'], { nexusConfig: { baseUrl: 'http://t:8000' } });
+  expect(result.nexusAvailable).toBe(true);
   expect(result.designObservationGaps.some((g) => g.flag === 'observed_only')).toBe(true); // 엔티티 스코프라 발견
   expect(result.impactedServices.some((s) => s.name === 'inventory-service')).toBe(true); // Q6: topology → 평탄 impactedServices 투영
 });
@@ -741,27 +741,27 @@ it('엔티티 스코프 diff로 갭과 영향 서비스를 투영한다 (수렴 
 - [ ] **Step 3: 테스트 실패 확인**
 
 Run: `npx vitest run tests/context-enricher.test.ts`
-Expected: FAIL (신규 테스트) — 현재 enrichWithKhala는 전역 getDiff()라 entity_filter 미전송 → 갭 0. (Step 1 갱신분은 신규 코드 적용 전엔 통과/무관)
+Expected: FAIL (신규 테스트) — 현재 enrichWithNexus는 전역 getDiff()라 entity_filter 미전송 → 갭 0. (Step 1 갱신분은 신규 코드 적용 전엔 통과/무관)
 
-- [ ] **Step 4: enrichWithKhala 어댑터 구현**
+- [ ] **Step 4: enrichWithNexus 어댑터 구현**
 
-`src/khala/context-enricher.ts`의 `enrichWithKhala` 본문을 교체(상단 import에 `determineTier`, `groundReview` 추가; 기존 `analyzeImpact`/`fetchDesignGaps`/`searchRelevantDocs` 등 전역 diff 의존 비공개 헬퍼는 제거 또는 미사용).
+`src/nexus/context-enricher.ts`의 `enrichWithNexus` 본문을 교체(상단 import에 `determineTier`, `groundReview` 추가; 기존 `analyzeImpact`/`fetchDesignGaps`/`searchRelevantDocs` 등 전역 diff 의존 비공개 헬퍼는 제거 또는 미사용).
 > ⚠️ 시그니처의 두 번째 파라미터를 `_changedFiles`(현재 미사용 prefix)에서 **`changedFiles`로 리네임**한다 — 신규 본문이 `fileBelongsToService`에 실제로 사용한다. 호출부(`mcp/tools.ts`)는 위치 인자라 무영향.
 ```typescript
 import { determineTier } from './tier.js';
 import { groundReview } from './review-grounder.js';
-// ... 기존 import 유지 (KhalaClient, withKhalaFallback, types)
+// ... 기존 import 유지 (NexusClient, withNexusFallback, types)
 
-export async function enrichWithKhala(
+export async function enrichWithNexus(
   groups: DetectedGroup[],
   changedFiles: string[],
   options?: EnrichmentOptions,
 ): Promise<EnrichmentResult> {
-  const client = new KhalaClient(options?.khalaConfig);
+  const client = new NexusClient(options?.nexusConfig);
 
   const probe = await client.getStatusProbe();
   if (!probe.ok) {
-    logger.debug(`칼라 미가용(${probe.reason}) — 보강 없이 진행`);
+    logger.debug(`Nexus 미가용(${probe.reason}) — 보강 없이 진행`);
     return EMPTY_ENRICHMENT;
   }
   const tier = determineTier(probe.status).tier;
@@ -769,7 +769,7 @@ export async function enrichWithKhala(
   // 변경 엔티티 빌드 (core 의존 금지 — 로컬 헬퍼 사용)
   const names = extractServiceNames(groups);
   if (names.length === 0) {
-    return { ...EMPTY_ENRICHMENT, khalaAvailable: true };
+    return { ...EMPTY_ENRICHMENT, nexusAvailable: true };
   }
   const changedEntities = names.map((name) => ({
     entityName: name,
@@ -789,7 +789,7 @@ export async function enrichWithKhala(
       ? pack.topology.directImpact.concat(pack.topology.indirectImpact)
       : [],
     designObservationGaps: pack.designObservationGaps ?? [],
-    khalaAvailable: true,
+    nexusAvailable: true,
   };
 }
 ```
@@ -803,8 +803,8 @@ Expected: PASS (갱신된 기존 테스트 + 신규 위임 테스트) + 타입 �
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add src/khala/context-enricher.ts tests/context-enricher.test.ts
-git commit -m "refactor: converge enrichWithKhala onto review-grounder (entity-scoped diff)"
+git add src/nexus/context-enricher.ts tests/context-enricher.test.ts
+git commit -m "refactor: converge enrichWithNexus onto review-grounder (entity-scoped diff)"
 ```
 
 ---
@@ -822,7 +822,7 @@ git commit -m "refactor: converge enrichWithKhala onto review-grounder (entity-s
 `tests/cli-formatters.test.ts`에 추가:
 ```typescript
 import { formatReviewGroundingPackMarkdown, formatReviewGroundingPackBrief } from '../src/cli/formatters.js';
-import type { ReviewGroundingPack } from '../src/khala/types.js';
+import type { ReviewGroundingPack } from '../src/nexus/types.js';
 
 const pack: ReviewGroundingPack = {
   tier: 3, tierReason: 'r',
@@ -1033,10 +1033,10 @@ async function runReviewGroundCmd(args: string[]): Promise<void> {
   const scope = analyzeScope(changedFiles, profile, getDiffLines(o.base));
   const entities = buildChangedEntities(scope.groups, changedFiles);
 
-  const khalaConfig = resolveKhalaConfig(config);
-  const client = new KhalaClient(khalaConfig);
+  const nexusConfig = resolveNexusConfig(config);
+  const client = new NexusClient(nexusConfig);
   const result = await runReviewGround(entities, client, {
-    searchTopK: khalaConfig.searchTopK, graphHops: khalaConfig.graphHops,
+    searchTopK: nexusConfig.searchTopK, graphHops: nexusConfig.graphHops,
   });
 
   if (!result.ok) {
@@ -1060,10 +1060,10 @@ switch 문에 추가:
     break;
 ```
 
-- [ ] **Step 2: 빌드 + 스모크 (Khala 없이 T0 경로)**
+- [ ] **Step 2: 빌드 + 스모크 (Nexus 없이 T0 경로)**
 
 Run: `npx tsc --noEmit && npx tsup && node dist/cli/index.js review:ground --format brief` (또는 빌드 산출 경로에 맞게)
-Expected: 타입/빌드 통과; Khala 미가용 시 "리뷰 그라운딩 T0: ..." 한 줄 또는 "변경 파일 없음". 비-제로 종료 아님.
+Expected: 타입/빌드 통과; Nexus 미가용 시 "리뷰 그라운딩 T0: ..." 한 줄 또는 "변경 파일 없음". 비-제로 종료 아님.
 
 - [ ] **Step 3: 커밋**
 
@@ -1135,10 +1135,10 @@ Expected: FAIL — `probe.groundReview` 미등록, length 7
       }
       const scope = analyzeScope(changedFiles, profile, getDiffLines(base));
       const entities = buildChangedEntities(scope.groups, changedFiles);
-      const khalaConfig = resolveKhalaConfig(config);
-      const client = new KhalaClient(khalaConfig);
+      const nexusConfig = resolveNexusConfig(config);
+      const client = new NexusClient(nexusConfig);
       const result = await runReviewGround(entities, client, {
-        searchTopK: khalaConfig.searchTopK, graphHops: khalaConfig.graphHops,
+        searchTopK: nexusConfig.searchTopK, graphHops: nexusConfig.graphHops,
       });
       const payload = result.ok ? result.pack : { error: result.reason };
       return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };
@@ -1172,7 +1172,7 @@ git commit -m "feat: add probe.groundReview MCP tool (8th)"
 ```typescript
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runReviewGround } from '../src/core/review-ground.js';
-import { KhalaClient } from '../src/khala/client.js';
+import { NexusClient } from '../src/nexus/client.js';
 
 describe('시그니처 리뷰 시나리오', () => {
   let orig: typeof globalThis.fetch;
@@ -1188,7 +1188,7 @@ describe('시그니처 리뷰 시나리오', () => {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ success: true, data: { results: [] }, error: null, meta: {} }) });
     }) as unknown as typeof globalThis.fetch;
 
-    const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['OrderService.java'] }], new KhalaClient({ baseUrl: 'http://t:8000' }));
+    const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['OrderService.java'] }], new NexusClient({ baseUrl: 'http://t:8000' }));
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.pack.tier).toBe(3);
@@ -1197,9 +1197,9 @@ describe('시그니처 리뷰 시나리오', () => {
     }
   });
 
-  it('SR3 (T0 정직성): Khala 미가용이면 changedEntities만 + T0 명시', async () => {
+  it('SR3 (T0 정직성): Nexus 미가용이면 changedEntities만 + T0 명시', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('down')) as unknown as typeof globalThis.fetch;
-    const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['a.ts'] }], new KhalaClient({ baseUrl: 'http://t:8000' }));
+    const r = await runReviewGround([{ entityName: 'order-service', changedFiles: ['a.ts'] }], new NexusClient({ baseUrl: 'http://t:8000' }));
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.pack.tier).toBe(0);
@@ -1235,7 +1235,7 @@ Expected: 전체 스위트 PASS(기존 + 신규 모두 green), 타입 에러 없
 - [ ] **Step 2: 로드맵/버전 표기 갱신**
 
 `README.md`: 로드맵 표의 v0.6 행 상태 `Not Started`→`Done`, "현재" 표시 이동.
-`CLAUDE.md`: "현재 버전: v0.5"→"v0.6", 버전 목록에 v0.6 그라운디드 코드 리뷰 추가, 로드맵 코드블록 v0.6 ✅ 현재, "프로젝트 구조"의 MCP 도구 "7개"→"8개" 및 신규 파일(`review-grounder.ts`, `core/review-ground.ts`, `grounding-sections.ts`, `khala/tier.ts`) 반영, 테스트 카운트 갱신.
+`CLAUDE.md`: "현재 버전: v0.5"→"v0.6", 버전 목록에 v0.6 그라운디드 코드 리뷰 추가, 로드맵 코드블록 v0.6 ✅ 현재, "프로젝트 구조"의 MCP 도구 "7개"→"8개" 및 신규 파일(`review-grounder.ts`, `core/review-ground.ts`, `grounding-sections.ts`, `nexus/tier.ts`) 반영, 테스트 카운트 갱신.
 
 - [ ] **Step 3: 커밋**
 
@@ -1249,6 +1249,6 @@ git commit -m "docs: mark v0.6 grounded code review done; update structure/count
 ## Done Criteria
 - 전체 vitest green, `tsc --noEmit` clean.
 - `probe review:ground` CLI + `probe.groundReview` MCP 동작 (T0 강등 정직성 포함).
-- `enrichWithKhala`가 엔티티 스코프 diff로 수렴(전역 diff 버그 제거), 기존 MCP scope 도구 회귀 green.
+- `enrichWithNexus`가 엔티티 스코프 diff로 수렴(전역 diff 버그 제거), 기존 MCP scope 도구 회귀 green.
 - SR1(설계-관측 갭 모트)·SR3(T0 정직성) 시그니처 고정.
 - Probe는 diff 소스를 의미 분석하지 않음(엣지 추출 없음) — 철학 경계 준수.

@@ -1,7 +1,7 @@
 /**
- * 칼라(Khala) HTTP 클라이언트
+ * Nexus(Nexus) HTTP 클라이언트
  *
- * 칼라 API를 호출하는 fetch 기반 클라이언트.
+ * Nexus API를 호출하는 fetch 기반 클라이언트.
  * 모든 호출에 타임아웃(기본 10초)과 graceful degradation을 적용한다.
  *
  * 규정 문서: docs/probe-v0.4-scope.md § 3
@@ -9,20 +9,20 @@
 
 import { logger } from '../utils/logger.js';
 import type {
-  KhalaClientConfig,
-  KhalaResponse,
-  KhalaSearchResult,
-  KhalaAnswerResult,
-  KhalaGraphResult,
-  KhalaDiffResult,
-  KhalaStatusResult,
+  NexusClientConfig,
+  NexusResponse,
+  NexusSearchResult,
+  NexusAnswerResult,
+  NexusGraphResult,
+  NexusDiffResult,
+  NexusStatusResult,
 } from './types.js';
 
 /** 기본 설정 */
-const DEFAULT_CONFIG: KhalaClientConfig = {
+const DEFAULT_CONFIG: NexusClientConfig = {
   baseUrl: 'http://localhost:8000',
-  // 콜드 스타트한 도커 칼라는 첫 응답까지 ~8-9초가 걸린다. 3초는 너무 짧아
-  // 멀쩡한 칼라를 "미가용"으로 오판(→ T0 강등)했다. 10초로 상향.
+  // 콜드 스타트한 도커 Nexus는 첫 응답까지 ~8-9초가 걸린다. 3초는 너무 짧아
+  // 멀쩡한 Nexus를 "미가용"으로 오판(→ T0 강등)했다. 10초로 상향.
   timeoutMs: 10_000,
   tenant: 'default',
   classificationMax: 'INTERNAL',
@@ -33,25 +33,25 @@ const DEFAULT_CONFIG: KhalaClientConfig = {
  * 단순 null 반환으로는 "타임아웃(느림)"과 "연결 불가(단절)"를 구분할 수 없어
  * 티어 강등 사유가 모호해지는 문제를 해결한다.
  */
-export type KhalaStatusProbe =
-  | { ok: true; status: KhalaStatusResult }
+export type NexusStatusProbe =
+  | { ok: true; status: NexusStatusResult }
   | { ok: false; reason: 'timeout' | 'unreachable' };
 
 /**
- * 칼라 API 클라이언트.
+ * Nexus API 클라이언트.
  *
- * 칼라가 없거나 장애 시 에러를 던지지 않고 null을 반환한다.
+ * Nexus가 없거나 장애 시 에러를 던지지 않고 null을 반환한다.
  * 호출부에서 fallback 처리를 해야 한다.
  */
-export class KhalaClient {
-  private readonly config: KhalaClientConfig;
+export class NexusClient {
+  private readonly config: NexusClientConfig;
 
-  constructor(config?: Partial<KhalaClientConfig>) {
+  constructor(config?: Partial<NexusClientConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
   /**
-   * 칼라 서버 가용 여부를 확인한다.
+   * Nexus 서버 가용 여부를 확인한다.
    */
   async isAvailable(): Promise<boolean> {
     try {
@@ -65,30 +65,30 @@ export class KhalaClient {
   /**
    * 시스템 상태를 조회한다 (가용성·티어 진단용).
    */
-  async getStatus(): Promise<KhalaStatusResult | null> {
-    return this.get<KhalaStatusResult>('/status', 'getStatus');
+  async getStatus(): Promise<NexusStatusResult | null> {
+    return this.get<NexusStatusResult>('/status', 'getStatus');
   }
 
   /**
    * 시스템 상태를 조회하되, 실패 시 사유(timeout vs unreachable)를 함께 반환한다.
    * 티어 결정 시 "느림(콜드스타트)"과 "단절(미가용)"을 구분하기 위해 사용한다.
    */
-  async getStatusProbe(): Promise<KhalaStatusProbe> {
+  async getStatusProbe(): Promise<NexusStatusProbe> {
     try {
       const response = await this.fetchWithTimeout('/status', { method: 'GET' });
       if (!response.ok) {
-        logger.debug(`칼라 getStatusProbe 실패: HTTP ${response.status}`);
+        logger.debug(`Nexus getStatusProbe 실패: HTTP ${response.status}`);
         return { ok: false, reason: 'unreachable' };
       }
-      const body = await response.json() as KhalaResponse<KhalaStatusResult>;
+      const body = await response.json() as NexusResponse<NexusStatusResult>;
       if (!body.success || !body.data) {
-        logger.debug(`칼라 getStatusProbe 실패: ${body.error}`);
+        logger.debug(`Nexus getStatusProbe 실패: ${body.error}`);
         return { ok: false, reason: 'unreachable' };
       }
       return { ok: true, status: body.data };
     } catch (error) {
       const reason = isTimeoutError(error) ? 'timeout' : 'unreachable';
-      logger.debug(`칼라 getStatusProbe 에러(${reason}):`, String(error));
+      logger.debug(`Nexus getStatusProbe 에러(${reason}):`, String(error));
       return { ok: false, reason };
     }
   }
@@ -100,8 +100,8 @@ export class KhalaClient {
     topK?: number;
     includeGraph?: boolean;
     includeEvidence?: boolean;
-  }): Promise<KhalaSearchResult | null> {
-    return this.post<KhalaSearchResult>('/search', {
+  }): Promise<NexusSearchResult | null> {
+    return this.post<NexusSearchResult>('/search', {
       query,
       top_k: options?.topK ?? 5,
       route: 'auto',
@@ -116,8 +116,8 @@ export class KhalaClient {
    */
   async searchAnswer(query: string, options?: {
     topK?: number;
-  }): Promise<KhalaAnswerResult | null> {
-    return this.post<KhalaAnswerResult>('/search/answer', {
+  }): Promise<NexusAnswerResult | null> {
+    return this.post<NexusAnswerResult>('/search/answer', {
       query,
       top_k: options?.topK ?? 5,
       route: 'auto',
@@ -130,13 +130,13 @@ export class KhalaClient {
    */
   async getGraph(entityRid: string, options?: {
     hops?: number;
-  }): Promise<KhalaGraphResult | null> {
+  }): Promise<NexusGraphResult | null> {
     const hops = options?.hops ?? 1;
     const params = new URLSearchParams({
       hops: String(hops),
       tenant: this.config.tenant,
     });
-    return this.get<KhalaGraphResult>(
+    return this.get<NexusGraphResult>(
       `/graph/${encodeURIComponent(entityRid)}?${params.toString()}`,
       'getGraph',
     );
@@ -148,7 +148,7 @@ export class KhalaClient {
   async getDiff(options?: {
     flagFilter?: string;
     entityFilter?: string;
-  }): Promise<KhalaDiffResult | null> {
+  }): Promise<NexusDiffResult | null> {
     const params = new URLSearchParams({ tenant: this.config.tenant });
     if (options?.flagFilter) {
       params.set('flag_filter', options.flagFilter);
@@ -156,7 +156,7 @@ export class KhalaClient {
     if (options?.entityFilter) {
       params.set('entity_filter', options.entityFilter);
     }
-    return this.get<KhalaDiffResult>(`/diff?${params.toString()}`, 'getDiff');
+    return this.get<NexusDiffResult>(`/diff?${params.toString()}`, 'getDiff');
   }
 
   // ─── 내부 헬퍼 ───
@@ -168,17 +168,17 @@ export class KhalaClient {
     try {
       const response = await this.fetchWithTimeout(path, { method: 'GET' });
       if (!response.ok) {
-        logger.debug(`칼라 ${context} 실패: HTTP ${response.status}`);
+        logger.debug(`Nexus ${context} 실패: HTTP ${response.status}`);
         return null;
       }
-      const body = await response.json() as KhalaResponse<T>;
+      const body = await response.json() as NexusResponse<T>;
       if (!body.success) {
-        logger.debug(`칼라 ${context} 실패: ${body.error}`);
+        logger.debug(`Nexus ${context} 실패: ${body.error}`);
         return null;
       }
       return body.data;
     } catch (error) {
-      logger.debug(`칼라 ${context} 에러:`, String(error));
+      logger.debug(`Nexus ${context} 에러:`, String(error));
       return null;
     }
   }
@@ -194,17 +194,17 @@ export class KhalaClient {
         body: JSON.stringify(body),
       });
       if (!response.ok) {
-        logger.debug(`칼라 ${context} 실패: HTTP ${response.status}`);
+        logger.debug(`Nexus ${context} 실패: HTTP ${response.status}`);
         return null;
       }
-      const data = await response.json() as KhalaResponse<T>;
+      const data = await response.json() as NexusResponse<T>;
       if (!data.success) {
-        logger.debug(`칼라 ${context} 실패: ${data.error}`);
+        logger.debug(`Nexus ${context} 실패: ${data.error}`);
         return null;
       }
       return data.data;
     } catch (error) {
-      logger.debug(`칼라 ${context} 에러:`, String(error));
+      logger.debug(`Nexus ${context} 에러:`, String(error));
       return null;
     }
   }
@@ -240,20 +240,20 @@ function isTimeoutError(error: unknown): boolean {
 }
 
 /**
- * 칼라 조회를 시도하고, 실패 시 fallback 값을 반환한다.
+ * Nexus 조회를 시도하고, 실패 시 fallback 값을 반환한다.
  *
- * 모든 칼라 연동 코드에서 이 패턴을 사용한다.
+ * 모든 Nexus 연동 코드에서 이 패턴을 사용한다.
  *
  * @example
  * ```typescript
- * const docs = await withKhalaFallback(
+ * const docs = await withNexusFallback(
  *   () => client.search("payment-service 규정"),
  *   null,
  *   "search",
  * );
  * ```
  */
-export async function withKhalaFallback<T>(
+export async function withNexusFallback<T>(
   fn: () => Promise<T>,
   fallback: T,
   context: string,
@@ -261,7 +261,7 @@ export async function withKhalaFallback<T>(
   try {
     return await fn();
   } catch (error) {
-    logger.debug(`칼라 조회 실패 (${context}): ${error} — 기본값으로 진행`);
+    logger.debug(`Nexus 조회 실패 (${context}): ${error} — 기본값으로 진행`);
     return fallback;
   }
 }

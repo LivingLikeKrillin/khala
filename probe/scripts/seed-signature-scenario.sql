@@ -13,7 +13,7 @@ BEGIN
   SELECT rid INTO v_to FROM entities
     WHERE name = 'inventory-service' AND tenant = 'default' AND status = 'active';
   IF v_from IS NULL OR v_to IS NULL THEN
-    RAISE EXCEPTION 'order-service/inventory-service 엔티티가 없습니다 — 먼저 khala ingest로 생성하세요 (Entities missing)';
+    RAISE EXCEPTION 'order-service/inventory-service 엔티티가 없습니다 — 먼저 nexus ingest로 생성하세요 (Entities missing)';
   END IF;
 
   INSERT INTO observed_edges

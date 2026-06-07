@@ -9,7 +9,7 @@ import type { ScopeAnalysisResult } from '../core/scope-analyzer.js';
 import type { ApiLintResult, ApiDiffResult } from '../api/types.js';
 import type { ReviewChecklist } from '../review/types.js';
 import type { SeverityLevel } from '../profiles/types.js';
-import type { GroundingPack, ReviewGroundingPack } from '../khala/types.js';
+import type { GroundingPack, ReviewGroundingPack } from '../nexus/types.js';
 
 export const SEVERITY_ICONS: Record<SeverityLevel, string> = {
   ok: '\u2705',

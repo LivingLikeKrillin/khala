@@ -1,16 +1,16 @@
 /**
- * 칼라(Khala) 연동 타입 정의
+ * Nexus(Nexus) 연동 타입 정의
  *
- * Probe가 칼라 API를 호출할 때 사용하는 요청/응답 타입.
- * 칼라 API 계약(API_CONTRACT.md)에 기반한다.
+ * Probe가 Nexus API를 호출할 때 사용하는 요청/응답 타입.
+ * Nexus API 계약(API_CONTRACT.md)에 기반한다.
  *
  * 규정 문서: docs/probe-v0.4-scope.md § 3
  */
 
 // ─── 공통 ───
 
-/** 칼라 API 공통 응답 래퍼 */
-export interface KhalaResponse<T> {
+/** Nexus API 공통 응답 래퍼 */
+export interface NexusResponse<T> {
   success: boolean;
   data: T;
   error: string | null;
@@ -20,7 +20,7 @@ export interface KhalaResponse<T> {
 // ─── 검색 ───
 
 /** 검색 요청 */
-export interface KhalaSearchRequest {
+export interface NexusSearchRequest {
   query: string;
   top_k?: number;
   route?: string;
@@ -30,15 +30,15 @@ export interface KhalaSearchRequest {
 }
 
 /** 검색 결과 */
-export interface KhalaSearchResult {
-  results: KhalaSearchHit[];
-  graph_findings: KhalaGraphFindings | null;
+export interface NexusSearchResult {
+  results: NexusSearchHit[];
+  graph_findings: NexusGraphFindings | null;
   route_used: string;
   timing_ms: Record<string, number>;
 }
 
 /** 검색 히트 */
-export interface KhalaSearchHit {
+export interface NexusSearchHit {
   rid: string;
   doc_rid: string;
   doc_title: string;
@@ -52,16 +52,16 @@ export interface KhalaSearchHit {
 }
 
 /** 그래프 검색 결과 */
-export interface KhalaGraphFindings {
-  designed_edges: KhalaDesignedEdge[];
-  observed_edges: KhalaObservedEdge[];
-  diff_flags: KhalaDiffFlag[];
+export interface NexusGraphFindings {
+  designed_edges: NexusDesignedEdge[];
+  observed_edges: NexusObservedEdge[];
+  diff_flags: NexusDiffFlag[];
 }
 
 // ─── 답변 ───
 
 /** 답변 요청 */
-export interface KhalaAnswerRequest {
+export interface NexusAnswerRequest {
   query: string;
   top_k?: number;
   route?: string;
@@ -69,7 +69,7 @@ export interface KhalaAnswerRequest {
 }
 
 /** 답변 결과 */
-export interface KhalaAnswerResult {
+export interface NexusAnswerResult {
   answer: string;
   evidence_snippets: unknown[];
   graph_findings: unknown;
@@ -81,14 +81,14 @@ export interface KhalaAnswerResult {
 // ─── 그래프 ───
 
 /** 그래프 조회 결과 */
-export interface KhalaGraphResult {
-  center_entity: KhalaEntity;
-  edges: KhalaEdgeWithEvidence[];
-  observed_edges: KhalaObservedEdgeDetail[];
+export interface NexusGraphResult {
+  center_entity: NexusEntity;
+  edges: NexusEdgeWithEvidence[];
+  observed_edges: NexusObservedEdgeDetail[];
 }
 
 /** 엔티티 */
-export interface KhalaEntity {
+export interface NexusEntity {
   rid: string;
   name: string;
   type?: string;
@@ -97,7 +97,7 @@ export interface KhalaEntity {
 }
 
 /** 설계 엣지 */
-export interface KhalaDesignedEdge {
+export interface NexusDesignedEdge {
   rid: string;
   edge_type: string;
   from_name: string;
@@ -106,15 +106,15 @@ export interface KhalaDesignedEdge {
 }
 
 /** 설계 엣지 + 근거 */
-export interface KhalaEdgeWithEvidence extends KhalaDesignedEdge {
+export interface NexusEdgeWithEvidence extends NexusDesignedEdge {
   from_rid: string;
   to_rid: string;
   hop: number;
-  evidence: KhalaEvidenceSnippet[];
+  evidence: NexusEvidenceSnippet[];
 }
 
 /** 근거 스니펫 */
-export interface KhalaEvidenceSnippet {
+export interface NexusEvidenceSnippet {
   doc_title: string;
   section_path: string;
   text: string;
@@ -122,7 +122,7 @@ export interface KhalaEvidenceSnippet {
 }
 
 /** 관측 엣지 (요약) */
-export interface KhalaObservedEdge {
+export interface NexusObservedEdge {
   rid: string;
   edge_type: string;
   from_name: string;
@@ -133,7 +133,7 @@ export interface KhalaObservedEdge {
 }
 
 /** 관측 엣지 (상세) */
-export interface KhalaObservedEdgeDetail extends KhalaObservedEdge {
+export interface NexusObservedEdgeDetail extends NexusObservedEdge {
   sample_trace_ids: string[];
   trace_query_ref: string;
 }
@@ -141,15 +141,15 @@ export interface KhalaObservedEdgeDetail extends KhalaObservedEdge {
 // ─── Diff ───
 
 /** diff 보고서 */
-export interface KhalaDiffResult {
+export interface NexusDiffResult {
   total_designed_edges: number;
   total_observed_edges: number;
-  diffs: KhalaDiffItem[];
+  diffs: NexusDiffItem[];
   generated_at: string;
 }
 
 /** diff 항목 */
-export interface KhalaDiffItem {
+export interface NexusDiffItem {
   flag: 'doc_only' | 'observed_only' | 'conflict';
   edge_rid: string | null;
   observed_edge_rid: string | null;
@@ -157,7 +157,7 @@ export interface KhalaDiffItem {
   to_name: string;
   edge_type: string;
   detail: string;
-  designed_evidence: KhalaEvidenceSnippet[];
+  designed_evidence: NexusEvidenceSnippet[];
   observed_evidence: {
     sample_trace_ids: string[];
     trace_query_ref: string;
@@ -165,7 +165,7 @@ export interface KhalaDiffItem {
 }
 
 /** diff 플래그 (그래프 검색 결과 내) */
-export interface KhalaDiffFlag {
+export interface NexusDiffFlag {
   flag: string;
   from_name: string;
   to_name: string;
@@ -174,9 +174,9 @@ export interface KhalaDiffFlag {
 
 // ─── 클라이언트 설정 ───
 
-/** 칼라 클라이언트 설정 */
-export interface KhalaClientConfig {
-  /** 칼라 API 서버 URL (기본: http://localhost:8000) */
+/** Nexus 클라이언트 설정 */
+export interface NexusClientConfig {
+  /** Nexus API 서버 URL (기본: http://localhost:8000) */
   baseUrl: string;
   /** 요청 타임아웃 ms (기본: 3000) */
   timeoutMs: number;
@@ -196,8 +196,8 @@ export interface EnrichmentResult {
   impactedServices: ImpactedService[];
   /** 설계-관측 불일치 */
   designObservationGaps: DesignGap[];
-  /** 칼라 가용 여부 */
-  khalaAvailable: boolean;
+  /** Nexus 가용 여부 */
+  nexusAvailable: boolean;
 }
 
 /** 관련 문서 */
@@ -259,10 +259,10 @@ export interface ImpactAnalysis {
 
 /**
  * /status 응답 (가용성·티어 진단용).
- * 필드는 khala api.py status() (812~852행)가 반환하는 카운트와 일치:
+ * 필드는 nexus api.py status() (812~852행)가 반환하는 카운트와 일치:
  * documents_count/edges_count/observed_edges_count/diff_summary는 db_connected일 때만 채워짐.
  */
-export interface KhalaStatusResult {
+export interface NexusStatusResult {
   db_connected: boolean;
   ollama_connected?: boolean;
   tempo_connected?: boolean;
@@ -349,7 +349,7 @@ export interface ChangedEntity {
   cohesionGroup?: string;
 }
 
-/** specledger가 Khala에 발행한 승인 스펙의 읽기전용 투영 (v0.6) */
+/** specledger가 Nexus에 발행한 승인 스펙의 읽기전용 투영 (v0.6) */
 export interface SpecRef {
   docTitle: string;
   sectionPath: string;

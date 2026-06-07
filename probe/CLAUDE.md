@@ -1,7 +1,7 @@
 # CLAUDE.md — Probe
 
 > Probe는 프로덕트 팀의 개발 워크플로를 자동 검증하는 도구다.
-> 칼라(Khala) 지식 시스템과 연동하여 PR 검증, 영향 분석, 규칙 집행을 수행한다.
+> Nexus(Nexus) 지식 시스템과 연동하여 PR 검증, 영향 분석, 규칙 집행을 수행한다.
 
 ## 아키텍처
 
@@ -25,9 +25,9 @@ Probe는 **하이브리드 구조**다.
 - **v0.1** — 플랫폼 인식 PR 범위 분석 (scope-analyzer + 3개 프로파일)
 - **v0.2** — API 스펙 린트/diff (10개 룰) + PR 타입별 리뷰 체크리스트
 - **v0.3** — MCP 서버 (Claude Code 네이티브 연동, 6개 도구)
-- **v0.4** — 칼라 연동 (맥락 기반 리뷰 + 영향 분석)
+- **v0.4** — Nexus 연동 (맥락 기반 리뷰 + 영향 분석)
 - **v0.5** — 트러블슈팅 그라운딩 (error-localizer + troubleshoot-grounder + core/troubleshoot, MCP 7번째 도구)
-- **v0.6** — 그라운디드 코드 리뷰 (review-grounder + core/review-ground, diff→Review Grounding Pack, MCP 8번째 도구). v0.4 enrichWithKhala를 엔티티 스코프로 수렴; v0.5 grounder 자산 재사용(grounding-sections, khala/tier 공유)
+- **v0.6** — 그라운디드 코드 리뷰 (review-grounder + core/review-ground, diff→Review Grounding Pack, MCP 8번째 도구). v0.4 enrichWithNexus를 엔티티 스코프로 수렴; v0.5 grounder 자산 재사용(grounding-sections, nexus/tier 공유)
 
 각 버전 상세: `docs/probe-v{N}-scope.md`
 
@@ -39,7 +39,7 @@ Probe는 **하이브리드 구조**다.
 v0.1  PR 범위 분석 + 플랫폼 프로파일          ✅
 v0.2  API 스펙 린트/diff + 리뷰 체크리스트     ✅
 v0.3  MCP 서버 (Claude Code 연동)            ✅
-v0.4  칼라 연동 — 맥락 기반 리뷰             ✅
+v0.4  Nexus 연동 — 맥락 기반 리뷰             ✅
 v0.5  트러블슈팅 그라운딩                    ✅
 v0.6  그라운디드 코드 리뷰 (diff ↔ 승인 스펙·규정·그래프 정합성)  ✅ 현재
 ```
@@ -69,8 +69,8 @@ probe/
 │   │   ├── pr-type-detector.ts    ← PR 타입 추론
 │   │   ├── checklist-generator.ts ← 체크리스트 생성
 │   │   └── checklists/            ← 타입별 템플릿
-│   ├── khala/                     ← 칼라 연동
-│   │   ├── client.ts              ← 칼라 API 클라이언트 (getStatusProbe 타임아웃 구분)
+│   ├── nexus/                     ← Nexus 연동
+│   │   ├── client.ts              ← Nexus API 클라이언트 (getStatusProbe 타임아웃 구분)
 │   │   ├── tier.ts                ← 그라운딩 티어 결정 (T0~T3, troubleshoot/review 공유)
 │   │   ├── context-enricher.ts    ← 규정/문서 맥락 보강 (review-grounder에 수렴)
 │   │   ├── impact-analyzer.ts     ← 서비스 영향 분석
@@ -89,7 +89,7 @@ probe/
 │   │   ├── resources.ts           ← 3개 리소스
 │   │   └── prompts.ts             ← 2개 프롬프트
 │   ├── cli/                       ← CLI 진입점
-│   │   ├── index.ts               ← npx probe check/api:lint/khala:*
+│   │   ├── index.ts               ← npx probe check/api:lint/nexus:*
 │   │   ├── parse-args.ts          ← CLI 인자 파서
 │   │   └── formatters.ts          ← 출력 포맷터 (markdown/json/brief)
 │   └── utils/                     ← 공용 유틸
@@ -144,7 +144,7 @@ chore: 빌드/설정
 2. **정상일 때는 아무 말도 하지 않는다** — 노이즈는 신뢰를 죽인다.
 3. **경고할 때는 분할 방법까지 제안한다** — "크다"만 말하면 쓸모없다.
 4. **코드로 강제할 수 있는 건 hook으로, 나머지만 프롬프트로** — 3계층 원칙.
-5. **칼라는 선택적이다** — 없어도 모든 기능이 동작하고, 있으면 결과가 풍부해진다.
+5. **Nexus는 선택적이다** — 없어도 모든 기능이 동작하고, 있으면 결과가 풍부해진다.
 
 ## 관련 규정 문서
 
