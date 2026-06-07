@@ -656,13 +656,16 @@ git commit -m "feat: getting-started intent routing + contributing placeholder"
 
 - [ ] **Step 1: 링크체커 추가 (정책을 명령에 인코딩)**
 
-`package.json` devDependencies에 `"linkinator": "^6.1.2"` 추가, scripts에 아래 추가 후 `npm install`:
+`package.json` devDependencies에 `"linkinator": "^6.1.2"` + `"start-server-and-test": "^2.0.0"` 추가, scripts에 아래 추가 후 `npm install`:
 ```json
-"linkcheck": "linkinator ./dist --recurse --skip \"github\\.com|pages\\.dev|astro\\.build|cloudflare\\.com|jsdelivr\\.net\""
+"linkcheck": "start-server-and-test preview http://localhost:4321 linkcheck:run",
+"linkcheck:run": "linkinator http://localhost:4321/ http://localhost:4321/ko/ --recurse --skip \"github\\.com|pages\\.dev|astro\\.build|cloudflare\\.com|jsdelivr\\.net\""
 ```
-**왜 이렇게:**
-- 디렉토리(`./dist`)를 주면 linkinator가 **자동으로 정적 웹서버를 띄워 그 디렉토리를 웹 루트로 서빙**한다 → 루트-절대 링크(`/tools/nexus/`, `/ko/...`)가 `http://localhost:<port>/`에서 정상 해소(별도 `--server-root` 불필요·금지: 값 없이 쓰면 다음 토큰을 경로로 먹어 명령이 깨짐).
-- `--skip` — 외부/사설 호스트(GitHub 사설 repo 401, CDN 등)를 **검사 제외**(빌드 실패 유발 방지). 정책="내부 엄격, 외부 관대"를 명령으로 구현. 점은 이스케이프(`github\.com`), `localhost`/`127.0.0.1`은 skip에 없어 내부 링크는 계속 검사됨.
+**왜 이렇게(실증으로 교정됨):**
+- ⚠️ **`linkinator ./dist`(디렉토리 크롤)는 ko를 검증하지 못한다.** Starlight 언어 스위처가 JS `<select>`(크롤 가능한 `<a>` 아님)이고 en→ko 상호 링크가 hreflang 절대 URL(스킵 대상)뿐이라, en 루트에서 크롤하면 ko 페이지에 **도달조차 못 함**(30링크만 스캔, ko 미검증). 두 파일/디렉토리를 동시에 주면 서버 루트 계산이 깨져 **거짓 404 25개**가 난다(ko 라우트 파일은 실재).
+- ✅ **해법: 고정 루트 라이브 서버 + 두 시드 URL.** `astro preview`(localhost:4321)로 `dist`를 한 루트로 서빙하고, linkinator에 `/`와 `/ko/` 두 진입점을 주면 절대경로 `/ko/...`가 정확히 해소되고 ko까지 재귀 크롤된다(**48링크, 0 broken**). `start-server-and-test`가 preview 기동→대기→linkcheck:run→종료를 오케스트레이션.
+- `--skip` — 외부/사설 호스트(GitHub 사설 repo 401, CDN 등) 검사 제외(빌드 실패 유발 방지). 점은 이스케이프, `localhost`는 skip에 없어 내부 링크는 계속 검사됨.
+- 전제: `astro preview`는 빌드 산출물을 서빙하므로 `npm run build` 후 실행.
 
 - [ ] **Step 2: 빌드 후 링크체크**
 
