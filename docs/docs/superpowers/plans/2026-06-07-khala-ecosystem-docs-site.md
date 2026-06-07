@@ -503,7 +503,7 @@ graph TD
 - [ ] **Step 3: 빌드 + 산출 검증**
 
 Run: `npm run build`
-Expected: PASS (Playwright 불필요). `dist/ecosystem/index.html`에 `<pre class="mermaid">` 존재(`grep -l 'class="mermaid"' dist/ecosystem/index.html`). *client-side 시각 렌더 확인은 dev/배포본에서 owner=사용자(빌드로는 검증 불가).*
+Expected: PASS (Playwright 불필요). `dist/ecosystem/index.html`에 `<pre class="mermaid">` 존재(`grep -q 'class="mermaid"' dist/ecosystem/index.html && echo OK` → `OK`). *client-side 시각 렌더 확인은 dev/배포본에서 owner=사용자(빌드로는 검증 불가).*
 
 - [ ] **Step 4: 커밋**
 
@@ -659,11 +659,11 @@ git commit -m "feat: getting-started intent routing + contributing placeholder"
 
 `package.json` devDependencies에 `"linkinator": "^6.1.2"` 추가, scripts에 아래 추가 후 `npm install`:
 ```json
-"linkcheck": "linkinator ./dist --server-root --recurse --skip \"github\\.com|pages\\.dev|astro\\.build|cloudflare\\.com|jsdelivr\\.net\""
+"linkcheck": "linkinator ./dist --recurse --skip \"github\\.com|pages\\.dev|astro\\.build|cloudflare\\.com|jsdelivr\\.net\""
 ```
 **왜 이렇게:**
-- `--server-root` — `dist`를 로컬 정적 서버로 서빙해 **루트-절대 링크(`/tools/nexus/`, `/ko/...`)가 실제로 해소**되게 함(디렉토리 직접 스캔은 절대링크 오탐 발생).
-- `--skip` — 외부/사설 호스트(GitHub 사설 repo 401, CDN 등)를 **검사 제외**(빌드 실패 유발 방지). 정책="내부 엄격, 외부 관대"를 명령으로 구현.
+- 디렉토리(`./dist`)를 주면 linkinator가 **자동으로 정적 웹서버를 띄워 그 디렉토리를 웹 루트로 서빙**한다 → 루트-절대 링크(`/tools/nexus/`, `/ko/...`)가 `http://localhost:<port>/`에서 정상 해소(별도 `--server-root` 불필요·금지: 값 없이 쓰면 다음 토큰을 경로로 먹어 명령이 깨짐).
+- `--skip` — 외부/사설 호스트(GitHub 사설 repo 401, CDN 등)를 **검사 제외**(빌드 실패 유발 방지). 정책="내부 엄격, 외부 관대"를 명령으로 구현. 점은 이스케이프(`github\.com`), `localhost`/`127.0.0.1`은 skip에 없어 내부 링크는 계속 검사됨.
 
 - [ ] **Step 2: 빌드 후 링크체크**
 
