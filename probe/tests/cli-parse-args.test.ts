@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseArgs, parseTroubleshootArgs } from '../src/cli/parse-args.js';
+import { parseArgs, parseTroubleshootArgs, parseReviewGroundArgs } from '../src/cli/parse-args.js';
 
 describe('parseArgs', () => {
   it('인자 없으면 기본값을 반환한다', () => {
@@ -86,4 +86,15 @@ describe('parseTroubleshootArgs', () => {
     const o = parseTroubleshootArgs(['err', '--diff-base', 'origin/main']);
     expect(o.diffBase).toBe('origin/main');
   });
+});
+
+it('parseReviewGroundArgs는 --base/--format을 파싱한다', () => {
+  const o = parseReviewGroundArgs(['--base', 'main', '--format', 'json']);
+  expect(o.base).toBe('main');
+  expect(o.format).toBe('json');
+});
+it('기본 format은 markdown, base는 undefined', () => {
+  const o = parseReviewGroundArgs([]);
+  expect(o.format).toBe('markdown');
+  expect(o.base).toBeUndefined();
 });

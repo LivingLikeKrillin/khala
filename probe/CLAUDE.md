@@ -20,13 +20,14 @@ Probe는 **하이브리드 구조**다.
 - 테스트: vitest
 - 빌드: tsup
 
-## 현재 버전: v0.5
+## 현재 버전: v0.6
 
 - **v0.1** — 플랫폼 인식 PR 범위 분석 (scope-analyzer + 3개 프로파일)
 - **v0.2** — API 스펙 린트/diff (10개 룰) + PR 타입별 리뷰 체크리스트
 - **v0.3** — MCP 서버 (Claude Code 네이티브 연동, 6개 도구)
 - **v0.4** — 칼라 연동 (맥락 기반 리뷰 + 영향 분석)
 - **v0.5** — 트러블슈팅 그라운딩 (error-localizer + troubleshoot-grounder + core/troubleshoot, MCP 7번째 도구)
+- **v0.6** — 그라운디드 코드 리뷰 (review-grounder + core/review-ground, diff→Review Grounding Pack, MCP 8번째 도구). v0.4 enrichWithKhala를 엔티티 스코프로 수렴; v0.5 grounder 자산 재사용(grounding-sections, khala/tier 공유)
 
 각 버전 상세: `docs/probe-v{N}-scope.md`
 
@@ -39,8 +40,8 @@ v0.1  PR 범위 분석 + 플랫폼 프로파일          ✅
 v0.2  API 스펙 린트/diff + 리뷰 체크리스트     ✅
 v0.3  MCP 서버 (Claude Code 연동)            ✅
 v0.4  칼라 연동 — 맥락 기반 리뷰             ✅
-v0.5  트러블슈팅 그라운딩                    ✅ 현재
-v0.6  그라운디드 코드 리뷰 (diff ↔ 승인 스펙·규정·그래프 정합성)
+v0.5  트러블슈팅 그라운딩                    ✅
+v0.6  그라운디드 코드 리뷰 (diff ↔ 승인 스펙·규정·그래프 정합성)  ✅ 현재
 ```
 
 ## 프로젝트 구조
@@ -55,6 +56,7 @@ probe/
 │   │   ├── api-linter.ts          ← API 린트 오케스트레이션
 │   │   ├── review-checklist.ts    ← 리뷰 체크리스트 오케스트레이션
 │   │   ├── troubleshoot.ts        ← 트러블슈팅 그라운딩 오케스트레이션
+│   │   ├── review-ground.ts       ← 그라운디드 코드 리뷰 오케스트레이션 (diff→엔티티→pack)
 │   │   └── config-loader.ts       ← probe.config.ts 로더
 │   ├── api/                       ← API 스펙 분석
 │   │   ├── spec-linter.ts         ← 10개 룰 기반 린트
@@ -68,11 +70,14 @@ probe/
 │   │   ├── checklist-generator.ts ← 체크리스트 생성
 │   │   └── checklists/            ← 타입별 템플릿
 │   ├── khala/                     ← 칼라 연동
-│   │   ├── client.ts              ← 칼라 API 클라이언트
-│   │   ├── context-enricher.ts    ← 규정/문서 맥락 보강
+│   │   ├── client.ts              ← 칼라 API 클라이언트 (getStatusProbe 타임아웃 구분)
+│   │   ├── tier.ts                ← 그라운딩 티어 결정 (T0~T3, troubleshoot/review 공유)
+│   │   ├── context-enricher.ts    ← 규정/문서 맥락 보강 (review-grounder에 수렴)
 │   │   ├── impact-analyzer.ts     ← 서비스 영향 분석
 │   │   ├── error-localizer.ts     ← 에러 신호 → 의심 엔티티 국소화
-│   │   └── troubleshoot-grounder.ts ← 의심 엔티티 → Grounding Pack 수집
+│   │   ├── grounding-sections.ts  ← 공유 섹션 헬퍼 (fetchEntityGaps/searchDocs)
+│   │   ├── troubleshoot-grounder.ts ← 의심 엔티티 → Grounding Pack 수집 (v0.5)
+│   │   └── review-grounder.ts     ← 변경 엔티티 → Review Grounding Pack 수집 (v0.6)
 │   ├── profiles/                  ← 플랫폼 프로파일
 │   │   ├── detector.ts            ← 프로파일 자동 감지
 │   │   ├── spring-boot.ts
@@ -80,7 +85,7 @@ probe/
 │   │   └── react-spa.ts
 │   ├── mcp/                       ← MCP 서버
 │   │   ├── server.ts              ← 서버 진입점
-│   │   ├── tools.ts               ← 7개 도구
+│   │   ├── tools.ts               ← 8개 도구
 │   │   ├── resources.ts           ← 3개 리소스
 │   │   └── prompts.ts             ← 2개 프롬프트
 │   ├── cli/                       ← CLI 진입점
@@ -98,7 +103,7 @@ probe/
 │   └── skills/                    ← check-scope, split-pr, state-matrix
 ├── scripts/                       ← hook/CI 공용 래퍼
 ├── .github/workflows/             ← CI 파이프라인
-├── tests/                         ← 테스트 (13개 파일, 145개 케이스)
+├── tests/                         ← 테스트 (25개 파일, 205개 케이스)
 └── docs/                          ← 스코프 문서 + 규정 문서
 ```
 

@@ -4,19 +4,20 @@
  * PR 분석 결과에 칼라의 맥락(관련 규정, 영향 서비스, 설계-관측 갭)을 추가한다.
  * 칼라가 없으면 빈 결과를 반환한다 (graceful degradation).
  *
+ * v0.6: groundReview 위임 어댑터로 수렴.
+ * EnrichmentResult 레거시 형태를 유지해 MCP scope-tool 호출부가 영향받지 않는다.
+ *
  * 규정 문서: docs/probe-v0.4-scope.md § 4
  */
 
-import { KhalaClient, withKhalaFallback } from './client.js';
-import { analyzeImpact } from './impact-analyzer.js';
+import { KhalaClient } from './client.js';
+import { determineTier } from './tier.js';
+import { groundReview } from './review-grounder.js';
 import { logger } from '../utils/logger.js';
 import type { DetectedGroup } from '../core/scope-analyzer.js';
 import type {
   KhalaClientConfig,
   EnrichmentResult,
-  RelevantDoc,
-  DesignGap,
-  ImpactAnalysis,
 } from './types.js';
 
 /** 보강 옵션 */
@@ -40,10 +41,11 @@ const EMPTY_ENRICHMENT: EnrichmentResult = {
 /**
  * PR 변경에 대한 칼라 컨텍스트를 수집한다.
  *
- * 3개 조회를 병렬로 수행한다:
- * 1. 관련 규정/문서 검색
- * 2. 서비스 그래프 (영향 분석)
- * 3. 설계-관측 diff
+ * groundReview에 위임하고 결과를 레거시 EnrichmentResult 형태로 투영한다.
+ * 엔티티 스코프 /diff를 사용해 글로벌 diff보다 노이즈가 적다.
+ *
+ * 주의: 칼라가 가용하지만 인덱싱 데이터가 부족해 티어가 T0이면(엔티티명은 있어도)
+ * 빈 배열 + `khalaAvailable: true`를 반환한다 — 빈 결과를 "미가용"으로 오독하지 말 것.
  *
  * @param groups scope 분석에서 감지된 응집 그룹
  * @param changedFiles 변경 파일 목록
@@ -51,42 +53,41 @@ const EMPTY_ENRICHMENT: EnrichmentResult = {
  */
 export async function enrichWithKhala(
   groups: DetectedGroup[],
-  _changedFiles: string[],
+  changedFiles: string[],
   options?: EnrichmentOptions,
 ): Promise<EnrichmentResult> {
   const client = new KhalaClient(options?.khalaConfig);
-  const topK = options?.searchTopK ?? 5;
-  const hops = options?.graphHops ?? 1;
 
-  // 칼라 가용 여부 확인
-  const available = await withKhalaFallback(
-    () => client.isAvailable(),
-    false,
-    'availability check',
-  );
-  if (!available) {
-    logger.debug('칼라 서버 미가용 — 보강 없이 진행');
+  const probe = await client.getStatusProbe();
+  if (!probe.ok) {
+    logger.debug(`칼라 미가용(${probe.reason}) — 보강 없이 진행`);
     return EMPTY_ENRICHMENT;
   }
+  const tier = determineTier(probe.status).tier;
 
-  // 서비스/도메인명 추출
-  const serviceNames = extractServiceNames(groups);
-  if (serviceNames.length === 0) {
-    logger.debug('서비스명 추출 실패 — 보강 없이 진행');
+  // 변경 엔티티 빌드 (core 의존 금지 — 로컬 헬퍼 사용)
+  const names = extractServiceNames(groups);
+  if (names.length === 0) {
     return { ...EMPTY_ENRICHMENT, khalaAvailable: true };
   }
+  const changedEntities = names.map((name) => ({
+    entityName: name,
+    changedFiles: changedFiles.filter((f) => fileBelongsToService(f, name)),
+  }));
 
-  // 3개 조회 병렬 실행
-  const [relevantDocs, impact, gaps] = await Promise.all([
-    searchRelevantDocs(client, serviceNames, topK),
-    fetchImpact(client, serviceNames, hops),
-    fetchDesignGaps(client, serviceNames),
-  ]);
+  const pack = await groundReview(client, changedEntities, {
+    tier,
+    searchTopK: options?.searchTopK,
+    graphHops: options?.graphHops,
+  });
 
+  // ReviewGroundingPack → 레거시 EnrichmentResult 투영 (back-compat)
   return {
-    relevantDocs,
-    impactedServices: impact.directImpact.concat(impact.indirectImpact),
-    designObservationGaps: gaps,
+    relevantDocs: pack.applicableGuidelines ?? [],
+    impactedServices: pack.topology
+      ? pack.topology.directImpact.concat(pack.topology.indirectImpact)
+      : [],
+    designObservationGaps: pack.designObservationGaps ?? [],
     khalaAvailable: true,
   };
 }
@@ -164,82 +165,4 @@ function containsContiguous(haystack: string[], needle: string[]): boolean {
     if (match) return true;
   }
   return false;
-}
-
-/**
- * 관련 규정/문서를 검색한다.
- */
-async function searchRelevantDocs(
-  client: KhalaClient,
-  serviceNames: string[],
-  topK: number,
-): Promise<RelevantDoc[]> {
-  // 서비스명을 조합해서 검색 쿼리 생성
-  const query = serviceNames.slice(0, 3).join(' ') + ' 규정 가이드라인';
-
-  const result = await withKhalaFallback(
-    () => client.search(query, { topK, includeGraph: false }),
-    null,
-    'search relevant docs',
-  );
-
-  if (!result) return [];
-
-  return result.results.map((hit) => ({
-    docTitle: hit.doc_title,
-    sectionPath: hit.section_path,
-    snippet: hit.snippet,
-    score: hit.score,
-    classification: hit.classification,
-  }));
-}
-
-/**
- * 서비스 영향 분석을 수행한다.
- */
-async function fetchImpact(
-  client: KhalaClient,
-  serviceNames: string[],
-  hops: number,
-): Promise<ImpactAnalysis> {
-  return analyzeImpact(client, serviceNames, { hops });
-}
-
-/**
- * 설계-관측 갭을 조회하고, 변경 서비스와 관련된 것만 필터한다.
- */
-async function fetchDesignGaps(
-  client: KhalaClient,
-  serviceNames: string[],
-): Promise<DesignGap[]> {
-  const diff = await withKhalaFallback(
-    () => client.getDiff(),
-    null,
-    'fetch design gaps',
-  );
-
-  if (!diff || diff.diffs.length === 0) return [];
-
-  // 변경 서비스와 관련된 diff만 필터
-  const nameSet = new Set(serviceNames);
-
-  return diff.diffs
-    .filter((d) => {
-      const fromNorm = d.from_name.toLowerCase();
-      const toNorm = d.to_name.toLowerCase();
-      return [...nameSet].some((n) => fromNorm.includes(n) || toNorm.includes(n));
-    })
-    .map((d) => ({
-      flag: d.flag,
-      fromName: d.from_name,
-      toName: d.to_name,
-      edgeType: d.edge_type,
-      detail: d.detail,
-      designedEvidence: d.designed_evidence.length > 0
-        ? d.designed_evidence.map((e) => e.text).join('; ')
-        : undefined,
-      observedEvidence: d.observed_evidence
-        ? d.observed_evidence.sample_trace_ids
-        : undefined,
-    }));
 }
