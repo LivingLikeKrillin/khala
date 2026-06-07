@@ -14,9 +14,9 @@ export default defineConfig({
         root: { label: 'English', lang: 'en' },
         ko: { label: '한국어', lang: 'ko' },
       },
-      social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/LivingLikeKrillin' },
-      ],
+      social: {
+        github: 'https://github.com/LivingLikeKrillin',
+      },
       sidebar: [
         {
           label: 'Overview',
