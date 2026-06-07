@@ -1,0 +1,29 @@
+# Khala Entity Gazetteer
+# name은 canonical name, aliases에 한국어 변형 포함.
+# 조사 변형(서비스가/서비스를)은 넣지 않아도 됨 - mecab-ko가 분리함.
+
+entities:
+  - name: payment-service
+    type: Service
+    aliases: ["결제 서비스", "결제서비스", "payment"]
+    description: "결제 처리 핵심 서비스"
+
+  - name: notification-service
+    type: Service
+    aliases: ["알림 서비스", "알림서비스", "notification"]
+    description: "이메일/SMS/푸시 알림 전송"
+
+  - name: order-service
+    type: Service
+    aliases: ["주문 서비스", "주문서비스", "order"]
+    description: "주문 생성 및 관리"
+
+  - name: payment.completed
+    type: Topic
+    aliases: ["결제 완료 이벤트", "결제완료"]
+    description: "결제 완료 시 발행되는 이벤트 토픽"
+
+  - name: order.created
+    type: Topic
+    aliases: ["주문 생성 이벤트", "주문생성"]
+    description: "새 주문 생성 시 발행되는 이벤트 토픽"

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Khala</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css">
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9/standalone/umd/vis-network.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-network@9/styles/vis-network.min.css">
+
+  <!-- App -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- Status Bar -->
+  <header id="status-bar">
+    <div class="status-left">
+      <h1 class="logo">Khala</h1>
+      <span class="status-text" id="status-text">연결 확인 중...</span>
+    </div>
+    <div class="status-right">
+      <span class="status-dot" id="dot-db" title="Database"></span>
+      <span class="status-dot" id="dot-ollama" title="Ollama"></span>
+      <span class="status-dot" id="dot-tempo" title="Tempo"></span>
+      <span class="status-badge" id="badge-docs" title="인덱싱된 문서 수">0 문서</span>
+      <span class="status-badge clickable" id="badge-diff" title="설계-관측 불일치">0 불일치</span>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div id="app-layout">
+    <!-- Sidebar Navigation -->
+    <nav id="sidebar">
+      <a href="#/chat" class="nav-item active" data-view="chat">
+        <span class="nav-icon">&#x1F4AC;</span>
+        <span class="nav-label">채팅</span>
+      </a>
+      <a href="#/graph" class="nav-item" data-view="graph">
+        <span class="nav-icon">&#x1F578;</span>
+        <span class="nav-label">그래프</span>
+      </a>
+      <a href="#/documents" class="nav-item" data-view="documents">
+        <span class="nav-icon">&#x1F4C4;</span>
+        <span class="nav-label">문서</span>
+      </a>
+      <a href="#/diff" class="nav-item" data-view="diff">
+        <span class="nav-icon">&#x1F50D;</span>
+        <span class="nav-label">Diff</span>
+      </a>
+      <a href="#/upload" class="nav-item" data-view="upload">
+        <span class="nav-icon">&#x1F4E4;</span>
+        <span class="nav-label">업로드</span>
+      </a>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content"></main>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- App Scripts (ES Modules) -->
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# 통합 테스트용 Docker Compose — 운영 인프라와 포트 충돌 방지
+services:
+  khala-test-db:
+    image: pgvector/pgvector:pg16
+    container_name: khala-test-db
+    environment:
+      POSTGRES_DB: khala_test
+      POSTGRES_USER: khala
+      POSTGRES_PASSWORD: khala
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U khala -d khala_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    tmpfs:
+      - /var/lib/postgresql/data  # 테스트 데이터는 메모리에 (빠른 실행 + 자동 정리)

@@ -1,0 +1,27 @@
+# 개발 편의 오버레이 — `docker compose up -d` 시 자동 병합된다.
+# .env에서 시크릿/경로를 읽는다 (.env.example 참고).
+# 목적: (1) Ollama 임베딩 모델 자동 pull, (2) 앱에 NOTION_TOKEN 주입, (3) pfplay 코드 마운트.
+services:
+  # ── Ollama 임베딩 모델 자동 pull (한 번 실행 후 종료) ──
+  khala-ollama-init:
+    image: ollama/ollama
+    container_name: khala-ollama-init
+    depends_on:
+      khala-ollama:
+        condition: service_started
+    environment:
+      OLLAMA_HOST: http://khala-ollama:11434   # CLI가 메인 ollama 서버를 타겟
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "until ollama list >/dev/null 2>&1; do echo 'waiting for ollama...'; sleep 2; done; ollama pull nomic-embed-text"
+    restart: "no"
+
+  # ── 앱: Notion 토큰 주입 + pfplay 코드 마운트 ──
+  khala-app:
+    environment:
+      NOTION_TOKEN: ${NOTION_TOKEN:-}
+    volumes:
+      # PFPLAY_PATH 미설정 시 placeholder(./docs)로 폴백해 compose 에러 방지.
+      # 코드 상수 해석을 쓰려면 .env에 PFPLAY_PATH 설정 → config code_source.repo_path: /pfplay
+      - ${PFPLAY_PATH:-./docs}:/pfplay:ro

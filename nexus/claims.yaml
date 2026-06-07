@@ -1,0 +1,35 @@
+# Archon 도메인 claim 시드 (pfplay 실제 코드 상수)
+# `khala claim-seed claims.yaml` — config.code_source.repo_path를 pfplay-platform으로 설정 후.
+# value_source는 pfplay 코드의 static final 상수. 조회 시점에 현재값을 재읽기.
+- claim_id: associate-member-max-playlists
+  kind: invariant
+  concepts: [준회원, 플레이리스트]
+  statement: "준회원(AM)은 플레이리스트를 최대 N개 가질 수 있다"
+  value_source: "PlaylistCreationPolicy.AM_MAX"
+  value_ref_kind: code_constant
+  criticality: core
+  owner: "@backend-lead"
+- claim_id: full-member-max-playlists
+  kind: invariant
+  concepts: [정회원, 플레이리스트]
+  statement: "정회원(FM)은 플레이리스트를 최대 N개 가질 수 있다"
+  value_source: "PlaylistCreationPolicy.FM_MAX"
+  value_ref_kind: code_constant
+  criticality: core
+  owner: "@backend-lead"
+- claim_id: max-playlist-track-count
+  kind: invariant
+  concepts: [플레이리스트, 트랙]
+  statement: "플레이리스트 하나에 트랙을 최대 N개 담을 수 있다"
+  value_source: "TrackCommandService.MAX_PLAYLIST_TRACK_COUNT"
+  value_ref_kind: code_constant
+  criticality: core
+  owner: "@backend-lead"
+- claim_id: guest-nickname-max-attempts
+  kind: invariant
+  concepts: [게스트, 닉네임]
+  statement: "게스트 닉네임 자동 생성은 최대 N회 시도한다"
+  value_source: "UserProfileCommandService.GUEST_NICKNAME_MAX_ATTEMPTS"
+  value_ref_kind: code_constant
+  criticality: peripheral
+  owner: "@backend-lead"
