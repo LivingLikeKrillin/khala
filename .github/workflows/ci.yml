@@ -22,7 +22,8 @@ jobs:
           python-version: "3.13"
       - name: Install nexus
         working-directory: nexus
-        run: pip install -e ".[dev]"
+        # [mcp] extra is required so tests/test_mcp.py can import nexus.mcp.server.
+        run: pip install -e ".[dev,mcp]"
       # Unit tests only. DB integration tests (-m integration) need Postgres and
       # are run locally / by the owner — no postgres service in the baseline job.
       - name: Run unit tests

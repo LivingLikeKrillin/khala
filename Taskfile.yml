@@ -37,8 +37,9 @@ tasks:
     desc: nexus unit tests (DB integration tests need Docker — run locally)
     dir: nexus
     cmds:
+      # [mcp] extra lets tests/test_mcp.py import nexus.mcp.server in a clean env.
       # -m "not integration" keeps the baseline run DB-free.
-      - pip install -e ".[dev]"
+      - pip install -e ".[dev,mcp]"
       - python -m pytest -q -m "not integration"
 
   test:probe:
