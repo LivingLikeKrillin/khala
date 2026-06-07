@@ -32,7 +32,8 @@ export const deprecatedLifecycleRule: LintRule = {
         const path = `paths.${pathKey}.${method}`;
 
         // deprecated 오퍼레이션에 대체 안내가 있는지 확인
-        const hasDeprecationNote = operation.summary?.toLowerCase().includes('deprecated') ||
+        const hasDeprecationNote =
+          operation.summary?.toLowerCase().includes('deprecated') ||
           (typeof operation.description === 'string' && operation.description.toLowerCase().includes('deprecated'));
 
         if (!hasDeprecationNote) {

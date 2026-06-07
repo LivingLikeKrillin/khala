@@ -3,7 +3,7 @@
 from nexus.models.resource import NexusResource, is_accessible, CLASSIFICATION_LEVELS
 from nexus.rid import (
     make_rid, doc_rid, chunk_rid, entity_rid, edge_rid,
-    observed_edge_rid, evidence_rid, canonicalize_entity_name,
+    evidence_rid, canonicalize_entity_name,
 )
 
 

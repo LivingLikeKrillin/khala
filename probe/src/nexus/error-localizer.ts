@@ -37,11 +37,7 @@ function toServiceName(symbol: string): string {
 export function localizeError(input: TroubleshootInput): Suspect[] {
   const byName = new Map<string, Suspect>();
 
-  const add = (
-    entityName: string,
-    ev: Suspect['evidence'][number],
-    score: number,
-  ): void => {
+  const add = (entityName: string, ev: Suspect['evidence'][number], score: number): void => {
     if (!entityName) return;
     const existing = byName.get(entityName);
     if (existing) {

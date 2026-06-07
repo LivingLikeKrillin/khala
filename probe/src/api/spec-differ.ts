@@ -14,14 +14,7 @@
  * 규정 문서: docs/probe-v0.2-scope.md § 3.2
  */
 
-import type {
-  OpenApiSpec,
-  ApiDiffResult,
-  ApiChange,
-  PathItem,
-  OperationObject,
-  SchemaObject,
-} from './types.js';
+import type { OpenApiSpec, ApiDiffResult, ApiChange, PathItem, OperationObject, SchemaObject } from './types.js';
 
 const METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 
@@ -249,7 +242,9 @@ function diffResponses(
         if (baseSchema.properties && !(field in baseSchema.properties)) {
           const isNullable = headSchema.properties[field]?.nullable;
           const isRequired = headSchema.required?.includes(field);
-          details.push(`응답: '${field}' 필드 추가${isNullable ? ' (nullable)' : ''}${isRequired ? '' : ' (optional)'} (response: '${field}' field added)`);
+          details.push(
+            `응답: '${field}' 필드 추가${isNullable ? ' (nullable)' : ''}${isRequired ? '' : ' (optional)'} (response: '${field}' field added)`,
+          );
         }
       }
 
@@ -264,11 +259,7 @@ function diffResponses(
 /**
  * 파라미터를 비교한다.
  */
-function diffParameters(
-  baseOp: OperationObject,
-  headOp: OperationObject,
-  details: string[],
-): boolean {
+function diffParameters(baseOp: OperationObject, headOp: OperationObject, details: string[]): boolean {
   let breaking = false;
 
   const baseParams = baseOp.parameters ?? [];
@@ -315,7 +306,9 @@ function diffSchemaProperties(
 
     // 타입 변경
     if (baseProp.type && headProp.type && baseProp.type !== headProp.type) {
-      details.push(`${context}: '${field}' 타입 변경 ${baseProp.type} → ${headProp.type} — breaking (${context}: '${field}' type changed)`);
+      details.push(
+        `${context}: '${field}' 타입 변경 ${baseProp.type} → ${headProp.type} — breaking (${context}: '${field}' type changed)`,
+      );
       breaking = true;
     }
 
@@ -323,7 +316,9 @@ function diffSchemaProperties(
     if (baseProp.enum && headProp.enum) {
       const removed = baseProp.enum.filter((v) => !headProp.enum!.includes(v));
       if (removed.length > 0) {
-        details.push(`${context}: '${field}' enum 값 제거 [${removed.join(', ')}] — breaking (${context}: '${field}' enum values removed)`);
+        details.push(
+          `${context}: '${field}' enum 값 제거 [${removed.join(', ')}] — breaking (${context}: '${field}' enum values removed)`,
+        );
         breaking = true;
       }
     }

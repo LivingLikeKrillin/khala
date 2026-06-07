@@ -161,7 +161,7 @@ export async function loadConfigAsync(projectRoot?: string): Promise<ProbeConfig
     try {
       const absPath = resolve(configPath);
       const fileUrl = pathToFileURL(absPath).href;
-      const mod = await import(fileUrl) as { default?: ProbeConfig };
+      const mod = (await import(fileUrl)) as { default?: ProbeConfig };
       return mod.default ?? {};
     } catch {
       // import 실패 시 다음 후보로
@@ -181,7 +181,7 @@ export function resolveNexusConfig(config: ProbeConfig): NexusConfig & { disable
     timeoutMs: config.nexus?.timeoutMs ?? (env['NEXUS_TIMEOUT_MS'] ? Number(env['NEXUS_TIMEOUT_MS']) : 3000),
     tenant: config.nexus?.tenant ?? env['NEXUS_TENANT'] ?? 'default',
     classificationMax: config.nexus?.classificationMax ?? 'INTERNAL',
-    disabled: config.nexus?.disabled ?? (env['NEXUS_DISABLED'] === 'true'),
+    disabled: config.nexus?.disabled ?? env['NEXUS_DISABLED'] === 'true',
     searchTopK: config.nexus?.searchTopK ?? 5,
     graphHops: config.nexus?.graphHops ?? 1,
   };
@@ -190,10 +190,7 @@ export function resolveNexusConfig(config: ProbeConfig): NexusConfig & { disable
 /**
  * 설정의 임계치 오버라이드를 프로파일에 적용한다.
  */
-export function applyConfigOverrides(
-  profile: PlatformProfile,
-  config: ProbeConfig,
-): PlatformProfile {
+export function applyConfigOverrides(profile: PlatformProfile, config: ProbeConfig): PlatformProfile {
   if (!config.thresholds) return profile;
 
   return {

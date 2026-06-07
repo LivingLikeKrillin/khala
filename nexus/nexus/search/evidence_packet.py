@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 
 import structlog
 
-from nexus import db
 from nexus.repositories.graph import SubGraph
 from nexus.search.hybrid import SearchHit
 

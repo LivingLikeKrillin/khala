@@ -17,7 +17,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from nexus import db
-from nexus.index.bm25 import tokenize_korean
 from nexus.index.graph_extractor import find_entities_in_text, _build_entity_patterns, _load_gazetteer
 from nexus.ingest.pipeline import run_ingest
 from nexus.llm.answer import generate_answer
@@ -324,7 +323,6 @@ async def upload(
 ) -> NexusResponse:
     """비개발자용 Markdown 파일 업로드 + 자동 인덱싱."""
     from pathlib import Path
-    import aiofiles
 
     # Markdown만 허용
     if not file.filename or not file.filename.endswith(".md"):
@@ -580,7 +578,6 @@ async def search_answer_stream(req: AnswerRequest) -> StreamingResponse:
 
     async def event_stream():
         import json
-        import time
 
         try:
             config = _load_config()
@@ -928,7 +925,9 @@ async def serve_ui():
 
 
 # Static 파일 마운트 (모든 API 라우트 이후에 위치해야 함)
-from pathlib import Path as _Path
+# noqa 사유: catch-all "/static" 마운트는 반드시 모든 라우트 정의 이후여야 하므로
+# 이 import는 의도적으로 파일 하단에 위치한다.
+from pathlib import Path as _Path  # noqa: E402
 _web_dir = _Path(__file__).parent / "web"
 if _web_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_web_dir)), name="static")

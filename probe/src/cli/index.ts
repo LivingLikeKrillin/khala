@@ -49,13 +49,10 @@ async function runCheck(args: string[]): Promise<void> {
 
   // 플랫폼 감지
   const configPlatform = config.platform;
-  const platform = configPlatform && configPlatform !== 'custom'
-    ? configPlatform
-    : detectPlatform();
+  const platform = configPlatform && configPlatform !== 'custom' ? configPlatform : detectPlatform();
 
-  const baseProfile = configPlatform === 'custom' && config.customProfile
-    ? config.customProfile
-    : getProfileForPlatform(platform);
+  const baseProfile =
+    configPlatform === 'custom' && config.customProfile ? config.customProfile : getProfileForPlatform(platform);
 
   if (!baseProfile) {
     logger.warn(`플랫폼을 감지할 수 없습니다 (Platform not detected). probe.config.ts에서 platform을 지정하세요.`);
@@ -88,7 +85,9 @@ async function runCheck(args: string[]): Promise<void> {
 
   // v0.2: 리뷰 체크리스트 생성
   const specPath = config.api?.specPath ?? 'api/openapi.json';
-  const hasApiSpecChange = filteredFiles.some((f) => f.includes(specPath) || f.endsWith('.json') && f.includes('openapi'));
+  const hasApiSpecChange = filteredFiles.some(
+    (f) => f.includes(specPath) || (f.endsWith('.json') && f.includes('openapi')),
+  );
 
   const checklist = generateReviewChecklist(result, filteredFiles, {
     hasApiSpecChange,
@@ -230,13 +229,10 @@ async function runReview(args: string[]): Promise<void> {
   const config = await loadConfigAsync();
 
   const configPlatform = config.platform;
-  const platform = configPlatform && configPlatform !== 'custom'
-    ? configPlatform
-    : detectPlatform();
+  const platform = configPlatform && configPlatform !== 'custom' ? configPlatform : detectPlatform();
 
-  const baseProfile = configPlatform === 'custom' && config.customProfile
-    ? config.customProfile
-    : getProfileForPlatform(platform);
+  const baseProfile =
+    configPlatform === 'custom' && config.customProfile ? config.customProfile : getProfileForPlatform(platform);
 
   if (!baseProfile) {
     logger.warn(`플랫폼을 감지할 수 없습니다 (Platform not detected).`);
@@ -377,7 +373,9 @@ async function runNexusImpact(args: string[]): Promise<void> {
     if (impact.directImpact.length > 0) {
       logger.info('  직접 영향:');
       for (const svc of impact.directImpact) {
-        const obs = svc.observed ? ` (${svc.observed.callCount}회, error ${(svc.observed.errorRate * 100).toFixed(1)}%)` : '';
+        const obs = svc.observed
+          ? ` (${svc.observed.callCount}회, error ${(svc.observed.errorRate * 100).toFixed(1)}%)`
+          : '';
         logger.info(`    → ${svc.name} [${svc.relationship}]${obs}`);
       }
     }
@@ -427,7 +425,9 @@ async function runTroubleshootCmd(args: string[]): Promise<void> {
     }
   }
   if (!signal) {
-    logger.error('에러 신호를 입력하세요 (Usage: probe troubleshoot "<에러/스택트레이스>" [--kind] [--suspect] [--diff-base])');
+    logger.error(
+      '에러 신호를 입력하세요 (Usage: probe troubleshoot "<에러/스택트레이스>" [--kind] [--suspect] [--diff-base])',
+    );
     process.exitCode = 1;
     return;
   }
@@ -501,7 +501,8 @@ async function runReviewGroundCmd(args: string[]): Promise<void> {
   const nexusConfig = resolveNexusConfig(config);
   const client = new NexusClient(nexusConfig);
   const result = await runReviewGround(entities, client, {
-    searchTopK: nexusConfig.searchTopK, graphHops: nexusConfig.graphHops,
+    searchTopK: nexusConfig.searchTopK,
+    graphHops: nexusConfig.graphHops,
   });
 
   if (!result.ok) {
@@ -511,10 +512,16 @@ async function runReviewGroundCmd(args: string[]): Promise<void> {
   }
 
   switch (o.format) {
-    case 'json': logger.info(JSON.stringify(result.pack, null, 2)); break;
-    case 'brief': logger.info(formatReviewGroundingPackBrief(result.pack)); break;
+    case 'json':
+      logger.info(JSON.stringify(result.pack, null, 2));
+      break;
+    case 'brief':
+      logger.info(formatReviewGroundingPackBrief(result.pack));
+      break;
     case 'markdown':
-    default: logger.info(formatReviewGroundingPackMarkdown(result.pack)); break;
+    default:
+      logger.info(formatReviewGroundingPackMarkdown(result.pack));
+      break;
   }
 }
 
@@ -523,13 +530,10 @@ async function runReviewGroundCmd(args: string[]): Promise<void> {
  */
 async function resolveProfileForCli(config: Awaited<ReturnType<typeof loadConfigAsync>>) {
   const configPlatform = config.platform;
-  const platform = configPlatform && configPlatform !== 'custom'
-    ? configPlatform
-    : detectPlatform();
+  const platform = configPlatform && configPlatform !== 'custom' ? configPlatform : detectPlatform();
 
-  const baseProfile = configPlatform === 'custom' && config.customProfile
-    ? config.customProfile
-    : getProfileForPlatform(platform);
+  const baseProfile =
+    configPlatform === 'custom' && config.customProfile ? config.customProfile : getProfileForPlatform(platform);
 
   if (!baseProfile) return { profile: null, platform };
 

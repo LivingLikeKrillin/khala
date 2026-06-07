@@ -15,10 +15,7 @@ import { determineTier } from './tier.js';
 import { groundReview } from './review-grounder.js';
 import { logger } from '../utils/logger.js';
 import type { DetectedGroup } from '../core/scope-analyzer.js';
-import type {
-  NexusClientConfig,
-  EnrichmentResult,
-} from './types.js';
+import type { NexusClientConfig, EnrichmentResult } from './types.js';
 
 /** 보강 옵션 */
 export interface EnrichmentOptions {
@@ -84,9 +81,7 @@ export async function enrichWithNexus(
   // ReviewGroundingPack → 레거시 EnrichmentResult 투영 (back-compat)
   return {
     relevantDocs: pack.applicableGuidelines ?? [],
-    impactedServices: pack.topology
-      ? pack.topology.directImpact.concat(pack.topology.indirectImpact)
-      : [],
+    impactedServices: pack.topology ? pack.topology.directImpact.concat(pack.topology.indirectImpact) : [],
     designObservationGaps: pack.designObservationGaps ?? [],
     nexusAvailable: true,
   };
@@ -160,7 +155,10 @@ function containsContiguous(haystack: string[], needle: string[]): boolean {
   for (let i = 0; i <= haystack.length - needle.length; i++) {
     let match = true;
     for (let j = 0; j < needle.length; j++) {
-      if (haystack[i + j] !== needle[j]) { match = false; break; }
+      if (haystack[i + j] !== needle[j]) {
+        match = false;
+        break;
+      }
     }
     if (match) return true;
   }

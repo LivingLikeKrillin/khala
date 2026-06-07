@@ -52,8 +52,14 @@ export const reactSpaProfile: PlatformProfile = {
     maxDiffLinesPerPr: 500,
     maxCohesionGroups: 2,
     mixedConcerns: [
-      { roles: ['token', 'page'], reason: '토큰 변경과 화면 변경은 분리하세요 — Additive-first (Separate token from page changes)' },
-      { roles: ['store', 'component'], reason: '상태 관리 변경과 UI 변경은 분리를 권장합니다 (Separate store from UI components)' },
+      {
+        roles: ['token', 'page'],
+        reason: '토큰 변경과 화면 변경은 분리하세요 — Additive-first (Separate token from page changes)',
+      },
+      {
+        roles: ['store', 'component'],
+        reason: '상태 관리 변경과 UI 변경은 분리를 권장합니다 (Separate store from UI components)',
+      },
     ],
   },
 };

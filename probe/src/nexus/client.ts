@@ -80,7 +80,7 @@ export class NexusClient {
         logger.debug(`Nexus getStatusProbe 실패: HTTP ${response.status}`);
         return { ok: false, reason: 'unreachable' };
       }
-      const body = await response.json() as NexusResponse<NexusStatusResult>;
+      const body = (await response.json()) as NexusResponse<NexusStatusResult>;
       if (!body.success || !body.data) {
         logger.debug(`Nexus getStatusProbe 실패: ${body.error}`);
         return { ok: false, reason: 'unreachable' };
@@ -96,59 +96,70 @@ export class NexusClient {
   /**
    * 하이브리드 검색 (BM25 + Vector + Graph + RRF).
    */
-  async search(query: string, options?: {
-    topK?: number;
-    includeGraph?: boolean;
-    includeEvidence?: boolean;
-  }): Promise<NexusSearchResult | null> {
-    return this.post<NexusSearchResult>('/search', {
-      query,
-      top_k: options?.topK ?? 5,
-      route: 'auto',
-      classification_max: this.config.classificationMax,
-      include_graph: options?.includeGraph ?? true,
-      include_evidence: options?.includeEvidence ?? true,
-    }, 'search');
+  async search(
+    query: string,
+    options?: {
+      topK?: number;
+      includeGraph?: boolean;
+      includeEvidence?: boolean;
+    },
+  ): Promise<NexusSearchResult | null> {
+    return this.post<NexusSearchResult>(
+      '/search',
+      {
+        query,
+        top_k: options?.topK ?? 5,
+        route: 'auto',
+        classification_max: this.config.classificationMax,
+        include_graph: options?.includeGraph ?? true,
+        include_evidence: options?.includeEvidence ?? true,
+      },
+      'search',
+    );
   }
 
   /**
    * 검색 + LLM 근거 기반 답변.
    */
-  async searchAnswer(query: string, options?: {
-    topK?: number;
-  }): Promise<NexusAnswerResult | null> {
-    return this.post<NexusAnswerResult>('/search/answer', {
-      query,
-      top_k: options?.topK ?? 5,
-      route: 'auto',
-      classification_max: this.config.classificationMax,
-    }, 'searchAnswer');
+  async searchAnswer(
+    query: string,
+    options?: {
+      topK?: number;
+    },
+  ): Promise<NexusAnswerResult | null> {
+    return this.post<NexusAnswerResult>(
+      '/search/answer',
+      {
+        query,
+        top_k: options?.topK ?? 5,
+        route: 'auto',
+        classification_max: this.config.classificationMax,
+      },
+      'searchAnswer',
+    );
   }
 
   /**
    * 엔티티 그래프 조회 (1~2홉 이웃).
    */
-  async getGraph(entityRid: string, options?: {
-    hops?: number;
-  }): Promise<NexusGraphResult | null> {
+  async getGraph(
+    entityRid: string,
+    options?: {
+      hops?: number;
+    },
+  ): Promise<NexusGraphResult | null> {
     const hops = options?.hops ?? 1;
     const params = new URLSearchParams({
       hops: String(hops),
       tenant: this.config.tenant,
     });
-    return this.get<NexusGraphResult>(
-      `/graph/${encodeURIComponent(entityRid)}?${params.toString()}`,
-      'getGraph',
-    );
+    return this.get<NexusGraphResult>(`/graph/${encodeURIComponent(entityRid)}?${params.toString()}`, 'getGraph');
   }
 
   /**
    * 설계-관측 diff 보고서.
    */
-  async getDiff(options?: {
-    flagFilter?: string;
-    entityFilter?: string;
-  }): Promise<NexusDiffResult | null> {
+  async getDiff(options?: { flagFilter?: string; entityFilter?: string }): Promise<NexusDiffResult | null> {
     const params = new URLSearchParams({ tenant: this.config.tenant });
     if (options?.flagFilter) {
       params.set('flag_filter', options.flagFilter);
@@ -171,7 +182,7 @@ export class NexusClient {
         logger.debug(`Nexus ${context} 실패: HTTP ${response.status}`);
         return null;
       }
-      const body = await response.json() as NexusResponse<T>;
+      const body = (await response.json()) as NexusResponse<T>;
       if (!body.success) {
         logger.debug(`Nexus ${context} 실패: ${body.error}`);
         return null;
@@ -197,7 +208,7 @@ export class NexusClient {
         logger.debug(`Nexus ${context} 실패: HTTP ${response.status}`);
         return null;
       }
-      const data = await response.json() as NexusResponse<T>;
+      const data = (await response.json()) as NexusResponse<T>;
       if (!data.success) {
         logger.debug(`Nexus ${context} 실패: ${data.error}`);
         return null;
@@ -253,11 +264,7 @@ function isTimeoutError(error: unknown): boolean {
  * );
  * ```
  */
-export async function withNexusFallback<T>(
-  fn: () => Promise<T>,
-  fallback: T,
-  context: string,
-): Promise<T> {
+export async function withNexusFallback<T>(fn: () => Promise<T>, fallback: T, context: string): Promise<T> {
   try {
     return await fn();
   } catch (error) {

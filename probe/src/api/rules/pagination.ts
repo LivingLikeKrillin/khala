@@ -10,7 +10,17 @@
 import type { LintRule, OpenApiSpec, ApiLintViolation, SchemaObject } from '../types.js';
 
 const METHODS = ['get'] as const; // GET만 대상
-const PAGINATION_FIELDS = ['page', 'size', 'totalPages', 'totalElements', 'cursor', 'nextCursor', 'offset', 'limit', 'total'];
+const PAGINATION_FIELDS = [
+  'page',
+  'size',
+  'totalPages',
+  'totalElements',
+  'cursor',
+  'nextCursor',
+  'offset',
+  'limit',
+  'total',
+];
 
 export const paginationRequiredRule: LintRule = {
   id: 'probe/pagination-required',
@@ -67,9 +77,7 @@ function isArraySchema(schema: SchemaObject, spec: OpenApiSpec): boolean {
 
   // object이면서 items 배열 프로퍼티가 있는 경우 (wrapper)
   if (schema.type === 'object' && schema.properties) {
-    const hasArrayProp = Object.values(schema.properties).some(
-      (prop) => prop.type === 'array',
-    );
+    const hasArrayProp = Object.values(schema.properties).some((prop) => prop.type === 'array');
     if (hasArrayProp) return false; // wrapper는 이미 pagination 가능
   }
 

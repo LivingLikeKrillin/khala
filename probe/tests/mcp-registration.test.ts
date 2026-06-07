@@ -7,7 +7,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
  *  tool 메서드만 있으면 충분하다 (핸들러는 등록 시 호출되지 않음). */
 function collectToolNames(): string[] {
   const names: string[] = [];
-  const fakeServer = { tool: (name: string) => { names.push(name); } } as unknown as McpServer;
+  const fakeServer = {
+    tool: (name: string) => {
+      names.push(name);
+    },
+  } as unknown as McpServer;
   registerTools(fakeServer);
   return names;
 }

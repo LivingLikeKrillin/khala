@@ -45,8 +45,7 @@ export async function diffApiSpecs(options: ApiDiffOptions): Promise<ApiDiffResu
   }
 
   // oasdiff 사용 결정
-  const shouldUseOasdiff = useOasdiff === true ||
-    (useOasdiff === 'auto' && await isOasdiffAvailable());
+  const shouldUseOasdiff = useOasdiff === true || (useOasdiff === 'auto' && (await isOasdiffAvailable()));
 
   if (shouldUseOasdiff) {
     try {

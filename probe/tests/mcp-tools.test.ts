@@ -160,11 +160,7 @@ describe('MCP 도구 — reviewChecklist', () => {
   });
 
   it('Next.js 페이지 변경은 ui-feature 체크리스트를 생성한다', () => {
-    const files = [
-      'app/dashboard/page.tsx',
-      'app/dashboard/layout.tsx',
-      'components/dashboard/StatsCard.tsx',
-    ];
+    const files = ['app/dashboard/page.tsx', 'app/dashboard/layout.tsx', 'components/dashboard/StatsCard.tsx'];
 
     const scopeResult = analyzeScope(files, nextjsProfile, 80);
     const checklist = generateReviewChecklist(scopeResult, files);

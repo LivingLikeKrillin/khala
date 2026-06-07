@@ -17,9 +17,7 @@ import type { DetectedGroup } from './scope-analyzer.js';
  * @param groups scope-analyzer가 반환한 응집 그룹 목록
  * @param changedFiles diff에서 추출한 변경 파일 경로 목록
  */
-export function buildChangedEntities(
-  groups: DetectedGroup[], changedFiles: string[],
-): ChangedEntity[] {
+export function buildChangedEntities(groups: DetectedGroup[], changedFiles: string[]): ChangedEntity[] {
   const groupOf = new Map<string, string>(); // entityName → cohesionGroup
   for (const group of groups) {
     for (const name of extractServiceNames([group])) {
@@ -50,7 +48,10 @@ export async function runReviewGround(
   options?: Partial<ReviewGroundOptions>,
 ): Promise<{ ok: false; reason: string } | { ok: true; pack: ReviewGroundingPack }> {
   if (changedEntities.length === 0) {
-    return { ok: false, reason: '변경 엔티티를 귀속하지 못함 (No changed entities). 파일 경로/플랫폼 프로파일을 확인하세요.' };
+    return {
+      ok: false,
+      reason: '변경 엔티티를 귀속하지 못함 (No changed entities). 파일 경로/플랫폼 프로파일을 확인하세요.',
+    };
   }
 
   const probe = await client.getStatusProbe();

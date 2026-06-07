@@ -5,10 +5,34 @@
  * API 계약 검증, 리뷰 체크리스트, Nexus 연동 기반 맥락 리뷰를 제공한다.
  */
 
-export { analyzeScope, type ScopeAnalysisResult, type DetectedGroup, type AnalyzedFile, type MixedConcernWarning, type SplitSuggestion, type ProposedPr } from './core/scope-analyzer.js';
+export {
+  analyzeScope,
+  type ScopeAnalysisResult,
+  type DetectedGroup,
+  type AnalyzedFile,
+  type MixedConcernWarning,
+  type SplitSuggestion,
+  type ProposedPr,
+} from './core/scope-analyzer.js';
 export { detectPlatform, getProfileForPlatform, type DetectedPlatform } from './profiles/detector.js';
-export { loadConfig, loadConfigAsync, applyConfigOverrides, resolveNexusConfig, type ProbeConfig, type ApiConfig, type ReviewConfig, type NexusConfig } from './core/config-loader.js';
-export type { PlatformProfile, CohesionGroup, PrThresholds, FileRolePattern, MixedConcernRule, SeverityLevel } from './profiles/types.js';
+export {
+  loadConfig,
+  loadConfigAsync,
+  applyConfigOverrides,
+  resolveNexusConfig,
+  type ProbeConfig,
+  type ApiConfig,
+  type ReviewConfig,
+  type NexusConfig,
+} from './core/config-loader.js';
+export type {
+  PlatformProfile,
+  CohesionGroup,
+  PrThresholds,
+  FileRolePattern,
+  MixedConcernRule,
+  SeverityLevel,
+} from './profiles/types.js';
 export { springBootProfile } from './profiles/spring-boot.js';
 export { nextjsProfile } from './profiles/nextjs.js';
 export { reactSpaProfile } from './profiles/react-spa.js';
@@ -33,4 +57,14 @@ export { detectConcernDrift, type DriftResult } from './core/concern-drift.js';
 export { NexusClient, withNexusFallback } from './nexus/client.js';
 export { enrichWithNexus, extractServiceNames } from './nexus/context-enricher.js';
 export { analyzeImpact } from './nexus/impact-analyzer.js';
-export type { NexusClientConfig, EnrichmentResult, RelevantDoc, ImpactedService, DesignGap, ImpactAnalysis, NexusSearchResult, NexusGraphResult, NexusDiffResult } from './nexus/types.js';
+export type {
+  NexusClientConfig,
+  EnrichmentResult,
+  RelevantDoc,
+  ImpactedService,
+  DesignGap,
+  ImpactAnalysis,
+  NexusSearchResult,
+  NexusGraphResult,
+  NexusDiffResult,
+} from './nexus/types.js';

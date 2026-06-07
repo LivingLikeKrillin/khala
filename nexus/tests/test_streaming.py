@@ -3,11 +3,7 @@
 import json
 
 from nexus.search.evidence_packet import (
-    EvidenceSnippet,
-    EvidencePacket,
-    Provenance,
     assemble_packet,
-    format_for_llm,
 )
 from nexus.search.hybrid import SearchHit
 from nexus.repositories.graph import SubGraph, EdgeResult, ObservedEdgeResult

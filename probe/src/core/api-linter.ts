@@ -48,15 +48,16 @@ export async function lintApiSpec(options: ApiLintOptions): Promise<ApiLintResul
   }
 
   // Spectral 사용 결정
-  const shouldUseSpectral = useSpectral === true ||
-    (useSpectral === 'auto' && await isSpectralAvailable());
+  const shouldUseSpectral = useSpectral === true || (useSpectral === 'auto' && (await isSpectralAvailable()));
 
   if (shouldUseSpectral) {
     try {
       logger.debug('Spectral로 API 린트 실행');
       return await runSpectral(specPath);
     } catch {
-      logger.warn('Spectral 실행 실패, 내장 린트 엔진으로 폴백합니다 (Spectral failed, falling back to built-in linter)');
+      logger.warn(
+        'Spectral 실행 실패, 내장 린트 엔진으로 폴백합니다 (Spectral failed, falling back to built-in linter)',
+      );
     }
   } else if (useSpectral === 'auto') {
     logger.debug('Spectral이 설치되지 않아 내장 린트 엔진을 사용합니다 (Spectral not found, using built-in linter)');

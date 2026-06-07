@@ -45,8 +45,12 @@ import { NexusClient } from '../src/nexus/client.js';
 
 describe('runTroubleshoot 경로', () => {
   let originalFetch: typeof globalThis.fetch;
-  beforeEach(() => { originalFetch = globalThis.fetch; });
-  afterEach(() => { globalThis.fetch = originalFetch; });
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
 
   it('빈 입력은 ok:false', async () => {
     const client = new NexusClient({ baseUrl: 'http://test:8000' });
@@ -58,7 +62,8 @@ describe('runTroubleshoot 경로', () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('down'));
     const client = new NexusClient({ baseUrl: 'http://test:8000' });
     const r = await runTroubleshoot(
-      { signal: 'at com.shop.order.OrderService.checkout(OrderService.java:88)' }, client,
+      { signal: 'at com.shop.order.OrderService.checkout(OrderService.java:88)' },
+      client,
     );
     expect(r.ok).toBe(true);
     if (r.ok) {
@@ -72,7 +77,8 @@ describe('runTroubleshoot 경로', () => {
     const client = new NexusClient({ baseUrl: 'http://test:8000' });
     // 본문은 스택트레이스인데 kind=incident로 모순 지정
     const r = await runTroubleshoot(
-      { signal: 'at com.shop.order.OrderService.checkout(OrderService.java:88)', kind: 'incident' }, client,
+      { signal: 'at com.shop.order.OrderService.checkout(OrderService.java:88)', kind: 'incident' },
+      client,
     );
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.pack.caveats.some((c) => c.includes('kind'))).toBe(true);

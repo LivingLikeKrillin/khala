@@ -22,9 +22,7 @@ export function parseOpenApiSpec(specPath: string): OpenApiSpec {
   const parsed = JSON.parse(content) as OpenApiSpec;
 
   if (!parsed.openapi && !parsed.info) {
-    throw new Error(
-      `유효한 OpenAPI 스펙이 아닙니다 (Not a valid OpenAPI spec): ${specPath}`,
-    );
+    throw new Error(`유효한 OpenAPI 스펙이 아닙니다 (Not a valid OpenAPI spec): ${specPath}`);
   }
 
   return parsed;

@@ -56,9 +56,18 @@ export const nextjsProfile: PlatformProfile = {
     maxDiffLinesPerPr: 600,
     maxCohesionGroups: 2,
     mixedConcerns: [
-      { roles: ['api-route', 'page'], reason: 'API 라우트와 페이지 UI 변경은 분리를 권장합니다 (Separate API routes from page UI)' },
-      { roles: ['middleware', 'component'], reason: '인증/미들웨어와 UI 컴포넌트는 분리하세요 (Separate middleware from UI components)' },
-      { roles: ['lib', 'page'], reason: '공유 라이브러리 변경과 페이지 변경은 분리를 권장합니다 (Separate shared libs from page changes)' },
+      {
+        roles: ['api-route', 'page'],
+        reason: 'API 라우트와 페이지 UI 변경은 분리를 권장합니다 (Separate API routes from page UI)',
+      },
+      {
+        roles: ['middleware', 'component'],
+        reason: '인증/미들웨어와 UI 컴포넌트는 분리하세요 (Separate middleware from UI components)',
+      },
+      {
+        roles: ['lib', 'page'],
+        reason: '공유 라이브러리 변경과 페이지 변경은 분리를 권장합니다 (Separate shared libs from page changes)',
+      },
     ],
   },
 };

@@ -93,7 +93,5 @@ function countRoles(roles: string[]): RoleCount[] {
   for (const role of roles) {
     counts.set(role, (counts.get(role) ?? 0) + 1);
   }
-  return [...counts.entries()]
-    .map(([role, count]) => ({ role, count }))
-    .sort((a, b) => b.count - a.count);
+  return [...counts.entries()].map(([role, count]) => ({ role, count })).sort((a, b) => b.count - a.count);
 }

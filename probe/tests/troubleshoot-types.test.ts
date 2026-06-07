@@ -18,7 +18,8 @@ describe('트러블슈팅 타입', () => {
 
 it('ReviewGroundingPack 타입이 구성된다', () => {
   const pack: ReviewGroundingPack = {
-    tier: 2, tierReason: 'r',
+    tier: 2,
+    tierReason: 'r',
     changedEntities: [{ entityName: 'order-service', changedFiles: ['a.ts'] }],
     caveats: [],
   };

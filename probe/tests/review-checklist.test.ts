@@ -85,9 +85,7 @@ describe('체크리스트 생성', () => {
   it('커스텀 항목 추가가 반영된다', () => {
     const checklist = generateChecklist('domain-crud', {
       customItems: {
-        'domain-crud': [
-          { id: 'custom-audit', description: '감사 로그가 기록되는지 확인' },
-        ],
+        'domain-crud': [{ id: 'custom-audit', description: '감사 로그가 기록되는지 확인' }],
       },
     });
 
@@ -104,10 +102,7 @@ describe('체크리스트 생성', () => {
 
   it('테스트 파일이 있으면 자동 검증이 통과한다', () => {
     const checklist = generateChecklist('domain-crud', {
-      changedFiles: [
-        'src/main/kotlin/service/UserService.kt',
-        'src/test/kotlin/service/UserServiceTest.kt',
-      ],
+      changedFiles: ['src/main/kotlin/service/UserService.kt', 'src/test/kotlin/service/UserServiceTest.kt'],
     });
 
     const testVerified = checklist.autoVerified.find((v) => v.id === 'dc-service-test');
@@ -116,9 +111,7 @@ describe('체크리스트 생성', () => {
 
   it('테스트 파일이 없으면 자동 검증이 실패한다', () => {
     const checklist = generateChecklist('domain-crud', {
-      changedFiles: [
-        'src/main/kotlin/service/UserService.kt',
-      ],
+      changedFiles: ['src/main/kotlin/service/UserService.kt'],
     });
 
     const testVerified = checklist.autoVerified.find((v) => v.id === 'dc-service-test');
@@ -127,10 +120,7 @@ describe('체크리스트 생성', () => {
 
   it('스토리 파일이 있으면 자동 검증이 통과한다 (ui-component)', () => {
     const checklist = generateChecklist('ui-component', {
-      changedFiles: [
-        'components/Button/Button.tsx',
-        'components/Button/Button.stories.tsx',
-      ],
+      changedFiles: ['components/Button/Button.tsx', 'components/Button/Button.stories.tsx'],
     });
 
     const storyVerified = checklist.autoVerified.find((v) => v.id === 'uc-story');
