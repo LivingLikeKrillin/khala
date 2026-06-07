@@ -1,0 +1,86 @@
+# Taskfile for the khala monorepo (https://taskfile.dev).
+#
+# Wraps the per-subproject commands (the source of truth in each subproject)
+# so the whole repo can be tested / built / linted from the root.
+#
+#   task test     -> run every subproject's test suite
+#   task build    -> build the docs site
+#   task lint     -> ruff check across the Python subprojects
+#
+# Install go-task: https://taskfile.dev/installation/  (the CLI is not required
+# to read this file — CI calls the underlying commands directly.)
+version: "3"
+
+tasks:
+  # ---- aggregate ----------------------------------------------------------
+  test:
+    desc: Run all subproject test suites (nexus, probe, specledger, mutqa, docs)
+    cmds:
+      - task: test:nexus
+      - task: test:probe
+      - task: test:specledger
+      - task: test:mutqa
+      - task: test:docs
+
+  build:
+    desc: Build the docs site (Astro Starlight)
+    cmds:
+      - task: build:docs
+
+  lint:
+    desc: Lint the Python subprojects (ruff, check-only)
+    cmds:
+      - task: lint:ruff
+
+  # ---- per-subproject test subtasks --------------------------------------
+  test:nexus:
+    desc: nexus unit tests (DB integration tests need Docker — run locally)
+    dir: nexus
+    cmds:
+      # -m "not integration" keeps the baseline run DB-free.
+      - pip install -e ".[dev]"
+      - python -m pytest -q -m "not integration"
+
+  test:probe:
+    desc: probe tests (vitest)
+    dir: probe
+    cmds:
+      - pnpm install
+      - pnpm test:run
+
+  test:specledger:
+    desc: specledger tests (pytest)
+    dir: specledger
+    cmds:
+      - pip install -e ".[dev]"
+      - python -m pytest -q
+
+  test:mutqa:
+    desc: mutqa tests (pytest)
+    dir: mutqa
+    cmds:
+      - pip install -e ".[dev]"
+      - python -m pytest -q
+
+  test:docs:
+    desc: docs typecheck (astro check)
+    dir: docs
+    cmds:
+      - npm install
+      - npm run check
+
+  # ---- build subtasks -----------------------------------------------------
+  build:docs:
+    desc: Build the docs site and run the link checker
+    dir: docs
+    cmds:
+      - npm install
+      - npm run build
+      - npm run check
+      - npm run linkcheck
+
+  # ---- lint subtasks ------------------------------------------------------
+  lint:ruff:
+    desc: ruff check on the Python subprojects (check-only baseline)
+    cmds:
+      - ruff check nexus specledger mutqa

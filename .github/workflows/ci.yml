@@ -1,0 +1,103 @@
+# CI for the khala monorepo.
+#
+# One job per subproject. Configured now; it activates automatically once the
+# repo is pushed to GitHub (owner action). Versions match the local environment
+# that passed: Python 3.13, Node 20.
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  nexus:
+    name: nexus (pytest, unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install nexus
+        working-directory: nexus
+        run: pip install -e ".[dev]"
+      # Unit tests only. DB integration tests (-m integration) need Postgres and
+      # are run locally / by the owner — no postgres service in the baseline job.
+      - name: Run unit tests
+        working-directory: nexus
+        run: python -m pytest -q -m "not integration"
+
+  probe:
+    name: probe (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: probe/pnpm-lock.yaml
+      - name: Install probe
+        working-directory: probe
+        run: pnpm install
+      - name: Run tests
+        working-directory: probe
+        run: pnpm test:run
+
+  specledger:
+    name: specledger (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install specledger
+        working-directory: specledger
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        working-directory: specledger
+        run: python -m pytest -q
+
+  mutqa:
+    name: mutqa (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install mutqa
+        working-directory: mutqa
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        working-directory: mutqa
+        run: python -m pytest -q
+
+  docs:
+    name: docs (build + linkcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - name: Install docs
+        working-directory: docs
+        run: npm install
+      - name: Build site
+        working-directory: docs
+        run: npm run build
+      - name: Type check
+        working-directory: docs
+        run: npm run check
+      - name: Link check
+        working-directory: docs
+        run: npm run linkcheck
