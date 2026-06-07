@@ -7,7 +7,6 @@ Raw trace는 Nexus DB에 저장하지 않는다. Tempo에 포인터만 유지.
 from __future__ import annotations
 
 import os
-import statistics
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -19,7 +18,7 @@ from nexus import db
 from nexus.index.graph_extractor import ensure_entity_exists
 from nexus.otel.resolver import resolve_service_name
 from nexus.repositories.graph import PostgresGraphRepository
-from nexus.rid import canonicalize_entity_name, entity_rid, evidence_rid, observed_edge_rid
+from nexus.rid import evidence_rid, observed_edge_rid
 
 logger = structlog.get_logger(__name__)
 
@@ -234,9 +233,6 @@ async def run_otel_aggregation(
     edges_to_upsert: list[dict] = []
     for (from_svc, to_svc), agg_edge in aggregated.items():
         # 엔티티 확보
-        from_canonical = canonicalize_entity_name(from_svc, "Service")
-        to_canonical = canonicalize_entity_name(to_svc, "Service")
-
         from_rid_val = await ensure_entity_exists(
             tenant, from_svc, "Service", source_kind="otel",
         )

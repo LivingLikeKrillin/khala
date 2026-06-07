@@ -7,7 +7,6 @@ Markdown 문서를 H1/H2 기반으로 섹션 분할 후,
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 import structlog

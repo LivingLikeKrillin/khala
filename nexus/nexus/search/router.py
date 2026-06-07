@@ -6,7 +6,6 @@ LLM이 아닌 deterministic 규칙으로 판별.
 
 from __future__ import annotations
 
-import re
 
 import structlog
 

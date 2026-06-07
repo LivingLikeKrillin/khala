@@ -8,7 +8,7 @@ config.yaml의 extraction_triggers를 사용하여
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import structlog

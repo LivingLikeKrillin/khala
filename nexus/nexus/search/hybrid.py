@@ -7,13 +7,11 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any
 
 import structlog
 
 from nexus import db
 from nexus.index.bm25 import tokenize_korean, tokens_to_tsquery
-from nexus.models.resource import base_filter_sql
 from nexus.providers.embedding import EmbeddingService
 from nexus.repositories.graph import (
     GraphRepository,
@@ -62,7 +60,7 @@ async def _bm25_search(
         return []
 
     rows = await db.fetch_all(
-        f"""
+        """
         SELECT c.rid, ts_rank(c.tsvector_ko, to_tsquery('simple', $1)) as rank_score
         FROM chunks c
         WHERE c.tsvector_ko @@ to_tsquery('simple', $1)
@@ -96,7 +94,7 @@ async def _vector_search(
     vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
     rows = await db.fetch_all(
-        f"""
+        """
         SELECT c.rid, c.embedding <=> $1::vector as distance
         FROM chunks c
         WHERE c.embedding IS NOT NULL
