@@ -1,5 +1,5 @@
 /**
- * Nexus(Nexus) HTTP 클라이언트
+ * Nexus HTTP 클라이언트
  *
  * Nexus API를 호출하는 fetch 기반 클라이언트.
  * 모든 호출에 타임아웃(기본 10초)과 graceful degradation을 적용한다.

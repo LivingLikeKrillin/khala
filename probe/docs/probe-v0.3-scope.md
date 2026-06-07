@@ -526,7 +526,7 @@ Claude: (probe://guidelines/api-contract 리소스 참조)
 
 | 기능 | 이유 | 예정 버전 |
 |------|------|-----------|
-| Nexus(Nexus) 연동 | 설계 맥락 기반 리뷰는 v0.4 | v0.4 |
+| Nexus 연동 | 설계 맥락 기반 리뷰는 v0.4 | v0.4 |
 | MCP sampling | Claude ↔ Probe 양방향 호출은 과도 | v0.4+ |
 | SSE transport | 로컬 사용이 주 용도, SSE 불필요 | 미정 |
 | 커스텀 도구 등록 API | 사용자가 MCP 도구를 확장하는 기능 | v0.5+ |

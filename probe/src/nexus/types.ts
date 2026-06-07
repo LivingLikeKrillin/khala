@@ -1,5 +1,5 @@
 /**
- * Nexus(Nexus) 연동 타입 정의
+ * Nexus 연동 타입 정의
  *
  * Probe가 Nexus API를 호출할 때 사용하는 요청/응답 타입.
  * Nexus API 계약(API_CONTRACT.md)에 기반한다.
