@@ -7,8 +7,6 @@ description: Grounded knowledge retrieval — RAG + GraphRAG that answers only f
 Nexus is the knowledge-base component, formerly called "Khala". The ecosystem now carries the name **Khala**; the code/repo rename lands later. Install paths below still reference the current `khala` repo.
 :::
 
-## Overview
-
 Nexus is the grounded knowledge base of the ecosystem. It answers questions about your organization's knowledge — documents, policies, configs — and your operational reality — OpenTelemetry traces — **only from evidence it can cite**. Every answer carries a confidence and a pointer back to the source chunk or trace that grounds it.
 
 The problem it calibrates: ordinary RAG retrieves text and lets the model improvise; it will produce a plausible answer whether or not it has grounds. Nexus inverts that. The system decides what is retrievable and whether the answer is supportable; the LLM only narrates over evidence that already exists. If there is no citable source, the answer does not get made.

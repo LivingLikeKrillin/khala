@@ -3,8 +3,6 @@ title: Probe
 description: Platform-aware PR analyzer + API contract validator — grounds code review in platform cohesion, backward compatibility, and org guidelines.
 ---
 
-## Overview
-
 Probe grounds the review of a change in context the reviewer would otherwise have to hold in their head. It is a **platform-aware PR analyzer + API contract validator** that turns three recurring review questions into deterministic checks:
 
 1. **Is this PR's scope appropriate?** The same seven files can be one cohesive change in Spring Boot and three separate concerns in Next.js. Judging by file count misfires; Probe judges by *logical cohesion* against a platform profile.
