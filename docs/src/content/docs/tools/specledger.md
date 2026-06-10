@@ -9,6 +9,12 @@ The problem it calibrates: when an assistant produces a confident spec, the path
 
 One-line identity: a ledger that makes "who approved what, and why" a recorded, attributable act — so you cannot rubber-stamp your way past it.
 
+<img
+  src="/diagrams/specledger.svg"
+  alt="Spec lifecycle: Recorded → Critiqued (issues) → Approved (content-hashed) → Implementing (gate armed, edits allowed) → Done. Write/Edit stays blocked until approval."
+  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
+/>
+
 ## Core concepts
 
 - **The gate.** Until a spec is `approved` and content-hash-stamped, file-edit tools on non-exempt paths are blocked. `docs/**` and `tests/**` are allow-globbed by default (configurable via `allow_globs`).

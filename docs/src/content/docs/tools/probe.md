@@ -13,6 +13,12 @@ A design principle runs through all of it: **when everything is fine, Probe says
 
 One-line identity: the tool that keeps PR review honest by grounding scope, contracts, and conformance — optionally enriched by Nexus, but fully functional without it.
 
+<img
+  src="/diagrams/probe.svg"
+  alt="Scope analysis: changed files → assign roles → match cohesion groups → score severity → are concerns mixed? If yes, propose a split with merge order; if cohesive, stay silent."
+  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
+/>
+
 ## Core concepts
 
 - **Platform profile.** A mapping from file patterns to roles, per framework (Spring Boot, Next.js, React SPA). Roles compose into **cohesion groups** — e.g. Spring Boot `domain-crud` = entity + repository + service + controller + dto + mapper + exception + test.

@@ -9,6 +9,12 @@ The problem it calibrates: ordinary RAG retrieves text and lets the model improv
 
 One-line identity: **enterprise RAG + GraphRAG for grounded knowledge retrieval** — the context provider that AI agents (code review, troubleshooting) lean on so they reason from real documents and observed telemetry rather than guesses.
 
+<img
+  src="/diagrams/nexus.svg"
+  alt="Hybrid retrieval: a query fans out to BM25 (mecab-ko), Vector (768-d), and Graph (2-hop) retrievers; their results fuse via RRF (k=60) into a grounded answer that cites a source or refuses."
+  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
+/>
+
 ## Core concepts
 
 - **Hybrid search.** Three retrievers run in parallel and fuse with RRF (Reciprocal Rank Fusion, `k=60`): BM25 over Korean morphology (mecab-ko, so 조사/어미 are stripped correctly), Vector (768-dimension embeddings via Ollama), and Graph (2-hop entity traversal).

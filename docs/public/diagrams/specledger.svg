@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="1010" viewBox="0 0 280 1010">
+<ellipse cx="75" cy="95" rx="10" ry="10" fill="#5c9ce6" stroke="#5c9ce6" stroke-width="2" />
+<ellipse cx="140" cy="95" rx="45" ry="45" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="50" y="270" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="50" y="470" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="50" y="670" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<ellipse cx="140" cy="915" rx="41" ry="41" fill="none" stroke="#5c9ce6" stroke-width="1" />
+<ellipse cx="140" cy="915" rx="45" ry="45" fill="#0d2137" stroke="#5c9ce6" stroke-width="3" />
+<defs><marker id="marker-el_13" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 140 140 L 140 270" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_13)" />
+<defs><marker id="marker-el_16" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 140 340 L 140 470" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_16)" />
+<defs><marker id="marker-el_19" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 140 540 L 140 670" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_19)" />
+<defs><marker id="marker-el_22" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 140 740 L 140 870" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_22)" />
+<rect x="96.60000000000002" y="196.5" width="58.800000000000004" height="17" rx="0" fill="#0a1929" stroke="transparent" stroke-width="1" stroke-dasharray="8 4" />
+<rect x="76.80000000000001" y="396.5" width="98.4" height="17" rx="0" fill="#0a1929" stroke="transparent" stroke-width="1" stroke-dasharray="8 4" />
+<rect x="63.60000000000002" y="596.5" width="124.80000000000001" height="17" rx="0" fill="#0a1929" stroke="transparent" stroke-width="1" stroke-dasharray="8 4" />
+<rect x="63.60000000000002" y="796.5" width="124.80000000000001" height="17" rx="0" fill="#0a1929" stroke="transparent" stroke-width="1" stroke-dasharray="8 4" />
+<text x="140" y="98.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Recorded</text>
+<text x="140" y="308.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Critiqued · issues</text>
+<text x="140" y="508.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Approved · hashed</text>
+<text x="140" y="708.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Implementing</text>
+<text x="139.99999999999997" y="918.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Done</text>
+<text x="126.00000000000003" y="207.7" font-size="12" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">critique</text>
+<text x="126.00000000000001" y="407.7" font-size="12" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">fix + sign-off</text>
+<text x="126.00000000000003" y="607.7" font-size="12" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">begin · gate armed</text>
+<text x="126.00000000000003" y="807.7" font-size="12" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">end_implementation</text>
+</svg>

@@ -9,6 +9,12 @@ The problem it calibrates: a passing test suite is not the same as a suite that 
 
 One-line identity: the harness that turns "tests pass" into "tests actually verify behavior," with surviving mutants as the deterministic signal.
 
+<img
+  src="/diagrams/mutqa.svg"
+  alt="Mutation flow: green suite → cosmic-ray mutate → run the suite per mutant → any survivors? None reports no gaps; otherwise Critic triage → ledger → report of biting real-gaps."
+  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
+/>
+
 ## Core concepts
 
 - **Mutation (cosmic-ray).** mutqa drives `cosmic-ray` to mutate changed source modules and run the suite against each mutant.

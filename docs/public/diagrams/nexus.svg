@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="668.2222222222222" viewBox="0 0 780 668.2222222222222">
+<rect x="300" y="50" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="550" y="219.11111111111111" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="300" y="219.11111111111111" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="50" y="219.11111111111111" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="300" y="388.22222222222223" width="180" height="70" rx="7.2" fill="#132f4c" stroke="#90caf9" stroke-width="2" />
+<rect x="300" y="548.2222222222222" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<defs><marker id="marker-el_13" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 435 120 L 640 219.11111111111111" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_13)" />
+<defs><marker id="marker-el_14" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 390 120 L 390 219.11111111111111" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_14)" />
+<defs><marker id="marker-el_15" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 345 120 L 140 219.11111111111111" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_15)" />
+<defs><marker id="marker-el_16" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 640 289.1111111111111 L 435 388.22222222222223" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_16)" />
+<defs><marker id="marker-el_17" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 390 289.1111111111111 L 390 388.22222222222223" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_17)" />
+<defs><marker id="marker-el_18" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 140 289.1111111111111 L 345 388.22222222222223" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_18)" />
+<defs><marker id="marker-el_19" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 390 458.22222222222223 L 390 548.2222222222222" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_19)" />
+<text x="390" y="88.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Query</text>
+<text x="640" y="257.7111111111111" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">BM25 · mecab-ko</text>
+<text x="390" y="257.7111111111111" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Vector · 768-d</text>
+<text x="140" y="257.7111111111111" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Graph · 2-hop</text>
+<text x="390" y="426.82222222222225" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">RRF fusion · k=60</text>
+<text x="390" y="586.8222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Grounded answer</text>
+</svg>
