@@ -43,6 +43,12 @@ The thread through all of this is **calibration**. Khala does not promise correc
 
 ## How they connect
 
+<img
+  src="/diagrams/ecosystem.svg"
+  alt="Developers and agents reach Archon, the authority window; Archon, specledger, and Probe publish to and query Nexus — the Khala link. The tools connect only through Khala."
+  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
+/>
+
 The most important architectural relationship is also the simplest: the three producer tools never call each other directly. Archon, specledger, and the knowledge they generate do not form a web of point-to-point integrations. They connect **only through Khala**. Archon publishes claims and values into the shared body; specledger publishes approved specs into it; everything that needs grounded knowledge reads from the same place. This is what keeps the ecosystem coherent rather than tangled — one link, not N² wires.
 
 [**Probe**](/tools/probe/) sits on the other side of that link as a consumer. It is a grounding agent for engineering work — PR scope, API contracts, troubleshooting — and it reaches its conclusions by querying Khala, not by reaching into the producers. And [**Archon**](/tools/archon/) is the single authority window for domain truth: when a developer or an agent needs to know what is true in the domain, there is exactly one window to ask, and exactly one answer that comes with its source. One link to bind them; one window to ask.
