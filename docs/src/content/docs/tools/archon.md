@@ -13,6 +13,12 @@ The problem it calibrates: planners (non-engineers) constantly touch the system'
 
 One-line identity: **domain value / invariant / authority governance, built as a Nexus extension** — the defense against the failure mode where the machine confidently invents the meaning of your own business rules.
 
+<img
+  src="/diagrams/archon.svg"
+  alt="Archon answers a domain question: locate the claim, then read its code constant at query time. If the source is not readable, Archon declines to assert; if the code hash has drifted since the claim was last verified, it answers with a drift warning; otherwise it returns a calibrated answer."
+  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
+/>
+
 ## Core concepts
 
 - **Concepts are the spine; facts hang off them.** A registry of terms / actors / objects (ubiquitous language) is the foundation. Values, invariants, and requirements are *claims* that reference those concepts.
