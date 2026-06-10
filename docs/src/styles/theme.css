@@ -282,6 +282,18 @@ ul.top-level > li > a.group-label > span,
   font-weight: 600;
 }
 
+/* ── Content alignment ───────────────────────────────────────────────────
+   On two-column pages Starlight sets `--sl-content-margin-inline: auto 0`,
+   so the auto left margin pushes the article to the TOC side (big gap next
+   to the sidebar). Use `auto` on both sides instead, centering the article
+   in its pane so the left and right margins are roughly equal.
+   `html[...]` out-specifies Starlight's `[...] .main-pane` rule. */
+@media (min-width: 72rem) {
+  html[data-has-sidebar][data-has-toc] .main-pane {
+    --sl-content-margin-inline: auto;
+  }
+}
+
 /* ── Hero (splash landing) ───────────────────────────────────────────────── */
 .hero {
   padding-block: clamp(2rem, 8vw, 5.5rem);
