@@ -17,7 +17,15 @@ hero:
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-## The two failure modes
+<p class="kh-section-lead">Start here</p>
+
+<CardGrid>
+  <LinkCard title="Getting Started" href="/start/" description="Install, configure, and ground your first answer in minutes." />
+  <LinkCard title="Philosophy" href="/philosophy/" description="Why deterministic grounding beats advice in the AI era." />
+  <LinkCard title="Ecosystem" href="/ecosystem/" description="How the tools share one link — the Khala — and compose." />
+</CardGrid>
+
+<p class="kh-section-lead">The two failure modes</p>
 
 <CardGrid>
   <Card title="The machine lies" icon="warning">
@@ -28,7 +36,7 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
   </Card>
 </CardGrid>
 
-## The tools
+<p class="kh-section-lead">The tools</p>
 
 <CardGrid>
   <LinkCard title="Nexus" href="/tools/nexus/" description="Grounded knowledge — RAG + GraphRAG over your docs & telemetry." />
@@ -36,4 +44,11 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
   <LinkCard title="Probe" href="/tools/probe/" description="Grounded code review — PR scope, API contracts, troubleshooting." />
   <LinkCard title="specledger" href="/tools/specledger/" description="Decision accountability — anti-rubber-stamp spec/ADR gate." />
   <LinkCard title="mutqa" href="/tools/mutqa/" description="Test quality — mutation-driven, catches what advisory review misses." />
+</CardGrid>
+
+<p class="kh-section-lead">Resources</p>
+
+<CardGrid>
+  <LinkCard title="Contributing" href="/contributing/" description="Conventions, naming, versioning, and the contribution flow." />
+  <LinkCard title="GitHub" href="https://github.com/LivingLikeKrillin" description="Source, issues, and releases for the Khala ecosystem." />
 </CardGrid>

@@ -17,7 +17,15 @@ hero:
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-## 두 실패 모드
+<p class="kh-section-lead">여기서 시작</p>
+
+<CardGrid>
+  <LinkCard title="시작하기" href="/ko/start/" description="설치하고 설정해서, 몇 분 만에 첫 답을 근거에 묶는다." />
+  <LinkCard title="철학" href="/ko/philosophy/" description="AI 시대에 왜 조언보다 결정론적 그라운딩이 이기는가." />
+  <LinkCard title="생태계" href="/ko/ecosystem/" description="도구들이 하나의 링 — Khala — 을 어떻게 공유하고 조합되는가." />
+</CardGrid>
+
+<p class="kh-section-lead">두 실패 모드</p>
 
 <CardGrid>
   <Card title="기계가 거짓말한다" icon="warning">
@@ -28,7 +36,7 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
   </Card>
 </CardGrid>
 
-## 도구
+<p class="kh-section-lead">도구</p>
 
 <CardGrid>
   <LinkCard title="Nexus" href="/ko/tools/nexus/" description="그라운딩된 지식 — 문서와 텔레메트리 위의 RAG + GraphRAG." />
@@ -36,4 +44,11 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
   <LinkCard title="Probe" href="/ko/tools/probe/" description="그라운딩된 코드 리뷰 — PR 범위, API 계약, 트러블슈팅." />
   <LinkCard title="specledger" href="/ko/tools/specledger/" description="결정 책임 — 고무도장을 막는 명세/ADR 게이트." />
   <LinkCard title="mutqa" href="/ko/tools/mutqa/" description="테스트 품질 — 변이 기반으로, 조언형 리뷰가 놓치는 것을 잡는다." />
+</CardGrid>
+
+<p class="kh-section-lead">리소스</p>
+
+<CardGrid>
+  <LinkCard title="기여하기" href="/ko/contributing/" description="컨벤션, 네이밍, 버저닝, 그리고 기여 흐름." />
+  <LinkCard title="GitHub" href="https://github.com/LivingLikeKrillin" description="Khala 생태계의 소스, 이슈, 릴리스." />
 </CardGrid>
