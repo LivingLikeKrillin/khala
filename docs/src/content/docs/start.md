@@ -3,6 +3,8 @@ title: Getting Started
 description: Pick your goal; it routes you to the right tool.
 ---
 
+New here? Start from what you're trying to do — each goal points to the tool that calibrates it.
+
 ## Pick your goal
 | I want to… | → Tool |
 |---|---|
