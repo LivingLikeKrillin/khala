@@ -20,7 +20,7 @@ export function render(container) {
         <button class="diff-filter-btn" data-filter="observed_only">관측에만 존재</button>
         <button class="diff-filter-btn" data-filter="conflict">불일치</button>
         <input type="text" class="diff-entity-input" id="diff-entity-input"
-          placeholder="엔티티 필터...">
+          placeholder="엔티티 필터…">
       </div>
       <div class="diff-list" id="diff-list"></div>
     </div>

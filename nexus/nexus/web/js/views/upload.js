@@ -9,7 +9,11 @@ export function render(container) {
   container.innerHTML = `
     <div class="upload-layout">
       <div class="upload-zone" id="upload-zone">
-        <div class="upload-icon">&#x1F4C1;</div>
+        <div class="upload-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 14.9A6 6 0 1 1 15.7 8.5h1.3a4.5 4.5 0 0 1 1.6 8.7"/><path d="M12 12v8"/><path d="m8.5 15 3.5-3.5L15.5 15"/>
+          </svg>
+        </div>
         <div class="upload-text">Markdown 파일을 드래그하거나 클릭하여 업로드</div>
         <div class="upload-hint">.md 파일만 지원됩니다</div>
         <input type="file" id="upload-input" accept=".md" style="display:none">

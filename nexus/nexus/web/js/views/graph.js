@@ -17,7 +17,7 @@ export function render(container) {
       <div class="graph-container">
         <div class="graph-toolbar">
           <input type="text" class="graph-search" id="graph-search"
-            placeholder="엔티티 이름 검색... (Enter로 조회)">
+            placeholder="엔티티 검색 후 Enter…">
         </div>
         <div class="graph-canvas" id="graph-canvas"></div>
         <div class="graph-legend">
@@ -63,21 +63,30 @@ function initNetwork() {
   network = new vis.Network(canvas, { nodes: nodesDS, edges: edgesDS }, {
     physics: {
       solver: 'forceAtlas2Based',
-      forceAtlas2Based: { gravitationalConstant: -80, springLength: 150 },
-      stabilization: { iterations: 100 },
+      forceAtlas2Based: { gravitationalConstant: -260, springLength: 260, springConstant: 0.04, avoidOverlap: 1 },
+      stabilization: { iterations: 180 },
     },
     nodes: {
       shape: 'dot',
       size: 20,
-      color: { background: '#242736', border: '#6c8cff', highlight: { background: '#6c8cff', border: '#8aa4ff' } },
+      color: { background: '#111d3a', border: '#4fb6ee', highlight: { background: '#16315c', border: '#8fdcff' } },
       borderWidth: 2,
-      font: { color: '#e4e6eb', size: 13, face: 'Pretendard, sans-serif' },
+      // 밝은 라벨 + 보이드색 외곽선(halo)으로 엣지/다른 노드 위에서도 또렷하게.
+      font: { color: '#eaf1fb', size: 13, face: 'Pretendard, sans-serif', strokeWidth: 4, strokeColor: '#070d1d' },
     },
     edges: {
       smooth: { type: 'curvedCW', roundness: 0.15 },
-      font: { color: '#6b7280', size: 11, face: 'Pretendard, sans-serif', strokeWidth: 0 },
+      // 라벨 뒤에 다크 박스를 깔아 엣지선·다른 라벨과 뭉치지 않게.
+      font: { color: '#dbe7f5', size: 11, face: 'Pretendard, sans-serif', strokeWidth: 0, background: 'rgba(9,15,32,0.82)', vadjust: -1 },
+      labelHighlightBold: false,
     },
     interaction: { hover: true, tooltipDelay: 200 },
+  });
+
+  // 안정화가 끝나면 물리를 멈추고(떨림 제거) 최종 위치 기준으로 화면에 맞춘다.
+  network.on('stabilizationIterationsDone', () => {
+    network.setOptions({ physics: false });
+    network.fit({ animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
   });
 
   // 노드 클릭: 확장
@@ -119,6 +128,8 @@ function bindEvents() {
 
 async function loadEntity(entityName, hops = 2) {
   try {
+    // 새 노드를 배치하려면 물리를 다시 켠다 (안정화 후 자동으로 다시 꺼짐).
+    if (network) network.setOptions({ physics: true });
     const { data } = await getGraph(entityName, { hops, include_evidence: true });
 
     const center = data.center_entity;
@@ -129,9 +140,9 @@ async function loadEntity(entityName, hops = 2) {
       nodesDS.add({
         id: centerId,
         label: center.name,
-        color: { background: '#6c8cff', border: '#8aa4ff' },
+        color: { background: '#2272c4', border: '#8fdcff' },
         size: 28,
-        font: { color: '#fff', size: 14 },
+        font: { color: '#ffffff', size: 14, strokeWidth: 4, strokeColor: '#070d1d' },
         entityRid: center.rid,
         entityType: center.type || 'Service',
         entityDesc: center.description || '',
@@ -153,7 +164,7 @@ async function loadEntity(entityName, hops = 2) {
           to: e.to_name,
           label: e.edge_type,
           arrows: 'to',
-          color: { color: '#60a5fa', highlight: '#93bbff' },
+          color: { color: '#4fb6ee', highlight: '#8fdcff' },
           width: Math.max(1, (e.confidence || 0.5) * 3),
           dashes: false,
           edgeData: e,
@@ -168,7 +179,7 @@ async function loadEntity(entityName, hops = 2) {
 
       const edgeId = `o-${o.rid}`;
       if (!edgesDS.get(edgeId)) {
-        const color = (o.error_rate || 0) > 0.05 ? '#f87171' : '#fb923c';
+        const color = (o.error_rate || 0) > 0.05 ? '#f87a85' : '#eaa44e';
         edgesDS.add({
           id: edgeId,
           from: o.from_name,
@@ -183,7 +194,7 @@ async function loadEntity(entityName, hops = 2) {
       }
     }
 
-    network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+    // 화면 맞춤(fit)은 안정화 완료 후 stabilizationIterationsDone 핸들러에서 수행한다.
   } catch (err) {
     if (err.status === 404) {
       showToast('엔티티를 찾을 수 없습니다', 'warning');
