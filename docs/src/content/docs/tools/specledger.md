@@ -3,11 +3,17 @@ title: specledger
 description: Decision accountability — records AI-generated specs/ADRs and gates code edits behind accountable, signed-off review.
 ---
 
-specledger makes the moment of judgment accountable instead of assumed. It is a Python MCP server plus a Claude Code `PreToolUse` hook that records AI-generated ADRs and design specs in a consistent Markdown + frontmatter format, enforces accountable review — **AI critique → human issue-disposition → sign-off** — before any code edits are written, and optionally publishes approved documents to a Nexus sink.
+specledger makes the moment of judgment accountable instead of assumed. It is a Python MCP server plus a Claude Code `PreToolUse` hook: it records AI-generated ADRs and design specs in a consistent Markdown + frontmatter format and enforces accountable review — **AI critique → human issue-disposition → sign-off** — before any code edits are written, optionally publishing approved documents to a Nexus sink.
 
 The problem it calibrates: when an assistant produces a confident spec, the path of least resistance is to approve it. Review degrades into ceremony — a green checkmark on text nobody truly read. specledger forces judgment to happen where it is cheap and where it leaves a trace. Until a spec is approved and stamped with a content hash, all `Write`/`Edit`/`MultiEdit` calls targeting non-exempt source paths are **blocked**. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it.
 
 One-line identity: a ledger that makes "who approved what, and why" a recorded, attributable act — so you cannot rubber-stamp your way past it.
+
+<img
+  src="/diagrams/specledger.svg"
+  alt="Spec lifecycle: Recorded → Critiqued (issues) → Approved (content-hashed) → Implementing (gate armed, edits allowed) → Done. Write/Edit stays blocked until approval."
+  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
+/>
 
 ## Core concepts
 

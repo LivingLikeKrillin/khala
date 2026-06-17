@@ -13,22 +13,48 @@ let autocompleteTimer = null;
 let autocompleteIndex = -1;
 let autocompleteItems = [];
 
+const SUGGESTIONS = [
+  '결제 서비스가 발행하는 토픽이 뭐야?',
+  '@order-service 의 의존성을 보여줘',
+  '설계와 관측이 어긋난 부분은?',
+  '인증 정책 문서 요약해줘',
+];
+
 export function render(container) {
   container.innerHTML = `
     <div class="chat-layout">
       <div class="chat-main">
         <div class="chat-history" id="chat-history">
           <div class="chat-empty" id="chat-empty">
-            <div class="chat-empty-title">Nexus</div>
-            <div class="chat-empty-hint">조직의 문서와 운영 데이터를 검색합니다</div>
-            <div class="chat-empty-hint" style="color:var(--text-muted)">@서비스명으로 엔티티를 지정할 수 있습니다</div>
+            <div class="chat-empty-crystal" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <defs>
+                  <linearGradient id="empty-crystal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#c7f1ff"/>
+                    <stop offset="55%" stop-color="#4fb6ee"/>
+                    <stop offset="100%" stop-color="#2272c4"/>
+                  </linearGradient>
+                </defs>
+                <path d="M30 24 C24 18 23 12 27.5 7" fill="none" stroke="#8fdcff" stroke-width="2.2" stroke-linecap="round" opacity="0.8"/>
+                <path d="M34 24 C40 18 41 12 36.5 7" fill="none" stroke="#8fdcff" stroke-width="2.2" stroke-linecap="round" opacity="0.8"/>
+                <path d="M32 19 L41 36 L32 50 L23 36 Z" fill="url(#empty-crystal)"/>
+                <path d="M32 19 L32 50 L23 36 Z" fill="#ffffff" opacity="0.16"/>
+                <path d="M32 19 L41 36 L32 36 Z" fill="#ffffff" opacity="0.30"/>
+              </svg>
+            </div>
+            <div class="chat-empty-title">근거 있는 답변</div>
+            <div class="chat-empty-hint">조직의 문서와 운영 데이터에서 출처와 함께 검색합니다</div>
+            <div class="chat-empty-hint"><span class="at">@서비스명</span> 으로 엔티티를 지정할 수 있습니다</div>
+            <div class="chat-suggest" id="chat-suggest">
+              ${SUGGESTIONS.map(s => `<button type="button" class="suggest-chip">${escapeHtml(s)}</button>`).join('')}
+            </div>
           </div>
         </div>
         <div class="chat-input-area">
           <div class="chat-input-wrapper" style="position:relative">
             <div class="autocomplete-dropdown" id="autocomplete-dropdown"></div>
             <textarea id="chat-input" rows="1"
-              placeholder="검색어를 입력하세요... @서비스명으로 엔티티 지정"
+              placeholder="무엇이든 물어보세요 —  @ 로 서비스·엔티티 지정"
             ></textarea>
             <button id="chat-send" type="button">전송</button>
           </div>
@@ -54,6 +80,17 @@ function bindEvents() {
   const sendBtn = document.getElementById('chat-send');
 
   sendBtn.addEventListener('click', () => submitQuery());
+
+  // 추천 질문 칩 → 입력 채우고 즉시 전송
+  const suggest = document.getElementById('chat-suggest');
+  if (suggest) {
+    suggest.querySelectorAll('.suggest-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        input.value = chip.textContent;
+        submitQuery();
+      });
+    });
+  }
 
   input.addEventListener('keydown', (e) => {
     // Autocomplete 키보드 네비게이션
@@ -140,11 +177,12 @@ function handleAutocomplete(input) {
 
 function showAutocomplete(items) {
   const dropdown = document.getElementById('autocomplete-dropdown');
+  // 엔티티 값은 인제스트된 문서에서 추출되므로 신뢰 불가 → 반드시 escape
   dropdown.innerHTML = items.map((item, i) => `
     <div class="autocomplete-item" data-index="${i}">
-      <span class="ac-type">${item.type}</span>
-      <span class="ac-name">${item.name}</span>
-      <span class="ac-desc">${item.description || ''}</span>
+      <span class="ac-type">${escapeHtml(item.type || '')}</span>
+      <span class="ac-name">${escapeHtml(item.name || '')}</span>
+      <span class="ac-desc">${escapeHtml(item.description || '')}</span>
     </div>
   `).join('');
   dropdown.classList.add('visible');
@@ -250,10 +288,11 @@ async function submitQuery() {
 
 // ── 버블 렌더링 ──
 
-function appendBubble(role, content, id = null, streaming = false) {
+function appendBubble(role, content, id = null, streaming = false, animate = true) {
   const history = document.getElementById('chat-history');
   const bubble = document.createElement('div');
-  bubble.className = `chat-bubble ${role}`;
+  // 'rise'는 새로 추가되는 버블에만 — 히스토리 재생 시엔 생략해 매번 솟지 않게 한다.
+  bubble.className = `chat-bubble ${role}${animate ? ' rise' : ''}`;
   if (id) bubble.id = id;
 
   if (role === 'user') {
@@ -296,9 +335,9 @@ function renderChatHistory() {
 
   for (const msg of chatHistory) {
     if (msg.role === 'user') {
-      appendBubble('user', msg.content);
+      appendBubble('user', msg.content, null, false, false);
     } else {
-      appendBubble('assistant', msg.content, msg.id);
+      appendBubble('assistant', msg.content, msg.id, false, false);
     }
   }
 }
@@ -311,27 +350,37 @@ function renderEvidence(snippets, provenance) {
 
   document.getElementById('evidence-count').textContent = `${snippets.length}건`;
 
+  // 상대 관련도: 집합 내 최고 점수 대비 비율로 막대를 채운다 (raw float 노출 대신).
+  const maxScore = Math.max(...snippets.map(s => s.score || 0), 1e-9);
+
   const list = document.getElementById('evidence-list');
-  list.innerHTML = snippets.map((s, i) => `
-    <div class="evidence-item" title="${s.source_uri || ''}">
-      <div>
+  list.innerHTML = snippets.map((s, i) => {
+    const pct = Math.round(((s.score || 0) / maxScore) * 100);
+    return `
+    <div class="evidence-item" title="${escapeHtml(s.source_uri || '')}">
+      <div class="ev-head">
         <span class="ev-index">${i + 1}</span>
         <span class="ev-title">${escapeHtml(s.doc_title || '(제목 없음)')}</span>
       </div>
       <div class="ev-path">${escapeHtml(s.section_path || '')}</div>
       <div class="ev-text">${escapeHtml(s.text || '')}</div>
-      <div class="ev-score">score: ${(s.score || 0).toFixed(4)}</div>
-    </div>
-  `).join('');
+      <div class="ev-relevance" title="관련도 ${pct}%">
+        <div class="ev-bar"><div class="ev-bar-fill" style="width:${pct}%"></div></div>
+        <span class="ev-pct">${pct}%</span>
+      </div>
+    </div>`;
+  }).join('');
 
   const provEl = document.getElementById('evidence-provenance');
   if (provenance.length > 0) {
-    provEl.innerHTML = `
-      <h4>출처</h4>
-      ${provenance.map(p =>
-        `<a href="#" title="${p.source_version || ''}">${escapeHtml(p.source_uri || p.doc_rid)}</a>`
-      ).join('')}
-    `;
+    provEl.innerHTML = `<h4>출처</h4>` + provenance.map(p => {
+      const uri = p.source_uri || '';
+      const label = escapeHtml(p.source_uri || p.doc_rid || '');
+      const isLink = /^https?:\/\//.test(uri);
+      return isLink
+        ? `<a href="${encodeURI(uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(p.source_version || '')}">${label}</a>`
+        : `<a title="${escapeHtml(p.source_version || uri)}" style="cursor:default">${label}</a>`;
+    }).join('');
   } else {
     provEl.innerHTML = '';
   }
@@ -358,47 +407,56 @@ function renderInlineGraph(bubbleId, graphData) {
 
   // center 노드
   if (graphData.center) {
-    nodes.add({ id: graphData.center, label: graphData.center, color: '#6c8cff', font: { color: '#e4e6eb' } });
+    nodes.add({ id: graphData.center, label: graphData.center, color: { background: '#2272c4', border: '#8fdcff' }, font: { color: '#ffffff', strokeWidth: 3, strokeColor: '#070d1d' } });
     nodeSet.add(graphData.center);
   }
 
   // designed edges
   for (const e of (graphData.designed_edges || [])) {
-    if (!nodeSet.has(e.from)) { nodes.add({ id: e.from, label: e.from, font: { color: '#e4e6eb' } }); nodeSet.add(e.from); }
-    if (!nodeSet.has(e.to)) { nodes.add({ id: e.to, label: e.to, font: { color: '#e4e6eb' } }); nodeSet.add(e.to); }
+    if (!nodeSet.has(e.from)) { nodes.add({ id: e.from, label: e.from, font: { color: '#eaf1fb', strokeWidth: 3, strokeColor: '#070d1d' } }); nodeSet.add(e.from); }
+    if (!nodeSet.has(e.to)) { nodes.add({ id: e.to, label: e.to, font: { color: '#eaf1fb', strokeWidth: 3, strokeColor: '#070d1d' } }); nodeSet.add(e.to); }
     edges.add({
       from: e.from, to: e.to,
       label: e.type, arrows: 'to',
-      color: { color: '#60a5fa' },
+      color: { color: '#4fb6ee' },
       width: Math.max(1, (e.confidence || 0.5) * 3),
-      font: { color: '#9ca3b0', size: 10 },
+      font: { color: '#dbe7f5', size: 10, background: 'rgba(9,15,32,0.82)' },
     });
   }
 
   // observed edges
   for (const o of (graphData.observed_edges || [])) {
-    if (!nodeSet.has(o.from)) { nodes.add({ id: o.from, label: o.from, font: { color: '#e4e6eb' } }); nodeSet.add(o.from); }
-    if (!nodeSet.has(o.to)) { nodes.add({ id: o.to, label: o.to, font: { color: '#e4e6eb' } }); nodeSet.add(o.to); }
-    const color = (o.error_rate || 0) > 0.05 ? '#f87171' : '#fb923c';
+    if (!nodeSet.has(o.from)) { nodes.add({ id: o.from, label: o.from, font: { color: '#eaf1fb', strokeWidth: 3, strokeColor: '#070d1d' } }); nodeSet.add(o.from); }
+    if (!nodeSet.has(o.to)) { nodes.add({ id: o.to, label: o.to, font: { color: '#eaf1fb', strokeWidth: 3, strokeColor: '#070d1d' } }); nodeSet.add(o.to); }
+    const color = (o.error_rate || 0) > 0.05 ? '#f87a85' : '#eaa44e';
     edges.add({
       from: o.from, to: o.to,
       label: `${o.type} (${o.call_count || 0})`,
       arrows: 'to', dashes: true,
       color: { color },
-      font: { color: '#9ca3b0', size: 10 },
+      font: { color: '#dbe7f5', size: 10, background: 'rgba(9,15,32,0.82)' },
     });
   }
 
-  new vis.Network(graphDiv, { nodes, edges }, {
-    physics: { stabilization: { iterations: 50 } },
+  const net = new vis.Network(graphDiv, { nodes, edges }, {
+    physics: {
+      solver: 'barnesHut',
+      barnesHut: { gravitationalConstant: -4200, springLength: 120, springConstant: 0.04, avoidOverlap: 0.55 },
+      stabilization: { iterations: 120 },
+    },
     nodes: {
       shape: 'dot', size: 16,
-      color: { background: '#242736', border: '#6c8cff' },
+      color: { background: '#111d3a', border: '#4fb6ee' },
       borderWidth: 2,
     },
     edges: { smooth: { type: 'curvedCW', roundness: 0.1 } },
     interaction: { zoomView: false },
     layout: { improvedLayout: true },
+  });
+  // 안정화 후 물리를 멈추고(떨림 제거) 모든 노드가 박스 안에 들어오도록 맞춘다.
+  net.once('stabilizationIterationsDone', () => {
+    net.setOptions({ physics: false });
+    net.fit({ animation: { duration: 350, easingFunction: 'easeInOutQuad' } });
   });
 }
 

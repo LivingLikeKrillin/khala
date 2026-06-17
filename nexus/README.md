@@ -17,6 +17,15 @@
   문서 기반 설계와 OTel 기반 관측을 결합하여, 근거 있는 답변만 제공하는 지식 검색 시스템
 </p>
 
+<p align="center">
+  <img src="docs/img/nexus-demo.gif" alt="Nexus — 근거(evidence)와 함께 스트리밍되는 grounded 답변" width="820" />
+</p>
+
+<p align="center">
+  <img src="docs/img/nexus-graph.png" alt="설계-관측 관계 그래프" width="405" />
+  <img src="docs/img/nexus-diff.png" alt="설계-관측 Diff 대시보드" width="405" />
+</p>
+
 ---
 
 ## What is Nexus?

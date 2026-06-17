@@ -3,11 +3,17 @@ title: Nexus
 description: Grounded knowledge retrieval — RAG + GraphRAG that answers only from citable sources, with confidence and provenance.
 ---
 
-Nexus is the grounded knowledge base of the ecosystem. It answers questions about your organization's knowledge — documents, policies, configs — and your operational reality — OpenTelemetry traces — **only from evidence it can cite**. Every answer carries a confidence and a pointer back to the source chunk or trace that grounds it.
+Nexus is the grounded knowledge base of the ecosystem. It answers questions about your organization's knowledge (documents, policies, configs) and your operational reality (OpenTelemetry traces) **only from evidence it can cite** — every answer carries a confidence and a pointer back to the source chunk or trace that grounds it.
 
-The problem it calibrates: ordinary RAG retrieves text and lets the model improvise; it will produce a plausible answer whether or not it has grounds. Nexus inverts that. The system decides what is retrievable and whether the answer is supportable; the LLM only narrates over evidence that already exists. If there is no citable source, the answer does not get made.
+The problem it calibrates: ordinary RAG retrieves text and lets the model improvise, producing a plausible answer whether or not it has grounds. Nexus inverts that — the system decides what is retrievable and whether the answer is supportable; the LLM only narrates over evidence that already exists. No citable source, no answer.
 
-One-line identity: **enterprise RAG + GraphRAG for grounded knowledge retrieval** — the context provider that AI agents (code review, troubleshooting) lean on so they reason from real documents and observed telemetry rather than guesses.
+One-line identity: **enterprise RAG + GraphRAG for grounded knowledge retrieval** — the context layer that code-review and troubleshooting agents lean on, so they reason from real documents and observed telemetry instead of guessing.
+
+<img
+  src="/diagrams/nexus.svg"
+  alt="Hybrid retrieval: a query fans out to BM25 (mecab-ko), Vector (768-d), and Graph (2-hop) retrievers; their results fuse via RRF (k=60) into a grounded answer that cites a source or refuses."
+  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
+/>
 
 ## Core concepts
 

@@ -42,6 +42,10 @@ export default defineConfig({
     starlight({
       title: 'Khala',
       tagline: 'AI 시대의 캘리브레이션 — 도구들의 연합',
+      customCss: ['./src/styles/theme.css'],
+      components: {
+        Head: './src/components/Head.astro',
+      },
       logo: { src: './src/assets/logo.svg', alt: 'Khala' },
       defaultLocale: 'root',
       locales: {

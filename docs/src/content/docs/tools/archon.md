@@ -7,11 +7,17 @@ description: Domain truth governance — the authority window over your invarian
 Archon currently lives as a branch (`spec/domain-invariant-governance`) and the `claims` package inside the Nexus repo. Paths below reference that.
 :::
 
-Archon is the authority window over domain truth. It is the single place a person or an agent goes to ask "what is true here, and on whose authority?" — and get an answer grounded in a governed source, with its freshness and confidence stated plainly.
+Archon is the authority window over domain truth — the single place a person or an agent goes to ask "what is true here, and on whose authority?" and get an answer grounded in a governed source, with its freshness and confidence stated plainly.
 
 The problem it calibrates: planners (non-engineers) constantly touch the system's preconditions in meetings — limits, policies, invariants — but have no fast way to confirm the *current* value. They corner an engineer, or trust a possibly-stale Notion page, and decisions pile up on wrong premises. Archon's answer is not "always correct" (impossible) but **calibrated**: it never dresses a soft or stale answer up as a hard one. It reads the value from the authoritative source (a code constant) at query time, so it cannot go stale; what it knows it asserts, what it does not it declines to assert.
 
 One-line identity: **domain value / invariant / authority governance, built as a Nexus extension** — the defense against the failure mode where the machine confidently invents the meaning of your own business rules.
+
+<img
+  src="/diagrams/archon.svg"
+  alt="Archon answers a domain question: locate the claim, then read its code constant at query time. If the source is not readable, Archon declines to assert; if the code hash has drifted since the claim was last verified, it answers with a drift warning; otherwise it returns a calibrated answer."
+  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
+/>
 
 ## Core concepts
 
