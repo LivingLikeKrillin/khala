@@ -52,6 +52,10 @@ it does not, the spike is deleted behind its flag at near-zero cost.
    **first-class structured data part** (JSON) on a task artifact. The entire grounding
    bridge (§5.4) depends on this. If structured data parts are unsupported, the mapping
    is not expressible over A2A → **stop and report**; the remaining criteria are moot.
+   → **✅ PASSED (2026-06-18, desk check vs. A2A v1.0):** A2A defines `DataPart`, a
+   "structured data segment (e.g., JSON)" that is a valid `Part` of an **artifact** — so
+   the §5.4 mapping (`[TextPart(answer), DataPart(evidence packet)]`) is expressible. The
+   implementation must still re-verify against the actual pinned SDK build.
 1. A reference A2A client (off-the-shelf SDK) fetches Nexus's Agent Card and lists the
    `retrieve_grounded` skill.
 2. The client sends a query task; the returned artifact contains **(a)** a narrated
@@ -105,8 +109,10 @@ is true. Everything is import-light and inert when the flag is off.
 
 ### 5.2 Agent Card (discovery)
 
-Served at the A2A well-known location (exact path/field names per the **pinned A2A
-spec version** — verify against the SDK at implementation time). Shape:
+**Pinned protocol: A2A v1.0.** Served at the spec-mandated path
+**`https://<base>/.well-known/agent-card.json`**. Grounding is declared via the
+**official `AgentExtension` mechanism** (an entry in `capabilities.extensions`), not an
+ad-hoc top-level key. Shape:
 
 ```jsonc
 {
@@ -115,15 +121,25 @@ spec version** — verify against the SDK at implementation time). Shape:
   "url": "https://<nexus-host>/a2a",
   "version": "0.1.0-spike",
   "provider": { "organization": "Khala" },
-  "capabilities": { "streaming": false, "pushNotifications": false },
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "extensions": [
+      {
+        "uri": "https://khala.dev/a2a/ext/grounding/v1",
+        "description": "Answers are evidence-bound; classification/clearance is enforced server-side.",
+        "required": false,
+        "params": {
+          "grounded": true,
+          "evidenceBound": true,
+          "clearanceModel": "server-enforced",
+          "evidenceSchemaRef": "https://<nexus-host>/a2a/schemas/evidence-packet.json"
+        }
+      }
+    ]
+  },
   "defaultInputModes": ["text/plain"],
   "defaultOutputModes": ["text/plain", "application/json"],
-  "x-khala": {
-    "grounded": true,
-    "evidenceBound": true,
-    "clearanceModel": "server-enforced",
-    "evidenceSchemaRef": "https://<nexus-host>/a2a/schemas/evidence-packet.json"
-  },
   "skills": [
     {
       "id": "retrieve_grounded",
@@ -138,11 +154,11 @@ spec version** — verify against the SDK at implementation time). Shape:
 }
 ```
 
-The card declares grounding **structurally** — via the `x-khala` extension block
-(`grounded`/`evidenceBound`/`clearanceModel` + a machine-readable `evidenceSchemaRef`)
-and via skill `tags` — so a consuming agent can detect "evidence-bound, server-enforced
-clearance" by inspection, not by parsing prose. *(`x-` extension keys per the pinned A2A
-card schema's extension mechanism; bind the exact placement at implementation time.)*
+The card declares grounding **structurally** — a consuming agent detects "evidence-bound,
+server-enforced clearance" by reading the `grounding/v1` extension in
+`capabilities.extensions` (+ a machine-readable `evidenceSchemaRef`) and the skill `tags`,
+not by parsing prose. The extension `uri` is the Khala-owned identifier; field placement
+follows the A2A v1.0 `AgentExtension` schema.
 
 ### 5.3 Skill contract — `retrieve_grounded`
 
@@ -177,8 +193,9 @@ invented "uncertain" state), and its message/artifact carries **(a)** a plain-te
 reason ("답변을 생성할 수 없습니다 — 근거 부족") and **(b)** any evidence snippets that
 **were** retrieved, in the same data-part shape. A confident answer is **never** emitted
 without ≥1 evidence snippet. (Mirrors Nexus's "answer cannot be generated, but evidence
-is still returned" rule.) *Note:* the exact task-state enum value is bound to the pinned
-SDK at implementation time (Exit criterion 0); `failed` here names the intent.
+is still returned" rule.) *Confirmed against A2A v1.0:* the `TaskState` enum includes a
+`Failed` member (wire form **`TASK_STATE_FAILED`** in v1.0's SCREAMING_SNAKE naming) — a
+valid, non-invented state.
 
 ### 5.5 Policy (server-side, default-deny)
 
@@ -218,7 +235,8 @@ Red → green, contract tests first:
   against the pinned A2A card schema.
 - `test_a2a_grounding_contract.py` — **the guard:** for a known query, the artifact
   MUST contain answer + ≥1 evidence + provenance + confidence + route. A stubbed
-  no-evidence response MUST yield a failed/uncertain task, never a confident answer.
+  no-evidence response MUST yield a `Failed` task (`TASK_STATE_FAILED`), never a
+  confident answer.
 - `test_a2a_policy.py` — low-clearance token cannot retrieve `CONFIDENTIAL` content;
   quarantined docs never appear; caller-asserted wider clearance is ignored;
   **one token resolves to exactly one `(tenant, clearance)`** and an unknown/rotated
@@ -246,12 +264,21 @@ Red → green, contract tests first:
 | Spike code rots into a half-product | Hard non-goals (§2); flag-gated; explicit "delete to reverse" exit |
 | Overhead unacceptable | Exit criterion 5 measures it; a failed budget is a valid "stop" outcome |
 
-## 10. Open questions (resolve during implementation)
+## 10. Open questions
 
-- Pinned A2A spec/SDK version and the exact well-known Agent Card path.
+Resolved by the Exit-0 desk check (2026-06-18):
+- ~~Pinned A2A spec/SDK version and the exact well-known Agent Card path.~~ →
+  **A2A v1.0**, card at `/.well-known/agent-card.json`. Note v1.0 `TaskState` enum is
+  SCREAMING_SNAKE (`TASK_STATE_FAILED`, etc.).
+- ~~How to structurally declare grounding on the card.~~ → official `AgentExtension` in
+  `capabilities.extensions` (§5.2).
+
+Still open (resolve during implementation):
 - Whether the Agent Card is public or token-gated (default: card public, skill gated).
 - Confidence semantics over A2A — surface raw `confidence` or a coarse band?
 - Korean-first examples in the card vs. bilingual.
+- Exact pinned **SDK build** (language + version) and re-verification of `DataPart` /
+  `AgentExtension` shapes against that build.
 
 ## 11. Definition of done
 
@@ -270,7 +297,28 @@ dispositioned **accepted** (body revised accordingly):
 | I-002 | untestable-requirement | accepted | Defined the overhead measurement method in Exit #5 (A2A vs. direct in-process, N=100, p50 diff). |
 | I-003 | undefined | accepted | §5.4 no-evidence path now maps to the A2A `failed` state + attached evidence (no invented "uncertain" state). |
 | I-004 | missing-invariant | accepted | Added invariant §6.5 "one token ⇒ exactly one (tenant, clearance)" + `test_a2a_policy` case. |
-| I-005 | unverifiable-claim | accepted | Agent Card now declares grounding structurally via `x-khala` + skill tags, not prose. |
+| I-005 | unverifiable-claim | accepted | Agent Card now declares grounding structurally via the official `AgentExtension` (`capabilities.extensions`) + skill tags, not prose. |
 
 > Dry-run record. When specledger is registered, run `critique` → `approve` to produce
 > the canonical sidecar and stamp the content hash.
+
+## 13. Exit-0 feasibility finding (2026-06-18)
+
+Desk check of Exit criterion 0 against the **A2A v1.0** specification. **Verdict: GO** —
+every load-bearing assumption is satisfied by the spec:
+
+| Dependency | A2A v1.0 fact | Result |
+|---|---|---|
+| Structured JSON part on an artifact | `DataPart` — a structured data `Part` of a message **or artifact** | ✅ grounding bridge expressible |
+| No-evidence → failure state | `TaskState.Failed` (`TASK_STATE_FAILED`) | ✅ valid state |
+| Structural grounding declaration on the card | `AgentExtension` in `capabilities.extensions` | ✅ (replaced ad-hoc `x-khala`) |
+| Discovery path | `/.well-known/agent-card.json` | ✅ path fixed |
+
+Caveat: this is a documentation desk check; the implementation must re-verify the
+`DataPart` / `AgentExtension` shapes against the actual pinned SDK build (§10).
+
+Sources: [A2A spec](https://a2a-protocol.org/latest/specification/) ·
+[Part / DataPart](https://a2acn.com/en/docs/concepts/part/) ·
+[Extensions](https://a2a-protocol.org/latest/topics/extensions/) ·
+[AgentCard](https://agent2agent.info/docs/concepts/agentcard/) ·
+[What's new in v1.0](https://a2a-protocol.org/latest/whats-new-v1/)
