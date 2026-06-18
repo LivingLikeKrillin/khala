@@ -28,6 +28,7 @@ GROUNDING_EXTENSION_URI = "https://khala.dev/a2a/ext/grounding/v1"
 _PROTOCOL_VERSION = "0.3.0"
 
 _SKILL_ID = "retrieve_grounded"
+_INGEST_SKILL_ID = "ingest_governed_doc"
 
 
 def build_agent_card(cfg: A2AConfig) -> dict:
@@ -62,6 +63,21 @@ def build_agent_card(cfg: A2AConfig) -> dict:
         output_modes=["text/plain", "application/json"],
     )
 
+    # Write skill (Phase 3): ingest an approved governance doc. Capability-gated server-side;
+    # the server classifies and quarantines — the caller never sets classification.
+    ingest_skill = AgentSkill(
+        id=_INGEST_SKILL_ID,
+        name="Ingest a governed document",
+        description=(
+            "Index an approved ADR/SPEC (with its content-hash provenance) into Nexus. "
+            "Requires the 'ingest_governed' capability; classification is decided server-side."
+        ),
+        tags=["write", "governed", "ingest", "provenance", "server-enforced-clearance"],
+        examples=["{ id, title, status, approved_by, content_hash, body }"],
+        input_modes=["application/json"],
+        output_modes=["application/json"],
+    )
+
     card = AgentCard(
         name="Nexus",
         description=(
@@ -80,6 +96,6 @@ def build_agent_card(cfg: A2AConfig) -> dict:
         ),
         default_input_modes=["text/plain"],
         default_output_modes=["text/plain", "application/json"],
-        skills=[skill],
+        skills=[skill, ingest_skill],
     )
     return card.model_dump(mode="json", by_alias=True, exclude_none=True)

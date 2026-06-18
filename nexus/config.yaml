@@ -123,3 +123,5 @@ a2a:
     #   token_sha256: "REPLACE_ME"   # nexus auth gen-token | nexus auth hash-token
     #   tenant: "default"
     #   clearance: "INTERNAL"
+    #   # Phase 3: grant the write skill (ingest_governed_doc). Omit for read-only tokens.
+    #   capabilities: ["ingest_governed"]

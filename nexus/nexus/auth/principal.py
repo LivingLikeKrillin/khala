@@ -12,11 +12,21 @@ from .clearance import floor_public
 
 @dataclass(frozen=True)
 class Principal:
-    """An authenticated identity bound to exactly one tenant and clearance ceiling."""
+    """An authenticated identity bound to exactly one tenant and clearance ceiling.
+
+    ``capabilities`` is an optional, additive set of write/action grants (default: none →
+    read-only). Phase 3 (SPEC-specledger-a2a-publish-phase3 §5.5) introduces the minimal
+    ``ingest_governed`` capability so a read token can never write.
+    """
 
     name: str
     tenant: str
     clearance: str  # always a valid clearance level
+    capabilities: tuple[str, ...] = ()
+
+    def has(self, capability: str) -> bool:
+        """True if this principal carries ``capability`` (default-deny: empty ⇒ read-only)."""
+        return capability in self.capabilities
 
 
 def gen_token() -> str:
@@ -46,5 +56,6 @@ def resolve_principal(token: str | None, principals: list[dict]) -> Principal | 
                 name=str(p.get("name", "unknown")),
                 tenant=str(p.get("tenant", "default")),
                 clearance=floor_public(p.get("clearance")),
+                capabilities=tuple(str(c) for c in (p.get("capabilities") or [])),
             )
     return None

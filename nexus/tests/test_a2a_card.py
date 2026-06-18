@@ -29,6 +29,15 @@ def test_card_lists_retrieve_grounded_skill():
     assert "retrieve_grounded" in skill_ids
 
 
+def test_card_lists_ingest_governed_doc_write_skill():
+    card = _card()
+    skills = {s["id"]: s for s in card["skills"]}
+    assert "ingest_governed_doc" in skills
+    # the write skill is tagged so a consumer can tell it apart from the read skill
+    assert "write" in skills["ingest_governed_doc"]["tags"]
+    assert "governed" in skills["ingest_governed_doc"]["tags"]
+
+
 def test_card_declares_grounding_via_official_extension():
     card = _card()
     ext_uris = [e["uri"] for e in card["capabilities"]["extensions"]]

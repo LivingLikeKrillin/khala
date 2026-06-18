@@ -55,3 +55,18 @@ def test_principal_clearance_floored_to_valid_level():
     principals = [_entry("t", clearance="OOPS")]
     p = P.resolve_principal("t", principals)
     assert p.clearance == "PUBLIC"
+
+
+def test_principal_capabilities_default_empty():
+    # a principal with no configured capabilities is read-only (no write capability)
+    p = P.resolve_principal("good", [_entry("good")])
+    assert p.capabilities == ()
+    assert not p.has("ingest_governed")
+
+
+def test_principal_capabilities_resolved_from_config():
+    principals = [_entry("w", capabilities=["ingest_governed", "other"])]
+    p = P.resolve_principal("w", principals)
+    assert p.has("ingest_governed")
+    assert "other" in p.capabilities
+    assert not p.has("nonexistent")
