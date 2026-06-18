@@ -96,6 +96,22 @@ app.add_middleware(
 )
 
 
+# ── A2A (Agent2Agent) Phase 0 — additive, flag-gated, off by default ──
+# Unset/false NEXUS_A2A_ENABLED ⇒ no routes, no SDK import, zero overhead (SPEC §6.4).
+def _mount_a2a_if_enabled() -> None:
+    from nexus.a2a.config import A2AConfig
+
+    cfg = A2AConfig.from_dict(_load_config())
+    if not cfg.enabled:
+        return
+    from nexus.a2a.server import mount_a2a  # import the A2A SDK only when enabled
+
+    mount_a2a(app, cfg)
+
+
+_mount_a2a_if_enabled()
+
+
 # ── Response wrapper ──
 class NexusResponse(BaseModel):
     success: bool = True
