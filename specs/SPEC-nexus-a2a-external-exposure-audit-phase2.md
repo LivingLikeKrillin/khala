@@ -1,12 +1,25 @@
 ---
 id: SPEC-nexus-a2a-external-exposure-audit-phase2
 type: spec
-title: "Phase 2 — Nexus A2A external exposure + audit trail"
-status: draft
+title: Phase 2 — Nexus A2A external exposure + audit trail
+status: approved
 date: 2026-06-18
-linked_adrs: [ADR-0001]
-linked_specs: [SPEC-nexus-a2a-server-phase0-spike, SPEC-probe-a2a-client-phase1]
-tags: [a2a, nexus, auth, audit, security, interop, exposure]
+linked_adrs:
+- ADR-0001
+linked_specs:
+- SPEC-nexus-a2a-server-phase0-spike
+- SPEC-probe-a2a-client-phase1
+tags:
+- a2a
+- nexus
+- auth
+- audit
+- security
+- interop
+- exposure
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-06-18T10:30:00Z'
+content_hash: sha256:ec4261626617ad4a780f8ebb618f83b31e12eb9ab044b85e13d034b61678b850
 ---
 
 # Phase 2 — Nexus A2A external exposure + audit trail

@@ -157,3 +157,21 @@ def test_supersede_rejects_already_superseded(docs_root):
     led.supersede(a1, a2)
     with pytest.raises(ImmutableArtifactError, match="already superseded"):
         led.supersede(a1, a3)
+
+
+# ── Robustness: non-artifact markdown (e.g. README) must be ignored ───────────
+
+def test_status_and_index_skip_markdown_without_id(docs_root):
+    """A README.md (no frontmatter id) in specs/ or adr/ must not crash status()/index()."""
+    led = make_ledger(docs_root)
+    sid = led.record("spec", "Real Spec")
+    (docs_root / "specs" / "README.md").write_text("# Specs\n\nnot an artifact\n", encoding="utf-8")
+    (docs_root / "adr" / "README.md").write_text("# ADRs\n", encoding="utf-8")
+
+    report = led.status()  # must not raise
+    ids = [r["id"] for r in report]
+    assert sid in ids
+    assert all(r["id"] for r in report)  # no entry with an empty/missing id
+
+    out = led.index()  # must not raise
+    assert out.exists()

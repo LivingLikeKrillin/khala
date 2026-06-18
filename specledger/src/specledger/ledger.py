@@ -49,8 +49,14 @@ class Ledger:
         raise ArtifactNotFoundError(artifact_id)
 
     def _all_paths(self) -> Iterator[Path]:
-        yield from self.specs.glob("*.md")
-        yield from self.adr.glob("*.md")
+        # Only real artifacts (markdown carrying a frontmatter `id`). Non-artifact docs
+        # like a README.md living in specs/ or adr/ are skipped, not crashed on.
+        for p in (*self.specs.glob("*.md"), *self.adr.glob("*.md")):
+            try:
+                if Artifact.load(p).meta.get("id"):
+                    yield p
+            except Exception:  # noqa: BLE001 - unreadable/malformed file is not an artifact
+                continue
 
     def status(self, artifact_id: str | None = None) -> list[dict]:
         paths = [self._resolve(artifact_id)] if artifact_id else list(self._all_paths())

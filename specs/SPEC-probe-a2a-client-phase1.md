@@ -1,12 +1,23 @@
 ---
 id: SPEC-probe-a2a-client-phase1
 type: spec
-title: "Phase 1 — Probe as an A2A client of Nexus"
-status: draft
+title: Phase 1 — Probe as an A2A client of Nexus
+status: approved
 date: 2026-06-18
-linked_adrs: [ADR-0001]
-linked_specs: [SPEC-nexus-a2a-server-phase0-spike]
-tags: [a2a, probe, nexus, interop, client, grounding]
+linked_adrs:
+- ADR-0001
+linked_specs:
+- SPEC-nexus-a2a-server-phase0-spike
+tags:
+- a2a
+- probe
+- nexus
+- interop
+- client
+- grounding
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-06-18T10:30:00Z'
+content_hash: sha256:b0fd2d2366f677bd4324c1a18f71eca569015ce553ce8d08f03d641563c45707
 ---
 
 # Phase 1 — Probe as an A2A client of Nexus
