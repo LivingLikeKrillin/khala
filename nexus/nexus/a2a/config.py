@@ -24,6 +24,8 @@ class A2AConfig:
     base_url: str = _DEFAULT_BASE_URL
     # Identity layer principal shape: {name, token_sha256, tenant, clearance}.
     principals: list[dict] = field(default_factory=list)
+    # Extra CORS origins for external A2A callers (Phase 2). None ⇒ inherit the app's origins.
+    allowed_origins: list[str] | None = None
 
     @classmethod
     def from_dict(cls, cfg: dict | None) -> "A2AConfig":
@@ -52,4 +54,25 @@ class A2AConfig:
                 "clearance": floor_public(os.getenv("NEXUS_A2A_CLEARANCE")),
             }]
 
-        return cls(enabled=enabled, base_url=str(base_url).rstrip("/"), principals=principals)
+        origins = a2a.get("allowed_origins")
+        allowed_origins = list(origins) if origins else None
+
+        return cls(
+            enabled=enabled,
+            base_url=str(base_url).rstrip("/"),
+            principals=principals,
+            allowed_origins=allowed_origins,
+        )
+
+
+def resolve_a2a_cors_origins(auth_origins: list[str], cfg: A2AConfig) -> list[str]:
+    """Effective CORS origins for the surface: the app's origins, plus any A2A-specific
+    origins when A2A is enabled. Order-preserving, de-duplicated, never ``*`` (the surface
+    can carry an Authorization header, so a wildcard origin is refused — parity with the app).
+    """
+    origins = list(auth_origins)
+    if cfg.enabled and cfg.allowed_origins:
+        for origin in cfg.allowed_origins:
+            if origin and origin != "*" and origin not in origins:
+                origins.append(origin)
+    return origins

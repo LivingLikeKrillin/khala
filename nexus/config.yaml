@@ -114,6 +114,10 @@ auth:
 a2a:
   enabled: false
   base_url: "http://localhost:8000"
+  # External A2A caller origins (Phase 2). Unioned into the app CORS when enabled; never "*".
+  # Leave empty to inherit auth.allowed_origins. Every A2A task (grant/deny) is audited
+  # (structlog event "a2a.audit"; query is hashed, never logged verbatim).
+  allowed_origins: []
   principals: []
     # - name: "ext-agent"
     #   token_sha256: "REPLACE_ME"   # nexus auth gen-token | nexus auth hash-token

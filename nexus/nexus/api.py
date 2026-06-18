@@ -87,9 +87,18 @@ def _auth_config() -> AuthConfig:
 get_principal = make_get_principal(_auth_config)
 
 # CORS: an Authorization header requires a real origin allowlist, not "*".
+# When the A2A surface is enabled, external A2A caller origins are unioned in (Phase 2).
+def _cors_origins() -> list[str]:
+    from nexus.a2a.config import A2AConfig, resolve_a2a_cors_origins
+
+    return resolve_a2a_cors_origins(
+        _auth_config().allowed_origins, A2AConfig.from_dict(_load_config())
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_auth_config().allowed_origins,
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
