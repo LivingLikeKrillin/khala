@@ -8,6 +8,7 @@
  */
 
 import { logger } from '../utils/logger.js';
+import { A2ANexusTransport } from './a2a/transport.js';
 import type {
   NexusClientConfig,
   NexusResponse,
@@ -120,6 +121,10 @@ export class NexusClient {
 
   /**
    * 검색 + LLM 근거 기반 답변.
+   *
+   * 전송 방식은 config.transport(기본 "http") 또는 환경변수 PROBE_NEXUS_TRANSPORT로 결정한다.
+   * "a2a"이면 Nexus의 A2A retrieve_grounded skill을 사용하고, 실패 시 null로 강등한다
+   * (Nexus 선택성 보존 — Probe 원칙 #5). 반환 타입은 두 경로가 동일하다(drop-in).
    */
   async searchAnswer(
     query: string,
@@ -127,6 +132,14 @@ export class NexusClient {
       topK?: number;
     },
   ): Promise<NexusAnswerResult | null> {
+    if (this.resolveTransport() === 'a2a') {
+      const a2a = new A2ANexusTransport({
+        baseUrl: this.config.baseUrl,
+        token: this.config.nexusToken ?? process.env.PROBE_NEXUS_TOKEN,
+        timeoutMs: this.config.timeoutMs,
+      });
+      return a2a.retrieveGrounded(query);
+    }
     return this.post<NexusAnswerResult>(
       '/search/answer',
       {
@@ -137,6 +150,14 @@ export class NexusClient {
       },
       'searchAnswer',
     );
+  }
+
+  /** searchAnswer 전송 방식 결정: config 우선, 없으면 환경변수, 기본 "http". */
+  private resolveTransport(): 'http' | 'a2a' {
+    if (this.config.transport) {
+      return this.config.transport;
+    }
+    return process.env.PROBE_NEXUS_TRANSPORT === 'a2a' ? 'a2a' : 'http';
   }
 
   /**
