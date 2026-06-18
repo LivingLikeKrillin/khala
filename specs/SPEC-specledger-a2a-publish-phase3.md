@@ -383,3 +383,26 @@ assert the A2A default + both opt-out paths; full Probe suite **226 passed**, `t
 
 With this, **both ecosystem A2A clients (Probe retrieve, specledger publish) default to A2A** —
 the bespoke point-to-point glue is retired wherever an A2A skill fully covers the surface.
+
+## 19. Ingest idempotency implemented (2026-06-19) — closes the §5.4/§10 deferral
+
+The A2A ingest bridge no longer hard-codes `idempotent_hit=False`. `server._default_ingest_fn`
+now ingests with **`force=False`**, so the collector's built-in change detection — keyed on
+`(tenant, source_uri, content_hash)` — makes an unchanged re-publish a true no-op. The temp file
+name is deterministic from the governed doc's source basename, so the collector's canonical URI
+(`{tenant}:{name}`) and the document `rid` are **stable across re-publishes** regardless of temp
+dir (this also fixes a latent bug: the bridge previously reported `doc_rid(source)`, which did not
+match the stored `doc_rid("{tenant}:{name}")`).
+
+Behaviour (SPEC §5.4 / invariant §6.4):
+- Same `(id, content_hash)` ⇒ `total_files == 0` ⇒ `idempotent_hit=True`, nothing re-indexed,
+  **one** resource (no duplicate).
+- Changed body (new `content_hash`) ⇒ collector detects the diff ⇒ supersede: same `rid`,
+  re-indexed, `approved_hash` updated to the new stamp.
+- Classification/quarantine are now read back from the stored row (server-decided), replacing the
+  earlier hard-coded `INTERNAL`.
+
+Proven against **real Postgres** (`tests/test_a2a_provenance_db.py::test_idempotent_republish_is_noop_changed_body_supersedes`):
+first publish indexes; identical re-publish is idempotent with no duplicate; a changed body
+supersedes to the new `approved_hash`. Full nexus suite **286 passed / 16 skipped**, ruff clean.
+Remaining non-gating deferrals: durable DB audit sink; rate limiting; approval-notification fan-out.

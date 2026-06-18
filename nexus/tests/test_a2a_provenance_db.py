@@ -96,3 +96,43 @@ def test_governed_ingest_persists_and_retrieval_reads_back_the_stamp():
         assert packet.provenance[0].approved_hash == _STAMP  # surfaces in provenance → A2A artifact
 
     _run(inner)
+
+
+def test_idempotent_republish_is_noop_changed_body_supersedes():
+    """SPEC §5.4: same (id, content_hash) ⇒ one resource + idempotent_hit; new body supersedes."""
+    from nexus import db
+    from nexus.a2a.server import _default_ingest_fn
+
+    async def inner():
+        async def doc_count():
+            return await db.fetch_val(
+                "SELECT count(*) FROM documents WHERE tenant = $1", _TENANT,
+            )
+
+        # 1) first publish ⇒ real ingest, not idempotent
+        first = await _default_ingest_fn(_DOC, _TENANT)
+        assert first.idempotent_hit is False
+        assert first.chunks_indexed > 0
+        assert await doc_count() == 1
+
+        # 2) re-publish identical (id, content_hash) ⇒ no-op upsert, idempotent, no duplicate
+        again = await _default_ingest_fn(_DOC, _TENANT)
+        assert again.idempotent_hit is True
+        assert again.resource_rid == first.resource_rid
+        assert again.chunks_indexed == 0
+        assert await doc_count() == 1  # not duplicated
+
+        # 3) changed body (new content_hash) ⇒ supersede: same resource, re-indexed, new stamp
+        changed = {**_DOC, "content_hash": "sha256:specledger-stamp-v2",
+                   "body": _DOC["body"] + "\n\n## v2\n토픽 정의가 갱신되었다."}
+        superseded = await _default_ingest_fn(changed, _TENANT)
+        assert superseded.idempotent_hit is False
+        assert superseded.resource_rid == first.resource_rid  # same logical resource
+        assert await doc_count() == 1
+        row = await db.fetch_one(
+            "SELECT approved_hash FROM documents WHERE rid = $1 AND tenant = $2",
+            first.resource_rid, _TENANT,
+        )
+        assert row["approved_hash"] == "sha256:specledger-stamp-v2"  # superseded to the new stamp
+
+    _run(inner)
