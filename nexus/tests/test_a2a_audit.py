@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from structlog.testing import capture_logs
 
-from nexus.a2a.audit import AUDIT_EVENT, query_sha256
+from nexus.a2a.audit import AUDIT_EVENT, query_sha256, record_audit
 from nexus.a2a.config import A2AConfig
 from nexus.a2a.server import mount_a2a
 from nexus.auth.principal import hash_token
@@ -122,3 +122,21 @@ def test_audit_never_contains_raw_query_text():
 
 def test_query_sha256_helper_is_stable():
     assert query_sha256("abc") == hashlib.sha256(b"abc").hexdigest()
+
+
+async def test_record_audit_without_pool_is_structlog_only():
+    """The durable sink is best-effort: with no DB pool it emits structlog and never connects."""
+    from nexus import db
+
+    assert db.has_pool() is False  # unit env: no DB pool exists
+    secret = "비밀 질의 hunter2"
+    with capture_logs() as logs:
+        await record_audit(skill="retrieve_grounded", query=secret, principal="p",
+                            tenant="acme", clearance="INTERNAL", route="vector",
+                            evidence_count=1, task_state="completed")
+    rec = _audits(logs)[0]
+    # structlog record is emitted, PII-safe (raw query never present)
+    assert rec["skill"] == "retrieve_grounded"
+    assert secret not in json.dumps(rec, ensure_ascii=False)
+    assert rec["query_sha256"] == query_sha256(secret)
+    assert rec["query_len"] == len(secret)

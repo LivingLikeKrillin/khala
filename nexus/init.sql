@@ -384,3 +384,29 @@ CREATE INDEX idx_claims_concepts ON claims USING gin (concepts) WHERE status = '
 CREATE INDEX idx_claims_quality ON claims USING gin (quality_flags) WHERE status = 'active';
 CREATE INDEX idx_claims_tenant_class ON claims (tenant, classification)
     WHERE status = 'active' AND is_quarantined = false;
+
+-- ============================================================
+-- a2a_audit — durable A2A audit trail (Phase 3, SPEC §5.6/§19)
+-- ============================================================
+-- One row per A2A task (granted AND denied). PII-safe: the raw query is NEVER
+-- stored — only its sha256 + length (Nexus principle #3 holds in the audit too).
+-- Best-effort durable mirror of the always-on structlog `a2a.audit` event.
+CREATE TABLE a2a_audit (
+    id              BIGSERIAL PRIMARY KEY,
+    ts              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    skill           TEXT NOT NULL,
+    principal       TEXT,
+    tenant          TEXT,
+    clearance       TEXT,
+    query_sha256    TEXT NOT NULL DEFAULT '',
+    query_len       INTEGER NOT NULL DEFAULT 0,
+    route           TEXT,
+    evidence_count  INTEGER NOT NULL DEFAULT 0,
+    task_state      TEXT,
+    denied          BOOLEAN NOT NULL DEFAULT false,
+    reason          TEXT,
+    latency_ms      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX idx_a2a_audit_ts ON a2a_audit (ts DESC);
+CREATE INDEX idx_a2a_audit_principal ON a2a_audit (principal, ts DESC);
+CREATE INDEX idx_a2a_audit_denied ON a2a_audit (denied, ts DESC);

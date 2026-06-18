@@ -406,3 +406,20 @@ Proven against **real Postgres** (`tests/test_a2a_provenance_db.py::test_idempot
 first publish indexes; identical re-publish is idempotent with no duplicate; a changed body
 supersedes to the new `approved_hash`. Full nexus suite **286 passed / 16 skipped**, ruff clean.
 Remaining non-gating deferrals: durable DB audit sink; rate limiting; approval-notification fan-out.
+
+## 20. Durable DB audit sink (2026-06-19)
+
+`a2a.audit` is no longer structlog-only. A new `a2a_audit` table (init.sql) durably mirrors every
+A2A task record (grant AND deny). `audit.record_audit` (async) emits the structlog event (always)
+then **best-effort** inserts a row — but **only when a DB pool already exists** (`db.has_pool()`,
+which never opens a connection), and any failure is swallowed (`a2a.audit.persist_failed`
+warning). So the durable sink can neither add a connection attempt to the no-DB unit path nor
+break the request path if the DB is down. The server's 7 audit points now `await record_audit`.
+
+PII-safe end to end: the table has **no raw-query column** — only `query_sha256` + `query_len`
+(Nexus principle #3 holds in the durable trail too). Indexed by `ts`, `principal`, and `denied`
+for grant/deny review. TDD: a no-pool unit test (structlog-only, PII-safe) + a DB-backed test
+(`test_record_audit_persists_to_a2a_audit_table`, real Postgres) proving a grant + a denial
+persist with the hashed query. Full nexus suite **287 passed / 17 skipped**, ruff clean.
+
+Remaining non-gating deferral: rate limiting (next). Then: approval-notification fan-out (new phase).

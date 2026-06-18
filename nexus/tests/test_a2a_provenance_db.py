@@ -136,3 +136,32 @@ def test_idempotent_republish_is_noop_changed_body_supersedes():
         assert row["approved_hash"] == "sha256:specledger-stamp-v2"  # superseded to the new stamp
 
     _run(inner)
+
+
+def test_record_audit_persists_to_a2a_audit_table():
+    """SPEC §5.6/§19: a2a.audit records are durably mirrored to the a2a_audit table, PII-safe."""
+    from nexus import db
+    from nexus.a2a.audit import query_sha256, record_audit
+
+    async def inner():
+        await db.execute("TRUNCATE a2a_audit")
+        # a grant and a denial
+        await record_audit(skill="ingest_governed_doc", query="", principal="writer",
+                           tenant=_TENANT, clearance="INTERNAL", task_state="completed",
+                           evidence_count=2, denied=False, latency_ms=5)
+        await record_audit(skill="ingest_governed_doc", query="비밀", principal="reader",
+                           tenant=_TENANT, clearance="INTERNAL", denied=True,
+                           reason="forbidden_no_capability", latency_ms=1)
+
+        rows = await db.fetch_all("SELECT * FROM a2a_audit ORDER BY id")
+        assert len(rows) == 2
+        assert rows[0]["denied"] is False and rows[0]["task_state"] == "completed"
+        assert rows[0]["evidence_count"] == 2
+        assert rows[1]["denied"] is True and rows[1]["reason"] == "forbidden_no_capability"
+        # PII-safe: only the hash/len of the query are stored, never the raw text
+        assert rows[1]["query_sha256"] == query_sha256("비밀")
+        assert rows[1]["query_len"] == len("비밀")
+        cols = rows[1].keys()
+        assert "query" not in cols  # no raw-query column exists at all
+
+    _run(inner)

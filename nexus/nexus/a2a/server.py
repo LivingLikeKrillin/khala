@@ -27,7 +27,7 @@ from a2a.compat.v0_3.types import (
 from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
-from nexus.a2a.audit import emit_audit
+from nexus.a2a.audit import record_audit
 from nexus.a2a.card import build_agent_card
 from nexus.a2a.config import A2AConfig
 from nexus.a2a.ingest_skill import IngestOutcome, build_ingest_artifact, extract_governed_doc
@@ -134,7 +134,7 @@ def mount_a2a(
 
         # Every outcome — granted or denied — leaves exactly one a2a.audit record (SPEC §6.1).
         if method != _SKILL_METHOD:
-            emit_audit(skill=str(method), query=query, denied=True,
+            await record_audit(skill=str(method), query=query, denied=True,
                        reason="method_not_found", latency_ms=elapsed_ms())
             return _rpc_error(req_id, _METHOD_NOT_FOUND, f"method not found: {method}")
 
@@ -143,14 +143,14 @@ def mount_a2a(
         # Token-gated: the card is public, skill execution is not (default-deny).
         principal = resolve_a2a_principal(extract_bearer(authorization), cfg)
         if principal is None:
-            emit_audit(skill=skill, query=query, denied=True,
+            await record_audit(skill=skill, query=query, denied=True,
                        reason="unauthorized", latency_ms=elapsed_ms())
             return _rpc_error(req_id, _UNAUTHORIZED, "unauthorized", status=401)
 
         # ── Write skill (Phase 3): ingest a governed doc — capability-gated. ──
         if skill == _INGEST_SKILL:
             if not principal.has(_INGEST_CAPABILITY):
-                emit_audit(skill=_INGEST_SKILL, query="", principal=principal.name,
+                await record_audit(skill=_INGEST_SKILL, query="", principal=principal.name,
                            tenant=principal.tenant, clearance=principal.clearance,
                            denied=True, reason="forbidden_no_capability",
                            latency_ms=elapsed_ms())
@@ -159,7 +159,7 @@ def mount_a2a(
 
             doc = extract_governed_doc(params)
             if doc is None:
-                emit_audit(skill=_INGEST_SKILL, query="", principal=principal.name,
+                await record_audit(skill=_INGEST_SKILL, query="", principal=principal.name,
                            tenant=principal.tenant, clearance=principal.clearance,
                            denied=True, reason="invalid_doc", latency_ms=elapsed_ms())
                 return _rpc_error(req_id, _INVALID_PARAMS, "invalid governed-doc payload")
@@ -171,7 +171,7 @@ def mount_a2a(
 
             artifact_json, state, reason = build_ingest_artifact(outcome, doc, tenant)
             task = _wrap_task(artifact_json, state, reason)
-            emit_audit(
+            await record_audit(
                 skill=_INGEST_SKILL, query=str(doc.get("id", "")), principal=principal.name,
                 tenant=tenant, clearance=principal.clearance,
                 evidence_count=outcome.chunks_indexed, task_state=state,
@@ -180,7 +180,7 @@ def mount_a2a(
             return {"jsonrpc": "2.0", "id": req_id, "result": task}
 
         if not query:
-            emit_audit(skill=_SKILL_NAME, query=query, principal=principal.name,
+            await record_audit(skill=_SKILL_NAME, query=query, principal=principal.name,
                        tenant=principal.tenant, clearance=principal.clearance,
                        denied=True, reason="empty_query", latency_ms=elapsed_ms())
             return _rpc_error(req_id, _INVALID_PARAMS, "empty query")
@@ -193,7 +193,7 @@ def mount_a2a(
             result = await result
 
         task = _build_task(result, tenant, clearance)
-        emit_audit(
+        await record_audit(
             skill=_SKILL_NAME, query=query, principal=principal.name,
             tenant=tenant, clearance=clearance, route=result.route_used,
             evidence_count=len(result.evidence_snippets),
