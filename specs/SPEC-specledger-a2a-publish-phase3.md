@@ -370,3 +370,16 @@ flipping the default, now done. **Probe note:** Probe's `client.ts` still keeps 
 Nexus surfaces with no A2A skill (status/impact/graph); only `searchAnswer` is A2A-capable. So
 Probe's HTTP client is *not* pure point-to-point glue and is left intact — promoting Probe's
 `searchAnswer` default to A2A is a separate, optional follow-up.
+
+## 18. Probe `searchAnswer` default promoted to A2A (2026-06-19)
+
+The §17 follow-up landed. `probe/src/nexus/client.ts::resolveTransport` now **defaults to `a2a`**:
+A2A `retrieve_grounded` is the default for `searchAnswer`, with HTTP `/search/answer` as an
+explicit **opt-out** (`config.transport: 'http'` or `PROBE_NEXUS_TRANSPORT=http`). The graceful
+null degradation is preserved (A2A failure ⇒ `null`, Probe principle #5 — Nexus stays optional),
+so the only behavior change is which transport is tried first. The rest of Probe's Nexus HTTP
+client (status/impact/graph — surfaces with no A2A skill) is untouched. TDD: tests rewritten to
+assert the A2A default + both opt-out paths; full Probe suite **226 passed**, `tsc` clean.
+
+With this, **both ecosystem A2A clients (Probe retrieve, specledger publish) default to A2A** —
+the bespoke point-to-point glue is retired wherever an A2A skill fully covers the surface.
