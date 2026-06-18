@@ -112,14 +112,21 @@ The hook reads the tool payload from stdin and exits `0` (allow) or `2` (block).
 
 ## Nexus Integration (optional)
 
-Add to `.specledger/config.yaml`:
+`publish` delivers an approved doc to Nexus over **A2A** (the `ingest_governed_doc` skill), with
+the doc's content hash riding along as provenance. Add to `.specledger/config.yaml`:
 
 ```yaml
 nexus:
-  url: "https://your-nexus-instance/ingest"
+  url: "https://your-nexus-instance"   # Nexus base URL (A2A card is discovered under it)
+  token: "<write-capability token>"     # or set SPECLEDGER_NEXUS_TOKEN
 ```
 
-Then call the `publish` tool. Without this config, `publish` is a safe no-op that returns `{"published": false, "reason": "nexus not configured"}`.
+Then call the `publish` tool. Ingest is **capability-gated** server-side: the token must carry
+Nexus's `ingest_governed` write capability — a read-only token is denied. A denied/failed task
+maps gracefully to `{"published": false, "reason": ...}`. Without any config, `publish` is a safe
+no-op returning `{"published": false, "reason": "nexus not configured"}`.
+
+> The bespoke HTTP sink was retired; A2A is the sole transport (SPEC-specledger-a2a-publish-phase3 §16).
 
 ---
 

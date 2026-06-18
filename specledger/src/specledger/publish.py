@@ -1,15 +1,13 @@
-"""Publish an approved governance doc to Nexus (SPEC §5.3, Phase 3).
+"""Publish an approved governance doc to Nexus over A2A (SPEC §5.3, §16).
 
-Two transports implement the same ``NexusSink`` Protocol:
+``A2ANexusSink`` is the sole transport: a thin A2A JSON-RPC client (urllib, no SDK) that
+discovers Nexus's agent card, confirms the ``ingest_governed_doc`` write skill, ``message/send``s
+the governed-doc DataPart with a write token, and surfaces a denied/failed task as a raised error
+so ``publish()``'s ``try/except`` maps it to the graceful ``{published: False, reason}`` contract.
 
-* ``NexusHttpSink`` — the bespoke point-to-point HTTP POST (default, unchanged).
-* ``A2ANexusSink`` — a thin A2A JSON-RPC client (urllib, no SDK): discover Nexus's agent card,
-  confirm the ``ingest_governed_doc`` write skill, ``message/send`` the governed-doc DataPart
-  with a write token, and surface a denied/failed task as a raised error so ``publish()``'s
-  existing ``try/except`` maps it to the graceful ``{published: False, reason}`` contract.
-
-``publish()`` selects the transport by flag (``config.nexus["transport"] == "a2a"`` or
-``SPECLEDGER_NEXUS_TRANSPORT=a2a``); default HTTP — flag off ⇒ zero change (SPEC §6.1).
+The bespoke point-to-point ``NexusHttpSink`` HTTP POST was retired (SPEC §16) once the A2A
+provenance loop was proven end to end against a real DB; ``publish()`` always builds an
+``A2ANexusSink``. The ``NexusSink`` Protocol is kept so callers/tests can inject a fake.
 """
 
 from __future__ import annotations
@@ -34,21 +32,6 @@ class NexusSink(Protocol):
 
 class A2APublishError(RuntimeError):
     """A2A publish was denied or the ingest task failed; carries the human reason."""
-
-
-class NexusHttpSink:
-    def __init__(self, url: str):
-        self._url = url
-
-    def ingest(self, payload: dict) -> dict:
-        req = urllib.request.Request(
-            self._url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req) as resp:  # noqa: S310 - configured URL
-            return {"status": resp.status}
 
 
 class _UrllibTransport:
@@ -168,17 +151,12 @@ class A2ANexusSink:
         }
 
 
-def _select_sink(config) -> NexusSink:
-    """Pick the transport by flag; default HTTP (SPEC §5.3/§6.1)."""
+def _build_sink(config) -> NexusSink:
+    """Build the A2A sink — the sole transport (SPEC §16). HTTP fallback retired."""
     nexus = config.nexus or {}
-    transport = (
-        os.environ.get("SPECLEDGER_NEXUS_TRANSPORT") or nexus.get("transport") or "http"
-    ).lower()
-    if transport == "a2a":
-        base = nexus.get("base_url") or nexus.get("url")
-        token = os.environ.get("SPECLEDGER_NEXUS_TOKEN") or nexus.get("token")
-        return A2ANexusSink(base, token=token)
-    return NexusHttpSink(nexus["url"])
+    base = nexus.get("base_url") or nexus.get("url")
+    token = os.environ.get("SPECLEDGER_NEXUS_TOKEN") or nexus.get("token")
+    return A2ANexusSink(base, token=token)
 
 
 def publish(ledger, artifact_id, config, sink: NexusSink | None = None) -> dict:
@@ -186,7 +164,7 @@ def publish(ledger, artifact_id, config, sink: NexusSink | None = None) -> dict:
         return {"published": False, "reason": "nexus not configured"}
     art = Artifact.load(ledger._resolve(artifact_id))
     if sink is None:
-        sink = _select_sink(config)
+        sink = _build_sink(config)
     payload = {
         "id": art.id,
         "title": art.meta.get("title", ""),
