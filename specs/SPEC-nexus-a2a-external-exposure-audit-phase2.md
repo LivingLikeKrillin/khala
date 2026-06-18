@@ -229,3 +229,43 @@ Pre-registration accountable-review pass against the specledger rubric. Issues d
 
 > Dry-run record. When specledger is registered, run `critique` → `approve` to produce the
 > canonical sidecar and stamp the content hash.
+
+## 13. Implementation note (2026-06-18) — audit + exposure landed
+
+Implemented in `nexus/nexus/a2a/audit.py` (new) + `server.py`/`config.py`/`api.py` deltas,
+TDD, **14 new tests** (audit 6, exposure 8); full Nexus suite **264 passed / 14 skipped**,
+ruff clean. Additive behind the existing flag; no change to retrieval/policy/identity core.
+
+- **Exit 1/2 ✅** — `emit_audit` fires exactly once per request on **every** path: granted
+  (`denied:false` + tenant/clearance/route/evidence_count/task_state) and each of the three
+  previously-silent denials (`unauthorized` / `method_not_found` / `empty_query`,
+  `denied:true` + reason, no privileged fields).
+- **Exit 3 ✅** — records carry `query_sha256` + `query_len`, never the raw query; a test
+  feeds a PII-laden query and asserts neither it nor any fragment appears in the record.
+- **Exit 4 ✅** — `A2AConfig.allowed_origins` + `resolve_a2a_cors_origins` union the app's
+  origins with A2A-specific ones (dedup, never `*`); wired into the app CORS in `api.py`. A
+  disallowed origin fails preflight (400); an allowed one passes (200); the card stays public.
+- **Exit 5 ✅** — corrected to structlog audit events (the app isn't OTel-instrumented).
+
+## 14. Threat-model note (exit criterion 6)
+
+- **Can't widen clearance.** `effective_scope` (reused, Phase 0) narrows only; a caller's
+  `tenant`/`classification_max` are requests, not grants. Asserted by `test_a2a_policy`.
+- **Can't read denied content.** Every denial returns a bare `_rpc_error` and an audit record
+  with no `route`/`evidence`/`task_state`; `base_filter` still bounds any retrieval.
+- **Can't poison the audit log.** Records are server-emitted with fixed fields; the query is
+  *hashed*, never interpolated into the event, so a malicious query can't inject structured
+  fields or forge a grant/deny outcome.
+- **Can't exfiltrate via the card.** The card is static public metadata (name, skill, grounding
+  extension) — no tokens, no tenant data, no per-caller content.
+- **Origin-bound.** CORS rejects unlisted origins; no wildcard while an Authorization header is
+  in play. Card public, skill token-gated.
+
+## 15. Phase-3 go/no-go — **GO**
+
+External exposure is config-gated and **every** cross-agent task — grant or deny — is now
+recorded PII-safely, with the policy/identity core reused intact (nothing rebuilt).
+**Recommend proceeding to Phase 3** (specledger `publish`/approval notifications as A2A
+tasks). The remaining items are operational hardening, **not** Phase-3 gates: a durable audit
+**sink** (Postgres `a2a_audit` table + query API) and **rate limiting** per token before
+high-volume untrusted exposure (§10).

@@ -11,10 +11,10 @@ without DB/LLM; production wires the default pipeline.
 
 from __future__ import annotations
 
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 
-import structlog
 from a2a.compat.v0_3.types import (
     Artifact,
     Message,
@@ -27,6 +27,7 @@ from a2a.compat.v0_3.types import (
 from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
+from nexus.a2a.audit import emit_audit
 from nexus.a2a.card import build_agent_card
 from nexus.a2a.config import A2AConfig
 from nexus.a2a.mapping import build_grounded_artifact
@@ -34,14 +35,13 @@ from nexus.a2a.policy import effective_scope, resolve_a2a_principal
 from nexus.auth.deps import extract_bearer
 from nexus.llm.answer import AnswerResult
 
-log = structlog.get_logger(__name__)
-
 # AnswerFn: (query, tenant, clearance) -> AnswerResult (sync or async).
 AnswerFn = Callable[[str, str, str], AnswerResult | Awaitable[AnswerResult]]
 
 _CARD_PATH = "/.well-known/agent-card.json"
 _RPC_PATH = "/a2a"
 _SKILL_METHOD = "message/send"
+_SKILL_NAME = "retrieve_grounded"
 
 # JSON-RPC error codes (subset).
 _METHOD_NOT_FOUND = -32601
@@ -101,21 +101,34 @@ def mount_a2a(app: FastAPI, cfg: A2AConfig, answer_fn: AnswerFn | None = None) -
 
     @app.post(_RPC_PATH)
     async def jsonrpc(request: Request, authorization: str | None = Header(default=None)):
+        start = time.perf_counter()
+
+        def elapsed_ms() -> int:
+            return int((time.perf_counter() - start) * 1000)
+
         body = await request.json()
         req_id = body.get("id")
         method = body.get("method")
+        params = body.get("params") or {}
+        query = _extract_query(params)
 
+        # Every outcome — granted or denied — leaves exactly one a2a.audit record (SPEC §6.1).
         if method != _SKILL_METHOD:
+            emit_audit(skill=str(method), query=query, denied=True,
+                       reason="method_not_found", latency_ms=elapsed_ms())
             return _rpc_error(req_id, _METHOD_NOT_FOUND, f"method not found: {method}")
 
         # Token-gated: the card is public, skill execution is not (default-deny).
         principal = resolve_a2a_principal(extract_bearer(authorization), cfg)
         if principal is None:
+            emit_audit(skill=_SKILL_NAME, query=query, denied=True,
+                       reason="unauthorized", latency_ms=elapsed_ms())
             return _rpc_error(req_id, _UNAUTHORIZED, "unauthorized", status=401)
 
-        params = body.get("params") or {}
-        query = _extract_query(params)
         if not query:
+            emit_audit(skill=_SKILL_NAME, query=query, principal=principal.name,
+                       tenant=principal.tenant, clearance=principal.clearance,
+                       denied=True, reason="empty_query", latency_ms=elapsed_ms())
             return _rpc_error(req_id, _INVALID_PARAMS, "empty query")
 
         req_tenant, req_clearance = _requested_scope(params)
@@ -125,13 +138,13 @@ def mount_a2a(app: FastAPI, cfg: A2AConfig, answer_fn: AnswerFn | None = None) -
         if isinstance(result, Awaitable):
             result = await result
 
-        evidence_count = len(result.evidence_snippets)
-        log.info(
-            "a2a.retrieve_grounded",
-            tenant=tenant, route=result.route_used,
-            evidence_count=evidence_count, denied=False,
-        )
         task = _build_task(result, tenant, clearance)
+        emit_audit(
+            skill=_SKILL_NAME, query=query, principal=principal.name,
+            tenant=tenant, clearance=clearance, route=result.route_used,
+            evidence_count=len(result.evidence_snippets),
+            task_state=task["status"]["state"], denied=False, latency_ms=elapsed_ms(),
+        )
         return {"jsonrpc": "2.0", "id": req_id, "result": task}
 
 
