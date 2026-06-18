@@ -279,3 +279,48 @@ Pre-registration accountable-review pass against the specledger rubric. Issues d
 
 > Dry-run record. When specledger is registered, run `critique` → `approve` to produce the
 > canonical sidecar and stamp the content hash.
+
+## 13. Implementation note (2026-06-18) — `probe/src/nexus/a2a/` landed
+
+Phase 1 implemented in `probe/src/nexus/a2a/` (`types` · `mapping` · `transport`) + a
+transport switch in `nexus/client.ts`, TDD/vitest, **19 new tests** (mapping 5, transport 9,
+client-switch+parity 5); full Probe suite **225 passed**, `tsc --noEmit` clean. No new runtime
+dependency (thin client; Probe stays at 2 deps).
+
+- **Exit 1 ✅** — flag off (default `'http'`): `searchAnswer` issues the same
+  `POST /search/answer`; no A2A code path, no card fetch (asserted by URL).
+- **Exit 2 ✅** — flag on (`transport:'a2a'` or `PROBE_NEXUS_TRANSPORT=a2a`): discovers the
+  card, sends `message/send` with a bearer token, maps the task artifact to
+  `NexusAnswerResult`. A **parity** test asserts `answer`/`route_used`/`provenance` equal and
+  the evidence projection (`doc_title`/`section_path`/`text`/`score`/`source_uri`) equal to
+  the HTTP path for the same answer.
+- **Exit 3 ✅** — `failed` task or empty-evidence ⇒ `null` (no confident answer without
+  evidence), mirrored on the consumer side.
+- **Exit 4 ✅** — every A2A failure mode (card fetch fail, missing skill, timeout, non-200,
+  JSON-RPC error, HTTP 401, malformed) returns `null` and logs a `logger.debug` reason; no
+  error escapes `NexusClient` (graceful-degradation parity).
+- **Exit 6 ✅** — bespoke `/search/answer` untouched; reversal = delete `src/nexus/a2a/` +
+  the switch.
+
+**§5.6 maintainability/observability comparison (Exit 5).**
+- **Glue size.** Direct path = one `post()` line at the call site. A2A path = a one-time
+  isolated adapter (~250 LOC across 3 files) + a ~10-line switch in `searchAnswer`. Per-call
+  cost is trivial; the adapter is reusable for future migrations and reversible in one delete.
+- **Failure surface.** Direct collapses 3 modes → `null`; A2A collapses ~7 → `null`, each
+  with a distinct `logger.debug` reason — *more* failure modes but identical caller contract
+  and **richer** diagnosability (denied vs. unreachable vs. no-evidence are separable). The
+  server also emits the OTel `a2a.retrieve_grounded` span, so the A2A path is at least as
+  observable end-to-end.
+- **Latency.** A2A adds the Phase-0 ~2.6 ms transport overhead + one card-discovery
+  round-trip on first call (cached per client instance). Negligible against the LLM-bound
+  `/search/answer` (seconds).
+
+## 14. Phase-2 go/no-go — **GO**
+
+The client path is a clean, isolated, flag-gated **drop-in** with identical
+graceful-degradation and consumed-field parity, trivial per-call cost, richer failure
+diagnosability, and a one-delete reversal. No new dependency, air-gap intact. **Recommend
+proceeding to Phase 2** (external exposure + token auth, reusing Nexus's server-side policy
+filter) and migrating Probe's remaining bespoke Nexus calls opportunistically behind the same
+flag. The `graph_findings` fidelity gap (§5.4) stayed at decision (b) — no `searchAnswer`
+consumer reads it, so no server `DataPart` change was needed.

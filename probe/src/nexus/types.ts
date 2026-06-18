@@ -184,6 +184,13 @@ export interface NexusClientConfig {
   tenant: string;
   /** 최대 분류 등급 (기본: "INTERNAL") */
   classificationMax: string;
+  /**
+   * searchAnswer 전송 방식 (기본: "http"). "a2a"이면 Nexus의 A2A retrieve_grounded
+   * skill을 사용한다(SPEC-probe-a2a-client-phase1). 환경변수 PROBE_NEXUS_TRANSPORT로도 지정.
+   */
+  transport?: 'http' | 'a2a';
+  /** A2A gated skill용 bearer 토큰 (없으면 default-deny → null). 환경변수 PROBE_NEXUS_TOKEN. */
+  nexusToken?: string;
 }
 
 // ─── 보강 결과 ───
