@@ -262,3 +262,34 @@ is implemented**, TDD, 16 new tests; full Nexus suite **280 passed / 14 skipped*
 **Part 2 (next) — specledger `A2ANexusSink`** (the thin A2A client in `publish.py`, flag-gated
 alongside `NexusHttpSink`) — completes the end-to-end exit criteria (§3.1/§3.2/§3.4 client
 side). Tracked as the follow-up.
+
+## 14. Implementation note (2026-06-18) — part 2: specledger A2A client landed
+
+Phase 3 pt.2 — the specledger **`A2ANexusSink`** — is implemented, TDD, 11 new tests; full
+specledger suite **86 passed**, ruff clean.
+
+- **Transport selection (§5.3, §6.1) ✅** — `publish()` now routes through `_select_sink`:
+  `config.nexus["transport"] == "a2a"` or `SPECLEDGER_NEXUS_TRANSPORT=a2a` opts into A2A;
+  **default is HTTP** (flag off ⇒ the bespoke `NexusHttpSink` POST, zero change, no new dep —
+  the A2A client is pure-`urllib`/no-SDK, matching Probe's Phase-1 thin-client decision).
+- **Thin A2A client ✅** — `A2ANexusSink` discovers the agent card (`/.well-known/agent-card.json`,
+  cached per instance), confirms the `ingest_governed_doc` skill, then `message/send`s the
+  governed-doc as a single **DataPart** with `metadata.skill_id` and `Authorization: Bearer
+  <write token>`. The urllib transport is injected (`transport=`) so the client is unit-testable
+  without a live Nexus.
+- **Graceful parity (§3.4) ✅** — a JSON-RPC error (capability **denial** ⇒ 403 `forbidden`),
+  a `failed`/quarantined task, or a card-discovery failure each raise `A2APublishError`, which
+  `publish()`'s existing `try/except` maps to `{published: False, reason}` — same contract as
+  the HTTP path; **no document body is ever read back**.
+- **Provenance (§5.4) ✅** — `publish()` now adds `content_hash` to the payload (the approval
+  stamp's `meta["content_hash"]`, falling back to `recompute_hash()`), so Nexus stores it as
+  `approved_hash` and Probe's `SpecRef.approvedHash` resolves to specledger's stamp.
+- **Minor deviation** — the client confirms the skill **id** (the concrete gate; the write
+  capability is server-enforced) but does not additionally inspect the grounding/write
+  *extension*; noted, not load-bearing.
+
+**Recommendation (§11):** keep A2A **opt-in** for now. Both transports are green and the flag
+defaults to HTTP, so the bespoke `NexusHttpSink` is the safe default until the A2A write path is
+exercised against a live, capability-gated Nexus (idempotency dedup is still deferred — §10).
+Retire `NexusHttpSink` only once an end-to-end live run confirms §3.2/§3.4 with a real write
+token. The ecosystem is now A2A-interoperable end to end (retrieve **and** publish) behind flags.
