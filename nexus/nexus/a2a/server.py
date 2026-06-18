@@ -259,14 +259,20 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
 async def _default_ingest_fn(doc: dict, tenant: str) -> IngestOutcome:
     """Production ingest path: bridge the inline body to the existing file-based pipeline.
 
-    ``run_ingest`` is path-based (globs ``**/*.md``), so the governed-doc body is written to
-    a transient file and ingested (SPEC §5.2 bridge). Imported lazily so the disabled surface
-    stays import-light. Idempotency dedup by ``(tenant, id, content_hash)`` is deferred
-    (SPEC §10) — this default reports ``idempotent_hit=False``.
+    ``run_ingest`` is path-based (globs ``**/*.md``), so the governed-doc body is written to a
+    transient file and ingested (SPEC §5.2 bridge). The temp file name is **deterministic** from
+    the governed doc's source basename, so the collector's canonical URI (``{tenant}:{name}``) —
+    and thus the document ``rid`` — is **stable across re-publishes** regardless of temp dir.
+
+    Idempotency (SPEC §5.4): ingest with ``force=False`` so the collector's built-in change
+    detection — keyed on ``(tenant, source_uri, content_hash)`` — makes an unchanged re-publish a
+    **no-op** (``idempotent_hit=True``, nothing re-indexed); a changed body supersedes (re-index).
+    Imported lazily so the disabled surface stays import-light.
     """
     import tempfile
     from pathlib import Path
 
+    from nexus import db
     from nexus.ingest.pipeline import run_ingest
     from nexus.rid import doc_rid
 
@@ -277,16 +283,30 @@ async def _default_ingest_fn(doc: dict, tenant: str) -> IngestOutcome:
         fname += ".md"
 
     approved_hash = str(doc.get("content_hash", ""))
+    rid = doc_rid(f"{tenant}:{fname}")  # matches the collector's canonical_uri (stable)
+
     with tempfile.TemporaryDirectory() as td:
         (Path(td) / fname).write_text(body, encoding="utf-8")
-        # Persist the governance stamp so retrieval can surface it as approved_hash (SPEC §5.4).
-        result = await run_ingest(td, force=True, tenant=tenant, approved_hash=approved_hash)
+        # force=False ⇒ the collector dedups by (tenant, source_uri, content_hash); persist the
+        # governance stamp so retrieval surfaces it as approved_hash (SPEC §5.4).
+        result = await run_ingest(td, force=False, tenant=tenant, approved_hash=approved_hash)
+
+    # No files collected ⇒ the body is byte-identical to what's already indexed: idempotent no-op.
+    idempotent = result.total_files == 0
+
+    # Report the server-decided classification / quarantine from the stored row (never the caller).
+    row = await db.fetch_one(
+        "SELECT classification, is_quarantined FROM documents WHERE rid = $1 AND tenant = $2",
+        rid, tenant,
+    )
+    classification = row["classification"] if row else "INTERNAL"
+    quarantined = bool(row["is_quarantined"]) if row else (result.quarantined > 0)
 
     return IngestOutcome(
-        resource_rid=doc_rid(source),
-        classification="INTERNAL",  # server classifier ran in-pipeline; not surfaced per-doc here
-        chunks_indexed=result.bm25_indexed,
-        quarantined=result.quarantined > 0,
-        approved_hash=str(doc.get("content_hash", "")),
-        idempotent_hit=False,
+        resource_rid=rid,
+        classification=classification,
+        chunks_indexed=0 if idempotent else result.bm25_indexed,
+        quarantined=quarantined,
+        approved_hash=approved_hash,
+        idempotent_hit=idempotent,
     )
