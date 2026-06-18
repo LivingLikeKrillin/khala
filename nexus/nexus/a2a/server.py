@@ -276,9 +276,11 @@ async def _default_ingest_fn(doc: dict, tenant: str) -> IngestOutcome:
     if not fname.endswith(".md"):
         fname += ".md"
 
+    approved_hash = str(doc.get("content_hash", ""))
     with tempfile.TemporaryDirectory() as td:
         (Path(td) / fname).write_text(body, encoding="utf-8")
-        result = await run_ingest(td, force=True, tenant=tenant)
+        # Persist the governance stamp so retrieval can surface it as approved_hash (SPEC §5.4).
+        result = await run_ingest(td, force=True, tenant=tenant, approved_hash=approved_hash)
 
     return IngestOutcome(
         resource_rid=doc_rid(source),

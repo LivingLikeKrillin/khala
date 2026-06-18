@@ -321,3 +321,32 @@ provenance loop is proven on the **ingest** side end-to-end, but the **read-back
 (Probe reading `SpecRef.approvedHash` *via retrieval*) needs a small mapping addition. Tracked
 as the next concrete unit; the recommendation (keep A2A opt-in) stands until both that mapping
 and a DB-backed live run are done.
+
+## 16. Read-back loop closed (2026-06-18) — provenance mapping + DB-backed live run
+
+The two follow-ups from §15 are done.
+
+**Unit A — `approved_hash` through the retrieval read path (PR #18).** `build_grounded_artifact`
+dropped `approved_hash`; now it's threaded through every read-path hop —
+`SearchHit` → `assemble_packet` `Provenance` → `generate_answer` provenance dict →
+`build_grounded_artifact` artifact provenance. Additive/back-compat (absent ⇒ `""`). 4 unit tests.
+
+**Unit B — persistence + DB-backed live run (this).** A dedicated `documents.approved_hash`
+column (distinct from `content_hash`, nexus's own change-detection hash) is written during
+governed-doc ingest: `run_ingest`/`_save_document` gained an `approved_hash` param, and the A2A
+ingest bridge (`server._default_ingest_fn`) passes the governed doc's `content_hash` into it.
+Retrieval enrichment now selects `d.approved_hash`. Proven **against real Postgres**
+(`tests/test_a2a_provenance_db.py`, `docker-compose.test.yml`, `pgvector/pgvector:pg16`):
+the production ingest bridge persists the stamp (distinct from the file hash), and the retrieval
+read path (`_enrich_hits` → `assemble_packet`) reads back **exactly the stamp specledger sent**.
+No Ollama/LLM needed — vector/graph steps fail gracefully; the read-back rides BM25/enrichment.
+Full nexus suite **286 passed / 15 skipped** (the live test gated on `NEXUS_TEST_DB_URL`), ruff clean.
+
+**Updated recommendation (§11):** the **engineering gates are now met** — the provenance loop
+is proven end to end against a real DB (specledger `content_hash` → `approved_hash` persisted →
+retrieval read-back), in addition to the in-process wire E2E (§15). A2A retrieve+publish are
+both real and flag-gated. Retiring the bespoke `NexusHttpSink` (and the Probe/specledger
+point-to-point glue) is now an **operational rollout decision**, not an engineering blocker:
+flip `SPECLEDGER_NEXUS_TRANSPORT=a2a` in a real deployment, watch the `a2a.audit` stream, then
+remove the HTTP sink. Remaining non-gating deferrals are unchanged (real `(tenant,id,hash)`
+ingest dedup; durable DB audit sink; rate limiting; approval-notification fan-out).
