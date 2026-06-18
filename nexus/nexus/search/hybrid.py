@@ -152,7 +152,7 @@ async def _enrich_hits(fused: list[dict], tenant: str) -> list[SearchHit]:
         f"""
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.source_uri,
                c.classification, c.source_version,
-               d.title as doc_title, d.content_hash as approved_hash
+               d.title as doc_title, d.approved_hash as approved_hash
         FROM chunks c
         LEFT JOIN documents d ON c.doc_rid = d.rid
         WHERE c.rid IN ({placeholders})

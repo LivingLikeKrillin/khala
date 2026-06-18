@@ -51,8 +51,13 @@ async def _save_document(
     collected: CollectedFile,
     classification: ClassificationResult,
     tenant: str,
+    approved_hash: str = "",
 ) -> str:
-    """문서 메타데이터를 DB에 저장. rid 반환."""
+    """문서 메타데이터를 DB에 저장. rid 반환.
+
+    ``approved_hash``는 상위 거버넌스 도구(specledger)의 accountable-review 스탬프로,
+    nexus 자체의 변경 감지 해시(content_hash)와 구분된다. 일반 문서는 ''.
+    """
     rid = doc_rid(collected.canonical_uri)
     now = datetime.now(timezone.utc)
 
@@ -63,13 +68,13 @@ async def _save_document(
             source_uri, source_kind, hash, content_hash,
             is_quarantined, quality_flags, status,
             created_at, updated_at,
-            title, doc_type, language
+            title, doc_type, language, approved_hash
         ) VALUES (
             $1, 'document', $2, $3::classification_level, 'indexer',
             $4, 'git', $5, $5,
             $6, $7, 'active',
             $8, $8,
-            $9, $10, $11
+            $9, $10, $11, $12
         )
         ON CONFLICT (rid) DO UPDATE SET
             hash = EXCLUDED.hash,
@@ -79,7 +84,8 @@ async def _save_document(
             quality_flags = EXCLUDED.quality_flags,
             updated_at = EXCLUDED.updated_at,
             doc_type = EXCLUDED.doc_type,
-            language = EXCLUDED.language
+            language = EXCLUDED.language,
+            approved_hash = EXCLUDED.approved_hash
         """,
         rid, tenant, classification.classification,
         collected.canonical_uri, collected.content_hash,
@@ -87,7 +93,7 @@ async def _save_document(
         classification.pii_types if classification.is_quarantined else [],
         now,
         collected.frontmatter.get("title", collected.relative_path),
-        classification.doc_type, classification.language,
+        classification.doc_type, classification.language, approved_hash,
     )
     return rid
 
@@ -232,6 +238,7 @@ async def run_ingest(
     config_path: str = "config.yaml",
     skip_index: bool = False,
     skip_graph: bool = False,
+    approved_hash: str = "",
 ) -> IngestResult:
     """통합 Ingestion 파이프라인.
 
@@ -245,6 +252,8 @@ async def run_ingest(
         config_path: 설정 파일 경로
         skip_index: True면 BM25/Vector 인덱싱 건너뜀
         skip_graph: True면 Graph 추출 건너뜀
+        approved_hash: 이 실행의 문서에 부여할 거버넌스 스탬프(specledger content_hash).
+            단일 거버넌스 문서 ingest(예: A2A ingest_governed_doc 브리지)용. 기본 ''.
 
     Returns:
         IngestResult with summary
@@ -272,8 +281,8 @@ async def run_ingest(
                 config,
             )
 
-            # Save document metadata
-            parent_rid = await _save_document(collected, classification, tenant)
+            # Save document metadata (approved_hash: governance stamp for this run's docs)
+            parent_rid = await _save_document(collected, classification, tenant, approved_hash)
 
             # Quarantine Gate
             if classification.is_quarantined:
