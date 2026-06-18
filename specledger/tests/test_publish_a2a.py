@@ -1,18 +1,19 @@
-"""Phase 3 pt.2 — specledger as an A2A client (SPEC §5.3).
+"""specledger as an A2A client (SPEC §5.3); A2A is the sole publish transport (SPEC §16).
 
 `A2ANexusSink` is a thin JSON-RPC client (no SDK, urllib by default) that discovers Nexus's
 agent card, confirms the `ingest_governed_doc` skill, sends the governed-doc DataPart with the
 write token, and maps a denied/failed task to the graceful `{published: False, reason}` contract
-`publish()` already returns. `publish()` selects the sink by flag (default HTTP).
+`publish()` already returns. The bespoke `NexusHttpSink` HTTP POST has been retired — `publish()`
+always builds an `A2ANexusSink`.
 """
 
+import specledger.publish as publish_module
 from specledger.config import SpecledgerConfig
 from specledger.ledger import Ledger
 from specledger.publish import (
     INGEST_SKILL,
     A2ANexusSink,
-    NexusHttpSink,
-    _select_sink,
+    _build_sink,
     publish,
 )
 
@@ -68,24 +69,22 @@ def _rpc_error(code=-32003, message="forbidden: ingest_governed capability requi
     return {"jsonrpc": "2.0", "id": "1", "error": {"code": code, "message": message}}
 
 
-# ── transport selection (SPEC §5.3 — default HTTP, flag opts into A2A) ──
+# ── transport: A2A is the sole sink; bespoke NexusHttpSink retired (SPEC §16) ──
 
 
-def test_select_sink_defaults_to_http():
-    cfg = SpecledgerConfig(nexus={"url": "http://x"})
-    assert isinstance(_select_sink(cfg), NexusHttpSink)
-
-
-def test_select_sink_a2a_via_config(monkeypatch):
-    monkeypatch.delenv("SPECLEDGER_NEXUS_TRANSPORT", raising=False)
-    cfg = SpecledgerConfig(nexus={"base_url": "http://nexus.test", "transport": "a2a"})
-    assert isinstance(_select_sink(cfg), A2ANexusSink)
-
-
-def test_select_sink_a2a_via_env(monkeypatch):
-    monkeypatch.setenv("SPECLEDGER_NEXUS_TRANSPORT", "a2a")
+def test_publish_builds_a2a_sink_from_url():
     cfg = SpecledgerConfig(nexus={"url": "http://nexus.test"})
-    assert isinstance(_select_sink(cfg), A2ANexusSink)
+    assert isinstance(_build_sink(cfg), A2ANexusSink)
+
+
+def test_publish_builds_a2a_sink_from_base_url():
+    cfg = SpecledgerConfig(nexus={"base_url": "http://nexus.test"})
+    assert isinstance(_build_sink(cfg), A2ANexusSink)
+
+
+def test_nexus_http_sink_is_retired():
+    """The bespoke point-to-point HTTP sink is gone — A2A is the only transport."""
+    assert not hasattr(publish_module, "NexusHttpSink")
 
 
 # ── A2ANexusSink behaviour ──

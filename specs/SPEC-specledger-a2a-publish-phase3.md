@@ -350,3 +350,23 @@ point-to-point glue) is now an **operational rollout decision**, not an engineer
 flip `SPECLEDGER_NEXUS_TRANSPORT=a2a` in a real deployment, watch the `a2a.audit` stream, then
 remove the HTTP sink. Remaining non-gating deferrals are unchanged (real `(tenant,id,hash)`
 ingest dedup; durable DB audit sink; rate limiting; approval-notification fan-out).
+
+## 17. Bespoke `NexusHttpSink` retired (2026-06-18)
+
+With the provenance loop proven end to end (§15 wire E2E + §16 DB-backed run), the bespoke
+point-to-point HTTP sink is removed from specledger and **A2A is the sole publish transport**:
+
+- `specledger/src/specledger/publish.py` — `NexusHttpSink` deleted; `publish()` always builds an
+  `A2ANexusSink` via `_build_sink` (replacing the flag-based `_select_sink`). The
+  `SPECLEDGER_NEXUS_TRANSPORT` env flag and `nexus["transport"]` key are no longer consulted; the
+  publish-config needs a Nexus base URL + a write-capability token (`SPECLEDGER_NEXUS_TOKEN`).
+  The `NexusSink` Protocol stays so tests/callers can inject a fake.
+- Tests express the retirement (`test_nexus_http_sink_is_retired` + A2A-only `_build_sink`
+  cases); full specledger suite **86 passed**, ruff clean, ecosystem E2E unaffected.
+- CHANGELOG + README updated (breaking change; A2A is now the documented transport).
+
+This realizes the §16 recommendation in code — what remained was only the operational act of
+flipping the default, now done. **Probe note:** Probe's `client.ts` still keeps an HTTP path for
+Nexus surfaces with no A2A skill (status/impact/graph); only `searchAnswer` is A2A-capable. So
+Probe's HTTP client is *not* pure point-to-point glue and is left intact — promoting Probe's
+`searchAnswer` default to A2A is a separate, optional follow-up.
