@@ -67,3 +67,29 @@ def test_anthropic_critic_parses_json():
     client = _Client('[{"category":"scope-creep","severity":"low","description":"x"}]')
     crit = AnthropicCritic(client=client)
     assert crit.find_issues("body", [], RUBRIC) == [("scope-creep", "low", "x")]
+
+
+def test_anthropic_critic_constructs_without_api_key(monkeypatch):
+    """Server boot must not require the key: construction is keyless (lazy client)."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    from specledger.critique import AnthropicCritic
+    AnthropicCritic()  # no KeyError — the key is only read when critique actually runs
+
+
+def test_find_issues_without_key_raises_clear_error(monkeypatch):
+    """Calling critique without a key fails with an actionable message, not a bare KeyError."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    from specledger.critique import AnthropicCritic
+    crit = AnthropicCritic()
+    with pytest.raises(Exception) as exc:
+        crit.find_issues("body", [], RUBRIC)
+    assert "ANTHROPIC_API_KEY" in str(exc.value)
+
+
+def test_injected_client_never_reads_env(monkeypatch):
+    """An injected client works with no key in the environment (offline/local)."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    from specledger.critique import AnthropicCritic
+    client = _Client('[{"category":"undefined","severity":"low","description":"y"}]')
+    crit = AnthropicCritic(client=client)
+    assert crit.find_issues("body", [], RUBRIC) == [("undefined", "low", "y")]

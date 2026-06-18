@@ -58,13 +58,29 @@ _PROMPT = (
 
 
 class AnthropicCritic:
+    """LLM critic. The ``ANTHROPIC_API_KEY`` is read **lazily** — only when a critique is
+    actually run — so constructing the critic (and therefore booting the MCP server) needs no
+    key. Only the ``critique`` tool requires it; the other 9 specledger tools run keyless.
+    An injected ``client`` bypasses the key entirely (offline/local + tests).
+    """
+
     def __init__(self, client=None, model: str = "claude-opus-4-8", max_tokens: int = 2000):
-        if client is None:
-            import anthropic
-            client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
         self._client = client
         self._model = model
         self._max_tokens = max_tokens
+
+    def _get_client(self):
+        if self._client is None:
+            key = os.environ.get("ANTHROPIC_API_KEY")
+            if not key:
+                raise CritiqueError(
+                    "critique requires ANTHROPIC_API_KEY (the LLM reviewer); the other "
+                    "specledger tools — record/approve/status/begin_implementation/check_gate/"
+                    "publish — run without it. Set the key or inject a client."
+                )
+            import anthropic
+            self._client = anthropic.Anthropic(api_key=key)
+        return self._client
 
     def find_issues(
         self, body: str, linked_adr_bodies: list[str], rubric: list[str]
@@ -73,7 +89,7 @@ class AnthropicCritic:
             rubric=", ".join(rubric), body=body,
             adrs="\n---\n".join(linked_adr_bodies) or "(none)",
         )
-        resp = self._client.messages.create(
+        resp = self._get_client().messages.create(
             model=self._model, max_tokens=self._max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
