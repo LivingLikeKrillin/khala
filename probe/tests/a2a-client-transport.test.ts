@@ -4,10 +4,10 @@ import { mapTaskToAnswerResult } from '../src/nexus/a2a/mapping.js';
 import type { A2ATask } from '../src/nexus/a2a/types.js';
 
 /**
- * searchAnswer 전송 전환 + 파리티 테스트 (Phase 1, SPEC §3 exit 1/2/4, §7)
+ * searchAnswer 전송 전환 + 파리티 테스트 (Phase 1 → SPEC §17)
  *
- * 플래그 off(기본) → 기존 POST /search/answer.
- * 플래그 on(config.transport='a2a' 또는 PROBE_NEXUS_TRANSPORT=a2a) → A2A retrieve_grounded.
+ * A2A가 기본 전송이다(SPEC §17). 설정/환경변수 없이 → A2A retrieve_grounded.
+ * HTTP /search/answer로 opt-out: config.transport='http' 또는 PROBE_NEXUS_TRANSPORT=http.
  */
 
 const BASE = 'http://test:8000';
@@ -102,25 +102,11 @@ describe('NexusClient.searchAnswer transport switch', () => {
     delete process.env.PROBE_NEXUS_TOKEN;
   });
 
-  it('기본(flag off)은 POST /search/answer를 사용한다', async () => {
+  it('기본(설정 없음)은 A2A retrieve_grounded를 사용한다', async () => {
     const fetchMock = routedFetch({ jsonrpc: '2.0', id: '1', result: a2aTaskForSameAnswer() });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const client = new NexusClient({ baseUrl: BASE });
-    const result = await client.searchAnswer('결제 토픽?');
-
-    expect(result).not.toBeNull();
-    expect(result!.answer).toBe(HTTP_ANSWER.answer);
-    const url = String(fetchMock.mock.calls[0]![0]);
-    expect(url).toContain('/search/answer');
-    expect(url).not.toContain(CARD_PATH);
-  });
-
-  it('config.transport="a2a"이면 A2A retrieve_grounded를 사용한다', async () => {
-    const fetchMock = routedFetch({ jsonrpc: '2.0', id: '1', result: a2aTaskForSameAnswer() });
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-    const client = new NexusClient({ baseUrl: BASE, transport: 'a2a', nexusToken: 'tok' });
+    const client = new NexusClient({ baseUrl: BASE, nexusToken: 'tok' });
     const result = await client.searchAnswer('결제 토픽?');
 
     expect(result).not.toBeNull();
@@ -131,8 +117,22 @@ describe('NexusClient.searchAnswer transport switch', () => {
     expect(urls.some((u) => u.includes('/search/answer'))).toBe(false);
   });
 
-  it('PROBE_NEXUS_TRANSPORT=a2a 환경변수로도 전환된다', async () => {
-    process.env.PROBE_NEXUS_TRANSPORT = 'a2a';
+  it('config.transport="http"이면 POST /search/answer로 opt-out한다', async () => {
+    const fetchMock = routedFetch({ jsonrpc: '2.0', id: '1', result: a2aTaskForSameAnswer() });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const client = new NexusClient({ baseUrl: BASE, transport: 'http' });
+    const result = await client.searchAnswer('결제 토픽?');
+
+    expect(result).not.toBeNull();
+    expect(result!.answer).toBe(HTTP_ANSWER.answer);
+    const url = String(fetchMock.mock.calls[0]![0]);
+    expect(url).toContain('/search/answer');
+    expect(url).not.toContain(CARD_PATH);
+  });
+
+  it('PROBE_NEXUS_TRANSPORT=http 환경변수로 HTTP로 opt-out한다', async () => {
+    process.env.PROBE_NEXUS_TRANSPORT = 'http';
     const fetchMock = routedFetch({ jsonrpc: '2.0', id: '1', result: a2aTaskForSameAnswer() });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -141,7 +141,22 @@ describe('NexusClient.searchAnswer transport switch', () => {
 
     expect(result).not.toBeNull();
     const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes('/search/answer'))).toBe(true);
+    expect(urls.some((u) => u.endsWith('/a2a'))).toBe(false);
+  });
+
+  it('config.transport="a2a"이면 A2A retrieve_grounded를 사용한다 (명시)', async () => {
+    const fetchMock = routedFetch({ jsonrpc: '2.0', id: '1', result: a2aTaskForSameAnswer() });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const client = new NexusClient({ baseUrl: BASE, transport: 'a2a', nexusToken: 'tok' });
+    const result = await client.searchAnswer('결제 토픽?');
+
+    expect(result).not.toBeNull();
+    expect(result!.route_used).toBe('graph');
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.endsWith('/a2a'))).toBe(true);
+    expect(urls.some((u) => u.includes('/search/answer'))).toBe(false);
   });
 
   it('A2A 경로 실패 시 null을 반환한다 (graceful degradation parity)', async () => {
