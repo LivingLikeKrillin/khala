@@ -89,6 +89,7 @@ async def generate_answer(
             "doc_rid": p.doc_rid,
             "source_uri": p.source_uri,
             "source_version": p.source_version,
+            "approved_hash": p.approved_hash,
         }
         for p in packet.provenance
     ]
