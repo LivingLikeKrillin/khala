@@ -1,11 +1,20 @@
 ---
 id: SPEC-nexus-a2a-server-phase0-spike
 type: spec
-title: "Phase 0 spike — Nexus A2A grounded-retrieval server"
-status: draft
+title: Phase 0 spike — Nexus A2A grounded-retrieval server
+status: approved
 date: 2026-06-18
-linked_adrs: [ADR-0001]
-tags: [a2a, nexus, spike, interop, grounding]
+linked_adrs:
+- ADR-0001
+tags:
+- a2a
+- nexus
+- spike
+- interop
+- grounding
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-06-18T10:30:00Z'
+content_hash: sha256:8307b10986e1c28580d6dc355acfb26cad9232a6a42ec7a7a55c2db66fd03063
 ---
 
 # Phase 0 spike — Nexus A2A grounded-retrieval server

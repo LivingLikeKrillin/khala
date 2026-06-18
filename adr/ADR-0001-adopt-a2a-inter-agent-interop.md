@@ -2,10 +2,19 @@
 id: ADR-0001
 type: adr
 title: Adopt A2A (Agent2Agent) as Khala's agent-to-agent interoperability layer
-status: proposed
+status: accepted
 date: 2026-06-18
-tags: [interop, agents, a2a, mcp, nexus, ecosystem]
+tags:
+- interop
+- agents
+- a2a
+- mcp
+- nexus
+- ecosystem
 linked_adrs: []
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-06-18T10:30:00Z'
+content_hash: sha256:ba389051b2fa779d43e798dfbdb8bbf0799c666b9518cb46771b8362fa621bf8
 ---
 
 # ADR-0001: Adopt A2A (Agent2Agent) as Khala's agent-to-agent interoperability layer

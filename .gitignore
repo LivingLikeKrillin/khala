@@ -1,0 +1,7 @@
+
+# specledger transient gate runtime state (active spec marker + exempt log)
+.specledger/active.json
+.specledger/exempt.log
+
+# machine-specific MCP registration (absolute paths)
+.mcp.json
