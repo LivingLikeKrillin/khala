@@ -23,6 +23,10 @@ async function update() {
     setDot('dot-ollama', data.ollama_connected);
     setDot('dot-tempo', data.tempo_connected);
 
+    // 익명(permissive) 모드면 PUBLIC-only 배너 노출 — 빈/부분 결과가 버그가 아닌 보안 경계임을 알림
+    const banner = document.getElementById('auth-banner');
+    if (banner) banner.classList.toggle('hidden', !data.anonymous);
+
     const statusText = document.getElementById('status-text');
     if (data.db_connected) {
       statusText.textContent = '';
