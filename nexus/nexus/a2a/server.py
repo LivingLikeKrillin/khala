@@ -33,6 +33,7 @@ from nexus.a2a.config import A2AConfig
 from nexus.a2a.ingest_skill import IngestOutcome, build_ingest_artifact, extract_governed_doc
 from nexus.a2a.mapping import build_grounded_artifact
 from nexus.a2a.policy import effective_scope, resolve_a2a_principal
+from nexus.a2a.ratelimit import RateLimiter
 from nexus.auth.deps import extract_bearer
 from nexus.llm.answer import AnswerResult
 
@@ -53,6 +54,7 @@ _METHOD_NOT_FOUND = -32601
 _INVALID_PARAMS = -32602
 _UNAUTHORIZED = -32001
 _FORBIDDEN = -32003
+_RATE_LIMITED = -32005
 
 
 def _rpc_error(req_id, code: int, message: str, status: int = 200) -> JSONResponse:
@@ -114,6 +116,7 @@ def mount_a2a(
 
     resolved_answer_fn = answer_fn or _default_answer_fn
     resolved_ingest_fn = ingest_fn or _default_ingest_fn
+    limiter = RateLimiter(cfg.rate_limit_per_min)  # per-principal; 0 ⇒ disabled
 
     @app.get(_CARD_PATH)
     def agent_card() -> dict:  # public discovery
@@ -146,6 +149,14 @@ def mount_a2a(
             await record_audit(skill=skill, query=query, denied=True,
                        reason="unauthorized", latency_ms=elapsed_ms())
             return _rpc_error(req_id, _UNAUTHORIZED, "unauthorized", status=401)
+
+        # Per-principal rate limit (SPEC §21): one token can't flood the surface (default-deny
+        # extended to volume). Checked after auth so the budget is keyed to a known principal.
+        if not limiter.allow(principal.name):
+            await record_audit(skill=skill, query=query, principal=principal.name,
+                       tenant=principal.tenant, clearance=principal.clearance,
+                       denied=True, reason="rate_limited", latency_ms=elapsed_ms())
+            return _rpc_error(req_id, _RATE_LIMITED, "rate limit exceeded", status=429)
 
         # ── Write skill (Phase 3): ingest a governed doc — capability-gated. ──
         if skill == _INGEST_SKILL:
