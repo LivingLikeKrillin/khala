@@ -293,3 +293,31 @@ defaults to HTTP, so the bespoke `NexusHttpSink` is the safe default until the A
 exercised against a live, capability-gated Nexus (idempotency dedup is still deferred — §10).
 Retire `NexusHttpSink` only once an end-to-end live run confirms §3.2/§3.4 with a real write
 token. The ecosystem is now A2A-interoperable end to end (retrieve **and** publish) behind flags.
+
+## 15. End-to-end run (2026-06-18) — in-process cross-tool verification
+
+The §11 "live end-to-end run" landed as a deterministic, CI-reproducible cross-tool test:
+`tests/test_a2a_e2e_specledger_to_nexus.py` (repo root; `pytest.importorskip`-guarded so neither
+tool's isolated CI is affected). It wires the **real** Nexus A2A server (`mount_a2a` → card +
+JSON-RPC + capability gate + audit + ingest mapping) to the **real** specledger `A2ANexusSink` +
+`publish()` over an in-process ASGI transport — no SDK faked between them. **5 tests, all green**
+(nexus a2a suite 63 + specledger 86 unaffected). Confirmed over the wire:
+
+- **§3.2/§5.4** — a write-capable `publish()` ingests the governed doc under the principal's
+  tenant, and specledger's `content_hash` round-trips as the ingest artifact's `approved_hash`.
+- **§3.3/§5.5** — a read-only token is denied (403, audited `a2a.audit` denial); the ingest
+  pipeline is never reached (`store.ingests == 0`).
+- **§3.4** — quarantine and denial both map to the graceful `{published: False, reason}`;
+  idempotent re-publish yields **one** resource (`idempotent_hit` recognised).
+- **§3.5** — specledger never sends a classification; the server decides it (`INTERNAL`).
+
+**What this run does *not* cover (the remaining gate before retiring `NexusHttpSink`):** the
+DB-backed RAG pipeline + real classifier/scanner (stubbed here by an in-memory store — covered
+by nexus's own suite), and a true Docker-stack bring-up. **Discovered gap (follow-up):** §5.4
+also promises `approved_hash` *surfaces in `retrieve_grounded` provenance*, but the current
+retrieval mapping (`nexus/a2a/mapping.py::build_grounded_artifact`) carries only
+`source_uri`/`source_version`/`doc_rid` — it does **not** yet emit `approved_hash`. So the
+provenance loop is proven on the **ingest** side end-to-end, but the **read-back** side
+(Probe reading `SpecRef.approvedHash` *via retrieval*) needs a small mapping addition. Tracked
+as the next concrete unit; the recommendation (keep A2A opt-in) stands until both that mapping
+and a DB-backed live run are done.
