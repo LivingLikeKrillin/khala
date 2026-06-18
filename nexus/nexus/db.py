@@ -18,6 +18,11 @@ logger = structlog.get_logger(__name__)
 _pool: asyncpg.Pool | None = None
 
 
+def has_pool() -> bool:
+    """A live pool이 이미 있는지(연결 시도 없이) 확인. best-effort 부가 작업의 게이트."""
+    return _pool is not None
+
+
 async def get_pool() -> asyncpg.Pool:
     """Connection pool 획득. 없으면 생성."""
     global _pool
