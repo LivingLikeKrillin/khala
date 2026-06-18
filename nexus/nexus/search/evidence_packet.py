@@ -35,6 +35,7 @@ class Provenance:
     doc_rid: str
     source_uri: str
     source_version: str = ""
+    approved_hash: str = ""  # accountable-review stamp (SPEC §5.4)
 
 
 @dataclass
@@ -79,6 +80,7 @@ def assemble_packet(
                 doc_rid=hit.doc_rid,
                 source_uri=hit.source_uri,
                 source_version=hit.source_version,
+                approved_hash=hit.approved_hash,
             ))
 
     return packet

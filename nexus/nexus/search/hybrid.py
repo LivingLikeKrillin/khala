@@ -35,6 +35,7 @@ class SearchHit:
     bm25_rank: int | None = None
     vector_rank: int | None = None
     classification: str = "INTERNAL"
+    approved_hash: str = ""  # documents.content_hash — accountable-review stamp (SPEC §5.4)
 
 
 @dataclass
@@ -151,7 +152,7 @@ async def _enrich_hits(fused: list[dict], tenant: str) -> list[SearchHit]:
         f"""
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.source_uri,
                c.classification, c.source_version,
-               d.title as doc_title
+               d.title as doc_title, d.content_hash as approved_hash
         FROM chunks c
         LEFT JOIN documents d ON c.doc_rid = d.rid
         WHERE c.rid IN ({placeholders})
@@ -179,6 +180,7 @@ async def _enrich_hits(fused: list[dict], tenant: str) -> list[SearchHit]:
             bm25_rank=f["bm25_rank"],
             vector_rank=f["vector_rank"],
             classification=r["classification"],
+            approved_hash=r["approved_hash"] or "",
         ))
 
     return hits
