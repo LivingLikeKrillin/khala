@@ -105,3 +105,17 @@ auth:
     #   token_sha256: "REPLACE_ME"
     #   tenant: "default"
     #   clearance: "INTERNAL"
+
+# ── A2A (Agent2Agent) Phase 0 spike — OFF by default ──
+# Flag-gated grounded-retrieval server (SPEC-nexus-a2a-server-phase0-spike). Enable with
+# NEXUS_A2A_ENABLED=1 (or `enabled: true`). The Agent Card is public; skill execution is
+# token-gated. One token => one fixed (tenant, clearance), narrow-only (same identity model
+# as `auth`). Env single-token: NEXUS_A2A_TOKEN / NEXUS_A2A_TENANT / NEXUS_A2A_CLEARANCE.
+a2a:
+  enabled: false
+  base_url: "http://localhost:8000"
+  principals: []
+    # - name: "ext-agent"
+    #   token_sha256: "REPLACE_ME"   # nexus auth gen-token | nexus auth hash-token
+    #   tenant: "default"
+    #   clearance: "INTERNAL"

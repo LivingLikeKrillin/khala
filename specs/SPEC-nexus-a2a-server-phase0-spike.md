@@ -322,3 +322,38 @@ Sources: [A2A spec](https://a2a-protocol.org/latest/specification/) ·
 [Extensions](https://a2a-protocol.org/latest/topics/extensions/) ·
 [AgentCard](https://agent2agent.info/docs/concepts/agentcard/) ·
 [What's new in v1.0](https://a2a-protocol.org/latest/whats-new-v1/)
+
+## 14. Implementation note (2026-06-18) — `nexus/a2a/` landed
+
+Phase 0 implemented in `nexus/nexus/a2a/` (`card` · `server` · `mapping` · `policy` ·
+`config`), TDD, 31 tests green; full Nexus suite 246 passed / 14 skipped, ruff clean.
+
+**SDK pinned & re-verified (Exit-0 caveat discharged).** Pinned **`a2a-sdk==1.1.0`**
+(`a2a` optional-dependency in `pyproject.toml`). The v1.0 SDK is **protobuf-first**; the
+JSON-RPC spec types this spike binds to live in **`a2a.compat.v0_3.types`** (pydantic).
+Verified against that build: `DataPart` (`{kind:"data", data:{…}}`), `TextPart`, `Artifact`,
+`AgentExtension` (in `capabilities.extensions`), and the well-known path
+`/.well-known/agent-card.json`. The §5.4 `[TextPart(answer), DataPart(evidence)]` mapping is
+expressible — **GO holds against the real build.**
+
+**Correction to the wire form of the failed state.** §5.4/§13 cited
+`TASK_STATE_FAILED` (SCREAMING_SNAKE). That is the **protobuf/gRPC** enum form; the
+**JSON-RPC** representation Phase 0 uses serializes `TaskState.failed` to **`"failed"`**
+(kebab/lowercase). The contract test asserts `"failed"`. Substance (a real, non-invented
+failure state for the no-evidence path) is unchanged.
+
+**Confidence (open question §10) — resolved to a coarse band.** `confidence` is a
+deterministic, system-decided band derived in `mapping.derive_confidence`
+(`HIGH`/`MEDIUM`/`LOW` from corroborating-evidence count; LLM-narration failure floors to
+`LOW`). Raw per-route scores are not comparable across BM25/vector/graph, so a band is the
+honest surface. "System decides, LLM narrates" preserved.
+
+**Failed ⟺ no evidence.** A no-evidence response ⇒ `failed` + plain-text reason
+(`답변을 생성할 수 없습니다 — 근거 부족`) with the (empty) evidence shape still attached. Evidence
+present but LLM narration failed ⇒ still `completed` (grounding intact), confidence floored.
+
+**Still open / deferred (needs a live stack):** Exit criteria **1, 2, 5** — driving an
+off-the-shelf A2A client against a running Nexus and recording transport overhead (p50/p95)
+— require DB + Ollama + LLM and are not runnable in this environment. The mapping/policy/card
+contracts that those criteria exercise are unit-covered; the live e2e + overhead number and
+the Phase-1 go/no-go (§11) remain to be appended after a stack run.
