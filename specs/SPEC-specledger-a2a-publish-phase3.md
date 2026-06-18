@@ -236,3 +236,29 @@ Pre-registration accountable-review pass against the specledger rubric. Issues d
 > Dry-run record. The specledger gate is now active (ADR-0001 accepted; Phases 0–2 SPECs
 > approved). When `ANTHROPIC_API_KEY` is set, run `critique` → `approve` to supersede this
 > dry-run import with a live LLM sidecar and stamp the content hash.
+
+## 13. Implementation note (2026-06-18) — part 1: Nexus write skill landed
+
+Phase 3 split into two units. **Part 1 (this) — the Nexus `ingest_governed_doc` write skill —
+is implemented**, TDD, 16 new tests; full Nexus suite **280 passed / 14 skipped**, ruff clean.
+
+- **Write capability (§5.5) ✅** — `Principal` gained an additive `capabilities: tuple[...]`
+  (default empty ⇒ read-only) + `Principal.has(...)`; `resolve_principal` reads
+  `capabilities` from config. Backward compatible (existing read tokens unaffected).
+- **Card ✅** — now advertises two skills; `ingest_governed_doc` is tagged `write`/`governed`.
+- **Skill routing + gate ✅** — `server.py` routes by `message.metadata.skill_id`. The ingest
+  branch requires the `ingest_governed` capability: a read-only token ⇒ **403 + audited
+  denial** (`reason: forbidden_no_capability`), never reaching the pipeline; a write token ⇒
+  ingest. Incomplete payload ⇒ invalid-params + audit. Every outcome is a Phase-2 `a2a.audit`
+  record.
+- **Mapping ✅** — `ingest_skill.py` maps an `IngestOutcome` to an artifact (resource_rid,
+  classification, approved_hash, idempotent_hit) — **the document body is never echoed back**;
+  quarantine/error ⇒ `failed` task. Server classifies; the caller never sets classification.
+- **Idempotency** — surfaced through the injected `ingest_fn` (`idempotent_hit`); the
+  production default (`_default_ingest_fn`) bridges the inline body to the file-based
+  `run_ingest` (SPEC §5.2) and reports `idempotent_hit=False` — real dedup by
+  `(tenant, id, content_hash)` is deferred (§10), to be done with the durable store.
+
+**Part 2 (next) — specledger `A2ANexusSink`** (the thin A2A client in `publish.py`, flag-gated
+alongside `NexusHttpSink`) — completes the end-to-end exit criteria (§3.1/§3.2/§3.4 client
+side). Tracked as the follow-up.
