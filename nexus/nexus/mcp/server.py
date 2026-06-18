@@ -26,13 +26,24 @@ mcp = FastMCP(
 )
 
 
+def _auth_headers() -> dict:
+    """Forward the MCP service credential. The MCP is an HTTP client — it does NOT resolve
+    principals; the API does. One ``NEXUS_MCP_TOKEN`` ⇒ one (tenant, clearance) ceiling."""
+    token = os.getenv("NEXUS_MCP_TOKEN")
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
 async def _api_call(method: str, path: str, **kwargs) -> dict:
-    """Nexus API 호출 래퍼."""
+    """Nexus API 호출 래퍼 (인증 토큰 포워딩 포함)."""
+    headers = {**_auth_headers(), **(kwargs.pop("headers", None) or {})}
     async with httpx.AsyncClient(timeout=60.0, base_url=NEXUS_API_URL) as client:
-        resp = await getattr(client, method)(path, **kwargs)
+        resp = await getattr(client, method)(path, headers=headers, **kwargs)
 
     if resp.status_code == 503:
         return {"success": False, "error": "Nexus 데이터베이스에 연결할 수 없습니다"}
+    if resp.status_code == 401:
+        return {"success": False,
+                "error": "Nexus 인증 실패 (401). NEXUS_MCP_TOKEN 환경변수에 유효한 bearer 토큰을 설정하세요."}
 
     data = resp.json()
     if not data.get("success"):

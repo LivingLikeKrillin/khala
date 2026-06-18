@@ -10,13 +10,15 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import yaml
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from nexus import db
+from nexus.auth import AuthConfig, Principal, effective_scope
+from nexus.auth.deps import make_get_principal
 from nexus.index.graph_extractor import find_entities_in_text, _build_entity_patterns, _load_gazetteer
 from nexus.ingest.pipeline import run_ingest
 from nexus.llm.answer import generate_answer
@@ -55,6 +57,8 @@ async def _bootstrap_gazetteer() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Fail fast: refuse to boot enforced with placeholder credentials.
+    AuthConfig.from_dict(_load_config()).validate_startup()
     await db.get_pool()
     await _bootstrap_gazetteer()
     yield
@@ -62,15 +66,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Nexus", version="0.1.0", lifespan=lifespan)
-
-# CORS: 2.0 Web UI에서 접근 허용
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # 운영 시 허용 도메인으로 제한
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 # ── Config ──
@@ -81,6 +76,24 @@ def _load_config() -> dict:
         return {}
     with open(p, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
+
+
+# ── Auth (identity layer) ──
+def _auth_config() -> AuthConfig:
+    return AuthConfig.from_dict(_load_config())
+
+
+# FastAPI dependency: resolves Authorization: Bearer -> Principal (401 in enforced mode).
+get_principal = make_get_principal(_auth_config)
+
+# CORS: an Authorization header requires a real origin allowlist, not "*".
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_auth_config().allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── Response wrapper ──
@@ -130,8 +143,9 @@ class OtelAggregateRequest(BaseModel):
 # ── Endpoints ──
 
 @app.post("/search", response_model=NexusResponse)
-async def search(req: SearchRequest) -> NexusResponse:
+async def search(req: SearchRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """Hybrid 검색."""
+    req.tenant, req.classification_max = effective_scope(principal, req.tenant, req.classification_max)
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
 
@@ -223,8 +237,9 @@ async def search(req: SearchRequest) -> NexusResponse:
 
 
 @app.post("/search/answer", response_model=NexusResponse)
-async def search_answer(req: AnswerRequest) -> NexusResponse:
+async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """검색 + LLM 답변 생성."""
+    req.tenant, req.classification_max = effective_scope(principal, req.tenant, req.classification_max)
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
 
@@ -288,8 +303,9 @@ async def search_answer(req: AnswerRequest) -> NexusResponse:
 
 
 @app.post("/ingest", response_model=NexusResponse)
-async def ingest(req: IngestRequest) -> NexusResponse:
+async def ingest(req: IngestRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """문서 인덱싱 (통합 파이프라인: Collect → Classify → Chunk → BM25 → Vector → Graph)."""
+    req.tenant, _ = effective_scope(principal, req.tenant, None)  # writes are tenant-bound
     try:
         result = await run_ingest(
             docs_path=req.path,
@@ -320,8 +336,10 @@ async def upload(
     file: UploadFile = File(...),
     path: str = Query(default="uploads", description="저장 경로"),
     tenant: str = Query(default="default"),
+    principal: Principal = Depends(get_principal),
 ) -> NexusResponse:
     """비개발자용 Markdown 파일 업로드 + 자동 인덱싱."""
+    tenant, _ = effective_scope(principal, tenant, None)  # writes are tenant-bound
     from pathlib import Path
 
     # Markdown만 허용
@@ -377,12 +395,14 @@ async def get_graph(
     tenant: str = Query(default="default"),
     classification_max: str = Query(default="INTERNAL"),
     include_evidence: bool = Query(default=True),
+    principal: Principal = Depends(get_principal),
 ) -> NexusResponse:
     """엔티티 관계 그래프 조회.
 
     entity_rid_param은 rid (ent_로 시작) 또는 엔티티 이름을 받는다.
     이름으로 전달 시 내부에서 rid를 변환한다.
     """
+    tenant, classification_max = effective_scope(principal, tenant, classification_max)
     try:
         pool = await db.get_pool()
         graph_repo = PostgresGraphRepository(pool)
@@ -482,8 +502,10 @@ async def get_diff(
     tenant: str = Query(default="default"),
     flag_filter: str | None = Query(default=None),
     entity_filter: str | None = Query(default=None, description="특정 엔티티 관련 diff만 조회"),
+    principal: Principal = Depends(get_principal),
 ) -> NexusResponse:
     """설계-관측 diff 보고서 (evidence 포함)."""
+    tenant, _ = effective_scope(principal, tenant, None)
     try:
         report = await run_diff(tenant=tenant, flag_filter=flag_filter)
 
@@ -550,8 +572,9 @@ async def get_diff(
 
 
 @app.post("/otel/aggregate", response_model=NexusResponse)
-async def otel_aggregate(req: OtelAggregateRequest) -> NexusResponse:
+async def otel_aggregate(req: OtelAggregateRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """OTel 집계 실행."""
+    req.tenant, _ = effective_scope(principal, req.tenant, None)  # writes are tenant-bound
     try:
         result = await run_otel_aggregation(
             window_minutes=req.window_minutes,
@@ -571,8 +594,9 @@ async def otel_aggregate(req: OtelAggregateRequest) -> NexusResponse:
 
 
 @app.post("/search/answer/stream")
-async def search_answer_stream(req: AnswerRequest) -> StreamingResponse:
+async def search_answer_stream(req: AnswerRequest, principal: Principal = Depends(get_principal)) -> StreamingResponse:
     """검색 + LLM 스트리밍 답변 (SSE). 2.0 UI용."""
+    req.tenant, req.classification_max = effective_scope(principal, req.tenant, req.classification_max)
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
 
@@ -684,8 +708,10 @@ async def suggest_entities(
     q: str = Query(..., min_length=1, description="엔티티 검색어"),
     tenant: str = Query(default="default"),
     limit: int = Query(default=10, ge=1, le=50),
+    principal: Principal = Depends(get_principal),
 ) -> NexusResponse:
     """엔티티 자동완성. UI 검색창에서 사용."""
+    tenant, _ = effective_scope(principal, tenant, None)
     try:
         rows = await db.fetch_all(
             """
@@ -724,8 +750,10 @@ async def list_documents(
     classification_max: str = Query(default="INTERNAL"),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
+    principal: Principal = Depends(get_principal),
 ) -> NexusResponse:
     """인덱싱된 문서 목록 조회. UI 문서 브라우저용."""
+    tenant, classification_max = effective_scope(principal, tenant, classification_max)
     try:
         rows = await db.fetch_all(
             """
@@ -779,8 +807,10 @@ async def claim_value(
     concept: str = Query(..., min_length=1, description="개념 (예: 준회원)"),
     tenant: str = Query(default="default"),
     classification_max: str = Query(default="INTERNAL"),
+    principal: Principal = Depends(get_principal),
 ) -> NexusResponse:
     """Archon — 개념의 도메인 값(불변식) 현재값을 코드 상수에서 읽어 신뢰등급·신선도와 함께 반환."""
+    tenant, classification_max = effective_scope(principal, tenant, classification_max)
     from nexus.claims.repository import ClaimRepository
     from nexus.claims.value_query import ValueQueryService
     from nexus.index.code_source import CodeValueResolver
@@ -805,6 +835,7 @@ async def claim_value(
 async def grade_authority_endpoint(
     enum_name: str = Query(default="GradeType"),
     subpath: str = Query(default=""),
+    principal: Principal = Depends(get_principal),
 ) -> NexusResponse:
     """Archon — 등급 계층 권한을 코드 게이트에서 라이브 도출 (tree-sitter 무료, CodeQL 불필요).
 
@@ -840,6 +871,12 @@ async def status() -> NexusResponse:
     import os
 
     data: dict[str, Any] = {}
+
+    # Auth posture — only the mode + anonymous flag (never origins/principals/hashes).
+    # Lets the UI surface a "PUBLIC-only (anonymous)" banner when permissive.
+    _auth = _auth_config()
+    data["auth_mode"] = _auth.mode
+    data["anonymous"] = _auth.permissive
 
     # DB
     data["db_connected"] = await db.check_connection()

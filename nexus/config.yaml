@@ -90,3 +90,18 @@ llm:
 # Archon — 도메인 불변식·값 거버넌스 (코드 상수 해석)
 code_source:
   repo_path: ""   # pfplay 코드 checkout 경로 (예: .../pfplay-platform). 비면 값 조회 비활성.
+
+# ── Auth (identity layer) ──
+# Binds a bearer token to a fixed (tenant, clearance). Callers can only NARROW scope.
+# mode: enforced (default, fail-closed) | permissive (explicit dev/local opt-out; anonymous=PUBLIC)
+# Generate a token:  nexus auth gen-token | nexus auth hash-token  -> paste below.
+# Enforced boot is REFUSED while any token_sha256 is still "REPLACE_ME".
+auth:
+  mode: enforced
+  allowed_origins:
+    - "http://localhost:8000"
+  principals: []
+    # - name: "analyst"
+    #   token_sha256: "REPLACE_ME"
+    #   tenant: "default"
+    #   clearance: "INTERNAL"

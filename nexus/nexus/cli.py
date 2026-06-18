@@ -26,6 +26,32 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
+# ── auth: bearer token utilities (identity layer) ──
+auth_app = typer.Typer(help="인증 토큰 유틸리티 (identity layer)", no_args_is_help=True)
+app.add_typer(auth_app, name="auth")
+
+
+@auth_app.command("gen-token")
+def auth_gen_token() -> None:
+    """새 고엔트로피 bearer 토큰을 출력한다 (secrets.token_urlsafe(32))."""
+    from nexus.auth import gen_token
+    typer.echo(gen_token())
+
+
+@auth_app.command("hash-token")
+def auth_hash_token() -> None:
+    """stdin으로 받은 토큰의 sha256 해시를 출력 (config의 token_sha256에 붙여넣기).
+
+    토큰을 argv가 아닌 stdin으로 받는다 (argv는 셸 히스토리/ps에 노출되므로).
+    예: nexus auth gen-token | nexus auth hash-token
+    """
+    from nexus.auth import hash_token
+    token = sys.stdin.readline().strip()
+    if not token:
+        typer.echo("토큰을 stdin으로 입력하세요.", err=True)
+        raise typer.Exit(code=1)
+    typer.echo(hash_token(token))
+
 
 def _run(coro):
     """Async 함수를 sync에서 실행."""
