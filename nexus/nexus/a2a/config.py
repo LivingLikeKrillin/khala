@@ -26,6 +26,8 @@ class A2AConfig:
     principals: list[dict] = field(default_factory=list)
     # Extra CORS origins for external A2A callers (Phase 2). None ⇒ inherit the app's origins.
     allowed_origins: list[str] | None = None
+    # Per-principal request budget per 60s window (SPEC §21). 0 ⇒ disabled (default).
+    rate_limit_per_min: int = 0
 
     @classmethod
     def from_dict(cls, cfg: dict | None) -> "A2AConfig":
@@ -57,11 +59,17 @@ class A2AConfig:
         origins = a2a.get("allowed_origins")
         allowed_origins = list(origins) if origins else None
 
+        rate_limit = int(a2a.get("rate_limit_per_min", 0) or 0)
+        env_rate = os.getenv("NEXUS_A2A_RATE_LIMIT_PER_MIN")
+        if env_rate is not None and env_rate.strip():
+            rate_limit = int(env_rate)
+
         return cls(
             enabled=enabled,
             base_url=str(base_url).rstrip("/"),
             principals=principals,
             allowed_origins=allowed_origins,
+            rate_limit_per_min=rate_limit,
         )
 
 

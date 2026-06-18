@@ -423,3 +423,22 @@ for grant/deny review. TDD: a no-pool unit test (structlog-only, PII-safe) + a D
 persist with the hashed query. Full nexus suite **287 passed / 17 skipped**, ruff clean.
 
 Remaining non-gating deferral: rate limiting (next). Then: approval-notification fan-out (new phase).
+
+## 21. Per-principal rate limiting (2026-06-19)
+
+The A2A surface now has a coarse abuse backstop: `nexus/a2a/ratelimit.py::RateLimiter` — an
+in-memory sliding-window log keyed per principal — gates skill execution **after auth**, so a
+flood from one token can't exhaust the surface (default-deny extended from access to volume).
+Configured by `A2AConfig.rate_limit_per_min` / `NEXUS_A2A_RATE_LIMIT_PER_MIN`; **0 ⇒ disabled
+(default)**, so existing behavior is unchanged. Over-limit ⇒ JSON-RPC error `-32005` + **HTTP
+429** + an audited `rate_limited` denial (so throttling is visible in both the structlog and
+durable audit trails). The clock is injected for deterministic tests.
+
+MVP boundary (noted, not a gate): in-process only — state doesn't survive a restart and isn't
+shared across replicas (no Redis, MVP constraint #8); a distributed quota is future work.
+TDD: limiter unit tests (window slide, per-key isolation, disabled-at-0) + a server test
+(2/min ⇒ 3rd call 429 + audited denial). Full nexus suite **293 passed / 17 skipped**, ruff clean.
+
+All §c non-gating deferrals (idempotency §19, durable audit §20, rate limiting §21) are now done.
+The only remaining A2A item is an optional **new phase** — approval-notification fan-out
+(`notify_approval`) — plus the operational rollout (run A2A live, watch `a2a_audit`).
