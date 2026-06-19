@@ -1,7 +1,8 @@
 # Nexus 검색 품질 신호 수집 체계 — design
 
 **Date:** 2026-06-19
-**Status:** approved (brainstorming) → spec review
+**Status:** approved (brainstorming) → spec review. **Rev 2** — independent spec review 반영
+(A2A 기록 지점 = `_default_answer_fn`, `n_entities`/`latency_ms` 스칼라 전달, CLI `close_pool` 정렬 제약).
 **Scope:** 단일 슬라이스. demand-pull 게이트(리랭킹 / 그래프-랭킹 / LLM-보조-추출)를 여닫을
 신호를 싸게 상시 수집하고, 리서치가 지적한 관측성 공백을 닫는다. Related:
 [durable A2A audit (`a2a_audit`)](../../../../specs/SPEC-nexus-a2a-external-exposure-audit-phase2.md),
@@ -46,9 +47,18 @@ Nexus는 검색 품질 신호를 **거의 남기지 않는다.** `/search`·`/se
 
 ## Approach
 
-진입점(api `/search`·`/search/answer`, cli `query`, `a2a/server.py`)이 공용 헬퍼로 신호를
-조립해 `record_search`를 **한 번** 호출한다. `a2a_audit`의 `record_audit` 호출 패턴과 동형 —
-진입점만이 "검색 + 답변 + 경로"를 한 자리에서 안다. 기록은 fire-and-forget(서버) / await(CLI).
+각 경로는 **`SearchResult` + `AnswerResult`(있으면) + `route` + 감지 엔티티 수가 동시에 scope에
+있는 지점**에서 공용 헬퍼로 신호를 조립해 `record_search`를 **한 번** 호출한다. 그 지점은 경로마다
+다르다:
+- **HTTP** `/search`·`/search/answer`: 엔드포인트 본문(api.py).
+- **CLI**: `_query()` 본문(cli.py).
+- **A2A**: 외부 jsonrpc 핸들러가 아니라 **`a2a/server.py`의 `_default_answer_fn` 내부.** 핸들러는
+  `AnswerResult`만 받고 `SearchResult`/`route`/`entity_rids`는 `_default_answer_fn`의 로컬에만
+  존재하기 때문이다(리뷰 확인). 따라서 A2A 신호 기록은 **기본 grounded-retrieval answer fn에
+  바인딩**된다 — 외부에서 주입된 커스텀 `resolved_answer_fn`(테스트/확장)은 신호를 남기지 않으며,
+  이는 의도된 범위다. `resolved_answer_fn`의 공개 반환 계약은 바꾸지 않는다.
+
+`a2a_audit`의 `record_audit` 호출 패턴과 동형이다. 기록은 fire-and-forget(서버) / await(CLI).
 
 결정론(신호 추출)과 IO(영속)를 분리해, 추출은 순수 함수로 단위 테스트하고 IO는 절대 raise하지
 않는 best-effort 싱크로 격리한다. `a2a_audit`/`record_audit`이 검증한(PR #23) 패턴을 미러링한다.
@@ -87,26 +97,37 @@ CREATE INDEX IF NOT EXISTS idx_search_log_route  ON search_log (route, ts DESC);
 - `top_score`: `SearchResult.hits[0].score`(RRF 융합 점수). hits 비면 `NULL`.
 - `n_snippets`: `len(SearchResult.hits)`. (답변 경로의 evidence snippet 수와 동일 — packet은 hits로 조립됨.)
 - `n_entities`: 진입점이 감지해 `hybrid_search(entity_rids=…)`로 넘긴 엔티티 수(`len(entity_rids)`).
-  진입점에서 엔티티 감지를 하지 않는 경로(예: 순수 텍스트 검색)는 0.
+  `SearchResult`는 이 값을 되돌려주지 않으므로(리뷰 확인), **진입점이 `extract_signals`에 스칼라
+  인자 `n_entities`로 직접 전달**한다. 진입점에서 엔티티 감지를 하지 않는 경로는 0.
 - `graph_requested`: `route in ('hybrid_then_graph','graph_then_hybrid')`.
 - `n_graph_edges`: `len(graph.edges) + len(graph.observed_edges)` (graph 없으면 0).
 - `no_answer`: `n_snippets == 0`. 검색이 근거를 못 찾은 경우(답변 경로의 "찾을 수 없습니다" 분기와 일치).
-- `llm_failed`: 답변 경로에서 `AnswerResult.llm_failed`. 검색 전용 경로는 항상 false.
+- `llm_failed`: 답변 경로에서 `AnswerResult.llm_failed`(LLM 호출 예외 분기). 검색 전용 경로는 항상 false.
+  **`no_answer`와 `llm_failed`는 상호 독립**이다 — 전자는 검색 무결과(answer.py "찾을 수 없습니다"),
+  후자는 근거는 있으나 LLM 생성 실패. 둘은 겹치지 않으므로 뷰의 `no_answer_rate`와 `llm_fail_rate`를
+  중첩으로 오독하면 안 된다.
+- `latency_ms`: **진입점이 측정한 해당 경로의 전체 처리 시간.** `/search`는 검색만, `/search/answer`·
+  CLI 답변·A2A는 검색+답변을 포함한다. 경로마다 측정 범위가 다르지만, `v_search_health`가 `path`별로
+  그룹화하므로 `p95_latency_ms`는 그룹 내에서 일관되게 비교된다(경로 간 단순 합산 비교 금지).
 - `path='a2a'`: A2A 경로는 `a2a_audit`(인가)과 `search_log`(품질)에 **둘 다** 기록. 관심사가 다르고
   둘 다 best-effort·저트래픽이라 이중 기록 허용.
 
 ## 2. 컴포넌트 — `nexus/search/signals.py` (신규 모듈)
 
-**`extract_signals(result, answer, *, path, tenant, clearance, query) -> SearchSignals`** — 순수 함수.
-`SearchResult`와 선택적 `AnswerResult`에서 위 컬럼 의미론대로 신호를 조립해 `SearchSignals`
-dataclass를 반환한다. IO·시각·랜덤 없음 → 완전 단위 테스트 가능.
+**`extract_signals(result, answer, *, path, tenant, clearance, query, n_entities=0, latency_ms=0) -> SearchSignals`**
+— 순수 함수. `SearchResult`와 선택적 `AnswerResult`, 그리고 진입점만 아는 스칼라(`n_entities`·
+`latency_ms`·`path`·`tenant`·`clearance`)에서 위 컬럼 의미론대로 신호를 조립해 `SearchSignals`
+dataclass를 반환한다. `query`는 해시 계산에만 쓰여 `query_sha256`/`query_len`으로 변환되고 원문은
+dataclass에 담기지 않는다. IO·시각·랜덤 없음 → 완전 단위 테스트 가능.
 
 **`record_search(sig, *, await_persist=False) -> None`** — IO 싱크. `record_audit` 계약 그대로:
 1. **항상** `log.info("search.signal", …)` (동기, 외부 의존 0, 에어갭 유지). 여기서 query는 받지 않고
    이미 해시된 `query_sha256`/`query_len`만 받는다(원문이 싱크에 들어오지 않음).
 2. `db.has_pool()`일 때만 INSERT. **서버 경로**(api/a2a)는 `asyncio.create_task`로 fire-and-forget →
    응답 지연에 DB 쓰기가 더해지지 않음. **CLI**는 `await_persist=True`로 인라인 await(핫패스 아님 +
-   `asyncio.run` 종료 시 백그라운드 태스크 유실 방지).
+   `asyncio.run` 종료 시 백그라운드 태스크 유실 방지). **CLI 정렬 제약(landmine):** `_query()`·`status`는
+   끝에서 `db.close_pool()`을 호출하므로, `record_search(..., await_persist=True)`는 반드시
+   `close_pool()` *이전에* 완료돼야 한다(이후면 풀이 사라져 `has_pool()`이 False가 되거나 INSERT 실패).
 3. INSERT 실패는 삼키고 `log.warning("search.signal.persist_failed", error=…)`. **record_search는
    요청 경로를 절대 raise로 깨지 않는다.**
 
@@ -118,14 +139,17 @@ dataclass를 반환한다. IO·시각·랜덤 없음 → 완전 단위 테스트
 ## 3. 데이터 흐름
 
 ```
-진입점 (api /search·/search/answer | cli query | a2a server)
-  → hybrid_search(...)        → SearchResult
+기록 지점 (HTTP: 엔드포인트 본문 | CLI: _query() | A2A: _default_answer_fn 내부)
+  — 이 지점에서 SearchResult·route·entity_rids·AnswerResult가 모두 scope에 있음
+  → entity_rids 감지 → hybrid_search(..., entity_rids) → SearchResult
   → (답변 경로) generate_answer → AnswerResult
-  → sig = extract_signals(result, answer?, path=…, tenant, clearance, query)
+  → sig = extract_signals(result, answer?, path=…, tenant, clearance, query,
+                          n_entities=len(entity_rids), latency_ms=<측정값>)
   → record_search(sig, await_persist=<CLI면 True>)
         · log.info("search.signal", …)     # 항상, 동기
         · db.has_pool() → create_task(INSERT) (서버) / await INSERT (CLI)   # best-effort
   → 응답 반환 (서버 경로의 INSERT는 백그라운드에서 완료)
+  ※ CLI는 record_search await 완료 후에 db.close_pool() 호출
 ```
 
 ## 4. 집계 — `v_search_health` 뷰
@@ -158,12 +182,15 @@ GROUP BY path, route;
 ```
 
 테이블/뷰가 없거나(구버전 DB) 데이터가 0건이면 `검색 신호: 없음`으로 우아하게 격하(예외 금지).
+이 질의도 `status`의 `db.close_pool()` *이전에* 수행한다(CLI 정렬 제약과 동일 계열).
 
 ## 6. 스키마 적용 / 마이그레이션
 
 - `init.sql`에 테이블 + 인덱스 + 뷰 DDL 추가(신규 DB 자동 생성).
 - **추가로** 앱 startup에서 멱등 `ensure_search_log()` 실행 → 기존 배포 DB도 즉시 적재 시작.
-  모든 DDL은 `IF NOT EXISTS`/`CREATE OR REPLACE`라 init.sql과 startup 양쪽에서 안전(멱등).
+  훅 위치는 확정됨: `api.py`의 `lifespan`(현재 `await db.get_pool()` + bootstrap 수행) 안에서
+  풀 확보 직후 호출한다(리뷰 확인). 모든 DDL은 `IF NOT EXISTS`/`CREATE OR REPLACE`라 init.sql과
+  startup 양쪽에서 안전(멱등).
   - `a2a_audit`은 init.sql만 의존하고 테이블 부재 시 graceful-degrade했으나, 본 기능의 목적은
     "실제로 신호를 모으는 것"이므로 startup ensure를 더한다.
   - ensure는 `db.has_pool()` 가드 + 실패 삼킴(로그만) — startup을 깨지 않는다.
@@ -182,7 +209,8 @@ GROUP BY path, route;
 **단위 (DB 불필요, `test_hybrid` 순수함수 스타일):**
 - `extract_signals`: hits 비면 `no_answer=True`·`top_score=None`; hits 있으면 `top_score=hits[0].score`;
   `graph_requested`와 `n_graph_edges` 조합(요청했으나 0 → graph-empty 케이스); `answer=None`이면
-  `llm_failed=False`; `answer.llm_failed=True` 전파.
+  `llm_failed=False`; `answer.llm_failed=True` 전파; `n_entities`/`latency_ms` 스칼라가 그대로 통과;
+  `query`가 `query_sha256`/`query_len`으로 변환되고 원문은 `SearchSignals`에 없음.
 - `record_search`: `db.has_pool()`=False → `log.info`만, INSERT 시도 없음, 무예외.
 - `record_search`: 가짜 풀이 INSERT에서 raise → 삼킴, 무예외.
 
@@ -191,8 +219,9 @@ GROUP BY path, route;
 
 ## 단위(units)와 경계
 
-- `signals.extract_signals` — 입력 `SearchResult`/`AnswerResult` → 출력 `SearchSignals`. 순수.
+- `signals.extract_signals` — 입력 `SearchResult`/`AnswerResult` + 진입점 스칼라(`n_entities`·
+  `latency_ms`·`path`·`tenant`·`clearance`·`query`) → 출력 `SearchSignals`. 순수.
 - `signals.record_search` — 입력 `SearchSignals` → 부수효과(structlog + best-effort INSERT). 무반환.
-- `db.ensure_search_log` (또는 startup 훅) — 멱등 DDL.
+- `db.ensure_search_log` — 멱등 DDL. `api.py` `lifespan`에서 풀 확보 직후 호출.
 - `v_search_health` — 읽기 전용 집계. `nexus status`가 유일 소비자(현재).
 - 진입점들은 위 단위를 호출만 한다(조립 로직은 `extract_signals`에 응집).
