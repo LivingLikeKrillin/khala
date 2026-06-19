@@ -14,7 +14,9 @@ from nexus import db
 from nexus.index.bm25 import tokenize_korean, tokens_to_tsquery
 from nexus.providers.embedding import EmbeddingService
 from nexus.repositories.graph import (
+    EdgeResult,
     GraphRepository,
+    ObservedEdgeResult,
     SubGraph,
 )
 
@@ -140,6 +142,44 @@ def _rrf_fusion(
     return ranked[:final_top_k]
 
 
+def _merge_subgraphs(subgraphs: list[SubGraph]) -> SubGraph | None:
+    """여러 엔티티 중심 서브그래프를 하나로 병합.
+
+    쿼리에서 엔티티가 여럿 감지되면 각각에서 이웃을 펼친 뒤 합친다.
+    - center는 첫 서브그래프 기준 (표시 연속성 + 하위 호환: result.graph는 단일 SubGraph)
+    - edge/observed_edge는 rid로 dedup. edge가 여러 탐색에서 중복되면 hop이
+      작은 쪽(더 가까운 관계)을 유지한다.
+
+    Args:
+        subgraphs: 엔티티별 get_neighbors 결과 (None은 무시)
+
+    Returns:
+        병합된 단일 SubGraph. 입력이 비면 None.
+    """
+    merged = [sg for sg in subgraphs if sg is not None]
+    if not merged:
+        return None
+
+    primary = merged[0]
+    edges_by_rid: dict[str, EdgeResult] = {}
+    observed_by_rid: dict[str, ObservedEdgeResult] = {}
+
+    for sg in merged:
+        for e in sg.edges:
+            existing = edges_by_rid.get(e.rid)
+            if existing is None or e.hop < existing.hop:
+                edges_by_rid[e.rid] = e
+        for o in sg.observed_edges:
+            observed_by_rid[o.rid] = o
+
+    return SubGraph(
+        center_rid=primary.center_rid,
+        center_name=primary.center_name,
+        edges=list(edges_by_rid.values()),
+        observed_edges=list(observed_by_rid.values()),
+    )
+
+
 async def _enrich_hits(fused: list[dict], tenant: str) -> list[SearchHit]:
     """RRF 결과에 청크 메타데이터를 보강."""
     if not fused:
@@ -245,10 +285,23 @@ async def hybrid_search(
 
     # Graph 보강 (route에 따라)
     if graph_repo and entity_rids and route in ("hybrid_then_graph", "graph_then_hybrid"):
+        graph_hops = search_cfg.get("graph_hops", 2)
+        max_entities = search_cfg.get("graph_max_entities", 5)
+        targets = entity_rids[:max_entities]  # 비용 상한
         try:
-            # 첫 번째 엔티티 기준으로 서브그래프 조회
-            graph = await graph_repo.get_neighbors(entity_rids[0], hops=2)
-            result.graph = graph
+            # 감지된 모든 엔티티에서 병렬로 이웃 조회 후 병합
+            subgraphs = await asyncio.gather(
+                *[graph_repo.get_neighbors(rid, hops=graph_hops) for rid in targets],
+                return_exceptions=True,
+            )
+            ok: list[SubGraph] = []
+            for rid, sg in zip(targets, subgraphs):
+                if isinstance(sg, SubGraph):
+                    ok.append(sg)
+                else:
+                    logger.warning("graph_search_partial_failed",
+                                   entity_rid=rid, error=str(sg))
+            result.graph = _merge_subgraphs(ok)
         except Exception as e:
             logger.warning("graph_search_failed", error=str(e))
 
