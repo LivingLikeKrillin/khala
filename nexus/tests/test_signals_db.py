@@ -13,7 +13,7 @@ _DB = os.getenv("NEXUS_TEST_DB_URL")
 
 async def test_ensure_creates_table_and_view_idempotently():
     from nexus import db
-    os.environ["DATABASE_URL"] = _DB
+    os.environ["DATABASE_URL"] = _DB or ""
     await db.get_pool()
     try:
         await db.ensure_search_log()
@@ -28,7 +28,7 @@ async def test_ensure_creates_table_and_view_idempotently():
 async def test_record_search_persists_and_view_aggregates():
     from nexus import db
     from nexus.search.signals import SearchSignals, record_search
-    os.environ["DATABASE_URL"] = _DB
+    os.environ["DATABASE_URL"] = _DB or ""
     await db.get_pool()
     try:
         await db.ensure_search_log()
@@ -47,7 +47,7 @@ async def test_record_search_persists_and_view_aggregates():
             "SELECT n, no_answer_rate FROM v_search_health WHERE path = 'test_agg'"
         )
         assert row["n"] == 2
-        assert float(row["no_answer_rate"]) == 0.5
+        assert float(row["no_answer_rate"]) == pytest.approx(0.5)
     finally:
         await db.execute("DELETE FROM search_log WHERE path = 'test_agg'")
         await db.close_pool()
