@@ -1,6 +1,6 @@
 # Khala Ecosystem — Roadmap
 
-> 최종 갱신: 2026-04-10
+> 최종 갱신: 2026-06-19
 
 ## 비전
 
@@ -128,6 +128,36 @@ Probe는 Nexus 없이도 100% 동작한다. Nexus가 있으면 조직 맥락이 
 | **PageIndex Tree Search** | 구조화된 장문 문서(금융 보고서, 법률 문서)에 최적화. Nexus는 팀 문서 100-500개 규모에 Hybrid+Graph로 이미 충분 |
 | **Self-RAG** (자체 신뢰도 평가) | Nexus는 evidence 필수 + quarantine 원칙이 아키텍처 수준에서 할루시네이션을 방지. 별도 자기평가 계층 불필요 |
 | **도메인 특화 임베딩 모델** | Phase 1 수준에서는 단일 multilingual 모델로 충분. EmbeddingService 래퍼가 있으므로 필요 시 교체 가능 |
+| **GraphRAG Global/Community Search** (Leiden 커뮤니티 탐지 + community report) | 수백만 문서 코퍼스용 기능. 100-500개 규모에서는 커뮤니티가 너무 작아 무의미하다. 결정적으로 community report는 *LLM이 생성한 비그라운디드 파생 요약*이라 "Nexus는 인덱스지 저장소가 아니다" + "evidence 없는 것은 없는 것" 두 원칙과 정면 충돌. **의식적 배제** |
+| **LLM 기반 그래프 추출** (gazetteer 대체) | 질의/색인 파이프라인에 LLM 추출을 넣는 것은 "System decides, LLM narrates" + 결정론 + air-gap 원칙 위반. 현재 규칙 기반 gazetteer 추출을 유지한다. (단 *오프라인* 후보 제안 보조는 demand-pull 게이트 항목으로 별도 관리 — 아래 참조) |
+
+> **Neo4j 전환**도 동향(그래프 DB 기반 GraphRAG)에 해당하나, 위 [보류 표](#보류-phase-3-이후-재평가)에서 이미 다룬다 — `GraphRepository` Protocol이 추상화해 두었으므로 pgvector/CTE 한계에 부딪힐 때 전환해도 늦지 않다.
+
+### GraphRAG 정렬 평가 (2026)
+
+Microsoft GraphRAG가 사실상 표준을 정의한 뒤(LLM 추출 → Leiden 커뮤니티 → 계층 요약 → Local/Global/DRIFT search),
+Nexus의 그래프 계층을 그 기준선과 대조한 결과를 **의식적 결정으로** 기록한다.
+A2A에서 했던 "검토 후 명시적 배제" 규율을 GraphRAG에도 동일하게 적용하기 위함이다.
+
+**이미 정렬됨 (또는 앞섬)**
+
+| 축 | 상태 | 비고 |
+|----|------|------|
+| Local search (엔티티 중심 k-hop) | 정렬 | `get_neighbors` 2-hop이 Microsoft local search 패턴과 동형 |
+| Hybrid (BM25+Vector+Graph, RRF) | 정렬 | 한국어 형태소까지 포함해 견고 |
+| Evidence-bound edge / 추적성 | **앞섬** | 모든 edge가 source chunk에 바인딩. 2026 trust/traceability 흐름(KGRAG-Ex 등)을 아키텍처 수준에서 선취 |
+| 설계-관측 이중 그래프 (OTel) | **독자적 우위** | 메인스트림 GraphRAG에 등가물 없음. 런타임 관측을 그래프에 결합 |
+
+**demand-pull 게이트 항목** — *구체적 소비자/통증 신호가 잡힐 때만* 착수한다. 지금은 만들지 않는다.
+
+| 항목 | 게이트 조건 | 원칙 정합 |
+|------|------------|----------|
+| 그래프 근접도를 RRF 랭킹에 반영 | "현재 랭킹이 관련 청크를 놓친다"는 실제 검색 품질 불만 | 그래프 거리는 결정론적 → 원칙 합치 |
+| gazetteer 후보 *오프라인* 제안 도구 | entities.yaml 유지보수가 실제로 아픈 일이 됐을 때 | LLM이 제안(narrate), 사람/시스템이 승인(decide) → 파이프라인 밖이라 합치 |
+
+**무조건 개선 (동향과 무관한 구현 결함)**
+
+- **멀티-엔티티 그래프 탐색** — 현재 `hybrid_search`는 감지된 엔티티가 여럿이어도 `entity_rids[0]` 하나에서만 2-hop을 펼친다. 이미 구축된 그래프를 덜 활용하는 순수 미완성으로, 새 표면·의존성·원칙 충돌이 없다. 감지된 모든 엔티티에서 탐색하고 hops를 route별로 설정 가능하게 한다.
 
 ### 참고 자료
 
@@ -135,6 +165,8 @@ Probe는 Nexus 없이도 100% 동작한다. Nexus가 있으면 조직 맥락이 
 - [From RAG to Context (RAGFlow)](https://ragflow.io/blog/rag-review-2025-from-rag-to-context)
 - [Enterprise Knowledge Systems 2026-2030 (NStarX)](https://nstarxinc.com/blog/the-next-frontier-of-rag-how-enterprise-knowledge-systems-will-evolve-2026-2030/)
 - [Hybrid Tree Search (PageIndex)](https://docs.pageindex.ai/tutorials/tree-search/hybrid)
+- [Microsoft GraphRAG — Local/Global search & Leiden communities](https://microsoft.github.io/graphrag/)
+- [Global Community Summary Retriever (graphrag.com)](https://graphrag.com/reference/graphrag/global-community-summary-retriever/)
 
 ---
 
