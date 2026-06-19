@@ -10,9 +10,8 @@ from dataclasses import dataclass, field
 
 from structlog.testing import capture_logs
 
-from nexus.search.signals import SearchSignals, extract_signals, query_sha256
-# 주의: record_search / SIGNAL_EVENT는 Task 2에서 구현되므로 여기서 import하지 않는다
-# (모듈 상단 import는 -k 필터보다 먼저 평가되어 수집 단계 ImportError를 낸다).
+from nexus.search.signals import extract_signals, query_sha256
+from nexus.search.signals import SIGNAL_EVENT, record_search  # Task 2에서 추가
 
 
 # ── 테스트용 더크 타입(실 클래스 import 불필요) ──
@@ -92,3 +91,42 @@ def test_scalars_pass_through_and_query_is_hashed():
     assert sig.query_len == len(secret)
     # 원문은 dataclass 어디에도 없음
     assert secret not in json.dumps(sig.__dict__, ensure_ascii=False)
+
+
+async def test_record_search_without_pool_is_structlog_only(monkeypatch):
+    """풀 없으면 structlog만 — DB 연결 시도 없음, 무예외."""
+    from nexus import db
+    monkeypatch.setattr(db, "has_pool", lambda: False)
+    called = {"execute": False}
+
+    async def _fail_execute(*a, **k):
+        called["execute"] = True
+        raise AssertionError("execute는 호출되면 안 됨")
+
+    monkeypatch.setattr(db, "execute", _fail_execute)
+
+    sig = extract_signals(_Result(hits=[_Hit(0.5)]), None, path="search",
+                          tenant="t", clearance="INTERNAL", query="비밀 hunter2", n_entities=1)
+    with capture_logs() as logs:
+        await record_search(sig, await_persist=True)
+    rec = [r for r in logs if r.get("event") == SIGNAL_EVENT][0]
+    assert rec["path"] == "search"
+    assert rec["n_snippets"] == 1
+    assert "hunter2" not in json.dumps(rec, ensure_ascii=False)
+    assert called["execute"] is False
+
+
+async def test_record_search_swallows_persist_error(monkeypatch):
+    """풀이 있어도 INSERT 실패는 삼키고 요청 경로를 깨지 않는다."""
+    from nexus import db
+    monkeypatch.setattr(db, "has_pool", lambda: True)
+
+    async def _boom(*a, **k):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(db, "execute", _boom)
+
+    sig = extract_signals(_Result(hits=[]), None, path="search",
+                          tenant="t", clearance="INTERNAL", query="q")
+    # 예외가 전파되지 않아야 한다
+    await record_search(sig, await_persist=True)
