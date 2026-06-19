@@ -6,6 +6,7 @@ API_CONTRACT.md에 정의된 엔드포인트를 구현한다.
 
 from __future__ import annotations
 
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -32,6 +33,7 @@ from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.evidence_packet import assemble_packet, format_for_llm
 from nexus.search.hybrid import hybrid_search
 from nexus.search.router import determine_route
+from nexus.search.signals import extract_signals, record_search
 
 
 # ── Lifespan ──
@@ -176,6 +178,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
 
     try:
+        _t0 = time.time()
         config = _load_config()
         embedding_svc = EmbeddingService()
         pool = await db.get_pool()
@@ -234,6 +237,13 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 ],
             }
 
+        sig = extract_signals(
+            result, None, path="search",
+            tenant=req.tenant, clearance=req.classification_max, query=req.query,
+            n_entities=len(entity_rids),
+            latency_ms=int((time.time() - _t0) * 1000),
+        )
+        await record_search(sig)   # fire-and-forget
         return NexusResponse(
             data={
                 "results": [
@@ -270,6 +280,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
 
     try:
+        _t0 = time.time()
         config = _load_config()
         embedding_svc = EmbeddingService()
         llm_svc = LLMService()
@@ -312,6 +323,13 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             timing_ms=search_result.timing_ms,
         )
 
+        sig = extract_signals(
+            search_result, answer_result, path="search_answer",
+            tenant=req.tenant, clearance=req.classification_max, query=req.query,
+            n_entities=len(entity_rids),
+            latency_ms=int((time.time() - _t0) * 1000),
+        )
+        await record_search(sig)   # fire-and-forget
         return NexusResponse(
             data={
                 "answer": answer_result.answer,
