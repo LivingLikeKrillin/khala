@@ -44,6 +44,9 @@ Nexus는 검색 품질 신호를 **거의 남기지 않는다.** `/search`·`/se
 - **뷰의 tenant 그룹화** — `tenant` 컬럼은 적재하되 뷰는 path+route만 그룹화(ad-hoc 질의로 충분).
 - **api `/status` JSON 보강** — CLI `nexus status`가 운영자 표면. 선택적 후속.
 - **a2a_audit 변경 일절 없음** — "A2A는 더 안 건드린다" 결정 존중. search_log는 독립 표면.
+- **`/search/answer/stream`(SSE) 경로의 신호 기록 — 명시적 연기.** 별도 생성기(generator) 경로라
+  기록 시점·latency 측정이 다르다. 이번 슬라이스는 `/search`·`/search/answer`·CLI·A2A 4경로만.
+  스트리밍은 후속(이 누락은 의도된 연기이지 사고가 아님).
 
 ## Approach
 
