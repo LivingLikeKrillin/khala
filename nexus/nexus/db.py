@@ -96,3 +96,52 @@ async def check_connection() -> bool:
         return result == 1
     except Exception:
         return False
+
+
+# search_log 멱등 DDL — init.sql과 동일. 기존 배포 DB도 startup에서 즉시 적재 가능하게.
+SEARCH_LOG_DDL = """
+CREATE TABLE IF NOT EXISTS search_log (
+    id              BIGSERIAL PRIMARY KEY,
+    ts              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    path            TEXT NOT NULL,
+    tenant          TEXT,
+    clearance       TEXT,
+    route           TEXT,
+    query_sha256    TEXT NOT NULL DEFAULT '',
+    query_len       INTEGER NOT NULL DEFAULT 0,
+    n_snippets      INTEGER NOT NULL DEFAULT 0,
+    top_score       DOUBLE PRECISION,
+    n_entities      INTEGER NOT NULL DEFAULT 0,
+    graph_requested BOOLEAN NOT NULL DEFAULT false,
+    n_graph_edges   INTEGER NOT NULL DEFAULT 0,
+    no_answer       BOOLEAN NOT NULL DEFAULT false,
+    llm_failed      BOOLEAN NOT NULL DEFAULT false,
+    latency_ms      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_search_log_ts     ON search_log (ts DESC);
+CREATE INDEX IF NOT EXISTS idx_search_log_tenant ON search_log (tenant, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_search_log_route  ON search_log (route, ts DESC);
+CREATE OR REPLACE VIEW v_search_health AS
+SELECT path, route,
+       count(*)                                                        AS n,
+       avg((no_answer)::int)::numeric(4,3)                             AS no_answer_rate,
+       avg((graph_requested AND n_graph_edges = 0)::int)::numeric(4,3) AS graph_empty_rate,
+       avg((llm_failed)::int)::numeric(4,3)                            AS llm_fail_rate,
+       avg(n_snippets)::numeric(6,2)                                   AS avg_snippets,
+       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms)        AS p95_latency_ms
+FROM search_log
+WHERE ts > now() - interval '7 days'
+GROUP BY path, route;
+"""
+
+
+async def ensure_search_log() -> None:
+    """search_log 테이블/인덱스/뷰를 멱등 생성. 풀 있을 때만, 실패는 삼킴(startup을 깨지 않음)."""
+    if not has_pool():
+        return
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(SEARCH_LOG_DDL)  # 인자 없는 execute = simple protocol, 다중 구문 허용
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ensure_search_log_failed", error=str(exc))
