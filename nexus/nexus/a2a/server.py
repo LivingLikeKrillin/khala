@@ -218,6 +218,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
 
     Imported lazily so the disabled surface stays import-light.
     """
+    import time
     from nexus import db
     from nexus.index.graph_extractor import (
         _build_entity_patterns,
@@ -243,6 +244,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
         with open(p, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
 
+    _t0 = time.time()
     config = _load_config()
     embedding_svc = EmbeddingService()
     llm_svc = LLMService()
@@ -261,10 +263,19 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
         entity_rids=entity_rids, config=config,
     )
     packet = assemble_packet(search_result.hits, search_result.graph)
-    return await generate_answer(
+    answer_result = await generate_answer(
         query=query, packet=packet, llm_svc=llm_svc,
         route_used=route, timing_ms=search_result.timing_ms,
     )
+    from nexus.search.signals import extract_signals, record_search
+    sig = extract_signals(
+        search_result, answer_result, path="a2a",
+        tenant=tenant, clearance=clearance, query=query,
+        n_entities=len(entity_rids),
+        latency_ms=int((time.time() - _t0) * 1000),
+    )
+    await record_search(sig)   # fire-and-forget; a2a_audit(인가)와 별개로 품질 기록
+    return answer_result
 
 
 async def _default_ingest_fn(doc: dict, tenant: str) -> IngestOutcome:
