@@ -61,6 +61,7 @@ async def lifespan(app: FastAPI):
     AuthConfig.from_dict(_load_config()).validate_startup()
     await db.get_pool()
     await _bootstrap_gazetteer()
+    await db.ensure_search_log()   # ← 추가: 멱등, 기존 DB도 적재 시작
     yield
     await db.close_pool()
 
