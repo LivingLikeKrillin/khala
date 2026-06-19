@@ -410,3 +410,43 @@ CREATE TABLE a2a_audit (
 CREATE INDEX idx_a2a_audit_ts ON a2a_audit (ts DESC);
 CREATE INDEX idx_a2a_audit_principal ON a2a_audit (principal, ts DESC);
 CREATE INDEX idx_a2a_audit_denied ON a2a_audit (denied, ts DESC);
+
+-- ============================================================
+-- search_log — search-quality signals (demand-pull gate signals)
+-- ============================================================
+-- One row per retrieval across all paths (search | search_answer | cli | a2a).
+-- PII-safe: the raw query is NEVER stored — only sha256 + length (Nexus principle #3),
+-- mirroring a2a_audit. Best-effort, fire-and-forget on server paths.
+CREATE TABLE IF NOT EXISTS search_log (
+    id              BIGSERIAL PRIMARY KEY,
+    ts              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    path            TEXT NOT NULL,
+    tenant          TEXT,
+    clearance       TEXT,
+    route           TEXT,
+    query_sha256    TEXT NOT NULL DEFAULT '',
+    query_len       INTEGER NOT NULL DEFAULT 0,
+    n_snippets      INTEGER NOT NULL DEFAULT 0,
+    top_score       DOUBLE PRECISION,
+    n_entities      INTEGER NOT NULL DEFAULT 0,
+    graph_requested BOOLEAN NOT NULL DEFAULT false,
+    n_graph_edges   INTEGER NOT NULL DEFAULT 0,
+    no_answer       BOOLEAN NOT NULL DEFAULT false,
+    llm_failed      BOOLEAN NOT NULL DEFAULT false,
+    latency_ms      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_search_log_ts     ON search_log (ts DESC);
+CREATE INDEX IF NOT EXISTS idx_search_log_tenant ON search_log (tenant, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_search_log_route  ON search_log (route, ts DESC);
+
+CREATE OR REPLACE VIEW v_search_health AS
+SELECT path, route,
+       count(*)                                                        AS n,
+       avg((no_answer)::int)::numeric(4,3)                             AS no_answer_rate,
+       avg((graph_requested AND n_graph_edges = 0)::int)::numeric(4,3) AS graph_empty_rate,
+       avg((llm_failed)::int)::numeric(4,3)                            AS llm_fail_rate,
+       avg(n_snippets)::numeric(6,2)                                   AS avg_snippets,
+       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms)        AS p95_latency_ms
+FROM search_log
+WHERE ts > now() - interval '7 days'
+GROUP BY path, route;

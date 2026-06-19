@@ -52,7 +52,7 @@ async def clean_db(request):
     pool = request.getfixturevalue("db_pool")
     async with pool.acquire() as conn:
         await conn.execute("""
-            TRUNCATE evidence, edges, observed_edges, chunks, documents, entities, claims
+            TRUNCATE evidence, edges, observed_edges, chunks, documents, entities, claims, search_log
             CASCADE
         """)
 

@@ -202,6 +202,7 @@ def query(
     """검색 + 답변 생성."""
 
     async def _query() -> None:
+        import time
         from nexus import db
         from nexus.index.graph_extractor import (
             _build_entity_patterns, _load_gazetteer, find_entities_in_text,
@@ -215,6 +216,7 @@ def query(
         from nexus.search.hybrid import hybrid_search
         from nexus.search.router import determine_route
 
+        _t0 = time.time()
         config = _load_config()
         embedding_svc = EmbeddingService()
         pool = await db.get_pool()
@@ -248,6 +250,7 @@ def query(
             typer.echo()
 
         # LLM 답변
+        answer_result = None
         if answer and result.hits:
             typer.echo("─" * 60)
             typer.echo("답변 생성 중...\n")
@@ -260,6 +263,14 @@ def query(
             typer.echo(answer_result.answer)
             typer.echo(f"\n({answer_result.timing_ms.get('llm_ms', '?')}ms)")
 
+        from nexus.search.signals import extract_signals, record_search
+        sig = extract_signals(
+            result, answer_result, path="cli",
+            tenant=tenant, clearance="INTERNAL", query=q,
+            n_entities=len(entity_rids),
+            latency_ms=int((time.time() - _t0) * 1000),
+        )
+        await record_search(sig, await_persist=True)   # close_pool 이전에 적재 완료
         await db.close_pool()
 
     _run(_query())
@@ -417,6 +428,28 @@ def status() -> None:
 
             typer.echo(f"\n문서: {docs}  청크: {chunks}  엔티티: {entities}")
             typer.echo(f"설계 edge: {edges}  관측 edge: {obs}  격리: {quarantined}")
+
+        try:
+            row = await db.fetch_one(
+                """
+                SELECT count(*) AS n,
+                       avg((no_answer)::int) AS no_ans,
+                       avg((graph_requested AND n_graph_edges = 0)::int) AS graph_empty,
+                       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95
+                FROM search_log WHERE ts > now() - interval '7 days'
+                """
+            )
+            if row and row["n"]:
+                typer.echo(
+                    f"검색 신호 (7d): {row['n']:,}건 · "
+                    f"no-answer {float(row['no_ans'] or 0) * 100:.1f}% · "
+                    f"graph-empty {float(row['graph_empty'] or 0) * 100:.1f}% · "
+                    f"p95 {int(row['p95'] or 0)}ms"
+                )
+            else:
+                typer.echo("검색 신호: 없음")
+        except Exception:
+            typer.echo("검색 신호: 없음")   # 구버전 DB(테이블 부재) 우아한 격하
 
         await db.close_pool()
 
