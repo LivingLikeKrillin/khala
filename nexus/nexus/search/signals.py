@@ -22,7 +22,11 @@ if TYPE_CHECKING:  # 런타임 import 불필요(순환 회피) — 속성 접근
 log = structlog.get_logger("nexus.search.signals")
 
 SIGNAL_EVENT = "search.signal"
+# Must stay in sync with route values produced by nexus/search/router.py / hybrid_search `route_used`.
 _GRAPH_ROUTES = ("hybrid_then_graph", "graph_then_hybrid")
+
+# Strong references to fire-and-forget tasks — prevents CPython GC from collecting them before completion.
+_background_tasks: set = set()
 
 
 def query_sha256(query: str) -> str:
@@ -30,7 +34,7 @@ def query_sha256(query: str) -> str:
     return hashlib.sha256(query.encode("utf-8")).hexdigest()
 
 
-@dataclass
+@dataclass(frozen=True)
 class SearchSignals:
     path: str
     tenant: str | None
@@ -120,4 +124,7 @@ async def record_search(sig: SearchSignals, *, await_persist: bool = False) -> N
     if await_persist:
         await _persist(sig)
     else:
-        asyncio.create_task(_persist(sig))
+        # Retain a strong reference so the task isn't GC'd before completion (stdlib-recommended pattern).
+        task = asyncio.create_task(_persist(sig))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)

@@ -4,6 +4,7 @@ a2a_audit 패턴 미러링: 원문 query는 sha256+len으로만 기록(Nexus 원
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -128,5 +129,28 @@ async def test_record_search_swallows_persist_error(monkeypatch):
 
     sig = extract_signals(_Result(hits=[]), None, path="search",
                           tenant="t", clearance="INTERNAL", query="q")
-    # 예외가 전파되지 않아야 한다
-    await record_search(sig, await_persist=True)
+    # 예외가 전파되지 않아야 한다; 경고 로그가 발행되어야 한다
+    with capture_logs() as logs:
+        await record_search(sig, await_persist=True)
+    assert any(r.get("event") == "search.signal.persist_failed" for r in logs)
+
+
+async def test_record_search_fire_and_forget_persists(monkeypatch):
+    """fire-and-forget(create_task) 경로 — asyncio.sleep(0) 후 execute 호출 확인."""
+    from nexus import db
+    monkeypatch.setattr(db, "has_pool", lambda: True)
+
+    executed: list[bool] = []
+
+    async def _stub_execute(*a, **k):
+        executed.append(True)
+
+    monkeypatch.setattr(db, "execute", _stub_execute)
+
+    sig = extract_signals(_Result(hits=[_Hit(0.7)]), None, path="search",
+                          tenant="t", clearance="INTERNAL", query="fire-and-forget test")
+    # await_persist=False → create_task 경로 사용
+    await record_search(sig)
+    # 태스크가 아직 실행되지 않았을 수 있으므로 한 tick 양보
+    await asyncio.sleep(0)
+    assert executed, "fire-and-forget task must have called db.execute"
