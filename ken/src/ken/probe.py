@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from ken.llm import LLMClient
 from ken.models import Question
 
@@ -19,4 +21,7 @@ def make_questions(text: str, n: int, llm: LLMClient) -> list[Question]:
     user = f"Artifact:\n\n{text}"
     raw = llm.generate(system, user)
     lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
-    return [Question(text=ln) for ln in lines]
+    # Strip any leading enumeration/bullet prefix the model added despite the
+    # instruction, then cap at n so callers get at most n questions.
+    cleaned = [re.sub(r"^\s*(\d+[.)]|[-*])\s*", "", ln) for ln in lines]
+    return [Question(text=ln) for ln in cleaned[:n]]

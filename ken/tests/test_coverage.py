@@ -16,3 +16,4 @@ def test_coverage_counts_only_fresh():
 def test_empty_registry_is_full_coverage_or_zero():
     rep = compute_coverage([], [], now="2026-06-23T00:00:00Z", ttl_days=90)
     assert rep.total == 0 and rep.orphans == []
+    assert rep.ratio == 0.0  # empty-org contract: no artifacts -> 0.0, not 1.0

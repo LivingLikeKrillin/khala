@@ -7,6 +7,7 @@ factory (never `AnthropicLLM()` inline), so tests monkeypatch `ken.cli._make_llm
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
 import typer
 
@@ -56,7 +57,7 @@ def probe(
         typer.echo(f"unknown artifact_id: {artifact_id}", err=True)
         raise typer.Exit(code=1)
 
-    text = open(ref.path, encoding="utf-8").read()
+    text = Path(ref.path).read_text(encoding="utf-8")
     llm = _make_llm()
 
     questions = make_questions(text, n=n, llm=llm)

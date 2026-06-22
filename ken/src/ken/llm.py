@@ -20,8 +20,7 @@ class LLMClient(Protocol):
 class AnthropicLLM:
     """Sync Claude wrapper. Isolates the anthropic SDK behind LLMClient.
 
-    Model default is intentionally newer than nexus's pinned
-    claude-sonnet-4-20250514 — do not "fix" it back to match nexus.
+    default Sonnet 4.6 (`claude-sonnet-4-6`); swap here for other models.
     """
 
     def __init__(
@@ -41,7 +40,7 @@ class AnthropicLLM:
             system=system,
             messages=[{"role": "user", "content": user}],
         )
-        return resp.content[0].text
+        return "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
 
 
 class FakeLLM:
