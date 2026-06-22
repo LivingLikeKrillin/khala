@@ -20,3 +20,9 @@ def test_grade_fails_closed_on_llm_error():
 def test_grade_fails_closed_on_garbage_output():
     v = grade("t", [("Q", "A")], llm=FakeLLM(responses=["not json at all"]))
     assert v.passed is False and v.score == 0.0  # unparseable -> fail-closed
+
+
+def test_grade_parses_fenced_json():
+    llm = FakeLLM(responses=['```json\n{"passed": true, "score": 0.8, "rationale": "ok"}\n```'])
+    v = grade("artifact text", [("Q", "A")], llm=llm)
+    assert v.passed is True and v.score == 0.8

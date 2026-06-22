@@ -28,6 +28,17 @@ def test_stale_when_ttl_lapsed():
     )
 
 
+def test_fresh_tolerates_naive_ts():
+    # A hand-edited ledger line whose ts lacks a UTC offset must not crash
+    # (naive vs aware subtraction); it is coerced to UTC and judged normally.
+    assert is_fresh(
+        mk(ts="2026-06-23T00:00:00"),  # naive
+        current_hash="sha256:cur",
+        now="2026-06-23T00:10:00Z",  # aware
+        ttl_days=90,
+    )
+
+
 def test_stale_when_not_passed():
     assert not is_fresh(
         mk(passed=False),

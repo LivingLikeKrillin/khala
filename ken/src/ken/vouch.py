@@ -8,7 +8,7 @@ is NEVER silently dropped — this is the deliberate deviation from nexus signal
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from ken.models import Vouch
@@ -17,10 +17,13 @@ from ken.models import Vouch
 def _parse_ts(ts: str) -> datetime:
     """Parse an ISO-8601 timestamp into a tz-aware datetime.
 
-    `datetime.fromisoformat` on 3.11+ accepts a trailing 'Z'. Both vouch.ts and
-    `now` go through this same parser so both are tz-aware before subtracting.
+    `datetime.fromisoformat` on 3.11+ accepts a trailing 'Z'. A naive timestamp
+    (e.g. a hand-edited ledger line lacking an offset) is coerced to UTC so it is
+    never subtracted against an aware datetime (which would raise TypeError and
+    poison org-wide coverage). Both vouch.ts and `now` go through this parser.
     """
-    return datetime.fromisoformat(ts)
+    dt = datetime.fromisoformat(ts)
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def is_fresh(vouch: Vouch, *, current_hash: str, now: str, ttl_days: int) -> bool:

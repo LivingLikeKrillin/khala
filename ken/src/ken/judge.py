@@ -7,6 +7,7 @@ Verdict(passed=False, score=0.0) — never an auto-pass.
 from __future__ import annotations
 
 import json
+import re
 
 from ken.llm import LLMClient
 from ken.models import Verdict
@@ -24,6 +25,30 @@ def _format_qa(qa_pairs: list[tuple[str, str]]) -> str:
     return "\n\n".join(f"Q: {q}\nA: {a}" for q, a in qa_pairs)
 
 
+def _parse_verdict_json(raw: str) -> dict:
+    """Parse the model's JSON verdict, tolerating fenced/prose-wrapped output.
+
+    Tries, in order: the raw string; the string with a leading/trailing markdown
+    code fence (``` or ```json) stripped; the first ``{...}`` span found anywhere.
+    Raises (json.JSONDecodeError) if none parse, so callers stay fail-closed.
+    """
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+
+    fenced = re.sub(r"^\s*```(?:json)?\s*\n?|\n?```\s*$", "", raw.strip())
+    try:
+        return json.loads(fenced)
+    except json.JSONDecodeError:
+        pass
+
+    match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if match:
+        return json.loads(match.group(0))
+    raise json.JSONDecodeError("no JSON object found", raw, 0)
+
+
 def grade(text: str, qa_pairs: list[tuple[str, str]], llm: LLMClient) -> Verdict:
     """Grade answers; fail-closed on any LLM error or unparseable output."""
     user = f"Artifact:\n\n{text}\n\nQuestions and answers:\n\n{_format_qa(qa_pairs)}"
@@ -33,7 +58,7 @@ def grade(text: str, qa_pairs: list[tuple[str, str]], llm: LLMClient) -> Verdict
         return Verdict(passed=False, score=0.0, rationale=f"llm_error: {exc}")
 
     try:
-        data = json.loads(raw)
+        data = _parse_verdict_json(raw)
         return Verdict(
             passed=bool(data["passed"]),
             score=float(data["score"]),
