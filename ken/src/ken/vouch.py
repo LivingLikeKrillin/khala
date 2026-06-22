@@ -7,7 +7,9 @@ is NEVER silently dropped — this is the deliberate deviation from nexus signal
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from ken.models import Vouch
 
@@ -29,3 +31,32 @@ def is_fresh(vouch: Vouch, *, current_hash: str, now: str, ttl_days: int) -> boo
     if vouch.content_hash != current_hash:
         return False
     return (_parse_ts(now) - _parse_ts(vouch.ts)) < timedelta(days=ttl_days)
+
+
+def record_vouch(vouch: Vouch, *, ledger_path, make_parents: bool = True) -> None:
+    """Append a vouch to the JSONL ledger. FAIL-LOUD: IO errors propagate.
+
+    A vouch is the product's core record, so a failed write raises (OSError)
+    rather than being silently swallowed. This is the deliberate deviation from
+    nexus signals.py's fire-and-forget pattern.
+    """
+    path = Path(ledger_path)
+    if make_parents:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(vouch.to_dict()) + "\n")
+
+
+def load_vouches(ledger_path) -> list[Vouch]:
+    """Load all vouches from the JSONL ledger; returns [] if the file is absent."""
+    path = Path(ledger_path)
+    if not path.exists():
+        return []
+    vouches: list[Vouch] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            vouches.append(Vouch.from_dict(json.loads(line)))
+    return vouches

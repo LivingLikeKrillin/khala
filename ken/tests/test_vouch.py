@@ -1,4 +1,6 @@
-from ken.vouch import is_fresh
+import pytest
+
+from ken.vouch import is_fresh, record_vouch, load_vouches
 from ken.models import Vouch
 
 
@@ -33,3 +35,23 @@ def test_stale_when_not_passed():
         now="2026-06-23T00:00:00Z",
         ttl_days=90,
     )
+
+
+# --- persistence (fail-loud JSONL ledger) ---
+
+
+def test_record_then_load_roundtrip(tmp_path):
+    p = tmp_path / "ledger.jsonl"
+    v = mk()
+    record_vouch(v, ledger_path=p)
+    assert load_vouches(p) == [v]
+
+
+def test_record_fails_loud_on_unwritable_path(tmp_path):
+    bad = tmp_path / "nope" / "ledger.jsonl"  # parent dir missing
+    with pytest.raises(OSError):
+        record_vouch(mk(), ledger_path=bad, make_parents=False)
+
+
+def test_load_missing_ledger_returns_empty(tmp_path):
+    assert load_vouches(tmp_path / "absent.jsonl") == []
