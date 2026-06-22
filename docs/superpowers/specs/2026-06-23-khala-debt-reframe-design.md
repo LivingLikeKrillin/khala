@@ -1,4 +1,7 @@
-# Design Spec — khala 정체성 재정의: "AI 시대, 당신의 시스템을 끝까지 장악하라"
+# Design Spec — khala 정체성 재정의: the three-debts reframe
+
+> Working title only. The mission tagline is deliberately left open and decided inside
+> ADR-0002 (see §3).
 
 - **Date:** 2026-06-23
 - **Status:** Design (brainstorming output) — pending spec review + user approval
@@ -63,7 +66,7 @@ Each row must cite a real primitive. No aspirational mapping.
 | Debt (Fowler / 하용호) | What it is | khala's servicing window | Grounding (real code) |
 |---|---|---|---|
 | **기술부채 Technical** | Artifacts pile up faster than they can be maintained; next work slows | **mutqa** + **probe** | mutqa: mutation testing surfaces **survivors** = behavior no test covers, recorded in a verdict **ledger**. probe: PR-boundary **scope-drift** detection + **API contract** lint/diff (oasdiff/spectral) |
-| **의도부채 Intent** | Why a thing was built — constraints, trade-offs — becomes unrecoverable | **specledger** | ADR/SPEC capture + **`approved_hash`** (content-hash sign-off) + critique → disposition → approval; PreToolUse gate blocks edits until approved |
+| **의도부채 Intent** | Why a thing was built — constraints, trade-offs — becomes unrecoverable | **specledger** | ADR/SPEC capture + **`content_hash`** sign-off (`art.meta["content_hash"]`; surfaces as `approved_hash` on the A2A publish envelope) + critique → disposition → approval; PreToolUse gate (`hooks/pretooluse_gate.py`) blocks edits until approved |
 | **인지부채 Cognitive** | *Nobody understands the system the org ships* | **— EMPTY LEG —** | nexus provides the *substrate* (grounded retrieval, evidence, provenance; **`search_log` / `v_search_health`** signals) but **nothing measures or enforces human comprehension** |
 
 Supporting roles (not debts themselves):
