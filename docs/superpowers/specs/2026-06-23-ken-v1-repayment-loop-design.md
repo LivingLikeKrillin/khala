@@ -37,12 +37,12 @@ API key" is realized by **inverting control**:
 
 | Unit | Responsibility | Kind | Notes |
 |---|---|---|---|
-| `questions` (new) | Persist generated questions per artifact, bound to `content_hash`; mark stale when the artifact's hash changes (→ regenerate) | IO | `save_questions(artifact_id, content_hash, [Question])`, `load_questions(artifact_id) -> (hash, [Question])` |
-| `schedule` (new) | **Pure** spaced repetition: `next_state(state, passed, now) -> state` over a fixed interval ladder `[now, 1d, 3d, 7d, 30d]` — pass advances one rung, fail resets to a short relearn; `due(states, now) -> [ids]` | pure | No SM-2 ease factor (YAGNI) |
-| `attempt` (new) | Append one attempt `(person, question_id, content_hash, passed, score, ts)` to a JSONL ledger, **fail-loud** (raises on IO failure) | IO | mirrors v0 vouch ledger discipline |
-| `vouch` (changed) | **Derived**: `is_vouched(artifact, person, states, now) -> bool` = every current question passing & fresh | pure | replaces v0's one-shot `record_vouch`/`vouch_log` |
-| `coverage` (changed) | `vouched/total` + **weakness map** (questions/artifacts with repeated recent failures) | pure | reads derived state |
-| `cli` (extended) | Agent primitives: `ken due` / `ken save-questions` / `ken record-attempt` / `ken coverage`; plus headless `ken review` (AnthropicLLM self-drive) | edge | |
+| `questions` (new) | Persist questions per artifact, bound to `content_hash`; **replace-on-save** keyed by `artifact_id`; **fail-loud** write; stale when artifact hash changes | IO | `save_questions(artifact_id, content_hash, [Question])`, `load_questions(artifact_id) -> (hash, [Question])`. Each `Question` carries a stable `id = sha(artifact_id + content_hash + index)[:12]` |
+| `schedule` (new) | **Pure** spaced repetition: `rebuild(attempts) -> states` (replay a question's attempts in `ts` order — the single ledger→state reducer all derivations use), `next_state(state, attempt) -> state`, `due(states, now) -> [ids]`. Fixed ladder `[0, 1d, 3d, 7d, 30d]` (rung 0 = due now); pass advances one rung (capped at last), fail resets to rung 0 | pure | No SM-2 (YAGNI). `next_due = last_attempt.ts + ladder[interval_idx]` (deterministic, no wall-clock in recompute) |
+| `attempt` (new) | **Append** one attempt `(person, artifact_id, question_id, content_hash, passed, score, ts)` to a JSONL ledger, **fail-loud**. Append-only — never mutates prior state | IO | `artifact_id` denormalized so derivations need no live join |
+| `vouch` (changed) | **Derived**: `is_vouched(artifact, person, states, now) -> bool` = **every** current question (from the fresh-hash store) has a latest attempt that is *pass* AND *fresh*; a question with **zero** attempts ⇒ not vouched | pure | replaces v0's one-shot `record_vouch`/`vouch_log` |
+| `coverage` (changed) | `vouched/total` + **weakness map** (per question/artifact failure counts from the ledger) | pure | reads derived state via `schedule.rebuild` |
+| `cli` (extended) | Agent primitives: `ken due` / `ken save-questions` / `ken record-attempt` / `ken coverage`; plus headless `ken review` (AnthropicLLM self-drive) | edge | `record-attempt` **only appends**; schedule state is a read-time view (`rebuild`), never a mutated file |
 
 ## 4. Agent-driven review loop (the "session LLM", made concrete)
 
@@ -81,16 +81,29 @@ v0's one-shot `record_vouch` + `vouch_log` are **superseded** by the attempt led
 derived `is_vouched`. v0 `registry`, `hashing`, `coverage` *shape*, `llm` (LLMClient +
 AnthropicLLM + FakeLLM), `probe`, `judge` are reused. `probe`/`judge` remain for the
 headless `ken review` path; in agent-driven mode the agent performs those roles directly.
-Because v0 is unmerged (PR #29), v1 may freely refactor the vouch layer.
+Because v0 is unmerged (PR #29), v1 may freely refactor the vouch layer. **Model change:**
+v0's frozen `Question` dataclass (currently just `text`) gains a stable `id` field (computed
+as in §3) — a small, explicitly-called-out addition.
 
 ## 7. Spaced repetition (v1 policy)
 
-Fixed interval ladder `[0, 1d, 3d, 7d, 30d]`. A question's state holds
-`(interval_idx, consecutive_passes, last_result, next_due, content_hash)`. Pass →
-`interval_idx += 1` (capped), `next_due = now + ladder[idx]`. Fail → `interval_idx = 0`,
-`next_due = now` (relearn this session), failure counter increments (feeds weakness map).
-Hash change → the question is stale; its state resets (the artifact changed, prior mastery
-no longer applies).
+Fixed interval ladder `LADDER = [0, 1d, 3d, 7d, 30d]` (rung 0 = due now). Per-question state
+is **recomputed** (never stored) by `schedule.rebuild`, replaying that question's attempts in
+`ts` order:
+
+- **Initial** (freshly generated question, zero attempts): `interval_idx = 0` → due
+  immediately; counts as *not vouched*.
+- **Pass:** `interval_idx = min(interval_idx + 1, len(LADDER) - 1)`.
+- **Fail:** `interval_idx = 0`; failure counter += 1 (feeds the weakness map).
+- **next_due** (deterministic): `last_attempt.ts + LADDER[interval_idx]` — no wall-clock at
+  recompute time, so derivations stay pure and unit-testable.
+- **Hash change:** attempts whose `content_hash` ≠ the question's *current* hash are ignored
+  by `rebuild` (artifact changed → state resets to initial, vouch revoked). Orphaned
+  attempts (whose `question_id` is absent from the current fresh-hash store) are likewise
+  ignored.
+- **In-session relearn termination:** `due`/`review` presents each question **at most once
+  per invocation** even if failed; a failed question re-surfaces on the *next* run. This
+  bounds the loop (no infinite same-session relearn).
 
 ## 8. Non-goals (v1)
 
@@ -100,21 +113,30 @@ no longer applies).
 
 ## 9. Error handling & integrity
 
-- Attempt persistence is **fail-loud** (raises) — never silently drop an attempt.
-- `save-questions` rejects questions whose declared `--hash` ≠ the artifact's current hash
-  (prevents binding questions to stale content).
+- Attempt persistence is **fail-loud** (raises), **append-only** — never silently drop,
+  never mutate prior records.
+- The questions store write is **fail-loud** too — it is the join target for all
+  derivations, so a dropped `save-questions` corrupts coverage as badly as a dropped attempt.
+- `save-questions` **rejects** questions whose declared `--hash` ≠ the artifact's current
+  hash (no binding to stale content), and **replaces** the artifact's prior set (keyed by
+  `artifact_id`).
+- Derivations take `now` as an explicit argument — no wall-clock at recompute (deterministic).
 - Pure functions (`schedule`, `is_vouched`, `coverage`) never touch IO/LLM.
-- No git-history dependency anywhere (carried over from v0).
+- No git-history dependency — *structural*: ken imports no git/subprocess (carried from v0).
 
 ## 10. Testing
 
-- `schedule.next_state` (pass-advances, fail-resets, cap), `due`, `is_vouched`
-  (all-pass-and-fresh truth table incl. a stale question blocking the vouch), `coverage`
-  weakness-map aggregation → deterministic unit tests.
-- `attempt` fail-loud (raises on unwritable path); `save-questions` hash-mismatch rejection.
-- `ken review` headless path tested with `FakeLLM` (reuses v0 seam). Agent-driven loop is
-  validated by the protocol doc + the underlying primitives' tests (the loop itself is the
-  agent, not code).
+- **`schedule.rebuild` (load-bearing reducer):** replay ordering; pass-advance / fail-reset
+  / cap; **hash-change mid-history resets state**; orphaned-attempt skip; `next_due` formula
+  → deterministic tests.
+- `schedule.next_state`, `due`.
+- `is_vouched` truth table: all-pass-and-fresh ⇒ true; a stale question blocks; **a question
+  with zero attempts blocks** (the "withheld until all pass" case — easiest to get wrong).
+- `coverage` weakness-map aggregation.
+- `attempt` fail-loud (raises on unwritable path); **questions store fail-loud**;
+  `save-questions` hash-mismatch rejection; **replace-on-save** (re-save replaces prior set).
+- `ken review` headless path with `FakeLLM` (reuses v0 seam). Agent-driven loop is validated
+  by the protocol doc + the primitives' tests (the loop itself is the agent, not code).
 
 ## 11. Success criteria
 
@@ -126,19 +148,20 @@ no longer applies).
 - `ken coverage` shows vouched/total **and** a weakness map (repeatedly-failed items).
 - The whole loop runs with **no `ANTHROPIC_API_KEY`** in agent-driven mode.
 
-## 12. Open questions (carry to plan, non-blocking)
+## 12. Resolved decisions (previously open)
 
-- Interval ladder values (start with `[0,1d,3d,7d,30d]`).
-- Whether review state is cached or always recomputed from the attempt ledger (lean:
-  recompute — single source of truth, pure).
-- `question_id` derivation (e.g. `sha(artifact_id + content_hash + index)[:12]`).
+- **Interval ladder:** `[0, 1d, 3d, 7d, 30d]` (fixed).
+- **State storage:** **always recompute** from the attempt ledger via `schedule.rebuild` —
+  single source of truth, no cached state file.
+- **`question_id`:** `sha(artifact_id + content_hash + index)[:12]` — stable, and changes
+  when the artifact's content changes (the intended staleness reset).
 
 ---
 
 ## Implementation outline (for writing-plans)
 
 1. `questions` store (save/load, hash-bound, stale detection).
-2. `schedule` pure spaced-repetition (next_state, due) + tests.
+2. `schedule` pure spaced-repetition: `rebuild` (the ledger→states reducer all derivations use), `next_state`, `due` + tests.
 3. `attempt` fail-loud JSONL ledger + tests.
 4. Refactor `vouch` to derived `is_vouched`; retire v0 one-shot `vouch_log`/`record_vouch`.
 5. `coverage` + weakness map (pure) + tests.
