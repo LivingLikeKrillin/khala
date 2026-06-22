@@ -52,7 +52,7 @@ def test_attempt_roundtrip():
 ```
 - [ ] **Step 2:** run → FAIL.
 - [ ] **Step 3: implement** in models.py:
-  - Add `id: str` to `Question` (before `text`).
+  - Add `id: str` to `Question` (before `text`). All `Question(...)` construction must use keyword args (probe.py already does); verify no positional `Question("...")` remains.
   - `Attempt` (frozen) `(person, artifact_id, question_id, content_hash, passed, score, ts)` + `to_dict`/`from_dict`.
   - `ReviewState` (frozen) `(question_id, content_hash, interval_idx, last_ts, last_passed, fail_count)` — a *computed* view (not persisted).
   - Extend `CoverageReport` with `weakness: list[WeaknessItem]` where `WeaknessItem(question_id, artifact_id, fail_count)`. (Keep `orphans` for back-compat.)
@@ -127,10 +127,12 @@ def test_pass_advances_fail_resets():
     assert st.interval_idx == 0 and st.last_passed is False and st.fail_count == 1
 def test_next_due_is_last_ts_plus_ladder():
     atts = [att("q",True,"2026-06-01T00:00:00Z")]  # idx becomes 1 -> +1d
-    st = rebuild(atts, current_hashes={"q":"sha256:cur"})["q"]
-    # next_due computed by `due`/helper as last_ts + LADDER[1]
-    assert "q" not in due({"q":st}, now="2026-06-01T12:00:00Z")  # 12h < 1d
-    assert "q" in due({"q":st}, now="2026-06-03T00:00:00Z")      # >1d
+    states = rebuild(atts, current_hashes={"q":"sha256:cur"})
+    assert "q" not in due(states, ["q"], now="2026-06-01T12:00:00Z")  # 12h < 1d
+    assert "q" in due(states, ["q"], now="2026-06-03T00:00:00Z")      # >1d
+def test_never_attempted_is_due():
+    # a question with no state (never attempted / stale) is ALWAYS due — due owns this
+    assert due({}, ["qNew"], now="2026-06-01T00:00:00Z") == ["qNew"]
 def test_hash_change_resets_state():
     atts = [att("q",True,"2026-06-01T00:00:00Z",h="sha256:OLD")]
     st = rebuild(atts, current_hashes={"q":"sha256:NEW"})
@@ -143,7 +145,8 @@ def test_orphan_question_ignored():
 - [ ] **Step 3: implement** `schedule.py`:
   - `LADDER = [timedelta(0), timedelta(days=1), timedelta(days=3), timedelta(days=7), timedelta(days=30)]`.
   - `rebuild(attempts, *, current_hashes: dict[qid,hash]) -> dict[qid, ReviewState]`: for each `question_id` present in `current_hashes`, take only its attempts whose `content_hash == current_hashes[qid]`, sort by `ts`, fold: pass → `idx = min(idx+1, len-1)`; fail → `idx = 0, fail_count += 1`. Track `last_ts`, `last_passed`. Questions with no surviving attempts get **no** state entry (caller treats absence as never-attempted = not vouched & due).
-  - `due(states, *, now) -> list[qid]`: a qid is due iff it has no state (handled by caller for never-attempted) OR `_parse_ts(now) >= _parse_ts(last_ts) + LADDER[interval_idx]`. Reuse `vouch._parse_ts` (import) for tz-safe parsing.
+  - `due(states, all_qids, *, now) -> list[qid]`: takes the **full question-id universe**. A qid is due iff it is **absent from `states`** (never-attempted / stale-hash → due) OR `_parse_ts(now) >= _parse_ts(last_ts) + LADDER[interval_idx]`. Reuse `vouch._parse_ts` for tz-safe parsing. **`due` owns never-attempted surfacing** — callers never re-derive it.
+  - `next_state(state, attempt) -> state` is the per-attempt fold used internally by `rebuild` (covered via `rebuild` tests).
 - [ ] **Step 4:** run → PASS. **Step 5:** commit `feat(ken): pure spaced-repetition reducer (rebuild/next_state/due)`.
 
 ---
@@ -157,28 +160,29 @@ def test_orphan_question_ignored():
 - [ ] **Step 1: failing tests**
 ```python
 from ken.vouch import is_vouched
-from ken.models import Question
+from ken.models import Question, Attempt
 from ken.schedule import rebuild
-def test_all_pass_fresh_vouched():
+def att(qid, passed, ts, h="sha256:cur"):   # local helper (each test file defines its own)
+    return Attempt("kr","a1",qid,h,passed,1.0,ts)
+def test_all_pass_vouched():
     qs=[Question(id="q1",text="a"),Question(id="q2",text="b")]
     atts=[att("q1",True,"2026-06-20T00:00:00Z"),att("q2",True,"2026-06-20T00:00:00Z")]
     states=rebuild(atts,current_hashes={"q1":"sha256:cur","q2":"sha256:cur"})
-    assert is_vouched(qs, states, now="2026-06-21T00:00:00Z") is True
+    assert is_vouched(qs, states) is True
 def test_zero_attempt_question_blocks():
     qs=[Question(id="q1",text="a"),Question(id="q2",text="b")]
     atts=[att("q1",True,"2026-06-20T00:00:00Z")]  # q2 never attempted
     states=rebuild(atts,current_hashes={"q1":"sha256:cur","q2":"sha256:cur"})
-    assert is_vouched(qs, states, now="2026-06-21T00:00:00Z") is False
+    assert is_vouched(qs, states) is False
 def test_failed_question_blocks():
     qs=[Question(id="q1",text="a")]
     atts=[att("q1",False,"2026-06-20T00:00:00Z")]
     states=rebuild(atts,current_hashes={"q1":"sha256:cur"})
-    assert is_vouched(qs, states, now="2026-06-21T00:00:00Z") is False
+    assert is_vouched(qs, states) is False
 ```
-(`att` helper as in Task 4.)
 - [ ] **Step 2:** run → FAIL.
-- [ ] **Step 3: implement** `is_vouched(questions, states, *, now) -> bool`: True iff **every** question in `questions` has a state whose `last_passed is True` (a missing state = never-attempted = block). (Freshness/hash already handled by `rebuild` ignoring stale-hash attempts; TTL optional in v1 — note: keep it simple, vouch holds while the latest attempt passed and the hash matches.)
-- [ ] **Step 4:** run → PASS. **Step 5:** Remove v0 one-shot `record_vouch` and `Vouch`-ledger usage from the codebase path (keep `is_fresh`/`_parse_ts` helpers if still referenced; delete `record_vouch`/`load_vouches` only after cli no longer uses them — see Task 7). Commit `feat(ken): derived is_vouched from per-question mastery`.
+- [ ] **Step 3: implement** `is_vouched(questions, states) -> bool`: True iff **every** question has a state with `last_passed is True` (missing state = never-attempted = block). Hash staleness is already handled by `rebuild` (stale-hash attempts ignored → no state → block). **v1 has no calendar TTL** (refines spec §1/§6 — TTL deferred; staleness = hash change + fail-on-retest), so `is_vouched` takes no `now`. Keep `vouch._parse_ts` (used by `schedule.due`).
+- [ ] **Step 4:** run → PASS. **Step 5:** commit `feat(ken): derived is_vouched from per-question mastery`. (Deletion of the superseded v0 one-shot vouch happens in Task 7 per the Final v0 surface list.)
 
 ### Task 6: coverage + weakness map
 
@@ -187,18 +191,20 @@ def test_failed_question_blocks():
 - [ ] **Step 1: failing test**
 ```python
 from ken.coverage import compute_coverage_v1
-from ken.models import ArtifactRef, Question
+from ken.models import ArtifactRef, Question, Attempt
+def att(qid, passed, ts, h="sha256:cur"):   # local helper
+    return Attempt("kr","a1",qid,h,passed,1.0,ts)
 def test_coverage_and_weakness():
     arts=[ArtifactRef("a1","/a","sha256:cur")]
     qmap={"a1":("sha256:cur",[Question(id="q1",text="x"),Question(id="q2",text="y")])}
     atts=[att("q1",True,"2026-06-20T00:00:00Z"),
           att("q2",False,"2026-06-20T00:00:00Z"),att("q2",False,"2026-06-20T01:00:00Z")]
-    rep=compute_coverage_v1(arts, qmap, atts, now="2026-06-21T00:00:00Z")
+    rep=compute_coverage_v1(arts, qmap, atts)
     assert rep.total==1 and rep.covered==0 and rep.orphans==["a1"]
     assert any(w.question_id=="q2" and w.fail_count==2 for w in rep.weakness)
 ```
 - [ ] **Step 2:** run → FAIL.
-- [ ] **Step 3: implement** `compute_coverage_v1(artifacts, questions_by_artifact, attempts, *, now) -> CoverageReport`: per artifact, build `current_hashes` from its questions (all bound to the artifact's current hash), `rebuild`, then `is_vouched`. covered/orphans accordingly. weakness = aggregate `fail_count` per question_id from states (or recount fails from attempts limited to current-hash). Keep the old `compute_coverage` only if still imported; otherwise replace.
+- [ ] **Step 3: implement** `compute_coverage_v1(artifacts, questions_by_artifact, attempts) -> CoverageReport`: per artifact, build `current_hashes` from its questions (all = the artifact's current hash), `rebuild`, then `is_vouched`. covered/orphans accordingly. **weakness = lifetime `fail_count` from `ReviewState`** per current-hash question (matches `ReviewState.fail_count`). No `now` (no TTL). Delete the v0 `compute_coverage` (see Final v0 surface).
 - [ ] **Step 4:** run → PASS. **Step 5:** commit `feat(ken): v1 coverage with weakness map`.
 
 ### Task 7: cli — agent primitives + headless review
@@ -213,15 +219,15 @@ def test_coverage_and_weakness():
 # coverage: shows covered/total + weakness
 # review (headless): FakeLLM yields questions then verdict; vouch derived to covered
 ```
-Write concrete tests for: `save-questions --hash WRONG` exits non-zero; `record-attempt --passed` then `coverage` shows movement; `due` lists needs-questions for a fresh artifact.
+Write concrete tests for: `save-questions --hash WRONG` exits non-zero; `record-attempt --passed` then `coverage` shows movement; `due` lists `needs-questions` for an artifact with no saved questions; **`due` lists saved-but-unanswered question ids as due** (questions-exist-zero-attempts — distinct from needs-questions and from due-after-elapse).
 - [ ] **Step 2:** run → FAIL.
 - [ ] **Step 3: implement** cli commands (paths via options `--manifest/--questions/--ledger`):
-  - `due --as PERSON` — load manifest; for each artifact load questions; artifacts with no/stale questions → print `needs-questions <artifact_id>`; else `rebuild` + `due` → print due `(artifact_id, question_id, text)`.
+  - `due --as PERSON` — load manifest; for each artifact load questions; artifacts with **no** saved questions (or stored store-hash ≠ current hash) → print `needs-questions <artifact_id>`; else `rebuild(attempts, current_hashes)` then `due(states, all_qids=[q.id for q in questions], now)` → print due `(artifact_id, question_id, text)`. (Never-attempted saved questions surface via `due`'s full-id-set contract.)
   - `save-questions ARTIFACT_ID --hash H` — **reject** if `H != registry.current_hash(path)`; read questions from stdin (one per line or JSON), `save_questions`.
   - `record-attempt --as P --question QID --artifact AID (--passed|--failed) [--score]` — build `Attempt(ts=utc now)`, `append_attempt`. Append-only.
   - `coverage [--as P]` — load manifest+questions+attempts, `compute_coverage_v1`, print covered/total + weakness.
   - `review --as P [ARTIFACT_ID]` — **headless**: `_make_llm()` (AnthropicLLM), for due/needs questions use `probe.make_questions`/`judge.grade`, record attempts. Reuses v0 seam; tested with FakeLLM.
-  - Remove the v0 one-shot `probe`→`record_vouch` path (superseded). Delete now-unused `record_vouch`/`load_vouches` + their v0 tests (`test_vouch.py` persistence cases) and the v0 `coverage` if replaced; keep `is_fresh` only if still used.
+  - Remove the v0 one-shot `probe`→`record_vouch` cli command (superseded). See **Final v0 surface after v1** below for the exact delete list.
 - [ ] **Step 4:** run full suite `cd ken && python -m pytest -q` → PASS. **Step 5:** commit `feat(ken): cli agent primitives (due/save-questions/record-attempt) + headless review`.
 
 ### Task 8: agent review protocol doc
@@ -240,8 +246,21 @@ Write concrete tests for: `save-questions --hash WRONG` exits non-zero; `record-
 
 ---
 
+## Final v0 surface after v1 (exact delete/keep list — reach the Task 7 green gate without guessing)
+
+**Delete** (superseded by the attempt ledger + derived vouch):
+- `models.py`: `Vouch` dataclass.
+- `vouch.py`: `record_vouch`, `load_vouches`, `is_fresh` (no TTL in v1). **Keep** `_parse_ts` (used by `schedule.due`); **add** `is_vouched`.
+- `coverage.py`: v0 `compute_coverage` (replaced by `compute_coverage_v1`).
+- `cli.py`: the v0 `probe` command and any `record_vouch` call.
+- Tests: delete `test_vouch.py` (v0 freshness+persistence) → replaced by `test_vouch_derived.py`; delete `test_coverage.py` (v0) → replaced by `test_coverage_v1.py`; delete `test_cli_e2e.py` (v0 probe→vouch flow) → replaced by `test_cli_v1.py`.
+
+**Keep & reuse unchanged:** `registry.py`, `hashing.py`, `llm.py`, `probe.py`, `judge.py`, `models.ArtifactRef`/`Question`(+id)/`Verdict`/`CoverageReport`(extended), `test_hashing_parity.py`, `test_registry.py`, `test_probe.py`, `test_judge.py`, `test_models.py` (+ new `test_models_v1.py`).
+
+After Task 7, `cd ken && python -m pytest -q` must be fully green with no dangling imports.
+
 ## Notes / discipline
-- Pure (`schedule`, `is_vouched`, `compute_coverage_v1`) never import IO/LLM; `now` always explicit.
+- Pure (`schedule`, `is_vouched`, `compute_coverage_v1`) never import IO/LLM; `now` is explicit where used (`due`).
 - Fail-loud: `append_attempt`, `save_questions`. Append-only attempts; state recomputed via `rebuild`.
 - No git anywhere. Headless `review` is the only LLM-calling path and is FakeLLM-tested.
 - v1 retires v0's one-shot vouch; update/remove the superseded v0 tests rather than leaving dead asserts.
