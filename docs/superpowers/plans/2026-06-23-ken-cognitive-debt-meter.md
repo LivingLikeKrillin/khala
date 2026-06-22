@@ -106,7 +106,7 @@ import sys, pathlib
 import pytest
 from ken.hashing import content_hash
 
-SPEC_SRC = pathlib.Path(__file__).parents[3] / "specledger" / "src"
+SPEC_SRC = pathlib.Path(__file__).parents[2] / "specledger" / "src"  # tests->ken->khala root
 
 @pytest.mark.parametrize("body", ["", "a\n", "x \r\ny\n\n", "한국어\n  trailing  \n"])
 def test_parity_with_specledger(body):
@@ -181,7 +181,7 @@ def test_stale_when_not_passed():
 ```
 
 - [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement `is_fresh`** (pure): parse ISO timestamps with `datetime.fromisoformat` (handle trailing `Z`), return `vouch.passed and vouch.content_hash == current_hash and (now - vouch.ts) < ttl`.
+- [ ] **Step 3: Implement `is_fresh`** (pure): parse ISO timestamps with `datetime.fromisoformat` (3.11+ accepts trailing `Z`). **Normalize BOTH `vouch.ts` and `now` through the same parser** so both are tz-aware before subtracting (else naive/aware `TypeError`). Return `vouch.passed and vouch.content_hash == current_hash and (now - vouch.ts) < timedelta(days=ttl_days)`.
 - [ ] **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `feat(ken): pure vouch freshness`
 
@@ -283,7 +283,7 @@ def test_fake_llm_returns_scripted():
 - [ ] **Step 2: Run** → FAIL.
 - [ ] **Step 3: Implement** `llm.py`:
   - `LLMClient` = `@runtime_checkable Protocol` with `generate(system: str, user: str) -> str` (sync for v0 CLI simplicity).
-  - `AnthropicLLM` — mirrors nexus `LLMService` but sync (`anthropic.Anthropic`), `generate` returns `resp.content[0].text`, model default `claude-sonnet-4-6`.
+  - `AnthropicLLM` — mirrors nexus `LLMService` but sync (`anthropic.Anthropic`), `generate` returns `resp.content[0].text`, model default `claude-sonnet-4-6` (intentionally newer than nexus's pinned `claude-sonnet-4-20250514` — do not "fix" it back to match nexus).
   - `FakeLLM(responses: list[str])` — pops scripted responses; raises if exhausted.
   - Put `FakeLLM` import into `conftest.py` as a fixture.
 - [ ] **Step 4: Run** → PASS.
@@ -317,6 +317,9 @@ def test_grade_fails_closed_on_llm_error():
         def generate(self, s, u): raise RuntimeError("llm down")
     v = grade("t", [("Q","A")], llm=Boom())
     assert v.passed is False and v.score == 0.0  # fail-closed, never auto-pass
+def test_grade_fails_closed_on_garbage_output():
+    v = grade("t", [("Q","A")], llm=FakeLLM(responses=["not json at all"]))
+    assert v.passed is False and v.score == 0.0  # unparseable -> fail-closed
 ```
 
 - [ ] **Step 2: Run** → FAIL.
@@ -330,25 +333,45 @@ def test_grade_fails_closed_on_llm_error():
 
 **Files:** Create `ken/src/ken/cli.py`, `ken/tests/test_cli_e2e.py`, `ken/tests/fixtures/sample_artifact.md`
 
-- [ ] **Step 1: Write failing e2e test** (Typer `CliRunner`, FakeLLM injected via env/monkeypatch)
+- [ ] **Step 1: Write failing e2e test** (Typer `CliRunner`; FakeLLM injected by monkeypatching the `_make_llm` factory; answers fed via stdin)
 
 ```python
 from typer.testing import CliRunner
 from ken.cli import app
+from ken.llm import FakeLLM
+
 def test_register_probe_vouch_coverage(tmp_path, monkeypatch):
-    # point manifest + ledger at tmp; inject FakeLLM that yields questions then a passing verdict
-    # register sample artifact -> probe (answers piped) -> coverage shows 1/1
-    ...
-    result = CliRunner().invoke(app, ["coverage", "--manifest", str(man), "--ledger", str(led)])
-    assert "1/1" in result.stdout or "100" in result.stdout
+    man = tmp_path / "m.yaml"; led = tmp_path / "ledger.jsonl"
+    art = tmp_path / "a.md"
+    art.write_text("Payment service publishes the orders topic.\n", encoding="utf-8")
+    runner = CliRunner()
+
+    r = runner.invoke(app, ["register", str(art), "--manifest", str(man)])
+    assert r.exit_code == 0
+    aid = r.stdout.strip().split()[-1]   # cli prints the artifact_id
+
+    # ONE _make_llm() result is shared across both LLM calls in a single `probe`,
+    # so FakeLLM.responses must be [questions, verdict_json] IN CALL ORDER.
+    monkeypatch.setattr(
+        "ken.cli._make_llm",
+        lambda: FakeLLM(responses=["Q1?\nQ2?", '{"passed": true, "score": 0.9, "rationale": "ok"}']),
+    )
+    r = runner.invoke(
+        app, ["probe", aid, "--as", "kr", "--manifest", str(man), "--ledger", str(led)],
+        input="answer1\nanswer2\n",            # one line per question, via stdin
+    )
+    assert r.exit_code == 0
+
+    r = runner.invoke(app, ["coverage", "--manifest", str(man), "--ledger", str(led)])
+    assert "1/1" in r.stdout
 ```
 
 - [ ] **Step 2: Run** → FAIL.
 - [ ] **Step 3: Implement `cli.py`** with Typer commands:
-  - `register PATH [--manifest]`
-  - `probe ARTIFACT_ID --as PERSON [--manifest] [--ledger]` — load artifact text, `make_questions`, prompt the person for answers (stdin), `grade`, and **only on `passed`** `record_vouch` bound to `current_hash`. Print the verdict.
-  - `coverage [--manifest] [--ledger] [--ttl-days]` — load manifest, compute current hashes, `load_vouches`, `compute_coverage`, print `covered/total`, ratio, and the orphan list.
-  - LLM injection: default `AnthropicLLM`; allow a test seam (factory/env) so the e2e test injects `FakeLLM`.
+  - **LLM seam (concrete):** a module-level factory `def _make_llm() -> LLMClient: return AnthropicLLM()`. Every command obtains its client via `_make_llm()` — never `AnthropicLLM()` inline — so tests do `monkeypatch.setattr("ken.cli._make_llm", lambda: FakeLLM(...))`.
+  - `register PATH [--manifest]` — register and **print the `artifact_id`** as the last whitespace-delimited token (the e2e test parses `stdout.strip().split()[-1]`).
+  - `probe ARTIFACT_ID --as PERSON [--manifest] [--ledger]` — load artifact text; `llm = _make_llm()`; `qs = make_questions(text, n, llm)`; read **one stdin line per question** (e.g. `typer.prompt` or `input()` in a loop); `grade(text, list(zip(q_texts, answers)), llm)` (**same `llm` instance** — note the FakeLLM call order: questions then verdict); **only on `passed`** `record_vouch(...)` bound to `current_hash`. Print the verdict.
+  - `coverage [--manifest] [--ledger] [--ttl-days]` — load manifest, compute current hashes via `registry.current_hash`, `load_vouches`, `compute_coverage`, print `covered/total`, ratio, and the orphan list.
 - [ ] **Step 4: Run** the e2e test → PASS. Then full suite `cd ken && pytest -q`.
 - [ ] **Step 5: Commit** `feat(ken): CLI walking skeleton (register/probe/coverage)`
 
