@@ -4,7 +4,7 @@
 - **Status:** Design (brainstorming output) — pending spec review + user approval
 - **Author:** LivingLikeKrillin (with Claude)
 - **Working name:** `ken` (Scots/English "to know, to understand") — placeholder, fits the Nexus/Probe/mutqa tone; final name open.
-- **Context:** khala's first **debt-management product** and the empty leg named in ADR-0002. Targets **cognitive debt** — "nobody understands the system the org ships." First consumer = khala itself (dogfood).
+- **Context:** khala's first **debt-management product**, opening the cognitive-debt leg (recorded in ADR-0002, currently in review as PR #28; this spec stands on its own merits regardless of that PR's status). Targets **cognitive debt** — "nobody understands the system the org ships." First consumer = khala itself (dogfood).
 - **Research anchor:** Margaret-Anne Storey, "From Technical Debt to Cognitive and Intent Debt" (ACM Queue 2026 / arXiv:2603.22106); the existing-tool gap (CodeScene's git-attribution model breaks under AI authorship; ADR/AKM tools record but don't measure comprehension) was confirmed by a verified deep-research pass.
 
 ---
@@ -63,7 +63,7 @@ Each unit is one file with a single responsibility and a clear interface:
 | `probe` | Generate N grounded questions from an artifact's content | `make_questions(text, n) -> list[Question]` | `LLMService` wrapper |
 | `judge` | Grade answers against the artifact (LLM-as-judge) → pass/fail + rationale | `grade(text, qa_pairs) -> Verdict` | `LLMService` wrapper |
 | `vouch` | Record a vouch; compute freshness | `record_vouch(...)`; `is_fresh(vouch, artifact, ttl) -> bool` (**pure**) | DB (signals.py pattern) |
-| `coverage` | Org metric + orphan list | `coverage() -> CoverageReport` | DB view `v_cognitive_debt` |
+| `coverage` | Org metric + orphan list | `coverage() -> CoverageReport` (**pure** aggregation over manifest + vouch rows) | manifest + `vouch_log` (in-process) |
 | `cli` | `ken register` / `ken probe <artifact> --as <person>` / `ken coverage` | Typer | all above |
 
 **Reuse, not reinvent:** `content_hash()` is imported from specledger (proven, identical
@@ -83,23 +83,25 @@ ken coverage                → coverage(): % artifacts with ≥1 fresh vouch + 
 
 ## 6. Data model
 
-`vouch_log` (PII-safe, best-effort insert, mirrors `search_log`):
+`vouch_log` (PII-minimal; **transactional insert — see §9**, not best-effort; table *shape* mirrors `search_log`):
 
 | column | type | note |
 |---|---|---|
 | `id` | BIGSERIAL PK | |
 | `ts` | TIMESTAMPTZ default now() | |
 | `artifact_id` | TEXT | stable id from registry |
-| `person` | TEXT | named voucher (an identity, not PII payload) |
+| `person` | TEXT | named voucher (identity string; a human name is arguably PII — acceptable for v0 single-director dogfood, revisit before multi-user) |
 | `content_hash` | TEXT | the hash the vouch was earned against |
 | `score` | DOUBLE PRECISION | judge score 0–1 |
 | `passed` | BOOLEAN | |
 | `n_questions` | INTEGER | |
 
-`v_cognitive_debt` view: per registered artifact, whether a *fresh* vouch exists (join
-`vouch_log` to the registry's current hash, within TTL), plus the org-level coverage ratio.
-TTL is config (default e.g. 90 days). Registry stored in a small `artifact` table or a
-checked-in manifest; v0 may start with a manifest file to avoid premature schema.
+**Coverage computation (v0, manifest-first):** the registry starts as a **checked-in
+manifest** (`artifact_id → path`). `coverage()` reads the manifest, computes each artifact's
+*current* `content_hash` in-process, joins to `vouch_log` rows, and applies freshness **as a
+pure function** — there is **no SQL view in v0** (a view cannot join to a manifest file). A
+`v_cognitive_debt` DB view is deferred until the registry graduates to an `artifact` table.
+TTL is config (default e.g. 90 days).
 
 ## 7. First slice (scope)
 
@@ -136,6 +138,8 @@ checked-in manifest; v0 may start with a manifest file to avoid premature schema
 - LLM calls (`probe.make_questions`, `judge.grade`) are mocked in tests; a thin contract
   test asserts the wrapper boundary.
 - An end-to-end test runs the walking skeleton against a fixture artifact with a stubbed LLM.
+- A test asserts `record_vouch` **raises** (fails loud) when the DB is unavailable — guarding
+  against an implementer reflexively copying `signals.py`'s error-swallowing (§9 deviation).
 
 ## 11. Success criteria
 
@@ -144,6 +148,7 @@ checked-in manifest; v0 may start with a manifest file to avoid premature schema
 - Editing a registered artifact flips its vouch to **stale** (hash mismatch) — verified.
 - A vouch cannot be obtained without passing graded, grounded questions (anti-rubber-stamp).
 - Zero dependency on git history anywhere in the measurement path.
+- `record_vouch` fails loudly (raises) when the DB is down — a vouch is never silently dropped.
 
 ## 12. Open questions (carry into the plan, not blocking)
 
