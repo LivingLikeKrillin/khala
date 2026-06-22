@@ -13,7 +13,9 @@ from pathlib import Path
 from ken.models import Attempt
 
 
-def append_attempt(attempt: Attempt, *, ledger_path, make_parents: bool = True) -> None:
+def append_attempt(
+    attempt: Attempt, *, ledger_path: str | Path, make_parents: bool = True
+) -> None:
     """Append one attempt to the JSONL ledger. FAIL-LOUD: IO errors propagate."""
     path = Path(ledger_path)
     if make_parents:
@@ -22,7 +24,7 @@ def append_attempt(attempt: Attempt, *, ledger_path, make_parents: bool = True) 
         f.write(json.dumps(attempt.to_dict()) + "\n")
 
 
-def load_attempts(ledger_path) -> list[Attempt]:
+def load_attempts(ledger_path: str | Path) -> list[Attempt]:
     """Load all attempts from the JSONL ledger; returns [] if the file is absent."""
     path = Path(ledger_path)
     if not path.exists():

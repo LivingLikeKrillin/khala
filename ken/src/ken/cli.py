@@ -60,7 +60,7 @@ def register(
 
 @app.command()
 def due(
-    person: str = typer.Option(..., "--as", help="The reviewer."),
+    person: str = typer.Option(None, "--as", help="The reviewer (informational)."),
     manifest: str = typer.Option(DEFAULT_MANIFEST, "--manifest", help="Manifest path."),
     questions: str = typer.Option(DEFAULT_QUESTIONS, "--questions", help="Questions store."),
     ledger: str = typer.Option(DEFAULT_LEDGER, "--ledger", help="Attempt ledger."),

@@ -34,7 +34,7 @@ def save_questions(
     content_hash: str,
     questions: list[Question],
     *,
-    store_path,
+    store_path: str | Path,
     make_parents: bool = True,
 ) -> None:
     """Replace the artifact's question set, binding it to `content_hash`.
@@ -56,7 +56,9 @@ def save_questions(
     path.write_text(json.dumps(store, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def load_questions(artifact_id: str, *, store_path) -> tuple[str | None, list[Question]]:
+def load_questions(
+    artifact_id: str, *, store_path: str | Path
+) -> tuple[str | None, list[Question]]:
     """Return (content_hash, [Question]) for the artifact, or (None, []) if absent."""
     path = Path(store_path)
     if not path.exists():

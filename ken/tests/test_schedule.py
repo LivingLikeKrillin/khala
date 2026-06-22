@@ -49,6 +49,18 @@ def test_orphan_question_ignored():
     assert rebuild(atts, current_hashes={"q": "sha256:cur"}) == {}  # 'gone' not in current set
 
 
+def test_due_handles_naive_last_ts_vs_aware_now():
+    # A hand-edited ledger line may carry a NAIVE (offset-less) last_ts. due must
+    # not raise when subtracting it against an aware `now` (TypeError would poison
+    # org-wide coverage) — _parse_ts coerces the naive ts to UTC. Locks that contract.
+    atts = [att("q", True, "2026-06-01T00:00:00")]  # naive: no trailing Z / offset
+    states = rebuild(atts, current_hashes={"q": "sha256:cur"})
+    # idx advanced to 1 (+1d). 12h after the naive ts is NOT yet due.
+    assert "q" not in due(states, ["q"], now="2026-06-01T12:00:00Z")
+    # >1d after is due — same behaviour as the aware-ts path, no raise.
+    assert "q" in due(states, ["q"], now="2026-06-03T00:00:00Z")
+
+
 def test_rebuild_sorts_by_ts():
     # out-of-order ledger lines must replay in ts order
     atts = [
