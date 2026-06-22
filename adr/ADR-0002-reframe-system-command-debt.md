@@ -13,8 +13,8 @@ tags:
 linked_adrs:
 - ADR-0001
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-06-22T18:13:31Z'
-content_hash: sha256:69d1daa72d5fd97c7d6e1db2d49d9b4079aff012f0fea96efe8b9f5d53c57d91
+reviewed_at: '2026-06-22T18:45:59Z'
+content_hash: sha256:893e3565a423c6349a3bc172b874075670bd4a480c08a65ced7b31c3e32015ed
 ---
 
 # ADR-0002: Reframe Khala around staying in command of your own system in the AI era
@@ -37,24 +37,18 @@ and *the human stops judging* (`README.md`). That second mode — output rubber-
 without understanding — already named, in plain language, what the wider discourse now
 calls a **debt**.
 
-Two sources sharpen this:
+This is sharpened by **Martin Fowler's "three debts of the AI era"** (2026-04-02), which
+distinguishes **technical debt** (artifacts pile up faster than they can be maintained),
+**cognitive debt** (the team no longer understands the system it ships), and **intent
+debt** (why a thing was built — its constraints and trade-offs — becomes unrecoverable).
 
-1. **Martin Fowler, "the three debts of the AI era"** (2026-04-02) — distinguishes
-   **technical debt** (artifacts pile up faster than they can be maintained), **cognitive
-   debt** (the team no longer understands the system it ships), and **intent debt** (why a
-   thing was built — its constraints and trade-offs — becomes unrecoverable).
-2. **하용호, «AI시대 — 나의 전문성을 재설계하는 법»** (keynote, 2026-06-11) — argues that
-   when AI becomes the *producer*, output arrives in bulk and the comprehension that used
-   to come for free from building things by hand evaporates ("인지적 항복" — cognitive
-   surrender). Untreated, the debts drive an organization through a J-curve trough —
-   *Learning Curve → Verification Tax → Pipeline Adaptation* — and often into rollbacks and
-   layoffs. The cure he names is to move the human's main work from **production** to
-   **verification**, and to actively recapture intent.
-   *(Cited as a keynote reference; the source deck is not committed to this repo.)*
+As AI becomes the *producer*, output arrives in bulk and the comprehension that used to
+come for free from building by hand evaporates. Left untreated, these debts push a team
+through a value trough before any payoff, and the human's centre of gravity has to move
+from **production** to **verification** — and to actively recapturing intent.
 
 The reframe's load-bearing claims — the module→debt mapping and the empty leg — rest on
-Fowler (attributable) and Khala's own code, **not** on the keynote; the keynote supplies
-framing and vocabulary (인지적 항복, Verification Tax, 취향 = 빼기), not the evidence.
+Fowler's framework and Khala's own code.
 
 Khala's users are, fundamentally, **people trying to understand their own service or
 system better**. The three debts are precisely the forces that erode that understanding.
@@ -75,7 +69,7 @@ Committed one-line identity (the others were considered and set aside):
 
 **Framing.** The mission is positive — *understanding and command*. The three debts are
 its **enemy**. Khala is the **debt-servicing window (세금 납부 창구)**: the place that makes
-paying down the AI era's unavoidable *Verification Tax* cheap. This deliberately does **not
+paying down the AI era's unavoidable *verification tax* cheap. This deliberately does **not
 demote** Nexus's grounded retrieval: grounding, governance, and verification are no longer
 separate tools — they are all expressions of the one mission (understanding). It also
 extends, rather than replaces, the founding "two failure modes" — *the human stops
@@ -97,8 +91,8 @@ Two supporting roles are not debts themselves:
 - **Nexus** is the **Queryable substrate** — every answer carries evidence, provenance, and
   confidence; `search_log` / `v_search_health` already collect demand signals.
 - **The Workflow adversarial sub-agent pattern** — parallel critical review × N, repeated —
-  is the engine for **paying the Verification Tax cheaply**. It is exactly the loop 하용호
-  quotes ("서로 다른 관점에서 비판적으로 검토하는 서브에이전트 N개 … 병렬로 … 2회 반복").
+  is the engine for **paying the verification tax cheaply** — parallel critical review by
+  independent sub-agents, repeated until findings converge.
 
 ## The empty leg — cognitive debt
 
@@ -135,10 +129,9 @@ the debt visible and cheap to service; it does not guarantee that any individual
 
 ## Taste = subtraction (self-discipline)
 
-The value of this ADR is naming what Khala *is* and what it will *not* build yet. Per the
-keynote's "취향 = 빼기" (taste is subtraction) and Khala's own demand-pull rule: this
-document adds **zero** maintenance surface, and the cognitive-debt window is not built until
-a signal pulls it.
+The value of this ADR is naming what Khala *is* and what it will *not* build yet. By Khala's
+own demand-pull rule — *taste is subtraction* — this document adds **zero** maintenance
+surface, and the cognitive-debt window is not built until a signal pulls it.
 
 ## Follow-on backlog — gated, not designed here
 
@@ -190,7 +183,7 @@ Dispositions:
 | I-009 | scope-creep | low | **accepted** | backlog mechanisms marked illustrative; "built on Nexus" commitment removed |
 | I-010 | adr-contradiction | low | **accepted** | reconciled: window measures/surfaces, does not *force* comprehension; preserves ADR-0001's emission-only boundary |
 | I-011 | missing-invariant | low | **accepted** | additive edit stated as a checkable constraint (two-failure-modes copy preserved verbatim; verified by `git diff`) |
-| I-012 | risky-assumption | low | **accepted** | clarified load-bearing claims rest on Fowler + Khala code, not the keynote; keynote supplies vocabulary only |
+| I-012 | risky-assumption | low | **accepted** | load-bearing claims grounded on Fowler's framework + Khala's own code; external talk material removed for copyright caution |
 
 > This is a dry-run record (mirroring ADR-0001). When specledger is registered, run
 > `critique` → `approve` to produce the canonical sidecar and re-stamp the content hash.

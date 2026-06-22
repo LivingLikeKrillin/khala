@@ -6,7 +6,7 @@
 - **Date:** 2026-06-23
 - **Status:** Design (brainstorming output) — pending spec review + user approval
 - **Author:** LivingLikeKrillin (with Claude)
-- **Source of insight:** 하용호, «AI시대 — 나의 전문성을 재설계하는 법» (2026-06-11 keynote); Martin Fowler, "The three debts of the AI era" (technical / cognitive / intent), 2026-04-02
+- **Source of insight:** Martin Fowler, "The three debts of the AI era" (technical / cognitive / intent), 2026-04-02; plus general industry discourse on the AI era. (No external copyrighted talk material is reproduced.)
 - **Deliverable (정본):** `adr/ADR-0002-reframe-system-command-debt.md`, gated through specledger's own approval flow; reflected in root `README.md` identity line + docs site landing.
 
 ---
@@ -28,11 +28,10 @@ The reframe must satisfy khala's own governing discipline:
 
 ## 2. The shift (왜 지금)
 
-AI has become the *producer*. Output arrives in bulk ("와르륵"), and the natural,
-incidental understanding that came from building things by hand evaporates. Fowler names
-three debts that accumulate as a result; 하용호's keynote argues these debts, untreated,
-push organizations through a J-curve trough (Learning Curve → **Verification Tax** →
-Pipeline Adaptation) and, often, into layoffs and rollbacks.
+AI has become the *producer*. Output arrives in bulk, and the natural, incidental
+understanding that came from building things by hand evaporates. Fowler names three debts
+that accumulate as a result; left untreated, they push a team through a value trough before
+any payoff, and often into rollbacks.
 
 khala's users are, in the user's own words, **"people who want to understand their own
 service/system better."** That is the through-line. The debts are precisely the forces
@@ -43,7 +42,7 @@ that erode that understanding.
 **One-line identity (candidates — to be decided *inside* the ADR):**
 
 1. **"AI가 짓고, 당신이 이해한다."** — *AI builds it. You understand it.*
-   (Captures 하용호's core split: production → AI, understanding/verification → human.) — **recommended**
+   (Captures the core split: production → AI, understanding/verification → human.) — **recommended**
 2. **"당신의 시스템을 끝까지 장악하라."** — *Stay in command of your own system.*
 3. **"이해를 잃지 않게."** — *Never lose understanding.*
 
@@ -63,7 +62,7 @@ that erode that understanding.
 
 Each row must cite a real primitive. No aspirational mapping.
 
-| Debt (Fowler / 하용호) | What it is | khala's servicing window | Grounding (real code) |
+| Debt (Fowler) | What it is | khala's servicing window | Grounding (real code) |
 |---|---|---|---|
 | **기술부채 Technical** | Artifacts pile up faster than they can be maintained; next work slows | **mutqa** + **probe** | mutqa: mutation testing surfaces **survivors** = behavior no test covers, recorded in a verdict **ledger**. probe: PR-boundary **scope-drift** detection + **API contract** lint/diff (oasdiff/spectral) |
 | **의도부채 Intent** | Why a thing was built — constraints, trade-offs — becomes unrecoverable | **specledger** | ADR/SPEC capture + **`content_hash`** sign-off (`art.meta["content_hash"]`; surfaces as `approved_hash` on the A2A publish envelope) + critique → disposition → approval; PreToolUse gate (`hooks/pretooluse_gate.py`) blocks edits until approved |
@@ -74,12 +73,12 @@ Supporting roles (not debts themselves):
 - **nexus** = the **Queryable** substrate — grounded answers carry evidence + provenance +
   confidence; `search_log`/`v_search_health` already collect demand signals.
 - **Workflow (adversarial sub-agent pattern)** = the engine for **paying the Verification
-  Tax** cheaply (parallel critical review × N, repeated) — exactly the prompt 하용호 quotes.
+  tax** cheaply (parallel critical review × N, repeated until findings converge).
 
 ## 5. The empty leg: cognitive debt
 
 - **Definition:** the team (or, for khala built by AI, the single human director) can no
-  longer understand or *vouch for* the system being shipped — 하용호's "인지적 항복."
+  longer understand or *vouch for* the system being shipped (cognitive surrender).
 - **Why khala has no window for it:** every other debt has an enforcement point
   (specledger gate, mutqa ledger, probe checks). Comprehension has **none** — it is
   assumed, never measured.
@@ -125,8 +124,8 @@ speculative — the failure mode that stopped A2A.
   intent-debt at its own window.
 - **Reflection:** once approved, update root `README.md` identity line and the docs site
   landing to the chosen tagline + mission.
-- **Out of scope:** the PDF original is **not** committed to the repo; cite as a keynote
-  reference only.
+- **Out of scope:** no external copyrighted talk material or PDF is committed or reproduced;
+  rest on Fowler's framework + Khala's own reasoning.
 
 ## 9. Non-goals (taste = subtraction)
 

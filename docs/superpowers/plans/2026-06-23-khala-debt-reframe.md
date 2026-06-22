@@ -35,7 +35,7 @@ linked_adrs: [ADR-0001]
 
 **Body sections** (from design spec §2–§9):
 1. `## Status` — Proposed (mirror ADR-0001's prose style).
-2. `## Context — 전환 (왜 지금)` — AI as producer; the three debts (Fowler) + 하용호 J-curve / Verification Tax; cite keynote as reference, do NOT embed the PDF.
+2. `## Context — 전환 (왜 지금)` — AI as producer; the three debts (Fowler) + the value-trough dynamic; do NOT embed or reproduce external talk material or the PDF.
 3. `## Decision — Mission` — present 2–3 tagline candidates, pick ONE as the committed identity line (recommend "AI가 짓고, 당신이 이해한다 / AI builds it. You understand it."). State framing: positive mission, debts = enemy, khala = the debt-servicing window; explicitly note nexus retrieval is NOT demoted.
 4. `## The enemy — three debts ↔ modules` — the grounded mapping table (technical→mutqa+probe; intent→specledger `content_hash`+critique→approve gate; cognitive→EMPTY). Every cell checkable against code.
 5. `## The empty leg — cognitive debt` — definition, why no window exists, why it is the mission's center; name direction only ("이해도/장악도 계측"), no design.
@@ -99,5 +99,5 @@ Expected: `sha256:<64-hex>`
 ## Notes / discipline
 - No product code, schema, endpoint, or skill. Only ADR + README + docs landing + adr index.
 - The comprehension meter / quiz is NOT designed here (separate signal-gated session).
-- PDF original is not committed; cited as a keynote reference only.
+- No external copyrighted talk material or the PDF is committed; rest on Fowler + Khala's own reasoning.
 - The PR is the human review gate (user reviews before merge).
