@@ -1,13 +1,17 @@
 """Shared KenStore contract — one parametrized suite both backends must satisfy.
 
-FileStore runs always; PostgresStore is added (gated on KEN_TEST_DATABASE_URL) in
-Chunk 2. Proving both backends pass the SAME contract makes parity enforced, not
-assumed.
+FileStore runs ALWAYS. PostgresStore runs only when `KEN_TEST_DATABASE_URL` is set
+(mirrors nexus's integration gate); otherwise its param is skipped. Proving both
+backends pass the SAME contract makes parity enforced, not assumed.
 """
+
+import os
 
 import pytest
 
 from ken.models import Attempt, Question
+
+_PG_DSN = os.getenv("KEN_TEST_DATABASE_URL")
 
 
 def _file_store(tmp_path):
@@ -20,10 +24,30 @@ def _file_store(tmp_path):
     )
 
 
-STORE_FACTORIES = [("file", _file_store)]  # PG param added in Task 6 (gated)
+def _postgres_store(tmp_path):
+    # Start from a clean store: the contract tests assume an empty backend, and
+    # re-applying init.sql would error on the existing tables. TRUNCATE resets.
+    import psycopg
+
+    from ken.stores.postgres_store import PostgresStore
+
+    with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
+        cur.execute("TRUNCATE artifacts, questions, attempts")
+    return PostgresStore(_PG_DSN)
 
 
-@pytest.fixture(params=[f for _, f in STORE_FACTORIES], ids=[n for n, _ in STORE_FACTORIES])
+# FileStore always; PostgresStore gated on KEN_TEST_DATABASE_URL (skipped when unset).
+STORE_FACTORIES = [
+    pytest.param(_file_store, id="file"),
+    pytest.param(
+        _postgres_store,
+        id="postgres",
+        marks=pytest.mark.skipif(_PG_DSN is None, reason="KEN_TEST_DATABASE_URL unset"),
+    ),
+]
+
+
+@pytest.fixture(params=STORE_FACTORIES)
 def store(request, tmp_path):
     return request.param(tmp_path)
 
