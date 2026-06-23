@@ -10,8 +10,11 @@ LLM failure yields `remediation=None` there. Neither surfaces as an HTTP error.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from ken import service
 
@@ -138,3 +141,15 @@ def get_coverage() -> CoverageOut:
             for w in rep.weakness
         ],
     )
+
+
+# --- prod single-origin static serve -------------------------------------------
+# In production the built SPA (`ken-web/web/dist`) is served at `/` so the API and
+# UI share one origin (no CORS). The `/api/*` routes above are registered first and
+# therefore take precedence; the catch-all mount only handles the rest. `html=True`
+# falls back to index.html for client-side routes. The mount is GUARDED: when
+# `dist/` is absent (dev with the Vite proxy, or automated tests) this is a no-op,
+# so the app never crashes on a missing build.
+_DIST = Path(__file__).resolve().parents[3] / "web" / "dist"
+if _DIST.is_dir():
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="spa")
