@@ -6,9 +6,18 @@ NEXUS_TEST_DB_URL 환경변수가 설정되어 있을 때만 통합 테스트가
 
 from __future__ import annotations
 
+import importlib.util
 import os
 
 import pytest
+
+# The A2A test modules import the optional `a2a-sdk` (pyproject `[a2a]` extra, off by
+# default — only `nexus/a2a/` imports it, flag-gated). When the SDK isn't installed
+# (e.g. CI installs only `[dev,mcp]`), skip COLLECTING those modules instead of
+# erroring at import time. With the extra installed locally, they run normally.
+collect_ignore_glob: list[str] = []
+if importlib.util.find_spec("a2a") is None:
+    collect_ignore_glob.append("test_a2a_*.py")
 
 
 def pytest_collection_modifyitems(config, items):
