@@ -16,11 +16,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ken.attempt import load_attempts
+from ken.attempt import append_attempt, load_attempts
 from ken.coverage import compute_coverage_v1
 from ken.judge import grade as judge_grade
 from ken.llm import LLMClient
-from ken.models import ArtifactRef, CoverageReport, Question, Verdict
+from ken.models import Attempt, ArtifactRef, CoverageReport, Question, Verdict
 from ken.probe import make_questions
 from ken.questions import load_questions, save_questions
 from ken.registry import load_manifest, register as registry_register
@@ -85,6 +85,70 @@ def due_items(*, manifest: str, questions_store: str, ledger: str, now: str) -> 
 
 def grade_set(artifact_text: str, qa_pairs, *, llm: LLMClient) -> Verdict:
     return judge_grade(artifact_text, qa_pairs, llm=llm)
+
+
+@dataclass(frozen=True)
+class AttemptResult:
+    passed: bool
+    score: float
+    remediation: str | None
+
+
+def remediate(artifact_text: str, question_text: str, answer: str, *, llm: LLMClient) -> str | None:
+    """Generate a grounded remediation for a wrong answer; None on any LLM failure."""
+    sys_p = (
+        "You are tutoring a developer who answered a comprehension question wrong. "
+        "Using ONLY the artifact, explain the correct understanding concisely and "
+        "concretely. No preamble."
+    )
+    user = f"ARTIFACT:\n{artifact_text}\n\nQUESTION: {question_text}\nTHEIR ANSWER: {answer}"
+    try:
+        return llm.generate(sys_p, user).strip() or None
+    except Exception:  # noqa: BLE001 — never block recording on remediation failure
+        return None
+
+
+def grade_answer(
+    artifact_id: str,
+    question_id: str,
+    answer: str,
+    *,
+    person: str,
+    manifest: str,
+    questions_store: str,
+    ledger: str,
+    llm: LLMClient,
+    now: str,
+) -> AttemptResult:
+    """Grade ONE answer, record the attempt (fail-loud), and remediate on fail.
+
+    `judge.grade` already fail-closes internally (LLM/parse error -> passed=False),
+    so this function does NOT re-wrap it. The attempt is always recorded before
+    remediation is attempted, so a remediation failure cannot block recording.
+    """
+    ref = find_ref(manifest, artifact_id)
+    if ref is None:
+        raise KeyError(artifact_id)
+    _, qs = load_questions(artifact_id, store_path=questions_store)
+    q = next((x for x in qs if x.id == question_id), None)
+    if q is None:
+        raise KeyError(question_id)
+    text = Path(ref.path).read_text(encoding="utf-8")
+    verdict = judge_grade(text, [(q.text, answer)], llm=llm)  # fail-closed internally
+    append_attempt(
+        Attempt(
+            person=person,
+            artifact_id=artifact_id,
+            question_id=question_id,
+            content_hash=ref.content_hash,
+            passed=verdict.passed,
+            score=verdict.score,
+            ts=now,
+        ),
+        ledger_path=ledger,
+    )  # fail-loud
+    rem = None if verdict.passed else remediate(text, q.text, answer, llm=llm)
+    return AttemptResult(passed=verdict.passed, score=verdict.score, remediation=rem)
 
 
 def coverage_report(*, manifest: str, questions_store: str, ledger: str) -> CoverageReport:
