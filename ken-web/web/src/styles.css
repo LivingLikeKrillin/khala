@@ -15,11 +15,18 @@
   --line: rgba(214, 196, 168, 0.14);
   --line-strong: rgba(214, 196, 168, 0.26);
 
-  /* --- paper / text --- */
+  /* --- paper / text ---
+     Four-step warm-gray ramp, all tuned to clear WCAG AA on the dark canvas
+     (ink-900 #14110d). Even the faintest tier (--paper-ghost, used for small
+     mono labels/hints/placeholders) lands ~6:1 so metadata stays readable.
+       paper        16.0:1   prose, headlines
+       paper-dim    10.7:1   strong secondary, body sub-copy
+       paper-faint   7.1:1   tertiary helper text
+       paper-ghost   6.0:1   smallest mono captions / placeholder */
   --paper: #f4ecdc;
   --paper-dim: #cdc2ad;
-  --paper-faint: #8f8674;
-  --paper-ghost: #5f594c;
+  --paper-faint: #a89e8a;
+  --paper-ghost: #9a9082;
 
   /* --- accents --- */
   --gold: #e0a44b; /* primary CTA, brand warmth */
