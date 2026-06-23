@@ -95,6 +95,42 @@ jobs:
         working-directory: ken
         run: python -m pytest -q
 
+  ken-web-api:
+    name: ken-web-api (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install ken-web-api
+        working-directory: ken-web/api
+        # ken is a path dependency installed editable alongside the API.
+        run: pip install -e ../../ken -e ".[dev]"
+      - name: Run tests
+        working-directory: ken-web/api
+        run: python -m pytest -q
+
+  ken-web:
+    name: ken-web (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ken-web/web/package-lock.json
+      - name: Install ken-web
+        working-directory: ken-web/web
+        run: npm ci
+      - name: Run tests
+        working-directory: ken-web/web
+        run: npm run test -- --run
+      - name: Build
+        working-directory: ken-web/web
+        run: npm run build
+
   docs:
     name: docs (build + linkcheck)
     runs-on: ubuntu-latest
