@@ -1,8 +1,0 @@
-pyproject.toml
-src/ken_web_api/__init__.py
-src/ken_web_api/deps.py
-src/ken_web_api.egg-info/PKG-INFO
-src/ken_web_api.egg-info/SOURCES.txt
-src/ken_web_api.egg-info/dependency_links.txt
-src/ken_web_api.egg-info/requires.txt
-src/ken_web_api.egg-info/top_level.txt
