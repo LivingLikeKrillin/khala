@@ -184,18 +184,44 @@ a {
 .btn--primary {
   background: var(--gold);
   color: #1d1407;
+  border-color: var(--gold);
   box-shadow: 0 12px 30px -14px rgba(224, 164, 75, 0.7);
 }
-.btn--primary:hover {
+.btn--primary:hover:not(:disabled) {
   background: #ecb766;
+  border-color: #ecb766;
   transform: translateY(-1px);
+  box-shadow: 0 16px 36px -14px rgba(224, 164, 75, 0.8);
 }
 .btn--primary:disabled {
   background: var(--ink-600);
   color: var(--paper-ghost);
+  border-color: var(--line);
   box-shadow: none;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Submit answer (Review): the idle/enabled state must read as obviously
+   actionable, distinct from a true disabled state (empty textarea). The
+   solid gold fill + warm glow + readable dark label is the "go" signal;
+   disabled inherits the muted .btn--primary:disabled treatment above. */
+.btn--submit:not(:disabled) {
+  background: var(--gold);
+  color: #1d1407;
+  border-color: var(--gold);
+  font-weight: 600;
+  box-shadow:
+    0 0 0 1px rgba(224, 164, 75, 0.35),
+    0 12px 30px -14px rgba(224, 164, 75, 0.75);
+}
+.btn--submit:not(:disabled):hover {
+  background: #f1bd6e;
+  border-color: #f1bd6e;
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(224, 164, 75, 0.5),
+    0 16px 38px -14px rgba(224, 164, 75, 0.85);
 }
 .btn--ghost {
   background: transparent;
@@ -459,8 +485,16 @@ a {
   transition: width 0.55s var(--ease);
 }
 
-/* question card */
+/* question card — same container language as .remediation / .verdict-pass so
+   every review state reads as one surface system rather than floating prose. */
 .qcard {
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(244, 236, 220, 0.02), transparent),
+    var(--ink-850);
+  border-radius: var(--radius-lg);
+  padding: 28px 30px;
+  box-shadow: var(--shadow-card);
   animation: rise 0.5s var(--ease) both;
 }
 @keyframes rise {
@@ -496,8 +530,9 @@ a {
   width: 100%;
   min-height: 150px;
   resize: vertical;
-  background: var(--ink-850);
-  border: 1px solid var(--line);
+  /* recessed against the qcard surface so the input reads as a distinct well */
+  background: var(--ink-900);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   color: var(--paper);
   font-family: var(--read);
