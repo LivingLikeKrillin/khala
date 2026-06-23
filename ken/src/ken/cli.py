@@ -17,10 +17,10 @@ from pathlib import Path
 import typer
 
 from ken import service
-from ken.attempt import append_attempt
 from ken.llm import AnthropicLLM, LLMClient
 from ken.models import Attempt, Question
-from ken.questions import save_questions
+from ken.store import KenStore
+from ken.stores.file_store import FileStore
 
 app = typer.Typer(help="ken — cognitive-debt repayment loop")
 
@@ -39,8 +39,10 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _find_ref(manifest: str, artifact_id: str):
-    return service.find_ref(manifest, artifact_id)
+def _find_ref(store: KenStore, artifact_id: str):
+    return next(
+        (r for r in store.load_manifest() if r.artifact_id == artifact_id), None
+    )
 
 
 @app.command()
@@ -49,7 +51,8 @@ def register(
     manifest: str = typer.Option(DEFAULT_MANIFEST, "--manifest", help="Manifest path."),
 ) -> None:
     """Register an artifact into the manifest; prints its artifact_id."""
-    ref = service.register_artifact(path, manifest=manifest)
+    store = FileStore(manifest=manifest, questions=DEFAULT_QUESTIONS, ledger=DEFAULT_LEDGER)
+    ref = service.register_artifact(path, store=store)
     typer.echo(f"registered {ref.path} {ref.artifact_id}")
 
 
@@ -67,9 +70,8 @@ def due(
     includes never-attempted ones, via schedule.due's full-id-set contract) is
     printed as `due <artifact_id> <question_id> <text>`.
     """
-    lines = service.due_items(
-        manifest=manifest, questions_store=questions, ledger=ledger, now=_now()
-    )
+    store = FileStore(manifest=manifest, questions=questions, ledger=ledger)
+    lines = service.due_items(store=store, now=_now())
     for line in lines:
         if line.needs_questions:
             typer.echo(f"needs-questions {line.artifact_id}")
@@ -86,7 +88,8 @@ def save_questions_cmd(
     questions: str = typer.Option(DEFAULT_QUESTIONS, "--questions", help="Questions store."),
 ) -> None:
     """Store questions for an artifact (one per stdin line). Rejects a stale --hash."""
-    ref = _find_ref(manifest, artifact_id)
+    store = FileStore(manifest=manifest, questions=questions, ledger=DEFAULT_LEDGER)
+    ref = _find_ref(store, artifact_id)
     if ref is None:
         typer.echo(f"unknown artifact_id: {artifact_id}", err=True)
         raise typer.Exit(code=1)
@@ -100,7 +103,7 @@ def save_questions_cmd(
 
     lines = [ln.strip() for ln in sys.stdin.read().splitlines() if ln.strip()]
     qs = [Question(text=ln) for ln in lines]
-    save_questions(artifact_id, ref.content_hash, qs, store_path=questions)
+    store.save_questions(artifact_id, ref.content_hash, qs)
     typer.echo(f"saved {len(qs)} questions for {artifact_id} @ {ref.content_hash}")
 
 
@@ -119,7 +122,8 @@ def record_attempt_cmd(
     if passed is None:
         typer.echo("specify --passed or --failed", err=True)
         raise typer.Exit(code=1)
-    ref = _find_ref(manifest, artifact_id)
+    store = FileStore(manifest=manifest, questions=questions, ledger=ledger)
+    ref = _find_ref(store, artifact_id)
     if ref is None:
         typer.echo(f"unknown artifact_id: {artifact_id}", err=True)
         raise typer.Exit(code=1)
@@ -133,7 +137,7 @@ def record_attempt_cmd(
         score=score,
         ts=_now(),
     )
-    append_attempt(attempt, ledger_path=ledger)
+    store.append_attempt(attempt)
     typer.echo(f"recorded {'pass' if passed else 'fail'} for {question_id}")
 
 
@@ -145,9 +149,8 @@ def coverage(
     ledger: str = typer.Option(DEFAULT_LEDGER, "--ledger", help="Attempt ledger."),
 ) -> None:
     """Report covered/total, ratio, orphan hotlist, and the weakness map."""
-    report = service.coverage_report(
-        manifest=manifest, questions_store=questions, ledger=ledger
-    )
+    store = FileStore(manifest=manifest, questions=questions, ledger=ledger)
+    report = service.coverage_report(store=store)
 
     pct = f"{report.ratio * 100:.1f}%"
     typer.echo(f"coverage: {report.covered}/{report.total} ({pct})")
@@ -180,7 +183,8 @@ def review(
     This is the only LLM-calling path (keyed AnthropicLLM via `_make_llm`). The
     agent-driven loop uses the primitives above instead (keyless).
     """
-    ref = _find_ref(manifest, artifact_id)
+    store = FileStore(manifest=manifest, questions=questions, ledger=ledger)
+    ref = _find_ref(store, artifact_id)
     if ref is None:
         typer.echo(f"unknown artifact_id: {artifact_id}", err=True)
         raise typer.Exit(code=1)
@@ -188,9 +192,7 @@ def review(
     text = Path(ref.path).read_text(encoding="utf-8")
     llm = _make_llm()
 
-    qs = service.ensure_questions(
-        artifact_id, manifest=manifest, questions_store=questions, llm=llm, n=n
-    )
+    qs = service.ensure_questions(artifact_id, store=store, llm=llm, n=n)
 
     answers: list[str] = []
     for q in qs:
@@ -206,7 +208,7 @@ def review(
     # Headless grades the answer set as a whole; record each question with that verdict.
     ts = _now()
     for q in qs:
-        append_attempt(
+        store.append_attempt(
             Attempt(
                 person=person,
                 artifact_id=artifact_id,
@@ -215,8 +217,7 @@ def review(
                 passed=verdict.passed,
                 score=verdict.score,
                 ts=ts,
-            ),
-            ledger_path=ledger,
+            )
         )
     typer.echo(f"recorded {len(qs)} attempts for {artifact_id}")
 
