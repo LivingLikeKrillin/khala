@@ -17,6 +17,8 @@ def compute_coverage_v1(
     artifacts: list[ArtifactRef],
     questions_by_artifact: dict[str, tuple[str | None, list[Question]]],
     attempts: list[Attempt],
+    *,
+    now: str,
 ) -> CoverageReport:
     """An artifact is covered iff it has >=1 current question and is_vouched over them.
 
@@ -51,7 +53,7 @@ def compute_coverage_v1(
                     )
                 )
 
-        if is_vouched(questions, states):
+        if is_vouched(questions, states, now=now):
             covered_ids.append(art.artifact_id)
         else:
             orphans.append(art.artifact_id)

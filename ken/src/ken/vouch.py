@@ -1,26 +1,22 @@
-"""Timestamp parsing for the schedule reducer.
+"""Derived vouch: an artifact is vouched iff none of its current questions are due.
 
-v0's one-shot vouch (record_vouch / vouch_log / is_fresh) is superseded by the
-attempt ledger + derived `is_vouched` (added in the derived-vouch task). What
-remains here is `_parse_ts`, the tz-safe ISO-8601 parser used by `schedule.due`.
+`is_vouched` consumes the rebuilt per-question states and the spaced-repetition
+schedule (`schedule.due`), so a vouch decays once any question is overdue for
+re-test. Pure — `now` is an explicit argument. Caller invariant: `now` >= every
+recorded attempt timestamp (production callers use wall-clock now).
 """
 
 from __future__ import annotations
 
 from ken.models import Question, ReviewState
+from ken.schedule import due
 
 
-def is_vouched(questions: list[Question], states: dict[str, ReviewState]) -> bool:
-    """A person vouches for an artifact iff EVERY current question has a state
-    whose latest attempt passed.
+def is_vouched(questions: list[Question], states: dict[str, ReviewState], *, now: str) -> bool:
+    """True iff NONE of the artifact's current questions are due.
 
-    A question with no state (never-attempted, or all its attempts were against a
-    stale hash and were dropped by `schedule.rebuild`) blocks the vouch. v1 has no
-    calendar TTL — staleness is hash-change + fail-on-retest — so this takes no
-    `now`. An artifact with no questions is vacuously vouched.
+    `schedule.due` already treats never-attempted, failed (interval_idx resets to
+    0 -> due immediately), and stale-hash (no state) questions as due. An artifact
+    with no questions has no due questions -> vacuously vouched.
     """
-    for q in questions:
-        st = states.get(q.id)
-        if st is None or not st.last_passed:
-            return False
-    return True
+    return not due(states, [q.id for q in questions], now=now)

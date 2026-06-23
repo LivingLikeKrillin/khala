@@ -146,11 +146,11 @@ def grade_answer(
     return AttemptResult(passed=verdict.passed, score=verdict.score, remediation=rem)
 
 
-def coverage_report(*, store: KenStore) -> CoverageReport:
+def coverage_report(*, store: KenStore, now: str) -> CoverageReport:
     refs = store.load_manifest()
     attempts = store.load_attempts()
     qmap = {r.artifact_id: store.load_questions(r.artifact_id) for r in refs}
-    return compute_coverage_v1(refs, qmap, attempts)
+    return compute_coverage_v1(refs, qmap, attempts, now=now)
 
 
 @dataclass(frozen=True)
@@ -161,10 +161,10 @@ class ArtifactStatus:
     weak_count: int
 
 
-def list_artifacts(*, store: KenStore) -> list[ArtifactStatus]:
+def list_artifacts(*, store: KenStore, now: str) -> list[ArtifactStatus]:
     """One status row per manifest ref, derived from `coverage_report` (no new logic)."""
     refs = store.load_manifest()
-    report = coverage_report(store=store)
+    report = coverage_report(store=store, now=now)
     orphans = set(report.orphans)
     weak_by_artifact: dict[str, int] = {}
     for w in report.weakness:

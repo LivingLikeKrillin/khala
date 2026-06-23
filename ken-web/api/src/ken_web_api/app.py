@@ -44,7 +44,7 @@ app.add_middleware(
 @app.get("/api/artifacts", response_model=list[ArtifactOut])
 def list_artifacts() -> list[ArtifactOut]:
     store = deps.make_store()
-    rows = service.list_artifacts(store=store)
+    rows = service.list_artifacts(store=store, now=service.now_iso())
     return [
         ArtifactOut(
             artifact_id=r.artifact_id, path=r.path, status=r.status, weak_count=r.weak_count
@@ -59,7 +59,7 @@ def register_artifact(req: RegisterReq) -> ArtifactOut:
     store = deps.make_store()
     service.register_artifact(req.path, store=store)
     # Re-derive the status row so the response carries vouched/orphan + weak_count.
-    rows = service.list_artifacts(store=store)
+    rows = service.list_artifacts(store=store, now=service.now_iso())
     row = next(r for r in rows if r.path == req.path)
     return ArtifactOut(
         artifact_id=row.artifact_id, path=row.path, status=row.status, weak_count=row.weak_count
@@ -114,7 +114,7 @@ def post_attempt(req: AttemptReq) -> AttemptOut:
 @app.get("/api/coverage", response_model=CoverageOut)
 def get_coverage() -> CoverageOut:
     store = deps.make_store()
-    rep = service.coverage_report(store=store)
+    rep = service.coverage_report(store=store, now=service.now_iso())
     return CoverageOut(
         total=rep.total,
         covered=rep.covered,
