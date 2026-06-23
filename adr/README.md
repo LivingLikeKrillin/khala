@@ -14,6 +14,7 @@ human disposition → `approve`).
 | ID | Title | Status | Date |
 |----|-------|--------|------|
 | [ADR-0001](ADR-0001-adopt-a2a-inter-agent-interop.md) | Adopt A2A as Khala's agent-to-agent interoperability layer | Proposed | 2026-06-18 |
+| [ADR-0002](ADR-0002-reframe-system-command-debt.md) | Reframe Khala around staying in command of your own system in the AI era | Accepted | 2026-06-23 |
 
 ## Statuses
 
