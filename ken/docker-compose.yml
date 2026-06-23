@@ -1,0 +1,36 @@
+# Local single-Postgres for ken-web's Postgres backend (S2).
+#
+# Brings up one postgres:16 with db/user/pw `ken` on host port 5434 (avoids the
+# nexus stack's 5432). The schema is applied automatically on first boot by
+# mounting db/init.sql into /docker-entrypoint-initdb.d; alternatively apply it
+# by hand against any Postgres:
+#
+#     psql "$KEN_DATABASE_URL" -f db/init.sql
+#
+# Usage:
+#     docker compose up -d
+#     export KEN_DATABASE_URL=postgresql://ken:ken@localhost:5434/ken
+#     # ... run ken-web / tests ...
+#     docker compose down
+
+services:
+  ken-db:
+    image: postgres:16
+    container_name: ken-db
+    environment:
+      POSTGRES_DB: ken
+      POSTGRES_USER: ken
+      POSTGRES_PASSWORD: ken
+    ports:
+      - "5434:5432"
+    volumes:
+      - ken-db-data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ken -d ken"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ken-db-data:
