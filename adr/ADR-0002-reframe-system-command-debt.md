@@ -13,8 +13,8 @@ tags:
 linked_adrs:
 - ADR-0001
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-06-22T18:45:59Z'
-content_hash: sha256:893e3565a423c6349a3bc172b874075670bd4a480c08a65ced7b31c3e32015ed
+reviewed_at: '2026-06-23T00:13:32Z'
+content_hash: sha256:4dc0c1c83ad752665076458932f3ac864972670e1bce46f1b1015cbf91ef5b2f
 ---
 
 # ADR-0002: Reframe Khala around staying in command of your own system in the AI era
@@ -37,10 +37,11 @@ and *the human stops judging* (`README.md`). That second mode — output rubber-
 without understanding — already named, in plain language, what the wider discourse now
 calls a **debt**.
 
-This is sharpened by **Martin Fowler's "three debts of the AI era"** (2026-04-02), which
-distinguishes **technical debt** (artifacts pile up faster than they can be maintained),
-**cognitive debt** (the team no longer understands the system it ships), and **intent
-debt** (why a thing was built — its constraints and trade-offs — becomes unrecoverable).
+This is anchored by **Margaret-Anne Storey, "From Technical Debt to Cognitive and Intent
+Debt"** (ACM Queue 2026 / arXiv:2603.22106), a peer-reviewed formalization of the **Triple
+Debt Model**: **technical debt** (in code), **cognitive debt** (in people — the erosion of a
+team's shared understanding), and **intent debt** (in externalized knowledge — the lost
+rationale, constraints, and trade-offs that guide how humans and agents evolve the system).
 
 As AI becomes the *producer*, output arrives in bulk and the comprehension that used to
 come for free from building by hand evaporates. Left untreated, these debts push a team
@@ -48,7 +49,7 @@ through a value trough before any payoff, and the human's centre of gravity has 
 from **production** to **verification** — and to actively recapturing intent.
 
 The reframe's load-bearing claims — the module→debt mapping and the empty leg — rest on
-Fowler's framework and Khala's own code.
+Storey's peer-reviewed framework and Khala's own code.
 
 Khala's users are, fundamentally, **people trying to understand their own service or
 system better**. The three debts are precisely the forces that erode that understanding.
@@ -183,7 +184,7 @@ Dispositions:
 | I-009 | scope-creep | low | **accepted** | backlog mechanisms marked illustrative; "built on Nexus" commitment removed |
 | I-010 | adr-contradiction | low | **accepted** | reconciled: window measures/surfaces, does not *force* comprehension; preserves ADR-0001's emission-only boundary |
 | I-011 | missing-invariant | low | **accepted** | additive edit stated as a checkable constraint (two-failure-modes copy preserved verbatim; verified by `git diff`) |
-| I-012 | risky-assumption | low | **accepted** | load-bearing claims grounded on Fowler's framework + Khala's own code; external talk material removed for copyright caution |
+| I-012 | risky-assumption | low | **accepted** | load-bearing claims grounded on Storey's peer-reviewed framework (arXiv:2603.22106) + Khala's own code; external talk material removed for copyright caution |
 
 > This is a dry-run record (mirroring ADR-0001). When specledger is registered, run
 > `critique` → `approve` to produce the canonical sidecar and re-stamp the content hash.

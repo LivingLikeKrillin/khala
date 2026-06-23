@@ -6,7 +6,7 @@
 - **Date:** 2026-06-23
 - **Status:** Design (brainstorming output) — pending spec review + user approval
 - **Author:** LivingLikeKrillin (with Claude)
-- **Source of insight:** Martin Fowler, "The three debts of the AI era" (technical / cognitive / intent), 2026-04-02; plus general industry discourse on the AI era. (No external copyrighted talk material is reproduced.)
+- **Source of insight:** Margaret-Anne Storey, "From Technical Debt to Cognitive and Intent Debt" (ACM Queue 2026 / arXiv:2603.22106) — peer-reviewed Triple Debt Model; plus general industry discourse on the AI era. (No external copyrighted talk material is reproduced.)
 - **Deliverable (정본):** `adr/ADR-0002-reframe-system-command-debt.md`, gated through specledger's own approval flow; reflected in root `README.md` identity line + docs site landing.
 
 ---
@@ -29,7 +29,7 @@ The reframe must satisfy khala's own governing discipline:
 ## 2. The shift (왜 지금)
 
 AI has become the *producer*. Output arrives in bulk, and the natural, incidental
-understanding that came from building things by hand evaporates. Fowler names three debts
+understanding that came from building things by hand evaporates. Storey's peer-reviewed Triple Debt Model names three debts
 that accumulate as a result; left untreated, they push a team through a value trough before
 any payoff, and often into rollbacks.
 
@@ -62,7 +62,7 @@ that erode that understanding.
 
 Each row must cite a real primitive. No aspirational mapping.
 
-| Debt (Fowler) | What it is | khala's servicing window | Grounding (real code) |
+| Debt (Storey) | What it is | khala's servicing window | Grounding (real code) |
 |---|---|---|---|
 | **기술부채 Technical** | Artifacts pile up faster than they can be maintained; next work slows | **mutqa** + **probe** | mutqa: mutation testing surfaces **survivors** = behavior no test covers, recorded in a verdict **ledger**. probe: PR-boundary **scope-drift** detection + **API contract** lint/diff (oasdiff/spectral) |
 | **의도부채 Intent** | Why a thing was built — constraints, trade-offs — becomes unrecoverable | **specledger** | ADR/SPEC capture + **`content_hash`** sign-off (`art.meta["content_hash"]`; surfaces as `approved_hash` on the A2A publish envelope) + critique → disposition → approval; PreToolUse gate (`hooks/pretooluse_gate.py`) blocks edits until approved |
@@ -125,7 +125,7 @@ speculative — the failure mode that stopped A2A.
 - **Reflection:** once approved, update root `README.md` identity line and the docs site
   landing to the chosen tagline + mission.
 - **Out of scope:** no external copyrighted talk material or PDF is committed or reproduced;
-  rest on Fowler's framework + Khala's own reasoning.
+  rest on Storey's peer-reviewed framework + Khala's own reasoning.
 
 ## 9. Non-goals (taste = subtraction)
 
