@@ -79,7 +79,7 @@ export default function QuestionCard({
           <>
             <button
               type="button"
-              className="btn btn--primary"
+              className="btn btn--primary btn--submit"
               disabled={!canSubmit}
               onClick={submit}
             >

@@ -112,7 +112,10 @@ export default function Home() {
       {coverage && <CoverageBadge coverage={coverage} />}
 
       <div className="section-head">
-        <h2>Needs your attention</h2>
+        <span className="section-head__lead">
+          <h2>Needs your attention</h2>
+          <span className="sub">orphans first, then artifacts with weak answers</span>
+        </span>
         <span className="count">
           {attention.length} {attention.length === 1 ? "artifact" : "artifacts"}
         </span>

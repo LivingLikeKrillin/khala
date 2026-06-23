@@ -15,11 +15,18 @@
   --line: rgba(214, 196, 168, 0.14);
   --line-strong: rgba(214, 196, 168, 0.26);
 
-  /* --- paper / text --- */
+  /* --- paper / text ---
+     Four-step warm-gray ramp, all tuned to clear WCAG AA on the dark canvas
+     (ink-900 #14110d). Even the faintest tier (--paper-ghost, used for small
+     mono labels/hints/placeholders) lands ~6:1 so metadata stays readable.
+       paper        16.0:1   prose, headlines
+       paper-dim    10.7:1   strong secondary, body sub-copy
+       paper-faint   7.1:1   tertiary helper text
+       paper-ghost   6.0:1   smallest mono captions / placeholder */
   --paper: #f4ecdc;
   --paper-dim: #cdc2ad;
-  --paper-faint: #8f8674;
-  --paper-ghost: #5f594c;
+  --paper-faint: #a89e8a;
+  --paper-ghost: #9a9082;
 
   /* --- accents --- */
   --gold: #e0a44b; /* primary CTA, brand warmth */
@@ -91,6 +98,15 @@ button {
   cursor: pointer;
 }
 
+/* Systematic keyboard focus: every interactive element gets a clear, consistent
+   gold focus ring. Components may override with a tighter offset, but nothing
+   should be focusable without a visible indicator. */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
 ::selection {
   background: rgba(224, 164, 75, 0.28);
   color: var(--paper);
@@ -133,6 +149,11 @@ a {
 .wordmark b {
   color: var(--gold);
   font-weight: 600;
+}
+.wordmark:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 5px;
+  border-radius: 6px;
 }
 .wordmark .tag {
   font-family: var(--mono);
@@ -177,18 +198,44 @@ a {
 .btn--primary {
   background: var(--gold);
   color: #1d1407;
+  border-color: var(--gold);
   box-shadow: 0 12px 30px -14px rgba(224, 164, 75, 0.7);
 }
-.btn--primary:hover {
+.btn--primary:hover:not(:disabled) {
   background: #ecb766;
+  border-color: #ecb766;
   transform: translateY(-1px);
+  box-shadow: 0 16px 36px -14px rgba(224, 164, 75, 0.8);
 }
 .btn--primary:disabled {
   background: var(--ink-600);
   color: var(--paper-ghost);
+  border-color: var(--line);
   box-shadow: none;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Submit answer (Review): the idle/enabled state must read as obviously
+   actionable, distinct from a true disabled state (empty textarea). The
+   solid gold fill + warm glow + readable dark label is the "go" signal;
+   disabled inherits the muted .btn--primary:disabled treatment above. */
+.btn--submit:not(:disabled) {
+  background: var(--gold);
+  color: #1d1407;
+  border-color: var(--gold);
+  font-weight: 600;
+  box-shadow:
+    0 0 0 1px rgba(224, 164, 75, 0.35),
+    0 12px 30px -14px rgba(224, 164, 75, 0.75);
+}
+.btn--submit:not(:disabled):hover {
+  background: #f1bd6e;
+  border-color: #f1bd6e;
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(224, 164, 75, 0.5),
+    0 16px 38px -14px rgba(224, 164, 75, 0.85);
 }
 .btn--ghost {
   background: transparent;
@@ -202,7 +249,7 @@ a {
 
 /* ------------------------------------------------------------ home page -- */
 .cover {
-  margin-bottom: 64px;
+  margin-bottom: 44px;
 }
 .cover__eyebrow {
   margin-bottom: 18px;
@@ -293,7 +340,10 @@ a {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin: 56px 0 18px;
+  gap: 16px;
+  margin: 40px 0 16px;
+  padding-top: 36px;
+  border-top: 1px solid var(--line);
 }
 .section-head h2 {
   font-family: var(--serif);
@@ -301,6 +351,17 @@ a {
   font-size: 22px;
   letter-spacing: -0.01em;
   margin: 0;
+}
+.section-head__lead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.section-head__lead .sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--paper-faint);
 }
 .section-head .count {
   font-family: var(--mono);
@@ -311,7 +372,7 @@ a {
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
 }
 .row {
   display: flex;
@@ -332,6 +393,13 @@ a {
 .row:hover {
   border-color: var(--line-strong);
   transform: translateX(3px);
+  background: var(--ink-800);
+}
+.row:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+  border-color: var(--line-strong);
   background: var(--ink-800);
 }
 .row__dot {
@@ -452,8 +520,16 @@ a {
   transition: width 0.55s var(--ease);
 }
 
-/* question card */
+/* question card — same container language as .remediation / .verdict-pass so
+   every review state reads as one surface system rather than floating prose. */
 .qcard {
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(244, 236, 220, 0.02), transparent),
+    var(--ink-850);
+  border-radius: var(--radius-lg);
+  padding: 28px 30px;
+  box-shadow: var(--shadow-card);
   animation: rise 0.5s var(--ease) both;
 }
 @keyframes rise {
@@ -489,8 +565,9 @@ a {
   width: 100%;
   min-height: 150px;
   resize: vertical;
-  background: var(--ink-850);
-  border: 1px solid var(--line);
+  /* recessed against the qcard surface so the input reads as a distinct well */
+  background: var(--ink-900);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   color: var(--paper);
   font-family: var(--read);
