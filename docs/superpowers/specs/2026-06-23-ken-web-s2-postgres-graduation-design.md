@@ -34,7 +34,7 @@ class KenStore(Protocol):
 
 Two implementations:
 - **`FileStore`** (`ken/src/ken/stores/file_store.py`) — thin wrapper over the existing `registry`/`questions`/`attempt` module functions (file paths injected at construction). **Behavior identical to today.**
-- **`PostgresStore`** (`ken/src/ken/stores/postgres_store.py`) — psycopg3 (sync), parameterized SQL only, the 3 tables below. `save_questions` = delete-then-insert for the artifact (replace). `append_attempt` = INSERT (append-only); both raise on failure (**fail-loud**, no swallow).
+- **`PostgresStore`** (`ken/src/ken/stores/postgres_store.py`) — psycopg3 (sync), parameterized SQL only, the 3 tables below. `save_questions` = delete-then-insert for the artifact (replace), **reusing `questions.make_question_id`** for id assignment when `q.id` is falsy, and storing `idx` so `load_questions` returns `ORDER BY idx` — making ids and order **contract-equivalent to FileStore**. `register` is **idempotent on `path`** (`INSERT ... ON CONFLICT (path) DO NOTHING` then `SELECT`). `append_attempt` = INSERT (append-only). All writes **raise on failure** (**fail-loud**, no swallow).
 
 **`service.*` is refactored to take a `store: KenStore`** instead of path-string args. `current_hash` is still called directly (filesystem). CLI builds a `FileStore` from its `--manifest/--questions/--ledger` options (unchanged behavior/output). The API builds the store from env (below).
 
@@ -76,7 +76,7 @@ CREATE INDEX idx_attempts_question ON attempts (question_id);
 
 `deps.make_store()` (new): if `KEN_DATABASE_URL` is set → `PostgresStore(dsn)`; else `FileStore(paths from KEN_DATA_DIR/...)`. Handlers obtain the store via `deps.make_store()` at request time (same seam style as `deps.make_llm`). The API’s 5 endpoints call `service.*(store=..., llm=...)`.
 
-- A small `ken db init` CLI subcommand (or a documented `psql -f ken/db/init.sql`) creates the schema. Provide a minimal `ken/docker-compose.yml` (one Postgres) for local self-host; otherwise any Postgres via `KEN_DATABASE_URL`.
+- Schema applied via a documented `psql "$KEN_DATABASE_URL" -f ken/db/init.sql` (no new CLI subcommand — YAGNI). Provide a minimal `ken/docker-compose.yml` (one Postgres) for local self-host; otherwise any Postgres via `KEN_DATABASE_URL`.
 
 ## 6. Migration
 
@@ -86,12 +86,12 @@ CREATE INDEX idx_attempts_question ON attempts (question_id);
 
 - `save_questions`/`append_attempt` **fail-loud** in BOTH backends (raise on IO/DB error; never silently drop). `append_attempt` is append-only.
 - Derivations stay pure with explicit `now`; **no git** dependency.
-- Postgres: parameterized SQL only (no string interpolation); connection per request (or a simple psycopg pool) — keep it simple at single-team scale.
+- Postgres: parameterized SQL only (no string interpolation); **connection per request** — `make_store()` constructs it, no shared pool (simplest; pool tuning is a non-goal).
 - API key never reaches client (unchanged); `person` informational (unchanged).
 
 ## 8. Testing
 
-- **Shared contract test** (`ken/tests/test_store_contract.py`): one parametrized suite asserting the `KenStore` contract (register/load_manifest round-trip, save_questions replace + hash, append_attempt/load_attempts order, fail-loud) — run against **FileStore always**, and against **PostgresStore only when `KEN_TEST_DATABASE_URL` is set** (mirrors nexus's `NEXUS_TEST_DB_URL` integration gate; skipped otherwise). This proves both backends satisfy the same contract.
+- **Shared contract test** (`ken/tests/test_store_contract.py`): one parametrized suite asserting the `KenStore` contract — register/load_manifest round-trip **AND re-register idempotent on path**; save_questions replace + hash + **stable question ids (`make_question_id`) and load order (`idx`)**; append_attempt/load_attempts order; fail-loud — run against **FileStore always**, and against **PostgresStore only when `KEN_TEST_DATABASE_URL` is set** (mirrors nexus's `NEXUS_TEST_DB_URL` integration gate; skipped otherwise). This proves both backends satisfy the same contract.
 - **No regression:** the existing ken suite, `test_service.py` (updated to inject a `FileStore`), and the `ken-web/api` tests (file backend, FakeLLM) stay green. CLI output unchanged.
 - **CI:** add a Postgres service container to a `ken (pytest, integration)` job (or extend the api job) that sets `KEN_TEST_DATABASE_URL` so the PostgresStore contract runs in CI. The default `ken (pytest)` job stays DB-free (file backend).
 
@@ -113,6 +113,6 @@ File→Postgres data migration tool; connection-pool tuning / advanced concurren
 1. `ken/src/ken/store.py` — `KenStore` Protocol.
 2. `ken/src/ken/stores/file_store.py` — wraps existing registry/questions/attempt functions; `ken/tests/test_store_contract.py` (FileStore param).
 3. Refactor `ken/src/ken/service.py` to take `store: KenStore` (keep `current_hash` direct); refactor `cli.py` to build a `FileStore`; update `test_service.py`. **All existing tests green.**
-4. `ken/db/init.sql` + `ken/src/ken/stores/postgres_store.py` (psycopg3); extend the contract test with the PG-gated param; `ken db init` subcommand + `ken/docker-compose.yml`.
+4. `ken/db/init.sql` + `ken/src/ken/stores/postgres_store.py` (psycopg3, per-request connection, `make_question_id`/`idx` parity, `register` idempotent on path); extend the contract test with the PG-gated param; `ken/docker-compose.yml` + documented `psql -f` schema apply (no new CLI).
 5. `ken-web/api` `deps.make_store()` + handlers use it; api tests stay file-based green.
 6. CI: Postgres-service integration job exporting `KEN_TEST_DATABASE_URL`; README/run-guide update (set `KEN_DATABASE_URL` for Postgres).
