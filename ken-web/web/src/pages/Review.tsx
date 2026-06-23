@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { getArtifacts, getDue, postAttempt } from "../api/client";
@@ -38,6 +38,15 @@ export default function Review() {
   // session tally
   const [vouched, setVouched] = useState(0);
   const [requeued, setRequeued] = useState(0);
+
+  // pass-affirmation auto-advance timer; cleared on unmount so it can't fire after.
+  const passTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (passTimer.current !== null) window.clearTimeout(passTimer.current);
+    },
+    [],
+  );
 
   // --- load due questions on mount / artifact change ---
   useEffect(() => {
@@ -105,8 +114,13 @@ export default function Review() {
       if (res.passed) {
         setVouched((v) => v + 1);
         setPhase("passed");
-        // brief affirmation, then auto-advance
-        window.setTimeout(() => advance(), 850);
+        // brief affirmation, then auto-advance. Track the id so a pending timer is
+        // cleared before re-setting and on unmount (can't fire after teardown).
+        if (passTimer.current !== null) window.clearTimeout(passTimer.current);
+        passTimer.current = window.setTimeout(() => {
+          passTimer.current = null;
+          advance();
+        }, 850);
       } else {
         setRequeued((r) => r + 1);
         setRemediation(res.remediation);
