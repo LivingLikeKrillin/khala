@@ -67,7 +67,7 @@ def test_coverage_report_zero_when_unanswered(tmp_path):
         llm=FakeLLM(responses=["Q1?"]),
         n=1,
     )
-    rep = coverage_report(store=store)
+    rep = coverage_report(store=store, now="2026-06-23T02:00:00Z")
     assert rep.total == 1 and rep.covered == 0 and rep.orphans == [ref.artifact_id]
 
 
@@ -144,7 +144,7 @@ def test_list_artifacts_orphan_when_unanswered(tmp_path):
     ensure_questions(
         ref.artifact_id, store=store, llm=FakeLLM(responses=["Q1?"]), n=1,
     )
-    rows = list_artifacts(store=store)
+    rows = list_artifacts(store=store, now="2026-06-23T02:00:00Z")
     assert len(rows) == 1
     row = rows[0]
     assert row.artifact_id == ref.artifact_id
@@ -167,5 +167,5 @@ def test_list_artifacts_vouched_with_weak_count(tmp_path):
         llm=FakeLLM(responses=['{"passed": true, "score": 1.0, "rationale": "ok"}']),
         now="2026-06-23T01:00:00Z",
     )
-    rows = list_artifacts(store=store)
+    rows = list_artifacts(store=store, now="2026-06-23T02:00:00Z")
     assert rows[0].status == "vouched" and rows[0].weak_count == 1

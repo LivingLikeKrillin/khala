@@ -11,10 +11,9 @@ deterministic: last_attempt.ts + LADDER[interval_idx].
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from ken.models import Attempt, ReviewState
-from ken.vouch import _parse_ts
 
 LADDER = [
     timedelta(0),
@@ -23,6 +22,18 @@ LADDER = [
     timedelta(days=7),
     timedelta(days=30),
 ]
+
+
+def _parse_ts(ts: str) -> datetime:
+    """Parse an ISO-8601 timestamp into a tz-aware datetime.
+
+    `datetime.fromisoformat` on 3.11+ accepts a trailing 'Z'. A naive timestamp
+    (e.g. a hand-edited ledger line lacking an offset) is coerced to UTC so it is
+    never subtracted against an aware datetime (which would raise TypeError and
+    poison org-wide coverage).
+    """
+    dt = datetime.fromisoformat(ts)
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def next_state(state: ReviewState | None, attempt: Attempt) -> ReviewState:

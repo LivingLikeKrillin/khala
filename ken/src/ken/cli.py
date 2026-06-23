@@ -186,7 +186,7 @@ def coverage(
 ) -> None:
     """Report covered/total, ratio, orphan hotlist, and the weakness map."""
     store = _store(manifest, questions, ledger, allow_bootstrap=False)
-    report = service.coverage_report(store=store)
+    report = service.coverage_report(store=store, now=_now())
 
     pct = f"{report.ratio * 100:.1f}%"
     typer.echo(f"coverage: {report.covered}/{report.total} ({pct})")
