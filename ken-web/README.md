@@ -3,8 +3,9 @@
 A browser-driven vertical slice of ken's **repayment loop**: register an artifact →
 the server generates grounded comprehension questions → you answer them in a React SPA
 → the server grades each answer and returns remediation on a miss → coverage updates.
-It spans React → FastAPI → ken-core → LLM, reusing ken's file storage (no Postgres,
-no auth). The point is to make ken's "vouch for what you own" loop tangible in a UI.
+It spans React → FastAPI → ken-core → LLM. Storage is dual-backend: ken's file
+storage by default, or Postgres when `KEN_DATABASE_URL` is set (no auth). The point
+is to make ken's "vouch for what you own" loop tangible in a UI.
 
 Two parts:
 
@@ -65,11 +66,34 @@ export ANTHROPIC_API_KEY=sk-ant-...
 The automated tests (both `api/` pytest and `web/` vitest) use ken's `FakeLLM` seam
 and require **no** API key.
 
-## Storage paths (optional)
+## Storage backend
 
-ken's file stores default under the current directory. Override per process via env:
-`KEN_DATA_DIR` (base dir), or the individual `KEN_MANIFEST`, `KEN_QUESTIONS`,
-`KEN_LEDGER`. `KEN_N_QUESTIONS` sets how many questions are generated per artifact.
+The backend is selected at request time by `KEN_DATABASE_URL`:
+
+- **unset (default) — file storage.** ken's file stores default under the current
+  directory. Override per process via env: `KEN_DATA_DIR` (base dir), or the
+  individual `KEN_MANIFEST`, `KEN_QUESTIONS`, `KEN_LEDGER`. The CLI/local workflow
+  is unchanged.
+- **set — Postgres.** Point the API at any Postgres:
+
+  ```bash
+  export KEN_DATABASE_URL=postgresql://ken:ken@localhost:5434/ken
+  ```
+
+  Apply the schema once before first use (no migration tool; YAGNI):
+
+  ```bash
+  psql "$KEN_DATABASE_URL" -f ken/db/init.sql
+  ```
+
+  For a local Postgres, `ken/docker-compose.yml` brings up a single `postgres:16`
+  on port 5434 with the schema auto-applied:
+
+  ```bash
+  cd ken && docker compose up -d
+  ```
+
+`KEN_N_QUESTIONS` sets how many questions are generated per artifact (both backends).
 
 ## Test
 
@@ -77,3 +101,7 @@ ken's file stores default under the current directory. Override per process via 
 cd ken-web/api && python -m pytest -q          # 5 tests, FakeLLM, no key
 cd ken-web/web && npm run test -- --run        # vitest, FakeLLM via mocked client
 ```
+
+ken's storage backends share one contract test (`ken/tests/test_store_contract.py`).
+FileStore runs always; the PostgresStore params run only when `KEN_TEST_DATABASE_URL`
+is set (gated, skipped otherwise) — CI runs both via a `postgres:16` service job.

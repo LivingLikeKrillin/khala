@@ -95,6 +95,42 @@ jobs:
         working-directory: ken
         run: python -m pytest -q
 
+  ken-postgres:
+    name: ken (pytest, postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ken
+          POSTGRES_USER: ken
+          POSTGRES_PASSWORD: ken
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ken -d ken"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      KEN_TEST_DATABASE_URL: postgresql://ken:ken@localhost:5432/ken
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install ken (with postgres extra)
+        working-directory: ken
+        run: pip install -e ".[dev,postgres]"
+      - name: Apply schema
+        working-directory: ken
+        run: psql "$KEN_TEST_DATABASE_URL" -f db/init.sql
+      # Runs the shared store contract; with KEN_TEST_DATABASE_URL set the
+      # PostgresStore params run too (the default ken job stays DB-free / file-only).
+      - name: Run store contract (file + postgres)
+        working-directory: ken
+        run: python -m pytest -q tests/test_store_contract.py
+
   ken-web-api:
     name: ken-web-api (pytest)
     runs-on: ubuntu-latest
