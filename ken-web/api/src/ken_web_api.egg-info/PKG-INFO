@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: ken-web-api
+Version: 0.1.0
+Summary: FastAPI service over ken-core — the repayment web walking skeleton backend
+Requires-Python: >=3.13
+Requires-Dist: ken
+Requires-Dist: fastapi>=0.115
+Requires-Dist: uvicorn>=0.30
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: httpx>=0.27; extra == "dev"
+Requires-Dist: ruff>=0.5; extra == "dev"
