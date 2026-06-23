@@ -103,13 +103,14 @@ def test_storage_write_failure_returns_500(tmp_path, monkeypatch):
     aid = c.post("/api/artifacts", json={"path": str(art)}).json()["artifact_id"]
     qid = c.get(f"/api/artifacts/{aid}/due").json()["questions"][0]["question_id"]
 
-    # Storage write fails: append_attempt raises OSError. Fail-loud -> 500.
-    from ken_web_api import app as app_module
+    # Storage write fails: the store's append_attempt raises OSError. The service
+    # lets it propagate (fail-loud) and the handler maps it to HTTP 500.
+    from ken.stores.file_store import FileStore
 
     def _boom(*args, **kwargs):
         raise OSError("disk full")
 
-    monkeypatch.setattr(app_module.service, "append_attempt", _boom)
+    monkeypatch.setattr(FileStore, "append_attempt", _boom)
     # Don't let TestClient re-raise the server exception; assert the HTTP 500.
     c2 = TestClient(app, raise_server_exceptions=False)
     resp = c2.post(
