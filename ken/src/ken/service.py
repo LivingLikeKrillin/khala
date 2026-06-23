@@ -23,7 +23,7 @@ from pathlib import Path
 from ken.coverage import compute_coverage_v1
 from ken.judge import grade as judge_grade
 from ken.llm import LLMClient
-from ken.models import ArtifactRef, Attempt, CoverageReport, Question, Verdict
+from ken.models import ArtifactRef, Attempt, CoverageReport, Question
 from ken.probe import make_questions
 from ken.schedule import due as schedule_due
 from ken.schedule import rebuild
@@ -83,10 +83,6 @@ def due_items(*, store: KenStore, now: str) -> list[DueLine]:
         tbid = {q.id: q.text for q in qs}
         out.append(DueLine(ref.artifact_id, False, [(qid, tbid[qid]) for qid in due_ids]))
     return out
-
-
-def grade_set(artifact_text: str, qa_pairs, *, llm: LLMClient) -> Verdict:
-    return judge_grade(artifact_text, qa_pairs, llm=llm)
 
 
 @dataclass(frozen=True)

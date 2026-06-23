@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
 import typer
 
@@ -189,37 +188,28 @@ def review(
         typer.echo(f"unknown artifact_id: {artifact_id}", err=True)
         raise typer.Exit(code=1)
 
-    text = Path(ref.path).read_text(encoding="utf-8")
     llm = _make_llm()
-
     qs = service.ensure_questions(artifact_id, store=store, llm=llm, n=n)
+    ts = _now()  # one snapshot for the session; all attempts share ts
 
-    answers: list[str] = []
+    passed_n = 0
     for q in qs:
         typer.echo(q.text)
-        answers.append(input())
-
-    qa_pairs = list(zip((q.text for q in qs), answers))
-    verdict = service.grade_set(text, qa_pairs, llm=llm)
-    typer.echo(
-        f"verdict: passed={verdict.passed} score={verdict.score} — {verdict.rationale}"
-    )
-
-    # Headless grades the answer set as a whole; record each question with that verdict.
-    ts = _now()
-    for q in qs:
-        store.append_attempt(
-            Attempt(
-                person=person,
-                artifact_id=artifact_id,
-                question_id=q.id,
-                content_hash=ref.content_hash,
-                passed=verdict.passed,
-                score=verdict.score,
-                ts=ts,
-            )
+        answer = input()
+        res = service.grade_answer(
+            artifact_id, q.id, answer,
+            person=person, store=store, llm=llm, now=ts,
         )
-    typer.echo(f"recorded {len(qs)} attempts for {artifact_id}")
+        typer.echo(f"  {'pass' if res.passed else 'fail'} (score={res.score})")
+        if not res.passed and res.remediation:
+            typer.echo(f"  remediation: {res.remediation}")
+        passed_n += int(res.passed)
+
+    failed_n = len(qs) - passed_n
+    typer.echo(
+        f"recorded {len(qs)} attempts for {artifact_id} "
+        f"({passed_n} passed, {failed_n} failed)"
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover
