@@ -3,7 +3,7 @@
 - **Date:** 2026-06-24
 - **Status:** Design (brainstorming output) — pending spec review + user approval
 - **Builds on:** ken v0/v1 + ken-web v0.1 + S2 Postgres + Slice A (all merged, #29–#38). Second of three "engine v2 friction" slices (A done; C calendar-TTL deferred).
-- **Decisions locked (from brainstorming):** **Root model = manifest-as-marker** (walk up for `ken.manifest.yaml`; root = its directory). **Artifact paths stored root-relative POSIX, resolved to absolute on load** (service layer unchanged). **PostgresStore untouched** (server controls its own cwd; no root concept). Migrate the existing committed manifest. Fix the stale README. Out of scope: calendar TTL (C), Postgres root handling, `.gitignore` for local state.
+- **Decisions locked (from brainstorming):** **Root model = manifest-as-marker** (walk up for `ken.manifest.yaml`; root = its directory). **Artifact paths stored root-relative POSIX, resolved to absolute on load** (service layer unchanged). **Root mode is opt-in** — `registry`'s `root` defaults to `None` (= today's verbatim-path behavior); `FileStore` gains `relative_to_root=False`; **only the CLI turns it on**. This keeps ken-web's FileStore mode, the store contract, and existing registry tests behaving exactly as today. **PostgresStore untouched** (server controls its own cwd; no root concept). Migrate the existing committed manifest. Fix the stale README. Out of scope: calendar TTL (C), Postgres root handling, `.gitignore` for local state.
 
 ---
 
@@ -33,31 +33,40 @@ def discover_root(start: Path) -> Path | None:
 ```
 
 - The three state files live **at root**: `root/ken.manifest.yaml`, `root/ken.questions.json`, `root/ken.attempts.jsonl`.
-- **Bootstrap:** if discovery returns `None`, `register` uses **cwd** as root and creates the manifest there. Every later command then discovers it by walking up.
-- **Non-register commands with no root found** (`due`/`coverage`/`review`/…): print a clear error (`no ken.manifest.yaml found in <cwd> or any parent; run 'ken register' first`) and exit 1, rather than silently operating on an empty cwd store.
+- **`register` runs discovery first.** It calls `discover_root(cwd)`: if a root is found, it **anchors to that root** (appends to the existing `root/ken.manifest.yaml`) even when run from a subdirectory; only if discovery returns `None` does it **bootstrap** a new `ken.manifest.yaml` at **cwd** (root = cwd). `register` is the *only* command that proceeds when discovery returns `None`.
+- **Non-register commands with no root found** (`due`/`coverage`/`review`/`save-questions`/`record-attempt`): print a clear error (`no ken.manifest.yaml found in <cwd> or any parent; run 'ken register' first`) and exit 1, rather than silently operating on an empty cwd store.
 
-This lives in the **CLI layer** (`ken/src/ken/paths.py`, a new ~15-line pure helper module + the CLI wiring). The flags `--manifest/--questions/--ledger` remain as explicit overrides; when a flag is given, it is used verbatim and discovery is skipped for that file.
+This lives in the **CLI layer** (`ken/src/ken/paths.py`, a new ~15-line pure helper module + the CLI wiring). The flags `--manifest/--questions/--ledger` remain as explicit overrides; when a flag is given, it is used verbatim and discovery is skipped for that file. The CLI always constructs its `FileStore` with `relative_to_root=True`.
 
 ## 4. Paths: store root-relative, resolve to absolute on load
 
-The read/write boundary (registry) gains a `root`:
+The read/write boundary (registry) gains an **optional** `root` (default `None` = today's verbatim behavior, so all existing callers are unaffected):
 
-- **`register(path, *, manifest_path, root)`**: resolve `path` to absolute; compute **root-relative POSIX** via `Path(abs).relative_to(root).as_posix()`. If `path` is **not** under `root`, raise `ValueError("artifact <path> is outside the ken root <root>")` (fail-loud). Store the relative POSIX string. `artifact_id = _artifact_id(relative_posix)` — so spelling variants collapse to one id. Return `ArtifactRef(id, abs_path, current_hash(abs_path))`.
-- **`load_manifest(manifest_path, *, root)`**: for each stored entry, resolve `abs = (root / entry["path"])`; `ArtifactRef(entry["artifact_id"], str(abs), current_hash(str(abs)))`. The live hash is computed against the **absolute** path, so it works from any cwd.
+- **`register(path, *, manifest_path, root=None)`**:
+  - `root is None` → **today's behavior**: store `path` verbatim, `artifact_id = _artifact_id(path)`, return `ArtifactRef(id, path, current_hash(path))`.
+  - `root` set → resolve `path` to absolute; compute **root-relative POSIX** via `Path(abs).relative_to(root).as_posix()`. If `path` is **not** under `root`, raise `ValueError("artifact <path> is outside the ken root <root>")` (fail-loud). Store the relative POSIX string. `artifact_id = _artifact_id(relative_posix)` — so spelling variants (`./x`, `x`, abs) collapse to one id. Return `ArtifactRef(id, abs_path, current_hash(abs_path))`.
+- **`load_manifest(manifest_path, *, root=None)`**:
+  - `root is None` → today's behavior: `ArtifactRef(id, stored_path, current_hash(stored_path))` (verbatim, cwd-relative).
+  - `root` set → for each entry resolve `abs = (root / entry["path"])`; `ArtifactRef(id, str(abs), current_hash(str(abs)))`. The live hash is computed against the **absolute** path, so it works from any cwd.
 
-**Why this keeps the service layer untouched:** `ArtifactRef.path` is now always **absolute**, so `service.ensure_questions`/`grade_answer` (`Path(ref.path).read_text`, `service.py:58,136`) and all derivations are unchanged.
+**Why this keeps the service layer untouched:** in root mode `ArtifactRef.path` is **absolute**, so `service.ensure_questions`/`grade_answer` (`Path(ref.path).read_text`, `service.py:58` and `:132`) and all derivations are unchanged.
 
-`FileStore` derives `root = Path(self._manifest).resolve().parent` and threads it into the two registry calls. Construction signature is unchanged for callers that pass an explicit manifest path (CLI, tests, ken-web).
+`FileStore.__init__` gains `relative_to_root: bool = False`. When `True`, it derives `root = Path(self._manifest).resolve().parent` and passes it into the two registry calls; when `False` (default), it calls them with `root=None` (today's behavior). `root` is computed lazily inside `register`/`load_manifest`, so a degenerate `FileStore(manifest="x", …)` that never reaches the registry (e.g. the fail-loud attempt test) is unaffected. The constructor stays backward-compatible for ken-web and the contract test (both keep the default `False`).
 
-## 5. PostgresStore: unchanged
+**CLI surfaces the outside-root error cleanly.** `register`'s `ValueError` propagates `registry → service.register_artifact → cli.register`; `cli.register` wraps the call in `try/except ValueError` and re-emits `typer.echo(str(e), err=True); raise typer.Exit(1)` — matching the no-root command UX (a clean exit 1, never a traceback).
+
+## 5. PostgresStore + ken-web: unchanged
 
 `PostgresStore.register`/`load_manifest` (`stores/postgres_store.py:38-53`) keep storing/returning the path verbatim and deriving `_artifact_id(path)` from it. The web server controls its own working directory and has no filesystem "project root"; root discovery is a local-CLI concern.
 
-**Contract parity is preserved.** `test_store_contract.py::test_register_roundtrip_and_idempotent` registers with an absolute `str(art)` under `tmp_path` and asserts `man[0].path == str(art)`. For FileStore: root = `tmp_path` (manifest's parent), `str(art)` is under it → stored relative `a.md` → `load_manifest` resolves to `tmp_path/a.md` == `str(art)`. The id assertion (`r1.id == r2.id`) still holds (idempotent on the now-relative key). So both backends still satisfy the one contract **without changing the contract test**. (Note for the implementer: `tmp_path` is already a realpath, and FileStore uses `Path(manifest).resolve().parent` for root, so the round-trip equality holds on Linux CI and Windows dev; a test asserts it explicitly.)
+**ken-web FileStore mode is unchanged** because root mode is opt-in. `ken-web/api/.../deps.py` constructs `FileStore(manifest=…)` with the **default** `relative_to_root=False`, so the web API keeps registering arbitrary `req.path` values verbatim (no outside-root constraint). This is the reason root mode is a flag rather than always-on: FileStore is shared between the CLI and ken-web, and only the CLI wants root semantics.
+
+**Contract parity is preserved with the contract test unchanged.** `test_store_contract.py` constructs `FileStore(manifest=…, questions=…, ledger=…)` with the default `relative_to_root=False`, i.e. today's verbatim behavior — so `test_register_roundtrip_and_idempotent` (`man[0].path == str(art)`, `r1.id == r2.id`) passes exactly as before, and `test_append_attempt_fail_loud` (`FileStore(manifest="x", …)`) is unaffected (it never reaches the registry and root is computed lazily). Root mode is covered by **new registry/FileStore unit tests** (§10), not by the cross-backend contract (Postgres has no root, so root mode is intentionally outside the parity contract).
 
 ## 6. Migration of the committed manifest
 
-- Move `ken/ken.manifest.yaml` → repo-root `ken.manifest.yaml` (git move). Its paths are already repo-root-relative, so with root = repo root they resolve correctly. `artifact_id`s are unchanged because the stored relative strings are unchanged (`_artifact_id` over the same string). No committed `questions`/`attempts` files exist, so nothing else migrates.
+- Move `ken/ken.manifest.yaml` → repo-root `ken.manifest.yaml` (git move). Its paths are already clean repo-root-relative POSIX (`adr/…`, `nexus/…`; no `./`, no backslashes), so with root = repo root they resolve correctly. `artifact_id`s are unchanged because the move is byte-identical YAML — nothing recomputes ids. No committed `questions`/`attempts` files exist, so nothing else migrates.
+- **Forward-consistent (not a coincidence):** the committed ids are `sha256` of the (already repo-root-relative) stored strings, and the new root-mode `_artifact_id` keys on the repo-root-relative POSIX string. So re-registering any of these 10 files from anywhere under the repo root — by abs path, `./` path, or from a subdir — now normalizes to the *same* relative string → the **same** id. The migration is forward-consistent; ids will not silently drift and orphan coverage.
 - Verify post-move: from the repo root, `ken coverage` resolves all 10 artifacts (live hash succeeds for each) — and from `ken/` (a subdir) it now *also* works via walk-up.
 
 ## 7. README fix (`ken/README.md`)
@@ -69,12 +78,17 @@ The read/write boundary (registry) gains a `root`:
 ## 8. Files touched
 
 - **Create:** `ken/src/ken/paths.py` (`discover_root`, root-anchored default file paths helper).
-- **Modify:** `ken/src/ken/registry.py` (`register`/`load_manifest` take `root`; relative-store + absolute-resolve + outside-root error).
-- **Modify:** `ken/src/ken/stores/file_store.py` (derive `root` from manifest dir; pass to registry).
-- **Modify:** `ken/src/ken/cli.py` (discover root; anchor default file paths; clear no-root error for non-register commands).
+- **Modify:** `ken/src/ken/registry.py` (`register`/`load_manifest` take optional `root=None`; `None` = today's behavior; set = relative-store + absolute-resolve + outside-root `ValueError`).
+- **Modify:** `ken/src/ken/stores/file_store.py` (`relative_to_root=False` flag; when `True` derive `root` from manifest dir and pass to registry).
+- **Modify:** `ken/src/ken/cli.py` (discover root; anchor default file paths; construct `FileStore(relative_to_root=True)`; catch outside-root `ValueError` in `register`; clear no-root error for non-register commands).
 - **Modify:** `ken/README.md` (Install + corrected CLI sections).
 - **Move:** `ken/ken.manifest.yaml` → `ken.manifest.yaml` (repo root).
-- **Tests:** `ken/tests/test_paths.py` (new), `ken/tests/test_registry.py` (root-relative store/resolve, outside-root error), `ken/tests/test_cli_v1.py` (run from subdir works; no-root error). `test_store_contract.py` stays green unchanged.
+- **Tests:**
+  - `ken/tests/test_paths.py` (new) — `discover_root`.
+  - `ken/tests/test_registry.py` — **the two existing tests keep their current calls** (`register(..., manifest_path=man)` / `load_manifest(man)`) and stay green because `root` defaults to `None`; **add** new cases for root mode (relative store, `./`-prefix id-collapse, absolute-resolve on load, outside-root `ValueError`).
+  - `ken/tests/test_cli_v1.py` — register under root then run `coverage`/`due` from a **subdir** (`monkeypatch.chdir`) succeeds; non-register command with no manifest anywhere → exit 1 + actionable message; outside-root `register` → exit 1 + clean message (not traceback).
+  - `test_store_contract.py` stays **green unchanged** (default `relative_to_root=False`).
+- **Green gate includes the ken-web api suite** (`ken-web/api`), not just `ken`, to confirm the shared FileStore default behavior is unaffected. (CI already runs both jobs.)
 
 ## 9. Error handling / invariants
 
@@ -94,5 +108,5 @@ The read/write boundary (registry) gains a `root`:
 ## 11. YAGNI / scope discipline
 
 - No `ken init`, no `.ken/` directory, no env-var root (rejected in brainstorming for the minimal manifest-marker model).
-- PostgresStore and the store contract are untouched.
+- Root mode is a single opt-in flag (`relative_to_root` / registry `root=None` default), not a rewrite of the storage layer — the smallest change that scopes new behavior to the CLI without touching ken-web, PostgresStore, or the store contract.
 - README changes are limited to install + correcting what's already wrong; no broad doc rewrite.
