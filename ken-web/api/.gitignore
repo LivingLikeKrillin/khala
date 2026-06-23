@@ -1,0 +1,6 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+ken.manifest.yaml
+ken.questions.json
+ken.attempts.jsonl

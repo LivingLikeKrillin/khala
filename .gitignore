@@ -3,6 +3,9 @@
 __pycache__/
 *.pyc
 
+# Editable-install / build metadata (e.g. ken/src/ken.egg-info from `pip install -e`)
+*.egg-info/
+
 # specledger transient gate runtime state (active spec marker + exempt log)
 .specledger/active.json
 .specledger/exempt.log
