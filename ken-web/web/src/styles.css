@@ -98,6 +98,15 @@ button {
   cursor: pointer;
 }
 
+/* Systematic keyboard focus: every interactive element gets a clear, consistent
+   gold focus ring. Components may override with a tighter offset, but nothing
+   should be focusable without a visible indicator. */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
 ::selection {
   background: rgba(224, 164, 75, 0.28);
   color: var(--paper);
@@ -140,6 +149,11 @@ a {
 .wordmark b {
   color: var(--gold);
   font-weight: 600;
+}
+.wordmark:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 5px;
+  border-radius: 6px;
 }
 .wordmark .tag {
   font-family: var(--mono);
@@ -235,7 +249,7 @@ a {
 
 /* ------------------------------------------------------------ home page -- */
 .cover {
-  margin-bottom: 64px;
+  margin-bottom: 44px;
 }
 .cover__eyebrow {
   margin-bottom: 18px;
@@ -326,7 +340,10 @@ a {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin: 56px 0 18px;
+  gap: 16px;
+  margin: 40px 0 16px;
+  padding-top: 36px;
+  border-top: 1px solid var(--line);
 }
 .section-head h2 {
   font-family: var(--serif);
@@ -334,6 +351,17 @@ a {
   font-size: 22px;
   letter-spacing: -0.01em;
   margin: 0;
+}
+.section-head__lead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.section-head__lead .sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--paper-faint);
 }
 .section-head .count {
   font-family: var(--mono);
@@ -344,7 +372,7 @@ a {
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
 }
 .row {
   display: flex;
@@ -365,6 +393,13 @@ a {
 .row:hover {
   border-color: var(--line-strong);
   transform: translateX(3px);
+  background: var(--ink-800);
+}
+.row:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+  border-color: var(--line-strong);
   background: var(--ink-800);
 }
 .row__dot {

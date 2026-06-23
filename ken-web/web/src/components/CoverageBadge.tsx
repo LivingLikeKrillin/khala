@@ -11,6 +11,10 @@ export default function CoverageBadge({ coverage }: Props) {
   const circ = 2 * Math.PI * r;
   const pct = total > 0 ? ratio : 0;
   const dash = circ * pct;
+  // Amber while there's still debt to repay; sage (the vouched colour) only
+  // once coverage is complete — the dial earns its green like everything else.
+  const complete = total > 0 && pct >= 1;
+  const ringColor = complete ? "var(--sage)" : "var(--gold)";
 
   return (
     <div className="coverage">
@@ -29,11 +33,14 @@ export default function CoverageBadge({ coverage }: Props) {
             cy="38"
             r={r}
             fill="none"
-            stroke="var(--gold)"
+            stroke={ringColor}
             strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray={`${dash} ${circ}`}
-            style={{ transition: "stroke-dasharray 0.8s cubic-bezier(.22,1,.36,1)" }}
+            style={{
+              transition:
+                "stroke-dasharray 0.8s cubic-bezier(.22,1,.36,1), stroke 0.5s var(--ease)",
+            }}
           />
         </svg>
         <div className="dial__num">{Math.round(pct * 100)}%</div>
