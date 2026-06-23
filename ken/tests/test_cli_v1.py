@@ -163,18 +163,24 @@ def test_coverage_shows_weakness(tmp_path):
     assert qid in r.stdout
 
 
-def test_review_headless_with_fake_llm(tmp_path, monkeypatch):
+def test_review_headless_records_per_question(tmp_path, monkeypatch):
     man = tmp_path / "m.yaml"
     art = tmp_path / "a.md"
     art.write_text("Payment service publishes the orders topic.\n", encoding="utf-8")
     aid = _register(man, art)
     store = tmp_path / "q.json"
     ledger = tmp_path / "l.jsonl"
+    h = _current_hash(art)
 
-    # ONE _make_llm() shared across both calls in a review: [questions, verdict_json]
+    # Call order: probe(1) -> grade Q1 pass(1) -> grade Q2 fail(1) -> remediate Q2(1)
     monkeypatch.setattr(
         "ken.cli._make_llm",
-        lambda: FakeLLM(responses=["Q1?\nQ2?", '{"passed": true, "score": 0.9, "rationale": "ok"}']),
+        lambda: FakeLLM(responses=[
+            "Q1?\nQ2?",
+            '{"passed": true,  "score": 0.9, "rationale": "ok"}',
+            '{"passed": false, "score": 0.1, "rationale": "no"}',
+            "study the orders topic section",
+        ]),
     )
     r = runner.invoke(
         app,
@@ -183,10 +189,18 @@ def test_review_headless_with_fake_llm(tmp_path, monkeypatch):
         input="answer1\nanswer2\n",
     )
     assert r.exit_code == 0, r.stdout
+    assert "study the orders topic section" in r.stdout  # remediation surfaced for the failed Q
+
+    q1_id = make_question_id(aid, h, 0)
+    q2_id = make_question_id(aid, h, 1)
 
     r = runner.invoke(
         app,
         ["coverage", "--as", "kr", "--manifest", str(man),
          "--questions", str(store), "--ledger", str(ledger)],
     )
-    assert "1/1" in r.stdout
+    # one artifact, Q2 last-failed -> orphan -> 0/1 (per-artifact coverage)
+    assert "0/1" in r.stdout
+    # the discriminator: per-question recording means ONLY Q2 is in the weakness map
+    assert q2_id in r.stdout
+    assert q1_id not in r.stdout
