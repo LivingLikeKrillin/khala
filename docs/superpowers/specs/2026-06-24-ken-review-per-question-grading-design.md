@@ -13,7 +13,7 @@ Make the headless `ken review` command record **true per-question verdicts** so 
 
 ## 2. The bug (why this slice exists)
 
-`cli.review` (`ken/src/ken/cli.py:202–222`) grades the entire answer set as **one** verdict via `service.grade_set`, then writes that same `passed`/`score` to **every** question's attempt:
+`cli.review` (`ken/src/ken/cli.py`: whole-set grade at line 203, per-question write loop at 209–221) grades the entire answer set as **one** verdict via `service.grade_set`, then writes that same `passed`/`score` to **every** question's attempt:
 
 ```python
 verdict = service.grade_set(text, qa_pairs, llm=llm)        # ONE verdict for all answers
@@ -43,8 +43,8 @@ So the fix is **reuse, not new code**: `review` loops over `grade_answer`, one c
 Replace the collect-then-whole-set-grade body with an inline tutoring loop:
 
 ```python
-ts = _now()                       # one snapshot for the whole session (attempts share ts, as today)
 qs = service.ensure_questions(artifact_id, store=store, llm=llm, n=n)
+ts = _now()                       # one snapshot for the whole session (attempts share ts, as today)
 
 passed_n = 0
 for q in qs:
@@ -65,9 +65,9 @@ typer.echo(f"recorded {len(qs)} attempts for {artifact_id} ({passed_n} passed, {
 
 Notes:
 - The existence check (`_find_ref` → unknown-id error, exit 1) and `ensure_questions` are unchanged.
-- `review` no longer reads the artifact text itself — `grade_answer` reads it per call (the artifact is small; a CLI review is ~5 questions). The previously-local `text = Path(ref.path).read_text(...)` line is removed.
-- `now=ts` is passed once so all attempts in a session share one timestamp, matching today's behavior.
-- **Behavior change vs today:** `grade_answer` re-derives the live `content_hash` per call (via `find_ref`), instead of one snapshot. In practice identical (the file is not edited mid-review); accepted for DRY. Documented here so it isn't a surprise.
+- `review` no longer reads the artifact text itself — `grade_answer` reads it per call (the artifact is small; a CLI review is ~5 questions). The previously-local `text = Path(ref.path).read_text(...)` line (`cli.py:192`) is removed; `from pathlib import Path` becomes unused in `cli.py` and must be removed too (ruff would flag it).
+- `now=ts` is passed once so all attempts in a session share one timestamp, matching today's behavior. `ts` is captured **after** `ensure_questions` (as today, where `_now()` runs after the LLM round-trips), not before.
+- **Two acknowledged behavior deltas vs today (both harmless):** (a) `grade_answer` re-derives the live `content_hash` per call (via `find_ref`) instead of one snapshot — identical in practice (the file is not edited mid-review). (b) The artifact text is read once per question instead of once per session. Both accepted for DRY; documented so they aren't a surprise.
 
 ### 4.2 `service.grade_set` — retire
 
@@ -98,14 +98,30 @@ All preserved because they already live in the reused code:
 
 ## 7. Testing (no API key — `FakeLLM`)
 
-Rewrite `tests/test_cli_v1.py::test_review_headless_with_fake_llm` (it currently scripts `[questions, verdict_json]` for the whole-set path) and add a regression test:
+Rewrite `tests/test_cli_v1.py::test_review_headless_with_fake_llm` (it currently scripts `[questions, verdict_json]` for the whole-set path) and add a mixed pass/fail regression test.
 
-- **Per-question script:** `FakeLLM` returns, in order: one question-generation response, then **one grade verdict per question** (and a remediation response for each failed question, since `grade_answer` remediates on fail). The test must script responses in the exact call order `grade_answer` makes (grade, then — only if failed — remediate), per question.
-- **Regression assertion (the core of this slice):** a run where Q1 passes and Q2 fails must produce, via `ken coverage`, a **weakness map listing only Q2** (not both, not neither) — proving per-question verdicts are recorded distinctly. Coverage `covered/total` must reflect the mixed result (e.g. `1/2`), not `2/2` or `0/2`.
-- **Remediation surfaced:** assert the failed question's remediation text appears in `review` stdout.
-- Existing keyless-loop tests (`due`/`save-questions`/`record-attempt`/`coverage`) stay green untouched.
+**FakeLLM call order (verified against source).** `FakeLLM` pops scripted responses strictly in order (`llm.py:52–55`). The exact call sequence for a 2-question review where Q1 passes and Q2 fails is:
+1. `ensure_questions` → `make_questions` → **1 call** (question generation).
+2. per question, `grade_answer` → `judge.grade` → **1 call** to grade; then **only if that verdict failed**, `remediate` → **1 more call**. So a **passing** question = 1 call (grade only); a **failing** question = 2 calls (grade, then remediate).
 
-The grading effort hint for tests is `FakeLLM` only; no `ANTHROPIC_API_KEY` is required by CI.
+The concrete script for the regression test (do **not** insert a remediation slot after the passing Q1 — that would mis-align every later pop):
+
+```python
+FakeLLM(responses=[
+    "Q1?\nQ2?",                                              # (1) probe / question generation
+    '{"passed": true,  "score": 0.9, "rationale": "ok"}',   # (2) grade Q1 -> pass, no remediation
+    '{"passed": false, "score": 0.1, "rationale": "no"}',   # (3) grade Q2 -> fail
+    "remediation text for Q2",                               # (4) remediate Q2
+])
+```
+
+**Regression assertions (the core of this slice).** Derive the two question ids the same way the existing tests do: `q1_id = make_question_id(aid, h, 0)`, `q2_id = make_question_id(aid, h, 1)` (cf. `test_cli_v1.py:93,112`). After the `review` run, run `ken coverage` and assert on its output:
+- **`q2_id in stdout` (weakness map) AND `q1_id not in stdout`.** The negative assertion is the one that actually catches the bug: the *old* whole-set code stamped one verdict on both questions, so it would list *both* (or *neither*) — only the per-question fix lists exactly Q2. Asserting merely that Q2 appears does not discriminate.
+- **Coverage `covered/total` is `0/1`** — coverage is **per-artifact**, not per-question (`coverage.compute_coverage_v1`: `total = len(artifacts)`, an artifact is `covered` only if `is_vouched` over *all* its questions). One artifact whose Q2 last-failed is an orphan → `0/1`. (`1/2` is impossible with one artifact; the all-pass case is `1/1`, as the existing test already asserts at `test_cli_v1.py:192`.)
+
+**Remediation surfaced:** assert the Q2 remediation text appears in `review` stdout.
+
+Existing keyless-loop tests (`due`/`save-questions`/`record-attempt`/`coverage`) stay green untouched. The grading path for tests is `FakeLLM` only; no `ANTHROPIC_API_KEY` is required by CI.
 
 ## 8. YAGNI / scope discipline
 
@@ -115,7 +131,7 @@ The grading effort hint for tests is `FakeLLM` only; no `ANTHROPIC_API_KEY` is r
 
 ## 9. Files touched
 
-- `ken/src/ken/cli.py` — rewrite `review` body (inline per-question loop; drop local text read).
+- `ken/src/ken/cli.py` — rewrite `review` body (inline per-question loop; drop local `text` read at line 192; remove the now-unused `from pathlib import Path` import).
 - `ken/src/ken/service.py` — delete `grade_set`.
 - `ken/tests/test_cli_v1.py` — rewrite `test_review_headless_with_fake_llm` + add mixed pass/fail regression test.
 - (No schema, no API, no web changes.)
