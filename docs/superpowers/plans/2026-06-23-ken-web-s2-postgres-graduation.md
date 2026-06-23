@@ -109,16 +109,12 @@ def test_attempts_append_only_in_order(store):
 def test_load_absent_is_empty(store):
     assert store.load_manifest() == [] and store.load_questions("nope") == (None, []) and store.load_attempts() == []
 
-def test_save_questions_fail_loud(tmp_path):
+def test_append_attempt_fail_loud(tmp_path):
     from ken.stores.file_store import FileStore
-    bad = FileStore(manifest=str(tmp_path/"m.yaml"),
-                    questions=str(tmp_path/"nope"/"q.json"), ledger=str(tmp_path/"l.jsonl"))
-    # FileStore must NOT silently create parents that mask write failure? It uses make_parents=True
-    # so this path actually succeeds; instead assert append_attempt raises on an unwritable path:
-    import pytest
-    with pytest.raises(OSError):
-        FileStore(manifest="x", questions="x", ledger=str(tmp_path/"nope"/"x.jsonl"),
-                  make_parents=False).append_attempt(Attempt("k","a","q","h",True,1.0,"2026-06-20T00:00:00Z"))
+    s = FileStore(manifest="x", questions="x",
+                  ledger=str(tmp_path/"nope"/"x.jsonl"), make_parents=False)
+    with pytest.raises(OSError):  # missing parent dir -> FileNotFoundError (subclass of OSError)
+        s.append_attempt(Attempt("k","a","q","h",True,1.0,"2026-06-20T00:00:00Z"))
 ```
 - [ ] **Step 2:** run → FAIL.
 - [ ] **Step 3: implement** `file_store.py` — wrap existing functions, paths held on the instance:
@@ -155,7 +151,7 @@ class FileStore:
 - [ ] **Step 2:** Change every `service` function from path-string params (`manifest`, `questions_store`, `ledger`) to a single `store: KenStore`. Internals call `store.load_manifest()/register()/load_questions()/save_questions()/append_attempt()/load_attempts()` instead of the module functions. **Keep** `registry.current_hash(path)` and `Path(ref.path).read_text(...)` direct (filesystem). `find_ref` becomes `next(r for r in store.load_manifest() if r.artifact_id == aid)`. Signatures e.g.:
   - `register_artifact(path, *, store)`, `ensure_questions(artifact_id, *, store, llm, n)`, `due_items(*, store, now)`, `grade_set(text, qa_pairs, *, llm)` (unchanged — no storage), `coverage_report(*, store)`, `list_artifacts(*, store)`, `grade_answer(artifact_id, question_id, answer, *, person, store, llm, now)`, `remediate(...)` (unchanged).
 - [ ] **Step 3:** Update `ken/tests/test_service.py` — replace the `_seed`/path args with a `FileStore` built on tmp paths, inject `store=...` into every service call. (Pure assertions unchanged.)
-- [ ] **Step 4:** Refactor `ken/src/ken/cli.py` — each command builds `store = FileStore(manifest=manifest, questions=questions, ledger=ledger)` from its existing options and passes `store=store` to `service.*`. **Output/behavior unchanged.** `register` → `service.register_artifact(path, store=store)`; `save-questions`/`record-attempt` either keep using the modules or go via the store (your choice; output identical).
+- [ ] **Step 4:** Refactor `ken/src/ken/cli.py` — each command builds `store = FileStore(manifest=manifest, questions=questions, ledger=ledger)` from its existing options and passes `store=store` to `service.*`. **Output/behavior unchanged.** `register` → `service.register_artifact(path, store=store)`. **`cli._find_ref` currently calls `service.find_ref(manifest, artifact_id)`** — update it to the new store-based form (e.g. `next((r for r in store.load_manifest() if r.artifact_id == aid), None)`); the `save-questions`, `record-attempt`, and `review` commands use `_find_ref`, so thread the store through them (build the store in each, pass it). Confirm `cli.py` imports/compiles after the signature change.
 - [ ] **Step 5:** Run `cd ken && python -m pytest -q` → **same passing count as Step 1 baseline**; `test_cli_v1.py` green; ruff clean. **Step 6:** commit `refactor(ken): service/cli take a KenStore (file default; behavior unchanged)`.
 
 ---
@@ -233,7 +229,7 @@ class PostgresStore:
 
 **Files:** Modify `ken/tests/test_store_contract.py`
 
-- [ ] **Step 1:** Add a PostgresStore factory to `STORE_FACTORIES`, **gated**: when `KEN_TEST_DATABASE_URL` is unset, the PG param is `pytest.param(..., marks=pytest.mark.skip(reason="KEN_TEST_DATABASE_URL unset"))`. The factory connects, ensures a clean schema (TRUNCATE artifacts, questions, attempts — or run init.sql), and returns a `PostgresStore`. The same contract tests then run against PG when the env var is set.
+- [ ] **Step 1:** Add a PostgresStore factory to `STORE_FACTORIES`, **gated**: when `KEN_TEST_DATABASE_URL` is unset, the PG param is `pytest.param(..., marks=pytest.mark.skip(reason="KEN_TEST_DATABASE_URL unset"))`. The factory connects and **`TRUNCATE artifacts, questions, attempts`** (the contract tests assume an empty store at start; re-running `init.sql` would error on existing tables), then returns a `PostgresStore`. The same contract tests then run against PG when the env var is set.
 - [ ] **Step 2:** Run locally without the env var → PG params **skipped**, FileStore params pass. (If a local Postgres is available via docker-compose, set the env var and confirm PG params pass too.)
 - [ ] **Step 3: commit** `test(ken): PostgresStore contract param (gated on KEN_TEST_DATABASE_URL)`.
 
@@ -242,7 +238,7 @@ class PostgresStore:
 **Files:** Modify `ken-web/api/src/ken_web_api/deps.py`, `app.py`; Modify `ken-web/api/tests/test_api.py` (no behavior change — still file backend)
 
 - [ ] **Step 1:** `deps.make_store()` — `if os.getenv("KEN_DATABASE_URL"): return PostgresStore(dsn)` else `return FileStore(manifest=_manifest_path(), questions=_questions_path(), ledger=_ledger_path())` (paths from KEN_DATA_DIR as today). Called at request time (seam).
-- [ ] **Step 2:** Each handler builds `store = deps.make_store()` and passes `store=store` to `service.*` (replacing the old path args). The existing api tests (file backend, FakeLLM, tmp KEN_DATA_DIR) stay **unchanged and green** — they never set KEN_DATABASE_URL.
+- [ ] **Step 2:** Each handler builds `store = deps.make_store()` and passes `store=store` to `service.*` (replacing the old path args). The `register_artifact` handler makes **two** service calls (`register_artifact` then `list_artifacts`) — build ONE `store` and pass the same object to both. The existing api tests (file backend, FakeLLM, tmp KEN_DATA_DIR) stay **unchanged and green** — they never set KEN_DATABASE_URL.
 - [ ] **Step 3:** Run `cd ken-web/api && python -m pytest -q` → **5 passed**; ruff clean. **Step 4:** commit `feat(ken-web/api): make_store() selects Postgres via KEN_DATABASE_URL (file default)`.
 
 ### Task 8: CI Postgres job + README
