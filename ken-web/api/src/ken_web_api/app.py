@@ -43,11 +43,8 @@ app.add_middleware(
 
 @app.get("/api/artifacts", response_model=list[ArtifactOut])
 def list_artifacts() -> list[ArtifactOut]:
-    rows = service.list_artifacts(
-        manifest=deps.manifest_path(),
-        questions_store=deps.questions_path(),
-        ledger=deps.ledger_path(),
-    )
+    store = deps.make_store()
+    rows = service.list_artifacts(store=store)
     return [
         ArtifactOut(
             artifact_id=r.artifact_id, path=r.path, status=r.status, weak_count=r.weak_count
@@ -58,13 +55,11 @@ def list_artifacts() -> list[ArtifactOut]:
 
 @app.post("/api/artifacts", response_model=ArtifactOut, status_code=201)
 def register_artifact(req: RegisterReq) -> ArtifactOut:
-    service.register_artifact(req.path, manifest=deps.manifest_path())
+    # ONE store for both service calls (register then list) within this request.
+    store = deps.make_store()
+    service.register_artifact(req.path, store=store)
     # Re-derive the status row so the response carries vouched/orphan + weak_count.
-    rows = service.list_artifacts(
-        manifest=deps.manifest_path(),
-        questions_store=deps.questions_path(),
-        ledger=deps.ledger_path(),
-    )
+    rows = service.list_artifacts(store=store)
     row = next(r for r in rows if r.path == req.path)
     return ArtifactOut(
         artifact_id=row.artifact_id, path=row.path, status=row.status, weak_count=row.weak_count
@@ -74,23 +69,18 @@ def register_artifact(req: RegisterReq) -> ArtifactOut:
 @app.get("/api/artifacts/{artifact_id}/due", response_model=DueOut)
 def get_due(artifact_id: str) -> DueOut:
     """Generate+save questions if missing/stale (non-idempotent), then list due ones."""
+    store = deps.make_store()
     try:
         service.ensure_questions(
             artifact_id,
-            manifest=deps.manifest_path(),
-            questions_store=deps.questions_path(),
+            store=store,
             llm=deps.make_llm(),
             n=deps.N_QUESTIONS,
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"unknown artifact_id: {artifact_id}") from exc
 
-    lines = service.due_items(
-        manifest=deps.manifest_path(),
-        questions_store=deps.questions_path(),
-        ledger=deps.ledger_path(),
-        now=service.now_iso(),
-    )
+    lines = service.due_items(store=store, now=service.now_iso())
     line = next((ln for ln in lines if ln.artifact_id == artifact_id), None)
     if line is None:
         raise HTTPException(status_code=404, detail=f"unknown artifact_id: {artifact_id}")
@@ -100,15 +90,14 @@ def get_due(artifact_id: str) -> DueOut:
 
 @app.post("/api/attempts", response_model=AttemptOut)
 def post_attempt(req: AttemptReq) -> AttemptOut:
+    store = deps.make_store()
     try:
         result = service.grade_answer(
             req.artifact_id,
             req.question_id,
             req.answer,
             person=req.person,
-            manifest=deps.manifest_path(),
-            questions_store=deps.questions_path(),
-            ledger=deps.ledger_path(),
+            store=store,
             llm=deps.make_llm(),
             now=service.now_iso(),
         )
@@ -124,11 +113,8 @@ def post_attempt(req: AttemptReq) -> AttemptOut:
 
 @app.get("/api/coverage", response_model=CoverageOut)
 def get_coverage() -> CoverageOut:
-    rep = service.coverage_report(
-        manifest=deps.manifest_path(),
-        questions_store=deps.questions_path(),
-        ledger=deps.ledger_path(),
-    )
+    store = deps.make_store()
+    rep = service.coverage_report(store=store)
     return CoverageOut(
         total=rep.total,
         covered=rep.covered,

@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 
 from ken.llm import AnthropicLLM, LLMClient
+from ken.store import KenStore
 
 # Default count of questions to generate per artifact (overridable via env).
 N_QUESTIONS = int(os.getenv("KEN_N_QUESTIONS", "5"))
@@ -35,6 +36,27 @@ def questions_path() -> str:
 
 def ledger_path() -> str:
     return os.getenv("KEN_LEDGER", str(_data_dir() / "ken.attempts.jsonl"))
+
+
+def make_store() -> KenStore:
+    """Storage factory — selects the backend by env, called at REQUEST TIME.
+
+    `KEN_DATABASE_URL` set -> PostgresStore over that DSN (per-request connection);
+    unset -> FileStore over the KEN_DATA_DIR paths (the default; CLI/local stays
+    file-based and unbroken). Same request-time seam style as `make_llm`.
+    """
+    dsn = os.getenv("KEN_DATABASE_URL")
+    if dsn:
+        from ken.stores.postgres_store import PostgresStore
+
+        return PostgresStore(dsn)
+    from ken.stores.file_store import FileStore
+
+    return FileStore(
+        manifest=manifest_path(),
+        questions=questions_path(),
+        ledger=ledger_path(),
+    )
 
 
 def make_llm() -> LLMClient:

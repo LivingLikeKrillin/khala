@@ -5,6 +5,10 @@ can be reused by other front-ends (e.g. the ken-web API). It owns no derivation
 logic of its own — it composes the pure modules (registry, questions, schedule,
 coverage) with the cognition seams (probe, judge) behind the `LLMClient` protocol.
 
+Persistence goes through a `KenStore` (FileStore or PostgresStore), injected by the
+caller. `registry.current_hash(path)` and `Path(ref.path).read_text(...)` stay
+DIRECT (filesystem) — the store is an index, not the artifact archive.
+
 Invariants preserved from the substrate: question/attempt writes are FAIL-LOUD
 (IO errors propagate); `judge.grade` is FAIL-CLOSED internally (LLM/parse error ->
 passed=False) and is NOT re-wrapped here.
@@ -16,46 +20,44 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ken.attempt import append_attempt, load_attempts
 from ken.coverage import compute_coverage_v1
 from ken.judge import grade as judge_grade
 from ken.llm import LLMClient
-from ken.models import Attempt, ArtifactRef, CoverageReport, Question, Verdict
+from ken.models import ArtifactRef, Attempt, CoverageReport, Question, Verdict
 from ken.probe import make_questions
-from ken.questions import load_questions, save_questions
-from ken.registry import load_manifest, register as registry_register
-from ken.schedule import due as schedule_due, rebuild
+from ken.schedule import due as schedule_due
+from ken.schedule import rebuild
+from ken.store import KenStore
 
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def find_ref(manifest: str, artifact_id: str) -> ArtifactRef | None:
-    return next((r for r in load_manifest(manifest) if r.artifact_id == artifact_id), None)
+def find_ref(artifact_id: str, *, store: KenStore) -> ArtifactRef | None:
+    return next((r for r in store.load_manifest() if r.artifact_id == artifact_id), None)
 
 
-def register_artifact(path: str, *, manifest: str) -> ArtifactRef:
-    return registry_register(path, manifest_path=manifest)
+def register_artifact(path: str, *, store: KenStore) -> ArtifactRef:
+    return store.register(path)
 
 
 def ensure_questions(
     artifact_id: str,
     *,
-    manifest: str,
-    questions_store: str,
+    store: KenStore,
     llm: LLMClient,
     n: int,
 ) -> list[Question]:
     """Return the artifact's questions, generating/regenerating when missing or stale."""
-    ref = find_ref(manifest, artifact_id)
+    ref = find_ref(artifact_id, store=store)
     if ref is None:
         raise KeyError(artifact_id)
-    store_hash, qs = load_questions(artifact_id, store_path=questions_store)
+    store_hash, qs = store.load_questions(artifact_id)
     if not qs or store_hash != ref.content_hash:
         made = make_questions(Path(ref.path).read_text(encoding="utf-8"), n=n, llm=llm)
-        save_questions(artifact_id, ref.content_hash, made, store_path=questions_store)  # fail-loud
-        _, qs = load_questions(artifact_id, store_path=questions_store)  # reload with ids
+        store.save_questions(artifact_id, ref.content_hash, made)  # fail-loud
+        _, qs = store.load_questions(artifact_id)  # reload with ids
     return qs
 
 
@@ -66,13 +68,13 @@ class DueLine:
     questions: list  # list[tuple[qid, text]] when not needs_questions
 
 
-def due_items(*, manifest: str, questions_store: str, ledger: str, now: str) -> list[DueLine]:
+def due_items(*, store: KenStore, now: str) -> list[DueLine]:
     """Per-artifact due lines: needs-questions when missing/stale, else due (qid, text)."""
-    refs = load_manifest(manifest)
-    attempts = load_attempts(ledger)
+    refs = store.load_manifest()
+    attempts = store.load_attempts()
     out: list[DueLine] = []
     for ref in refs:
-        store_hash, qs = load_questions(ref.artifact_id, store_path=questions_store)
+        store_hash, qs = store.load_questions(ref.artifact_id)
         if not qs or store_hash != ref.content_hash:
             out.append(DueLine(ref.artifact_id, True, []))
             continue
@@ -114,9 +116,7 @@ def grade_answer(
     answer: str,
     *,
     person: str,
-    manifest: str,
-    questions_store: str,
-    ledger: str,
+    store: KenStore,
     llm: LLMClient,
     now: str,
 ) -> AttemptResult:
@@ -126,16 +126,16 @@ def grade_answer(
     so this function does NOT re-wrap it. The attempt is always recorded before
     remediation is attempted, so a remediation failure cannot block recording.
     """
-    ref = find_ref(manifest, artifact_id)
+    ref = find_ref(artifact_id, store=store)
     if ref is None:
         raise KeyError(artifact_id)
-    _, qs = load_questions(artifact_id, store_path=questions_store)
+    _, qs = store.load_questions(artifact_id)
     q = next((x for x in qs if x.id == question_id), None)
     if q is None:
         raise KeyError(question_id)
     text = Path(ref.path).read_text(encoding="utf-8")
     verdict = judge_grade(text, [(q.text, answer)], llm=llm)  # fail-closed internally
-    append_attempt(
+    store.append_attempt(
         Attempt(
             person=person,
             artifact_id=artifact_id,
@@ -144,17 +144,16 @@ def grade_answer(
             passed=verdict.passed,
             score=verdict.score,
             ts=now,
-        ),
-        ledger_path=ledger,
+        )
     )  # fail-loud
     rem = None if verdict.passed else remediate(text, q.text, answer, llm=llm)
     return AttemptResult(passed=verdict.passed, score=verdict.score, remediation=rem)
 
 
-def coverage_report(*, manifest: str, questions_store: str, ledger: str) -> CoverageReport:
-    refs = load_manifest(manifest)
-    attempts = load_attempts(ledger)
-    qmap = {r.artifact_id: load_questions(r.artifact_id, store_path=questions_store) for r in refs}
+def coverage_report(*, store: KenStore) -> CoverageReport:
+    refs = store.load_manifest()
+    attempts = store.load_attempts()
+    qmap = {r.artifact_id: store.load_questions(r.artifact_id) for r in refs}
     return compute_coverage_v1(refs, qmap, attempts)
 
 
@@ -166,10 +165,10 @@ class ArtifactStatus:
     weak_count: int
 
 
-def list_artifacts(*, manifest: str, questions_store: str, ledger: str) -> list[ArtifactStatus]:
+def list_artifacts(*, store: KenStore) -> list[ArtifactStatus]:
     """One status row per manifest ref, derived from `coverage_report` (no new logic)."""
-    refs = load_manifest(manifest)
-    report = coverage_report(manifest=manifest, questions_store=questions_store, ledger=ledger)
+    refs = store.load_manifest()
+    report = coverage_report(store=store)
     orphans = set(report.orphans)
     weak_by_artifact: dict[str, int] = {}
     for w in report.weakness:
