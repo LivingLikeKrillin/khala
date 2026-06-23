@@ -16,15 +16,11 @@ from pathlib import Path
 
 import typer
 
-from ken.attempt import append_attempt, load_attempts
-from ken.coverage import compute_coverage_v1
-from ken.judge import grade
+from ken import service
+from ken.attempt import append_attempt
 from ken.llm import AnthropicLLM, LLMClient
 from ken.models import Attempt, Question
-from ken.probe import make_questions
-from ken.questions import load_questions, save_questions
-from ken.registry import load_manifest, register as registry_register
-from ken.schedule import due as schedule_due, rebuild
+from ken.questions import save_questions
 
 app = typer.Typer(help="ken — cognitive-debt repayment loop")
 
@@ -44,8 +40,7 @@ def _now() -> str:
 
 
 def _find_ref(manifest: str, artifact_id: str):
-    refs = load_manifest(manifest)
-    return next((r for r in refs if r.artifact_id == artifact_id), None)
+    return service.find_ref(manifest, artifact_id)
 
 
 @app.command()
@@ -54,7 +49,7 @@ def register(
     manifest: str = typer.Option(DEFAULT_MANIFEST, "--manifest", help="Manifest path."),
 ) -> None:
     """Register an artifact into the manifest; prints its artifact_id."""
-    ref = registry_register(path, manifest_path=manifest)
+    ref = service.register_artifact(path, manifest=manifest)
     typer.echo(f"registered {ref.path} {ref.artifact_id}")
 
 
@@ -72,21 +67,15 @@ def due(
     includes never-attempted ones, via schedule.due's full-id-set contract) is
     printed as `due <artifact_id> <question_id> <text>`.
     """
-    refs = load_manifest(manifest)
-    attempts = load_attempts(ledger)
-    now = _now()
-
-    for ref in refs:
-        store_hash, qs = load_questions(ref.artifact_id, store_path=questions)
-        if not qs or store_hash != ref.content_hash:
-            typer.echo(f"needs-questions {ref.artifact_id}")
+    lines = service.due_items(
+        manifest=manifest, questions_store=questions, ledger=ledger, now=_now()
+    )
+    for line in lines:
+        if line.needs_questions:
+            typer.echo(f"needs-questions {line.artifact_id}")
             continue
-        current_hashes = {q.id: ref.content_hash for q in qs}
-        states = rebuild(attempts, current_hashes=current_hashes)
-        due_ids = schedule_due(states, [q.id for q in qs], now=now)
-        text_by_id = {q.id: q.text for q in qs}
-        for qid in due_ids:
-            typer.echo(f"due {ref.artifact_id} {qid} {text_by_id[qid]}")
+        for qid, text in line.questions:
+            typer.echo(f"due {line.artifact_id} {qid} {text}")
 
 
 @app.command(name="save-questions")
@@ -156,10 +145,9 @@ def coverage(
     ledger: str = typer.Option(DEFAULT_LEDGER, "--ledger", help="Attempt ledger."),
 ) -> None:
     """Report covered/total, ratio, orphan hotlist, and the weakness map."""
-    refs = load_manifest(manifest)
-    attempts = load_attempts(ledger)
-    qmap = {r.artifact_id: load_questions(r.artifact_id, store_path=questions) for r in refs}
-    report = compute_coverage_v1(refs, qmap, attempts)
+    report = service.coverage_report(
+        manifest=manifest, questions_store=questions, ledger=ledger
+    )
 
     pct = f"{report.ratio * 100:.1f}%"
     typer.echo(f"coverage: {report.covered}/{report.total} ({pct})")
@@ -200,11 +188,9 @@ def review(
     text = Path(ref.path).read_text(encoding="utf-8")
     llm = _make_llm()
 
-    store_hash, qs = load_questions(artifact_id, store_path=questions)
-    if not qs or store_hash != ref.content_hash:
-        qs = make_questions(text, n=n, llm=llm)
-        save_questions(artifact_id, ref.content_hash, qs, store_path=questions)
-        _, qs = load_questions(artifact_id, store_path=questions)  # reload with assigned ids
+    qs = service.ensure_questions(
+        artifact_id, manifest=manifest, questions_store=questions, llm=llm, n=n
+    )
 
     answers: list[str] = []
     for q in qs:
@@ -212,7 +198,7 @@ def review(
         answers.append(input())
 
     qa_pairs = list(zip((q.text for q in qs), answers))
-    verdict = grade(text, qa_pairs, llm=llm)
+    verdict = service.grade_set(text, qa_pairs, llm=llm)
     typer.echo(
         f"verdict: passed={verdict.passed} score={verdict.score} — {verdict.rationale}"
     )
