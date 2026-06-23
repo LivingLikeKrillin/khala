@@ -66,10 +66,9 @@ def test_ensure_questions_regenerates_when_stale(tmp_path):
     man, ref = _seed(tmp_path); qs_store = tmp_path/"q.json"
     ensure_questions(ref.artifact_id, manifest=str(man), questions_store=str(qs_store),
                      llm=FakeLLM(responses=["OLD?"]), n=1)
-    (tmp_path/"a.md").write_text("CHANGED content now.\n", encoding="utf-8")  # hash changes
-    man2, _ = _seed.__wrapped__ if False else (man, None)  # re-register not needed; register updates? -> re-register
-    from ken.registry import register as reg
-    ref2 = reg(str(tmp_path/"a.md"), manifest_path=str(man))   # idempotent on path; hash recomputed live
+    (tmp_path/"a.md").write_text("CHANGED content now.\n", encoding="utf-8")
+    # registry.load_manifest computes content_hash LIVE, so the stored questions are now
+    # stale (stored hash != current). ensure_questions must regenerate. No re-register needed.
     qs = ensure_questions(ref.artifact_id, manifest=str(man), questions_store=str(qs_store),
                           llm=FakeLLM(responses=["NEW?"]), n=1)
     assert [q.text for q in qs] == ["NEW?"]
@@ -81,7 +80,7 @@ def test_coverage_report_zero_when_unanswered(tmp_path):
     rep = coverage_report(manifest=str(man), questions_store=str(qs_store), ledger=str(led))
     assert rep.total == 1 and rep.covered == 0 and rep.orphans == [ref.artifact_id]
 ```
-*(Note: `registry.current_hash` is computed live; re-registering the same path is idempotent and the manifest entry's hash is read live in coverage/ensure — confirm against registry.py while implementing; the stale test asserts regeneration after content change.)*
+*(Verified against registry.py: `load_manifest` computes `content_hash` live per entry, so a file edit alone makes stored questions stale — no re-register needed. `ensure_questions` returns `list[Question]` (this refines the spec's `(hash, list)` note; callers only need the list). The orchestration function is named `due_items` returning `DueLine` here — the single agreed name, superseding the spec's `due_questions`/`DueItem`.)*
 
 - [ ] **Step 2:** run → FAIL.
 - [ ] **Step 3: implement `service.py`** — move the orchestration out of `cli.py`:
@@ -153,9 +152,9 @@ def coverage_report(*, manifest, questions_store, ledger) -> CoverageReport:
 
 **Files:** Modify `ken/src/ken/cli.py`
 
-- [ ] **Step 1:** Run the existing CLI suite to capture green baseline: `cd ken && python -m pytest tests/test_cli_v1.py -q` → all pass.
+- [ ] **Step 1:** Capture the pre-refactor green baseline: `cd ken && python -m pytest -q` (record the passing count — currently ~47) and `python -m pytest tests/test_cli_v1.py -q` (the CLI suite — currently 7). These counts are the gate, not a hardcoded number.
 - [ ] **Step 2:** Refactor `due` to call `service.due_items(...)` and print the same lines (`needs-questions {id}` / `due {id} {qid} {text}`). Refactor `coverage` to call `service.coverage_report(...)` (same output). Refactor `review` to use `service.ensure_questions(...)` + `service.grade_set(...)` (keep the set-grade-applied-to-each-question behavior verbatim). Leave `register`/`save-questions`/`record-attempt` as-is (thin) or route through `service.register_artifact`. Keep `_make_llm`.
-- [ ] **Step 3:** Run `cd ken && python -m pytest -q` → **all 50 still green** (no output/behavior change).
+- [ ] **Step 3:** Run `cd ken && python -m pytest -q` → **same passing count as the Step 1 baseline** (no output/behavior change).
 - [ ] **Step 4:** commit `refactor(ken/cli): call service.py (behavior unchanged)`.
 
 ### Task 3: NEW — single-question `grade_answer` + `remediate`
@@ -248,17 +247,14 @@ def grade_answer(artifact_id, question_id, answer, *, person, manifest, question
     if q is None:
         raise KeyError(question_id)
     text = Path(ref.path).read_text(encoding="utf-8")
-    try:
-        verdict = judge_grade(text, [(q.text, answer)], llm=llm)
-    except Exception:
-        verdict = Verdict(passed=False, score=0.0, rationale="grade_error")  # fail-closed
+    verdict = judge_grade(text, [(q.text, answer)], llm=llm)  # judge.grade already fail-closes (LLM/parse err -> passed=False)
     append_attempt(Attempt(person=person, artifact_id=artifact_id, question_id=question_id,
                            content_hash=ref.content_hash, passed=verdict.passed,
                            score=verdict.score, ts=now), ledger_path=ledger)  # fail-loud
     rem = None if verdict.passed else remediate(text, q.text, answer, llm=llm)
     return AttemptResult(passed=verdict.passed, score=verdict.score, remediation=rem)
 ```
-*(Note: `judge.grade` already catches its own LLM/parse errors and returns a fail-closed Verdict; the extra try/except is belt-and-suspenders — confirm against judge.py and drop if redundant.)*
+*(`judge.grade` already fail-closes internally, so `grade_answer` does NOT wrap it — the fail-closed invariant lives in `judge`. `test_grade_answer_fail_closed_on_grade_llm_error` therefore passes via judge's internal handling; keep the test as a guard.)*
 - [ ] **Step 4:** run → PASS; full `cd ken && pytest -q` green. **Step 5:** commit `feat(ken): single-question grade_answer + remediate (API cognition)`.
 
 ### Task 4 (review checkpoint): add a `list_artifacts` status helper
@@ -317,7 +313,7 @@ def test_attempt_fail_returns_remediation(tmp_path, monkeypatch):
                                         "person":"kr", "answer":"wrong"}).json()
     assert res["passed"] is False and "publishes" in res["remediation"]
 ```
-Also tests: `GET /api/artifacts` shape; storage-write failure → 5xx (point KEN_DATA_DIR at an unwritable path); unknown artifact_id → 404.
+Also tests: `GET /api/artifacts` shape; storage-write failure → 5xx (**monkeypatch `service.append_attempt` to raise `OSError`** — deterministic, cross-platform; avoid relying on an unwritable dir); unknown artifact_id → 404. Note FakeLLM `responses` must budget for `GET /due` consuming a generate call before any attempt's grade(+remediation) calls.
 - [ ] **Step 2:** run → FAIL.
 - [ ] **Step 3: implement** `schemas.py` (pydantic v2: `RegisterReq{path}`, `ArtifactOut{artifact_id,path,status,weak_count}`, `DueOut{questions:[{question_id,text}]}`, `AttemptReq{artifact_id,question_id,person,answer}`, `AttemptOut{passed,score,remediation}`, `CoverageOut{...}`) and `app.py` (the 5 routes, each calling `service.*` with paths from `deps`, `llm=deps.make_llm()`; map `KeyError`→404; storage `OSError`→500). `GET /due` calls `service.ensure_questions` (regenerate on missing/stale) then `due_items` for that artifact. No CORS needed if same-origin in prod; add permissive CORS for dev (localhost:5173) behind a flag.
 - [ ] **Step 4:** run → PASS; ruff clean. **Step 5:** commit `feat(ken-web/api): 5 endpoints over ken.service (FakeLLM-tested)`.
@@ -340,7 +336,7 @@ Also tests: `GET /api/artifacts` shape; storage-write failure → 5xx (point KEN
 **Files:** `src/pages/Review.tsx`, `src/components/{QuestionCard,RemediationPanel,ProgressBar}.tsx`; Test `tests/review.test.tsx`
 - [ ] **Step 1: failing flow test** (RTL; mock `src/api/client`): render `Review` for an artifact whose `getDue` returns 2 questions; answer Q1 → `postAttempt` resolves `{passed:true}` → advances to Q2 (progress "2 / 2"); answer Q2 → `postAttempt` resolves `{passed:false, remediation:"..."}` → **RemediationPanel shows the text**; click "I've reviewed this" → session summary appears.
 - [ ] **Step 2:** run → FAIL.
-- [ ] **Step 3: implement** `Review.tsx` state machine (load due → per-question: input → submit → grading → pass(advance)/fail(remediation→acknowledge→requeue) → end:summary) + the components. Apply frontend-design (typography, spacing, motion on transitions, clear pass/fail affordances, calm remediation panel). One question at a time; visible progress.
+- [ ] **Step 3: implement** `Review.tsx` state machine (load due → per-question: input → submit → grading → pass(advance)/fail(show RemediationPanel → acknowledge) → end:summary) + the components. Apply frontend-design (typography, spacing, motion on transitions, clear pass/fail affordances, calm remediation panel). One question at a time; visible progress. **v0 re-queue semantics:** a failed question is marked for the **next session** (the schedule re-surfaces it on a later `due`), NOT re-asked within the current session — the flow test ends the session after the last question.
 - [ ] **Step 4:** run → PASS. **Step 5:** commit `feat(ken-web/web): repayment Review flow + components`.
 
 ### Task 9: Home (coverage + selection)
@@ -370,4 +366,4 @@ Also tests: `GET /api/artifacts` shape; storage-write failure → 5xx (point KEN
 - **CI:** add a `ken-web-api (pytest)` job (mirror ken) and a `ken-web (vitest)` job in a follow-up (or fold into this branch's CI edit) so the new module is CI-covered. *(Recommended; flag in PR.)*
 - Fail-closed (grade) / fail-loud (storage) / remediation→None each have a dedicated test.
 - API key never sent to client; `person` informational; FakeLLM in all automated tests.
-- ken's 50 existing tests stay green after the cli refactor (Task 2 gate).
+- ken's existing tests stay green (same count as the pre-refactor baseline) after the cli refactor (Task 2 gate).
