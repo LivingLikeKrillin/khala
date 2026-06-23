@@ -92,6 +92,24 @@ def test_load_absent_is_empty(store):
     )
 
 
+def test_filestore_default_is_verbatim_outside_any_root(tmp_path):
+    # Guards the opt-in default: ken-web registers arbitrary paths verbatim.
+    from ken.stores.file_store import FileStore
+
+    art = tmp_path / "artifacts" / "a.md"
+    art.parent.mkdir(parents=True)
+    art.write_text("x\n", encoding="utf-8")
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    s = FileStore(
+        manifest=str(data_dir / "m.yaml"),
+        questions=str(data_dir / "q.json"),
+        ledger=str(data_dir / "l.jsonl"),
+    )  # default relative_to_root=False
+    ref = s.register(str(art))  # art is NOT under data_dir -> must NOT raise
+    assert ref.path == str(art) and s.load_manifest()[0].path == str(art)
+
+
 def test_append_attempt_fail_loud(tmp_path):
     from ken.stores.file_store import FileStore
 

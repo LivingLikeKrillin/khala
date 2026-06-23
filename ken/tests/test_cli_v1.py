@@ -204,3 +204,44 @@ def test_review_headless_records_per_question(tmp_path, monkeypatch):
     # the discriminator: per-question recording means ONLY Q2 is in the weakness map
     assert q2_id in r.stdout
     assert q1_id not in r.stdout
+
+
+def test_cli_runs_from_subdir(tmp_path, monkeypatch):
+    # register at root, then run coverage from a nested cwd -> must resolve, not crash
+    root = tmp_path
+    art = root / "doc.md"
+    art.write_text("Payments publish orders.\n", encoding="utf-8")
+    monkeypatch.chdir(root)
+    r = runner.invoke(app, ["register", str(art)])
+    assert r.exit_code == 0, r.stdout
+
+    sub = root / "a" / "b"
+    sub.mkdir(parents=True)
+    monkeypatch.chdir(sub)
+    r = runner.invoke(app, ["coverage", "--as", "kr"])
+    assert r.exit_code == 0, r.stdout
+    assert "0/1" in r.stdout  # walk-up found the root manifest + its 1 artifact (not 0/0)
+
+
+def test_cli_no_root_errors_cleanly(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)  # no ken.manifest.yaml anywhere up
+    r = runner.invoke(app, ["coverage", "--as", "kr"])
+    assert r.exit_code == 1
+    assert "no ken.manifest.yaml found" in (r.stdout + (r.stderr or ""))
+
+
+def test_cli_register_outside_root_errors_cleanly(tmp_path, monkeypatch):
+    # bootstrap a root, then try to register a file outside it
+    root = tmp_path / "proj"
+    root.mkdir()
+    monkeypatch.chdir(root)
+    here = root / "in.md"
+    here.write_text("x\n", encoding="utf-8")
+    runner.invoke(app, ["register", str(here)])  # bootstraps root manifest
+
+    outside = tmp_path / "out.md"
+    outside.write_text("x\n", encoding="utf-8")
+    r = runner.invoke(app, ["register", str(outside)])
+    assert r.exit_code == 1
+    assert "outside the ken root" in (r.stdout + (r.stderr or ""))
+    assert "Traceback" not in r.stdout  # clean message, not a stack trace
