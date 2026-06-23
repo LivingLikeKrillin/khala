@@ -8,6 +8,10 @@
   <strong>An alliance of tools that calibrates the AI era.</strong>
 </p>
 
+<p align="center">
+  <em>AI builds it. You understand it.</em>
+</p>
+
 ---
 
 Khala answers the **two failure modes of the AI era — the machine lies, and the
@@ -19,6 +23,18 @@ its components is **Nexus**.
   grounding answers in verifiable sources, never asserting soft answers.
 - **The human stops judging** — AI output rubber-stamped without reading.
   Defended by making accountable review a gate before code is written.
+
+## The three debts of the AI era
+
+As AI becomes the producer, three debts accumulate (Martin Fowler, "the three debts of the
+AI era", 2026-04-02). Khala is the window where you pay them down cheaply — so you stay in
+command of your own system:
+
+- **Technical debt** — artifacts pile up faster than they're maintained → **mutqa** + **Probe**.
+- **Intent debt** — *why* a thing was built is lost → **specledger**.
+- **Cognitive debt** — *nobody understands the system* → the open leg Khala is built to close.
+
+The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.md).
 
 ## The tools
 
