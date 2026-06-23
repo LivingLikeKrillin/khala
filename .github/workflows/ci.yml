@@ -80,6 +80,21 @@ jobs:
         working-directory: mutqa
         run: python -m pytest -q
 
+  ken:
+    name: ken (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install ken
+        working-directory: ken
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        working-directory: ken
+        run: python -m pytest -q
+
   docs:
     name: docs (build + linkcheck)
     runs-on: ubuntu-latest
