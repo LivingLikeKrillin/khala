@@ -156,3 +156,30 @@ def coverage_report(*, manifest: str, questions_store: str, ledger: str) -> Cove
     attempts = load_attempts(ledger)
     qmap = {r.artifact_id: load_questions(r.artifact_id, store_path=questions_store) for r in refs}
     return compute_coverage_v1(refs, qmap, attempts)
+
+
+@dataclass(frozen=True)
+class ArtifactStatus:
+    artifact_id: str
+    path: str
+    status: str  # "orphan" | "vouched"
+    weak_count: int
+
+
+def list_artifacts(*, manifest: str, questions_store: str, ledger: str) -> list[ArtifactStatus]:
+    """One status row per manifest ref, derived from `coverage_report` (no new logic)."""
+    refs = load_manifest(manifest)
+    report = coverage_report(manifest=manifest, questions_store=questions_store, ledger=ledger)
+    orphans = set(report.orphans)
+    weak_by_artifact: dict[str, int] = {}
+    for w in report.weakness:
+        weak_by_artifact[w.artifact_id] = weak_by_artifact.get(w.artifact_id, 0) + w.fail_count
+    return [
+        ArtifactStatus(
+            artifact_id=ref.artifact_id,
+            path=ref.path,
+            status="orphan" if ref.artifact_id in orphans else "vouched",
+            weak_count=weak_by_artifact.get(ref.artifact_id, 0),
+        )
+        for ref in refs
+    ]

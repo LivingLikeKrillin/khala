@@ -6,6 +6,7 @@ from ken.service import (
     coverage_report,
     ensure_questions,
     grade_answer,
+    list_artifacts,
     register_artifact,
 )
 
@@ -154,3 +155,43 @@ def test_remediation_llm_failure_yields_none_but_records(tmp_path):
     )
     assert res.passed is False and res.remediation is None
     assert len(load_attempts(str(led))) == 1  # recorded despite remediation failure
+
+
+def test_list_artifacts_orphan_when_unanswered(tmp_path):
+    man, ref = _seed(tmp_path)
+    qs_store = tmp_path / "q.json"
+    led = tmp_path / "l.jsonl"
+    ensure_questions(
+        ref.artifact_id, manifest=str(man), questions_store=str(qs_store),
+        llm=FakeLLM(responses=["Q1?"]), n=1,
+    )
+    rows = list_artifacts(manifest=str(man), questions_store=str(qs_store), ledger=str(led))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.artifact_id == ref.artifact_id
+    assert row.status == "orphan" and row.weak_count == 0
+
+
+def test_list_artifacts_vouched_with_weak_count(tmp_path):
+    man, ref = _seed(tmp_path)
+    qs_store = tmp_path / "q.json"
+    led = tmp_path / "l.jsonl"
+    qs = ensure_questions(
+        ref.artifact_id, manifest=str(man), questions_store=str(qs_store),
+        llm=FakeLLM(responses=["Q1?"]), n=1,
+    )
+    # fail once (records fail_count=1), then pass (latest attempt passes -> vouched)
+    grade_answer(
+        ref.artifact_id, qs[0].id, "wrong", person="kr", manifest=str(man),
+        questions_store=str(qs_store), ledger=str(led),
+        llm=FakeLLM(responses=['{"passed": false, "score": 0.0, "rationale": "no"}', "fix it"]),
+        now="2026-06-23T00:00:00Z",
+    )
+    grade_answer(
+        ref.artifact_id, qs[0].id, "right", person="kr", manifest=str(man),
+        questions_store=str(qs_store), ledger=str(led),
+        llm=FakeLLM(responses=['{"passed": true, "score": 1.0, "rationale": "ok"}']),
+        now="2026-06-23T01:00:00Z",
+    )
+    rows = list_artifacts(manifest=str(man), questions_store=str(qs_store), ledger=str(led))
+    assert rows[0].status == "vouched" and rows[0].weak_count == 1
