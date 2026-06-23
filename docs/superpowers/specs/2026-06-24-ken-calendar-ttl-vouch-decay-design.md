@@ -38,8 +38,12 @@ def is_vouched(questions, states, *, now) -> bool:
 This is the smallest change that:
 - **unifies `is_vouched` with `due`** (they can no longer disagree — coverage's "covered" is exactly "no questions due"),
 - reuses all existing ladder logic (no duplicated `next_due` math, no new constant),
-- preserves every existing truth-table case (never-attempted/failed/stale-hash all remain `due` ⇒ not vouched; empty-questions stays vacuously vouched),
+- preserves every existing truth-table case **under the `now ≥ last_ts` invariant** (see §3.2): never-attempted (`st is None` → always due) and stale-hash (no state → due) are skew-robust; failed and passed route through `due`'s `now ≥ next_due` compare,
 - adds decay: a passed question at rung *k* stays "not due" for `LADDER[k]` after its last pass (capping at 30 days at rung 4), then becomes due ⇒ the artifact decays to orphan until re-passed.
+
+### 3.2 The `now ≥ last_ts` invariant (and the failed-question corner)
+
+`due` decides a *stateful* question due iff `now ≥ last_ts + LADDER[interval_idx]` (`schedule.py:95`). A **failed** question has `interval_idx = 0`, so `next_due = last_ts + 0 = last_ts`; it is due iff `now ≥ last_ts`. In all real use `now` is wall-clock and therefore ≥ every recorded attempt ts, so a failed question is always due ⇒ not vouched — matching the old `last_passed`-based result exactly. The *only* divergence from the old truth table is a degenerate `now < last_ts` (clock skew / a future-dated hand-edited ledger line / a test passing a `now` earlier than its attempts): there the failed/passed question would be judged "not yet due" ⇒ wrongly vouched. We treat **`now ≥ all attempt timestamps` as a caller invariant** (every production caller uses wall-clock `now`; tests must pick `now` ≥ their attempt ts). A boundary test (§8) pins `failed + now == last_ts ⇒ due ⇒ not vouched` (the `≥` makes the boundary itself safe).
 
 ### 3.1 Break the import cycle: move `_parse_ts` into `schedule.py`
 
@@ -82,13 +86,19 @@ Coverage is now **time-dependent**: artifacts decay to orphan as their questions
 
 ## 8. Testing (no API key — pure functions)
 
+Recall `due` uses `now ≥ next_due` (boundary = due), and a single pass advances to **rung 1** (`next_due = last_ts + 1d`). Pick `now` values accordingly — exact values below so no test sits on a boundary.
+
 - **`is_vouched` truth table with `now`:**
-  - all-pass and `now` before `next_due` ⇒ True (e.g. pass at `T`, `now = T+1h`, rung-1 `next_due = T+1d`).
-  - all-pass but `now` past `next_due` (e.g. `now = T+2d`) ⇒ **False** (decay — the new case).
-  - never-attempted / failed / stale-hash question ⇒ False (unchanged, now with `now` supplied).
-  - empty questions ⇒ True.
-- **coverage decay:** one artifact, one question passed at `T`; `now = T+1h` ⇒ `covered = 1`; `now = T+2d` ⇒ `covered = 0`, `orphans = ["a1"]`. Proves the artifact decays purely from the clock, no content change.
-- Existing vouch/coverage/service tests updated to pass a `now` that keeps their intended outcome (recent pass ⇒ before `next_due`).
+  - all-pass, `now` before `next_due` ⇒ True (pass at `2026-06-20T00:00:00Z`, `now = "2026-06-20T01:00:00Z"`; rung-1 `next_due = 2026-06-21T00:00:00Z`).
+  - all-pass but `now` past `next_due` (`now = "2026-06-22T00:00:00Z"`) ⇒ **False** (decay — the new case).
+  - never-attempted / stale-hash ⇒ False (unchanged; skew-robust).
+  - failed question ⇒ False, including the **boundary** `now == last_ts` (`pass`→ fail at `2026-06-20T00:00:00Z`, `now = "2026-06-20T00:00:00Z"`; `next_due == last_ts`, `now ≥ next_due` ⇒ due ⇒ not vouched) — locks §3.2.
+  - empty questions ⇒ True (any `now`).
+- **coverage decay:** one artifact, one question passed at `2026-06-20T00:00:00Z`; `now = "2026-06-20T01:00:00Z"` ⇒ `covered = 1`; `now = "2026-06-22T00:00:00Z"` ⇒ `covered = 0`, `orphans = ["a1"]`. Proves decay purely from the clock, no content change.
+- **Exact `now` for the existing tests** (so none flips):
+  - `test_vouch_derived.py` / `test_coverage_v1.py` — all attempts at `2026-06-20T00:00:00Z`; pass `now = "2026-06-20T01:00:00Z"` (well within +1d for the pass cases; the fail/never/stale cases are False regardless).
+  - `test_service.py::test_list_artifacts_vouched_with_weak_count` — the question is **failed then passed** (`2026-06-23T00:00:00Z`, then `2026-06-23T01:00:00Z`): the fail resets to rung 0, the pass advances to **rung 1**, so `next_due = 2026-06-24T01:00:00Z`. Pass `now = "2026-06-23T02:00:00Z"` (1h after the last pass) to keep it vouched. `test_list_artifacts_orphan_when_unanswered` and `test_coverage_report_zero_when_unanswered` are orphan regardless; pass any `now ≥` their attempts (use `"2026-06-23T02:00:00Z"`).
+- **ken-web api tests stay green** — note: `test_api.py` asserts only `cov["total"] == 1`, never `covered`, and the api computes its attempt `now_iso()` and coverage `now_iso()` microseconds apart (well within +1d), so threading `now=service.now_iso()` internally cannot flip them. (Do not "strengthen" those tests to assert `covered` — that would couple them to wall-clock timing.)
 - `test_schedule.py` runs unchanged and green (verifies the `_parse_ts` relocation is behavior-preserving).
 - `ruff check` clean (no unused imports after the `_parse_ts`/datetime removals in `vouch.py`).
 
