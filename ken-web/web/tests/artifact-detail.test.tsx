@@ -38,6 +38,7 @@ describe("ArtifactDetail", () => {
     renderAt("a1");
     expect(await screen.findByText("Q one?")).toBeInTheDocument();
     expect(screen.getByText("Q two?")).toBeInTheDocument();
+    expect(screen.getByText(/due now/i)).toBeInTheDocument();   // q1 never-attempted && due
     expect(screen.getByText(/overdue/i)).toBeInTheDocument();   // q2 attempted && due
     expect(screen.getByText(/3/)).toBeInTheDocument();          // fail count
   });

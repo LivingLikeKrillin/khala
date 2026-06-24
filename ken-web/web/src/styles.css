@@ -470,6 +470,14 @@ a {
   color: var(--gold);
   transform: translateX(3px);
 }
+.row--static {
+  cursor: default;
+}
+.row--static:hover {
+  border-color: var(--line);
+  transform: none;
+  background: var(--ink-850);
+}
 
 /* ------------------------------------------------------------ review -- */
 .review {

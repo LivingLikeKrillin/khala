@@ -17,10 +17,10 @@ function formatTs(ts: string): string {
 
 function QuestionRow({ q }: { q: QuestionDetail }) {
   const isOverdue = q.due && q.attempted;
-  const isDueNow = !q.attempted;
+  const isDueNow = !q.attempted && q.due;
 
   return (
-    <div className="row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+    <div className="row row--static" style={{ flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", flexWrap: "wrap" }}>
         <MasteryLadder rung={q.rung} />
         {isOverdue && (
@@ -103,6 +103,7 @@ export default function ArtifactDetail() {
         <div className="state__icon">…</div>
         <h2>Couldn&rsquo;t load artifact detail</h2>
         <p>{errorMsg}</p>
+        <Link to="/" className="btn btn--ghost">Back to overview</Link>
       </div>
     );
   }
