@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 
 from nexus.ingest.sources.base import ConvertedDoc
-from nexus.ingest.sources.notion_importer import ImportReport, build_csf, import_notion
+from nexus.ingest.sources.notion_importer import build_csf, import_notion
 
 
 def _conv(body="# 제목\n\n본문", title="결제 기획", url="https://notion.so/p1"):
