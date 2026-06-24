@@ -63,8 +63,44 @@ class NotionSource:
             page_id=ref.id, markdown=md, frontmatter=fm, image_count=image_count
         )
 
-    def list_changed(self, since: str | None) -> list[PageRef]:
-        raise NotImplementedError  # 통합 단계(Task 6): root object type 분기 + last_edited_time
+    def page_ref(self, page_id: str) -> PageRef:
+        """page id → PageRef(id/url/last_edited). client.pages.retrieve 사용."""
+        p = self.client.pages.retrieve(page_id=page_id)
+        return PageRef(
+            id=page_id,
+            url=p.get("url", f"https://notion.so/{page_id}"),
+            last_edited=p.get("last_edited_time", ""),
+        )
+
+    def _db_rows(self, database_id: str) -> list[dict]:
+        rows: list[dict] = []
+        cursor = None
+        while True:
+            resp = self.client.databases.query(database_id=database_id, start_cursor=cursor)
+            rows.extend(resp.get("results", []))
+            if not resp.get("has_more"):
+                break
+            cursor = resp.get("next_cursor")
+        return rows
+
+    def _collect(self, page_id: str, ids: set[str]) -> None:
+        if page_id in ids:
+            return
+        ids.add(page_id)
+        for block in self._all_blocks(page_id):
+            t = block.get("type")
+            if t == "child_page":
+                self._collect(block["id"], ids)
+            elif t == "child_database":
+                for row in self._db_rows(block["id"]):
+                    self._collect(row["id"], ids)
 
     def live_ids(self) -> set[str]:
-        raise NotImplementedError  # 통합 단계(Task 6): roots 전체 열거
+        """roots(page id) 하위에 도달 가능한 page id 집합(child_page 재귀 + child_database 행)."""
+        ids: set[str] = set()
+        for root in self.roots:
+            self._collect(root, ids)
+        return ids
+
+    def list_changed(self, since: str | None) -> list[PageRef]:
+        raise NotImplementedError  # 증분 sync 는 S4 비범위(후속)
