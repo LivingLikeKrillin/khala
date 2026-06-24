@@ -88,6 +88,15 @@ def rebuild(
     return states
 
 
+def next_due_at(state: ReviewState) -> datetime:
+    """When this question is next due: last attempt ts + the rung's interval.
+
+    Single public source for the expression `due` uses internally, so the two can
+    never disagree. Returns a tz-aware datetime (naive last_ts coerced to UTC).
+    """
+    return _parse_ts(state.last_ts) + LADDER[state.interval_idx]
+
+
 def due(states: dict[str, ReviewState], all_qids: list[str], *, now: str) -> list[str]:
     """Return the due question ids from the FULL question-id universe.
 
@@ -102,7 +111,6 @@ def due(states: dict[str, ReviewState], all_qids: list[str], *, now: str) -> lis
         if st is None:
             out.append(qid)
             continue
-        next_due = _parse_ts(st.last_ts) + LADDER[st.interval_idx]
-        if now_dt >= next_due:
+        if now_dt >= next_due_at(st):
             out.append(qid)
     return out

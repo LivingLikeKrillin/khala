@@ -70,3 +70,23 @@ def test_rebuild_sorts_by_ts():
     ]
     st = rebuild(atts, current_hashes={"q": "sha256:cur"})["q"]
     assert st.last_passed is False and st.interval_idx == 0
+
+
+def test_next_due_at_is_last_ts_plus_ladder_rung():
+    from datetime import datetime, timezone
+    from ken.schedule import next_due_at
+    st = rebuild([att("q", True, "2026-06-01T00:00:00Z")], current_hashes={"q": "sha256:cur"})["q"]
+    # one pass -> interval_idx 1 -> +1 day
+    assert next_due_at(st) == datetime(2026, 6, 2, 0, 0, tzinfo=timezone.utc)
+
+
+def test_due_agrees_with_next_due_at_across_rungs():
+    # due-ness must be exactly: now >= next_due_at(state). Pin the agreement.
+    from ken.schedule import next_due_at
+    st = rebuild([att("q", True, "2026-06-01T00:00:00Z")], current_hashes={"q": "sha256:cur"})["q"]
+    nd = next_due_at(st)
+    just_before = "2026-06-01T23:59:00Z"
+    at_or_after = "2026-06-02T00:00:00Z"
+    assert "q" not in due({"q": st}, ["q"], now=just_before)
+    assert "q" in due({"q": st}, ["q"], now=at_or_after)
+    assert nd.isoformat() == "2026-06-02T00:00:00+00:00"
