@@ -1,29 +1,36 @@
--- ken Postgres schema (S2) — 3 tables, no view.
---
--- The DB is an INDEX, not the artifact archive: artifacts live in the
--- filesystem/git and `content_hash` is computed LIVE from the file on read
--- (never stored here). Derivations (schedule/vouch/coverage) are recomputed in
--- Python from these rows, so no view or derived table is needed.
---
+-- ken Postgres schema. Tenant-isolated (one tenant per user); tenant key = slug.
+-- The DB is an INDEX, not the artifact archive (content_hash is read live from disk).
 -- Apply with:  psql "$KEN_DATABASE_URL" -f db/init.sql
 
+CREATE TABLE tenants (
+    slug       TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO tenants (slug, name) VALUES ('default', 'Default');
+
 CREATE TABLE artifacts (
-    artifact_id TEXT PRIMARY KEY,
-    path        TEXT NOT NULL UNIQUE
+    tenant_slug TEXT NOT NULL REFERENCES tenants(slug),
+    artifact_id TEXT NOT NULL,
+    path        TEXT NOT NULL,
+    PRIMARY KEY (tenant_slug, artifact_id),
+    UNIQUE (tenant_slug, path)
 );
 
 CREATE TABLE questions (
+    tenant_slug  TEXT NOT NULL REFERENCES tenants(slug),
     artifact_id  TEXT NOT NULL,
     content_hash TEXT NOT NULL,
     question_id  TEXT NOT NULL,
     idx          INTEGER NOT NULL,
     text         TEXT NOT NULL,
-    PRIMARY KEY (artifact_id, question_id)
+    PRIMARY KEY (tenant_slug, artifact_id, question_id)
 );
-CREATE INDEX idx_questions_artifact ON questions (artifact_id);
+CREATE INDEX idx_questions_tenant_artifact ON questions (tenant_slug, artifact_id);
 
 CREATE TABLE attempts (
     id           BIGSERIAL PRIMARY KEY,
+    tenant_slug  TEXT NOT NULL REFERENCES tenants(slug),
     person       TEXT NOT NULL,
     artifact_id  TEXT NOT NULL,
     question_id  TEXT NOT NULL,
@@ -32,13 +39,14 @@ CREATE TABLE attempts (
     score        DOUBLE PRECISION NOT NULL,
     ts           TIMESTAMPTZ NOT NULL
 );
-CREATE INDEX idx_attempts_question ON attempts (question_id);
+CREATE INDEX idx_attempts_tenant_question ON attempts (tenant_slug, question_id);
 
--- S6 auth (Postgres-only gating). Separate from the 3 core tables.
+-- S6 auth (Postgres-only gating).
 CREATE TABLE users (
     id            BIGSERIAL PRIMARY KEY,
     email         TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    tenant_slug   TEXT NOT NULL REFERENCES tenants(slug),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
