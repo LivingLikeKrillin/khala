@@ -13,4 +13,5 @@ def test_build_app_registers_tools(tmp_path):
     tools = asyncio.run(app.list_tools())  # public FastMCP API -> list[Tool]
     names = {t.name for t in tools}
     assert {"record", "critique", "approve", "status", "check_gate", "index",
-            "supersede", "begin_implementation", "end_implementation", "publish"} == names
+            "supersede", "begin_implementation", "end_implementation", "publish",
+            "promote_external"} == names
