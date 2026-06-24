@@ -461,6 +461,7 @@ def ingest_notion(
     tenant: str = "default",
     roots: str = typer.Option("", help="쉼표구분 Notion page id 목록"),
     token_env: str = "NOTION_TOKEN",
+    since: str = typer.Option("", help="ISO8601 watermark — 이후 변경분만(증분)"),
 ) -> None:
     """Notion 페이지를 CSF로 변환해 S3 타입-인지 intake로 적재(Path B)."""
     from nexus.a2a.server import _default_external_ingest_fn
@@ -480,9 +481,12 @@ def ingest_notion(
         typer.echo("notion-client 미설치 — `pip install nexus[notion]`")
         raise typer.Exit(code=1) from None
 
-    report = asyncio.run(import_notion(source, tenant, _default_external_ingest_fn))
+    report = asyncio.run(
+        import_notion(source, tenant, _default_external_ingest_fn, since=since or None)
+    )
     typer.echo(
-        f"ingested={report.ingested} idempotent={report.idempotent} skipped={report.skipped}"
+        f"ingested={report.ingested} idempotent={report.idempotent} "
+        f"skipped={report.skipped} watermark={report.watermark or ''}"
     )
 
 
