@@ -191,3 +191,50 @@ def list_artifacts(*, store: KenStore, now: str) -> list[ArtifactStatus]:
         )
         for ref in refs
     ]
+
+
+@dataclass(frozen=True)
+class QuestionDetail:
+    question_id: str
+    text: str
+    rung: int                 # interval_idx 0..4 (0 when never-attempted)
+    attempted: bool
+    last_passed: bool | None
+    last_ts: str | None
+    fail_count: int
+    next_due: str | None      # ISO-8601; None => never-attempted => due now
+    due: bool
+
+
+def artifact_detail(artifact_id: str, *, store: KenStore, now: str) -> list[QuestionDetail]:
+    """Per-question schedule/mastery rows for one artifact. Read-only; no LLM.
+
+    Returns [] when the artifact has no current questions or its questions are stale
+    (artifact-level gate, matching coverage's `orphan` verdict). For a bound artifact,
+    due-ness is exactly `schedule.due` (never re-derived here).
+    """
+    ref = find_ref(artifact_id, store=store)
+    if ref is None:
+        raise KeyError(artifact_id)
+    qs = _bound_questions(ref, store=store)
+    if qs is None:
+        return []
+    attempts = store.load_attempts()
+    states = rebuild(attempts, current_hashes={q.id: ref.content_hash for q in qs})
+    due_set = set(schedule_due(states, [q.id for q in qs], now=now))
+    rows: list[QuestionDetail] = []
+    for q in qs:
+        st = states.get(q.id)
+        if st is None:
+            rows.append(QuestionDetail(
+                question_id=q.id, text=q.text, rung=0, attempted=False,
+                last_passed=None, last_ts=None, fail_count=0,
+                next_due=None, due=q.id in due_set,
+            ))
+        else:
+            rows.append(QuestionDetail(
+                question_id=q.id, text=q.text, rung=st.interval_idx, attempted=True,
+                last_passed=st.last_passed, last_ts=st.last_ts, fail_count=st.fail_count,
+                next_due=next_due_at(st).isoformat(), due=q.id in due_set,
+            ))
+    return rows

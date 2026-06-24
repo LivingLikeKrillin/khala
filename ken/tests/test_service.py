@@ -2,11 +2,13 @@
 
 from ken.llm import FakeLLM
 from ken.service import (
+    artifact_detail,
     coverage_report,
     ensure_questions,
     grade_answer,
     list_artifacts,
     register_artifact,
+    QuestionDetail,
 )
 from ken.stores.file_store import FileStore
 
@@ -169,3 +171,65 @@ def test_list_artifacts_vouched_with_weak_count(tmp_path):
     )
     rows = list_artifacts(store=store, now="2026-06-23T02:00:00Z")
     assert rows[0].status == "vouched" and rows[0].weak_count == 1
+
+
+# ---------------------------------------------------------------------------
+# artifact_detail tests
+# ---------------------------------------------------------------------------
+
+def _answer(store, ref, qid, passed, ts):
+    # append one attempt at the artifact's CURRENT content hash
+    from ken.models import Attempt
+    h = ref.content_hash
+    store.append_attempt(Attempt("kr", ref.artifact_id, qid, h, passed, 1.0, ts))
+
+
+def test_artifact_detail_unknown_raises(tmp_path):
+    store, ref = _seed(tmp_path)
+    import pytest
+    with pytest.raises(KeyError):
+        artifact_detail("nope", store=store, now="2026-06-01T00:00:00Z")
+
+
+def test_artifact_detail_never_attempted_is_due_rung0(tmp_path):
+    store, ref = _seed(tmp_path)
+    ensure_questions(ref.artifact_id, store=store, llm=FakeLLM(responses=["Q1?"]), n=1)
+    rows = artifact_detail(ref.artifact_id, store=store, now="2026-06-01T00:00:00Z")
+    assert len(rows) == 1
+    r = rows[0]
+    assert r.attempted is False and r.rung == 0 and r.next_due is None
+    assert r.last_passed is None and r.last_ts is None and r.fail_count == 0 and r.due is True
+
+
+def test_artifact_detail_pass_advances_and_sets_next_due(tmp_path):
+    store, ref = _seed(tmp_path)
+    qs = ensure_questions(ref.artifact_id, store=store, llm=FakeLLM(responses=["Q1?"]), n=1)
+    _answer(store, ref, qs[0].id, True, "2026-06-01T00:00:00Z")
+    rows = artifact_detail(ref.artifact_id, store=store, now="2026-06-01T06:00:00Z")
+    r = rows[0]
+    assert r.attempted is True and r.rung == 1 and r.last_passed is True
+    assert r.next_due == "2026-06-02T00:00:00+00:00"  # +1d ladder rung
+    assert r.due is False  # 6h < 1d
+
+
+def test_artifact_detail_fail_resets_and_counts(tmp_path):
+    store, ref = _seed(tmp_path)
+    qs = ensure_questions(ref.artifact_id, store=store, llm=FakeLLM(responses=["Q1?"]), n=1)
+    _answer(store, ref, qs[0].id, False, "2026-06-01T00:00:00Z")
+    rows = artifact_detail(ref.artifact_id, store=store, now="2026-06-05T00:00:00Z")
+    r = rows[0]
+    assert r.rung == 0 and r.fail_count == 1 and r.last_passed is False and r.due is True
+
+
+def test_artifact_detail_stale_content_returns_empty(tmp_path):
+    store, ref = _seed(tmp_path)
+    ensure_questions(ref.artifact_id, store=store, llm=FakeLLM(responses=["Q1?"]), n=1)
+    (tmp_path / "a.md").write_text("DIFFERENT content.\n", encoding="utf-8")  # bumps live hash
+    rows = artifact_detail(ref.artifact_id, store=store, now="2026-06-01T00:00:00Z")
+    assert rows == []  # stale gate == coverage orphan
+
+
+def test_artifact_detail_no_questions_returns_empty(tmp_path):
+    store, ref = _seed(tmp_path)  # registered, never generated
+    rows = artifact_detail(ref.artifact_id, store=store, now="2026-06-01T00:00:00Z")
+    assert rows == []
