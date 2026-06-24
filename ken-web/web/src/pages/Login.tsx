@@ -49,7 +49,7 @@ export default function Login() {
             required
           />
         </div>
-        {error && <p className="state" style={{ color: "var(--c-fail, #e45)", margin: 0 }}>{error}</p>}
+        {error && <p style={{ color: "var(--c-fail, #e45)", margin: 0 }}>{error}</p>}
         <button type="submit" className="btn btn--primary" disabled={submitting}>
           Sign in
         </button>
