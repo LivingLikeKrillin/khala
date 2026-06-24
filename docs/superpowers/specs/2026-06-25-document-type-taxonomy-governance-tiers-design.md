@@ -79,11 +79,13 @@ Diátaxis: `tutorial` \| `how-to` \| `reference` \| `explanation`. **user-facing
 
 | Tier | 의미 | 생애주기(근거 기반) | 축 A 타입 |
 |---|---|---|---|
-| **T1 — 거버넌스** | 승인 게이트 + 불변 + supersede. 구현/후속이 이걸 근거로 삼음 | `proposed → 리뷰/승인 게이트 → accepted(불변) → 변경은 supersede → superseded/deprecated` | `ADR`, `RFC`, `DESIGN`, (승인된)`SPEC` |
+| **T1 — 거버넌스** | 승인 게이트 + 불변 + supersede. 구현/후속이 이걸 근거로 삼음 | `proposed → 리뷰/승인 게이트 → accepted(불변) → 변경은 supersede → superseded/deprecated` | `ADR`, `RFC`, `DESIGN` |
 | **T2 — 추적** | 리뷰는 하되 승인 게이트는 없음. 제자리 개정 + 버전 + **주기적 staleness/owner 재확인** | `draft → 리뷰(기대됨) → published → 주기적 재확인 → 개정(version++) → deprecate` | `PRD`, `RUNBOOK`, `POSTMORTEM` |
 | **T3 — 메모** | 게이트 없음. 인덱싱·검색만, 옵션 staleness flag | `capture → (옵션) staleness flag → archive` | `NOTE`, 미분류 |
 
 근거 매핑: T1 = ADR 불변+supersede(arc42/Nygard/AWS) + RFC 승인 게이트. T2 = postmortem "리뷰는 필수 규범, 승인 게이트는 없음"(Google SRE) + RFC의 "모든 변경이 게이트는 아니다". T3 = 의존 없는 참고 문서.
+
+> **명명 주의:** 표의 `lifecycle` 라벨(`governed`/`tracked`/`memo`)은 tier `T1`/`T2`/`T3`와 **1:1 불변식**이다(레지스트리는 둘 중 하나만 선언해도 다른 하나가 결정됨). 또한 `SPEC`은 **정규화 전 레거시 CSF 토큰**이며 정본 축-A 타입은 `DESIGN`이다(§6) — 아래 표·예시에 `DESIGN`만 등장하는 이유.
 
 ### Cross-cutting (모든 tier 공통, doc-rot 최강 증거가 지목)
 
@@ -121,7 +123,8 @@ S3(intake)·specledger·Nexus가 이 레지스트리를 **읽어** 라우팅·�
 
 ## 6. 기존 자산과의 정합 / 마이그레이션
 
-- **CSF `kind` → 축 A:** 외부-spec ingest gateway(A)의 CSF `kind`(PRD\|SPEC\|ADR\|FLOW\|NOTE)를 축 A 어휘로 정규화. `SPEC→DESIGN`, `FLOW→RUNBOOK\|NOTE`. `promote_external`의 `_KIND_TO_TYPE`(현재 SPEC/ADR만)은 레지스트리 기반으로 일반화.
+- **CSF `kind` → 축 A:** 외부-spec ingest gateway(A)의 CSF `kind`(PRD\|SPEC\|ADR\|FLOW\|NOTE)를 축 A 어휘로 **정규화**. `SPEC→DESIGN`, `FLOW→RUNBOOK\|NOTE`.
+- **정규화 경계 결정:** CSF `kind`→축-A 정규화는 **상류(intake/normalization)**에서 한 번 일어나고, `promote_external`은 **축-A 정본 타입에 키잉**한다. 즉 `_KIND_TO_TYPE`(현재 raw CSF kind `SPEC`/`ADR`만)는 *축-A 타입 → specledger 어휘* 레지스트리 조회로 일반화되고, raw CSF kind를 직접 받지 않는다. (입력단에서 한 번 정규화 → 내부는 정본 타입만 다룸; 정규화 로직이 promote·gateway에 중복되지 않게.)
 - **순수 additive:** 기존 governed publish 경로(approved_hash), Nexus 메모 경로는 의미 불변. T1/T3는 *이미 있는 것에 타입을 붙일 뿐*.
 - **외부-spec gateway(A)는 S3로 흡수:** A의 "기본 메모, 선택 승격"은 이 모델의 특수 사례 — "들어오면 타입 분류 → T3 기본, T1/T2로 승격". A는 이미 그 한 경로(NOTE→메모, →promote)를 구현했다.
 
@@ -148,7 +151,7 @@ S3(intake)·specledger·Nexus가 이 레지스트리를 **읽어** 라우팅·�
 
 1. 타입 레지스트리가 §3·§4 모델을 선언하고 스키마 검증 통과.
 2. 레지스트리 리더: 알려진 타입→올바른 tier, 미지 타입→`default_tier=T3`.
-3. specledger `promote_external`가 레지스트리를 통해 T1 타입(ADR/SPEC/DESIGN/RFC)을 매핑(기존 SPEC/ADR 회귀 없음).
+3. specledger `promote_external`가 레지스트리를 통해 T1 **축-A 타입**(ADR/DESIGN/RFC)을 specledger 어휘로 매핑(레거시 CSF `SPEC`→`DESIGN` 정규화는 상류; 기존 SPEC/ADR 경로 회귀 없음).
 4. 외부-spec gateway(A)의 CSF `kind`가 축 A로 정규화되어 기존 E2E 회귀 없음.
 5. **신규 거버넌스 기계 0 for T1/T3** — 기존 specledger/Nexus 재사용 증명.
 
