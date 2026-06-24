@@ -60,10 +60,16 @@ lookup) so login is case-insensitive and the UNIQUE constraint is meaningful.
 ### 4.1 Password hashing — `ken_web_api.security` (new)
 
 Thin wrapper over **argon2-cffi** (new dependency on `ken-web-api`):
-- `hash_password(plain: str) -> str` — argon2 hash.
+- `hash_password(plain: str) -> str` — argon2 hash (a fresh per-hash salt is built in).
 - `verify_password(hash: str, plain: str) -> bool` — constant-time verify; returns False on
-  mismatch or malformed hash (never raises to the caller).
-- `new_session_token() -> str` — `secrets.token_urlsafe(32)`.
+  mismatch or malformed hash. It catches the **argon2 exception base**
+  `argon2.exceptions.VerificationError` (covers `VerifyMismatchError`) **and**
+  `argon2.exceptions.InvalidHashError` → False; it does **not** catch bare `Exception` (real bugs
+  must surface).
+- `DUMMY_HASH` — a precomputed argon2 hash of a random string, used to spend a constant-time
+  verify on the unknown-email login path (see §4.5) so login timing doesn't leak which emails
+  exist.
+- `new_session_token() -> str` — `secrets.token_urlsafe(32)` (256-bit opaque token).
 
 No password is ever logged. Minimal policy: reject empty/whitespace and `< 8` chars **at the
 CLI** (creation time); the API never creates users.
@@ -87,17 +93,31 @@ class AuthStore(Protocol):
 ```
 
 - **`PostgresAuthStore(dsn)`** — psycopg3, sync, per-request connection, parameterized, fail-loud
-  (same shape as `PostgresStore`). `user_for_session` filters `expires_at > now`.
+  (same shape as `PostgresStore`). `user_for_session` filters `expires_at > %(now)s` in SQL
+  (psycopg binds the ISO `now` string; Postgres casts it to `timestamptz` — sound for
+  offset-aware ISO-8601).
 - **`FakeAuthStore`** — in-memory dicts, for tests. Same contract.
 
+**Canonical timestamp rule (both stores).** All timestamps (`expires_at`, the `now` arg) are
+offset-aware ISO-8601 produced the same way as `service.now_iso()` (UTC, `+00:00`, microsecond
+precision — the same convention `PostgresStore.load_attempts` already renders via `.isoformat()`).
+`create_session` computes `expires_at = (now_dt + SESSION_TTL).isoformat()`. `FakeAuthStore`
+compares by **parsing** both to datetimes (reuse `schedule._parse_ts` / `datetime.fromisoformat`),
+**not** lexicographically, so format drift can't mis-order the boundary.
+
 `deps.make_auth_store()` returns `PostgresAuthStore(KEN_DATABASE_URL)`; tests monkeypatch it to a
-`FakeAuthStore`. `deps.auth_enabled()` returns `os.getenv("KEN_AUTH") == "1"`.
+`FakeAuthStore`. `deps.auth_enabled()` returns `os.getenv("KEN_AUTH") == "1"` — **exact string
+`"1"` only** (a typo like `KEN_AUTH=true` resolves to OFF; the startup log in §4.3 makes the
+resolved mode visible so a misconfiguration is caught by eye).
 
 ### 4.3 Startup guard
 
-On app startup (or first request), if `auth_enabled()` is true and `KEN_DATABASE_URL` is **unset**,
-fail loud (`RuntimeError`: "KEN_AUTH=1 requires KEN_DATABASE_URL (Postgres)"). Auth must never
-silently run against the file backend.
+At **true startup** (FastAPI `lifespan` / `@app.on_event("startup")`, not first-request), if
+`auth_enabled()` is true and `KEN_DATABASE_URL` is **unset**, fail loud (`RuntimeError`:
+"KEN_AUTH=1 requires KEN_DATABASE_URL (Postgres)") so a misconfigured instance never reports ready.
+Auth must never silently run against the file backend. The startup hook also emits one log line with
+the **resolved auth mode** — `auth: ENABLED` or `auth: OFF` — so an operator can eyeball that a typo
+(`KEN_AUTH=true` → OFF) didn't silently leave the instance open.
 
 ### 4.4 `require_user` dependency + identity binding
 
@@ -125,13 +145,20 @@ the hardcoded `"kr"` and prevents a client from claiming an arbitrary identity. 
 
 ### 4.5 Auth endpoints — `ken_web_api.app`
 
-- `POST /api/auth/login` `{email, password}` → look up user (lowercased email), `verify_password`;
-  on success create a session (token + `expires_at = now + SESSION_TTL`, e.g. 14 days), set cookie
-  `ken_session` (**httpOnly, SameSite=Lax, Path=/**, `Secure` when `KEN_COOKIE_SECURE=1`), return
-  `{email}`. On failure → **401 with a generic detail** ("invalid email or password") — no user
-  enumeration, same response for unknown email vs wrong password.
-- `POST /api/auth/logout` → `delete_session(token)`, clear the cookie, return `204`.
+- `POST /api/auth/login` (body `LoginReq {email: str, password: str}`) → look up user (lowercased
+  email), `verify_password`; on success create a session (fresh token + `expires_at = now +
+  SESSION_TTL`, e.g. 14 days — a new token per login, no pre-auth session, so no fixation), set
+  cookie `ken_session` (**httpOnly, SameSite=Lax, Path=/**, `Secure` when `KEN_COOKIE_SECURE=1`),
+  return `{email}`. On failure → **401 with a generic detail** ("invalid email or password") — no
+  user enumeration, identical response for unknown email vs wrong password. **Constant-time across
+  branches:** on the unknown-email path, still run one `verify_password(DUMMY_HASH, password)` so
+  the response timing doesn't reveal whether the email exists.
+- `POST /api/auth/logout` → read the cookie; if a token is present `delete_session(token)`; always
+  clear the cookie and return `204`. **Idempotent** — missing/unknown token is a no-op `204`, never
+  an error.
 - `GET /api/auth/me` → `{email}` for a valid session, else `401`.
+
+DTOs added to `schemas.py`: `LoginReq {email, password}`, `MeOut {email}`.
 
 When `auth_enabled()` is false, `/login` and `/logout` are inert (login returns 400 "auth
 disabled"); `/me` returns `{email: DEFAULT_PERSON}` so the SPA renders a stable identity.
@@ -184,6 +211,15 @@ file-backend auth (file stays unauthenticated local/dev). The `ken` engine and C
 - Writes (create_user/create_session) are fail-loud (psycopg `with` rolls back).
 - `person` is **never** client-trusted when auth is on; always the session's user email.
 - Cookie is httpOnly (no JS access) + SameSite=Lax; `Secure` in prod via `KEN_COOKIE_SECURE=1`.
+- **CSRF / same-origin.** Auth is **same-origin only** (the SPA uses relative `/api/...` paths; prod
+  serves the built SPA from the API origin, dev uses the Vite proxy). SameSite=Lax blocks the
+  cross-site POST CSRF vector (`/api/attempts`, `/api/auth/*`). The existing dev CORS block
+  (`app.py`, `allow_origins=["http://localhost:5173"]`) is **non-credentialed dev-only**; a future
+  reader must **not** add `allow_credentials=True` / cross-origin cookie sharing without
+  re-evaluating CSRF (it would require an explicit anti-CSRF token). No cross-origin auth is in
+  scope.
+- **Auth mode is explicit and logged** (§4.3): `auth_enabled()` accepts only `"1"`; the resolved
+  mode is logged at startup so a typo can't silently leave the instance open.
 
 ## 8. Testing
 
@@ -196,9 +232,13 @@ file-backend auth (file stays unauthenticated local/dev). The `ken` engine and C
 - **api auth-OFF (`KEN_AUTH` unset):** all data endpoints open (200, today's behavior); `/me` →
   `{email: "local"}`; attempts stored with `person="local"`.
 - **api startup guard:** `KEN_AUTH=1` + no `KEN_DATABASE_URL` → fail-loud.
+- **Expiry boundary (Fake, no DB):** a session expiring at `T` is valid at `now < T` and rejected
+  (401 / `user_for_session → None`) at `now >= T`, asserted with `now` values straddling `T` by a
+  microsecond — proving the comparison parses datetimes and isn't lexicographic. (Mirror the
+  `next_due_at` boundary-test discipline.)
 - **PG-gated (`KEN_TEST_DATABASE_URL`, like store_contract):** `PostgresAuthStore` round-trip —
-  create_user (and duplicate-email raises), create_session, `user_for_session` honors expiry,
-  delete_session. TRUNCATE includes `users, sessions`.
+  create_user (and duplicate-email raises), create_session, `user_for_session` honors expiry
+  (valid before / None after), delete_session. TRUNCATE includes `users, sessions` (CASCADE order).
 - **CLI:** `add-user` against a Fake/PG store stores a hash that `verify_password` accepts and a wrong
   password rejects; duplicate email errors; weak/empty password rejected.
 - **web (vitest, client mocked):** Login submits → on success navigates to `/`; on 401 shows the
