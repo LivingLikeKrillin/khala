@@ -873,3 +873,25 @@ a {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* mastery ladder — 5 pips, index-aligned with ken.schedule.LADDER [now,1d,3d,7d,30d] */
+.ladder {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ladder__pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.ladder__pip--on {
+  background: var(--gold);
+}
+.ladder__label {
+  margin-left: 8px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--paper-faint);
+}
