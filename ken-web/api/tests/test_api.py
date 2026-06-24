@@ -89,6 +89,42 @@ def test_unknown_artifact_id_returns_404(tmp_path, monkeypatch):
     assert resp.status_code == 404
 
 
+def test_detail_unknown_artifact_404(tmp_path, monkeypatch):
+    c = _client(tmp_path, monkeypatch, responses=[])
+    assert c.get("/api/artifacts/nope/detail").status_code == 404
+
+
+def test_detail_no_questions_empty(tmp_path, monkeypatch):
+    art = tmp_path / "a.md"
+    art.write_text("Payment service publishes orders.\n", encoding="utf-8")
+    c = _client(tmp_path, monkeypatch, responses=[])  # FakeLLM raises if generation attempted
+    aid = c.post("/api/artifacts", json={"path": str(art)}).json()["artifact_id"]
+    res = c.get(f"/api/artifacts/{aid}/detail")
+    assert res.status_code == 200 and res.json() == {"questions": []}
+
+
+def test_detail_never_calls_llm(tmp_path, monkeypatch):
+    # The detail handler must construct NO LLM. Make make_llm explode; /detail must still 200.
+    art = tmp_path / "a.md"
+    art.write_text("Payment service publishes orders.\n", encoding="utf-8")
+    c = _client(tmp_path, monkeypatch, responses=["Q1?\nQ2?"])  # for /due only
+    aid = c.post("/api/artifacts", json={"path": str(art)}).json()["artifact_id"]
+    c.get(f"/api/artifacts/{aid}/due")  # generate 2 questions (consumes the response)
+
+    def _boom():
+        raise AssertionError("detail must not construct the LLM")
+    monkeypatch.setattr(deps, "make_llm", _boom)
+
+    res = c.get(f"/api/artifacts/{aid}/detail")
+    assert res.status_code == 200
+    body = res.json()
+    assert len(body["questions"]) == 2
+    q = body["questions"][0]
+    assert set(q) == {"question_id", "text", "rung", "attempted", "last_passed",
+                      "last_ts", "fail_count", "next_due", "due"}
+    assert q["attempted"] is False and q["due"] is True and q["next_due"] is None
+
+
 def test_storage_write_failure_returns_500(tmp_path, monkeypatch):
     art = tmp_path / "a.md"
     art.write_text("Payment service publishes orders.\n", encoding="utf-8")

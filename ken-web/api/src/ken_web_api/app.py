@@ -20,11 +20,13 @@ from ken import service
 
 from . import deps
 from .schemas import (
+    ArtifactDetailOut,
     ArtifactOut,
     AttemptOut,
     AttemptReq,
     CoverageOut,
     DueOut,
+    QuestionDetailOut,
     QuestionOut,
     RegisterReq,
     WeaknessOut,
@@ -86,6 +88,26 @@ def get_due(artifact_id: str) -> DueOut:
         raise HTTPException(status_code=404, detail=f"unknown artifact_id: {artifact_id}")
     questions = [QuestionOut(question_id=qid, text=text) for qid, text in line.questions]
     return DueOut(questions=questions)
+
+
+@app.get("/api/artifacts/{artifact_id}/detail", response_model=ArtifactDetailOut)
+def get_detail(artifact_id: str) -> ArtifactDetailOut:
+    """Read-only per-question schedule rows. No generation, no LLM."""
+    store = deps.make_store()
+    try:
+        rows = service.artifact_detail(artifact_id, store=store, now=service.now_iso())
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"unknown artifact_id: {artifact_id}") from exc
+    return ArtifactDetailOut(
+        questions=[
+            QuestionDetailOut(
+                question_id=r.question_id, text=r.text, rung=r.rung, attempted=r.attempted,
+                last_passed=r.last_passed, last_ts=r.last_ts, fail_count=r.fail_count,
+                next_due=r.next_due, due=r.due,
+            )
+            for r in rows
+        ]
+    )
 
 
 @app.post("/api/attempts", response_model=AttemptOut)
