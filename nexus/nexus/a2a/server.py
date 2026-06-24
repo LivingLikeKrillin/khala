@@ -36,6 +36,7 @@ from nexus.a2a.external_ingest_skill import (
     build_external_ingest_artifact,
     compute_source_hash,
     extract_external_spec,
+    normalize_csf_kind,
     validate_external_spec,
 )
 from nexus.a2a.ingest_skill import IngestOutcome, build_ingest_artifact, extract_governed_doc
@@ -429,6 +430,12 @@ async def _default_external_ingest_fn(doc: dict, tenant: str) -> ExternalIngestO
             "UPDATE documents SET labels = array_append(labels, $3) "
             "WHERE rid = $1 AND tenant = $2 AND NOT ($3 = ANY(labels))",
             rid, tenant, EXTERNAL_LABEL,
+        )
+        # 축-A doc_type 보존(S3): CSF 선언 타입을 정규화해 행에 저장(분류기 추측값 override).
+        # quarantine 행에는 절대 쓰지 않는다(위 가드와 동일). kind 없으면 NOTE 기본.
+        await db.execute(
+            "UPDATE documents SET doc_type = $3 WHERE rid = $1 AND tenant = $2",
+            rid, tenant, normalize_csf_kind(str(doc.get("kind", "") or "NOTE")),
         )
 
     return ExternalIngestOutcome(
