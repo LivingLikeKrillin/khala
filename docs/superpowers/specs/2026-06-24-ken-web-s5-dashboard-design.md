@@ -55,25 +55,41 @@ inside `due` as `_parse_ts(state.last_ts) + LADDER[state.interval_idx]`. Extract
 one expression into a public helper; `due` calls it so the two can never disagree.
 Returns a tz-aware `datetime`. (Keeps `_parse_ts` private; this is the public surface.)
 
-### 4.2 `ken.service.artifact_detail(artifact_id, *, store, now) -> list[QuestionDetail]` (new, pure composition)
+### 4.2 `ken.service.artifact_detail(artifact_id, *, store, now: str) -> list[QuestionDetail]` (new, pure composition)
 
-Storage-agnostic derivation, no LLM, no generation:
+Storage-agnostic derivation, **no LLM, no generation**. `now` is an ISO-8601 **string**
+(same as `due_items` / `coverage_report`). Mirrors the exact gate-and-map used by
+`due_items` (service.py:77-83) and `compute_coverage_v1` (coverage.py:34-43):
 
 1. `ref = find_ref(artifact_id, store=store)`; raise `KeyError(artifact_id)` if absent.
-2. `questions = store.load_questions(artifact_id)`; `attempts = store.load_attempts()`.
-3. `current_hashes = {q.id: q.content_hash-of-current}` — same map `coverage`/`due`
-   build (each question's current content hash). `states = schedule.rebuild(attempts,
-   current_hashes=current_hashes)`.
-4. `due_set = set(schedule.due(states, [q.id for q in questions], now=now))`.
+2. `store_hash, questions = store.load_questions(artifact_id)`;
+   `attempts = store.load_attempts()`. (`load_questions` returns a
+   `tuple[str | None, list[Question]]` — the stored store-hash and the questions.)
+3. **Artifact-level stale gate (same as coverage/due, short-circuits before rebuild):**
+   if `not questions or store_hash != ref.content_hash` → return `[]`. The artifact's
+   questions are missing or bound to *stale* content, so nothing is currently bound to
+   review — exactly the condition under which `coverage` marks the artifact `orphan` and
+   `due_items` returns `needs_questions`. The detail page renders its empty state ("no
+   current questions — start a review to (re)generate"). There is **no per-question**
+   stale handling; staleness is whole-artifact, matching the substrate.
+4. Bound case — build the current-hash map exactly as the substrate does: every question
+   maps to the **artifact's** current hash (the hash is uniform across an artifact's
+   questions, not per-question). `Question` has only `text` and `id`; there is no
+   `Question.content_hash`.
+   ```python
+   current_hashes = {q.id: ref.content_hash for q in questions}   # == due_items / coverage
+   states = schedule.rebuild(attempts, current_hashes=current_hashes)
+   due_set = set(schedule.due(states, [q.id for q in questions], now=now))
+   ```
 5. Build one `QuestionDetail` per question (preserving question order):
-   - `attempted = qid in states`
+   - `state = states.get(q.id)`; `attempted = state is not None`
    - if attempted: `rung = state.interval_idx`, `last_passed = state.last_passed`,
      `last_ts = state.last_ts`, `fail_count = state.fail_count`,
      `next_due = schedule.next_due_at(state).isoformat()`
-   - if never-attempted (absent from `states`, incl. stale-hash): `rung = 0`,
-     `attempted = False`, `last_passed = None`, `last_ts = None`, `fail_count = 0`,
-     `next_due = None` (≡ due now)
-   - `due = qid in due_set`
+   - if absent from `states` (never-attempted; a stale-*attempt*-hash row is already
+     dropped by `rebuild`): `rung = 0`, `last_passed = None`, `last_ts = None`,
+     `fail_count = 0`, `next_due = None` (≡ due now)
+   - `due = q.id in due_set`
 
 ```python
 @dataclass(frozen=True)
@@ -89,11 +105,12 @@ class QuestionDetail:
     due: bool
 ```
 
-> **Note on the hash map.** `coverage_report` already builds the per-question current
-> hash basis; `artifact_detail` must use the **identical** construction so `rebuild`
-> survivorship matches coverage exactly (a stale-hash attempt is dropped → the question
-> reads as never-attempted in both). Factor the shared map construction if it isn't
-> already a helper, to avoid divergence.
+> **Shared construction (advisory refactor).** The expression
+> `{q.id: ref.content_hash for q in qs}` plus the `not qs or store_hash != ref.content_hash`
+> gate is now repeated in `due_items`, `compute_coverage_v1`, and `artifact_detail`. A tiny
+> helper (e.g. `_bound_questions(ref, store) -> list[Question] | None`, returning `None`
+> when stale/empty) would remove the divergence risk. This is **advisory**, not required —
+> if done, keep the diff bounded to these three call sites with no behavior change.
 
 ### 4.3 API — `GET /api/artifacts/{id}/detail`
 
@@ -103,8 +120,10 @@ GET /api/artifacts/{artifact_id}/detail  ->  200 {questions: [QuestionDetailOut.
 ```
 
 - Calls `service.artifact_detail(artifact_id, store=make_store(), now=now_iso())`.
-- **Does not generate** questions (unlike `/due`): an artifact with no questions yet
-  returns `{"questions": []}`. A read-only tracking view must never spend LLM tokens.
+- **Does not generate** questions (unlike `/due`, which calls `service.ensure_questions`
+  → `make_questions` → LLM): an artifact with no current questions returns
+  `{"questions": []}`. The handler **must not call `deps.make_llm()` at all** — a
+  read-only tracking view constructs no LLM client and spends no tokens.
 - `QuestionDetailOut` Pydantic DTO mirrors `QuestionDetail` field-for-field.
 
 ### 4.4 Frontend — `/artifact/:id` detail page
@@ -152,29 +171,41 @@ Home (index)  --row click-->  /artifact/:id
 - Read-only: no writes, so no fail-loud `OSError` path on this endpoint.
 - `next_due_at` reuses `_parse_ts` (naive-ts → UTC coercion) — inherits the existing
   guard against tz-poisoning org-wide derivations.
-- Detail derivation must agree with coverage: same hash basis, same `rebuild`/`due`
-  outputs (no re-derivation of due-ness in the page or the service).
+- **Agreement with coverage (precise, given coverage's gate is artifact-level):**
+  - *Stale or no questions* (`not questions or store_hash != ref.content_hash`): coverage
+    marks the artifact `orphan`; detail returns `[]`. Both say "nothing bound."
+  - *Bound artifact*: detail consumes the **same** `current_hashes` map and the same
+    `rebuild` output, and its `due` flags are exactly `schedule.due(...)` — no due-ness is
+    re-derived in the service or the page. A question never-attempted in coverage's rebuild
+    is `attempted=False` in detail.
+  This makes the invariant testable: detail's per-question `due` set ≡ `schedule.due` for
+  the bound case, and detail ≡ empty for the stale/empty case coverage calls `orphan`.
 
 ## 8. Testing
 
-- **ken (`artifact_detail`):** never-attempted question (rung 0, `next_due=None`, `due`);
-  one pass advances rung + `next_due` shifts; one fail resets rung 0 + `fail_count=1`;
-  due vs not-due decided by `now` straddling `next_due`; stale-hash attempt → question
-  reads never-attempted; unknown artifact → `KeyError`. Plus `next_due_at` unit
-  (rung→interval) and the `due`/`next_due_at` agreement.
-- **api:** `/detail` 200 shape; 404 unknown id; **no generation** triggered (store with
-  questions + attempts, assert no LLM call / question count unchanged); empty-questions
-  artifact → `{"questions": []}`.
+- **ken (`artifact_detail`):** never-attempted question (rung 0, `attempted=False`,
+  `next_due=None`, `due=True`); one pass advances rung + `next_due` shifts; one fail
+  resets rung 0 + `fail_count=1`; due vs not-due decided by `now` straddling `next_due`;
+  **stale store-hash artifact → `[]`** and **no questions → `[]`** (gate); stale-*attempt*-
+  hash row → that question reads never-attempted (dropped by `rebuild`); unknown artifact
+  → `KeyError`. Plus `next_due_at` unit (rung→interval) and a pinned `due` ⇔ `next_due_at`
+  agreement test across the full rung range.
+- **api:** `/detail` 200 shape; 404 unknown id; **handler never constructs the LLM** —
+  monkeypatch `deps.make_llm` to raise and assert `/detail` still 200 (proves no LLM
+  path); stale/empty artifact → `{"questions": []}` with question count unchanged (no
+  generation side-effect).
 - **web (vitest):** ArtifactDetail renders ladder rungs, overdue badge vs due-now,
   fail-count pill, empty state, and the review CTA; Home row click routes to
   `/artifact/:id`. Client module mocked (no network), per existing convention.
 
 ## 9. Success criteria
 
-- Opening an artifact shows every question with its mastery rung, last attempt, next-due
-  (overdue flagged), and fail count — all derived, no new stored state.
-- The detail endpoint never calls the LLM and never generates questions.
-- Coverage and detail agree on which questions are due / never-attempted.
+- Opening a **bound** artifact shows every question with its mastery rung, last attempt,
+  next-due (overdue flagged), and fail count — all derived, no new stored state. A stale
+  or question-less artifact shows the empty state (matching coverage's `orphan`).
+- The detail endpoint never constructs the LLM and never generates questions.
+- For a bound artifact, detail's per-question `due` set ≡ `schedule.due`; the stale/empty
+  case ≡ coverage's `orphan` ("nothing bound") — granularity matches the substrate.
 - No change to engine derivation logic, store contract, or PostgresStore; CI 9 jobs green.
 
 ## Implementation outline (for writing-plans)
