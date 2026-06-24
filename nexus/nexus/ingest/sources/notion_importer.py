@@ -8,18 +8,31 @@ validate_external_spec 을 통과하는 형태를 구성으로 보장(id 형식 
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
 from nexus.ingest.sources.base import ConvertedDoc
 
+# 제목 첫 토큰 → 축-A 타입(결정론적 휴리스틱; LLM 미사용 — nexus 규율). 미매치 NOTE.
+_KEYWORD_TO_TYPE = {
+    "adr": "ADR", "rfc": "RFC", "prd": "PRD", "design": "DESIGN",
+    "spec": "DESIGN", "runbook": "RUNBOOK", "postmortem": "POSTMORTEM",
+}
+
+
+def classify_kind(title: str) -> str:
+    """제목 첫 토큰으로 축-A 타입 추론(결정론). 미매치→NOTE(default-memo 정합)."""
+    tokens = re.split(r"[^a-z0-9]+", (title or "").strip().lower(), maxsplit=1)
+    return _KEYWORD_TO_TYPE.get(tokens[0] if tokens else "", "NOTE")
+
 
 def build_csf(conv: ConvertedDoc, page_id: str) -> dict:
-    """ConvertedDoc(markdown+frontmatter) → CSF dict. kind=NOTE(default-memo)."""
+    """ConvertedDoc(markdown+frontmatter) → CSF dict. kind=제목 분류(미매치 NOTE)."""
     body = conv.markdown
     return {
         "id": f"ext-notion-{page_id}",
-        "kind": "NOTE",
+        "kind": classify_kind(conv.frontmatter.get("title", "") or ""),
         "title": conv.frontmatter.get("title") or page_id,
         "body": body,
         "provenance": {

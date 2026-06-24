@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 
 from nexus.ingest.sources.base import ConvertedDoc
-from nexus.ingest.sources.notion_importer import build_csf, import_notion
+from nexus.ingest.sources.notion_importer import build_csf, classify_kind, import_notion
 
 
 def _conv(body="# 제목\n\n본문", title="결제 기획", url="https://notion.so/p1"):
@@ -81,6 +81,28 @@ async def test_import_notion_counts_idempotent():
 
     report = await import_notion(_FakeSource(["a"], {"a": _conv()}), "acme", fake_ingest)
     assert report.idempotent == 1 and report.ingested == 0
+
+
+def test_classify_kind_maps_title_keywords():
+    assert classify_kind("ADR-001: 결제 DB 선택") == "ADR"
+    assert classify_kind("RFC: A2A 도입") == "RFC"
+    assert classify_kind("Design Doc — 결제") == "DESIGN"
+    assert classify_kind("Spec for payment") == "DESIGN"   # spec→DESIGN 정규화
+    assert classify_kind("Runbook: 장애 대응") == "RUNBOOK"
+    assert classify_kind("Postmortem 2026-06") == "POSTMORTEM"
+
+
+def test_classify_kind_defaults_to_note():
+    assert classify_kind("결제 기획") == "NOTE"          # 비키워드
+    assert classify_kind("Payment PRD") == "NOTE"        # 첫 토큰만 본다(보수적)
+    assert classify_kind("") == "NOTE"
+
+
+def test_build_csf_uses_classification():
+    csf = build_csf(_conv(title="ADR: 결제"), "p1")
+    assert csf["kind"] == "ADR"
+    # 비키워드 제목은 기존대로 NOTE(회귀 없음)
+    assert build_csf(_conv(title="결제 기획"), "p1")["kind"] == "NOTE"
 
 
 def test_cli_ingest_notion_registered():
