@@ -103,7 +103,8 @@ CREATE INDEX idx_sessions_user ON sessions (user_id);
 - [ ] **Step 2: Create `ken/db/migrate-tenancy.sql`** (run-once, on a DB already at the S6 schema):
 
 ```sql
--- Run ONCE on an existing S6 database to add tenant isolation.
+-- Run ONCE on an existing S6 database to add tenant isolation. NOT idempotent
+-- (re-running fails on the existing tenants table / columns).
 -- Verify the constraint names against the live DB (\d artifacts / \d questions) first;
 -- artifacts_pkey / artifacts_path_key / questions_pkey are the Postgres defaults.
 BEGIN;
@@ -400,7 +401,7 @@ git commit -m "feat(ken-web): auth_store tenancy — User.tenant_slug, create_te
 
 **Files:** Modify `ken-web/api/src/ken_web_api/app.py`, `ken-web/api/tests/test_auth_api.py`
 
-- [ ] **Step 1: Write the failing tests** (append to `test_auth_api.py`). First **fix the existing monkeypatch** (`_auth_client`): change `monkeypatch.setattr(deps, "make_store", lambda: store)` → `monkeypatch.setattr(deps, "make_store", lambda _slug=None: store)`. Then add:
+- [ ] **Step 1: Write the failing tests** (append to `test_auth_api.py`). First **fix the existing monkeypatch** (`_auth_client`, ~line 26): change `monkeypatch.setattr(deps, "make_store", lambda: store)` → `monkeypatch.setattr(deps, "make_store", lambda _slug=None: store)`. (This is the **only** `make_store` monkeypatch — `test_api.py` uses the real file backend and patches nothing, so don't hunt for one there.) Then add:
 
 ```python
 def test_two_users_distinct_tenants_see_disjoint_data(tmp_path, monkeypatch):
