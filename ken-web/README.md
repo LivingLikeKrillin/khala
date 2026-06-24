@@ -112,18 +112,48 @@ export KEN_AUTH=1
 export KEN_COOKIE_SECURE=1                     # set behind HTTPS (omit for local http)
 ```
 
-There is **no public signup** — an operator seeds users from the server with the
-bundled CLI:
+There is **no public signup** — an operator seeds tenants and users from the server with
+the bundled CLI (see [Tenancy](#tenancy)):
 
 ```bash
-ken-web-admin add-user alice@example.com      # prompts for a password (argon2-hashed)
+ken-web-admin create-tenant acme --name "Acme"
+ken-web-admin add-user alice@example.com --tenant acme   # prompts for a password (argon2)
 ```
 
 Once enabled, the SPA redirects unauthenticated visitors to `/login`; a session cookie
 (`ken_session`, httpOnly, SameSite=Lax) gates every `/api/*` data call, and each graded
 attempt records the **logged-in email** as its `person`. Log out from the masthead.
-Multi-tenancy (per-tenant data isolation) is a separate, future slice — today all
-authenticated users share one dataset.
+
+## Tenancy
+
+Data is **isolated per tenant** — each user belongs to exactly one tenant (org), and every
+artifact / question / attempt is scoped to it, so a user only ever sees their own tenant's
+data. Isolation is **app-enforced** at the tenant-bound store (every query filters
+`tenant_slug`); the tenant is **server-derived** from the session, never client-supplied.
+
+Tenancy rides on auth — it's meaningful only with `KEN_AUTH=1` + Postgres. The file backend
+and auth-OFF are a single implicit `default` tenant (today's behavior). One tenant per user;
+multi-org membership / org switching / invites are a future slice.
+
+Isolation is at the **database-row** level: the same `path` resolves to the same on-disk
+file across tenants (the DB rows isolate; per-tenant artifact *storage* is a future slice).
+
+Provision with the CLI (Postgres):
+
+```bash
+ken-web-admin create-tenant acme --name "Acme"        # create an org
+ken-web-admin add-user alice@example.com --tenant acme # assign a user to it (--tenant required)
+```
+
+**Migrating an existing single-team DB:** apply the one-shot migration (verify the constraint
+names against your live DB first — see the file header), which adds the tenant columns/keys and
+backfills all existing rows into the `default` tenant:
+
+```bash
+psql "$KEN_DATABASE_URL" -f ken/db/migrate-tenancy.sql   # run ONCE; not idempotent
+```
+
+Fresh installs get the tenant-scoped schema from `ken/db/init.sql` directly.
 
 ## Test
 

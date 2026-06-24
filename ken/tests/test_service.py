@@ -11,7 +11,6 @@ from ken.service import (
     grade_answer,
     list_artifacts,
     register_artifact,
-    QuestionDetail,
 )
 from ken.stores.file_store import FileStore
 

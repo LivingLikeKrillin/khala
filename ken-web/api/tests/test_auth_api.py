@@ -23,7 +23,7 @@ def _auth_client(tmp_path, monkeypatch, *, auth_store=None, responses=()):
         questions=str(tmp_path / "q.json"),
         ledger=str(tmp_path / "l.jsonl"),
     )
-    monkeypatch.setattr(deps, "make_store", lambda: store)
+    monkeypatch.setattr(deps, "make_store", lambda _slug=None: store)
     auth = auth_store or FakeAuthStore()
     monkeypatch.setattr(deps, "make_auth_store", lambda: auth)
     monkeypatch.setattr(deps, "make_llm", lambda: FakeLLM(responses=list(responses)))
@@ -128,3 +128,37 @@ def test_auth_off_endpoints_open_and_person_local(tmp_path, monkeypatch):
         ledger=str(tmp_path / "ken.attempts.jsonl"),
     )
     assert store.load_attempts()[0].person == deps.DEFAULT_PERSON  # "local"
+
+
+def test_two_users_distinct_tenants_see_disjoint_data(tmp_path, monkeypatch):
+    # Capture the tenant_slug make_store is called with, per request.
+    calls = []
+    c, auth, store = _auth_client(tmp_path, monkeypatch)
+    # override _auth_client's make_store patch to also record the slug
+    monkeypatch.setattr(deps, "make_store", lambda slug=None: (calls.append(slug), store)[1])
+    auth.create_tenant("a", "A")
+    auth.create_tenant("b", "B")
+    auth.create_user("alice@x.com", hash_password("password1"), tenant_slug="a")
+    c.post("/api/auth/login", json={"email": "alice@x.com", "password": "password1"})
+    c.get("/api/coverage")
+    assert calls[-1] == "a"   # store bound to Alice's tenant
+
+
+def test_attempt_records_caller_tenant(tmp_path, monkeypatch):
+    calls = []
+    c, auth, store = _auth_client(
+        tmp_path, monkeypatch,
+        responses=["Q1?", '{"passed": true, "score": 0.9, "rationale":"ok"}'],
+    )
+    # override _auth_client's patch to also record the tenant slug
+    monkeypatch.setattr(deps, "make_store", lambda slug=None: (calls.append(slug), store)[1])
+    auth.create_tenant("a", "A")
+    auth.create_user("a@x.com", hash_password("password1"), tenant_slug="a")
+    c.post("/api/auth/login", json={"email": "a@x.com", "password": "password1"})
+    art = tmp_path / "a.md"
+    art.write_text("Payment service publishes orders.\n", encoding="utf-8")
+    aid = c.post("/api/artifacts", json={"path": str(art)}).json()["artifact_id"]
+    qid = c.get(f"/api/artifacts/{aid}/due").json()["questions"][0]["question_id"]
+    c.post("/api/attempts", json={"artifact_id": aid, "question_id": qid, "answer": "x"})
+    assert store.load_attempts()[0].person == "a@x.com"   # person still server-derived
+    assert calls[-1] == "a"  # the attempt write path bound the caller's tenant

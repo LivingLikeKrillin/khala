@@ -67,7 +67,8 @@ def test_postgres_auth_store_roundtrip():
     from ken_web_api.auth_store import PostgresAuthStore
 
     with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
-        cur.execute("TRUNCATE users, sessions")
+        cur.execute("TRUNCATE users, sessions CASCADE")
+        cur.execute("INSERT INTO tenants (slug, name) VALUES ('default', 'Default') ON CONFLICT DO NOTHING")
     s = PostgresAuthStore(_PG_DSN)
     u = s.create_user("Alice@X.com", "hash1")
     assert u.email == "alice@x.com"
@@ -81,3 +82,58 @@ def test_postgres_auth_store_roundtrip():
     assert s.user_for_session("old", now="2026-06-24T00:00:00+00:00") is None  # expired
     s.delete_session("tok")
     assert s.user_for_session("tok", now="2026-06-24T00:00:00+00:00") is None
+
+
+def test_create_user_carries_tenant_slug():
+    s = FakeAuthStore()
+    s.create_tenant("acme", "Acme")
+    u = s.create_user("a@x.com", "h", tenant_slug="acme")
+    assert u.tenant_slug == "acme"
+    got = s.get_user_by_email("a@x.com")
+    assert got is not None and got[0].tenant_slug == "acme"
+
+
+def test_user_for_session_returns_tenant_slug():
+    s = FakeAuthStore()
+    s.create_tenant("acme", "Acme")
+    u = s.create_user("a@x.com", "h", tenant_slug="acme")
+    s.create_session(u.id, "tok", "2099-01-01T00:00:00+00:00")
+    got = s.user_for_session("tok", now="2026-06-24T00:00:00+00:00")
+    assert got is not None and got.tenant_slug == "acme"
+
+
+def test_create_tenant_duplicate_raises():
+    s = FakeAuthStore()
+    s.create_tenant("acme", "Acme")
+    with pytest.raises(Exception):
+        s.create_tenant("acme", "Acme2")
+
+
+def test_create_user_defaults_tenant_to_default():
+    s = FakeAuthStore()  # back-compat: 2-arg create_user lands in 'default'
+    u = s.create_user("a@x.com", "h")
+    assert u.tenant_slug == "default"
+
+
+def test_create_user_unknown_tenant_raises():
+    s = FakeAuthStore()
+    with pytest.raises(Exception):
+        s.create_user("a@x.com", "h", tenant_slug="ghost")
+
+
+@pg_only
+def test_postgres_auth_store_tenant_slug_roundtrip():
+    import psycopg
+
+    from ken_web_api.auth_store import PostgresAuthStore
+
+    with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
+        cur.execute("TRUNCATE users, sessions CASCADE")
+        cur.execute("INSERT INTO tenants (slug, name) VALUES ('acme', 'Acme') ON CONFLICT DO NOTHING")
+    s = PostgresAuthStore(_PG_DSN)
+    s.create_tenant("acme2", "Acme2")
+    u = s.create_user("b@x.com", "hash1", tenant_slug="acme2")
+    assert u.tenant_slug == "acme2"
+    s.create_session(u.id, "tok2", "2099-01-01T00:00:00+00:00")
+    got = s.user_for_session("tok2", now="2026-06-24T00:00:00+00:00")
+    assert got is not None and got.tenant_slug == "acme2"
