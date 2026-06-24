@@ -135,6 +135,9 @@ Tenancy rides on auth — it's meaningful only with `KEN_AUTH=1` + Postgres. The
 and auth-OFF are a single implicit `default` tenant (today's behavior). One tenant per user;
 multi-org membership / org switching / invites are a future slice.
 
+Isolation is at the **database-row** level: the same `path` resolves to the same on-disk
+file across tenants (the DB rows isolate; per-tenant artifact *storage* is a future slice).
+
 Provision with the CLI (Postgres):
 
 ```bash
