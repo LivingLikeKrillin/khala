@@ -108,7 +108,6 @@ export default function Review() {
       const res = await postAttempt({
         artifact_id: artifactId,
         question_id: current.question_id,
-        person: "kr", // informational this slice
         answer,
       });
       if (res.passed) {
