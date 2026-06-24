@@ -231,6 +231,27 @@ def test_invalid_csf_source_hash_rejected_before_ingest():
     assert store.ingests == 0
 
 
+def test_normalize_csf_kind_maps_legacy_to_axis_a():
+    from nexus.a2a.external_ingest_skill import normalize_csf_kind
+    assert normalize_csf_kind("SPEC") == "DESIGN"
+    assert normalize_csf_kind("FLOW") == "NOTE"
+    assert normalize_csf_kind("ADR") == "ADR"
+    assert normalize_csf_kind("PRD") == "PRD"
+
+
+def test_artifact_carries_normalized_doc_type():
+    csf = _csf(source_tool="manifest", source_id="p-1")
+    csf["kind"] = "SPEC"  # 레거시 토큰
+    outcome = ExternalIngestOutcome(
+        resource_rid="doc_x", labels=[EXTERNAL_LABEL], chunks_indexed=1,
+        idempotent_hit=False, source_hash=csf["provenance"]["source_hash"],
+    )
+    artifact_json, _state, _reason = build_external_ingest_artifact(outcome, csf, "acme")
+    # artifact 의 DataPart 에 정규화된 축-A doc_type 이 실린다(라우팅은 불변, 메타만 carry).
+    data = next(p["data"] for p in artifact_json["parts"] if p.get("kind") == "data")
+    assert data["doc_type"] == "DESIGN"
+
+
 from nexus.a2a.card import build_agent_card  # noqa: E402
 
 
