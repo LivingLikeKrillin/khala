@@ -1,6 +1,9 @@
 """Tests for ken.service — the shared orchestration layer (CLI + API)."""
 
+import pytest
+
 from ken.llm import FakeLLM
+from ken.models import Attempt
 from ken.service import (
     artifact_detail,
     coverage_report,
@@ -179,14 +182,20 @@ def test_list_artifacts_vouched_with_weak_count(tmp_path):
 
 def _answer(store, ref, qid, passed, ts):
     # append one attempt at the artifact's CURRENT content hash
-    from ken.models import Attempt
     h = ref.content_hash
-    store.append_attempt(Attempt("kr", ref.artifact_id, qid, h, passed, 1.0, ts))
+    store.append_attempt(Attempt(
+        person="kr",
+        artifact_id=ref.artifact_id,
+        question_id=qid,
+        content_hash=h,
+        passed=passed,
+        score=1.0,
+        ts=ts,
+    ))
 
 
 def test_artifact_detail_unknown_raises(tmp_path):
     store, ref = _seed(tmp_path)
-    import pytest
     with pytest.raises(KeyError):
         artifact_detail("nope", store=store, now="2026-06-01T00:00:00Z")
 
@@ -218,7 +227,7 @@ def test_artifact_detail_fail_resets_and_counts(tmp_path):
     _answer(store, ref, qs[0].id, False, "2026-06-01T00:00:00Z")
     rows = artifact_detail(ref.artifact_id, store=store, now="2026-06-05T00:00:00Z")
     r = rows[0]
-    assert r.rung == 0 and r.fail_count == 1 and r.last_passed is False and r.due is True
+    assert r.attempted is True and r.rung == 0 and r.fail_count == 1 and r.last_passed is False and r.due is True
 
 
 def test_artifact_detail_stale_content_returns_empty(tmp_path):
