@@ -98,3 +98,27 @@ def test_promote_rejects_id_with_path_separator(tmp_path):
     csf = _csf(sid="a/x")
     with pytest.raises(PromoteError):
         promote_external(_led(tmp_path), csf, "SPEC")
+
+
+def test_promote_design_axis_a_type_creates_draft(tmp_path):
+    # 신규 축-A 타입 DESIGN → specledger spec 어휘 → DRAFT.
+    out = promote_external(_led(tmp_path), _csf(), "DESIGN")
+    assert out["status"] == "DRAFT"
+    assert out["provenance_carried"] is True
+
+
+def test_promote_rfc_axis_a_type_creates_draft(tmp_path):
+    out = promote_external(_led(tmp_path), _csf(), "RFC")
+    assert out["status"] == "DRAFT"
+
+
+def test_promote_legacy_spec_token_still_works(tmp_path):
+    # 레거시 CSF 토큰 SPEC 은 정규화(→DESIGN)되어 회귀 없이 DRAFT.
+    out = promote_external(_led(tmp_path), _csf(), "SPEC")
+    assert out["status"] == "DRAFT"
+
+
+def test_promote_rejects_tracked_tier_type(tmp_path):
+    # PRD 는 T2(추적) — 거버넌스 원장으로 승격 불가.
+    with pytest.raises(PromoteError):
+        promote_external(_led(tmp_path), _csf(), "PRD")
