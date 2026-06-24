@@ -493,8 +493,6 @@ class MeOut(BaseModel):
 ```python
 from __future__ import annotations
 
-from datetime import timedelta
-
 from fastapi.testclient import TestClient
 
 from ken.llm import FakeLLM
