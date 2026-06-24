@@ -20,6 +20,7 @@ def test_create_user_and_lookup():
     got = s.get_user_by_email("alice@x.com")
     assert got is not None and got[0].id == u.id and got[1] == "hash1"
     assert s.get_user_by_email("missing@x.com") is None
+    assert s.get_user_by_email("Alice@X.com") is not None  # lookup normalizes too
 
 
 def test_duplicate_email_raises():
@@ -40,6 +41,10 @@ def test_session_lifecycle_and_expiry_boundary():
     # rejected at/after expiry (parsed compare, not lexicographic)
     assert s.user_for_session("tok", now="2026-06-25T00:00:00+00:00") is None
     assert s.user_for_session("nope", now=now) is None
+    # Parsed-not-lexicographic proof: +01:00 instant equals UTC midnight. A lexicographic
+    # compare would wrongly read this as still-valid ("...T00:00:00+00:00" < "...T01:00:00+01:00").
+    s.create_session(u.id, "tz", "2026-06-25T01:00:00+01:00")  # == 2026-06-25T00:00:00Z
+    assert s.user_for_session("tz", now="2026-06-25T00:00:00+00:00") is None  # expired at the same instant
 
 
 def test_delete_session():
