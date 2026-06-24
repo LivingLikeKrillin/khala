@@ -23,12 +23,18 @@ function ReviewStub() {
   return <div>review route: {loc.search}</div>;
 }
 
+function ArtifactStub() {
+  const loc = useLocation();
+  return <div>artifact route: {loc.pathname}</div>;
+}
+
 function renderHome() {
   return render(
     <MemoryRouter initialEntries={["/"]}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/review" element={<ReviewStub />} />
+        <Route path="/artifact/:id" element={<ArtifactStub />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -61,5 +67,12 @@ describe("Home (coverage + start review)", () => {
     const cta = await screen.findByRole("button", { name: /start review/i });
     await user.click(cta);
     expect(await screen.findByText(/artifact=art-1/)).toBeInTheDocument();
+  });
+
+  it("clicking an artifact row routes to its detail page", async () => {
+    const user = userEvent.setup();
+    renderHome();
+    await user.click(await screen.findByText("payment.md"));
+    expect(await screen.findByText("artifact route: /artifact/art-1")).toBeInTheDocument();
   });
 });
