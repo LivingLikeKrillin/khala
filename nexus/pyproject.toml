@@ -47,6 +47,10 @@ slack = [
 mcp = [
     "mcp[cli]>=1.0.0",
 ]
+notion = [
+    # S4 Notion importer — lazy-imported by NotionSource; off by default.
+    "notion-client>=2.2.0",
+]
 a2a = [
     # A2A (Agent2Agent) Phase 0 spike — pinned to the A2A v1.0 SDK build.
     # Off by default; only the `nexus/a2a/` surface imports it (flag-gated).
