@@ -136,7 +136,8 @@ def test_two_users_distinct_tenants_see_disjoint_data(tmp_path, monkeypatch):
     c, auth, store = _auth_client(tmp_path, monkeypatch)
     # override _auth_client's make_store patch to also record the slug
     monkeypatch.setattr(deps, "make_store", lambda slug=None: (calls.append(slug), store)[1])
-    auth.create_tenant("a", "A"); auth.create_tenant("b", "B")
+    auth.create_tenant("a", "A")
+    auth.create_tenant("b", "B")
     auth.create_user("alice@x.com", hash_password("password1"), tenant_slug="a")
     c.post("/api/auth/login", json={"email": "alice@x.com", "password": "password1"})
     c.get("/api/coverage")
