@@ -67,10 +67,11 @@ linked: []                             # optional 참조 목록
 **필드 규칙:**
 
 - `id` **결정적**: `ext-<source_tool>-<source_id>`. 같은 소스 문서 재예치 시 같은 ID → idempotency·dedup 키 성립.
-- `kind` **열린 enum**: 메모 단계에선 인덱싱만 하므로 자유. *승격* 시점에만 khala 어휘(`SPEC`|`ADR`)로 매핑을 강제한다(§5).
+- `kind` **열린 enum**: 메모 단계에선 인덱싱만 하므로 자유. *승격* 시점에만 khala 어휘로 매핑을 강제한다(§5). 주의: specledger Artifact의 동일 개념 필드명은 `type`이므로, 매핑은 **`kind`(CSF) → `type`(specledger)** 리네임을 명시적으로 수행한다(§5 step 2).
 - `provenance.source_hash`는 **클라이언트가 본문에 대해 계산**해 보내고, 서버가 재계산·검증한다(불일치 시 거부).
 - `provenance.ingested_at` / `ingested_by`는 **서버가 채운다**(클라이언트 값 무시) — 감사 무결성.
-- 외부 artifact는 **specledger 상태머신에 들어가지 않는다.** 승격 전까지는 Nexus 리소스로 `classification=external_spec` 태그를 달고 살 뿐이다. specledger lifecycle(DRAFT→PROPOSED→…)은 승격 후에야 시작된다.
+- 외부 artifact는 **specledger 상태머신에 들어가지 않는다.** 승격 전까지는 Nexus 리소스로 살 뿐이며, specledger lifecycle(DRAFT→PROPOSED→…)은 승격 후에야 시작된다.
+- **`external_spec`는 classification *레벨*이 아니라 label/tag다.** Nexus의 `classification` 컬럼은 검색 시 `classification <= clearance` 비교에 참여하므로, 여기에 새 값을 끼우면 clearance 필터 의미가 깨진다. 따라서 외부 출처 표식은 CRM의 **`labels` 필드**에 `external_spec`로 달고, `classification`은 기존 레벨(예: INTERNAL)을 그대로 사용한다.
 
 **검증(서버측):** 필수 필드 누락(`id`/`kind`/`title`/`provenance.source_tool`/`source_id`/`source_hash`/body) → 거부. `id`가 `ext-<source_tool>-<source_id>`와 불일치 → 거부. `source_hash` 재계산 불일치 → 거부.
 
@@ -85,7 +86,7 @@ A2A skill: ingest_external_spec
   input:  CSF (frontmatter + body)
   output: IngestOutcome {
             resource_rid,
-            classification: "external_spec",
+            labels: ["external_spec"],   # classification 레벨이 아니라 label
             chunks_indexed,
             idempotent_hit: bool,
             source_hash
@@ -96,8 +97,8 @@ A2A skill: ingest_external_spec
 
 1. **Capability 게이트:** 호출 토큰은 `ingest_external` capability를 보유해야 한다(governed publish의 `ingest_governed`와 **분리**). 외부 예치 토큰이 governed로 위장 못 함. 기존 capability-gating 재사용.
 2. **검증:** §3 서버측 검증 수행.
-3. **Idempotency:** 키 `(id, source_hash)`. 동일 키 재예치 = no-op으로 `idempotent_hit: true` 반환(재인덱싱 안 함). 같은 `id` + 다른 `source_hash` = 새 메모 버전(재인덱싱). 기존 Nexus idempotency `(doc_id, approved_hash)` 패턴 미러.
-4. **인덱싱:** body를 청크·임베딩하여 Nexus에 `classification=external_spec` + provenance 메타로 인덱싱. 검색 시 provenance(출처 도구·딥링크)가 evidence에 노출된다.
+3. **Idempotency:** 키 `(id, source_hash)`. 동일 키 재예치 = no-op으로 `idempotent_hit: true` 반환(재인덱싱 안 함). 같은 `id` + 다른 `source_hash` = 새 메모 버전(재인덱싱). 기존 Nexus idempotency(`source_uri` + `content_hash` dedup) 패턴 미러 — 결정적 `id`가 안정적 canonical URI로 매핑되어야 키가 성립한다(아래 4 참조).
+4. **인덱싱:** Nexus ingest 파이프라인은 파일/경로 기반(`run_ingest`가 `**/*.md` glob)이므로, governed 경로가 쓰는 **transient-file bridge**(`_default_ingest_fn`, 결정적 임시 파일명으로 안정적 rid 확보)를 그대로 재사용한다. 결정적 `id`(`ext-<source_tool>-<source_id>`) → 안정적 canonical URI 매핑으로 idempotency가 end-to-end로 성립한다. body를 청크·임베딩하고 `labels=["external_spec"]` + provenance 메타로 인덱싱한다. 검색 시 provenance(출처 도구·딥링크)가 evidence에 노출된다.
 5. **Audit:** 모든 호출을 기존 `a2a_audit` 테이블에 기록(principal, capability, result, idempotent_hit).
 6. **Rate limit:** 기존 per-principal 쿼터 그대로 적용.
 
@@ -107,18 +108,20 @@ A2A skill: ingest_external_spec
 
 승격은 거버넌스 행위이므로 **specledger가 소유**한다. 사람이 Claude Code 안에서 명시적으로 호출한다.
 
-**인터페이스:**
+**인터페이스 (CSF 인라인 입력 — Nexus read client 불필요):**
 
 ```
 MCP tool: promote_external
-  input:  { ref: <external id 또는 resource_rid>, kind: "SPEC" | "ADR" }
+  input:  { csf: <CSF 전체(frontmatter + body)>, type: "SPEC" | "ADR" }
   output: { artifact_id, status: "DRAFT", provenance_carried: bool }
 ```
 
+**설계 결정 — 왜 `ref`가 아니라 CSF 인라인인가:** specledger는 오늘 Nexus **읽기 클라이언트가 없다**(`publish.py`는 A2A write-only). 승격은 인간이 Claude Code 안에서 트리거하는 단발 행위이고, 그 시점에 호출 에이전트는 예치했던 **CSF를 이미 손에 쥐고 있다.** 따라서 A는 새 Nexus read 스킬/capability를 추가하지 않고 CSF를 그대로 받는다. (메모리에 `id`만으로 승격하는 *id-resolution* 변종은 Nexus read 스킬 + specledger A2A read client가 필요하므로 **후속으로 deferral** — 호출자가 들고 있지 않은 외부 spec을 승격해야 하는 실수요가 잡히면 연다. Probe가 이미 Nexus A2A read client인 점이 그때의 grounding.)
+
 **동작:**
 
-1. `ref`로 Nexus에서 external 리소스의 body + provenance를 가져온다.
-2. `kind` 매핑을 강제한다(CSF의 열린 `kind` → specledger 어휘 `SPEC`|`ADR`). 매핑 불가 시 오류.
+1. 입력 CSF를 §3 규칙으로 검증한다(서버측 재검증).
+2. `type` 매핑을 강제한다(CSF의 열린 `kind` → specledger 어휘 `SPEC`|`ADR`로 리네임·정규화). 매핑 불가 시 오류.
 3. specledger `record()`로 **DRAFT** artifact를 생성한다.
 4. provenance를 새 artifact frontmatter에 보존: `source_tool`, `source_url`, `source_hash`, 그리고 drift 빵부스러기 `promoted_from_source_hash`(§6).
 5. 이후는 **기존 흐름 그대로** — `critique()` → 인간 disposition → `approve()` → `approved_hash` 스탬프. A는 이 흐름에 아무것도 추가하지 않는다.
@@ -152,7 +155,7 @@ MCP tool: promote_external
 2. **동일 CSF 재전송** → `idempotent_hit == true`, 재인덱싱 없음.
 3. **body 변경 후 동일 `id` 전송** → `idempotent_hit == false`, 새 source_hash로 재인덱싱.
 4. `read` 전용 토큰으로 전송 시도 → capability 거부.
-5. `promote_external(ref, kind="SPEC")` 호출 → specledger DRAFT 생성, frontmatter에 provenance + `promoted_from_source_hash` 보존.
+5. `promote_external(csf, type="SPEC")` 호출 → specledger DRAFT 생성, frontmatter에 provenance + `promoted_from_source_hash` 보존 + `kind`→`type` 매핑 확인.
 
 추가 단위 테스트: CSF 서버측 검증(필수 필드 누락·id 불일치·source_hash 불일치 거부).
 
@@ -162,7 +165,7 @@ MCP tool: promote_external
 |---|---|---|---|
 | **CSF 검증기** | CSF 파싱 + 서버측 검증(필드·id·hash) | 없음(순수 함수) | 단위 테스트(유효/무효 CSF) |
 | **`ingest_external_spec` 스킬** | 메모 인덱싱 + idempotency + audit | CSF 검증기, Nexus 인덱스, 기존 audit/ratelimit | E2E 1~4 |
-| **`promote_external` 도구** | external 리소스 → specledger DRAFT(provenance 보존) | Nexus 읽기, specledger `record()` | E2E 5 |
+| **`promote_external` 도구** | CSF(인라인) → specledger DRAFT(provenance 보존, `kind`→`type`) | specledger `record()` (Nexus 읽기 불필요) | E2E 5 |
 
 각 unit은 내부를 읽지 않고도 "무엇을 하는가"를 인터페이스만으로 알 수 있고, 독립적으로 테스트된다.
 
