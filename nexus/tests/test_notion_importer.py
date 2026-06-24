@@ -81,3 +81,9 @@ async def test_import_notion_counts_idempotent():
 
     report = await import_notion(_FakeSource(["a"], {"a": _conv()}), "acme", fake_ingest)
     assert report.idempotent == 1 and report.ingested == 0
+
+
+def test_cli_ingest_notion_registered():
+    from nexus.cli import app
+    names = {c.name for c in app.registered_commands}
+    assert "ingest-notion" in names
