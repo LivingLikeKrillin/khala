@@ -761,7 +761,8 @@ def promote_external(ledger: Ledger, csf: dict, type: str) -> dict:
     # drift breadcrumb (§6): 승격된 정본이 어느 source_hash 에서 왔는지 기억.
     art.meta["promoted_from_source_hash"] = prov["source_hash"]
     art.save()
-    return {"artifact_id": aid, "status": art.meta["status"], "provenance_carried": True}
+    # Status StrEnum 은 소문자("draft"/"proposed") — 공개 계약은 대문자로 정규화(spec §5).
+    return {"artifact_id": aid, "status": art.meta["status"].upper(), "provenance_carried": True}
 ```
 
 - [ ] **Step 4: 통과 확인**
