@@ -29,6 +29,7 @@ _PROTOCOL_VERSION = "0.3.0"
 
 _SKILL_ID = "retrieve_grounded"
 _INGEST_SKILL_ID = "ingest_governed_doc"
+_EXT_INGEST_SKILL_ID = "ingest_external_spec"
 
 
 def build_agent_card(cfg: A2AConfig) -> dict:
@@ -78,6 +79,21 @@ def build_agent_card(cfg: A2AConfig) -> dict:
         output_modes=["application/json"],
     )
 
+    # 외부 spec 메모 경로 (서브프로젝트 A): ungoverned 인덱싱. 'ingest_external' capability 필요.
+    external_ingest_skill = AgentSkill(
+        id=_EXT_INGEST_SKILL_ID,
+        name="Ingest an external spec (memory)",
+        description=(
+            "Index an external tool's spec/PRD (CSF) into Nexus as ungoverned memory with "
+            "source provenance. Requires the 'ingest_external' capability; promotion to a "
+            "governed SPEC/ADR is a separate human action."
+        ),
+        tags=["write", "external", "ingest", "provenance", "memory"],
+        examples=["{ id: ext-<tool>-<id>, kind, title, provenance{...}, body }"],
+        input_modes=["application/json"],
+        output_modes=["application/json"],
+    )
+
     card = AgentCard(
         name="Nexus",
         description=(
@@ -96,6 +112,6 @@ def build_agent_card(cfg: A2AConfig) -> dict:
         ),
         default_input_modes=["text/plain"],
         default_output_modes=["text/plain", "application/json"],
-        skills=[skill, ingest_skill],
+        skills=[skill, ingest_skill, external_ingest_skill],
     )
     return card.model_dump(mode="json", by_alias=True, exclude_none=True)

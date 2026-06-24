@@ -188,3 +188,15 @@ def test_invalid_csf_source_hash_rejected_before_ingest():
     r = _send(client, _WRITE, bad)
     assert r.json()["error"]["code"] == -32602  # invalid params
     assert store.ingests == 0
+
+
+from nexus.a2a.card import build_agent_card  # noqa: E402
+
+
+def test_card_advertises_external_ingest_skill():
+    card = build_agent_card(
+        A2AConfig(enabled=True, base_url="http://nexus.test", principals=[])
+    )
+    ids = {s["id"] for s in card["skills"]}
+    assert "ingest_external_spec" in ids
+    assert "ingest_governed_doc" in ids  # 기존 것 회귀 없음
