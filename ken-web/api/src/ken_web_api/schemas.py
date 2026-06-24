@@ -32,8 +32,16 @@ class DueOut(BaseModel):
 class AttemptReq(BaseModel):
     artifact_id: str
     question_id: str
-    person: str
     answer: str
+
+
+class LoginReq(BaseModel):
+    email: str
+    password: str
+
+
+class MeOut(BaseModel):
+    email: str
 
 
 class AttemptOut(BaseModel):
