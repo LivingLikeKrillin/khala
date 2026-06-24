@@ -104,8 +104,8 @@ def logout(request: Request, response: Response) -> None:
 
 
 @app.get("/api/auth/me", response_model=MeOut)
-def me(request: Request) -> MeOut:
-    return MeOut(email=require_user(request))
+def me(person: str = Depends(require_user)) -> MeOut:
+    return MeOut(email=person)
 
 
 @app.get("/api/artifacts", response_model=list[ArtifactOut], dependencies=[Depends(require_user)])
