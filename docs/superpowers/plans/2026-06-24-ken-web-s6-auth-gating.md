@@ -612,19 +612,24 @@ def test_auth_off_endpoints_open_and_person_local(tmp_path, monkeypatch):
     aid = c.post("/api/artifacts", json={"path": str(art)}).json()["artifact_id"]
     qid = c.get(f"/api/artifacts/{aid}/due").json()["questions"][0]["question_id"]
     c.post("/api/attempts", json={"artifact_id": aid, "question_id": qid, "answer": "x"})
-    from ken_web_api.deps import make_store
-    # person defaulted to "local"
-    # (read via a fresh file store over the same dir)
+    # person defaulted to "local" — read it back via a FileStore over the app's
+    # DEFAULT KEN_DATA_DIR paths (deps defaults: ken.manifest.yaml / .questions.json
+    # / .attempts.jsonl — NOT the m.yaml/q.json/l.jsonl used by the auth-ON helper).
+    from ken.stores.file_store import FileStore
+    store = FileStore(
+        manifest=str(tmp_path / "ken.manifest.yaml"),
+        questions=str(tmp_path / "ken.questions.json"),
+        ledger=str(tmp_path / "ken.attempts.jsonl"),
+    )
+    assert store.load_attempts()[0].person == deps.DEFAULT_PERSON  # "local"
 ```
-
-> Note for the auth-OFF person assertion: the last test asserts the endpoint behavior (open + me=local). Asserting the stored `person="local"` can reuse a `FileStore` over the same `KEN_DATA_DIR` paths if you want; keep it simple — the server-derived path is already proven by `test_person_is_server_derived_from_session`. If you add the read, construct a `FileStore` with the same `m.yaml/q.json/l.jsonl` names the app uses (defaults under `KEN_DATA_DIR`).
 
 - [ ] **Step 3: Run to verify they fail**
 
 Run: `python -m pytest ken-web/api/tests/test_auth_api.py -v`
 Expected: FAIL (routes/guard not present; `AttemptReq` still requires person, etc.).
 
-- [ ] **Step 4: Implement in `app.py`.** Add imports and wiring:
+- [ ] **Step 4: Implement in `app.py`.** First add the new module-level imports below to the top of `app.py` (it currently imports **neither** `os` nor `logging` — both are required by the guard/login). Then add the wiring:
 
 ```python
 import logging
@@ -643,7 +648,7 @@ logger = logging.getLogger("ken_web_api")
 
 @app.on_event("startup")
 def _auth_startup_guard() -> None:
-    if deps.auth_enabled() and not os.getenv("KEN_DATABASE_URL"):  # add `import os`
+    if deps.auth_enabled() and not os.getenv("KEN_DATABASE_URL"):
         raise RuntimeError("KEN_AUTH=1 requires KEN_DATABASE_URL (Postgres)")
     logger.info("auth: %s", "ENABLED" if deps.auth_enabled() else "OFF")
 
@@ -998,7 +1003,7 @@ git commit -m "feat(ken-web): Login page"
 
 ### Task 10: AuthGuard + routing + masthead
 
-**Files:** Create `ken-web/web/src/components/AuthGuard.tsx`, `ken-web/web/tests/auth-guard.test.tsx`; modify `ken-web/web/src/App.tsx`, `ken-web/web/src/pages/Review.tsx`
+**Files:** Create `ken-web/web/src/components/AuthGuard.tsx` (exports `AuthGuard`, `AuthContext`, `useAuth`), `ken-web/web/src/components/MastheadUser.tsx`, `ken-web/web/tests/auth-guard.test.tsx`, `ken-web/web/tests/masthead-user.test.tsx`; modify `ken-web/web/src/App.tsx`, `ken-web/web/src/pages/Review.tsx`
 
 - [ ] **Step 1: Write the failing test** `ken-web/web/tests/auth-guard.test.tsx`:
 
@@ -1046,21 +1051,128 @@ describe("AuthGuard", () => {
 Run: `cd ken-web/web && npx vitest run tests/auth-guard.test.tsx`
 Expected: FAIL (module not found).
 
-- [ ] **Step 3: Implement** `ken-web/web/src/components/AuthGuard.tsx`: on mount call `getMe()`; states `loading` (render a small skeleton/spinner) / `authed` (render `children`) / `anon` (render `<Navigate to="/login" replace />`). Use the `alive` cleanup pattern from `Home.tsx`. It may also expose the email via context if convenient, but YAGNI — the masthead can call `getMe` or receive it via a prop; keep it simple (the guard renders children only when authed).
+- [ ] **Step 3: Implement** `ken-web/web/src/components/AuthGuard.tsx` with a **pinned context mechanism** (so the masthead has one well-defined way to read identity):
 
-- [ ] **Step 4: Wire routing + masthead in `App.tsx`.** Add a `/login` route OUTSIDE the guard; wrap the existing routed app in `AuthGuard`; the masthead eyebrow shows the user email + a Logout button when authed. Concretely: render `<Routes>` with `/login` → `<Login/>`, and all other paths under an element that is `<AuthGuard><Shell>…existing routes…</Shell></AuthGuard>`. For the masthead identity + logout, the simplest approach: have `AuthGuard` pass the email down (render-prop or context) so the masthead shows it and a Logout button calling `logout().then(() => location.assign("/login"))`. If that grows complex, keep masthead static and only gate content — but the spec wants the user shown + logout, so include it. Keep auth-OFF behavior: when `getMe` returns `{email: "local"}` (auth off), render today's static "self-host · single team" eyebrow and NO logout button.
+```tsx
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Navigate } from "react-router-dom";
+import { getMe } from "../api/client";
 
-- [ ] **Step 5: Drop `person` from Review.** In `ken-web/web/src/pages/Review.tsx`, remove the `person: "kr",` line from the `postAttempt({...})` call (the server now derives it).
+interface AuthValue { email: string; }
+export const AuthContext = createContext<AuthValue>({ email: "" });
+export const useAuth = () => useContext(AuthContext);
 
-- [ ] **Step 6: Run all web tests + build**
+type Status = "loading" | "authed" | "anon";
+
+export default function AuthGuard({ children }: { children: ReactNode }) {
+  const [status, setStatus] = useState<Status>("loading");
+  const [email, setEmail] = useState("");
+  useEffect(() => {
+    let alive = true;
+    getMe()
+      .then((m) => { if (alive) { setEmail(m.email); setStatus("authed"); } })
+      .catch(() => { if (alive) setStatus("anon"); });
+    return () => { alive = false; };
+  }, []);
+  if (status === "loading") return <div className="skeleton" style={{ height: 80, margin: 40 }} />;
+  if (status === "anon") return <Navigate to="/login" replace />;
+  return <AuthContext.Provider value={{ email }}>{children}</AuthContext.Provider>;
+}
+```
+
+- [ ] **Step 4: Write the failing masthead test** `ken-web/web/tests/masthead-user.test.tsx`:
+
+```tsx
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+vi.mock("../src/api/client", () => ({ logout: vi.fn().mockResolvedValue(undefined) }));
+import * as client from "../src/api/client";
+import MastheadUser from "../src/components/MastheadUser";
+import { AuthContext } from "../src/components/AuthGuard";
+
+const logout = client.logout as unknown as ReturnType<typeof vi.fn>;
+
+function renderWith(email: string) {
+  return render(
+    <AuthContext.Provider value={{ email }}>
+      <MastheadUser />
+    </AuthContext.Provider>,
+  );
+}
+
+describe("MastheadUser", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows the email + a Log out button when authenticated", async () => {
+    renderWith("a@x.com");
+    expect(screen.getByText("a@x.com")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /log ?out/i }));
+    expect(logout).toHaveBeenCalled();
+  });
+
+  it("renders the static eyebrow (no logout) when auth is off (email=local)", () => {
+    renderWith("local");
+    expect(screen.queryByRole("button", { name: /log ?out/i })).toBeNull();
+    expect(screen.getByText(/self-host/i)).toBeInTheDocument();
+  });
+});
+```
+
+- [ ] **Step 5: Implement** `ken-web/web/src/components/MastheadUser.tsx`:
+
+```tsx
+import { logout } from "../api/client";
+import { useAuth } from "./AuthGuard";
+
+export default function MastheadUser() {
+  const { email } = useAuth();
+  if (email === "local") return <span className="eyebrow">self-host · single team</span>;
+  async function doLogout() {
+    await logout();
+    window.location.assign("/login");
+  }
+  return (
+    <span className="eyebrow" style={{ display: "inline-flex", gap: 12, alignItems: "center" }}>
+      <span>{email}</span>
+      <button type="button" className="btn btn--ghost" onClick={doLogout}>Log out</button>
+    </span>
+  );
+}
+```
+
+- [ ] **Step 6: Run the new tests to pass**
+
+Run: `cd ken-web/web && npx vitest run tests/auth-guard.test.tsx tests/masthead-user.test.tsx`
+Expected: PASS.
+
+- [ ] **Step 7: Wire routing + masthead in `App.tsx`.** Add a `/login` route OUTSIDE the guard; wrap the rest of the app in `AuthGuard`; replace the static masthead eyebrow `<span className="eyebrow">self-host · single team</span>` with `<MastheadUser/>`. Concretely, structure as:
+
+```tsx
+<Routes>
+  <Route path="/login" element={<Login />} />
+  <Route path="/*" element={
+    <AuthGuard>
+      <Shell>{/* masthead with <MastheadUser/> + the existing <Routes> for / /review /artifact/:id */}</Shell>
+    </AuthGuard>
+  } />
+</Routes>
+```
+
+Keep the existing `/`, `/review`, `/artifact/:id` routes (now nested under the guarded element). Import `Login`, `AuthGuard`, `MastheadUser`. (The masthead currently lives in `App`'s top-level shell — move the `<MastheadUser/>` into the guarded subtree so `useAuth()` has a provider; the `/login` page renders without the masthead.)
+
+- [ ] **Step 8: Drop `person` from Review.** In `ken-web/web/src/pages/Review.tsx`, remove the `person: "kr",` line from the `postAttempt({...})` call (the server now derives it). Confirm `AttemptRequest` no longer has `person` (removed in Task 8).
+
+- [ ] **Step 9: Run all web tests + build**
 
 Run: `cd ken-web/web && npx vitest run && npm run build`
-Expected: PASS (login + auth-guard + home + review + artifact-detail) and a clean build. Update any existing test that breaks because the app is now wrapped in `AuthGuard` (e.g. `home.test.tsx` renders `Home` directly, not through `App`, so it should be unaffected; if a test renders `App`, mock `getMe` to resolve).
+Expected: PASS (login + auth-guard + masthead-user + home + review + artifact-detail) and a clean build. Existing `home.test.tsx` / `review.test.tsx` / `artifact-detail.test.tsx` render their pages **directly** (not through `App`), so wrapping `App` in `AuthGuard` does not affect them — confirm none import `App`; if any did, mock `getMe` to resolve.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add ken-web/web/src/components/AuthGuard.tsx ken-web/web/tests/auth-guard.test.tsx ken-web/web/src/App.tsx ken-web/web/src/pages/Review.tsx
+git add ken-web/web/src/components/AuthGuard.tsx ken-web/web/src/components/MastheadUser.tsx ken-web/web/tests/auth-guard.test.tsx ken-web/web/tests/masthead-user.test.tsx ken-web/web/src/App.tsx ken-web/web/src/pages/Review.tsx
 git commit -m "feat(ken-web): AuthGuard + /login route + masthead user/logout; Review drops person"
 ```
 
