@@ -76,6 +76,21 @@ async def test_import_notion_skips_failing_page_without_aborting():
     assert report.ingested == 1 and report.skipped == 1
 
 
+async def test_import_notion_skips_empty_body_pages():
+    # 라이브 검증서 드러난 진짜 문제: 블록 없는 컨테이너/DB행 = 빈 본문 → 인덱스 오염.
+    convs = {"a": _conv(body="# 실내용\n\n본문 있음"), "b": _conv(body="  \n  ")}
+    ingested_ids = []
+
+    async def fake_ingest(csf, tenant):
+        ingested_ids.append(csf["provenance"]["source_id"])
+        return _Outcome(rid="x")
+
+    report = await import_notion(_FakeSource(["a", "b"], convs), "acme", fake_ingest)
+    assert ingested_ids == ["a"]   # b(빈 본문)는 ingest 안 함
+    assert report.ingested == 1
+    assert report.empty == 1
+
+
 async def test_import_notion_counts_idempotent():
     async def fake_ingest(csf, tenant):
         return _Outcome(rid="doc_a", idempotent=True)
