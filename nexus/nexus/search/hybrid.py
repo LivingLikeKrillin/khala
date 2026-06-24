@@ -38,6 +38,7 @@ class SearchHit:
     vector_rank: int | None = None
     classification: str = "INTERNAL"
     approved_hash: str = ""  # documents.content_hash — accountable-review stamp (SPEC §5.4)
+    doc_type: str = ""  # documents.doc_type — 축-A 타입(S3 intake 보존)
 
 
 @dataclass
@@ -192,7 +193,8 @@ async def _enrich_hits(fused: list[dict], tenant: str) -> list[SearchHit]:
         f"""
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.source_uri,
                c.classification, c.source_version,
-               d.title as doc_title, d.approved_hash as approved_hash
+               d.title as doc_title, d.approved_hash as approved_hash,
+               d.doc_type as doc_type
         FROM chunks c
         LEFT JOIN documents d ON c.doc_rid = d.rid
         WHERE c.rid IN ({placeholders})
@@ -221,6 +223,7 @@ async def _enrich_hits(fused: list[dict], tenant: str) -> list[SearchHit]:
             vector_rank=f["vector_rank"],
             classification=r["classification"],
             approved_hash=r["approved_hash"] or "",
+            doc_type=r["doc_type"] or "",
         ))
 
     return hits

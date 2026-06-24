@@ -27,6 +27,7 @@ class EvidenceSnippet:
     text: str
     score: float
     classification: str
+    doc_type: str = ""
 
 
 @dataclass
@@ -72,6 +73,7 @@ def assemble_packet(
             text=hit.snippet,
             score=hit.score,
             classification=hit.classification,
+            doc_type=hit.doc_type,
         ))
 
         if hit.doc_rid not in seen_docs:
@@ -96,6 +98,8 @@ def format_for_llm(packet: EvidencePacket) -> str:
         parts.append(f"\n### 근거 {i} [{s.doc_title}] ({s.section_path})")
         parts.append(f"출처: {s.source_uri}")
         parts.append(f"분류: {s.classification}")
+        if s.doc_type:
+            parts.append(f"타입: {s.doc_type}")
         parts.append(f"\n{s.text}")
 
     # Graph findings
