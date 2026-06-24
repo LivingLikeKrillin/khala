@@ -11,11 +11,10 @@ from __future__ import annotations
 
 import hashlib
 
+from . import doctypes
 from .artifacts import Artifact
 from .ledger import Ledger
 
-# CSF kind 의 열린 enum → specledger 어휘로 강제 매핑.
-_KIND_TO_TYPE = {"SPEC": "spec", "ADR": "adr"}
 _REQUIRED = ("id", "kind", "title", "body")
 _REQUIRED_PROV = ("source_tool", "source_id", "source_hash")
 # deposit(Nexus) 측 식별자 충돌 방어와 동일 — 경로 구분자/널은 id 를 무너뜨린다.
@@ -32,13 +31,20 @@ def promote_external(ledger: Ledger, csf: dict, type: str) -> dict:
     Args:
         ledger: 대상 Ledger.
         csf: canonical spec format 문서(frontmatter dict + body).
-        type: "SPEC" | "ADR" — CSF 의 열린 kind 를 specledger 어휘로 매핑.
+        type: 축-A 거버넌스 타입(ADR/DESIGN/RFC) 또는 레거시 CSF 토큰(SPEC). doctypes
+            레지스트리로 정규화·매핑하며, T1(거버넌스)이 아닌 타입은 승격 거부.
 
     Returns:
         {artifact_id, status, provenance_carried}
     """
-    if type not in _KIND_TO_TYPE:
-        raise PromoteError(f"type must be SPEC or ADR, got {type!r}")
+    # type 은 축-A 타입(또는 레거시 CSF 토큰) — 상류 정규화와 동일 규칙으로 정본화한 뒤
+    # 레지스트리로 승격가능성(=T1)과 specledger 어휘를 결정한다(하드코딩 제거).
+    axis_a = doctypes.normalize_kind(type)
+    sl_type = doctypes.specledger_type_of(axis_a)
+    if sl_type is None:
+        raise PromoteError(
+            f"type 은 거버넌스(T1) 타입이어야 한다(ADR/DESIGN/RFC/레거시 SPEC), got {type!r}"
+        )
     if not all(csf.get(k) for k in _REQUIRED):
         raise PromoteError("CSF missing required fields")
     prov = csf.get("provenance") or {}
@@ -58,7 +64,7 @@ def promote_external(ledger: Ledger, csf: dict, type: str) -> dict:
     if prov["source_hash"] != hashlib.sha256(body.encode("utf-8")).hexdigest():
         raise PromoteError("provenance.source_hash does not match body")
 
-    aid = ledger.record(_KIND_TO_TYPE[type], str(csf["title"]))
+    aid = ledger.record(sl_type, str(csf["title"]))
     art = Artifact.load(ledger._resolve(aid))
     art.body = body
     art.meta["source_tool"] = prov["source_tool"]

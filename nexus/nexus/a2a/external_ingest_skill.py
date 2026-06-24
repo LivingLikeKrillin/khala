@@ -24,6 +24,15 @@ _REQUIRED_PROV = ("source_tool", "source_id", "source_hash")
 # 둘 다 막아, production rid(safe_id basename)가 id 와 1:1 로 유지되게 한다(아래 validate 참조).
 _UNSAFE_ID_CHARS = ("/", "\\", "\x00")
 
+# 레거시 CSF kind → 축-A 정본 타입(S1). specledger doctypes 레지스트리의 aliases 미러 —
+# 패키지 디커플링 때문에 소량 중복하며, read-path 통합은 S3.
+_KIND_ALIASES = {"SPEC": "DESIGN", "FLOW": "NOTE"}
+
+
+def normalize_csf_kind(kind: str) -> str:
+    """레거시 CSF kind → 축-A 정본 타입. alias 없으면 그대로."""
+    return _KIND_ALIASES.get(kind, kind)
+
 # 외부 출처 표식 — classification 레벨이 아니라 CRM label (classification<=clearance 필터 보호).
 EXTERNAL_LABEL = "external_spec"
 
@@ -97,6 +106,7 @@ def build_external_ingest_artifact(
         "tenant": tenant,
         "resource_rid": outcome.resource_rid,
         "labels": outcome.labels,
+        "doc_type": normalize_csf_kind(str(doc.get("kind", ""))),
         "chunks_indexed": outcome.chunks_indexed,
         "idempotent_hit": outcome.idempotent_hit,
         "source_hash": outcome.source_hash,
