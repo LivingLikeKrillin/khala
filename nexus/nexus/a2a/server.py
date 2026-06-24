@@ -30,6 +30,14 @@ from fastapi.responses import JSONResponse
 from nexus.a2a.audit import record_audit
 from nexus.a2a.card import build_agent_card
 from nexus.a2a.config import A2AConfig
+from nexus.a2a.external_ingest_skill import (
+    EXTERNAL_LABEL,
+    ExternalIngestOutcome,
+    build_external_ingest_artifact,
+    compute_source_hash,
+    extract_external_spec,
+    validate_external_spec,
+)
 from nexus.a2a.ingest_skill import IngestOutcome, build_ingest_artifact, extract_governed_doc
 from nexus.a2a.mapping import build_grounded_artifact
 from nexus.a2a.policy import effective_scope, resolve_a2a_principal
@@ -41,6 +49,8 @@ from nexus.llm.answer import AnswerResult
 AnswerFn = Callable[[str, str, str], AnswerResult | Awaitable[AnswerResult]]
 # IngestFn: (governed_doc, tenant) -> IngestOutcome (sync or async).
 IngestFn = Callable[[dict, str], IngestOutcome | Awaitable[IngestOutcome]]
+# ExternalIngestFn: (csf, tenant) -> ExternalIngestOutcome (sync or async).
+ExternalIngestFn = Callable[[dict, str], "ExternalIngestOutcome | Awaitable[ExternalIngestOutcome]"]
 
 _CARD_PATH = "/.well-known/agent-card.json"
 _RPC_PATH = "/a2a"
@@ -48,6 +58,8 @@ _SKILL_METHOD = "message/send"
 _SKILL_NAME = "retrieve_grounded"
 _INGEST_SKILL = "ingest_governed_doc"
 _INGEST_CAPABILITY = "ingest_governed"
+_EXT_INGEST_SKILL = "ingest_external_spec"
+_EXT_INGEST_CAPABILITY = "ingest_external"
 
 # JSON-RPC error codes (subset).
 _METHOD_NOT_FOUND = -32601
@@ -109,6 +121,7 @@ def mount_a2a(
     cfg: A2AConfig,
     answer_fn: AnswerFn | None = None,
     ingest_fn: IngestFn | None = None,
+    external_ingest_fn: ExternalIngestFn | None = None,
 ) -> None:
     """Conditionally mount the A2A surface. No-op (no routes) when ``cfg.enabled`` is false."""
     if not cfg.enabled:
@@ -116,6 +129,7 @@ def mount_a2a(
 
     resolved_answer_fn = answer_fn or _default_answer_fn
     resolved_ingest_fn = ingest_fn or _default_ingest_fn
+    resolved_external_ingest_fn = external_ingest_fn or _default_external_ingest_fn
     limiter = RateLimiter(cfg.rate_limit_per_min)  # per-principal; 0 ⇒ disabled
 
     @app.get(_CARD_PATH)
@@ -184,6 +198,46 @@ def mount_a2a(
             task = _wrap_task(artifact_json, state, reason)
             await record_audit(
                 skill=_INGEST_SKILL, query=str(doc.get("id", "")), principal=principal.name,
+                tenant=tenant, clearance=principal.clearance,
+                evidence_count=outcome.chunks_indexed, task_state=state,
+                denied=False, reason=reason, latency_ms=elapsed_ms(),
+            )
+            return {"jsonrpc": "2.0", "id": req_id, "result": task}
+
+        # ── 외부 spec 메모 경로 (서브프로젝트 A): ungoverned, 별도 capability. ──
+        if skill == _EXT_INGEST_SKILL:
+            if not principal.has(_EXT_INGEST_CAPABILITY):
+                await record_audit(skill=_EXT_INGEST_SKILL, query="", principal=principal.name,
+                           tenant=principal.tenant, clearance=principal.clearance,
+                           denied=True, reason="forbidden_no_capability",
+                           latency_ms=elapsed_ms())
+                return _rpc_error(req_id, _FORBIDDEN,
+                                  "forbidden: ingest_external capability required", status=403)
+
+            doc = extract_external_spec(params)
+            if doc is None:
+                await record_audit(skill=_EXT_INGEST_SKILL, query="", principal=principal.name,
+                           tenant=principal.tenant, clearance=principal.clearance,
+                           denied=True, reason="invalid_doc", latency_ms=elapsed_ms())
+                return _rpc_error(req_id, _INVALID_PARAMS, "invalid external-spec payload")
+
+            verr = validate_external_spec(doc)
+            if verr is not None:
+                await record_audit(skill=_EXT_INGEST_SKILL, query=str(doc.get("id", "")),
+                           principal=principal.name, tenant=principal.tenant,
+                           clearance=principal.clearance, denied=True,
+                           reason="invalid_csf", latency_ms=elapsed_ms())
+                return _rpc_error(req_id, _INVALID_PARAMS, f"invalid CSF: {verr}")
+
+            tenant, _clearance = effective_scope(principal)  # ingest is tenant-bound
+            outcome = resolved_external_ingest_fn(doc, tenant)
+            if isinstance(outcome, Awaitable):
+                outcome = await outcome
+
+            artifact_json, state, reason = build_external_ingest_artifact(outcome, doc, tenant)
+            task = _wrap_task(artifact_json, state, reason)
+            await record_audit(
+                skill=_EXT_INGEST_SKILL, query=str(doc.get("id", "")), principal=principal.name,
                 tenant=tenant, clearance=principal.clearance,
                 evidence_count=outcome.chunks_indexed, task_state=state,
                 denied=False, reason=reason, latency_ms=elapsed_ms(),
@@ -331,4 +385,46 @@ async def _default_ingest_fn(doc: dict, tenant: str) -> IngestOutcome:
         quarantined=quarantined,
         approved_hash=approved_hash,
         idempotent_hit=idempotent,
+    )
+
+
+async def _default_external_ingest_fn(doc: dict, tenant: str) -> ExternalIngestOutcome:
+    """Production 외부-ingest 경로: inline CSF body를 기존 파일 기반 파이프라인으로 브리지.
+
+    governed 경로(_default_ingest_fn)와 동일하게 transient-file로 ingest 하되, approved_hash
+    provenance는 없다. 결정적 id → 안정적 canonical URI 매핑으로 idempotency 가 성립한다
+    (run_ingest force=False 의 (tenant, source_uri, content_hash) dedup). ingest 후 documents
+    row 에 external_spec label 을 단다(classification 레벨이 아니라 CRM label).
+    """
+    import tempfile
+    from pathlib import Path
+
+    from nexus import db
+    from nexus.ingest.pipeline import run_ingest
+    from nexus.rid import doc_rid
+
+    body = str(doc.get("body", ""))
+    source_hash = compute_source_hash(body)
+    fname = f"{doc.get('id', 'ext-doc')}.md"
+    rid = doc_rid(f"{tenant}:{fname}")  # collector canonical_uri 와 일치(안정적)
+
+    with tempfile.TemporaryDirectory() as td:
+        (Path(td) / fname).write_text(body, encoding="utf-8")
+        result = await run_ingest(td, force=False, tenant=tenant)
+
+    idempotent = result.total_files == 0
+    if not idempotent:
+        # external_spec label 부여 (중복 추가 방지). classification 컬럼은 건드리지 않음.
+        await db.execute(
+            "UPDATE documents SET labels = array_append(labels, $3) "
+            "WHERE rid = $1 AND tenant = $2 AND NOT ($3 = ANY(labels))",
+            rid, tenant, EXTERNAL_LABEL,
+        )
+
+    return ExternalIngestOutcome(
+        resource_rid=rid,
+        labels=[EXTERNAL_LABEL],
+        chunks_indexed=0 if idempotent else result.bm25_indexed,
+        idempotent_hit=idempotent,
+        source_hash=source_hash,
     )
