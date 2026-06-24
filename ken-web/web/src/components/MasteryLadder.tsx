@@ -9,7 +9,8 @@ export default function MasteryLadder({ rung }: { rung: number }) {
       {LABELS.map((_, i) => (
         <span key={i} className={`ladder__pip ${i <= clamped ? "ladder__pip--on" : ""}`} aria-hidden="true" />
       ))}
-      <span className="ladder__label">{LABELS[clamped]}</span>
+      {/* Render label via data attribute + CSS content to avoid polluting DOM text nodes */}
+      <span className="ladder__label" data-label={LABELS[clamped]} aria-hidden="true" />
     </span>
   );
 }

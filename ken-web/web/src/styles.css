@@ -895,3 +895,6 @@ a {
   font-size: 0.72rem;
   color: var(--paper-faint);
 }
+.ladder__label::after {
+  content: attr(data-label);
+}
