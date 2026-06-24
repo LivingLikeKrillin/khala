@@ -405,7 +405,10 @@ async def _default_external_ingest_fn(doc: dict, tenant: str) -> ExternalIngestO
 
     body = str(doc.get("body", ""))
     source_hash = compute_source_hash(body)
-    fname = f"{doc.get('id', 'ext-doc')}.md"
+    # id 는 신뢰 불가 외부 호출자가 보낸다 — 디렉터리 성분을 제거해 temp dir 탈출(path traversal)을
+    # 막는다(governed _default_ingest_fn 의 Path(source).name 방어와 동일).
+    safe_id = Path(str(doc.get("id", "ext-doc"))).name or "ext-doc"
+    fname = f"{safe_id}.md"
     rid = doc_rid(f"{tenant}:{fname}")  # collector canonical_uri 와 일치(안정적)
 
     with tempfile.TemporaryDirectory() as td:
