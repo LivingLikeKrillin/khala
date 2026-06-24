@@ -49,6 +49,7 @@ class ImportReport:
     ingested: int = 0
     idempotent: int = 0
     skipped: int = 0
+    watermark: str | None = None
     results: list[dict] = field(default_factory=list)
 
 
@@ -56,12 +57,24 @@ class ImportReport:
 IngestFn = Callable[[dict, str], Awaitable]
 
 
-async def import_notion(source, tenant: str, ingest_fn: IngestFn) -> ImportReport:
-    """source.live_ids() 페이지를 fetch→csf→ingest. per-page skip(1건 실패가 전체 중단 금지)."""
+async def import_notion(
+    source, tenant: str, ingest_fn: IngestFn, since: str | None = None
+) -> ImportReport:
+    """live_ids 페이지를 fetch→csf→ingest. since 이후 변경분만(증분). per-page skip.
+
+    watermark: 본 run 에서 본 ref 의 최대 last_edited(다음 since). 주의(한계): since 범위 내에서
+    실패한 변경 페이지는 watermark 가 앞서가 다음 since 로 건너뛸 수 있다 — 복구는 since 없이 재실행.
+    """
     report = ImportReport()
+    max_seen = since or ""
     for page_id in sorted(source.live_ids()):
         try:
             ref = source.page_ref(page_id)
+            le = getattr(ref, "last_edited", "") or ""
+            if le > max_seen:
+                max_seen = le
+            if since and le <= since:
+                continue
             conv = source.fetch_markdown(ref)
             outcome = await ingest_fn(build_csf(conv, page_id), tenant)
             if getattr(outcome, "idempotent_hit", False):
@@ -72,4 +85,5 @@ async def import_notion(source, tenant: str, ingest_fn: IngestFn) -> ImportRepor
         except Exception as e:  # noqa: BLE001 — per-page 격리(기존 ingest 에러 규칙)
             report.skipped += 1
             report.results.append({"page_id": page_id, "error": str(e)})
+    report.watermark = max_seen or None
     return report

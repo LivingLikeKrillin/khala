@@ -32,14 +32,15 @@ def test_build_csf_passes_server_side_validation():
 
 
 class _FakeSource:
-    def __init__(self, ids, convs):
-        self._ids, self._convs = ids, convs
+    def __init__(self, ids, convs, edits=None):
+        self._ids, self._convs, self._edits = ids, convs, edits or {}
 
     def live_ids(self):
         return set(self._ids)
 
     def page_ref(self, pid):
-        return type("R", (), {"id": pid, "url": f"u/{pid}", "last_edited": "t"})()
+        le = self._edits.get(pid, "t")
+        return type("R", (), {"id": pid, "url": f"u/{pid}", "last_edited": le})()
 
     def fetch_markdown(self, ref):
         return self._convs[ref.id]
@@ -81,6 +82,33 @@ async def test_import_notion_counts_idempotent():
 
     report = await import_notion(_FakeSource(["a"], {"a": _conv()}), "acme", fake_ingest)
     assert report.idempotent == 1 and report.ingested == 0
+
+
+async def test_import_notion_since_skips_unchanged():
+    convs = {"a": _conv(), "b": _conv()}
+    edits = {"a": "2026-06-01", "b": "2026-06-10"}
+    seen = []
+
+    async def fake_ingest(csf, tenant):
+        seen.append(csf["provenance"]["source_id"])
+        return _Outcome(rid="x")
+
+    report = await import_notion(
+        _FakeSource(["a", "b"], convs, edits), "acme", fake_ingest, since="2026-06-05"
+    )
+    assert seen == ["b"]              # a(06-01)는 since 이전 → skip
+    assert report.ingested == 1
+    assert report.watermark == "2026-06-10"   # 본 run 최대 last_edited
+
+
+async def test_import_notion_no_since_processes_all():
+    convs = {"a": _conv(), "b": _conv()}
+
+    async def fake_ingest(csf, tenant):
+        return _Outcome(rid="x")
+
+    report = await import_notion(_FakeSource(["a", "b"], convs), "acme", fake_ingest)
+    assert report.ingested == 2
 
 
 def test_classify_kind_maps_title_keywords():
