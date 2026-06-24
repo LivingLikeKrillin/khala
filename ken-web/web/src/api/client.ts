@@ -10,6 +10,7 @@ import type {
   AttemptResult,
   Coverage,
   Due,
+  Me,
 } from "../types";
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const;
@@ -39,6 +40,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       if (body?.detail) detail = body.detail;
     } catch {
       /* non-JSON error body — keep statusText */
+    }
+    if (res.status === 401 && !path.startsWith("/api/auth/")) {
+      window.location.assign("/login");
     }
     throw new ApiError(res.status, detail);
   }
@@ -83,4 +87,23 @@ export function getCoverage(): Promise<Coverage> {
 /** GET /api/artifacts/{id}/detail — read-only per-question schedule rows (no generation). */
 export function getArtifactDetail(artifactId: string): Promise<ArtifactDetail> {
   return request<ArtifactDetail>(`/api/artifacts/${encodeURIComponent(artifactId)}/detail`);
+}
+
+/** GET /api/auth/me — current identity, or throws ApiError(401). */
+export function getMe(): Promise<Me> {
+  return request<Me>("/api/auth/me");
+}
+
+/** POST /api/auth/login — sets the session cookie on success. */
+export function login(email: string, password: string): Promise<Me> {
+  return request<Me>("/api/auth/login", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+/** POST /api/auth/logout — clears the session. */
+export function logout(): Promise<void> {
+  return request<void>("/api/auth/logout", { method: "POST" });
 }

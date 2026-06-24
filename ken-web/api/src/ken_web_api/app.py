@@ -10,13 +10,17 @@ LLM failure yields `remediation=None` there. Neither surfaces as an HTTP error.
 
 from __future__ import annotations
 
+import logging
+import os
+from datetime import timedelta
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from ken import service
+from ken.schedule import _parse_ts
 
 from . import deps
 from .schemas import (
@@ -26,11 +30,16 @@ from .schemas import (
     AttemptReq,
     CoverageOut,
     DueOut,
+    LoginReq,
+    MeOut,
     QuestionDetailOut,
     QuestionOut,
     RegisterReq,
     WeaknessOut,
 )
+from .security import DUMMY_HASH, new_session_token, verify_password
+
+logger = logging.getLogger("ken_web_api")
 
 app = FastAPI(title="ken-web API", version="0.1.0")
 
@@ -43,7 +52,63 @@ app.add_middleware(
 )
 
 
-@app.get("/api/artifacts", response_model=list[ArtifactOut])
+@app.on_event("startup")
+def _auth_startup_guard() -> None:
+    if deps.auth_enabled() and not os.getenv("KEN_DATABASE_URL"):
+        raise RuntimeError("KEN_AUTH=1 requires KEN_DATABASE_URL (Postgres)")
+    logger.info("auth: %s", "ENABLED" if deps.auth_enabled() else "OFF")
+
+
+def require_user(request: Request) -> str:
+    """Return the person identifier (email). 401 when auth is on and no valid session."""
+    if not deps.auth_enabled():
+        return deps.DEFAULT_PERSON
+    token = request.cookies.get(deps.SESSION_COOKIE)
+    user = deps.make_auth_store().user_for_session(token, now=service.now_iso()) if token else None
+    if user is None:
+        raise HTTPException(status_code=401, detail="authentication required")
+    return user.email
+
+
+@app.post("/api/auth/login", response_model=MeOut)
+def login(req: LoginReq, response: Response) -> MeOut:
+    if not deps.auth_enabled():
+        raise HTTPException(status_code=400, detail="auth disabled")
+    store = deps.make_auth_store()
+    found = store.get_user_by_email(req.email)
+    # Constant-time across branches: always run one verify (DUMMY_HASH if unknown).
+    ok = verify_password(found[1] if found else DUMMY_HASH, req.password)
+    if not found or not ok:
+        raise HTTPException(status_code=401, detail="invalid email or password")
+    token = new_session_token()
+    expires = (_parse_ts(service.now_iso()) + timedelta(days=deps.SESSION_TTL_DAYS)).isoformat()
+    store.create_session(found[0].id, token, expires)
+    response.set_cookie(
+        deps.SESSION_COOKIE, token, httponly=True, samesite="lax", path="/",
+        secure=os.getenv("KEN_COOKIE_SECURE") == "1",
+        max_age=deps.SESSION_TTL_DAYS * 86400,
+    )
+    return MeOut(email=found[0].email)
+
+
+@app.post("/api/auth/logout", status_code=204)
+def logout(request: Request, response: Response) -> None:
+    # Apply cookie-deletion to the INJECTED response (returning a new Response
+    # would drop the Set-Cookie). Returning None → FastAPI sends 204 with this
+    # response's headers. delete_cookie uses the same path the cookie was set with.
+    token = request.cookies.get(deps.SESSION_COOKIE)
+    if token:
+        deps.make_auth_store().delete_session(token)
+    response.delete_cookie(deps.SESSION_COOKIE, path="/")
+    return None
+
+
+@app.get("/api/auth/me", response_model=MeOut)
+def me(person: str = Depends(require_user)) -> MeOut:
+    return MeOut(email=person)
+
+
+@app.get("/api/artifacts", response_model=list[ArtifactOut], dependencies=[Depends(require_user)])
 def list_artifacts() -> list[ArtifactOut]:
     store = deps.make_store()
     rows = service.list_artifacts(store=store, now=service.now_iso())
@@ -55,7 +120,7 @@ def list_artifacts() -> list[ArtifactOut]:
     ]
 
 
-@app.post("/api/artifacts", response_model=ArtifactOut, status_code=201)
+@app.post("/api/artifacts", response_model=ArtifactOut, status_code=201, dependencies=[Depends(require_user)])
 def register_artifact(req: RegisterReq) -> ArtifactOut:
     # ONE store for both service calls (register then list) within this request.
     store = deps.make_store()
@@ -68,7 +133,7 @@ def register_artifact(req: RegisterReq) -> ArtifactOut:
     )
 
 
-@app.get("/api/artifacts/{artifact_id}/due", response_model=DueOut)
+@app.get("/api/artifacts/{artifact_id}/due", response_model=DueOut, dependencies=[Depends(require_user)])
 def get_due(artifact_id: str) -> DueOut:
     """Generate+save questions if missing/stale (non-idempotent), then list due ones."""
     store = deps.make_store()
@@ -90,7 +155,7 @@ def get_due(artifact_id: str) -> DueOut:
     return DueOut(questions=questions)
 
 
-@app.get("/api/artifacts/{artifact_id}/detail", response_model=ArtifactDetailOut)
+@app.get("/api/artifacts/{artifact_id}/detail", response_model=ArtifactDetailOut, dependencies=[Depends(require_user)])
 def get_detail(artifact_id: str) -> ArtifactDetailOut:
     """Read-only per-question schedule rows. No generation, no LLM."""
     store = deps.make_store()
@@ -111,29 +176,22 @@ def get_detail(artifact_id: str) -> ArtifactDetailOut:
 
 
 @app.post("/api/attempts", response_model=AttemptOut)
-def post_attempt(req: AttemptReq) -> AttemptOut:
+def post_attempt(req: AttemptReq, person: str = Depends(require_user)) -> AttemptOut:
     store = deps.make_store()
     try:
         result = service.grade_answer(
-            req.artifact_id,
-            req.question_id,
-            req.answer,
-            person=req.person,
-            store=store,
-            llm=deps.make_llm(),
-            now=service.now_iso(),
+            req.artifact_id, req.question_id, req.answer,
+            person=person,                       # server-derived, not client-supplied
+            store=store, llm=deps.make_llm(), now=service.now_iso(),
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"unknown id: {exc.args[0]}") from exc
     except OSError as exc:
-        # Fail-loud: storage write failed -> never silently drop the attempt.
         raise HTTPException(status_code=500, detail="storage write failed") from exc
-    return AttemptOut(
-        passed=result.passed, score=result.score, remediation=result.remediation
-    )
+    return AttemptOut(passed=result.passed, score=result.score, remediation=result.remediation)
 
 
-@app.get("/api/coverage", response_model=CoverageOut)
+@app.get("/api/coverage", response_model=CoverageOut, dependencies=[Depends(require_user)])
 def get_coverage() -> CoverageOut:
     store = deps.make_store()
     rep = service.coverage_report(store=store, now=service.now_iso())

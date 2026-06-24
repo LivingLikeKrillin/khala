@@ -32,7 +32,7 @@ def _postgres_store(tmp_path):
     from ken.stores.postgres_store import PostgresStore
 
     with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
-        cur.execute("TRUNCATE artifacts, questions, attempts")
+        cur.execute("TRUNCATE artifacts, questions, attempts, users, sessions")
     return PostgresStore(_PG_DSN)
 
 
