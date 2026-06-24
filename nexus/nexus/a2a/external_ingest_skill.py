@@ -20,6 +20,10 @@ _REQUIRED = ("id", "kind", "title", "body")
 # provenance 블록 필수 필드.
 _REQUIRED_PROV = ("source_tool", "source_id", "source_hash")
 
+# id 를 파일시스템 basename 으로 매핑할 때 식별자를 무너뜨리는 문자(경로 구분자/널). 플랫폼 독립으로
+# 둘 다 막아, production rid(safe_id basename)가 id 와 1:1 로 유지되게 한다(아래 validate 참조).
+_UNSAFE_ID_CHARS = ("/", "\\", "\x00")
+
 # 외부 출처 표식 — classification 레벨이 아니라 CRM label (classification<=clearance 필터 보호).
 EXTERNAL_LABEL = "external_spec"
 
@@ -68,12 +72,15 @@ def validate_external_spec(doc: dict) -> str | None:
     """서버측 CSF 검증. 오류 문자열 반환, 유효하면 None.
 
     - id 는 ext-<source_tool>-<source_id> 와 정확히 일치해야 한다.
+    - id 는 경로 구분자/널을 포함하지 않아야 한다(rid basename 축약 시 식별자 충돌 방지).
     - provenance.source_hash 는 sha256(body) 와 일치해야 한다.
     """
     prov = doc.get("provenance") or {}
     expected_id = f"ext-{prov.get('source_tool')}-{prov.get('source_id')}"
     if doc.get("id") != expected_id:
         return f"id must be {expected_id!r}"
+    if any(c in expected_id for c in _UNSAFE_ID_CHARS):
+        return "source_tool/source_id must not contain path separators"
     if compute_source_hash(str(doc.get("body", ""))) != prov.get("source_hash"):
         return "source_hash does not match body"
     return None
