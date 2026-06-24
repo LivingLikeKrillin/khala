@@ -51,6 +51,19 @@ def test_promote_preserves_provenance_in_frontmatter(tmp_path):
     assert art.meta["promoted_from_source_hash"] == csf["provenance"]["source_hash"]
 
 
+def test_promote_adr_returns_proposed_and_carries_provenance(tmp_path):
+    # ADR 은 record() 에서 PROPOSED 로 시작한다(SPEC 은 DRAFT). 공개 계약은 실제 상태를 대문자로 반환.
+    led = _led(tmp_path)
+    csf = _csf()
+    out = promote_external(led, csf, "ADR")
+
+    assert out["status"] == "PROPOSED"
+    assert out["provenance_carried"] is True
+    art = Artifact.load(led._resolve(out["artifact_id"]))
+    assert art.meta["source_tool"] == "manifest"
+    assert art.meta["promoted_from_source_hash"] == csf["provenance"]["source_hash"]
+
+
 def test_promote_rejects_unknown_type(tmp_path):
     with pytest.raises(PromoteError):
         promote_external(_led(tmp_path), _csf(), "PRD")  # PRD 는 specledger 어휘가 아님

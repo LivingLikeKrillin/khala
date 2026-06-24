@@ -113,7 +113,8 @@ A2A skill: ingest_external_spec
 ```
 MCP tool: promote_external
   input:  { csf: <CSF 전체(frontmatter + body)>, type: "SPEC" | "ADR" }
-  output: { artifact_id, status: "DRAFT", provenance_carried: bool }
+  output: { artifact_id, status, provenance_carried: bool }
+          # status = record() 의 시작 상태를 대문자로: SPEC → "DRAFT", ADR → "PROPOSED"
 ```
 
 **설계 결정 — 왜 `ref`가 아니라 CSF 인라인인가:** specledger는 오늘 Nexus **읽기 클라이언트가 없다**(`publish.py`는 A2A write-only). 승격은 인간이 Claude Code 안에서 트리거하는 단발 행위이고, 그 시점에 호출 에이전트는 예치했던 **CSF를 이미 손에 쥐고 있다.** 따라서 A는 새 Nexus read 스킬/capability를 추가하지 않고 CSF를 그대로 받는다. (메모리에 `id`만으로 승격하는 *id-resolution* 변종은 Nexus read 스킬 + specledger A2A read client가 필요하므로 **후속으로 deferral** — 호출자가 들고 있지 않은 외부 spec을 승격해야 하는 실수요가 잡히면 연다. Probe가 이미 Nexus A2A read client인 점이 그때의 grounding.)
@@ -122,7 +123,7 @@ MCP tool: promote_external
 
 1. 입력 CSF를 §3 규칙으로 검증한다(서버측 재검증).
 2. `type` 매핑을 강제한다(CSF의 열린 `kind` → specledger 어휘 `SPEC`|`ADR`로 리네임·정규화). 매핑 불가 시 오류.
-3. specledger `record()`로 **DRAFT** artifact를 생성한다.
+3. specledger `record()`로 초안 artifact를 생성한다(SPEC → **DRAFT**, ADR → **PROPOSED**). 반환 `status`는 이 실제 시작 상태를 대문자로 노출한다(가짜로 DRAFT 고정하지 않음).
 4. provenance를 새 artifact frontmatter에 보존: `source_tool`, `source_url`, `source_hash`, 그리고 drift 빵부스러기 `promoted_from_source_hash`(§6).
 5. 이후는 **기존 흐름 그대로** — `critique()` → 인간 disposition → `approve()` → `approved_hash` 스탬프. A는 이 흐름에 아무것도 추가하지 않는다.
 
