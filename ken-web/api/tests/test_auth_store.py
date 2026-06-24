@@ -115,6 +115,12 @@ def test_create_user_defaults_tenant_to_default():
     assert u.tenant_slug == "default"
 
 
+def test_create_user_unknown_tenant_raises():
+    s = FakeAuthStore()
+    with pytest.raises(Exception):
+        s.create_user("a@x.com", "h", tenant_slug="ghost")
+
+
 @pg_only
 def test_postgres_auth_store_tenant_slug_roundtrip():
     import psycopg

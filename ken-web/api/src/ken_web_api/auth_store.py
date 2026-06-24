@@ -55,6 +55,8 @@ class FakeAuthStore:
         e = _norm(email)
         if e in self._users:
             raise ValueError(f"email already exists: {e}")
+        if tenant_slug not in self._tenants:
+            raise ValueError(f"tenant does not exist: {tenant_slug}")
         self._seq += 1
         u = User(id=self._seq, email=e, tenant_slug=tenant_slug)
         self._users[e] = (u, password_hash)
