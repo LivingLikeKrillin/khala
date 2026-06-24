@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 
@@ -59,15 +60,21 @@ def _auth_startup_guard() -> None:
     logger.info("auth: %s", "ENABLED" if deps.auth_enabled() else "OFF")
 
 
-def require_user(request: Request) -> str:
-    """Return the person identifier (email). 401 when auth is on and no valid session."""
+@dataclass(frozen=True)
+class Principal:
+    email: str
+    tenant_slug: str
+
+
+def require_user(request: Request) -> Principal:
+    """Return the caller's Principal{email, tenant_slug}. 401 when auth is on and no valid session."""
     if not deps.auth_enabled():
-        return deps.DEFAULT_PERSON
+        return Principal(deps.DEFAULT_PERSON, deps.DEFAULT_TENANT)
     token = request.cookies.get(deps.SESSION_COOKIE)
     user = deps.make_auth_store().user_for_session(token, now=service.now_iso()) if token else None
     if user is None:
         raise HTTPException(status_code=401, detail="authentication required")
-    return user.email
+    return Principal(user.email, user.tenant_slug)
 
 
 @app.post("/api/auth/login", response_model=MeOut)
@@ -104,13 +111,13 @@ def logout(request: Request, response: Response) -> None:
 
 
 @app.get("/api/auth/me", response_model=MeOut)
-def me(person: str = Depends(require_user)) -> MeOut:
-    return MeOut(email=person)
+def me(principal: Principal = Depends(require_user)) -> MeOut:
+    return MeOut(email=principal.email)
 
 
-@app.get("/api/artifacts", response_model=list[ArtifactOut], dependencies=[Depends(require_user)])
-def list_artifacts() -> list[ArtifactOut]:
-    store = deps.make_store()
+@app.get("/api/artifacts", response_model=list[ArtifactOut])
+def list_artifacts(principal: Principal = Depends(require_user)) -> list[ArtifactOut]:
+    store = deps.make_store(principal.tenant_slug)
     rows = service.list_artifacts(store=store, now=service.now_iso())
     return [
         ArtifactOut(
@@ -120,10 +127,10 @@ def list_artifacts() -> list[ArtifactOut]:
     ]
 
 
-@app.post("/api/artifacts", response_model=ArtifactOut, status_code=201, dependencies=[Depends(require_user)])
-def register_artifact(req: RegisterReq) -> ArtifactOut:
+@app.post("/api/artifacts", response_model=ArtifactOut, status_code=201)
+def register_artifact(req: RegisterReq, principal: Principal = Depends(require_user)) -> ArtifactOut:
     # ONE store for both service calls (register then list) within this request.
-    store = deps.make_store()
+    store = deps.make_store(principal.tenant_slug)
     service.register_artifact(req.path, store=store)
     # Re-derive the status row so the response carries vouched/orphan + weak_count.
     rows = service.list_artifacts(store=store, now=service.now_iso())
@@ -133,10 +140,10 @@ def register_artifact(req: RegisterReq) -> ArtifactOut:
     )
 
 
-@app.get("/api/artifacts/{artifact_id}/due", response_model=DueOut, dependencies=[Depends(require_user)])
-def get_due(artifact_id: str) -> DueOut:
+@app.get("/api/artifacts/{artifact_id}/due", response_model=DueOut)
+def get_due(artifact_id: str, principal: Principal = Depends(require_user)) -> DueOut:
     """Generate+save questions if missing/stale (non-idempotent), then list due ones."""
-    store = deps.make_store()
+    store = deps.make_store(principal.tenant_slug)
     try:
         service.ensure_questions(
             artifact_id,
@@ -155,10 +162,10 @@ def get_due(artifact_id: str) -> DueOut:
     return DueOut(questions=questions)
 
 
-@app.get("/api/artifacts/{artifact_id}/detail", response_model=ArtifactDetailOut, dependencies=[Depends(require_user)])
-def get_detail(artifact_id: str) -> ArtifactDetailOut:
+@app.get("/api/artifacts/{artifact_id}/detail", response_model=ArtifactDetailOut)
+def get_detail(artifact_id: str, principal: Principal = Depends(require_user)) -> ArtifactDetailOut:
     """Read-only per-question schedule rows. No generation, no LLM."""
-    store = deps.make_store()
+    store = deps.make_store(principal.tenant_slug)
     try:
         rows = service.artifact_detail(artifact_id, store=store, now=service.now_iso())
     except KeyError as exc:
@@ -176,12 +183,12 @@ def get_detail(artifact_id: str) -> ArtifactDetailOut:
 
 
 @app.post("/api/attempts", response_model=AttemptOut)
-def post_attempt(req: AttemptReq, person: str = Depends(require_user)) -> AttemptOut:
-    store = deps.make_store()
+def post_attempt(req: AttemptReq, principal: Principal = Depends(require_user)) -> AttemptOut:
+    store = deps.make_store(principal.tenant_slug)
     try:
         result = service.grade_answer(
             req.artifact_id, req.question_id, req.answer,
-            person=person,                       # server-derived, not client-supplied
+            person=principal.email,              # server-derived, not client-supplied
             store=store, llm=deps.make_llm(), now=service.now_iso(),
         )
     except KeyError as exc:
@@ -191,9 +198,9 @@ def post_attempt(req: AttemptReq, person: str = Depends(require_user)) -> Attemp
     return AttemptOut(passed=result.passed, score=result.score, remediation=result.remediation)
 
 
-@app.get("/api/coverage", response_model=CoverageOut, dependencies=[Depends(require_user)])
-def get_coverage() -> CoverageOut:
-    store = deps.make_store()
+@app.get("/api/coverage", response_model=CoverageOut)
+def get_coverage(principal: Principal = Depends(require_user)) -> CoverageOut:
+    store = deps.make_store(principal.tenant_slug)
     rep = service.coverage_report(store=store, now=service.now_iso())
     return CoverageOut(
         total=rep.total,
