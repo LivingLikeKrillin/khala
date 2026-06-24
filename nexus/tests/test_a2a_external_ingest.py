@@ -58,3 +58,27 @@ def test_validate_rejects_source_hash_mismatch():
     csf = _csf()
     csf["body"] = "tampered body"  # hash no longer matches
     assert "source_hash" in validate_external_spec(csf)
+
+
+def test_build_artifact_completed_carries_labels_and_never_echoes_body():
+    csf = _csf(body="비밀 본문")
+    outcome = ExternalIngestOutcome(
+        resource_rid="doc_x", labels=[EXTERNAL_LABEL], chunks_indexed=3,
+        idempotent_hit=False, source_hash=csf["provenance"]["source_hash"],
+    )
+    artifact_json, state, reason = build_external_ingest_artifact(outcome, csf, "acme")
+    assert state == "completed"
+    assert reason is None
+    blob = repr(artifact_json)
+    assert EXTERNAL_LABEL in blob
+    assert "비밀 본문" not in blob
+
+
+def test_build_artifact_failed_on_error():
+    outcome = ExternalIngestOutcome(
+        resource_rid="", labels=[], chunks_indexed=0, idempotent_hit=False,
+        source_hash="h", error="boom",
+    )
+    _aj, state, reason = build_external_ingest_artifact(outcome, _csf(), "acme")
+    assert state == "failed"
+    assert reason == "boom"
