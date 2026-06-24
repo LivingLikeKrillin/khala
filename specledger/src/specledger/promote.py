@@ -18,6 +18,8 @@ from .ledger import Ledger
 _KIND_TO_TYPE = {"SPEC": "spec", "ADR": "adr"}
 _REQUIRED = ("id", "kind", "title", "body")
 _REQUIRED_PROV = ("source_tool", "source_id", "source_hash")
+# deposit(Nexus) 측 식별자 충돌 방어와 동일 — 경로 구분자/널은 id 를 무너뜨린다.
+_UNSAFE_ID_CHARS = ("/", "\\", "\x00")
 
 
 class PromoteError(ValueError):
@@ -42,6 +44,13 @@ def promote_external(ledger: Ledger, csf: dict, type: str) -> dict:
     prov = csf.get("provenance") or {}
     if not all(prov.get(k) for k in _REQUIRED_PROV):
         raise PromoteError("CSF missing required provenance")
+    # id 형식을 §3 규칙으로 재검증한다(spec §5.1 — deposit 의 Nexus 측 검증과 대칭). 경로 구분자까지
+    # 막아, deposit 으로는 절대 들어올 수 없는 malformed-id CSF 가 promote 로 새지 않게 한다.
+    expected_id = f"ext-{prov['source_tool']}-{prov['source_id']}"
+    if csf.get("id") != expected_id:
+        raise PromoteError(f"CSF id must be {expected_id!r}")
+    if any(c in expected_id for c in _UNSAFE_ID_CHARS):
+        raise PromoteError("CSF source_tool/source_id must not contain path separators")
     # source_hash 를 body 에 대해 재검증한다(deposit 의 Nexus 측 검증과 대칭). promote 는 CSF 를
     # 인라인으로 받으므로, 이 확인이 없으면 body 와 어긋난 hash 가 promoted_from_source_hash 로
     # 박혀 §6 drift 감지 훅을 조용히 오염시킨다 — breadcrumb 의 신뢰를 promote 자신이 보장한다.

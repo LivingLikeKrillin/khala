@@ -76,6 +76,24 @@ def test_validate_rejects_source_hash_mismatch():
     assert "source_hash" in validate_external_spec(csf)
 
 
+def test_validate_rejects_source_id_with_path_separator():
+    # source_id 에 디렉터리 성분이 있으면 production rid 가 basename 으로 축약되어(safe_id) 서로 다른
+    # 외부 spec 이 같은 메모 row 로 충돌한다 → deterministic id 불변식(spec §6) 위반. 검증에서 거부.
+    csf = _csf(source_id="a/x")
+    assert validate_external_spec(csf) is not None
+
+
+def test_validate_rejects_source_tool_with_backslash():
+    # 윈도우 separator 도 막는다(축약은 플랫폼별로 다르므로 검증을 플랫폼 독립으로 고정).
+    csf = _csf(source_tool="a\\b")
+    assert validate_external_spec(csf) is not None
+
+
+def test_validate_accepts_hyphenated_ids():
+    # 정당한 입력엔 무영향 — id 에는 하이픈이 자연스럽게 들어간다(ext-<tool>-<id>).
+    assert validate_external_spec(_csf(source_tool="claude-code", source_id="prd-42")) is None
+
+
 def test_build_artifact_completed_carries_labels_and_never_echoes_body():
     csf = _csf(body="비밀 본문")
     outcome = ExternalIngestOutcome(

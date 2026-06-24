@@ -82,3 +82,19 @@ def test_promote_rejects_source_hash_not_matching_body(tmp_path):
     csf["body"] = "tampered body"  # source_hash 는 원래 body 의 것 → 불일치
     with pytest.raises(PromoteError):
         promote_external(_led(tmp_path), csf, "SPEC")
+
+
+def test_promote_rejects_id_not_matching_provenance(tmp_path):
+    # spec §5.1: promote 도 §3 id 형식 규칙을 재검증해야 한다(deposit 과 대칭). deposit 으로는 절대
+    # 들어올 수 없는 malformed-id CSF 가 promote 로는 통과하던 비대칭을 닫는다.
+    csf = _csf()
+    csf["id"] = "ext-wrong-id"  # ext-<tool>-<id> 와 불일치
+    with pytest.raises(PromoteError):
+        promote_external(_led(tmp_path), csf, "SPEC")
+
+
+def test_promote_rejects_id_with_path_separator(tmp_path):
+    # deposit 측 식별자 충돌 방어(path separator 거부)와 동일 규칙을 promote 에도 적용.
+    csf = _csf(sid="a/x")
+    with pytest.raises(PromoteError):
+        promote_external(_led(tmp_path), csf, "SPEC")
