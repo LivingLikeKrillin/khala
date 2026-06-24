@@ -13,6 +13,7 @@ from pathlib import Path
 
 from ken.llm import AnthropicLLM, LLMClient
 from ken.store import KenStore
+from ken_web_api.auth_store import AuthStore, PostgresAuthStore
 
 # Default count of questions to generate per artifact (overridable via env).
 N_QUESTIONS = int(os.getenv("KEN_N_QUESTIONS", "5"))
@@ -62,3 +63,18 @@ def make_store() -> KenStore:
 def make_llm() -> LLMClient:
     """LLM factory — the test seam. Handlers call this at request time."""
     return AnthropicLLM()
+
+
+SESSION_COOKIE = "ken_session"
+DEFAULT_PERSON = "local"           # the identity when auth is OFF
+SESSION_TTL_DAYS = 14
+
+
+def auth_enabled() -> bool:
+    """True only for the exact env value KEN_AUTH=1 (a typo resolves to OFF)."""
+    return os.getenv("KEN_AUTH") == "1"
+
+
+def make_auth_store() -> AuthStore:
+    """Postgres-only auth store (request-time seam; tests monkeypatch to a Fake)."""
+    return PostgresAuthStore(os.environ["KEN_DATABASE_URL"])
