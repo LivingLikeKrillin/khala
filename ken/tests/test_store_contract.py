@@ -35,7 +35,7 @@ def _postgres_store(tmp_path):
     with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
         cur.execute("TRUNCATE artifacts, questions, attempts, users, sessions, tenants CASCADE")
         cur.execute("INSERT INTO tenants (slug, name) VALUES ('default', 'Default'), ('contract', 'Contract')")
-    return PostgresStore(_PG_DSN, "contract")
+    return PostgresStore(_PG_DSN, "contract")  # 'contract' (not 'default') keeps the contract tenant isolated from the seeded 'default' row
 
 
 # FileStore always; PostgresStore gated on KEN_TEST_DATABASE_URL (skipped when unset).
@@ -139,7 +139,7 @@ def test_postgres_two_tenant_isolation(tmp_path):
     rb = b.register(str(art))
     assert ra.artifact_id == rb.artifact_id       # path-only id; tenant is the discriminator
     assert [r.path for r in a.load_manifest()] == [str(art)]
-    assert len(b.load_manifest()) == 1
+    assert [r.path for r in b.load_manifest()] == [str(art)]
     # an attempt under A is invisible to B
     a.append_attempt(Attempt("u", ra.artifact_id, "q1", "h", True, 1.0, "2026-06-24T00:00:00+00:00"))
     assert len(a.load_attempts()) == 1 and b.load_attempts() == []
