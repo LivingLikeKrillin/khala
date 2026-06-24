@@ -1,6 +1,6 @@
 import pytest
 
-from ken_web_api.admin import add_user_to_store
+from ken_web_api.admin import add_user_to_store, create_tenant_in_store
 from ken_web_api.auth_store import FakeAuthStore, User
 from ken_web_api.security import verify_password
 
@@ -38,9 +38,15 @@ def test_add_user_to_store_assigns_tenant():
 
 
 def test_create_tenant_to_store():
-    from ken_web_api.admin import create_tenant_in_store
     s = FakeAuthStore()
     create_tenant_in_store(s, "acme", "Acme")
     # creating a user there now works
     add_user_to_store(s, "a@x.com", "password1", tenant_slug="acme")
     assert s.get_user_by_email("a@x.com") is not None
+
+
+def test_create_tenant_to_store_duplicate_raises():
+    s = FakeAuthStore()
+    create_tenant_in_store(s, "acme", "Acme")
+    with pytest.raises(Exception):
+        create_tenant_in_store(s, "acme", "Acme2")
