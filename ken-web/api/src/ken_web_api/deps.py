@@ -39,18 +39,26 @@ def ledger_path() -> str:
     return os.getenv("KEN_LEDGER", str(_data_dir() / "ken.attempts.jsonl"))
 
 
-def make_store() -> KenStore:
+SESSION_COOKIE = "ken_session"
+DEFAULT_PERSON = "local"           # the identity when auth is OFF
+DEFAULT_TENANT = "default"         # the tenant when auth is OFF or unspecified
+SESSION_TTL_DAYS = 14
+
+
+def make_store(tenant_slug: str = DEFAULT_TENANT) -> KenStore:
     """Storage factory — selects the backend by env, called at REQUEST TIME.
 
-    `KEN_DATABASE_URL` set -> PostgresStore over that DSN (per-request connection);
-    unset -> FileStore over the KEN_DATA_DIR paths (the default; CLI/local stays
-    file-based and unbroken). Same request-time seam style as `make_llm`.
+    `KEN_DATABASE_URL` set -> tenant-bound PostgresStore over that DSN (per-request
+    connection); unset -> FileStore over the KEN_DATA_DIR paths (the default;
+    CLI/local stays file-based and unbroken; file backend is single-tenant so
+    `tenant_slug` is ignored for FileStore). Same request-time seam style as
+    `make_llm`.
     """
     dsn = os.getenv("KEN_DATABASE_URL")
     if dsn:
         from ken.stores.postgres_store import PostgresStore
 
-        return PostgresStore(dsn)
+        return PostgresStore(dsn, tenant_slug)
     from ken.stores.file_store import FileStore
 
     return FileStore(
@@ -63,11 +71,6 @@ def make_store() -> KenStore:
 def make_llm() -> LLMClient:
     """LLM factory — the test seam. Handlers call this at request time."""
     return AnthropicLLM()
-
-
-SESSION_COOKIE = "ken_session"
-DEFAULT_PERSON = "local"           # the identity when auth is OFF
-SESSION_TTL_DAYS = 14
 
 
 def auth_enabled() -> bool:
