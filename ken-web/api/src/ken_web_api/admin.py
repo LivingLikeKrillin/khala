@@ -7,18 +7,18 @@ import getpass
 import os
 import sys
 
-from ken_web_api.auth_store import AuthStore, PostgresAuthStore
+from ken_web_api.auth_store import AuthStore, PostgresAuthStore, User
 from ken_web_api.security import hash_password
 
 MIN_PASSWORD_LEN = 8
 
 
-def add_user_to_store(store: AuthStore, email: str, password: str) -> None:
+def add_user_to_store(store: AuthStore, email: str, password: str) -> User:
     """Core (store-injected, testable): validate + hash + create. Raises on weak
     password or duplicate email."""
-    if len(password.strip()) < MIN_PASSWORD_LEN:
+    if len(password) < MIN_PASSWORD_LEN:
         raise ValueError(f"password must be at least {MIN_PASSWORD_LEN} characters")
-    store.create_user(email, hash_password(password))
+    return store.create_user(email, hash_password(password))
 
 
 def _add_user_cli(email: str) -> int:
@@ -32,11 +32,11 @@ def _add_user_cli(email: str) -> int:
         print("error: passwords do not match", file=sys.stderr)
         return 1
     try:
-        add_user_to_store(PostgresAuthStore(dsn), email, pw1)
+        user = add_user_to_store(PostgresAuthStore(dsn), email, pw1)
     except Exception as exc:  # weak password / duplicate / DB error
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    print(f"created user {email.strip().lower()}")
+    print(f"created user {user.email}")
     return 0
 
 
