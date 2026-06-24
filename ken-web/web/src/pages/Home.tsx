@@ -136,7 +136,7 @@ export default function Home() {
                 key={a.artifact_id}
                 type="button"
                 className="row"
-                onClick={() => review(a.artifact_id)}
+                onClick={() => navigate(`/artifact/${encodeURIComponent(a.artifact_id)}`)}
               >
                 <span
                   className={`row__dot ${isOrphan ? "row__dot--orphan" : "row__dot--vouched"}`}

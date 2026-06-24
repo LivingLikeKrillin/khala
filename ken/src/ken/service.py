@@ -26,7 +26,7 @@ from ken.llm import LLMClient
 from ken.models import ArtifactRef, Attempt, CoverageReport, Question
 from ken.probe import make_questions
 from ken.schedule import due as schedule_due
-from ken.schedule import rebuild
+from ken.schedule import next_due_at, rebuild
 from ken.store import KenStore
 
 
@@ -36,6 +36,19 @@ def now_iso() -> str:
 
 def find_ref(artifact_id: str, *, store: KenStore) -> ArtifactRef | None:
     return next((r for r in store.load_manifest() if r.artifact_id == artifact_id), None)
+
+
+def _bound_questions(ref: ArtifactRef, *, store: KenStore) -> list[Question] | None:
+    """The artifact's questions IFF currently bound to its live content, else None.
+
+    Mirrors the artifact-level stale gate used by coverage/due: questions missing,
+    or whose stored store-hash != the artifact's current hash, mean nothing is bound
+    (the artifact is an orphan / needs (re)generation).
+    """
+    store_hash, qs = store.load_questions(ref.artifact_id)
+    if not qs or store_hash != ref.content_hash:
+        return None
+    return qs
 
 
 def register_artifact(path: str, *, store: KenStore) -> ArtifactRef:
@@ -53,8 +66,8 @@ def ensure_questions(
     ref = find_ref(artifact_id, store=store)
     if ref is None:
         raise KeyError(artifact_id)
-    store_hash, qs = store.load_questions(artifact_id)
-    if not qs or store_hash != ref.content_hash:
+    qs = _bound_questions(ref, store=store)
+    if qs is None:
         made = make_questions(Path(ref.path).read_text(encoding="utf-8"), n=n, llm=llm)
         store.save_questions(artifact_id, ref.content_hash, made)  # fail-loud
         _, qs = store.load_questions(artifact_id)  # reload with ids
@@ -74,8 +87,8 @@ def due_items(*, store: KenStore, now: str) -> list[DueLine]:
     attempts = store.load_attempts()
     out: list[DueLine] = []
     for ref in refs:
-        store_hash, qs = store.load_questions(ref.artifact_id)
-        if not qs or store_hash != ref.content_hash:
+        qs = _bound_questions(ref, store=store)
+        if qs is None:
             out.append(DueLine(ref.artifact_id, True, []))
             continue
         states = rebuild(attempts, current_hashes={q.id: ref.content_hash for q in qs})
@@ -178,3 +191,50 @@ def list_artifacts(*, store: KenStore, now: str) -> list[ArtifactStatus]:
         )
         for ref in refs
     ]
+
+
+@dataclass(frozen=True)
+class QuestionDetail:
+    question_id: str
+    text: str
+    rung: int                 # interval_idx 0..4 (0 when never-attempted)
+    attempted: bool
+    last_passed: bool | None
+    last_ts: str | None
+    fail_count: int
+    next_due: str | None      # ISO-8601; None => never-attempted => due now
+    due: bool
+
+
+def artifact_detail(artifact_id: str, *, store: KenStore, now: str) -> list[QuestionDetail]:
+    """Per-question schedule/mastery rows for one artifact. Read-only; no LLM.
+
+    Returns [] when the artifact has no current questions or its questions are stale
+    (artifact-level gate, matching coverage's `orphan` verdict). For a bound artifact,
+    due-ness is exactly `schedule.due` (never re-derived here).
+    """
+    ref = find_ref(artifact_id, store=store)
+    if ref is None:
+        raise KeyError(artifact_id)
+    qs = _bound_questions(ref, store=store)
+    if qs is None:
+        return []
+    attempts = store.load_attempts()
+    states = rebuild(attempts, current_hashes={q.id: ref.content_hash for q in qs})
+    due_set = set(schedule_due(states, [q.id for q in qs], now=now))
+    rows: list[QuestionDetail] = []
+    for q in qs:
+        st = states.get(q.id)
+        if st is None:
+            rows.append(QuestionDetail(
+                question_id=q.id, text=q.text, rung=0, attempted=False,
+                last_passed=None, last_ts=None, fail_count=0,
+                next_due=None, due=q.id in due_set,
+            ))
+        else:
+            rows.append(QuestionDetail(
+                question_id=q.id, text=q.text, rung=st.interval_idx, attempted=True,
+                last_passed=st.last_passed, last_ts=st.last_ts, fail_count=st.fail_count,
+                next_due=next_due_at(st).isoformat(), due=q.id in due_set,
+            ))
+    return rows

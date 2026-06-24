@@ -1,5 +1,7 @@
+from datetime import datetime, timedelta, timezone
+
 from ken.models import Attempt
-from ken.schedule import LADDER, due, rebuild
+from ken.schedule import LADDER, due, next_due_at, rebuild
 
 
 def att(qid, passed, ts, h="sha256:cur"):
@@ -70,3 +72,36 @@ def test_rebuild_sorts_by_ts():
     ]
     st = rebuild(atts, current_hashes={"q": "sha256:cur"})["q"]
     assert st.last_passed is False and st.interval_idx == 0
+
+
+def test_next_due_at_is_last_ts_plus_ladder_rung():
+    st = rebuild([att("q", True, "2026-06-01T00:00:00Z")], current_hashes={"q": "sha256:cur"})["q"]
+    # one pass -> interval_idx 1 -> +1 day
+    assert next_due_at(st) == datetime(2026, 6, 2, 0, 0, tzinfo=timezone.utc)
+
+
+def test_due_agrees_with_next_due_at_across_rungs():
+    # due-ness must be exactly: now >= next_due_at(state). Pin the agreement at
+    # rung 0 (fail → LADDER[0]==0d), rung 1 (one pass → +1d), rung 2 (two passes → +3d).
+    base_ts = "2026-06-10T00:00:00Z"
+
+    # --- rung 0: one fail → interval_idx 0 → LADDER[0] == timedelta(0) ---
+    st0 = rebuild([att("q", False, base_ts)], current_hashes={"q": "sha256:cur"})["q"]
+    nd0 = next_due_at(st0)
+    assert "q" not in due({"q": st0}, ["q"], now=(nd0 - timedelta(seconds=1)).isoformat())
+    assert "q" in due({"q": st0}, ["q"], now=nd0.isoformat())
+
+    # --- rung 1: one pass → interval_idx 1 → LADDER[1] == timedelta(days=1) ---
+    st1 = rebuild([att("q", True, base_ts)], current_hashes={"q": "sha256:cur"})["q"]
+    nd1 = next_due_at(st1)
+    assert "q" not in due({"q": st1}, ["q"], now=(nd1 - timedelta(seconds=1)).isoformat())
+    assert "q" in due({"q": st1}, ["q"], now=nd1.isoformat())
+
+    # --- rung 2: two passes → interval_idx 2 → LADDER[2] == timedelta(days=3) ---
+    st2 = rebuild(
+        [att("q", True, "2026-06-10T00:00:00Z"), att("q", True, "2026-06-11T00:00:00Z")],
+        current_hashes={"q": "sha256:cur"},
+    )["q"]
+    nd2 = next_due_at(st2)
+    assert "q" not in due({"q": st2}, ["q"], now=(nd2 - timedelta(seconds=1)).isoformat())
+    assert "q" in due({"q": st2}, ["q"], now=nd2.isoformat())

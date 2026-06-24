@@ -54,3 +54,19 @@ class CoverageOut(BaseModel):
     ratio: float
     orphans: list[str]
     weakness: list[WeaknessOut]
+
+
+class QuestionDetailOut(BaseModel):
+    question_id: str
+    text: str
+    rung: int
+    attempted: bool
+    last_passed: bool | None = None
+    last_ts: str | None = None
+    fail_count: int
+    next_due: str | None = None
+    due: bool
+
+
+class ArtifactDetailOut(BaseModel):
+    questions: list[QuestionDetailOut]

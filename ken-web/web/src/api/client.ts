@@ -5,6 +5,7 @@
 
 import type {
   Artifact,
+  ArtifactDetail,
   AttemptRequest,
   AttemptResult,
   Coverage,
@@ -77,4 +78,9 @@ export function postAttempt(req: AttemptRequest): Promise<AttemptResult> {
 /** GET /api/coverage — the headline coverage report. */
 export function getCoverage(): Promise<Coverage> {
   return request<Coverage>("/api/coverage");
+}
+
+/** GET /api/artifacts/{id}/detail — read-only per-question schedule rows (no generation). */
+export function getArtifactDetail(artifactId: string): Promise<ArtifactDetail> {
+  return request<ArtifactDetail>(`/api/artifacts/${encodeURIComponent(artifactId)}/detail`);
 }

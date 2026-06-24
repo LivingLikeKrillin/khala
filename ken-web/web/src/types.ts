@@ -50,3 +50,21 @@ export interface Coverage {
   orphans: string[];
   weakness: Weakness[];
 }
+
+/** QuestionDetailOut — one per-question schedule row. next_due null ⇒ never-attempted ⇒ due now. */
+export interface QuestionDetail {
+  question_id: string;
+  text: string;
+  rung: number;            // 0..4, index into the ladder [now,1d,3d,7d,30d]
+  attempted: boolean;
+  last_passed: boolean | null;
+  last_ts: string | null;
+  fail_count: number;
+  next_due: string | null;
+  due: boolean;
+}
+
+/** ArtifactDetailOut — all per-question rows for one artifact. */
+export interface ArtifactDetail {
+  questions: QuestionDetail[];
+}

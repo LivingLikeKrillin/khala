@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
 import Review from "./pages/Review";
+import ArtifactDetail from "./pages/ArtifactDetail";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/review" element={<Review />} />
+          <Route path="/artifact/:id" element={<ArtifactDetail />} />
         </Routes>
       </main>
     </div>
