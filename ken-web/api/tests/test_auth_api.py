@@ -113,7 +113,8 @@ def test_auth_off_endpoints_open_and_person_local(tmp_path, monkeypatch):
     c = TestClient(app)
     assert c.get("/api/coverage").status_code == 200       # open
     assert c.get("/api/auth/me").json() == {"email": deps.DEFAULT_PERSON}
-    art = tmp_path / "a.md"; art.write_text("Payment service publishes orders.\n", encoding="utf-8")
+    art = tmp_path / "a.md"
+    art.write_text("Payment service publishes orders.\n", encoding="utf-8")
     aid = c.post("/api/artifacts", json={"path": str(art)}).json()["artifact_id"]
     qid = c.get(f"/api/artifacts/{aid}/due").json()["questions"][0]["question_id"]
     c.post("/api/attempts", json={"artifact_id": aid, "question_id": qid, "answer": "x"})
