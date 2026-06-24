@@ -9,6 +9,8 @@ critique→approve 흐름이 그대로 적용된다.
 
 from __future__ import annotations
 
+import hashlib
+
 from .artifacts import Artifact
 from .ledger import Ledger
 
@@ -40,10 +42,16 @@ def promote_external(ledger: Ledger, csf: dict, type: str) -> dict:
     prov = csf.get("provenance") or {}
     if not all(prov.get(k) for k in _REQUIRED_PROV):
         raise PromoteError("CSF missing required provenance")
+    # source_hash 를 body 에 대해 재검증한다(deposit 의 Nexus 측 검증과 대칭). promote 는 CSF 를
+    # 인라인으로 받으므로, 이 확인이 없으면 body 와 어긋난 hash 가 promoted_from_source_hash 로
+    # 박혀 §6 drift 감지 훅을 조용히 오염시킨다 — breadcrumb 의 신뢰를 promote 자신이 보장한다.
+    body = str(csf["body"])
+    if prov["source_hash"] != hashlib.sha256(body.encode("utf-8")).hexdigest():
+        raise PromoteError("provenance.source_hash does not match body")
 
     aid = ledger.record(_KIND_TO_TYPE[type], str(csf["title"]))
     art = Artifact.load(ledger._resolve(aid))
-    art.body = str(csf["body"])
+    art.body = body
     art.meta["source_tool"] = prov["source_tool"]
     art.meta["source_url"] = prov.get("source_url", "")
     art.meta["source_hash"] = prov["source_hash"]

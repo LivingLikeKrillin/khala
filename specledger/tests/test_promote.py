@@ -74,3 +74,11 @@ def test_promote_rejects_csf_missing_provenance(tmp_path):
     del csf["provenance"]["source_hash"]
     with pytest.raises(PromoteError):
         promote_external(_led(tmp_path), csf, "SPEC")
+
+
+def test_promote_rejects_source_hash_not_matching_body(tmp_path):
+    # promote 는 CSF 를 인라인으로 받으므로 body↔source_hash 정합을 자체 보장한다(deposit 과 대칭).
+    csf = _csf()
+    csf["body"] = "tampered body"  # source_hash 는 원래 body 의 것 → 불일치
+    with pytest.raises(PromoteError):
+        promote_external(_led(tmp_path), csf, "SPEC")
