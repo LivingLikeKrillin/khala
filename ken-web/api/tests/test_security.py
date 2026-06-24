@@ -26,4 +26,9 @@ def test_dummy_hash_is_usable_for_constant_time_path():
 
 def test_session_token_is_long_and_unique():
     a, b = new_session_token(), new_session_token()
-    assert a != b and len(a) >= 32
+    assert a != b and len(a) >= 43
+
+
+def test_hash_password_uses_a_fresh_salt_each_call():
+    # argon2id embeds a random salt, so the same password hashes differently each time.
+    assert hash_password("same-password") != hash_password("same-password")
