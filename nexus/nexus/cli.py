@@ -486,7 +486,7 @@ def ingest_notion(
     )
     typer.echo(
         f"ingested={report.ingested} idempotent={report.idempotent} "
-        f"skipped={report.skipped} watermark={report.watermark or ''}"
+        f"empty={report.empty} skipped={report.skipped} watermark={report.watermark or ''}"
     )
 
 

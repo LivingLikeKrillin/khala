@@ -49,6 +49,7 @@ class ImportReport:
     ingested: int = 0
     idempotent: int = 0
     skipped: int = 0
+    empty: int = 0
     watermark: str | None = None
     results: list[dict] = field(default_factory=list)
 
@@ -76,6 +77,11 @@ async def import_notion(
             if since and le <= since:
                 continue
             conv = source.fetch_markdown(ref)
+            # 빈 본문(블록 없는 컨테이너/DB행)은 인덱스 오염 — 적재 안 함(라이브 검증 신호).
+            if not conv.markdown.strip():
+                report.empty += 1
+                report.results.append({"page_id": page_id, "skipped": "empty body"})
+                continue
             outcome = await ingest_fn(build_csf(conv, page_id), tenant)
             if getattr(outcome, "idempotent_hit", False):
                 report.idempotent += 1
