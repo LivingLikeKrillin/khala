@@ -416,8 +416,15 @@ async def _default_external_ingest_fn(doc: dict, tenant: str) -> ExternalIngestO
         result = await run_ingest(td, force=False, tenant=tenant)
 
     idempotent = result.total_files == 0
-    if not idempotent:
+    # 서버 판정 quarantine 을 저장된 row 에서 읽어온다(governed _default_ingest_fn 와 동일).
+    row = await db.fetch_one(
+        "SELECT is_quarantined FROM documents WHERE rid = $1 AND tenant = $2",
+        rid, tenant,
+    )
+    quarantined = bool(row["is_quarantined"]) if row else (result.quarantined > 0)
+    if not idempotent and not quarantined:
         # external_spec label 부여 (중복 추가 방지). classification 컬럼은 건드리지 않음.
+        # quarantined row 에는 절대 label 을 달지 않는다.
         await db.execute(
             "UPDATE documents SET labels = array_append(labels, $3) "
             "WHERE rid = $1 AND tenant = $2 AND NOT ($3 = ANY(labels))",
@@ -430,4 +437,5 @@ async def _default_external_ingest_fn(doc: dict, tenant: str) -> ExternalIngestO
         chunks_indexed=0 if idempotent else result.bm25_indexed,
         idempotent_hit=idempotent,
         source_hash=source_hash,
+        quarantined=quarantined,
     )

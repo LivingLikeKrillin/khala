@@ -23,6 +23,8 @@ _REQUIRED_PROV = ("source_tool", "source_id", "source_hash")
 # 외부 출처 표식 — classification 레벨이 아니라 CRM label (classification<=clearance 필터 보호).
 EXTERNAL_LABEL = "external_spec"
 
+QUARANTINE_REASON = "외부 spec 이 격리되었습니다 — 인덱싱 불가 (quarantined; not indexed)"
+
 
 @dataclass
 class ExternalIngestOutcome:
@@ -33,6 +35,7 @@ class ExternalIngestOutcome:
     chunks_indexed: int
     idempotent_hit: bool
     source_hash: str
+    quarantined: bool = False
     error: str | None = None
 
 
@@ -90,11 +93,13 @@ def build_external_ingest_artifact(
         "chunks_indexed": outcome.chunks_indexed,
         "idempotent_hit": outcome.idempotent_hit,
         "source_hash": outcome.source_hash,
+        "quarantined": outcome.quarantined,
     }
-    failed = outcome.error is not None
+    failed = outcome.quarantined or outcome.error is not None
     summary = (
-        outcome.error if failed else f"ingested {doc.get('id', '')} → {outcome.resource_rid}"
-    )
+        QUARANTINE_REASON if outcome.quarantined
+        else (outcome.error or "")
+    ) if failed else f"ingested {doc.get('id', '')} → {outcome.resource_rid}"
     artifact = Artifact(
         artifact_id=uuid.uuid4().hex,
         name="external_ingest_result",

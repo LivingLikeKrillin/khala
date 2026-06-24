@@ -100,6 +100,29 @@ def test_build_artifact_failed_on_error():
     assert reason == "boom"
 
 
+def test_build_artifact_quarantined_maps_to_failed():
+    csf = _csf()
+    outcome = ExternalIngestOutcome(
+        resource_rid="doc_x", labels=[EXTERNAL_LABEL], chunks_indexed=0,
+        idempotent_hit=False, source_hash=csf["provenance"]["source_hash"],
+        quarantined=True,
+    )
+    _aj, state, reason = build_external_ingest_artifact(outcome, csf, "acme")
+    assert state == "failed"
+    assert "격리" in reason or "quarantined" in reason
+
+
+def test_build_artifact_clean_still_completed_with_quarantined_false_default():
+    csf = _csf()
+    outcome = ExternalIngestOutcome(
+        resource_rid="doc_x", labels=[EXTERNAL_LABEL], chunks_indexed=2,
+        idempotent_hit=False, source_hash=csf["provenance"]["source_hash"],
+    )
+    _aj, state, reason = build_external_ingest_artifact(outcome, csf, "acme")
+    assert state == "completed"
+    assert reason is None
+
+
 class _ExtStore:
     """in-memory stand-in for Nexus ingest+index, wired as external_ingest_fn."""
 
