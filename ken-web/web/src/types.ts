@@ -1,6 +1,11 @@
 // Wire DTOs — mirror ken-web/api/src/ken_web_api/schemas.py exactly.
 // Keep these in lockstep with the FastAPI contract.
 
+/** MeOut — the current session identity. */
+export interface Me {
+  email: string;
+}
+
 /** ArtifactOut — one row per registered artifact. status: "vouched" | "orphan". */
 export interface Artifact {
   artifact_id: string;
@@ -20,11 +25,10 @@ export interface Due {
   questions: Question[];
 }
 
-/** AttemptReq — POST /api/attempts body. `person` is informational this slice. */
+/** AttemptReq — POST /api/attempts body. person is server-derived from the session. */
 export interface AttemptRequest {
   artifact_id: string;
   question_id: string;
-  person: string;
   answer: string;
 }
 
