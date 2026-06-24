@@ -11,6 +11,7 @@ from .config import SpecledgerConfig
 from .critique import AnthropicCritic, critique
 from .gate import Gate
 from .ledger import Ledger
+from .promote import promote_external as _promote_external
 from .publish import publish
 
 
@@ -64,6 +65,10 @@ def build_app(ledger: Ledger, gate: Gate, critic, config: SpecledgerConfig) -> F
     @app.tool(name="publish")
     def publish_doc(artifact_id: str) -> dict:
         return publish(ledger, artifact_id, config)
+
+    @app.tool()
+    def promote_external(csf: dict, type: str) -> dict:
+        return _promote_external(ledger, csf, type)
 
     return app
 
