@@ -134,6 +134,7 @@ def test_two_users_distinct_tenants_see_disjoint_data(tmp_path, monkeypatch):
     # Capture the tenant_slug make_store is called with, per request.
     calls = []
     c, auth, store = _auth_client(tmp_path, monkeypatch)
+    # override _auth_client's make_store patch to also record the slug
     monkeypatch.setattr(deps, "make_store", lambda slug=None: (calls.append(slug), store)[1])
     auth.create_tenant("a", "A"); auth.create_tenant("b", "B")
     auth.create_user("alice@x.com", hash_password("password1"), tenant_slug="a")
@@ -143,10 +144,13 @@ def test_two_users_distinct_tenants_see_disjoint_data(tmp_path, monkeypatch):
 
 
 def test_attempt_records_caller_tenant(tmp_path, monkeypatch):
+    calls = []
     c, auth, store = _auth_client(
         tmp_path, monkeypatch,
         responses=["Q1?", '{"passed": true, "score": 0.9, "rationale":"ok"}'],
     )
+    # override _auth_client's patch to also record the tenant slug
+    monkeypatch.setattr(deps, "make_store", lambda slug=None: (calls.append(slug), store)[1])
     auth.create_tenant("a", "A")
     auth.create_user("a@x.com", hash_password("password1"), tenant_slug="a")
     c.post("/api/auth/login", json={"email": "a@x.com", "password": "password1"})
@@ -156,3 +160,4 @@ def test_attempt_records_caller_tenant(tmp_path, monkeypatch):
     qid = c.get(f"/api/artifacts/{aid}/due").json()["questions"][0]["question_id"]
     c.post("/api/attempts", json={"artifact_id": aid, "question_id": qid, "answer": "x"})
     assert store.load_attempts()[0].person == "a@x.com"   # person still server-derived
+    assert calls[-1] == "a"  # the attempt write path bound the caller's tenant
