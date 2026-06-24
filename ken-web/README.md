@@ -4,8 +4,10 @@ A browser-driven vertical slice of ken's **repayment loop**: register an artifac
 the server generates grounded comprehension questions → you answer them in a React SPA
 → the server grades each answer and returns remediation on a miss → coverage updates.
 It spans React → FastAPI → ken-core → LLM. Storage is dual-backend: ken's file
-storage by default, or Postgres when `KEN_DATABASE_URL` is set (no auth). The point
-is to make ken's "vouch for what you own" loop tangible in a UI.
+storage by default, or Postgres when `KEN_DATABASE_URL` is set. Auth is **off by
+default** (open); set `KEN_AUTH=1` to gate the instance behind login (see
+[Authentication](#authentication-optional)). The point is to make ken's "vouch for
+what you own" loop tangible in a UI.
 
 Two parts:
 
@@ -95,11 +97,39 @@ The backend is selected at request time by `KEN_DATABASE_URL`:
 
 `KEN_N_QUESTIONS` sets how many questions are generated per artifact (both backends).
 
+## Authentication (optional)
+
+Auth is **off by default** — the API is open and attempts are recorded under the
+identity `local` (today's behavior). To gate a deployment behind email + password
+login, set **`KEN_AUTH=1`**. Auth is **Postgres-only**: it requires `KEN_DATABASE_URL`
+(the server fails loud at startup otherwise), and the file backend stays unauthenticated
+for local/dev. The `ken` CLI is unaffected.
+
+```bash
+export KEN_DATABASE_URL=postgresql://ken:ken@localhost:5434/ken
+psql "$KEN_DATABASE_URL" -f ken/db/init.sql   # creates users + sessions too
+export KEN_AUTH=1
+export KEN_COOKIE_SECURE=1                     # set behind HTTPS (omit for local http)
+```
+
+There is **no public signup** — an operator seeds users from the server with the
+bundled CLI:
+
+```bash
+ken-web-admin add-user alice@example.com      # prompts for a password (argon2-hashed)
+```
+
+Once enabled, the SPA redirects unauthenticated visitors to `/login`; a session cookie
+(`ken_session`, httpOnly, SameSite=Lax) gates every `/api/*` data call, and each graded
+attempt records the **logged-in email** as its `person`. Log out from the masthead.
+Multi-tenancy (per-tenant data isolation) is a separate, future slice — today all
+authenticated users share one dataset.
+
 ## Test
 
 ```bash
-cd ken-web/api && python -m pytest -q          # 5 tests, FakeLLM, no key
-cd ken-web/web && npm run test -- --run        # vitest, FakeLLM via mocked client
+cd ken-web/api && python -m pytest -q          # FakeLLM + FakeAuthStore, no key/DB
+cd ken-web/web && npm run test -- --run        # vitest, client mocked
 ```
 
 ken's storage backends share one contract test (`ken/tests/test_store_contract.py`).
