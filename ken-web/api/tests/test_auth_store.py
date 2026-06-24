@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from ken_web_api.auth_store import FakeAuthStore, User
@@ -47,3 +49,30 @@ def test_delete_session():
     s.delete_session("tok")
     assert s.user_for_session("tok", now="2026-06-24T00:00:00+00:00") is None
     s.delete_session("already-gone")  # idempotent, no raise
+
+
+_PG_DSN = os.getenv("KEN_TEST_DATABASE_URL")
+pg_only = pytest.mark.skipif(_PG_DSN is None, reason="KEN_TEST_DATABASE_URL unset")
+
+
+@pg_only
+def test_postgres_auth_store_roundtrip():
+    import psycopg
+
+    from ken_web_api.auth_store import PostgresAuthStore
+
+    with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
+        cur.execute("TRUNCATE users, sessions")
+    s = PostgresAuthStore(_PG_DSN)
+    u = s.create_user("Alice@X.com", "hash1")
+    assert u.email == "alice@x.com"
+    with pytest.raises(Exception):
+        s.create_user("alice@x.com", "h2")  # duplicate
+    got = s.get_user_by_email("alice@x.com")
+    assert got is not None and got[0].id == u.id and got[1] == "hash1"
+    s.create_session(u.id, "tok", "2099-01-01T00:00:00+00:00")
+    assert s.user_for_session("tok", now="2026-06-24T00:00:00+00:00").email == "alice@x.com"
+    s.create_session(u.id, "old", "2000-01-01T00:00:00+00:00")
+    assert s.user_for_session("old", now="2026-06-24T00:00:00+00:00") is None  # expired
+    s.delete_session("tok")
+    assert s.user_for_session("tok", now="2026-06-24T00:00:00+00:00") is None

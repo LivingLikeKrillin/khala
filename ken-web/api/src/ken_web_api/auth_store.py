@@ -67,3 +67,52 @@ class FakeAuthStore:
 
     def delete_session(self, token: str) -> None:
         self._sessions.pop(token, None)
+
+
+class PostgresAuthStore:
+    def __init__(self, dsn: str):
+        self._dsn = dsn
+
+    def _conn(self):
+        import psycopg
+        return psycopg.connect(self._dsn)
+
+    def get_user_by_email(self, email: str) -> tuple[User, str] | None:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                "SELECT id, email, password_hash FROM users WHERE email = %s", (_norm(email),)
+            )
+            row = cur.fetchone()
+        if row is None:
+            return None
+        return User(id=row[0], email=row[1]), row[2]
+
+    def create_user(self, email: str, password_hash: str) -> User:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id, email",
+                (_norm(email), password_hash),
+            )
+            uid, e = cur.fetchone()
+        return User(id=uid, email=e)
+
+    def create_session(self, user_id: int, token: str, expires_at: str) -> None:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                "INSERT INTO sessions (token, user_id, expires_at) VALUES (%s, %s, %s)",
+                (token, user_id, expires_at),
+            )
+
+    def user_for_session(self, token: str, *, now: str) -> User | None:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(
+                "SELECT u.id, u.email FROM sessions s JOIN users u ON u.id = s.user_id "
+                "WHERE s.token = %s AND s.expires_at > %s",
+                (token, now),
+            )
+            row = cur.fetchone()
+        return User(id=row[0], email=row[1]) if row else None
+
+    def delete_session(self, token: str) -> None:
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute("DELETE FROM sessions WHERE token = %s", (token,))
