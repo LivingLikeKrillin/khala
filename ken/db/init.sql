@@ -1,5 +1,7 @@
 -- ken Postgres schema. Tenant-isolated (one tenant per user); tenant key = slug.
--- The DB is an INDEX, not the artifact archive (content_hash is read live from disk).
+-- The DB is an INDEX, not the artifact archive: artifacts live in the filesystem/git
+-- and content_hash is computed LIVE from the file on read (never stored as truth).
+-- Derivations (schedule/vouch/coverage) are recomputed in Python from these rows.
 -- Apply with:  psql "$KEN_DATABASE_URL" -f db/init.sql
 
 CREATE TABLE tenants (
@@ -40,6 +42,7 @@ CREATE TABLE attempts (
     ts           TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX idx_attempts_tenant_question ON attempts (tenant_slug, question_id);
+CREATE INDEX idx_attempts_tenant          ON attempts (tenant_slug, id);
 
 -- S6 auth (Postgres-only gating).
 CREATE TABLE users (

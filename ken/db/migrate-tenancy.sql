@@ -16,7 +16,11 @@ ALTER TABLE artifacts DROP CONSTRAINT artifacts_pkey,     ADD PRIMARY KEY (tenan
 ALTER TABLE artifacts DROP CONSTRAINT artifacts_path_key, ADD UNIQUE (tenant_slug, path);
 ALTER TABLE questions DROP CONSTRAINT questions_pkey,     ADD PRIMARY KEY (tenant_slug, artifact_id, question_id);
 
+DROP INDEX idx_questions_artifact;
+DROP INDEX idx_attempts_question;
+
 CREATE INDEX idx_questions_tenant_artifact ON questions (tenant_slug, artifact_id);
 CREATE INDEX idx_attempts_tenant_question  ON attempts  (tenant_slug, question_id);
+CREATE INDEX idx_attempts_tenant           ON attempts  (tenant_slug, id);
 
 COMMIT;
