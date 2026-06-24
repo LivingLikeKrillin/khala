@@ -146,6 +146,10 @@ not modified.
   ```
   The five data routes take `principal: Principal = Depends(require_user)` (replacing the
   `dependencies=[...]` form so they can read the tenant); `post_attempt` uses both fields.
+- **`/api/auth/me` is the 6th `require_user` consumer** (today `person: str = Depends(require_user)`
+  → `MeOut(email=person)`). It must migrate to `principal: Principal = Depends(require_user)` →
+  `MeOut(email=principal.email)`, or it hands a `Principal` where a string is expected. (`login`/
+  `logout` do not consume `require_user`, so they're unaffected.)
 - `deps`: add `DEFAULT_TENANT = "default"`.
 
 ## 6. Provisioning (CLI extension)
@@ -155,7 +159,9 @@ Extend `ken-web-admin`:
   `auth_store` method `create_tenant(slug, name)` (Postgres + Fake).
 - `add-user <email> --tenant <slug>` → the existing `add-user` gains a **required** `--tenant`;
   it validates the tenant exists, then creates the user with that `tenant_slug`. `create_user`
-  gains a `tenant_slug` parameter (Postgres + Fake + `add_user_to_store`).
+  gains a `tenant_slug` parameter (Postgres + Fake + `add_user_to_store`). **Existing `test_admin.py`
+  callers** of `add_user_to_store(store, email, pw)` must pass the new `tenant_slug` arg (after
+  seeding the tenant in the Fake).
 
 ## 7. Error handling & integrity (the isolation invariants)
 
@@ -172,8 +178,13 @@ Extend `ken-web-admin`:
 ## 8. Testing
 
 - **Store contract (`test_store_contract.py`):** PostgresStore is now `PostgresStore(dsn, tenant)`;
-  the shared contract runs under one fixed test tenant. TRUNCATE adds `tenants` (and re-seeds the
-  test tenant + `default`); the setup INSERTs the test tenant before registering (FK).
+  the shared contract runs under one fixed test tenant. Use `TRUNCATE artifacts, questions, attempts,
+  users, sessions, tenants CASCADE` (tenants is now the FK parent — without CASCADE the truncate
+  fails), then **re-seed** the test tenant + `default` **before** the first `register` (FK).
+- **Fix existing zero-arg `make_store` monkeypatches** (the single most likely CI breakage): both
+  `test_api.py` and `test_auth_api.py` patch `deps.make_store` with `lambda: store` — after the
+  signature becomes `make_store(tenant_slug)` these raise `TypeError`. Change them to
+  `lambda _slug: store` (or `lambda *_: store`).
 - **PG-gated 2-tenant isolation test:** register artifact P under tenant A and (same path) under
   tenant B; assert A's `load_manifest`/`coverage` show only A's row; B sees only B's; an attempt
   written under A is invisible to B's `load_attempts`. Prove the composite key separates same-path
@@ -212,8 +223,9 @@ Postgres RLS; renaming a tenant slug.
 2. `PostgresStore(dsn, tenant_slug)` — thread `tenant_slug` through all six methods; `deps.make_store(tenant_slug)` + `DEFAULT_TENANT`. (Contract test under one tenant + the 2-tenant isolation test.)
 3. `auth_store`: `User.tenant_slug`; `create_tenant`; `create_user(tenant_slug=...)`;
    `user_for_session`/`get_user_by_email` return the slug (Fake + Postgres).
-4. `app`: `Principal{email, tenant_slug}`; `require_user -> Principal`; the five routes take
-   `principal: Principal`; handlers use `make_store(principal.tenant_slug)` and
-   `person=principal.email`.
+4. `app`: `Principal{email, tenant_slug}`; `require_user -> Principal`; the five data routes **and
+   `/api/auth/me`** take `principal: Principal`; handlers use `make_store(principal.tenant_slug)` and
+   `person=principal.email`. Fix the existing zero-arg `make_store` monkeypatches in `test_api.py`/
+   `test_auth_api.py` (→ `lambda _slug: store`).
 5. `admin`: `create-tenant`; `add-user --tenant` (required).
 6. Verify CI green; README tenancy section (create-tenant, add-user --tenant, the migration step).
