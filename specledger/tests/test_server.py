@@ -14,4 +14,4 @@ def test_build_app_registers_tools(tmp_path):
     names = {t.name for t in tools}
     assert {"record", "critique", "approve", "status", "check_gate", "index",
             "supersede", "begin_implementation", "end_implementation", "publish",
-            "promote_external"} == names
+            "promote_external", "guide"} == names

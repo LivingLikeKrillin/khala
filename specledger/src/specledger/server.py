@@ -70,6 +70,16 @@ def build_app(ledger: Ledger, gate: Gate, critic, config: SpecledgerConfig) -> F
     def promote_external(csf: dict, type: str) -> dict:
         return _promote_external(ledger, csf, type)
 
+    @app.tool()
+    def guide(type: str) -> dict:
+        """타입 운용 가이드 조회 — {type, tier, guidance}. 미지 타입은 T3+메모."""
+        from . import doctypes, guidelines
+        return {
+            "type": type,
+            "tier": doctypes.tier_of(doctypes.normalize_kind(type)),
+            "guidance": guidelines.guidance_for(type) or "메모: 생애주기 없음 — 인덱싱·검색만.",
+        }
+
     return app
 
 
