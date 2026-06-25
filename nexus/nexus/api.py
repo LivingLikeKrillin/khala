@@ -170,6 +170,23 @@ class OtelAggregateRequest(BaseModel):
 
 # ── Endpoints ──
 
+def _search_hit_to_dict(h) -> dict:
+    """SearchHit → /search 응답 dict. doc_type(축-A 타입, S3) 포함 — 웹 클라이언트 타입 배지용."""
+    return {
+        "rid": h.rid,
+        "doc_rid": h.doc_rid,
+        "doc_title": h.doc_title,
+        "section_path": h.section_path,
+        "source_uri": h.source_uri,
+        "snippet": h.snippet,
+        "score": h.score,
+        "bm25_rank": h.bm25_rank,
+        "vector_rank": h.vector_rank,
+        "classification": h.classification,
+        "doc_type": h.doc_type,
+    }
+
+
 @app.post("/search", response_model=NexusResponse)
 async def search(req: SearchRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """Hybrid 검색."""
@@ -246,21 +263,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         await record_search(sig)   # fire-and-forget
         return NexusResponse(
             data={
-                "results": [
-                    {
-                        "rid": h.rid,
-                        "doc_rid": h.doc_rid,
-                        "doc_title": h.doc_title,
-                        "section_path": h.section_path,
-                        "source_uri": h.source_uri,
-                        "snippet": h.snippet,
-                        "score": h.score,
-                        "bm25_rank": h.bm25_rank,
-                        "vector_rank": h.vector_rank,
-                        "classification": h.classification,
-                    }
-                    for h in result.hits
-                ],
+                "results": [_search_hit_to_dict(h) for h in result.hits],
                 "graph_findings": graph_findings,
                 "route_used": result.route_used,
                 "timing_ms": result.timing_ms,

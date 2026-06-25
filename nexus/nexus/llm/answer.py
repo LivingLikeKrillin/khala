@@ -62,6 +62,7 @@ async def generate_answer(
             "source_uri": s.source_uri,
             "text": s.text,
             "score": s.score,
+            "doc_type": s.doc_type,  # 축-A 타입(S3) — 웹 클라이언트 타입 배지용
         }
         for s in packet.snippets
     ]
