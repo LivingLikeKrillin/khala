@@ -37,6 +37,7 @@ class Provenance:
     source_uri: str
     source_version: str = ""
     approved_hash: str = ""  # accountable-review stamp (SPEC §5.4)
+    doc_title: str = ""  # 사람이 읽는 제목(인용·출처 표시용). source_uri 는 추적 포인터.
 
 
 @dataclass
@@ -83,6 +84,7 @@ def assemble_packet(
                 source_uri=hit.source_uri,
                 source_version=hit.source_version,
                 approved_hash=hit.approved_hash,
+                doc_title=hit.doc_title,
             ))
 
     return packet
@@ -95,8 +97,9 @@ def format_for_llm(packet: EvidencePacket) -> str:
     # Evidence snippets
     parts.append("## 검색된 근거 (Evidence)")
     for i, s in enumerate(packet.snippets, 1):
+        # 인용 핸들 = 읽는 제목(대괄호). source_uri(UUID)는 per-snippet 에 노출하지
+        # 않는다 — LLM 이 그걸 인용해 가독성을 해치므로. 추적용 uri 는 아래 출처 목록에만.
         parts.append(f"\n### 근거 {i} [{s.doc_title}] ({s.section_path})")
-        parts.append(f"출처: {s.source_uri}")
         parts.append(f"분류: {s.classification}")
         if s.doc_type:
             parts.append(f"타입: {s.doc_type}")
@@ -123,6 +126,8 @@ def format_for_llm(packet: EvidencePacket) -> str:
     # Provenance
     parts.append("\n## 출처 목록")
     for p in packet.provenance:
-        parts.append(f"- {p.doc_rid}: {p.source_uri}")
+        # 제목 우선(인용에 이 이름을 쓰도록), 추적 포인터(source_uri)는 괄호로 보조.
+        label = p.doc_title or p.doc_rid
+        parts.append(f"- {label} ({p.source_uri})")
 
     return "\n".join(parts)
