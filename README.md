@@ -46,6 +46,23 @@ The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.m
 | **mutqa** | Mutation-driven test-quality harness — catches what advisory review misses. | [`./mutqa`](./mutqa) |
 | **docs** | Astro Starlight bilingual ecosystem documentation site. | [`./docs`](./docs) |
 
+## Quickstart (Nexus · ~5분)
+
+전제: Docker + Docker Compose. ([go-task](https://taskfile.dev) 있으면 `task`, 없으면 우측 명령 그대로)
+
+```bash
+# (선택) LLM 답변 생성용 — 없어도 근거 검색은 동작
+export ANTHROPIC_API_KEY=sk-ant-...
+
+task up        # 또는: cd nexus && docker compose up -d
+task models    # 최초 1회 임베딩 모델 — 또는: docker compose exec nexus-ollama ollama pull multilingual-e5-base
+```
+
+→ 브라우저에서 **http://localhost:8000** 열기 → **채팅**에 질문하면 *근거와 함께* 답합니다.
+
+- **문서 넣기:** 좌측 **업로드**, 또는 `docker compose exec nexus-app nexus ingest ./docs`
+- **정지:** `task down` (또는 `docker compose down`)
+
 ## Documentation
 
 Full ecosystem reference, philosophy, and per-tool guides live at the docs site:
