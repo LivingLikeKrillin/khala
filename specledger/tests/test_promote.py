@@ -122,3 +122,11 @@ def test_promote_rejects_tracked_tier_type(tmp_path):
     # PRD 는 T2(추적) — 거버넌스 원장으로 승격 불가.
     with pytest.raises(PromoteError):
         promote_external(_led(tmp_path), _csf(), "PRD")
+
+
+def test_promote_returns_type_guidance(tmp_path):
+    out = promote_external(_led(tmp_path), _csf(), "ADR")
+    assert "guidance" in out
+    assert "supersede" in out["guidance"]   # ADR 가이드
+    # 기존 키 회귀 없음
+    assert out["status"] == "PROPOSED" and out["provenance_carried"] is True
