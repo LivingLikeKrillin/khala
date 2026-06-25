@@ -14,8 +14,9 @@ PRIVILEGED = {
     "/diff", "/documents", "/entities/suggest", "/claims/value", "/claims/grade-authority",
     "/ingest", "/upload", "/otel/aggregate",
 }
-# Discovery / static — intentionally unauthenticated.
-UNGATED = {"/status", "/"}
+# Discovery / static / dev-onramp — intentionally unauthenticated.
+# /auth/dev-token returns the local dev token *before* a principal exists (env-gated; null in prod).
+UNGATED = {"/status", "/", "/auth/dev-token"}
 
 
 def _declares(route, dep) -> bool:
