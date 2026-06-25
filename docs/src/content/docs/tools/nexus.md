@@ -59,7 +59,7 @@ task models    # or: docker compose exec nexus-ollama ollama pull nomic-embed-te
 
 ### 4. Index documents & search
 
-Open **http://localhost:8000/** and ask in the chat — or use the CLI:
+Open `http://localhost:8000/` and ask in the chat — or use the CLI:
 
 ```bash
 docker compose exec nexus-app nexus ingest ./docs
