@@ -37,6 +37,15 @@ from nexus.search.router import determine_route
 from nexus.search.signals import extract_signals, record_search
 
 
+# 로컬 dev 온램프: ANTHROPIC_API_KEY 미설정 시, 일시적 API 오류와 구분되는 *행동지침* 안내.
+# (LLM 호출 자체가 실패하는 것과 달리, 미설정은 호출 전 결정적으로 알 수 있다 → LLMService.configured)
+LLM_NOT_CONFIGURED_NOTICE = (
+    "로컬 LLM 키가 설정되지 않아 답변 생성을 건너뛰었습니다. "
+    "nexus/.env 에 ANTHROPIC_API_KEY 를 넣고 재기동(task up)하면 답변이 생성됩니다. "
+    "그동안에도 근거는 위에 그대로 제공됩니다 — 출처를 직접 확인하세요."
+)
+
+
 # ── Lifespan ──
 async def _bootstrap_gazetteer() -> None:
     """entities.yaml의 엔티티를 DB에 초기 등록."""
@@ -739,6 +748,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 3) LLM 스트리밍 답변
             if not packet.snippets:
                 yield f"event: answer_delta\ndata: {json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)}\n\n"
+            elif not llm_svc.configured:
+                # 미설정(키 없음): 일시적 오류가 아니라 행동지침을 준다. 근거는 이미 위에서 전송됨.
+                yield f"event: answer_delta\ndata: {json.dumps({'text': LLM_NOT_CONFIGURED_NOTICE}, ensure_ascii=False)}\n\n"
             else:
                 evidence_text = format_for_llm(packet)
                 user_prompt = build_user_prompt(req.query, evidence_text)

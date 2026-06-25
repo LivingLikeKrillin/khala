@@ -25,9 +25,11 @@ class LLMService:
         api_key: str | None = None,
     ) -> None:
         self.model = model
-        self._client = anthropic.AsyncAnthropic(
-            api_key=api_key or os.getenv("ANTHROPIC_API_KEY"),
-        )
+        resolved_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        # 키가 실제로 해석되었는지(빈 문자열·None 제외) — 호출 전에 알 수 있는 결정적 신호.
+        # 무키는 '버그'가 아니라 '미설정'이므로, 호출자가 일시적 API 오류와 구분해 안내할 수 있게 노출.
+        self.configured = bool(resolved_key)
+        self._client = anthropic.AsyncAnthropic(api_key=resolved_key)
 
     async def generate(
         self,
