@@ -45,6 +45,8 @@ services:
       - ./otel-config.yaml:/etc/otel/config.yaml:ro
     depends_on:
       - nexus-tempo
+    profiles:
+      - observability   # 관측 파이프라인 — 기본 미기동(Reader Deploy 경량화). 옵트인: docker compose --profile observability up
 
   # ── Grafana Tempo (trace storage) ──
   nexus-tempo:
@@ -57,6 +59,9 @@ services:
     volumes:
       - ./tempo-config.yaml:/etc/tempo/config.yaml:ro
       - nexus-tempo-data:/var/tempo
+    profiles:
+      - observability
+      - grafana   # grafana 프로필도 tempo 가 필요(depends_on)
 
   # ── Grafana (선택: trace 시각화) ──
   nexus-grafana:
@@ -85,8 +90,7 @@ services:
     environment:
       DATABASE_URL: postgresql://nexus:nexus@nexus-db:5432/nexus
       OLLAMA_URL: http://nexus-ollama:11434
-      TEMPO_URL: http://nexus-tempo:3200
-      OTEL_COLLECTOR_URL: http://nexus-otel:4318
+      TEMPO_URL: http://nexus-tempo:3200   # OTel 집계(nexus otel-aggregate) 시에만 사용 — 그 땐 --profile observability
       DEFAULT_TENANT: default
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
@@ -97,8 +101,7 @@ services:
         condition: service_healthy
       nexus-ollama:
         condition: service_started
-      nexus-otel:
-        condition: service_started
+      # nexus-otel/tempo 의존 제거 — 앱은 collector 에 접속하지 않는다(코드 미참조). 관측은 옵트인 profile.
 
 volumes:
   nexus-db-data:
