@@ -24,4 +24,33 @@ Nexus가 보정(calibrate)하는 문제는 이렇습니다. 일반적인 RAG는 
 - **Default-deny 보안** — PII/시크릿 감지 시 즉시 quarantine, 인덱싱에서 제외하고 검색 결과에 절대 포함하지 않습니다. 모든 쿼리는 분류(`PUBLIC < INTERNAL < RESTRICTED`)로 필터링됩니다.
 - **저장소가 아니라 인덱스** — 원본은 Git과 Tempo에 있고, Nexus에는 파생 데이터(chunks·embeddings·graph edges)만 저장됩니다.
 
-전체 설치·명령어·API는 영어 페이지([Nexus](/tools/nexus/)) 또는 [소스 저장소 README](https://github.com/LivingLikeKrillin/khala)를 참고하세요.
+## 빠른 시작
+
+Docker Compose 스택으로 돕니다. 기본은 **핵심 컨테이너**(PostgreSQL + Ollama + FastAPI 앱)만 뜨고, OTel 관측 파이프라인은 옵트인입니다. 아래 `task` 한 줄은 내부 `docker compose` 명령을 감쌉니다(원시 명령 병기).
+
+사전 준비: Docker Desktop · (선택) [go-task](https://taskfile.dev) · (선택) LLM 답변용 Anthropic API 키.
+
+```bash
+# 1. 클론 & 설정
+git clone https://github.com/LivingLikeKrillin/khala.git
+cd khala
+cp nexus/.env.example nexus/.env        # (선택) nexus/.env 에 ANTHROPIC_API_KEY 설정 시 LLM 답변 생성
+
+# 2. 기동 (핵심 컨테이너만)
+task up        # 또는: cd nexus && docker compose up -d
+
+# 3. 임베딩 모델 받기 (최초 1회)
+task models    # 또는: docker compose exec nexus-ollama ollama pull nomic-embed-text
+```
+
+→ `http://localhost:8000` 에서 채팅으로 질문(근거와 함께 답). 문서 적재: `docker compose exec nexus-app nexus ingest ./docs`.
+
+```bash
+# 업데이트 / 정지
+git pull && task update    # 이미지 재빌드·재기동 + DB 마이그레이션 적용
+task down                  # 정지 (또는: docker compose down)
+```
+
+OTel 관측(trace 집계)이 필요할 때만 옵트인: `docker compose --profile observability up -d`.
+
+전체 명령어·API 레퍼런스는 영어 페이지([Nexus](/tools/nexus/)) 또는 [소스 저장소 README](https://github.com/LivingLikeKrillin/khala)를 참고하세요.
