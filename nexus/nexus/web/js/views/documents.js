@@ -3,6 +3,7 @@
  */
 
 import { listDocuments } from '../api.js';
+import { trustSignal } from '../doctype-signal.js';
 import { showToast } from '../components/toast.js';
 
 let currentOffset = 0;
@@ -75,7 +76,8 @@ function renderTable(docs) {
   tbody.innerHTML = docs.map(d => `
     <tr>
       <td class="doc-title-cell">${escapeHtml(d.title || '(제목 없음)')}</td>
-      <td><span class="doc-type-badge">${d.doc_type || '-'}</span></td>
+      <td>${(() => { const t = trustSignal(d.doc_type);
+        return `<span class="doc-type-badge trust-badge--${t.tone}" title="${escapeHtml(t.label + ' · ' + t.note)}">${escapeHtml(d.doc_type || '-')}</span>`; })()}</td>
       <td>${d.classification || '-'}</td>
       <td>${d.language || '-'}</td>
       <td>${d.chunk_count ?? 0}</td>
