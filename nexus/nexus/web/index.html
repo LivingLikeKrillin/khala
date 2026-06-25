@@ -51,13 +51,16 @@
       <span class="status-text" id="status-text">연결 확인 중…</span>
     </div>
     <div class="status-right">
-      <div class="status-services">
+      <!-- ops/거버넌스 크롬은 Reader 표면(웹)에서 기본 숨김 — 서비스 연결 점·설계-관측
+           불일치는 운영자 신호이지 Reader 관심사가 아니다(거버넌스 복잡도가 Reader 에게
+           새면 사용성 위반). 가역적: 라우트·CLI·MCP 불변, 추후 Steward/운영자 표면에서 재노출. -->
+      <div class="status-services hidden">
         <span class="status-dot" id="dot-db" title="Database"></span>
         <span class="status-dot" id="dot-ollama" title="Ollama"></span>
         <span class="status-dot" id="dot-tempo" title="Tempo"></span>
       </div>
       <span class="status-badge" id="badge-docs" title="인덱싱된 문서 수">0 문서</span>
-      <span class="status-badge clickable" id="badge-diff" title="설계-관측 불일치">0 불일치</span>
+      <span class="status-badge clickable hidden" id="badge-diff" title="설계-관측 불일치">0 불일치</span>
     </div>
   </header>
 
@@ -101,7 +104,8 @@
         </span>
         <span class="nav-label">문서</span>
       </a>
-      <a href="#/diff" class="nav-item" data-view="diff" data-label="Diff">
+      <!-- Diff(설계-관측 불일치)는 운영자 도구 — Reader 표면에서 기본 숨김(라우트는 유지). -->
+      <a href="#/diff" class="nav-item hidden" data-view="diff" data-label="Diff">
         <span class="nav-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="6" cy="6" r="2.6"/><circle cx="18" cy="18" r="2.6"/>
