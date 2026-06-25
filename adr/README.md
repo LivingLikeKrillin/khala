@@ -15,7 +15,7 @@ human disposition → `approve`).
 |----|-------|--------|------|
 | [ADR-0001](ADR-0001-adopt-a2a-inter-agent-interop.md) | Adopt A2A as Khala's agent-to-agent interoperability layer | Proposed | 2026-06-18 |
 | [ADR-0002](ADR-0002-reframe-system-command-debt.md) | Reframe Khala around staying in command of your own system in the AI era | Accepted | 2026-06-23 |
-| [ADR-0003](ADR-0003-ai-era-artifact-lifecycle-and-debt-repayment-loop.md) | The AI-era artifact lifecycle and the debt-repayment loop | Proposed | 2026-06-26 |
+| [ADR-0003](ADR-0003-ai-era-artifact-lifecycle-and-debt-repayment-loop.md) | The AI-era artifact lifecycle and the debt-repayment loop | Accepted | 2026-06-26 |
 
 ## Statuses
 

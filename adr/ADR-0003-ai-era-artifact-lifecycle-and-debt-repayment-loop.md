@@ -2,7 +2,7 @@
 id: ADR-0003
 type: adr
 title: The AI-era artifact lifecycle and the debt-repayment loop
-status: proposed
+status: accepted
 date: 2026-06-26
 tags:
 - debt
@@ -14,6 +14,9 @@ tags:
 - accountability
 linked_adrs:
 - ADR-0002
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-06-25T19:23:47Z'
+content_hash: sha256:c744f6300ee16c8ddee93966a2c3ebf5bb41e58dc5bafff42353e4d9ecfed452
 ---
 
 # ADR-0003: The AI-era artifact lifecycle and the debt-repayment loop
