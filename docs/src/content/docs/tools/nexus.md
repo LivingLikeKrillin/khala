@@ -66,7 +66,7 @@ docker compose exec nexus-app nexus ingest ./docs
 docker compose exec nexus-app nexus query "결제 서비스 의존성"
 ```
 
-The Web UI is served directly from FastAPI at `http://localhost:8000/` — no build step.
+The Web UI is served directly from FastAPI at `http://localhost:8000/` — no build step. New to it? See **[Using the Nexus web app](/tools/nexus-web/)**.
 
 ### Update / stop
 

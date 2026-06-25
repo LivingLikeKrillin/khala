@@ -71,6 +71,7 @@ export default defineConfig({
           translations: { ko: '도구' },
           items: [
             { label: 'Nexus', slug: 'tools/nexus' },
+            { label: 'Nexus — Using the web', translations: { ko: 'Nexus 웹 사용 가이드' }, slug: 'tools/nexus-web' },
             { label: 'Archon', slug: 'tools/archon' },
             { label: 'Probe', slug: 'tools/probe' },
             { label: 'specledger', slug: 'tools/specledger' },
