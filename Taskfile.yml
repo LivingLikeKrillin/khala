@@ -26,6 +26,15 @@ tasks:
     cmds:
       - docker compose exec nexus-ollama ollama pull nomic-embed-text
 
+  update:
+    desc: "Nexus 업데이트 — 이미지 재빌드·재기동 + DB 마이그레이션 적용 (코드는 먼저 git pull 하세요)"
+    dir: nexus
+    cmds:
+      - docker compose build nexus-app
+      - docker compose up -d
+      - docker compose exec -T nexus-app python -m scripts.migrate
+      - 'echo "업데이트 완료 → http://localhost:8000"'
+
   down:
     desc: "Nexus 정지"
     dir: nexus
