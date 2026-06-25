@@ -16,12 +16,13 @@ exporters:
     endpoint: nexus-tempo:4317
     tls:
       insecure: true
-  logging:
-    loglevel: info
+  # `debug` exporter (구 `logging` 은 폐기됨 — collector 부팅 실패 원인이었다).
+  debug:
+    verbosity: normal
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/tempo, logging]
+      exporters: [otlp/tempo, debug]
