@@ -61,6 +61,7 @@ task models    # 최초 1회 임베딩 모델 — 또는: docker compose exec ne
 → 브라우저에서 **http://localhost:8000** 열기 → **채팅**에 질문하면 *근거와 함께* 답합니다.
 
 - **문서 넣기:** 좌측 **업로드**, 또는 `docker compose exec nexus-app nexus ingest ./docs`
+- **업데이트:** `git pull` 후 `task update` — 이미지 재빌드·재기동 + DB 마이그레이션 적용([nexus/migrations](nexus/migrations/README.md))
 - **정지:** `task down` (또는 `docker compose down`)
 
 ## Documentation
