@@ -26,50 +26,54 @@ One-line identity: **enterprise RAG + GraphRAG for grounded knowledge retrieval*
 
 ## Quickstart
 
-Nexus runs as a Docker Compose stack (PostgreSQL + Ollama + OTel Collector + Tempo + the FastAPI app). Commands transcribed from the source repo README.
+Nexus runs as a Docker Compose stack. By default only the **core** containers start (PostgreSQL + Ollama + the FastAPI app); the OTel observability pipeline is opt-in. The `task` one-liners below wrap the underlying `docker compose` commands — each step shows the raw equivalent too.
 
 ### Prerequisites
 
 - Docker Desktop
+- (Optional) [go-task](https://taskfile.dev) for the `task` shortcuts
 - (Optional) an Anthropic API key, for LLM grounded-answer generation
 
 ### 1. Clone & configure
 
 ```bash
-git clone https://github.com/LivingLikeKrillin/khala.git nexus
-cd nexus
-
-cp .env.example .env
-# set ANTHROPIC_API_KEY in .env if you want LLM answer generation
+git clone https://github.com/LivingLikeKrillin/khala.git
+cd khala
+cp nexus/.env.example nexus/.env
+# (optional) set ANTHROPIC_API_KEY in nexus/.env for LLM answer generation
 ```
 
-### 2. Start infrastructure
+### 2. Start (core containers only)
 
 ```bash
-docker compose up -d
+task up        # or: cd nexus && docker compose up -d
 ```
 
-This starts the containers (PostgreSQL 16 + pgvector on 5432, Ollama on 11434, Tempo on 3200, OTel Collector on 4317/4318, and the FastAPI app on **8000**).
+Starts PostgreSQL 16 + pgvector (5432), Ollama (11434), and the FastAPI app on **8000**. The OTel collector + Tempo are **opt-in** — add them only for trace aggregation: `docker compose --profile observability up -d`.
 
 ### 3. Pull the embedding model (first time only)
 
 ```bash
-docker exec nexus-ollama ollama pull nomic-embed-text
+task models    # or: docker compose exec nexus-ollama ollama pull nomic-embed-text
 ```
 
-### 4. Index documents
+### 4. Index documents & search
+
+Open **http://localhost:8000/** and ask in the chat — or use the CLI:
 
 ```bash
-docker exec nexus-app nexus ingest ./docs
-```
-
-### 5. Search
-
-```bash
-docker exec nexus-app nexus query "결제 서비스 의존성"
+docker compose exec nexus-app nexus ingest ./docs
+docker compose exec nexus-app nexus query "결제 서비스 의존성"
 ```
 
 The Web UI is served directly from FastAPI at `http://localhost:8000/` — no build step.
+
+### Update / stop
+
+```bash
+git pull && task update    # rebuild image, restart, apply DB migrations
+task down                  # stop (or: docker compose down)
+```
 
 ## How-to
 
