@@ -12,6 +12,26 @@
 version: "3"
 
 tasks:
+  # ---- run (one-command quickstart) --------------------------------------
+  up:
+    desc: "Nexus 기동 (db·ollama·app 등). 최초엔 'task models'로 임베딩 모델도 받으세요"
+    dir: nexus
+    cmds:
+      - docker compose up -d
+      - 'echo "Nexus → http://localhost:8000  (최초 1회: task models)"'
+
+  models:
+    desc: "임베딩 모델 받기 (최초 1회) — multilingual-e5-base"
+    dir: nexus
+    cmds:
+      - docker compose exec nexus-ollama ollama pull multilingual-e5-base
+
+  down:
+    desc: "Nexus 정지"
+    dir: nexus
+    cmds:
+      - docker compose down
+
   # ---- aggregate ----------------------------------------------------------
   test:
     desc: Run all subproject test suites (nexus, probe, specledger, mutqa, docs)
