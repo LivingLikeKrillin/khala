@@ -196,15 +196,21 @@ cp .env.example .env
 docker compose up -d
 ```
 
-5개 컨테이너가 시작됩니다:
+핵심 컨테이너(검색·채팅에 필요한 것만)가 시작됩니다:
 
 | Container | Role | Port |
 |-----------|------|------|
 | nexus-db | PostgreSQL 16 + pgvector | 5432 |
 | nexus-ollama | Embedding model | 11434 |
-| nexus-tempo | Trace storage | 3200 |
-| nexus-otel | OTel Collector | 4317/4318 |
 | nexus-app | FastAPI server | **8000** |
+
+OTel 관측 파이프라인(`nexus-otel` 4317/4318, `nexus-tempo` 3200)은 **기본 미기동**입니다 —
+검색·채팅에는 불필요하므로 Deploy 마찰을 줄였습니다. OTel 집계(`nexus otel-aggregate`)를
+쓸 때만 옵트인하세요:
+
+```bash
+docker compose --profile observability up -d
+```
 
 ### 3. Pull Embedding Model (first time only)
 
