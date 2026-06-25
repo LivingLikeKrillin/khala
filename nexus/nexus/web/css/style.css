@@ -737,6 +737,27 @@ body { display: flex; flex-direction: column; }
   background: var(--accent-dim); color: var(--cyan-300);
 }
 
+/* 신뢰 신호 배지 — tone 값(governed/tracked/memo)과 클래스명이 정확히 일치해야 함 */
+.trust-badge {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  color: var(--ink-100);
+  white-space: nowrap;
+  cursor: default;
+}
+.trust-badge--governed { border-color: #2f7d4f; color: #2f7d4f; }
+.trust-badge--tracked  { border-color: #9a6a1f; color: #9a6a1f; }
+.trust-badge--memo     { border-color: var(--hairline-strong); color: var(--ink-500); }
+
+/* 문서뷰: 기존 `.doc-table .doc-type-badge`(0-2-0)를 이기도록 동일 스코프 + 클래스(0-3-0) */
+.doc-table .doc-type-badge.trust-badge--governed { border-color: #2f7d4f; color: #2f7d4f; }
+.doc-table .doc-type-badge.trust-badge--tracked  { border-color: #9a6a1f; color: #9a6a1f; }
+.doc-table .doc-type-badge.trust-badge--memo     { border-color: var(--hairline-strong); color: var(--ink-500); }
+
 .doc-pagination { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 18px; }
 .doc-pagination button {
   background: var(--glass-2);

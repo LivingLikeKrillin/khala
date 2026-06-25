@@ -4,6 +4,7 @@
  */
 
 import { streamAnswer, suggestEntities } from '../api.js';
+import { trustSignal } from '../doctype-signal.js';
 import { renderMarkdown } from '../components/markdown.js';
 import { showToast } from '../components/toast.js';
 
@@ -362,6 +363,8 @@ function renderEvidence(snippets, provenance) {
       <div class="ev-head">
         <span class="ev-index">${i + 1}</span>
         <span class="ev-title">${escapeHtml(s.doc_title || '(제목 없음)')}</span>
+        ${(() => { const t = trustSignal(s.doc_type);
+          return `<span class="trust-badge trust-badge--${t.tone}" title="${escapeHtml(t.note)}">${escapeHtml(t.label)}</span>`; })()}
       </div>
       <div class="ev-path">${escapeHtml(s.section_path || '')}</div>
       <div class="ev-text">${escapeHtml(s.text || '')}</div>
