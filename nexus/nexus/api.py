@@ -6,6 +6,7 @@ API_CONTRACT.md에 정의된 엔드포인트를 구현한다.
 
 from __future__ import annotations
 
+import os
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -89,6 +90,11 @@ def _auth_config() -> AuthConfig:
 # FastAPI dependency: resolves Authorization: Bearer -> Principal (401 in enforced mode).
 get_principal = make_get_principal(_auth_config)
 
+
+def _dev_token() -> str | None:
+    """로컬 dev 편의 토큰(NEXUS_DEV_TOKEN). 미설정/빈값이면 None — prod 에선 노출 안 됨."""
+    return os.getenv("NEXUS_DEV_TOKEN") or None
+
 # CORS: an Authorization header requires a real origin allowlist, not "*".
 # When the A2A surface is enabled, external A2A caller origins are unioned in (Phase 2).
 def _cors_origins() -> list[str]:
@@ -169,6 +175,16 @@ class OtelAggregateRequest(BaseModel):
 
 
 # ── Endpoints ──
+
+@app.get("/auth/dev-token", response_model=NexusResponse)
+async def dev_token() -> NexusResponse:
+    """로컬 dev 온램프: NEXUS_DEV_TOKEN 설정 시 그 토큰을 노출(웹이 Bearer 로 자동 사용).
+
+    의도적으로 비-게이트(토큰을 받기 전 단계). prod(env 미설정)에선 token=null 이라 노출 없음.
+    이 토큰은 override 가 주입하는 로컬 편의 자격이며 [[local-dev principal]] 과 짝이다.
+    """
+    return NexusResponse(data={"token": _dev_token()})
+
 
 def _search_hit_to_dict(h) -> dict:
     """SearchHit → /search 응답 dict. doc_type(축-A 타입, S3) 포함 — 웹 클라이언트 타입 배지용."""

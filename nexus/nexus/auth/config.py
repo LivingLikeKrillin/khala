@@ -25,8 +25,21 @@ class AuthConfig:
         if mode not in ("enforced", "permissive"):
             mode = "enforced"  # unknown -> fail closed
         origins = auth.get("allowed_origins") or list(_DEFAULT_ORIGINS)
-        principals = auth.get("principals") or []
-        return cls(mode=mode, allowed_origins=list(origins), principals=list(principals))
+        principals = list(auth.get("principals") or [])
+        # 로컬 dev 온램프: NEXUS_DEV_TOKEN 이 있을 때만(=docker-compose.override.yml 의 로컬
+        # 편의 레이어) INTERNAL local-dev principal 을 *추가* 주입한다. 리포 기본 config 는
+        # enforced + principals:[] 그대로라 prod(override 미사용)는 영향 없음. 토큰은 env 로만
+        # 들어오고 리포에 커밋되지 않는다. override 를 prod 에 쓰지 말 것.
+        dev_token = os.getenv("NEXUS_DEV_TOKEN")
+        if dev_token:
+            from .principal import hash_token
+            principals.append({
+                "name": "local-dev",
+                "token_sha256": hash_token(dev_token),
+                "tenant": "default",
+                "clearance": "INTERNAL",
+            })
+        return cls(mode=mode, allowed_origins=list(origins), principals=principals)
 
     @property
     def permissive(self) -> bool:

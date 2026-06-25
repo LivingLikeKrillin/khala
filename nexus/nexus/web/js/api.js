@@ -5,6 +5,29 @@
 
 const BASE = '';
 
+// ── 로컬 dev 온램프 ──
+// 서버가 NEXUS_DEV_TOKEN(override 의 로컬 편의 자격)을 노출하면 그 토큰을 Bearer 로 자동 첨부한다.
+// → 신규 `task up` 사용자가 토큰을 직접 발급/붙여넣기 없이 검색이 동작. prod(env 미설정)에선
+// token=null 이라 헤더 없이 호출 → enforced 정책 그대로(401). 한 번 받아 캐시한다.
+let _authToken; // undefined=미로딩, null=없음, string=토큰
+
+async function _ensureAuthToken() {
+  if (_authToken !== undefined) return _authToken;
+  try {
+    const res = await fetch(`${BASE}/auth/dev-token`); // 비-게이트 — 인증 헤더 없이 호출
+    const json = await res.json();
+    _authToken = (json && json.success && json.data && json.data.token) || null;
+  } catch {
+    _authToken = null;
+  }
+  return _authToken;
+}
+
+async function authHeaders() {
+  const t = await _ensureAuthToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
 /**
  * 공통 fetch 래퍼. NexusResponse를 언래핑하고 에러를 처리한다.
  */
@@ -21,7 +44,7 @@ export async function request(method, path, body = null, params = null) {
 
   const opts = {
     method,
-    headers: {},
+    headers: { ...(await authHeaders()) },
   };
   if (body) {
     opts.headers['Content-Type'] = 'application/json';
@@ -81,7 +104,7 @@ export async function searchAnswer(query, opts = {}) {
 export async function streamAnswer(query, callbacks, opts = {}) {
   const res = await fetch(`${BASE}/search/answer/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify({
       query,
       top_k: opts.top_k || 10,
@@ -196,7 +219,7 @@ export async function uploadFile(file, path = 'uploads', tenant = 'default') {
   formData.append('file', file);
 
   const url = `${BASE}/upload?path=${encodeURIComponent(path)}&tenant=${encodeURIComponent(tenant)}`;
-  const res = await fetch(url, { method: 'POST', body: formData });
+  const res = await fetch(url, { method: 'POST', body: formData, headers: { ...(await authHeaders()) } });
   const json = await res.json();
 
   if (res.status === 409) {
