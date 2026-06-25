@@ -55,7 +55,7 @@ The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.m
 export ANTHROPIC_API_KEY=sk-ant-...
 
 task up        # 또는: cd nexus && docker compose up -d
-task models    # 최초 1회 임베딩 모델 — 또는: docker compose exec nexus-ollama ollama pull multilingual-e5-base
+task models    # 최초 1회 임베딩 모델 — 또는: docker compose exec nexus-ollama ollama pull nomic-embed-text
 ```
 
 → 브라우저에서 **http://localhost:8000** 열기 → **채팅**에 질문하면 *근거와 함께* 답합니다.
