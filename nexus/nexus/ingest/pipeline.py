@@ -17,6 +17,7 @@ from nexus import db
 from nexus.ingest.classifier import ClassificationResult, classify
 from nexus.ingest.chunker import ChunkData, chunk_document
 from nexus.ingest.collector import CollectedFile, collect_files
+from nexus.ingest.title import derive_title
 from nexus.rid import chunk_rid, doc_rid
 
 logger = structlog.get_logger(__name__)
@@ -92,7 +93,7 @@ async def _save_document(
         classification.is_quarantined,
         classification.pii_types if classification.is_quarantined else [],
         now,
-        collected.frontmatter.get("title", collected.relative_path),
+        derive_title(collected.frontmatter, collected.content, collected.relative_path),
         classification.doc_type, classification.language, approved_hash,
     )
     return rid
