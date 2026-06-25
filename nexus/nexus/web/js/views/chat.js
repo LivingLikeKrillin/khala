@@ -13,11 +13,12 @@ let autocompleteTimer = null;
 let autocompleteIndex = -1;
 let autocompleteItems = [];
 
+// 신규 사용자(자기 문서를 막 올린)에게도 맞는 corpus-무관 예시. 데모 전용 고유명사·운영자
+// 개념(설계-관측 diff) 대신, 어떤 문서 묶음에도 통하는 일반 질문.
 const SUGGESTIONS = [
-  '결제 서비스가 발행하는 토픽이 뭐야?',
-  '@order-service 의 의존성을 보여줘',
-  '설계와 관측이 어긋난 부분은?',
-  '인증 정책 문서 요약해줘',
+  '방금 올린 문서 요약해줘',
+  '이건 어떻게 동작해?',
+  '핵심 결정과 그 근거는?',
 ];
 
 export function render(container) {
@@ -42,9 +43,9 @@ export function render(container) {
                 <path d="M32 19 L41 36 L32 36 Z" fill="#ffffff" opacity="0.30"/>
               </svg>
             </div>
-            <div class="chat-empty-title">근거 있는 답변</div>
-            <div class="chat-empty-hint">조직의 문서와 운영 데이터에서 출처와 함께 검색합니다</div>
-            <div class="chat-empty-hint"><span class="at">@서비스명</span> 으로 엔티티를 지정할 수 있습니다</div>
+            <div class="chat-empty-title">무엇이든 물어보세요</div>
+            <div class="chat-empty-hint">올린 문서에서 출처와 함께 답합니다 — 추측 없이, 근거만</div>
+            <div class="chat-empty-hint">팁: <span class="at">@이름</span> 으로 특정 서비스·엔티티를 지정</div>
             <div class="chat-suggest" id="chat-suggest">
               ${SUGGESTIONS.map(s => `<button type="button" class="suggest-chip">${escapeHtml(s)}</button>`).join('')}
             </div>
