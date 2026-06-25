@@ -21,10 +21,10 @@ tasks:
       - 'echo "Nexus → http://localhost:8000  (최초 1회: task models)"'
 
   models:
-    desc: "임베딩 모델 받기 (최초 1회) — multilingual-e5-base"
+    desc: "임베딩 모델 받기 (최초 1회) — nomic-embed-text (config.yaml embedding.model 과 일치)"
     dir: nexus
     cmds:
-      - docker compose exec nexus-ollama ollama pull multilingual-e5-base
+      - docker compose exec nexus-ollama ollama pull nomic-embed-text
 
   down:
     desc: "Nexus 정지"

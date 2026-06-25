@@ -35,8 +35,12 @@ WORKDIR /app
 # Application code
 COPY . .
 
-# Python dependencies
-RUN pip install --no-cache-dir -e ".[dev]"
+# Python dependencies.
+# notion + a2a extras are baked in so the CLI composition root works out of the box:
+# `nexus ingest-notion` wires the a2a-resident default external-ingest sink, and the
+# importer reads from Notion via notion-client. (a2a *routes* remain flag-gated off by
+# default — NEXUS_A2A_ENABLED — installing the SDK changes no runtime behavior.)
+RUN pip install --no-cache-dir -e ".[dev,notion,a2a]"
 
 # mecab 동작 확인
 RUN echo "결제 서비스가 알림을 보낸다" | mecab || echo "mecab test skipped"
