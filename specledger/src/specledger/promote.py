@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 
-from . import doctypes
+from . import doctypes, guidelines
 from .artifacts import Artifact
 from .ledger import Ledger
 
@@ -74,4 +74,9 @@ def promote_external(ledger: Ledger, csf: dict, type: str) -> dict:
     art.meta["promoted_from_source_hash"] = prov["source_hash"]
     art.save()
     # Status StrEnum 은 소문자("draft"/"proposed") — 공개 계약은 대문자로 정규화(spec §5).
-    return {"artifact_id": aid, "status": art.meta["status"].upper(), "provenance_carried": True}
+    return {
+        "artifact_id": aid,
+        "status": art.meta["status"].upper(),
+        "provenance_carried": True,
+        "guidance": guidelines.guidance_for(axis_a) or "",
+    }
