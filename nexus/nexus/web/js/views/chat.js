@@ -379,11 +379,13 @@ function renderEvidence(snippets, provenance) {
   if (provenance.length > 0) {
     provEl.innerHTML = `<h4>출처</h4>` + provenance.map(p => {
       const uri = p.source_uri || '';
-      const label = escapeHtml(p.source_uri || p.doc_rid || '');
+      // 사람이 읽는 제목 우선, 원본 경로(source_uri)는 추적용으로 hover 에만.
+      const label = escapeHtml(p.doc_title || p.source_uri || p.doc_rid || '');
+      const tip = escapeHtml(p.source_uri || p.source_version || '');
       const isLink = /^https?:\/\//.test(uri);
       return isLink
-        ? `<a href="${encodeURI(uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(p.source_version || '')}">${label}</a>`
-        : `<a title="${escapeHtml(p.source_version || uri)}" style="cursor:default">${label}</a>`;
+        ? `<a href="${encodeURI(uri)}" target="_blank" rel="noopener noreferrer" title="${tip}">${label}</a>`
+        : `<a title="${tip}" style="cursor:default">${label}</a>`;
     }).join('');
   } else {
     provEl.innerHTML = '';

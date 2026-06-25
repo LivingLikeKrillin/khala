@@ -722,7 +722,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     for s in packet.snippets
                 ],
                 "provenance": [
-                    {"doc_rid": p.doc_rid, "source_uri": p.source_uri, "source_version": p.source_version}
+                    {"doc_rid": p.doc_rid, "source_uri": p.source_uri,
+                     "source_version": p.source_version, "doc_title": p.doc_title}
                     for p in packet.provenance
                 ],
                 "route_used": route,
