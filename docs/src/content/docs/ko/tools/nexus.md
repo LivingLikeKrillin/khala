@@ -43,7 +43,7 @@ task up        # 또는: cd nexus && docker compose up -d
 task models    # 또는: docker compose exec nexus-ollama ollama pull nomic-embed-text
 ```
 
-→ `http://localhost:8000` 에서 채팅으로 질문(근거와 함께 답). 문서 적재: `docker compose exec nexus-app nexus ingest ./docs`.
+→ `http://localhost:8000` 에서 채팅으로 질문(근거와 함께 답). 문서 적재: `docker compose exec nexus-app nexus ingest ./docs`. 웹 UI 사용법은 **[Nexus 웹 사용 가이드](/ko/tools/nexus-web/)** 참고.
 
 ```bash
 # 업데이트 / 정지
