@@ -2,7 +2,7 @@
 id: ADR-0005
 type: adr
 title: Component naming — Protoss-unit rename and forward-mapping layer
-status: proposed
+status: accepted
 date: 2026-06-30
 tags:
 - naming
@@ -13,6 +13,9 @@ tags:
 linked_adrs:
 - ADR-0002
 - ADR-0004
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-06-29T23:26:21Z'
+content_hash: sha256:6eb4c5b1774f67bfd20d6dc97c269fbc908ff8283d787ac3f659f8db13e544cb
 ---
 
 # ADR-0005: Component naming — Protoss-unit rename and forward-mapping layer
