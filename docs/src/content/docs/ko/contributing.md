@@ -3,7 +3,7 @@ title: 기여하기
 description: 미래의 협업자와 오픈소스 기여자를 위해.
 ---
 
-이 문서와 여기서 설명하는 도구들은 미래의 협업자를 위해 공개적으로 만들어집니다. 지금은 각 도구의 저장소에서 기여가 이루어집니다 — [Nexus/Archon](https://github.com/LivingLikeKrillin/khala), [Probe](https://github.com/LivingLikeKrillin/probe), [specledger](https://github.com/LivingLikeKrillin/specledger) — 여기서 이슈와 풀 리퀘스트를 열 수 있습니다.
+이 문서와 여기서 설명하는 도구들은 미래의 협업자를 위해 공개적으로 만들어집니다. 지금은 각 도구의 저장소에서 기여가 이루어집니다 — [Nexus/Archon](https://github.com/LivingLikeKrillin/khala), [Observer](https://github.com/LivingLikeKrillin/probe), [Arbiter](https://github.com/LivingLikeKrillin/specledger) — 여기서 이슈와 풀 리퀘스트를 열 수 있습니다.
 
 생태계 전반의 공유 컨벤션 — 용어, 네이밍, 도구별 버저닝, Conventional Commits 형식 — 은 [`CONVENTIONS.md`](https://github.com/LivingLikeKrillin/khala/blob/master/CONVENTIONS.md)에 있습니다.
 
