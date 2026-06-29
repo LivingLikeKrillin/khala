@@ -21,13 +21,13 @@ The first failure is the obvious one, the one everyone has felt: the machine ass
 
 The second failure is quieter and, over time, more corrosive: the human stops judging. When an assistant produces a confident plan, a confident diff, a confident spec, the path of least resistance is to approve it. Reading carefully is work; rubber-stamping is free. Review degrades into ceremony — a green checkmark on text nobody truly read. The machine did not lie this time; the human simply abdicated the judgment that was meant to be the safeguard.
 
-**specledger** is the defense. It treats human judgment as something that must be accountable, not assumed: by making reviewed, approved specs and decision records a gate *before* code is written, it forces the moment of judgment to happen where it is cheap and where it leaves a trace. The point is not more paperwork — it is that a decision becomes a recorded, attributable act rather than a reflex. You cannot rubber-stamp your way past a ledger that asks who approved what, and why.
+**Arbiter** is the defense. It treats human judgment as something that must be accountable, not assumed: by making reviewed, approved specs and decision records a gate *before* code is written, it forces the moment of judgment to happen where it is cheap and where it leaves a trace. The point is not more paperwork — it is that a decision becomes a recorded, attributable act rather than a reflex. You cannot rubber-stamp your way past a ledger that asks who approved what, and why.
 
 ## The blind spot — tests that verify nothing
 
 Beneath both failures sits a blind spot. AI-generated tests look fine: syntactically valid, plausibly named, green, and coverage climbs. Yet they can verify essentially zero behavior — asserting trivialities, exercising code without checking its outcome, or mocking away the very thing that mattered. Advisory review, human or LLM, waves them through, because the tests *look* like tests.
 
-**mutqa** closes the blind spot deterministically. By mutating the code under test and checking whether the suite notices, it turns the soft claim "these tests verify behavior" into a hard, measurable fact. A test that survives a mutation it should have caught is exposed as theater. This is not advice and not a vibe; it is a forcing function an LLM-saturated review process cannot fake its way past.
+**Probe** closes the blind spot deterministically. By mutating the code under test and checking whether the suite notices, it turns the soft claim "these tests verify behavior" into a hard, measurable fact. A test that survives a mutation it should have caught is exposed as theater. This is not advice and not a vibe; it is a forcing function an LLM-saturated review process cannot fake its way past.
 
 ## The thesis — calibration
 
@@ -35,8 +35,8 @@ The thread through all of this is **calibration**. Khala does not promise correc
 
 - **Archon** grounds claims in authority.
 - **Nexus** grounds knowledge in sources.
-- **specledger** grounds approval in accountable judgment.
-- **mutqa** grounds the test suite's promise in measurable fact.
+- **Arbiter** grounds approval in accountable judgment.
+- **Probe** grounds the test suite's promise in measurable fact.
 
 Each narrows the gap between how confident the system sounds and how much it actually knows. That gap, closed, is calibration.
 
@@ -46,18 +46,18 @@ Each narrows the gap between how confident the system sounds and how much it act
 |---|---|---|---|---|---|
 | Nexus | Shared grounded-knowledge base | Grounded knowledge (no source → blocked) | Everyone | The body | Always |
 | Archon | Authority window over domain truth | The machine's truthfulness | Planners + devs + agents | Producer + read window | Always |
-| specledger | Human-judgment accountability ledger | The human's judgment | Decision-makers | Producer (approved specs) | Decision gate (pre-code) |
-| Probe | Grounding agent | Engineering output (review/troubleshoot) | Engineers + AI | Consumer | Post-code + runtime |
-| mutqa | Mutation-driven test-quality harness | The claim "these tests verify behavior" | Devs writing/reviewing tests | Independent (deterministic) | Pre-commit (gate, roadmap M3) |
+| Arbiter | Human-judgment accountability ledger | The human's judgment | Decision-makers | Producer (approved specs) | Decision gate (pre-code) |
+| Observer | Grounding agent | Engineering output (review/troubleshoot) | Engineers + AI | Consumer | Post-code + runtime |
+| Probe | Mutation-driven test-quality harness | The claim "these tests verify behavior" | Devs writing/reviewing tests | Independent (deterministic) | Pre-commit (gate, roadmap M3) |
 
 ## How they connect
 
 <img
   src="/diagrams/ecosystem.svg"
-  alt="Developers and agents reach Archon, the authority window; Archon, specledger, and Probe publish to and query Nexus — the Khala link. The tools connect only through Khala."
+  alt="Developers and agents reach Archon, the authority window; Archon, Arbiter, and Observer publish to and query Nexus — the Khala link. The tools connect only through Khala."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
 
-The most important architectural relationship is also the simplest: the producer tools never call each other directly. They connect **only through Khala**. Archon publishes claims and values into the shared body; specledger publishes approved specs into it; everything that needs grounded knowledge reads from the same place. That is what keeps the ecosystem coherent rather than tangled — one link, not N² wires.
+The most important architectural relationship is also the simplest: the producer tools never call each other directly. They connect **only through Khala**. Archon publishes claims and values into the shared body; Arbiter publishes approved specs into it; everything that needs grounded knowledge reads from the same place. That is what keeps the ecosystem coherent rather than tangled — one link, not N² wires.
 
-[**Probe**](/tools/probe/) sits on the other side of that link as a consumer: a grounding agent for engineering work — PR scope, API contracts, troubleshooting — that reaches its conclusions by querying Khala, not by reaching into the producers. And [**Archon**](/tools/archon/) is the single authority window for domain truth: when a developer or an agent needs to know what is true in the domain, there is exactly one window to ask, and exactly one answer — with its source. One link to bind them; one window to ask.
+[**Observer**](/tools/observer/) sits on the other side of that link as a consumer: a grounding agent for engineering work — PR scope, API contracts, troubleshooting — that reaches its conclusions by querying Khala, not by reaching into the producers. And [**Archon**](/tools/archon/) is the single authority window for domain truth: when a developer or an agent needs to know what is true in the domain, there is exactly one window to ask, and exactly one answer — with its source. One link to bind them; one window to ask.

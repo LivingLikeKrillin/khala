@@ -1,118 +1,97 @@
 ---
 title: Probe
-description: Platform-aware PR analyzer + API contract validator — grounds code review in platform cohesion, backward compatibility, and org guidelines.
+description: Test quality via mutation — surfaces behavioral-test gaps that advisory review misses, deterministically, through surviving mutants.
 ---
 
-Probe grounds the review of a change in context the reviewer would otherwise have to hold in their head. It is a **platform-aware PR analyzer + API contract validator** that turns three recurring review questions into deterministic checks:
+Probe (formerly mutqa) is a mutation-driven test-quality harness. It surfaces the **behavioral-test gaps** that advisory review — a TDD skill, an LLM test reviewer — systematically misses, and it does so *deterministically*: by mutating your code and seeing which mutations the suite fails to catch. A mutation that survives a green suite is measured proof that some behavior is not actually verified.
 
-1. **Is this PR's scope appropriate?** The same seven files can be one cohesive change in Spring Boot and three separate concerns in Next.js. Judging by file count misfires; Probe judges by *logical cohesion* against a platform profile.
-2. **Is this API change backward-compatible?** Missing nullable flags, inconsistent error responses, and breaking changes slip past review. Probe lints the spec and diffs it against the base.
-3. **Does this change conform to org guidelines?** Even with written guidelines, a reviewer can't recall and cross-check them every time. Probe infers the PR type and generates the matching checklist — and, when Nexus is connected, attaches the relevant rules and impact.
+The problem it calibrates: a passing test suite is not the same as a suite that verifies behavior. AI-generated tests in particular can be green and hollow — they assert structure, not behavior. Advisory reviewers give opinions; Probe gives evidence. Its core discipline is to keep the **deterministic runner separate from judgment**: the runner produces the only contract — a list of surviving mutants — and a Test Quality Critic triages each one reasoning *only from the measured fact* that the suite stayed green under that mutation. That grounding is what distinguishes it from a pure LLM review.
 
-A design principle runs through all of it: **when everything is fine, Probe says nothing.** Noise kills trust. When it does warn, it proposes how to split.
-
-One-line identity: the tool that keeps PR review honest by grounding scope, contracts, and conformance — optionally enriched by Nexus, but fully functional without it.
+One-line identity: the harness that turns "tests pass" into "tests actually verify behavior," with surviving mutants as the deterministic signal.
 
 <img
-  src="/diagrams/probe.svg"
-  alt="Scope analysis: changed files → assign roles → match cohesion groups → score severity → are concerns mixed? If yes, propose a split with merge order; if cohesive, stay silent."
+  src="/diagrams/mutqa.svg"
+  alt="Mutation flow: green suite → cosmic-ray mutate → run the suite per mutant → any survivors? None reports no gaps; otherwise Critic triage → ledger → report of biting real-gaps."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
 
 ## Core concepts
 
-- **Platform profile.** A mapping from file patterns to roles, per framework (Spring Boot, Next.js, React SPA). Roles compose into **cohesion groups** — e.g. Spring Boot `domain-crud` = entity + repository + service + controller + dto + mapper + exception + test.
-- **Scope analysis.** Changed files are assigned roles, matched to cohesion groups, scored for severity, and — if concerns are mixed — a split is proposed with a suggested merge order.
-- **Concern drift.** As you edit, Probe watches for files belonging to a *different* concern than the current change and warns immediately.
-- **API lint + diff.** Ten built-in rules (`probe/nullable`, `probe/error-response`, `probe/path-naming`, `probe/field-naming`, `probe/pagination`, and more) check the spec; the differ detects breaking changes against a base.
-- **PR type → checklist.** Ten PR types (`domain-crud`, `api-change`, `ui-feature`, `config-change`, `db-migration`, `test-only`, `docs-only`, …) each map to a review checklist; passing checks are auto-verified.
-- **Nexus is optional.** Without it, every feature still works; with it, results gain related guidelines, service impact, and design-observation gaps.
+- **Mutation (cosmic-ray).** Probe drives `cosmic-ray` to mutate changed source modules and run the suite against each mutant.
+- **Survivor.** A mutant the suite did *not* kill — i.e. behavior the tests don't pin down. The runner's survivor list is the only contract handed to judgment.
+- **Test Quality Critic.** A subagent that triages each survivor into `real-gap`, `equivalent`, or `low-value`, reasoning only from deterministic evidence, and returns `{verdict, rationale, suggested_test_intent}`.
+- **Ledger (`mutqa-ledger.yaml`).** A committed, versioned record of verdicts. Re-runs only re-triage *new* survivors — already-judged equivalents are not re-litigated, removing the recurring noise cost. The ledger is committed alongside source.
+- **Biting real-gaps = the headline.** The report's headline is the count of un-waived `real-gap`s, not a mutation score. Equivalent/low-value and waived real-gaps are demoted but never dropped.
+- **Advisory, not (yet) a gate.** Probe currently reports; it does not block. Enforcement (failing a commit on biting real-gaps) is a later milestone.
 
 ## Quickstart
 
-Probe is a TypeScript / Node ≥ 20 package; pnpm is the package manager. CLI invoked via `npx probe`. Commands transcribed from the source repo README and `package.json`.
+Probe is a Python skill/harness; it requires `cosmic-ray` installed (Windows-native OK; mutmut is not). The target must be a git repo with a green test suite. Steps transcribed from the source `SKILL.md`.
 
-### Install
-
-```bash
-pnpm add -D probe
-```
-
-### Core commands
+### Prerequisites
 
 ```bash
-# PR scope analysis + review checklist
-npx probe check
-
-# API spec lint (10 built-in rules)
-npx probe api:lint api/openapi.json
-
-# API spec diff (breaking-change detection)
-npx probe api:diff --base origin/main
-
-# Generate a review checklist
-npx probe review
+pip install cosmic-ray
 ```
 
-### Output formats
+- Target is a git repo and the suite is green (the pre-mutation baseline must pass for results to mean anything).
+- Run from the consumer repo; the `mutqa` package must be importable (add its `src` to `pythonpath` or install it).
 
-```bash
-npx probe check                  # markdown (default)
-npx probe check --format json    # JSON (for agents / pipelines)
-npx probe check --format brief   # one-line summary (CI)
-npx probe check --silent         # no output when clean
+### 1. Identify changed modules + run mutation → survivors (deterministic, no LLM)
+
+```python
+from pathlib import Path
+import json, dataclasses
+from mutqa.scope import changed_source_modules
+from mutqa.run import run_mutation
+
+modules = changed_source_modules(base="HEAD~1")   # or name modules explicitly for a full analysis
+survivors = []
+for m in modules:
+    survivors.extend(run_mutation(module_path=m, workdir=Path(".")))
+
+Path("survivors.json").write_text(
+    json.dumps([dataclasses.asdict(s) for s in survivors], ensure_ascii=False, indent=2)
+)
 ```
 
-If everything is in scope, `probe check` says nothing.
+`run_mutation` runs cosmic-ray `init`/`exec`/`dump` and returns only the survivors. Failures propagate as exceptions (no fail-open) — stop and report, don't fake an empty result. Zero survivors means the changed behavior is sufficiently pinned by the current suite → report "no gaps" and stop.
+
+### 2. Triage and report
+
+Load the ledger, take only *new* survivors, dispatch the Critic per survivor, absorb verdicts back into the ledger, then assemble the advisory report:
+
+```python
+from mutqa.ledger import load_ledger, new_survivors, absorb, dump_ledger
+from mutqa.report import build_report
+
+ledger = load_ledger(ledger_path.read_text(encoding="utf-8") if ledger_path.exists() else "")
+fresh = new_survivors(survivors, ledger)   # only un-judged survivors go to the Critic
+# ... dispatch Critic per `fresh` survivor, collect Verdict(...) list as fresh_verdicts ...
+ledger = absorb(ledger, fresh_verdicts, today)
+print(build_report(survivors, ledger, today))
+```
 
 ## How-to
 
-### Check PR scope before opening it
+### Re-run after adding tests (only new survivors re-triaged)
 
-```bash
-npx probe check
-```
+Because verdicts persist in `mutqa-ledger.yaml`, a re-run calls `new_survivors(...)` and the Critic only sees survivors not already judged. Existing verdicts are reused, so equivalent-mutant noise isn't re-litigated each run.
 
-Analyzes changed files against the platform profile; if concerns are mixed, it proposes a split. Stays silent when the change is cohesive.
+### Read the report and act on real-gaps
 
-### Validate an API change
+The headline is `biting(survivors, ledger, today)` — the count of un-waived real-gaps. For each biting real-gap, Probe surfaces the Critic's `suggested_test_intent` and recommends adding a behavioral-verification test. It is advisory: the decision is yours. A human can hand-set `waived_until` on an entry to silence it until expiry; `absorb` won't overwrite a hand-set waiver.
 
-```bash
-npx probe api:lint api/openapi.json     # spec self-check (nullable, naming, …)
-npx probe api:diff --base origin/main   # detect breaking changes vs. main
-```
+### Guard the Critic against regressions
 
-### Run inside Claude Code via MCP
-
-Register Probe's MCP server so Claude Code calls scope analysis, API lint, and checklist generation automatically from conversation context. The bin `probe-mcp` maps to `dist/mcp/server.js`:
-
-```json
-// .mcp.json
-{
-  "mcpServers": {
-    "probe": {
-      "command": "node",
-      "args": ["dist/mcp/server.js"],
-      "cwd": "."
-    }
-  }
-}
-```
-
-The MCP server exposes eight tools, including `probe.analyzeScope`, `probe.lintApiSpec`, `probe.diffApiSpecs`, `probe.reviewChecklist`, `probe.detectPlatform`, `probe.queryNexus`, `probe.groundTroubleshooting`, and `probe.groundReview`.
-
-### Gate scope in CI (GitHub Actions)
-
-```yaml
-- run: npx probe check --base origin/main --format brief --silent
-```
+When you change the Critic prompt, re-run the golden cases in `references/critic-eval.md` (EVAL-1 = real-gap, EVAL-3 = low-value) — correctly triaging from deterministic evidence is the harness's entire value.
 
 ## Reference
 
-- Source repo README: [github.com/LivingLikeKrillin/probe](https://github.com/LivingLikeKrillin/probe) (`README.md`).
-- Per-version scope docs live under the repo's `docs/` (`probe-v{N}-scope.md`); guideline docs under `docs/guidelines/`.
-- Build/test scripts (`pnpm build`, `pnpm test:run`, `pnpm typecheck`) are in `package.json`.
+- Source: `SKILL.md` for the Probe skill (mutation-driven test-quality harness, M2 = ledger).
+- Plan/spec: `docs/superpowers/plans/2026-06-06-mutqa-m1-runner-advisory.md` (M1; M2/M3 in the spec §5–6); dogfood notes under the skill's `docs/`.
+- Package modules: `mutqa.scope`, `mutqa.run`, `mutqa.ledger`, `mutqa.report`; Critic prompt + eval under `references/`.
 
 :::note[Last verified]
-Source repo README (site re-run verification pending).
+Transcribed from the skill's `SKILL.md` (and dogfood notes). Site re-run verification pending.
 :::

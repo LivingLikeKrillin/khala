@@ -1,11 +1,11 @@
 ---
-title: specledger
+title: Arbiter
 description: Decision accountability — records AI-generated specs/ADRs and gates code edits behind accountable, signed-off review.
 ---
 
-specledger makes the moment of judgment accountable instead of assumed. It is a Python MCP server plus a Claude Code `PreToolUse` hook: it records AI-generated ADRs and design specs in a consistent Markdown + frontmatter format and enforces accountable review — **AI critique → human issue-disposition → sign-off** — before any code edits are written, optionally publishing approved documents to a Nexus sink.
+Arbiter (formerly specledger) makes the moment of judgment accountable instead of assumed. It is a Python MCP server plus a Claude Code `PreToolUse` hook: it records AI-generated ADRs and design specs in a consistent Markdown + frontmatter format and enforces accountable review — **AI critique → human issue-disposition → sign-off** — before any code edits are written, optionally publishing approved documents to a Nexus sink.
 
-The problem it calibrates: when an assistant produces a confident spec, the path of least resistance is to approve it. Review degrades into ceremony — a green checkmark on text nobody truly read. specledger forces judgment to happen where it is cheap and where it leaves a trace. Until a spec is approved and stamped with a content hash, all `Write`/`Edit`/`MultiEdit` calls targeting non-exempt source paths are **blocked**. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it.
+The problem it calibrates: when an assistant produces a confident spec, the path of least resistance is to approve it. Review degrades into ceremony — a green checkmark on text nobody truly read. Arbiter forces judgment to happen where it is cheap and where it leaves a trace. Until a spec is approved and stamped with a content hash, all `Write`/`Edit`/`MultiEdit` calls targeting non-exempt source paths are **blocked**. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it.
 
 One-line identity: a ledger that makes "who approved what, and why" a recorded, attributable act — so you cannot rubber-stamp your way past it.
 
@@ -26,7 +26,7 @@ One-line identity: a ledger that makes "who approved what, and why" a recorded, 
 
 ## Quickstart
 
-specledger is a Python package; it runs as an MCP server and a PreToolUse hook. Commands transcribed exactly from the source repo README.
+Arbiter is a Python package; it runs as an MCP server and a PreToolUse hook. Commands transcribed exactly from the source repo README.
 
 ### Install
 
