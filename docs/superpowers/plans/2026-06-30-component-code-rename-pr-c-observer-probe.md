@@ -176,7 +176,7 @@ git commit -m "ci: rename probe→observer + mutqa→probe jobs/paths (ordered)"
 
 - [ ] **Step 1: observer.md (was the review tool's page, already Observer-branded in PR2)**
 
-Update kept code-identifiers: `npx probe`/`pnpm add -D probe` → `observer` / `@khala/observer`; bins `probe`/`probe-mcp` → `observer`/`observer-mcp`; rule ids `probe/<rule>` → `observer/<rule>`; MCP key `probe` → `observer`; `probe-v{N}-scope.md` doc-path refs as appropriate. **Keep** the `github.com/.../probe` repo URL (PR-D).
+Update kept code-identifiers: `npx probe`/`pnpm add -D probe` → `observer` / `@khala/observer`; bins `probe`/`probe-mcp` → `observer`/`observer-mcp`; rule ids `probe/<rule>` → `observer/<rule>` — **including the abbreviated illustrative forms** in `observer.md:27` (`probe/nullable`, `probe/error-response`, `probe/field-naming`, `probe/pagination`), not just the canonical 10; MCP key `probe` → `observer`; `probe-v{N}-scope.md` doc-path refs as appropriate. **Keep** the `github.com/.../probe` repo URL (PR-D).
 
 - [ ] **Step 2: probe.md (the mutation tool's page, already Probe-branded in PR2)**
 
@@ -235,7 +235,7 @@ Expected: only `github.com/.../mutqa` repo URLs (PR-D). Anything else = straggle
 
 The bare token `probe` is now legitimately the mutation tool + `khala.adept.probe`. So grep only the **old review-tool-specific identifiers**, which must ALL be gone (→observer):
 ```bash
-git grep -n -E "probe-mcp|PROBE_NEXUS|\"name\": \"probe\"|probe/(nullable-explicit|no-nullable-optional|error-response-schema|field-type-required|deprecated-lifecycle|enum-required|path-naming|pagination-required|property-naming|example-required)|workflows/probe\.yml" -- ':!**/superpowers/**' ':!specs/**' ':!adr/**' ':!**/dogfood*' ':!**/e2e-2026*'
+git grep -n -E "probe-mcp|PROBE_NEXUS|\"name\": \"probe\"|probe/(nullable-explicit|no-nullable-optional|error-response-schema|field-type-required|deprecated-lifecycle|enum-required|path-naming|pagination-required|property-naming|example-required)|workflows/probe\.yml" -- ':!**/superpowers/**' ':!specs/**' ':!adr/**' ':!**/dogfood*' ':!**/e2e-2026*' ':!**/CHANGELOG.md' ':!MIGRATION.md'
 ```
 Expected: **zero**. (These tokens uniquely identified the old review tool; the new mutation `probe` package uses none of them.)
 
