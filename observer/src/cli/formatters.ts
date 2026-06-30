@@ -33,7 +33,7 @@ export function formatScopeMarkdown(result: ScopeAnalysisResult, checklist?: Rev
   const label = SEVERITY_LABELS[result.severity];
   const lines: string[] = [];
 
-  lines.push(`${icon} Probe \u2014 ${label}`);
+  lines.push(`${icon} Observer \u2014 ${label}`);
   lines.push('');
 
   if (result.severity === 'ok') {

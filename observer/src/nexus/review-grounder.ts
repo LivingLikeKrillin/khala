@@ -3,7 +3,7 @@
  *
  * ChangedEntity[]와 NexusClient로 §2~§6 섹션을 병렬 조립한다.
  * 각 섹션은 독립 실패해도 나머지를 막지 않는다 (withNexusFallback).
- * Probe는 diff 소스를 의미 분석하지 않는다 — 변경 엔티티에 대한 조직 그라운딩만 모은다.
+ * Observer는 diff 소스를 의미 분석하지 않는다 — 변경 엔티티에 대한 조직 그라운딩만 모은다.
  *
  * 규정 문서: docs/superpowers/specs/2026-06-07-grounded-code-review-design.md
  */

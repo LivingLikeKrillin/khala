@@ -1,7 +1,7 @@
 /**
  * MCP 도구 핸들러
  *
- * Probe 코어 엔진을 MCP 도구로 노출한다.
+ * Observer 코어 엔진을 MCP 도구로 노출한다.
  * 8개 도구: analyzeScope, lintApiSpec, diffApiSpecs, reviewChecklist, detectPlatform, queryNexus, groundTroubleshooting, groundReview
  *
  * 규정 문서: docs/probe-v0.3-scope.md § 3, docs/probe-v0.4-scope.md § 6
@@ -44,9 +44,9 @@ async function resolveProfile() {
  * MCP 서버에 8개 도구를 등록한다.
  */
 export function registerTools(server: McpServer): void {
-  // ─── probe.analyzeScope ───
+  // ─── observer.analyzeScope ───
   server.tool(
-    'probe.analyzeScope',
+    'observer.analyzeScope',
     '변경 파일 목록으로 PR 범위를 분석한다. 응집 그룹, 관심사 혼재, 분할 제안을 반환한다.',
     {
       base: z.string().optional().describe('기준 브랜치 (기본: origin/main)'),
@@ -83,9 +83,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── probe.lintApiSpec ───
+  // ─── observer.lintApiSpec ───
   server.tool(
-    'probe.lintApiSpec',
+    'observer.lintApiSpec',
     'OpenAPI 스펙 파일의 품질을 검증한다. 10개 내장 룰로 필드 타입, nullable, 에러 응답, 네이밍 규칙을 검사한다.',
     {
       specPath: z.string().optional().describe('OpenAPI 스펙 파일 경로 (기본: api/openapi.json)'),
@@ -110,9 +110,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── probe.diffApiSpecs ───
+  // ─── observer.diffApiSpecs ───
   server.tool(
-    'probe.diffApiSpecs',
+    'observer.diffApiSpecs',
     '기준 브랜치와 현재 브랜치의 API 스펙을 비교한다. breaking 변경, additive 변경, deprecation을 분류한다.',
     {
       base: z.string().optional().describe('기준 브랜치 (기본: origin/main)'),
@@ -144,9 +144,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── probe.reviewChecklist ───
+  // ─── observer.reviewChecklist ───
   server.tool(
-    'probe.reviewChecklist',
+    'observer.reviewChecklist',
     '변경 내용을 분석하여 PR 타입을 추론하고, 해당 타입의 리뷰 체크리스트를 생성한다. Nexus가 가용하면 관련 규정과 영향 분석을 포함한다.',
     {
       base: z.string().optional().describe('기준 브랜치 (기본: origin/main)'),
@@ -192,9 +192,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── probe.detectPlatform ───
+  // ─── observer.detectPlatform ───
   server.tool(
-    'probe.detectPlatform',
+    'observer.detectPlatform',
     '프로젝트 파일 구조를 분석하여 플랫폼(spring-boot, nextjs, react-spa)을 감지한다.',
     {},
     async () => {
@@ -211,9 +211,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── probe.queryNexus ───
+  // ─── observer.queryNexus ───
   server.tool(
-    'probe.queryNexus',
+    'observer.queryNexus',
     'Nexus 지식베이스에 자연어로 질의한다. 규정, 아키텍처, 서비스 관계를 검색한다.',
     {
       query: z.string().describe('검색 쿼리 (자연어, 한국어/영어)'),
@@ -274,9 +274,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── probe.groundTroubleshooting (v0.5) ───
+  // ─── observer.groundTroubleshooting (v0.5) ───
   server.tool(
-    'probe.groundTroubleshooting',
+    'observer.groundTroubleshooting',
     '에러/스택트레이스/실패 테스트를 받아 조직 컨텍스트(토폴로지·관측·설계-관측 갭·규정)를 묶은 Grounding Pack을 반환한다. 근본원인은 단정하지 않는다 — 추론은 호출자가 한다.',
     {
       signal: z.string().describe('에러 메시지 | 스택트레이스 | 실패 테스트 출력 | 인시던트 설명'),
@@ -297,9 +297,9 @@ export function registerTools(server: McpServer): void {
     },
   );
 
-  // ─── probe.groundReview (v0.6) ───
+  // ─── observer.groundReview (v0.6) ───
   server.tool(
-    'probe.groundReview',
+    'observer.groundReview',
     'git diff를 받아 변경 엔티티의 조직 컨텍스트(설계-관측 갭·규정·토폴로지·승인 스펙·claim drift)를 묶은 Review Grounding Pack을 반환한다. diff의 소스 의미 분석/정합 판정은 하지 않는다 — 그건 호출자(Claude)가 한다.',
     {
       base: z.string().optional().describe('git diff base (예: origin/main)'),

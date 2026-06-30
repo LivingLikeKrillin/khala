@@ -7,7 +7,7 @@
 
 Observer는 **하이브리드 구조**다.
 
-- `src/` — 코어 엔진. CI에서 `npx probe check`로 독립 실행 가능.
+- `src/` — 코어 엔진. CI에서 `observer check`로 독립 실행 가능.
 - `.claude/` — Claude Code 어댑터. hooks, agents, skills, rules로 구성. Claude Code 환경에서 코어 엔진을 실시간으로 활용.
 
 코어 엔진이 모든 가치의 실체이고, `.claude/`는 그 엔진을 Claude Code에서 편하게 쓰게 해주는 레이어다.
@@ -47,7 +47,7 @@ v0.6  그라운디드 코드 리뷰 (diff ↔ 승인 스펙·규정·그래프 �
 ## 프로젝트 구조
 
 ```
-probe/
+observer/
 ├── src/                           ← 코어 엔진 (CI 독립 실행)
 │   ├── core/                      ← 분석 오케스트레이션
 │   │   ├── scope-analyzer.ts      ← PR 범위 + 응집 그룹 분석
@@ -57,7 +57,7 @@ probe/
 │   │   ├── review-checklist.ts    ← 리뷰 체크리스트 오케스트레이션
 │   │   ├── troubleshoot.ts        ← 트러블슈팅 그라운딩 오케스트레이션
 │   │   ├── review-ground.ts       ← 그라운디드 코드 리뷰 오케스트레이션 (diff→엔티티→pack)
-│   │   └── config-loader.ts       ← probe.config.ts 로더
+│   │   └── config-loader.ts       ← observer.config.ts 로더
 │   ├── api/                       ← API 스펙 분석
 │   │   ├── spec-linter.ts         ← 10개 룰 기반 린트
 │   │   ├── spec-differ.ts         ← breaking change 감지
@@ -89,7 +89,7 @@ probe/
 │   │   ├── resources.ts           ← 3개 리소스
 │   │   └── prompts.ts             ← 2개 프롬프트
 │   ├── cli/                       ← CLI 진입점
-│   │   ├── index.ts               ← npx probe check/api:lint/nexus:*
+│   │   ├── index.ts               ← observer check/api:lint/nexus:*
 │   │   ├── parse-args.ts          ← CLI 인자 파서
 │   │   └── formatters.ts          ← 출력 포맷터 (markdown/json/brief)
 │   └── utils/                     ← 공용 유틸

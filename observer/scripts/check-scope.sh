@@ -5,7 +5,7 @@
 
 # probe CLI가 빌드되어 있으면 사용, 없으면 skip
 if command -v probe &> /dev/null || [ -f ./dist/cli/index.js ]; then
-  npx probe check --silent --format brief 2>&1
+  observer check --silent --format brief 2>&1
 else
   # CLI 미빌드 상태에서는 단순 파일 수 체크만
   CHANGED=$(git diff --name-only origin/main 2>/dev/null | wc -l)

@@ -56,7 +56,7 @@ oasdiff (API diff)      →   api-analyzer.ts          →   (scope-analyzer와 
 Spectral이나 oasdiff가 설치되지 않은 환경에서도 Probe는 동작해야 한다:
 - 외부 도구가 없으면 → 해당 기능은 skip하고 나머지만 실행
 - 경고: "Spectral이 설치되지 않아 API 린트를 건너뜁니다 (Spectral not found, skipping API lint)"
-- `probe check`는 v0.1 범위 분석 + v0.2 리뷰 체크리스트를 모두 실행
+- `observer check`는 v0.1 범위 분석 + v0.2 리뷰 체크리스트를 모두 실행
 
 ---
 
@@ -73,16 +73,16 @@ OpenAPI 스펙 파일의 품질을 검증한다. Spectral을 래핑하되, 팀 �
 
 | 규칙 ID | 심각도 | 설명 | 규정 근거 |
 |---------|--------|------|-----------|
-| `probe/field-type-required` | error | 모든 필드에 type 필수 | § 2.2 |
-| `probe/nullable-explicit` | error | nullable 필드는 `nullable: true` 명시 | § 2.3.1 |
-| `probe/no-nullable-optional` | warn | nullable + optional 동시 적용 금지 | § 2.3.1 |
-| `probe/error-response-schema` | error | 4xx/5xx → ErrorResponse 스키마 참조 | § 2.3.2 |
-| `probe/pagination-required` | warn | 배열 응답에 페이지네이션 필수 | § 2.3.3 |
-| `probe/path-naming` | error | 엔드포인트 kebab-case | § 3.1 |
-| `probe/property-naming` | error | 필드명 camelCase | § 3.1 |
-| `probe/enum-required` | warn | 값이 유한 집합이면 enum 사용 | § 2.4.1 |
-| `probe/example-required` | warn | 날짜/금액/ID에 example 필수 | § 2.4.2 |
-| `probe/deprecated-lifecycle` | error | deprecated 표시 없이 삭제 금지 | § 2.4.3 |
+| `observer/field-type-required` | error | 모든 필드에 type 필수 | § 2.2 |
+| `observer/nullable-explicit` | error | nullable 필드는 `nullable: true` 명시 | § 2.3.1 |
+| `observer/no-nullable-optional` | warn | nullable + optional 동시 적용 금지 | § 2.3.1 |
+| `observer/error-response-schema` | error | 4xx/5xx → ErrorResponse 스키마 참조 | § 2.3.2 |
+| `observer/pagination-required` | warn | 배열 응답에 페이지네이션 필수 | § 2.3.3 |
+| `observer/path-naming` | error | 엔드포인트 kebab-case | § 3.1 |
+| `observer/property-naming` | error | 필드명 camelCase | § 3.1 |
+| `observer/enum-required` | warn | 값이 유한 집합이면 enum 사용 | § 2.4.1 |
+| `observer/example-required` | warn | 날짜/금액/ID에 example 필수 | § 2.4.2 |
+| `observer/deprecated-lifecycle` | error | deprecated 표시 없이 삭제 금지 | § 2.4.3 |
 
 #### 출력
 
@@ -315,17 +315,17 @@ interface ChecklistItem {
 
 ### 3.4 CLI 확장
 
-기존 `probe check`에 v0.2 기능을 통합하고, 새 서브커맨드를 추가한다.
+기존 `observer check`에 v0.2 기능을 통합하고, 새 서브커맨드를 추가한다.
 
 #### 기존 커맨드 확장
 
 ```bash
 # v0.1: 범위 분석만
 # v0.2: 범위 분석 + API 분석 + 리뷰 체크리스트 통합
-probe check [--base <ref>] [--format <markdown|json|brief>] [--silent]
+observer check [--base <ref>] [--format <markdown|json|brief>] [--silent]
 ```
 
-`probe check`의 출력이 확장된다:
+`observer check`의 출력이 확장된다:
 
 ```
 ✅ Probe — 정상 범위
@@ -344,13 +344,13 @@ PR 크기: 정상 범위
 
 ```bash
 # API 스펙 린트
-probe api:lint [spec-path] [--format <markdown|json|brief>]
+observer api:lint [spec-path] [--format <markdown|json|brief>]
 
 # API 스펙 diff
-probe api:diff [--base <ref>] [--spec <path>] [--format <markdown|json|brief>]
+observer api:diff [--base <ref>] [--spec <path>] [--format <markdown|json|brief>]
 
 # 리뷰 체크리스트만 생성
-probe review [--base <ref>] [--format <markdown|json|brief>]
+observer review [--base <ref>] [--format <markdown|json|brief>]
 ```
 
 ---
@@ -359,13 +359,13 @@ probe review [--base <ref>] [--format <markdown|json|brief>]
 
 #### code-reviewer 에이전트
 
-`probe check --json` 결과를 기반으로 구조화된 코드 리뷰를 수행한다.
+`observer check --json` 결과를 기반으로 구조화된 코드 리뷰를 수행한다.
 
 ```
 입력:
-  - probe check --json 결과 (범위 분석 + 리뷰 체크리스트)
-  - probe api:lint --json 결과 (API 린트, 해당 시)
-  - probe api:diff --json 결과 (API diff, 해당 시)
+  - observer check --json 결과 (범위 분석 + 리뷰 체크리스트)
+  - observer api:lint --json 결과 (API 린트, 해당 시)
+  - observer api:diff --json 결과 (API diff, 해당 시)
 
 리뷰 순서:
   1. PR 타입과 범위를 먼저 요약한다
@@ -387,7 +387,7 @@ probe review [--base <ref>] [--format <markdown|json|brief>]
 입력:
   - 변경 파일 목록 (git diff)
   - 기존 테스트 파일 패턴 (프로젝트별 학습)
-  - probe check --json 결과 (PR 타입)
+  - observer check --json 결과 (PR 타입)
 
 분석 순서:
   1. 변경된 소스 파일에 대응하는 테스트 파일이 있는지 확인
@@ -412,10 +412,10 @@ probe review [--base <ref>] [--format <markdown|json|brief>]
 | **API 린터** | 내장 경량 린트 + Spectral 래퍼 | 코어 로직 |
 | **API 분석기** | 내장 경량 diff + oasdiff 래퍼 | 코어 로직 |
 | **리뷰 체크리스트** | PR 타입 추론 → DoD 체크리스트 생성 | 코어 로직 |
-| **CLI: `probe api:lint`** | API 스펙 린트 실행 | CLI |
-| **CLI: `probe api:diff`** | API 스펙 diff 실행 | CLI |
-| **CLI: `probe review`** | 리뷰 체크리스트 생성 | CLI |
-| **CLI: `probe check` 확장** | 범위 분석 + 리뷰 체크리스트 통합 출력 | CLI |
+| **CLI: `observer api:lint`** | API 스펙 린트 실행 | CLI |
+| **CLI: `observer api:diff`** | API 스펙 diff 실행 | CLI |
+| **CLI: `observer review`** | 리뷰 체크리스트 생성 | CLI |
+| **CLI: `observer check` 확장** | 범위 분석 + 리뷰 체크리스트 통합 출력 | CLI |
 | **code-reviewer 에이전트** | probe 결과 기반 구조화 리뷰 | 에이전트 |
 | **test-writer 에이전트** | 누락 테스트 식별 + 생성 | 에이전트 |
 
@@ -483,7 +483,7 @@ probe/
 
 ---
 
-## 6. 설정 확장 (`probe.config.ts`)
+## 6. 설정 확장 (`observer.config.ts`)
 
 ```typescript
 export default {
@@ -508,7 +508,7 @@ export default {
 
     /** 린트 심각도 오버라이드 */
     ruleSeverity: {
-      'probe/example-required': 'off',
+      'observer/example-required': 'off',
     },
   },
 
@@ -533,7 +533,7 @@ export default {
 ### 시나리오 1: Spring Boot 개발자가 User CRUD를 만들었을 때
 
 ```bash
-$ probe check
+$ observer check
 
 ✅ Probe — 정상 범위
 
@@ -551,7 +551,7 @@ PR 크기: 정상 범위
 ### 시나리오 2: API 스펙에 breaking 변경이 포함된 PR
 
 ```bash
-$ probe api:diff
+$ observer api:diff
 
 🔴 API 변경 감지 — breaking 변경 포함
 
@@ -579,30 +579,30 @@ $ probe api:diff
 ### 시나리오 3: API 스펙 린트 실행
 
 ```bash
-$ probe api:lint
+$ observer api:lint
 
 🔶 API 린트 — 3개 에러, 2개 경고
 
-  ERROR probe/error-response-schema
+  ERROR observer/error-response-schema
     paths./users.post.responses.400
     → 4xx 응답이 ErrorResponse를 참조하지 않습니다
     → 수정: @ApiResponse에 ErrorResponse.class를 content로 지정하세요
 
-  ERROR probe/nullable-explicit
+  ERROR observer/nullable-explicit
     components.schemas.UserResponse.properties.nickname
     → nullable 필드에 nullable: true가 없습니다
     → 수정: @Schema(nullable = true)를 추가하세요
 
-  ERROR probe/path-naming
+  ERROR observer/path-naming
     paths./getUserList
     → 엔드포인트 경로가 kebab-case가 아닙니다
     → 수정: /user-list 또는 /users로 변경하세요
 
-  WARN probe/example-required
+  WARN observer/example-required
     components.schemas.UserResponse.properties.createdAt
     → 날짜 필드에 example이 없습니다
 
-  WARN probe/pagination-required
+  WARN observer/pagination-required
     paths./users.get.responses.200
     → 배열 응답에 페이지네이션이 없습니다
 ```
@@ -610,7 +610,7 @@ $ probe api:lint
 ### 시나리오 4: 외부 도구 없이 실행
 
 ```bash
-$ probe api:lint
+$ observer api:lint
 
 ℹ️ Spectral이 설치되지 않아 내장 린트 엔진을 사용합니다
    (Spectral not found, using built-in linter)
@@ -632,7 +632,7 @@ $ probe api:lint
 | 5 | Spectral 래퍼 (외부 도구 연동) | ~150줄 |
 | 6 | oasdiff 래퍼 (외부 도구 연동) | ~150줄 |
 | 7 | CLI 확장 (api:lint, api:diff, review) | ~200줄 |
-| 8 | `probe check` 통합 출력 | ~100줄 |
+| 8 | `observer check` 통합 출력 | ~100줄 |
 | 9 | code-reviewer 에이전트 프롬프트 | ~100줄 |
 | 10 | test-writer 에이전트 프롬프트 | ~100줄 |
 | 11 | 테스트 | ~500줄 |
@@ -645,7 +645,7 @@ $ probe api:lint
 
 ```typescript
 // config-loader.ts에 추가
-export interface ProbeConfig {
+export interface ObserverConfig {
   // v0.1 (기존)
   platform?: 'spring-boot' | 'nextjs' | 'react-spa' | 'custom';
   customProfile?: PlatformProfile;

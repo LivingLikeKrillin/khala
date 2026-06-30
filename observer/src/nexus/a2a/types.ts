@@ -1,9 +1,9 @@
 /**
- * A2A 와이어 타입 (Probe가 클라이언트로서 소비하는 최소 부분집합)
+ * A2A 와이어 타입 (Observer가 클라이언트로서 소비하는 최소 부분집합)
  *
  * Phase 0 Nexus A2A 서버(specs/SPEC-nexus-a2a-server-phase0-spike.md)가 JSON-RPC 2.0로
- * 내보내는 Agent Card / Task / Artifact 중 Probe가 실제로 읽는 필드만 정의한다.
- * 전체 A2A 스키마를 끌어오지 않음으로써 Probe의 의존성/에어갭 기조를 유지한다(SPEC §5.3).
+ * 내보내는 Agent Card / Task / Artifact 중 Observer가 실제로 읽는 필드만 정의한다.
+ * 전체 A2A 스키마를 끌어오지 않음으로써 Observer의 의존성/에어갭 기조를 유지한다(SPEC §5.3).
  */
 
 /** A2A Part — text 또는 data(application/json) */
@@ -45,7 +45,7 @@ export interface A2AGroundingData {
   policy?: unknown;
 }
 
-/** Agent Card — Probe가 발견에 사용하는 최소 필드 */
+/** Agent Card — Observer가 발견에 사용하는 최소 필드 */
 export interface A2AAgentCard {
   name: string;
   url: string;

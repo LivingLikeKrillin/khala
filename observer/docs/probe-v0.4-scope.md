@@ -348,7 +348,7 @@ interface EnrichedReviewChecklist extends ReviewChecklist {
 
 기존 5개 MCP 도구 중 2개를 확장한다:
 
-#### `probe.reviewChecklist` 확장
+#### `observer.reviewChecklist` 확장
 
 ```typescript
 // 기존 입력에 추가
@@ -372,7 +372,7 @@ interface EnrichedReviewChecklist extends ReviewChecklist {
 }
 ```
 
-#### `probe.analyzeScope` 확장
+#### `observer.analyzeScope` 확장
 
 ```typescript
 // 반환에 추가
@@ -387,13 +387,13 @@ interface EnrichedReviewChecklist extends ReviewChecklist {
 
 ### 6.3 MCP 도구 신규 (1개)
 
-#### `probe.queryNexus`
+#### `observer.queryNexus`
 
 Nexus에 직접 자연어 질의를 보내는 범용 도구.
 
 ```typescript
 {
-  name: "probe.queryNexus",
+  name: "observer.queryNexus",
   description: "Nexus 지식베이스에 자연어로 질의한다. 규정, 아키텍처, 서비스 관계를 검색한다.",
   inputSchema: {
     type: "object",
@@ -445,20 +445,20 @@ Nexus에 직접 자연어 질의를 보내는 범용 도구.
 ### 6.5 CLI 확장
 
 ```
-probe check          기존 + Nexus 컨텍스트 (가용 시)
-probe nexus:search   Nexus 직접 검색
-probe nexus:impact   영향 분석
-probe nexus:status   Nexus 연결 상태 확인
+observer check          기존 + Nexus 컨텍스트 (가용 시)
+observer nexus:search   Nexus 직접 검색
+observer nexus:impact   영향 분석
+observer nexus:status   Nexus 연결 상태 확인
 ```
 
 ---
 
 ## 7. 설정
 
-### 7.1 `probe.config.ts` 확장
+### 7.1 `observer.config.ts` 확장
 
 ```typescript
-interface ProbeConfig {
+interface ObserverConfig {
   // 기존 설정...
 
   /** Nexus 연동 설정 */
@@ -492,7 +492,7 @@ NEXUS_TENANT=default
 NEXUS_DISABLED=false
 ```
 
-우선순위: `probe.config.ts` > 환경 변수 > 기본값
+우선순위: `observer.config.ts` > 환경 변수 > 기본값
 
 ---
 
@@ -543,9 +543,9 @@ NEXUS_DISABLED=false
 
 ## 10. 성공 기준
 
-1. Nexus 서버가 실행 중일 때, `probe check`에 관련 규정과 영향 서비스가 표시된다
+1. Nexus 서버가 실행 중일 때, `observer check`에 관련 규정과 영향 서비스가 표시된다
 2. Nexus 서버가 없을 때, 기존 v0.3 기능이 그대로 동작한다 (degradation)
-3. MCP 도구 `probe.reviewChecklist`가 Nexus 컨텍스트를 포함한다
-4. MCP 도구 `probe.queryNexus`로 Nexus에 직접 질의할 수 있다
+3. MCP 도구 `observer.reviewChecklist`가 Nexus 컨텍스트를 포함한다
+4. MCP 도구 `observer.queryNexus`로 Nexus에 직접 질의할 수 있다
 5. 타임아웃 3초 이내에 Nexus 조회가 완료된다
 6. 모든 기존 테스트 통과 + Nexus 관련 신규 테스트 통과

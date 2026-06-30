@@ -17,10 +17,10 @@ function collectToolNames(): string[] {
 }
 
 describe('MCP 도구 등록', () => {
-  it('probe.groundReview를 포함해 8개 도구가 등록된다', () => {
+  it('observer.groundReview를 포함해 8개 도구가 등록된다', () => {
     const names = collectToolNames();
-    expect(names).toContain('probe.groundReview');
-    expect(names).toContain('probe.groundTroubleshooting');
+    expect(names).toContain('observer.groundReview');
+    expect(names).toContain('observer.groundTroubleshooting');
     expect(names.length).toBe(8);
   });
 });

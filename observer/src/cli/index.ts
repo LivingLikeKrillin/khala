@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Probe CLI
+ * Observer CLI
  *
  * Usage:
- *   probe check    [--base <ref>] [--format <markdown|json|brief>] [--silent]
- *   probe api:lint [spec-path] [--format <markdown|json|brief>]
- *   probe api:diff [--base <ref>] [--spec <path>] [--format <markdown|json|brief>]
- *   probe review   [--base <ref>] [--format <markdown|json|brief>]
+ *   observer check    [--base <ref>] [--format <markdown|json|brief>] [--silent]
+ *   observer api:lint [spec-path] [--format <markdown|json|brief>]
+ *   observer api:diff [--base <ref>] [--spec <path>] [--format <markdown|json|brief>]
+ *   observer review   [--base <ref>] [--format <markdown|json|brief>]
  *   probe version
  *
  * 규정 문서: docs/probe-v0.2-scope.md § 3.4
@@ -55,7 +55,7 @@ async function runCheck(args: string[]): Promise<void> {
     configPlatform === 'custom' && config.customProfile ? config.customProfile : getProfileForPlatform(platform);
 
   if (!baseProfile) {
-    logger.warn(`플랫폼을 감지할 수 없습니다 (Platform not detected). probe.config.ts에서 platform을 지정하세요.`);
+    logger.warn(`플랫폼을 감지할 수 없습니다 (Platform not detected). observer.config.ts에서 platform을 지정하세요.`);
     process.exitCode = 1;
     return;
   }
@@ -285,7 +285,7 @@ async function runReview(args: string[]): Promise<void> {
 async function runNexusSearch(args: string[]): Promise<void> {
   const query = args.filter((a) => !a.startsWith('--')).join(' ');
   if (!query) {
-    logger.error('검색 쿼리를 입력하세요 (Usage: probe nexus:search <query>)');
+    logger.error('검색 쿼리를 입력하세요 (Usage: observer nexus:search <query>)');
     process.exitCode = 1;
     return;
   }
@@ -426,7 +426,7 @@ async function runTroubleshootCmd(args: string[]): Promise<void> {
   }
   if (!signal) {
     logger.error(
-      '에러 신호를 입력하세요 (Usage: probe troubleshoot "<에러/스택트레이스>" [--kind] [--suspect] [--diff-base])',
+      '에러 신호를 입력하세요 (Usage: observer troubleshoot "<에러/스택트레이스>" [--kind] [--suspect] [--diff-base])',
     );
     process.exitCode = 1;
     return;
@@ -578,18 +578,18 @@ switch (command) {
     logger.info('probe v0.6.0');
     break;
   default:
-    logger.info(`\u2699\uFE0F Probe \u2014 프로덕트 개발 워크플로 자동 검증 도구
+    logger.info(`\u2699\uFE0F Observer \u2014 프로덕트 개발 워크플로 자동 검증 도구
 
 Usage:
-  probe check          현재 브랜치의 변경 범위 + 리뷰 체크리스트
-  probe api:lint        API 스펙 린트
-  probe api:diff        API 스펙 diff (breaking 변경 감지)
-  probe review          리뷰 체크리스트 생성
-  probe nexus:search    Nexus 지식베이스 검색
-  probe nexus:impact    서비스 영향 분석
-  probe nexus:status    Nexus 연결 상태 확인
-  probe troubleshoot    에러/스택트레이스 → 트러블슈팅 그라운딩
-  probe review:ground   git diff → 리뷰 그라운딩 (설계-관측 갭·규정·토폴로지·승인 스펙)
+  observer check          현재 브랜치의 변경 범위 + 리뷰 체크리스트
+  observer api:lint        API 스펙 린트
+  observer api:diff        API 스펙 diff (breaking 변경 감지)
+  observer review          리뷰 체크리스트 생성
+  observer nexus:search    Nexus 지식베이스 검색
+  observer nexus:impact    서비스 영향 분석
+  observer nexus:status    Nexus 연결 상태 확인
+  observer troubleshoot    에러/스택트레이스 → 트러블슈팅 그라운딩
+  observer review:ground   git diff → 리뷰 그라운딩 (설계-관측 갭·규정·토폴로지·승인 스펙)
   probe version         버전 출력
 
 Options:

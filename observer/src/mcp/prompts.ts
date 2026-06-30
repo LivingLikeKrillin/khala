@@ -109,10 +109,10 @@ export function registerPrompts(server: McpServer): void {
             role: 'user' as const,
             content: {
               type: 'text' as const,
-              text: `다음은 Probe가 분석한 현재 PR의 범위와 리뷰 체크리스트입니다.
+              text: `다음은 Observer가 분석한 현재 PR의 범위와 리뷰 체크리스트입니다.
 이 분석 결과를 기반으로 구조화된 코드 리뷰를 수행해주세요.
 
-## Probe 분석 결과
+## Observer 분석 결과
 \`\`\`json
 ${analysisJson}
 \`\`\`${nexusSection}
@@ -172,10 +172,10 @@ ${analysisJson}
             role: 'user' as const,
             content: {
               type: 'text' as const,
-              text: `다음은 Probe가 분석한 현재 변경의 범위입니다.
+              text: `다음은 Observer가 분석한 현재 변경의 범위입니다.
 이 분석 결과를 기반으로 PR 분할 방법을 안내해주세요.
 
-## Probe 범위 분석
+## Observer 범위 분석
 \`\`\`json
 ${analysisJson}
 \`\`\`

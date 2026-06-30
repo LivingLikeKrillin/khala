@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Probe MCP 서버
+ * Observer MCP 서버
  *
- * Probe의 분석 엔진을 MCP(Model Context Protocol) 서버로 노출한다.
+ * Observer의 분석 엔진을 MCP(Model Context Protocol) 서버로 노출한다.
  * Claude Code에서 자연어 대화 중에 도구로 호출할 수 있다.
  *
  * 실행: node dist/mcp/server.js
- * 등록: .claude/settings.json → mcpServers.probe
+ * 등록: .claude/settings.json → mcpServers.observer
  *
  * 규정 문서: docs/probe-v0.3-scope.md § 2
  */
@@ -19,7 +19,7 @@ import { registerResources } from './resources.js';
 import { registerPrompts } from './prompts.js';
 
 const server = new McpServer({
-  name: 'probe',
+  name: 'observer',
   version: '0.4.0',
 });
 

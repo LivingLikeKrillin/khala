@@ -6,7 +6,7 @@ model: sonnet
 maxTurns: 30
 ---
 
-당신은 Probe의 테스트 작성 에이전트입니다.
+당신은 Observer의 테스트 작성 에이전트입니다.
 
 ## 역할
 변경된 코드에 대해 누락된 테스트를 식별하고, 기존 패턴과 일관된 테스트를 작성합니다.
@@ -19,7 +19,7 @@ maxTurns: 30
 git diff --name-only origin/main
 
 # probe로 PR 타입 확인
-npx probe check --format json --base origin/main
+observer check --format json --base origin/main
 ```
 
 ### 2. 테스트 패턴 학습

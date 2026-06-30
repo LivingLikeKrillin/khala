@@ -1,5 +1,5 @@
 /**
- * Probe 로거 유틸
+ * Observer 로거 유틸
  *
  * console.log 직접 사용 금지 규칙에 따른 래퍼.
  */

@@ -1,7 +1,7 @@
 /**
  * Nexus 연동 타입 정의
  *
- * Probe가 Nexus API를 호출할 때 사용하는 요청/응답 타입.
+ * Observer가 Nexus API를 호출할 때 사용하는 요청/응답 타입.
  * Nexus API 계약(API_CONTRACT.md)에 기반한다.
  *
  * 규정 문서: docs/probe-v0.4-scope.md § 3
@@ -187,10 +187,10 @@ export interface NexusClientConfig {
   /**
    * searchAnswer 전송 방식 (기본: "a2a", SPEC §17). 기본 A2A는 Nexus의 retrieve_grounded
    * skill을 사용한다. HTTP /search/answer로 opt-out하려면 "http" 지정. 환경변수
-   * PROBE_NEXUS_TRANSPORT로도 지정(http로 opt-out).
+   * OBSERVER_NEXUS_TRANSPORT로도 지정(http로 opt-out).
    */
   transport?: 'http' | 'a2a';
-  /** A2A gated skill용 bearer 토큰 (없으면 default-deny → null). 환경변수 PROBE_NEXUS_TOKEN. */
+  /** A2A gated skill용 bearer 토큰 (없으면 default-deny → null). 환경변수 OBSERVER_NEXUS_TOKEN. */
   nexusToken?: string;
 }
 

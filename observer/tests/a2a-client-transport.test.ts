@@ -7,7 +7,7 @@ import type { A2ATask } from '../src/nexus/a2a/types.js';
  * searchAnswer 전송 전환 + 파리티 테스트 (Phase 1 → SPEC §17)
  *
  * A2A가 기본 전송이다(SPEC §17). 설정/환경변수 없이 → A2A retrieve_grounded.
- * HTTP /search/answer로 opt-out: config.transport='http' 또는 PROBE_NEXUS_TRANSPORT=http.
+ * HTTP /search/answer로 opt-out: config.transport='http' 또는 OBSERVER_NEXUS_TRANSPORT=http.
  */
 
 const BASE = 'http://test:8000';
@@ -98,8 +98,8 @@ describe('NexusClient.searchAnswer transport switch', () => {
   });
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    delete process.env.PROBE_NEXUS_TRANSPORT;
-    delete process.env.PROBE_NEXUS_TOKEN;
+    delete process.env.OBSERVER_NEXUS_TRANSPORT;
+    delete process.env.OBSERVER_NEXUS_TOKEN;
   });
 
   it('기본(설정 없음)은 A2A retrieve_grounded를 사용한다', async () => {
@@ -131,8 +131,8 @@ describe('NexusClient.searchAnswer transport switch', () => {
     expect(url).not.toContain(CARD_PATH);
   });
 
-  it('PROBE_NEXUS_TRANSPORT=http 환경변수로 HTTP로 opt-out한다', async () => {
-    process.env.PROBE_NEXUS_TRANSPORT = 'http';
+  it('OBSERVER_NEXUS_TRANSPORT=http 환경변수로 HTTP로 opt-out한다', async () => {
+    process.env.OBSERVER_NEXUS_TRANSPORT = 'http';
     const fetchMock = routedFetch({ jsonrpc: '2.0', id: '1', result: a2aTaskForSameAnswer() });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 

@@ -2,8 +2,8 @@
  * A2A Nexus 클라이언트 전송 (Phase 1, SPEC §5.3)
  *
  * 얇은 JSON-RPC 2.0 클라이언트: Agent Card 발견 → message/send(retrieve_grounded) →
- * task artifact를 NexusAnswerResult로 매핑. `@a2a-js/sdk`를 끌어오지 않아 Probe의
- * 의존성 2개/에어갭 기조를 유지한다. 모든 실패는 null로 강등(Nexus 선택성, Probe 원칙 #5).
+ * task artifact를 NexusAnswerResult로 매핑. `@a2a-js/sdk`를 끌어오지 않아 Observer의
+ * 의존성 2개/에어갭 기조를 유지한다. 모든 실패는 null로 강등(Nexus 선택성, Observer 원칙 #5).
  */
 
 import { logger } from '../../utils/logger.js';

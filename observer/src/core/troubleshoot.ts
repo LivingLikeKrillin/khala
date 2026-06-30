@@ -33,7 +33,7 @@ export function validateInput(input: TroubleshootInput): ValidatedInput {
   if (!signal) {
     return {
       ok: false,
-      reason: '입력 신호가 비어 있습니다 (Empty signal). 예: probe troubleshoot "<에러/스택트레이스>"',
+      reason: '입력 신호가 비어 있습니다 (Empty signal). 예: observer troubleshoot "<에러/스택트레이스>"',
       caveats,
     };
   }

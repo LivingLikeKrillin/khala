@@ -254,7 +254,7 @@ package.json의 dependencies 분석  → 추가 판단
 
 수동 지정도 가능:
 ```typescript
-// probe.config.ts
+// observer.config.ts
 export default {
   platform: 'spring-boot',  // 또는 'nextjs', 'react-spa', 'custom'
   // ...
@@ -333,8 +333,8 @@ export default {
 | **PR 범위 분석** | 변경 파일 → 역할 부여 → 응집 분석 → 경고/제안 | 코어 로직 |
 | **Claude Code hook: 실시간 모니터** | 작업 중 변경 파일이 쌓일 때 범위 경고 | hook |
 | **Claude Code hook: pr-create** | PR 생성 시 최종 범위 검증 + DoD 체크 | hook |
-| **CLI: `probe check`** | 현재 브랜치의 변경을 분석하여 리포트 출력 | CLI |
-| **설정: `probe.config.ts`** | 플랫폼, 경로, 임계치 커스터마이징 | 설정 파일 |
+| **CLI: `observer check`** | 현재 브랜치의 변경을 분석하여 리포트 출력 | CLI |
+| **설정: `observer.config.ts`** | 플랫폼, 경로, 임계치 커스터마이징 | 설정 파일 |
 
 ### 4.2 미포함 (v0.2 이후)
 
@@ -358,10 +358,10 @@ export default {
 
 ---
 
-## 5. probe.config.ts 최소 스펙 (v0.1)
+## 5. observer.config.ts 최소 스펙 (v0.1)
 
 ```typescript
-export interface ProbeConfig {
+export interface ObserverConfig {
   /** 플랫폼 프로파일 (자동 감지 또는 수동 지정) */
   platform?: 'spring-boot' | 'nextjs' | 'react-spa' | 'custom';
 
@@ -425,7 +425,7 @@ export interface ProbeConfig {
 
 (Probe: 아무 경고 없음. 정상 범위.)
 
-개발자: probe check
+개발자: observer check
 
 ✅ 현재 변경: User 도메인 CRUD (7개 파일, +280줄)
    응집도: 높음 (단일 도메인, 단일 관심사)
@@ -443,10 +443,10 @@ export interface ProbeConfig {
 | 3 | 파일 → 역할 매핑 엔진 | ~150줄 |
 | 4 | 응집 그룹 분석 엔진 | ~300줄 |
 | 5 | 경고 레벨 판단 + 분할 제안 생성 | ~200줄 |
-| 6 | CLI: `probe check` | ~100줄 |
+| 6 | CLI: `observer check` | ~100줄 |
 | 7 | Claude Code hook: pr-create | ~150줄 (프롬프트) |
 | 8 | Claude Code hook: 실시간 모니터 | ~100줄 (프롬프트) |
-| 9 | `probe.config.ts` 로더 | ~100줄 |
+| 9 | `observer.config.ts` 로더 | ~100줄 |
 | 10 | 테스트 (core 로직) | ~400줄 |
 
 **총 예상**: ~1,900줄 (테스트 포함)

@@ -65,43 +65,43 @@ Nexus 연동: 규정 검색 + 영향 분석 + 설계-관측 갭   ← v0.4
 ### 설치
 
 ```bash
-pnpm add -D probe
+pnpm add -D @khala/observer
 ```
 
 ### 핵심 명령어
 
 ```bash
 # PR 범위 분석 + 리뷰 체크리스트
-npx probe check
+observer check
 
 # API 스펙 린트 (10개 내장 룰)
-npx probe api:lint api/openapi.json
+observer api:lint api/openapi.json
 
 # API 스펙 diff (breaking change 감지)
-npx probe api:diff --base origin/main
+observer api:diff --base origin/main
 
 # 리뷰 체크리스트 생성
-npx probe review
+observer review
 
 # Nexus 지식베이스 검색
-npx probe nexus:search "payment-service 규정"
+observer nexus:search "payment-service 규정"
 
 # 서비스 영향 분석
-npx probe nexus:impact
+observer nexus:impact
 
 # Nexus 연결 상태
-npx probe nexus:status
+observer nexus:status
 
-npx probe troubleshoot "<에러/스택트레이스>"   # 트러블슈팅 그라운딩
+observer troubleshoot "<에러/스택트레이스>"   # 트러블슈팅 그라운딩
 ```
 
 ### 출력 포맷
 
 ```bash
-npx probe check                  # markdown (기본)
-npx probe check --format json    # JSON (에이전트/파이프라인용)
-npx probe check --format brief   # 한 줄 요약 (CI용)
-npx probe check --silent         # 정상이면 출력 없음
+observer check                  # markdown (기본)
+observer check --format json    # JSON (에이전트/파이프라인용)
+observer check --format brief   # 한 줄 요약 (CI용)
+observer check --silent         # 정상이면 출력 없음
 ```
 
 ---
@@ -111,7 +111,7 @@ npx probe check --silent         # 정상이면 출력 없음
 ### "PR 올리기 전에 범위 확인하고 싶다"
 
 ```bash
-npx probe check
+observer check
 ```
 
 변경 파일을 플랫폼에 맞게 분석해서, 관심사가 섞여 있으면 분할을 제안한다.
@@ -120,14 +120,14 @@ npx probe check
 ### "API 스펙 바꿨는데 빠뜨린 게 없나 확인하고 싶다"
 
 ```bash
-npx probe api:lint api/openapi.json     # 스펙 자체 검사 (nullable, 네이밍 등)
-npx probe api:diff --base origin/main   # main 대비 breaking change 감지
+observer api:lint api/openapi.json     # 스펙 자체 검사 (nullable, 네이밍 등)
+observer api:diff --base origin/main   # main 대비 breaking change 감지
 ```
 
 ### "PR 리뷰 올릴 때 체크리스트를 자동으로 만들고 싶다"
 
 ```bash
-npx probe review
+observer review
 ```
 
 변경 파일의 역할(CRUD, 마이그레이션, UI 등)을 보고 PR 타입을 추론한 뒤, 해당 타입에 맞는 리뷰 체크리스트를 생성한다.
@@ -139,8 +139,8 @@ npx probe review
 ### "Nexus 지식베이스에서 관련 규정을 찾고 싶다"
 
 ```bash
-npx probe nexus:search "결제 서비스 에러 처리 규정"
-npx probe nexus:impact   # 현재 변경이 영향을 주는 서비스 분석
+observer nexus:search "결제 서비스 에러 처리 규정"
+observer nexus:impact   # 현재 변경이 영향을 주는 서비스 분석
 ```
 
 Nexus가 연결되어 있으면 리뷰 결과에 관련 규정과 영향 범위가 자동으로 붙는다. Nexus 없이도 나머지 기능은 전부 동작한다.
@@ -176,16 +176,16 @@ Nexus가 연결되어 있으면 리뷰 결과에 관련 규정과 영향 범위�
 
 | 룰 | 검사 내용 |
 |----|----------|
-| `probe/field-type` | 필드 타입 정합성 |
-| `probe/nullable` | nullable 명시 여부 |
-| `probe/error-response` | 에러 응답 스키마 준수 |
-| `probe/path-naming` | 경로 kebab-case 규칙 |
-| `probe/field-naming` | 필드 camelCase 규칙 |
-| `probe/pagination` | 목록 API 페이지네이션 |
-| `probe/example-required` | example 값 존재 |
-| `probe/enum-example` | enum 정의 + example |
-| `probe/deprecated` | deprecated 라이프사이클 |
-| `probe/request-body-type` | request body 타입 |
+| `observer/field-type` | 필드 타입 정합성 |
+| `observer/nullable` | nullable 명시 여부 |
+| `observer/error-response` | 에러 응답 스키마 준수 |
+| `observer/path-naming` | 경로 kebab-case 규칙 |
+| `observer/field-naming` | 필드 camelCase 규칙 |
+| `observer/pagination` | 목록 API 페이지네이션 |
+| `observer/example-required` | example 값 존재 |
+| `observer/enum-example` | enum 정의 + example |
+| `observer/deprecated` | deprecated 라이프사이클 |
+| `observer/request-body-type` | request body 타입 |
 
 **PR 타입별 체크리스트 자동 생성:**
 
@@ -207,7 +207,7 @@ Claude Code에서 자연어 대화 중 Observer 분석을 **자동으로** 호�
 // .mcp.json
 {
   "mcpServers": {
-    "probe": {
+    "observer": {
       "command": "node",
       "args": ["dist/mcp/server.js"],
       "cwd": "."
@@ -220,14 +220,14 @@ Claude Code에서 자연어 대화 중 Observer 분석을 **자동으로** 호�
 
 | 도구 | 설명 |
 |------|------|
-| `probe.analyzeScope` | PR 범위 분석 |
-| `probe.lintApiSpec` | API 스펙 린트 |
-| `probe.diffApiSpecs` | API 스펙 diff |
-| `probe.reviewChecklist` | 리뷰 체크리스트 생성 |
-| `probe.detectPlatform` | 플랫폼 감지 |
-| `probe.queryNexus` | Nexus 지식베이스 질의 |
-| `probe.groundTroubleshooting` | 에러→트러블슈팅 그라운딩 (토폴로지·관측·갭·규정) |
-| `probe.groundReview` | diff→리뷰 그라운딩 (설계-관측 갭·규정·토폴로지·승인 스펙) |
+| `observer.analyzeScope` | PR 범위 분석 |
+| `observer.lintApiSpec` | API 스펙 린트 |
+| `observer.diffApiSpecs` | API 스펙 diff |
+| `observer.reviewChecklist` | 리뷰 체크리스트 생성 |
+| `observer.detectPlatform` | 플랫폼 감지 |
+| `observer.queryNexus` | Nexus 지식베이스 질의 |
+| `observer.groundTroubleshooting` | 에러→트러블슈팅 그라운딩 (토폴로지·관측·갭·규정) |
+| `observer.groundReview` | diff→리뷰 그라운딩 (설계-관측 갭·규정·토폴로지·승인 스펙) |
 
 **3개 리소스:** 프로파일 정보, 설정, 가이드라인
 **2개 프롬프트:** 구조화된 PR 리뷰, PR 분할 가이드
@@ -253,7 +253,7 @@ Observer:
 ## 설정
 
 ```typescript
-// probe.config.ts
+// observer.config.ts
 export default {
   // 플랫폼 (자동 감지 오버라이드)
   platform: 'spring-boot',
@@ -270,7 +270,7 @@ export default {
   // API 설정
   api: {
     specPath: 'api/openapi.json',
-    disableRules: ['probe/example-required'],
+    disableRules: ['observer/example-required'],
   },
 
   // 리뷰 설정
@@ -342,7 +342,7 @@ jobs:
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - run: pnpm install
-      - run: npx probe check --base origin/main --format brief --silent
+      - run: observer check --base origin/main --format brief --silent
 ```
 
 ### Claude Code
@@ -370,7 +370,7 @@ MCP 서버로 등록하면 Claude Code가 맥락에 따라 Observer 도구를 �
 ## 아키텍처
 
 ```
-probe/
+observer/
 ├── src/                           코어 엔진 (CI 독립 실행)
 │   ├── core/                      범위 분석, 관심사 드리프트, API 린트, 체크리스트
 │   ├── api/                       OpenAPI 파서, 린트 룰, diff 엔진
@@ -378,7 +378,7 @@ probe/
 │   ├── review/                    PR 타입 추론, 체크리스트 생성
 │   ├── nexus/                     Nexus 클라이언트, 컨텍스트 보강, 영향 분석
 │   ├── mcp/                       MCP 서버 (도구, 리소스, 프롬프트)
-│   ├── cli/                       npx probe check
+│   ├── cli/                       observer check
 │   └── utils/                     Logger, git, glob
 ├── .claude/                       Claude Code 어댑터
 │   ├── agents/                    code-reviewer, test-writer

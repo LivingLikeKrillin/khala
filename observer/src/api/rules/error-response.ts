@@ -1,5 +1,5 @@
 /**
- * probe/error-response-schema 룰
+ * observer/error-response-schema 룰
  *
  * 4xx/5xx 응답이 ErrorResponse 스키마를 참조하는지 검사한다.
  *
@@ -11,7 +11,7 @@ import type { LintRule, OpenApiSpec, ApiLintViolation } from '../types.js';
 const METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 
 export const errorResponseSchemaRule: LintRule = {
-  id: 'probe/error-response-schema',
+  id: 'observer/error-response-schema',
   defaultSeverity: 'error',
   guidelineRef: '§ 2.3.2',
   description: '4xx/5xx → ErrorResponse 스키마 참조 (error responses must reference ErrorResponse schema)',
@@ -35,7 +35,7 @@ export const errorResponseSchemaRule: LintRule = {
           // content가 없으면 위반
           if (!response.content) {
             violations.push({
-              ruleId: 'probe/error-response-schema',
+              ruleId: 'observer/error-response-schema',
               severity: this.defaultSeverity,
               path,
               message: `${statusCode} 응답에 content가 없습니다 (${statusCode} response missing content)`,
@@ -52,7 +52,7 @@ export const errorResponseSchemaRule: LintRule = {
 
           if (!hasErrorRef) {
             violations.push({
-              ruleId: 'probe/error-response-schema',
+              ruleId: 'observer/error-response-schema',
               severity: this.defaultSeverity,
               path,
               message: `${statusCode} 응답이 ErrorResponse를 참조하지 않습니다 (${statusCode} response does not reference ErrorResponse)`,

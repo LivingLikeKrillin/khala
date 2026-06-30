@@ -16,13 +16,13 @@
 ### 현재 구조의 한계
 
 v0.1~v0.2의 Probe는 두 가지 방식으로 동작한다:
-1. **CLI** — `npx probe check`, `npx probe api:lint` 등
-2. **Claude Code skills/hooks** — `.claude/skills/`에서 `npx probe` 를 쉘로 호출
+1. **CLI** — `observer check`, `observer api:lint` 등
+2. **Claude Code skills/hooks** — `.claude/skills/`에서 `observer` 를 쉘로 호출
 
 두 방식 모두 **프로세스를 fork하고 텍스트 출력을 파싱**한다. 이 구조의 문제:
 
 ```
-현재: Claude Code → shell → npx probe → stdout 텍스트 → Claude Code가 텍스트 파싱
+현재: Claude Code → shell → observer → stdout 텍스트 → Claude Code가 텍스트 파싱
       (비효율: 프로세스 fork, 텍스트 직렬화/역직렬화, 에러 핸들링 복잡)
 
 목표: Claude Code → MCP tool call → Probe 분석 엔진 → 구조화된 JSON 응답
@@ -45,14 +45,14 @@ v0.1~v0.2의 Probe는 두 가지 방식으로 동작한다:
 **Before (v0.2):**
 ```
 사용자: "PR 만들어줘"
-Claude: /check-scope 실행 → 쉘에서 npx probe check → 텍스트 결과 읽기 → 해석 → 응답
+Claude: /check-scope 실행 → 쉘에서 observer check → 텍스트 결과 읽기 → 해석 → 응답
 ```
 
 **After (v0.3):**
 ```
 사용자: "PR 만들어줘"
-Claude: (자동으로 probe.analyzeScope 도구 호출) → 구조화된 결과 → 즉시 판단 → 응답
-        (자동으로 probe.reviewChecklist 도구 호출) → 체크리스트 → 리뷰 포인트 포함
+Claude: (자동으로 observer.analyzeScope 도구 호출) → 구조화된 결과 → 즉시 판단 → 응답
+        (자동으로 observer.reviewChecklist 도구 호출) → 체크리스트 → 리뷰 포인트 포함
 ```
 
 사용자가 명시적으로 커맨드를 입력하지 않아도, Claude가 맥락에 따라 Probe 도구를 **자동으로** 호출한다.
@@ -79,7 +79,7 @@ Probe MCP 서버는 **stdio transport**를 사용한다. Claude Code의 MCP 설�
 // .claude/settings.json 또는 ~/.claude/settings.json
 {
   "mcpServers": {
-    "probe": {
+    "observer": {
       "command": "node",
       "args": ["./dist/mcp/server.js"],
       "env": {}
@@ -92,7 +92,7 @@ Probe MCP 서버는 **stdio transport**를 사용한다. Claude Code의 MCP 설�
 ```json
 {
   "mcpServers": {
-    "probe": {
+    "observer": {
       "command": "npx",
       "args": ["tsx", "./src/mcp/server.ts"]
     }
@@ -104,13 +104,13 @@ Probe MCP 서버는 **stdio transport**를 사용한다. Claude Code의 MCP 설�
 
 ## 3. 도구 (Tools) 정의
 
-### 3.1 `probe.analyzeScope`
+### 3.1 `observer.analyzeScope`
 
 PR 범위를 분석한다. v0.1 코어 엔진 직접 호출.
 
 ```typescript
 {
-  name: "probe.analyzeScope",
+  name: "observer.analyzeScope",
   description: "변경 파일 목록으로 PR 범위를 분석한다. 응집 그룹, 관심사 혼재, 분할 제안을 반환한다.",
   inputSchema: {
     type: "object",
@@ -132,13 +132,13 @@ PR 범위를 분석한다. v0.1 코어 엔진 직접 호출.
 
 **반환**: `ScopeAnalysisResult` JSON
 
-### 3.2 `probe.lintApiSpec`
+### 3.2 `observer.lintApiSpec`
 
 OpenAPI 스펙을 린트한다. v0.2 내장 린트 엔진 직접 호출.
 
 ```typescript
 {
-  name: "probe.lintApiSpec",
+  name: "observer.lintApiSpec",
   description: "OpenAPI 스펙 파일의 품질을 검증한다. 10개 내장 룰로 필드 타입, nullable, 에러 응답, 네이밍 규칙을 검사한다.",
   inputSchema: {
     type: "object",
@@ -154,13 +154,13 @@ OpenAPI 스펙을 린트한다. v0.2 내장 린트 엔진 직접 호출.
 
 **반환**: `ApiLintResult` JSON
 
-### 3.3 `probe.diffApiSpecs`
+### 3.3 `observer.diffApiSpecs`
 
 두 버전의 API 스펙을 비교한다.
 
 ```typescript
 {
-  name: "probe.diffApiSpecs",
+  name: "observer.diffApiSpecs",
   description: "기준 브랜치와 현재 브랜치의 API 스펙을 비교한다. breaking 변경, additive 변경, deprecation을 분류한다.",
   inputSchema: {
     type: "object",
@@ -181,13 +181,13 @@ OpenAPI 스펙을 린트한다. v0.2 내장 린트 엔진 직접 호출.
 
 **반환**: `ApiDiffResult` JSON
 
-### 3.4 `probe.reviewChecklist`
+### 3.4 `observer.reviewChecklist`
 
 리뷰 체크리스트를 생성한다.
 
 ```typescript
 {
-  name: "probe.reviewChecklist",
+  name: "observer.reviewChecklist",
   description: "변경 내용을 분석하여 PR 타입을 추론하고, 해당 타입의 리뷰 체크리스트를 생성한다.",
   inputSchema: {
     type: "object",
@@ -204,13 +204,13 @@ OpenAPI 스펙을 린트한다. v0.2 내장 린트 엔진 직접 호출.
 
 **반환**: `ReviewChecklist` JSON
 
-### 3.5 `probe.detectPlatform`
+### 3.5 `observer.detectPlatform`
 
 프로젝트의 플랫폼을 감지한다.
 
 ```typescript
 {
-  name: "probe.detectPlatform",
+  name: "observer.detectPlatform",
   description: "프로젝트 파일 구조를 분석하여 플랫폼(spring-boot, nextjs, react-spa)을 감지한다.",
   inputSchema: {
     type: "object",
@@ -242,7 +242,7 @@ probe://profiles/react-spa     → React SPA 프로파일 JSON
 현재 프로젝트의 probe 설정을 제공한다.
 
 ```
-probe://config  → 로드된 ProbeConfig JSON
+probe://config  → 로드된 ObserverConfig JSON
 ```
 
 ### 4.3 `probe://guidelines/{name}`
@@ -275,7 +275,7 @@ PR 리뷰를 수행하는 프롬프트.
 }
 ```
 
-프롬프트 생성 시 `probe.analyzeScope`와 `probe.reviewChecklist` 결과를 포함한 리뷰 지시 프롬프트를 반환한다.
+프롬프트 생성 시 `observer.analyzeScope`와 `observer.reviewChecklist` 결과를 포함한 리뷰 지시 프롬프트를 반환한다.
 
 ### 5.2 `probe.splitPr`
 
@@ -299,7 +299,7 @@ MCP 서버가 도입되어도 기존 skills/hooks/agents는 유지한다:
 
 | 기존 | MCP 대응 | 공존 |
 |------|----------|------|
-| `/check-scope` skill | `probe.analyzeScope` 도구 | skill은 MCP 미지원 환경 폴백 |
+| `/check-scope` skill | `observer.analyzeScope` 도구 | skill은 MCP 미지원 환경 폴백 |
 | `/split-pr` skill | `probe.splitPr` 프롬프트 | 동일 |
 | `/state-matrix` skill | (없음, v0.4 범위) | skill 유지 |
 | PostToolUse hook | (유지) | hook은 자동 실행, MCP는 요청 시 |
@@ -308,7 +308,7 @@ MCP 서버가 도입되어도 기존 skills/hooks/agents는 유지한다:
 
 ### Skills → MCP 마이그레이션
 
-기존 skills는 내부적으로 `npx probe` 쉘 호출을 하지만, MCP가 활성화된 환경에서는 Claude가 MCP 도구를 우선 사용한다. Skills는 MCP가 없는 환경의 폴백으로 유지.
+기존 skills는 내부적으로 `observer` 쉘 호출을 하지만, MCP가 활성화된 환경에서는 Claude가 MCP 도구를 우선 사용한다. Skills는 MCP가 없는 환경의 폴백으로 유지.
 
 ---
 
@@ -334,7 +334,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 const server = new McpServer({
-  name: 'probe',
+  name: 'observer',
   version: '0.3.0',
 });
 
@@ -359,7 +359,7 @@ await server.connect(transport);
 ```typescript
 // 예: analyzeScope 도구
 server.tool(
-  'probe.analyzeScope',
+  'observer.analyzeScope',
   { base: z.string().optional(), files: z.array(z.string()).optional() },
   async ({ base, files }) => {
     const config = await loadConfigAsync();
@@ -436,7 +436,7 @@ export default defineConfig({
 {
   "bin": {
     "probe": "dist/cli/index.js",
-    "probe-mcp": "dist/mcp/server.js"
+    "observer-mcp": "dist/mcp/server.js"
   }
 }
 ```
@@ -450,9 +450,9 @@ export default defineConfig({
 ```
 사용자: "이 코드 리뷰해줘"
 
-Claude: (내부적으로 probe.analyzeScope 호출)
-        (내부적으로 probe.reviewChecklist 호출)
-        (내부적으로 probe.lintApiSpec 호출 — API 스펙 변경 감지 시)
+Claude: (내부적으로 observer.analyzeScope 호출)
+        (내부적으로 observer.reviewChecklist 호출)
+        (내부적으로 observer.lintApiSpec 호출 — API 스펙 변경 감지 시)
 
         "PR 리뷰 결과입니다.
 
@@ -474,7 +474,7 @@ Claude: (내부적으로 probe.analyzeScope 호출)
 ```
 사용자: "PR 만들어줘"
 
-Claude: (PR 생성 전에 probe.analyzeScope 자동 호출)
+Claude: (PR 생성 전에 observer.analyzeScope 자동 호출)
         (결과: severity=warn, 3개 그룹)
 
         "PR을 만들기 전에 범위를 확인했습니다.

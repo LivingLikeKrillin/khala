@@ -1,7 +1,7 @@
 /**
- * probe.config.ts 로더
+ * observer.config.ts 로더
  *
- * 프로젝트 루트의 probe.config.ts (또는 .js, .mjs, .json)를 읽어서 설정을 반환한다.
+ * 프로젝트 루트의 observer.config.ts (또는 .js, .mjs, .json)를 읽어서 설정을 반환한다.
  * 설정 파일이 없으면 기본값을 사용한다.
  *
  * 규정 문서: docs/probe-v0.1-scope.md § 5
@@ -39,7 +39,7 @@ export interface ReviewConfig {
   customItems?: Record<string, Array<{ id: string; description: string }>>;
 }
 
-export interface ProbeConfig {
+export interface ObserverConfig {
   /** 플랫폼 프로파일 (자동 감지 또는 수동 지정) */
   platform?: 'spring-boot' | 'nextjs' | 'react-spa' | 'custom';
 
@@ -91,31 +91,31 @@ export interface NexusConfig {
  * TypeScript/JS 파일은 동적 import, JSON은 직접 파싱.
  */
 const CONFIG_CANDIDATES = [
-  { name: 'probe.config.ts', type: 'module' as const },
-  { name: 'probe.config.js', type: 'module' as const },
-  { name: 'probe.config.mjs', type: 'module' as const },
-  { name: 'probe.config.json', type: 'json' as const },
+  { name: 'observer.config.ts', type: 'module' as const },
+  { name: 'observer.config.js', type: 'module' as const },
+  { name: 'observer.config.mjs', type: 'module' as const },
+  { name: 'observer.config.json', type: 'json' as const },
 ];
 
 /**
  * JSON 설정 파일을 동기적으로 로드한다.
  */
-function loadJsonConfig(configPath: string): ProbeConfig | undefined {
+function loadJsonConfig(configPath: string): ObserverConfig | undefined {
   try {
     const content = readFileSync(configPath, 'utf-8');
-    return JSON.parse(content) as ProbeConfig;
+    return JSON.parse(content) as ObserverConfig;
   } catch {
     return undefined;
   }
 }
 
 /**
- * probe.config를 동기적으로 로드한다.
+ * observer.config를 동기적으로 로드한다.
  *
  * TS/JS 모듈 설정 파일은 비동기 API인 `loadConfigAsync()`를 사용해야 한다.
  * 동기 버전은 JSON 파일만 로드하고, TS/JS 파일이 존재하면 경로만 반환한다.
  */
-export function loadConfig(projectRoot?: string): ProbeConfig {
+export function loadConfig(projectRoot?: string): ObserverConfig {
   const root = projectRoot ?? process.cwd();
 
   for (const candidate of CONFIG_CANDIDATES) {
@@ -134,19 +134,19 @@ export function loadConfig(projectRoot?: string): ProbeConfig {
 }
 
 /**
- * probe.config를 비동기로 로드한다.
+ * observer.config를 비동기로 로드한다.
  * TS/JS 모듈 설정 파일(export default)을 지원한다.
  *
  * @example
  * ```typescript
- * // probe.config.ts
+ * // observer.config.ts
  * export default {
  *   platform: 'spring-boot',
  *   thresholds: { maxFilesPerPr: 25 },
  * };
  * ```
  */
-export async function loadConfigAsync(projectRoot?: string): Promise<ProbeConfig> {
+export async function loadConfigAsync(projectRoot?: string): Promise<ObserverConfig> {
   const root = projectRoot ?? process.cwd();
 
   for (const candidate of CONFIG_CANDIDATES) {
@@ -161,7 +161,7 @@ export async function loadConfigAsync(projectRoot?: string): Promise<ProbeConfig
     try {
       const absPath = resolve(configPath);
       const fileUrl = pathToFileURL(absPath).href;
-      const mod = (await import(fileUrl)) as { default?: ProbeConfig };
+      const mod = (await import(fileUrl)) as { default?: ObserverConfig };
       return mod.default ?? {};
     } catch {
       // import 실패 시 다음 후보로
@@ -174,7 +174,7 @@ export async function loadConfigAsync(projectRoot?: string): Promise<ProbeConfig
 /**
  * Nexus 설정을 resolve한다 (config 파일 > 환경 변수 > 기본값).
  */
-export function resolveNexusConfig(config: ProbeConfig): NexusConfig & { disabled: boolean } {
+export function resolveNexusConfig(config: ObserverConfig): NexusConfig & { disabled: boolean } {
   const env = process.env;
   return {
     baseUrl: config.nexus?.baseUrl ?? env['NEXUS_BASE_URL'] ?? 'http://localhost:8000',
@@ -190,7 +190,7 @@ export function resolveNexusConfig(config: ProbeConfig): NexusConfig & { disable
 /**
  * 설정의 임계치 오버라이드를 프로파일에 적용한다.
  */
-export function applyConfigOverrides(profile: PlatformProfile, config: ProbeConfig): PlatformProfile {
+export function applyConfigOverrides(profile: PlatformProfile, config: ObserverConfig): PlatformProfile {
   if (!config.thresholds) return profile;
 
   return {

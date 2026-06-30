@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "probe": {
+    "observer": {
       "command": "node",
       "args": ["dist/mcp/server.js"],
       "cwd": "."

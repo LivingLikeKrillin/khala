@@ -20,7 +20,7 @@ export {
   loadConfigAsync,
   applyConfigOverrides,
   resolveNexusConfig,
-  type ProbeConfig,
+  type ObserverConfig,
   type ApiConfig,
   type ReviewConfig,
   type NexusConfig,

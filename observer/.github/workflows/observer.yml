@@ -1,11 +1,11 @@
-name: Probe PR Check
+name: Observer PR Check
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  probe-check:
+  observer-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,13 +23,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build Probe
+      - name: Build Observer
         run: pnpm build
 
-      - name: Run Probe Check
-        id: probe
+      - name: Run Observer Check
+        id: observer
         run: |
-          RESULT=$(npx probe check --base origin/${{ github.base_ref }} --format markdown)
+          RESULT=$(npx observer check --base origin/${{ github.base_ref }} --format markdown)
           echo "report<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -39,17 +39,17 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const report = `${{ steps.probe.outputs.report }}`;
+            const report = `${{ steps.observer.outputs.report }}`;
             if (report && report.trim()) {
-              // 기존 Probe 코멘트 찾기
+              // 기존 Observer 코멘트 찾기
               const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
               });
-              const existing = comments.find(c => c.body.includes('⚙️ Probe'));
+              const existing = comments.find(c => c.body.includes('⚙️ Observer'));
 
-              const body = `⚙️ Probe — PR 범위 분석\n\n${report}`;
+              const body = `⚙️ Observer — PR 범위 분석\n\n${report}`;
 
               if (existing) {
                 await github.rest.issues.updateComment({

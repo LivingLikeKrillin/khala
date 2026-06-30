@@ -1,7 +1,7 @@
 /**
  * 리뷰 그라운딩 오케스트레이션 (v0.6) — 변경 엔티티 빌드, 티어 결정, grounder 호출.
  *
- * Probe는 diff 소스를 의미 분석하지 않는다 — 변경 파일→엔티티 라우팅까지만.
+ * Observer는 diff 소스를 의미 분석하지 않는다 — 변경 파일→엔티티 라우팅까지만.
  * 규정 문서: docs/superpowers/specs/2026-06-07-grounded-code-review-design.md
  */
 import { NexusClient } from '../nexus/client.js';
