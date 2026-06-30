@@ -22,15 +22,17 @@ import { visit } from 'unist-util-visit';
 const BASE = '/khala';
 
 function rehypeBaseUrl() {
+  /** @param {string} url */
   const withBase = (url) => {
-    if (typeof url !== 'string') return url;
     if (!url.startsWith('/') || url.startsWith('//')) return url; // external / protocol-relative / non-absolute
     if (url === BASE || url.startsWith(BASE + '/')) return url; // already based (e.g. Starlight-emitted)
     return BASE + url;
   };
   /** @param {import('hast').Root} tree */
   return (tree) => {
-    visit(tree, (node) => {
+    // `node` is `any`: the content tree mixes hast elements with MDX JSX nodes
+    // (mdxJsxFlowElement/…), which @types/hast does not model.
+    visit(tree, (/** @type {any} */ node) => {
       if (node.type === 'element' && node.properties) {
         if (typeof node.properties.href === 'string') node.properties.href = withBase(node.properties.href);
         if (typeof node.properties.src === 'string') node.properties.src = withBase(node.properties.src);
