@@ -1,12 +1,12 @@
 # ken-web
 
-A browser-driven vertical slice of ken's **repayment loop**: register an artifact →
+A browser-driven vertical slice of Adept's (formerly ken) **repayment loop**: register an artifact →
 the server generates grounded comprehension questions → you answer them in a React SPA
 → the server grades each answer and returns remediation on a miss → coverage updates.
-It spans React → FastAPI → ken-core → LLM. Storage is dual-backend: ken's file
+It spans React → FastAPI → ken-core → LLM. Storage is dual-backend: Adept's file
 storage by default, or Postgres when `KEN_DATABASE_URL` is set. Auth is **off by
 default** (open); set `KEN_AUTH=1` to gate the instance behind login (see
-[Authentication](#authentication-optional)). The point is to make ken's "vouch for
+[Authentication](#authentication-optional)). The point is to make Adept's "vouch for
 what you own" loop tangible in a UI.
 
 Two parts:
@@ -57,7 +57,7 @@ mount is skipped and the API runs API-only — it never crashes on a missing bui
 
 ## LLM key
 
-Real question generation, grading, and remediation use Anthropic via ken's
+Real question generation, grading, and remediation use Anthropic via Adept's
 `AnthropicLLM`. Set `ANTHROPIC_API_KEY` **on the server process** before running
 `uvicorn`:
 
@@ -65,14 +65,14 @@ Real question generation, grading, and remediation use Anthropic via ken's
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-The automated tests (both `api/` pytest and `web/` vitest) use ken's `FakeLLM` seam
+The automated tests (both `api/` pytest and `web/` vitest) use Adept's `FakeLLM` seam
 and require **no** API key.
 
 ## Storage backend
 
 The backend is selected at request time by `KEN_DATABASE_URL`:
 
-- **unset (default) — file storage.** ken's file stores default under the current
+- **unset (default) — file storage.** Adept's file stores default under the current
   directory. Override per process via env: `KEN_DATA_DIR` (base dir), or the
   individual `KEN_MANIFEST`, `KEN_QUESTIONS`, `KEN_LEDGER`. The CLI/local workflow
   is unchanged.
@@ -162,6 +162,6 @@ cd ken-web/api && python -m pytest -q          # FakeLLM + FakeAuthStore, no key
 cd ken-web/web && npm run test -- --run        # vitest, client mocked
 ```
 
-ken's storage backends share one contract test (`ken/tests/test_store_contract.py`).
+Adept's storage backends share one contract test (`ken/tests/test_store_contract.py`).
 FileStore runs always; the PostgresStore params run only when `KEN_TEST_DATABASE_URL`
 is set (gated, skipped otherwise) — CI runs both via a `postgres:16` service job.

@@ -1,11 +1,11 @@
-# CLAUDE.md — Probe
+# CLAUDE.md — Observer
 
-> Probe는 프로덕트 팀의 개발 워크플로를 자동 검증하는 도구다.
+> Observer (formerly Probe)는 프로덕트 팀의 개발 워크플로를 자동 검증하는 도구다.
 > Nexus 지식 시스템과 연동하여 PR 검증, 영향 분석, 규칙 집행을 수행한다.
 
 ## 아키텍처
 
-Probe는 **하이브리드 구조**다.
+Observer는 **하이브리드 구조**다.
 
 - `src/` — 코어 엔진. CI에서 `npx probe check`로 독립 실행 가능.
 - `.claude/` — Claude Code 어댑터. hooks, agents, skills, rules로 구성. Claude Code 환경에서 코어 엔진을 실시간으로 활용.
@@ -148,7 +148,7 @@ chore: 빌드/설정
 
 ## 관련 규정 문서
 
-Probe가 검증하는 규칙의 근거:
+Observer가 검증하는 규칙의 근거:
 - `docs/guidelines/product-change-safety-net-framework.md` — 전체 프레임워크
 - `docs/guidelines/state-matrix-guidelines.md` — 규정 ①
 - `docs/guidelines/api-contract-guidelines.md` — 규정 ②
