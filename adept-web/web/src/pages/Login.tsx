@@ -25,7 +25,7 @@ export default function Login() {
 
   return (
     <div className="state" style={{ maxWidth: 360, margin: "80px auto" }}>
-      <h1>Sign in to ken</h1>
+      <h1>Sign in to adept</h1>
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 24 }}>
         <div className="field">
           <label htmlFor="email">Email</label>

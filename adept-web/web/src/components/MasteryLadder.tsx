@@ -1,4 +1,4 @@
-// 5-pip mastery ladder. Index-aligned with ken.schedule.LADDER [0,1d,3d,7d,30d];
+// 5-pip mastery ladder. Index-aligned with khala.adept.schedule.LADDER [0,1d,3d,7d,30d];
 // keep LABELS in lockstep with that ladder so a future ladder change is caught here.
 const LABELS = ["due now", "1d", "3d", "7d", "30d"] as const;
 

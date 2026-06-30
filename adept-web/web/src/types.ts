@@ -1,4 +1,4 @@
-// Wire DTOs — mirror ken-web/api/src/ken_web_api/schemas.py exactly.
+// Wire DTOs — mirror adept-web/api/src/khala/adept_web/schemas.py exactly.
 // Keep these in lockstep with the FastAPI contract.
 
 /** MeOut — the current session identity. */

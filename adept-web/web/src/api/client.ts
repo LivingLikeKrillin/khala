@@ -1,4 +1,4 @@
-// Typed fetch wrapper over the ken-web API. Same-origin: paths are relative
+// Typed fetch wrapper over the adept-web API. Same-origin: paths are relative
 // (`/api/...`) so the Vite dev proxy or the prod static mount both work.
 //
 // Tests mock THIS module (vi.mock("../api/client")) — no network in tests.

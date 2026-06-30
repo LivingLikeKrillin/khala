@@ -1,5 +1,5 @@
 /* ============================================================================
-   ken-web — "study desk" editorial design system
+   adept-web — "study desk" editorial design system
    Aesthetic: warm paper-toned dark canvas, serif prose for the questions
    (they deserve real thought), precise mono for metadata. Calm, non-punitive.
    Pass = quiet sage affirmation; fail = warm amber "let's review", never red.
@@ -882,7 +882,7 @@ a {
   }
 }
 
-/* mastery ladder — 5 pips, index-aligned with ken.schedule.LADDER [now,1d,3d,7d,30d] */
+/* mastery ladder — 5 pips, index-aligned with khala.adept.schedule.LADDER [now,1d,3d,7d,30d] */
 .ladder {
   display: inline-flex;
   align-items: center;
