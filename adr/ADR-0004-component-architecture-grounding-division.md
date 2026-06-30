@@ -2,7 +2,7 @@
 id: ADR-0004
 type: adr
 title: Component architecture — grounding division, dual-mode, and dual deployment
-status: proposed
+status: accepted
 date: 2026-06-26
 tags:
 - architecture
@@ -14,6 +14,9 @@ tags:
 linked_adrs:
 - ADR-0002
 - ADR-0003
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-06-30T15:57:55Z'
+content_hash: sha256:252e9d1d2d43aed55efad53025a768f57aeedbab668a12ae076f4fca14b5786c
 ---
 
 # ADR-0004: Component architecture — grounding division, dual-mode, and dual deployment
