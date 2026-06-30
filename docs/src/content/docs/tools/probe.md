@@ -10,7 +10,7 @@ The problem it calibrates: a passing test suite is not the same as a suite that 
 One-line identity: the harness that turns "tests pass" into "tests actually verify behavior," with surviving mutants as the deterministic signal.
 
 <img
-  src="/diagrams/probe.svg"
+  src="/khala/diagrams/probe.svg"
   alt="Mutation flow: green suite → cosmic-ray mutate → run the suite per mutant → any survivors? None reports no gaps; otherwise Critic triage → ledger → report of biting real-gaps."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />

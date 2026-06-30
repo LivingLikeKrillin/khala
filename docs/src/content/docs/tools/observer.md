@@ -14,7 +14,7 @@ A design principle runs through all of it: **when everything is fine, Observer s
 One-line identity: the tool that keeps PR review honest by grounding scope, contracts, and conformance — optionally enriched by Nexus, but fully functional without it.
 
 <img
-  src="/diagrams/observer.svg"
+  src="/khala/diagrams/observer.svg"
   alt="Scope analysis: changed files → assign roles → match cohesion groups → score severity → are concerns mixed? If yes, propose a split with merge order; if cohesive, stay silent."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />

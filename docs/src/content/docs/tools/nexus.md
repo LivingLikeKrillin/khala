@@ -10,7 +10,7 @@ The problem it calibrates: ordinary RAG retrieves text and lets the model improv
 One-line identity: **enterprise RAG + GraphRAG for grounded knowledge retrieval** — the context layer that code-review and troubleshooting agents lean on, so they reason from real documents and observed telemetry instead of guessing.
 
 <img
-  src="/diagrams/nexus.svg"
+  src="/khala/diagrams/nexus.svg"
   alt="Hybrid retrieval: a query fans out to BM25 (mecab-ko), Vector (768-d), and Graph (2-hop) retrievers; their results fuse via RRF (k=60) into a grounded answer that cites a source or refuses."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />

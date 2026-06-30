@@ -53,7 +53,7 @@ description: Khala의 보정 논제.
 ## 도구들은 어떻게 연결되는가
 
 <img
-  src="/diagrams/ecosystem.svg"
+  src="/khala/diagrams/ecosystem.svg"
   alt="개발자와 에이전트는 권위의 창인 Archon에 묻고, Archon·Arbiter·Observer는 Khala의 연결점인 Nexus에 게시하거나 질의한다. 도구들은 오직 Khala를 통해서만 연결된다."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />

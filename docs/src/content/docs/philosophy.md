@@ -53,7 +53,7 @@ Each narrows the gap between how confident the system sounds and how much it act
 ## How they connect
 
 <img
-  src="/diagrams/ecosystem.svg"
+  src="/khala/diagrams/ecosystem.svg"
   alt="Developers and agents reach Archon, the authority window; Archon, Arbiter, and Observer publish to and query Nexus — the Khala link. The tools connect only through Khala."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />

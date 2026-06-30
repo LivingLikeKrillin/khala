@@ -1,0 +1,55 @@
+# Deploy the docs site (Astro/Starlight) to GitHub Pages.
+# Builds on push to master when docs change; the CI workflow's `docs` job
+# remains the PR gate (build + type check + linkcheck). Pages source must be
+# set to "GitHub Actions" (repo Settings → Pages, or the gh api one-time call).
+name: Deploy docs
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One concurrent Pages deploy; don't cancel an in-flight publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - name: Install docs
+        working-directory: docs
+        run: npm install
+      - name: Build site
+        working-directory: docs
+        run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/dist
+
+  deploy:
+    name: deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

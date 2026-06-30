@@ -10,7 +10,7 @@ Nexus가 보정(calibrate)하는 문제는 이렇습니다. 일반적인 RAG는 
 한 줄 정체성: **근거 기반 지식 검색을 위한 엔터프라이즈 RAG + GraphRAG** — AI 에이전트(코드 리뷰, 트러블슈팅)가 추측이 아니라 실제 문서와 관측된 텔레메트리에서 추론하도록 받쳐 주는 context provider입니다.
 
 <img
-  src="/diagrams/nexus.svg"
+  src="/khala/diagrams/nexus.svg"
   alt="하이브리드 검색: 질의가 BM25(mecab-ko)·벡터(768차원)·그래프(2-hop) 검색기로 갈라지고, 그 결과가 RRF(k=60)로 통합되어 출처를 인용하거나 거부하는 근거 기반 답변이 된다."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
