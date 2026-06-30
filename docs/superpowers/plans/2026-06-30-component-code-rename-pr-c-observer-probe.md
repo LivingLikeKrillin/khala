@@ -210,7 +210,12 @@ git commit -m "docs: observer/probe code-identifiers + ordered diagram-asset swa
 
 - [ ] **Step 1: Find any remaining non-historical refs**
 
-Run the Task 1 Step 3 inventory grep again. Disposition anything not yet handled (e.g. `INDEX.md`, root `tests/`, `nexus/` comments mentioning `probe`/`mutqa` by name — rename brand prose; nexus does not import either). Confirm Adept's `adept/src/khala/adept/probe.py` is **untouched** (`git diff --name-only | grep adept/` → empty unless a doc).
+Run the Task 1 Step 3 inventory grep again. Disposition anything not yet handled, with these specific calls (verified to exist on master):
+- **nexus prose naming the REVIEW tool "Probe" → Observer** (NOT the new mutation Probe): `nexus/ROADMAP.md` (the "Probe" rows describing "PR 분석 + API 검증 … TypeScript/Node/MCP"), `nexus/nexus/a2a/mapping.py:85` ("Probe's `SpecRef.approvedHash`"), and the `nexus/tests/test_a2a_provenance_db.py` / `test_approved_hash_provenance.py` "Probe" mentions. These describe the review tool → **Observer**. nexus imports neither package, so these are prose/comment edits only.
+- **`adept.manifest.yaml`** (root): `path: probe/src/core/concern-drift.ts` → `observer/src/core/concern-drift.ts` (a REVIEW-tool source path; **name it explicitly** — the collision-aware Observer gate deliberately does NOT flag bare `probe/src`, since that path is now the mutation tool, so this straggler must be handled here).
+- **KEEP (generic vocabulary, NOT a tool):** `nexus/tests/test_auth_deps.py` `/probe` test route + `def probe(...)` — unrelated to either tool; leave intact.
+- `INDEX.md` / any other `probe`(review)/`mutqa` brand prose → Observer / Probe per kind.
+Confirm Adept's `adept/src/khala/adept/probe.py` (+ `models.py`/`service.py`/`test_cli_v1.py` Adept-internal `probe` vocabulary) is **untouched** (`git diff --name-only master..HEAD | grep '^adept/src'` → empty).
 
 - [ ] **Step 2: Commit (if any changes)**
 
@@ -230,7 +235,7 @@ Expected: only `github.com/.../mutqa` repo URLs (PR-D). Anything else = straggle
 
 The bare token `probe` is now legitimately the mutation tool + `khala.adept.probe`. So grep only the **old review-tool-specific identifiers**, which must ALL be gone (→observer):
 ```bash
-git grep -n -E "probe-mcp|PROBE_NEXUS|\"name\": \"probe\"|probe/(nullable|error-response|naming|pagination|enum-example|deprecated|field-type|path-naming|field-naming|request-body-type|example-required)|workflows/probe\.yml" -- ':!**/superpowers/**' ':!specs/**' ':!adr/**' ':!**/dogfood*' ':!**/e2e-2026*'
+git grep -n -E "probe-mcp|PROBE_NEXUS|\"name\": \"probe\"|probe/(nullable-explicit|no-nullable-optional|error-response-schema|field-type-required|deprecated-lifecycle|enum-required|path-naming|pagination-required|property-naming|example-required)|workflows/probe\.yml" -- ':!**/superpowers/**' ':!specs/**' ':!adr/**' ':!**/dogfood*' ':!**/e2e-2026*'
 ```
 Expected: **zero**. (These tokens uniquely identified the old review tool; the new mutation `probe` package uses none of them.)
 
