@@ -1,11 +1,11 @@
-# ken — agent-driven review protocol (the keyless loop)
+# Adept — agent-driven review protocol (the keyless loop)
 
 This is the loop the Claude Code agent (or any session LLM) follows to repay
-cognitive debt **without an API key**. ken owns the deterministic substrate (the
-question store, the attempt ledger, and the pure derivations); the agent owns
-cognition (generating grounded questions, grading answers, writing remediation).
-ken is a subprocess and cannot call back into the agent — so control is inverted:
-the agent drives, calling ken's primitives.
+cognitive debt **without an API key**. Adept (formerly ken; the CLI is still `ken`)
+owns the deterministic substrate (the question store, the attempt ledger, and the
+pure derivations); the agent owns cognition (generating grounded questions, grading
+answers, writing remediation). Adept is a subprocess and cannot call back into the
+agent — so control is inverted: the agent drives, calling Adept's primitives.
 
 The keyed `ken review` command exists only for headless/CI; the loop below uses no
 key.
@@ -65,7 +65,7 @@ key.
 
 ## Why keyless works
 
-"System decides, LLM narrates" applied to the whole loop: ken decides *what* is
+"System decides, LLM narrates" applied to the whole loop: Adept decides *what* is
 due, *whether* the set passes, and *where* the weakness is; the agent narrates the
 questions, the grading judgement, and the remediation. No `ANTHROPIC_API_KEY` is
 needed in this mode — only the headless `ken review` path calls a keyed model.

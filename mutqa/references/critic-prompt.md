@@ -1,6 +1,6 @@
 # Test Quality Critic — survivor triage 프롬프트 템플릿
 
-mutqa 스킬이 **살아남은 변이(survivor) 1건마다** 이 프롬프트를 채워 서브에이전트로 dispatch한다.
+Probe (옛 mutqa) 스킬이 **살아남은 변이(survivor) 1건마다** 이 프롬프트를 채워 서브에이전트로 dispatch한다.
 Critic의 단 하나의 임무: 이 survivor가 **진짜 테스트 갭(real-gap)**인지, **동치 변이(equivalent)**인지,
 **저가치(low-value)**인지 판정하는 것. 코드를 고치거나 테스트를 작성하지 않는다 — 판정만 한다.
 
