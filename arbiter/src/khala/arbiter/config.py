@@ -9,13 +9,13 @@ _DEFAULT_ALLOW = ["docs/**", "tests/**"]
 
 
 @dataclass
-class SpecledgerConfig:
+class ArbiterConfig:
     exempt_paths: list[str] = field(default_factory=list)
     allow_globs: list[str] = field(default_factory=lambda: list(_DEFAULT_ALLOW))
     nexus: dict | None = None
 
     @classmethod
-    def load(cls, project_root: Path) -> "SpecledgerConfig":
+    def load(cls, project_root: Path) -> "ArbiterConfig":
         path = Path(project_root) / ".specledger" / "config.yaml"
         if not path.exists():
             return cls()

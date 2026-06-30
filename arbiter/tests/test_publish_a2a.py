@@ -1,4 +1,4 @@
-"""specledger as an A2A client (SPEC §5.3); A2A is the sole publish transport (SPEC §16).
+"""Arbiter as an A2A client (SPEC §5.3); A2A is the sole publish transport (SPEC §16).
 
 `A2ANexusSink` is a thin JSON-RPC client (no SDK, urllib by default) that discovers Nexus's
 agent card, confirms the `ingest_governed_doc` skill, sends the governed-doc DataPart with the
@@ -7,10 +7,10 @@ write token, and maps a denied/failed task to the graceful `{published: False, r
 always builds an `A2ANexusSink`.
 """
 
-import specledger.publish as publish_module
-from specledger.config import SpecledgerConfig
-from specledger.ledger import Ledger
-from specledger.publish import (
+import khala.arbiter.publish as publish_module
+from khala.arbiter.config import ArbiterConfig
+from khala.arbiter.ledger import Ledger
+from khala.arbiter.publish import (
     INGEST_SKILL,
     A2ANexusSink,
     _build_sink,
@@ -73,12 +73,12 @@ def _rpc_error(code=-32003, message="forbidden: ingest_governed capability requi
 
 
 def test_publish_builds_a2a_sink_from_url():
-    cfg = SpecledgerConfig(nexus={"url": "http://nexus.test"})
+    cfg = ArbiterConfig(nexus={"url": "http://nexus.test"})
     assert isinstance(_build_sink(cfg), A2ANexusSink)
 
 
 def test_publish_builds_a2a_sink_from_base_url():
-    cfg = SpecledgerConfig(nexus={"base_url": "http://nexus.test"})
+    cfg = ArbiterConfig(nexus={"base_url": "http://nexus.test"})
     assert isinstance(_build_sink(cfg), A2ANexusSink)
 
 
@@ -165,7 +165,7 @@ def test_publish_payload_carries_content_hash(tmp_path):
     sid = led.record("spec", "body text")
     art_path = led._resolve(sid)
     # simulate an approval stamp: content_hash written to frontmatter
-    from specledger.artifacts import Artifact
+    from khala.arbiter.artifacts import Artifact
     art = Artifact.load(art_path)
     art.meta["content_hash"] = "stamped-hash-123"
     art.save()
@@ -179,7 +179,7 @@ def test_publish_payload_carries_content_hash(tmp_path):
             return {}
 
     sink = CaptureSink()
-    publish(led, sid, SpecledgerConfig(nexus={"url": "http://x"}), sink=sink)
+    publish(led, sid, ArbiterConfig(nexus={"url": "http://x"}), sink=sink)
     assert sink.payload["content_hash"] == "stamped-hash-123"
 
 
@@ -188,7 +188,7 @@ def test_publish_a2a_denied_is_graceful(tmp_path):
     sid = led.record("spec", "A")
     transport = FakeTransport(rpc=_rpc_error(), rpc_status=403)
     sink = A2ANexusSink("http://nexus.test", token="read-only", transport=transport)
-    res = publish(led, sid, SpecledgerConfig(nexus={"url": "http://x"}), sink=sink)
+    res = publish(led, sid, ArbiterConfig(nexus={"url": "http://x"}), sink=sink)
     assert res["published"] is False
     assert "forbidden" in res["reason"]
 
@@ -197,5 +197,5 @@ def test_publish_a2a_completed_is_published(tmp_path):
     led = Ledger(tmp_path, now=lambda: "t")
     sid = led.record("spec", "A")
     sink = A2ANexusSink("http://nexus.test", token="write", transport=FakeTransport())
-    res = publish(led, sid, SpecledgerConfig(nexus={"url": "http://x"}), sink=sink)
+    res = publish(led, sid, ArbiterConfig(nexus={"url": "http://x"}), sink=sink)
     assert res["published"] is True

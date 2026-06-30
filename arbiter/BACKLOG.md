@@ -1,4 +1,4 @@
-# Specledger Backlog
+# Arbiter Backlog
 
 Post-MVP items deferred from the initial build (see the design spec's Non-goals and
 the final review). None block the MVP; all are tracked here.

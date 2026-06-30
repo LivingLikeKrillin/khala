@@ -7,7 +7,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from . import review
-from .config import SpecledgerConfig
+from .config import ArbiterConfig
 from .critique import AnthropicCritic, critique
 from .gate import Gate
 from .ledger import Ledger
@@ -19,7 +19,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def build_app(ledger: Ledger, gate: Gate, critic, config: SpecledgerConfig) -> FastMCP:
+def build_app(ledger: Ledger, gate: Gate, critic, config: ArbiterConfig) -> FastMCP:
     app = FastMCP("specledger")
 
     @app.tool()
@@ -86,7 +86,7 @@ def build_app(ledger: Ledger, gate: Gate, critic, config: SpecledgerConfig) -> F
 def main() -> None:
     root = Path(os.environ.get("SPECLEDGER_ROOT", "."))
     docs = Path(os.environ.get("SPECLEDGER_DOCS", str(root / "docs")))
-    config = SpecledgerConfig.load(root)
+    config = ArbiterConfig.load(root)
     ledger = Ledger(docs, now=_utc_now)
     gate = Gate(root, now=_utc_now)
     critic = AnthropicCritic()

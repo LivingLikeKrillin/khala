@@ -1,4 +1,4 @@
-from specledger.frontmatter import split, render
+from khala.arbiter.frontmatter import split, render
 
 
 def test_split_extracts_meta_and_body():

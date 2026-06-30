@@ -9,9 +9,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from specledger.config import SpecledgerConfig  # noqa: E402
-from specledger.gate import Gate  # noqa: E402
-from specledger.ledger import Ledger  # noqa: E402
+from khala.arbiter.config import ArbiterConfig  # noqa: E402
+from khala.arbiter.gate import Gate  # noqa: E402
+from khala.arbiter.ledger import Ledger  # noqa: E402
 
 # known gap (MVP): the Bash tool can also write files (echo/tee/python -c) and is
 # NOT intercepted here — only first-class file-edit tools are gated. Register this
@@ -40,7 +40,7 @@ def decide(payload: dict, now=_utc_now) -> dict:
     root = Path(os.environ.get("SPECLEDGER_ROOT", cwd)).resolve()
     docs = Path(os.environ.get("SPECLEDGER_DOCS", cwd / "docs")).resolve()
     if not docs.exists():
-        return {"allow": True, "reason": "no specledger docs root; not governed"}
+        return {"allow": True, "reason": "no Arbiter docs root; not governed"}
     rel = []
     for p in _extract_paths(payload.get("tool_input", {})):
         # resolve() normalizes ".." so "docs/../src/x.py" cannot masquerade as a
@@ -52,7 +52,7 @@ def decide(payload: dict, now=_utc_now) -> dict:
             rel.append(str(ap).replace("\\", "/"))
     gate = Gate(root, now=now)
     ledger = Ledger(docs, now=now)
-    res = gate.check_gate(rel, ledger, SpecledgerConfig.load(root),
+    res = gate.check_gate(rel, ledger, ArbiterConfig.load(root),
                           tool_name=payload.get("tool_name", ""))
     return {"allow": res["allowed"], "reason": res["reason"]}
 
@@ -62,7 +62,7 @@ def main() -> int:
     d = decide(payload)
     if d["allow"]:
         return 0
-    print(f"[specledger] blocked: {d['reason']}", file=sys.stderr)
+    print(f"[Arbiter] blocked: {d['reason']}", file=sys.stderr)
     return 2
 
 

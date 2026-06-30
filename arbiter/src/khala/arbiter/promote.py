@@ -1,7 +1,7 @@
-"""promote_external — 외부 CSF 문서를 specledger 거버넌스 DRAFT 로 끌어올린다 (서브프로젝트 A).
+"""promote_external — 외부 CSF 문서를 Arbiter 거버넌스 DRAFT 로 끌어올린다 (서브프로젝트 A).
 
 인바운드 기본값은 "메모"다 — 외부 spec 은 Nexus 에 ungoverned 로 산다. 승격은 명시적, 인간이
-트리거하는 단계로, CSF 문서를 **인라인**으로 받아(specledger 는 Nexus read client 가 없다)
+트리거하는 단계로, CSF 문서를 **인라인**으로 받아(Arbiter 는 Nexus read client 가 없다)
 DRAFT SPEC/ADR 로 record 하고, provenance 를 frontmatter 에 보존한다(거버넌스 사본이 출처를
 기억하고, promoted_from_source_hash 로 이후 소스 drift 를 감지할 수 있게). 이후 기존
 critique→approve 흐름이 그대로 적용된다.
@@ -26,7 +26,7 @@ class PromoteError(ValueError):
 
 
 def promote_external(ledger: Ledger, csf: dict, type: str) -> dict:
-    """CSF(인라인) → specledger DRAFT. provenance 를 frontmatter 에 보존.
+    """CSF(인라인) → Arbiter DRAFT. provenance 를 frontmatter 에 보존.
 
     Args:
         ledger: 대상 Ledger.
@@ -38,9 +38,9 @@ def promote_external(ledger: Ledger, csf: dict, type: str) -> dict:
         {artifact_id, status, provenance_carried}
     """
     # type 은 축-A 타입(또는 레거시 CSF 토큰) — 상류 정규화와 동일 규칙으로 정본화한 뒤
-    # 레지스트리로 승격가능성(=T1)과 specledger 어휘를 결정한다(하드코딩 제거).
+    # 레지스트리로 승격가능성(=T1)과 Arbiter 어휘를 결정한다(하드코딩 제거).
     axis_a = doctypes.normalize_kind(type)
-    sl_type = doctypes.specledger_type_of(axis_a)
+    sl_type = doctypes.arbiter_type_of(axis_a)
     if sl_type is None:
         raise PromoteError(
             f"type 은 거버넌스(T1) 타입이어야 한다(ADR/DESIGN/RFC/레거시 SPEC), got {type!r}"

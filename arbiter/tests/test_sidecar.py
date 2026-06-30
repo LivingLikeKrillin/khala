@@ -1,4 +1,4 @@
-from specledger.sidecar import Sidecar, Issue
+from khala.arbiter.sidecar import Sidecar, Issue
 
 
 def test_write_then_read_roundtrips(docs_root):

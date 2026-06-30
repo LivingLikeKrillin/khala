@@ -1,8 +1,8 @@
 import pytest
-from specledger.ledger import Ledger
-from specledger.artifacts import Artifact, Status
-from specledger.critique import critique, RUBRIC
-from specledger.errors import CritiqueError
+from khala.arbiter.ledger import Ledger
+from khala.arbiter.artifacts import Artifact, Status
+from khala.arbiter.critique import critique, RUBRIC
+from khala.arbiter.errors import CritiqueError
 from helpers import FakeCritic
 
 
@@ -13,7 +13,7 @@ def led(docs_root):
 def test_critique_writes_sidecar_and_sets_in_review(docs_root):
     ledger = led(docs_root)
     sid = ledger.record("spec", "A")
-    from specledger.sidecar import Sidecar
+    from khala.arbiter.sidecar import Sidecar
     issues = critique(ledger, sid, FakeCritic(), now=lambda: "2026-06-06T13:00Z")
     assert issues[0].issue_id == "I-001"
     sc = Sidecar.read(docs_root / ".reviews" / f"{sid}.md")
@@ -63,7 +63,7 @@ class _Client:
 
 
 def test_anthropic_critic_parses_json():
-    from specledger.critique import AnthropicCritic
+    from khala.arbiter.critique import AnthropicCritic
     client = _Client('[{"category":"scope-creep","severity":"low","description":"x"}]')
     crit = AnthropicCritic(client=client)
     assert crit.find_issues("body", [], RUBRIC) == [("scope-creep", "low", "x")]
@@ -72,14 +72,14 @@ def test_anthropic_critic_parses_json():
 def test_anthropic_critic_constructs_without_api_key(monkeypatch):
     """Server boot must not require the key: construction is keyless (lazy client)."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    from specledger.critique import AnthropicCritic
+    from khala.arbiter.critique import AnthropicCritic
     AnthropicCritic()  # no KeyError — the key is only read when critique actually runs
 
 
 def test_find_issues_without_key_raises_clear_error(monkeypatch):
     """Calling critique without a key fails with an actionable message, not a bare KeyError."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    from specledger.critique import AnthropicCritic
+    from khala.arbiter.critique import AnthropicCritic
     crit = AnthropicCritic()
     with pytest.raises(Exception) as exc:
         crit.find_issues("body", [], RUBRIC)
@@ -89,7 +89,7 @@ def test_find_issues_without_key_raises_clear_error(monkeypatch):
 def test_injected_client_never_reads_env(monkeypatch):
     """An injected client works with no key in the environment (offline/local)."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    from specledger.critique import AnthropicCritic
+    from khala.arbiter.critique import AnthropicCritic
     client = _Client('[{"category":"undefined","severity":"low","description":"y"}]')
     crit = AnthropicCritic(client=client)
     assert crit.find_issues("body", [], RUBRIC) == [("undefined", "low", "y")]

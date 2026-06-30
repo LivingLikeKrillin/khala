@@ -142,7 +142,7 @@ class A2ANexusSink:
             "params": {
                 "message": {
                     "role": "user",
-                    "messageId": f"specledger-{payload.get('id', 'doc')}",
+                    "messageId": f"arbiter-{payload.get('id', 'doc')}",
                     "kind": "message",
                     "metadata": {"skill_id": INGEST_SKILL},
                     "parts": [{"kind": "data", "data": payload}],

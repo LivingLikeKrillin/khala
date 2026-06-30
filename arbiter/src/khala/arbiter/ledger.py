@@ -104,7 +104,7 @@ class Ledger:
     def index(self) -> Path:
         self.status()  # repair first
         arts = [Artifact.load(p) for p in self._all_paths()]
-        lines = ["# Specledger Index", ""]
+        lines = ["# Arbiter Index", ""]
         for label, statuses in self._GROUPS:
             members = [a for a in arts if a.status in statuses]
             lines.append(f"## {label} ({len(members)})")

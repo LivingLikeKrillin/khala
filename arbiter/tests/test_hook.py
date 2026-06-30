@@ -13,15 +13,15 @@ def load_hook():
 
 
 def _approved(tmp_path):
-    from specledger.ledger import Ledger
-    from specledger.artifacts import Artifact
+    from khala.arbiter.ledger import Ledger
+    from khala.arbiter.artifacts import Artifact
     led = Ledger(tmp_path / "docs", now=lambda: "t")
     sid = led.record("spec", "A")
     artifact = Artifact.load(led._resolve(sid))
     artifact.meta["status"] = "approved"
     artifact.meta["content_hash"] = artifact.recompute_hash()
     artifact.save()
-    from specledger.gate import Gate
+    from khala.arbiter.gate import Gate
     Gate(tmp_path, now=lambda: "t").begin_implementation(sid)
     return sid
 

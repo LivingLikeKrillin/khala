@@ -1,4 +1,4 @@
-from specledger.artifacts import Artifact, ArtifactType, Status
+from khala.arbiter.artifacts import Artifact, ArtifactType, Status
 
 
 def test_load_reads_meta_and_body(docs_root):
@@ -21,7 +21,7 @@ def test_save_roundtrips(docs_root):
 
 
 def test_recompute_hash_matches_hashing_module(docs_root):
-    from specledger.hashing import content_hash
+    from khala.arbiter.hashing import content_hash
     p = docs_root / "specs" / "SPEC-z.md"
     p.write_text("---\nid: SPEC-z\ntype: spec\nstatus: draft\n---\nthe body\n", encoding="utf-8")
     a = Artifact.load(p)

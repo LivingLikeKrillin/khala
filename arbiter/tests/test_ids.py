@@ -1,4 +1,4 @@
-from specledger.ids import slugify, make_spec_id, next_adr_id
+from khala.arbiter.ids import slugify, make_spec_id, next_adr_id
 
 
 def test_slugify_lowercases_and_hyphenates():

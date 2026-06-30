@@ -1,12 +1,12 @@
 # 문서-타입 정본 레지스트리 (S1). 축-A 거버넌스 타입 → tier·생애주기 정책.
 # tier(T1/T2/T3) ↔ lifecycle(governed/tracked/memo)는 1:1 불변식(doctypes.py가 강제).
-# specledger_type: T1(거버넌스) 타입만 보유 — promote_external이 이 값으로 record() 한다.
+# arbiter_type: T1(거버넌스) 타입만 보유 — promote_external이 이 값으로 record() 한다.
 default_tier: T3   # 미지/미분류 타입은 메모로 안전 강등
 
 types:
-  ADR:        { tier: T1, immutable: true,  owner_required: true,  specledger_type: adr }
-  DESIGN:     { tier: T1, immutable: true,  owner_required: true,  specledger_type: spec }
-  RFC:        { tier: T1, immutable: true,  owner_required: true,  specledger_type: spec }
+  ADR:        { tier: T1, immutable: true,  owner_required: true,  arbiter_type: adr }
+  DESIGN:     { tier: T1, immutable: true,  owner_required: true,  arbiter_type: spec }
+  RFC:        { tier: T1, immutable: true,  owner_required: true,  arbiter_type: spec }
   PRD:        { tier: T2, immutable: false, owner_required: true }
   RUNBOOK:    { tier: T2, immutable: false, owner_required: true }
   POSTMORTEM: { tier: T2, immutable: false, owner_required: true }

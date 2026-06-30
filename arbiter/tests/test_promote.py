@@ -4,9 +4,9 @@ import hashlib
 
 import pytest
 
-from specledger.artifacts import Artifact
-from specledger.ledger import Ledger
-from specledger.promote import PromoteError, promote_external
+from khala.arbiter.artifacts import Artifact
+from khala.arbiter.ledger import Ledger
+from khala.arbiter.promote import PromoteError, promote_external
 
 
 def _csf(body="# Payment\n\n결제 서비스 명세", tool="manifest", sid="p-1", title="Payment PRD"):
@@ -66,7 +66,7 @@ def test_promote_adr_returns_proposed_and_carries_provenance(tmp_path):
 
 def test_promote_rejects_unknown_type(tmp_path):
     with pytest.raises(PromoteError):
-        promote_external(_led(tmp_path), _csf(), "PRD")  # PRD 는 specledger 어휘가 아님
+        promote_external(_led(tmp_path), _csf(), "PRD")  # PRD 는 Arbiter 어휘가 아님
 
 
 def test_promote_rejects_csf_missing_provenance(tmp_path):
@@ -101,7 +101,7 @@ def test_promote_rejects_id_with_path_separator(tmp_path):
 
 
 def test_promote_design_axis_a_type_creates_draft(tmp_path):
-    # 신규 축-A 타입 DESIGN → specledger spec 어휘 → DRAFT.
+    # 신규 축-A 타입 DESIGN → Arbiter spec 어휘 → DRAFT.
     out = promote_external(_led(tmp_path), _csf(), "DESIGN")
     assert out["status"] == "DRAFT"
     assert out["provenance_carried"] is True

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from specledger.guidelines import guidance_for
+from khala.arbiter.guidelines import guidance_for
 
 
 def test_guidance_for_known_types_carries_research_anchors():

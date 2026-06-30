@@ -1,26 +1,26 @@
-class SpecledgerError(Exception):
-    """Base for all specledger errors."""
+class ArbiterError(Exception):
+    """Base for all Arbiter errors."""
 
 
-class IdCollisionError(SpecledgerError):
+class IdCollisionError(ArbiterError):
     """Raised when an id would be reused."""
 
 
-class ImmutableArtifactError(SpecledgerError):
+class ImmutableArtifactError(ArbiterError):
     """Raised when mutating an accepted ADR."""
 
 
-class ArtifactNotFoundError(SpecledgerError):
+class ArtifactNotFoundError(ArbiterError):
     """Raised when an id does not resolve to a file."""
 
 
-class ReviewError(SpecledgerError):
+class ReviewError(ArbiterError):
     """Raised when approve() validation fails."""
 
 
-class CritiqueError(SpecledgerError):
+class CritiqueError(ArbiterError):
     """Raised when critique cannot run (fail-closed)."""
 
 
-class GateDeniedError(SpecledgerError):
+class GateDeniedError(ArbiterError):
     """Raised by the hook path when an edit is blocked."""

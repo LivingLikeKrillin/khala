@@ -60,7 +60,7 @@ _PROMPT = (
 class AnthropicCritic:
     """LLM critic. The ``ANTHROPIC_API_KEY`` is read **lazily** — only when a critique is
     actually run — so constructing the critic (and therefore booting the MCP server) needs no
-    key. Only the ``critique`` tool requires it; the other 9 specledger tools run keyless.
+    key. Only the ``critique`` tool requires it; the other 9 Arbiter tools run keyless.
     An injected ``client`` bypasses the key entirely (offline/local + tests).
     """
 
@@ -75,7 +75,7 @@ class AnthropicCritic:
             if not key:
                 raise CritiqueError(
                     "critique requires ANTHROPIC_API_KEY (the LLM reviewer); the other "
-                    "specledger tools — record/approve/status/begin_implementation/check_gate/"
+                    "Arbiter tools — record/approve/status/begin_implementation/check_gate/"
                     "publish — run without it. Set the key or inject a client."
                 )
             import anthropic

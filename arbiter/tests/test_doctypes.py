@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from specledger import doctypes
+from khala.arbiter import doctypes
 
 
 def test_known_type_resolves_tier_and_lifecycle():
@@ -31,11 +31,11 @@ def test_normalize_kind_resolves_legacy_csf_tokens():
     assert doctypes.normalize_kind("MYSTERY") == "MYSTERY"  # 미지는 그대로(이후 tier_of 가 T3)
 
 
-def test_specledger_type_and_promotability():
-    assert doctypes.specledger_type_of("ADR") == "adr"
-    assert doctypes.specledger_type_of("DESIGN") == "spec"
-    assert doctypes.specledger_type_of("RFC") == "spec"
-    assert doctypes.specledger_type_of("PRD") is None      # T2 는 승격 불가
+def test_arbiter_type_and_promotability():
+    assert doctypes.arbiter_type_of("ADR") == "adr"
+    assert doctypes.arbiter_type_of("DESIGN") == "spec"
+    assert doctypes.arbiter_type_of("RFC") == "spec"
+    assert doctypes.arbiter_type_of("PRD") is None      # T2 는 승격 불가
     assert doctypes.is_promotable("ADR") is True
     assert doctypes.is_promotable("PRD") is False
     assert doctypes.is_promotable("NOTE") is False

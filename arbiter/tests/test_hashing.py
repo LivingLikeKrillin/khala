@@ -1,4 +1,4 @@
-from specledger.hashing import content_hash
+from khala.arbiter.hashing import content_hash
 
 
 def test_hash_is_sha256_prefixed():

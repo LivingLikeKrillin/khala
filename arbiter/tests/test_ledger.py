@@ -1,8 +1,8 @@
 import pytest
 
-from specledger.ledger import Ledger
-from specledger.artifacts import Artifact, Status
-from specledger.errors import ImmutableArtifactError
+from khala.arbiter.ledger import Ledger
+from khala.arbiter.artifacts import Artifact, Status
+from khala.arbiter.errors import ImmutableArtifactError
 
 
 def make_ledger(docs_root):

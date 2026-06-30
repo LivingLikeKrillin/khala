@@ -1,10 +1,10 @@
 import pytest
-from specledger.ledger import Ledger
-from specledger.artifacts import Artifact, Status
-from specledger.critique import critique
-from specledger.review import approve
-from specledger.sidecar import Issue, Sidecar
-from specledger.errors import ReviewError
+from khala.arbiter.ledger import Ledger
+from khala.arbiter.artifacts import Artifact, Status
+from khala.arbiter.critique import critique
+from khala.arbiter.review import approve
+from khala.arbiter.sidecar import Issue, Sidecar
+from khala.arbiter.errors import ReviewError
 from helpers import FakeCritic
 
 

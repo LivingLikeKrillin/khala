@@ -1,9 +1,9 @@
-from specledger.ledger import Ledger
-from specledger.gate import Gate
-from specledger.config import SpecledgerConfig
-from specledger.artifacts import Artifact, Status
-from specledger.critique import critique
-from specledger.review import approve
+from khala.arbiter.ledger import Ledger
+from khala.arbiter.gate import Gate
+from khala.arbiter.config import ArbiterConfig
+from khala.arbiter.artifacts import Artifact, Status
+from khala.arbiter.critique import critique
+from khala.arbiter.review import approve
 from helpers import FakeCritic
 
 
@@ -11,7 +11,7 @@ def test_record_critique_fix_approve_then_gate_allows(tmp_path):
     docs = tmp_path / "docs"
     led = Ledger(docs, now=lambda: "t")
     gate = Gate(tmp_path, now=lambda: "t")
-    cfg = SpecledgerConfig()
+    cfg = ArbiterConfig()
 
     sid = led.record("spec", "Playlist Self-Update")
     gate.begin_implementation(sid)
@@ -39,8 +39,8 @@ def test_tamper_after_approval_reblocks_gate(tmp_path):
     a.save()
     approve(led, sid, [{"issue_id": "I-001", "disposition": "accepted"}], "eisen", now=lambda: "t")
     gate.begin_implementation(sid)
-    assert gate.check_gate(["src/x.py"], led, SpecledgerConfig())["allowed"] is True
+    assert gate.check_gate(["src/x.py"], led, ArbiterConfig())["allowed"] is True
     a2 = Artifact.load(led._resolve(sid))
     a2.body += "\nsneaky\n"
     a2.save()
-    assert gate.check_gate(["src/x.py"], led, SpecledgerConfig())["allowed"] is False
+    assert gate.check_gate(["src/x.py"], led, ArbiterConfig())["allowed"] is False

@@ -1,7 +1,7 @@
-from specledger.gate import Gate
-from specledger.ledger import Ledger
-from specledger.artifacts import Artifact
-from specledger.config import SpecledgerConfig
+from khala.arbiter.gate import Gate
+from khala.arbiter.ledger import Ledger
+from khala.arbiter.artifacts import Artifact
+from khala.arbiter.config import ArbiterConfig
 
 
 def test_begin_sets_single_active(tmp_path):
@@ -32,7 +32,7 @@ def _approved_spec(docs_root):
 def test_gate_denies_without_marker(tmp_path):
     led, _ = _approved_spec(tmp_path / "docs")
     g = Gate(tmp_path, now=lambda: "t")
-    res = g.check_gate(["src/app.py"], led, SpecledgerConfig())
+    res = g.check_gate(["src/app.py"], led, ArbiterConfig())
     assert res["allowed"] is False
     assert "활성 spec" in res["reason"]
 
@@ -41,7 +41,7 @@ def test_gate_allows_when_active_spec_approved(tmp_path):
     led, sid = _approved_spec(tmp_path / "docs")
     g = Gate(tmp_path, now=lambda: "t")
     g.begin_implementation(sid)
-    res = g.check_gate(["src/app.py"], led, SpecledgerConfig())
+    res = g.check_gate(["src/app.py"], led, ArbiterConfig())
     assert res["allowed"] is True
     assert res["spec_id"] == sid
 
@@ -51,7 +51,7 @@ def test_gate_denies_when_active_spec_unapproved(tmp_path):
     sid = led.record("spec", "A")  # draft
     g = Gate(tmp_path, now=lambda: "t")
     g.begin_implementation(sid)
-    res = g.check_gate(["src/app.py"], led, SpecledgerConfig())
+    res = g.check_gate(["src/app.py"], led, ArbiterConfig())
     assert res["allowed"] is False
     assert res["status"] == "draft"
 
@@ -59,14 +59,14 @@ def test_gate_denies_when_active_spec_unapproved(tmp_path):
 def test_allow_globs_bypass_gate(tmp_path):
     led = Ledger(tmp_path / "docs", now=lambda: "t")
     g = Gate(tmp_path, now=lambda: "t")
-    res = g.check_gate(["docs/readme.md", "tests/test_x.py"], led, SpecledgerConfig())
+    res = g.check_gate(["docs/readme.md", "tests/test_x.py"], led, ArbiterConfig())
     assert res["allowed"] is True
 
 
 def test_exempt_path_allows_and_logs(tmp_path):
     led = Ledger(tmp_path / "docs", now=lambda: "t")
     g = Gate(tmp_path, now=lambda: "t")
-    cfg = SpecledgerConfig(exempt_paths=["scripts/**"])
+    cfg = ArbiterConfig(exempt_paths=["scripts/**"])
     res = g.check_gate(["scripts/gen.py"], led, cfg, tool_name="Write")
     assert res["allowed"] is True
     log = (tmp_path / ".specledger" / "exempt.log").read_text(encoding="utf-8")
@@ -78,5 +78,5 @@ def test_mixed_allowed_and_denied_paths_denies(tmp_path):
     # one allow-glob path + one ungoverned source path -> whole call denied
     led = Ledger(tmp_path / "docs", now=lambda: "t")
     g = Gate(tmp_path, now=lambda: "t")
-    res = g.check_gate(["docs/readme.md", "src/evil.py"], led, SpecledgerConfig())
+    res = g.check_gate(["docs/readme.md", "src/evil.py"], led, ArbiterConfig())
     assert res["allowed"] is False
