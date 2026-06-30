@@ -30,8 +30,8 @@ jobs:
         working-directory: nexus
         run: python -m pytest -q -m "not integration"
 
-  probe:
-    name: probe (vitest)
+  observer:
+    name: observer (vitest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -42,12 +42,12 @@ jobs:
         with:
           node-version: "20"
           cache: pnpm
-          cache-dependency-path: probe/pnpm-lock.yaml
-      - name: Install probe
-        working-directory: probe
+          cache-dependency-path: observer/pnpm-lock.yaml
+      - name: Install observer
+        working-directory: observer
         run: pnpm install
       - name: Run tests
-        working-directory: probe
+        working-directory: observer
         run: pnpm test:run
 
   arbiter:
@@ -65,19 +65,19 @@ jobs:
         working-directory: arbiter
         run: python -m pytest -q
 
-  mutqa:
-    name: mutqa (pytest)
+  probe:
+    name: probe (pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Install mutqa
-        working-directory: mutqa
+      - name: Install probe
+        working-directory: probe
         run: pip install -e ".[dev]"
       - name: Run tests
-        working-directory: mutqa
+        working-directory: probe
         run: python -m pytest -q
 
   adept:
