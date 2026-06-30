@@ -3,7 +3,7 @@
 Proves end-to-end against a **real Postgres** (docker-compose.test.yml): the production A2A
 ingest bridge (`server._default_ingest_fn` — exactly what the `ingest_governed_doc` skill calls)
 persists the governed doc's `content_hash` into `documents.approved_hash`, and the retrieval
-read path (`hybrid._enrich_hits` → `assemble_packet`) surfaces it — so the stamp specledger
+read path (`hybrid._enrich_hits` → `assemble_packet`) surfaces it — so the stamp Arbiter
 sends is the stamp a retrieving consumer (Probe's `SpecRef.approvedHash`) reads back.
 
 No Ollama/LLM: vector/graph steps fail gracefully (caught in `run_ingest`); the read-back is
@@ -23,7 +23,7 @@ DB_URL = os.getenv("NEXUS_TEST_DB_URL")
 pytestmark = pytest.mark.skipif(not DB_URL, reason="NEXUS_TEST_DB_URL 필요 (docker-compose.test.yml)")
 
 _TENANT = "acme"
-_STAMP = "sha256:specledger-stamp-abcdef0123456789"
+_STAMP = "sha256:arbiter-stamp-abcdef0123456789"
 _DOC = {
     "id": "SPEC-payment-topics",
     "title": "Payment Topics",
@@ -123,7 +123,7 @@ def test_idempotent_republish_is_noop_changed_body_supersedes():
         assert await doc_count() == 1  # not duplicated
 
         # 3) changed body (new content_hash) ⇒ supersede: same resource, re-indexed, new stamp
-        changed = {**_DOC, "content_hash": "sha256:specledger-stamp-v2",
+        changed = {**_DOC, "content_hash": "sha256:arbiter-stamp-v2",
                    "body": _DOC["body"] + "\n\n## v2\n토픽 정의가 갱신되었다."}
         superseded = await _default_ingest_fn(changed, _TENANT)
         assert superseded.idempotent_hit is False
@@ -133,7 +133,7 @@ def test_idempotent_republish_is_noop_changed_body_supersedes():
             "SELECT approved_hash FROM documents WHERE rid = $1 AND tenant = $2",
             first.resource_rid, _TENANT,
         )
-        assert row["approved_hash"] == "sha256:specledger-stamp-v2"  # superseded to the new stamp
+        assert row["approved_hash"] == "sha256:arbiter-stamp-v2"  # superseded to the new stamp
 
     _run(inner)
 
