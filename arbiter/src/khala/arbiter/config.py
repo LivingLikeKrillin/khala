@@ -16,7 +16,7 @@ class ArbiterConfig:
 
     @classmethod
     def load(cls, project_root: Path) -> "ArbiterConfig":
-        path = Path(project_root) / ".specledger" / "config.yaml"
+        path = Path(project_root) / ".arbiter" / "config.yaml"
         if not path.exists():
             return cls()
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}

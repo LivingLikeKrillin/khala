@@ -8,7 +8,7 @@ from pathlib import Path
 class Gate:
     def __init__(self, project_root: Path, now: Callable[[], str]):
         self.root = Path(project_root)
-        self._dir = self.root / ".specledger"
+        self._dir = self.root / ".arbiter"
         self._marker = self._dir / "active.json"
         self._now = now
 

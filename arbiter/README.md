@@ -1,6 +1,6 @@
 # Arbiter
 
-Arbiter (formerly specledger) is a Python MCP server and Claude Code `PreToolUse` hook that records AI-generated ADRs and design specs in a consistent Markdown+frontmatter format, enforces accountable review (AI critique → human issue-disposition → sign-off) before any code edits are written, and optionally publishes approved documents to an external Nexus sink. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it. Until a spec is approved and stamped with a content hash, all `Write`/`Edit`/`MultiEdit` calls targeting non-exempt source paths are blocked.
+Arbiter is a Python MCP server and Claude Code `PreToolUse` hook that records AI-generated ADRs and design specs in a consistent Markdown+frontmatter format, enforces accountable review (AI critique → human issue-disposition → sign-off) before any code edits are written, and optionally publishes approved documents to an external Nexus sink. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it. Until a spec is approved and stamped with a content hash, all `Write`/`Edit`/`MultiEdit` calls targeting non-exempt source paths are blocked.
 
 ---
 
@@ -19,9 +19,9 @@ Add to your project's `.mcp.json` (or the global `~/.claude/mcp.json`):
 ```json
 {
   "mcpServers": {
-    "specledger": {
+    "arbiter": {
       "command": "python",
-      "args": ["-m", "specledger.server"],
+      "args": ["-m", "khala.arbiter.server"],
       "env": {
         "ARBITER_ROOT": "/abs/path/to/your/project",
         "ARBITER_DOCS": "/abs/path/to/your/project/docs",
@@ -32,7 +32,7 @@ Add to your project's `.mcp.json` (or the global `~/.claude/mcp.json`):
 }
 ```
 
-`ARBITER_ROOT` — project root where `.specledger/` state lives (defaults to `.`).
+`ARBITER_ROOT` — project root where `.arbiter/` state lives (defaults to `.`).
 `ARBITER_DOCS` — directory where spec and ADR Markdown files are written (defaults to `$ARBITER_ROOT/docs`).
 `ANTHROPIC_API_KEY` — required only when using the built-in `AnthropicCritic` (the `critique` tool).
 
@@ -51,7 +51,7 @@ Register the gate hook in `.claude/settings.json` (project-level) or `~/.claude/
         "hooks": [
           {
             "type": "command",
-            "command": "python /abs/path/specledger/hooks/pretooluse_gate.py"
+            "command": "python /abs/path/arbiter/hooks/pretooluse_gate.py"
           }
         ]
       }
@@ -113,7 +113,7 @@ The hook reads the tool payload from stdin and exits `0` (allow) or `2` (block).
 ## Nexus Integration (optional)
 
 `publish` delivers an approved doc to Nexus over **A2A** (the `ingest_governed_doc` skill), with
-the doc's content hash riding along as provenance. Add to `.specledger/config.yaml`:
+the doc's content hash riding along as provenance. Add to `.arbiter/config.yaml`:
 
 ```yaml
 nexus:
@@ -135,4 +135,4 @@ no-op returning `{"published": false, "reason": "nexus not configured"}`.
 - **Path-agnostic gate:** paths are normalized relative to `ARBITER_ROOT`; no project-structure assumptions beyond the `docs/**` and `tests/**` allow-globs (configurable via `allow_globs` in config).
 - **Bash not gated:** only `Write`, `Edit`, and `MultiEdit` tools are intercepted by the PreToolUse hook.
 - **Solo-user:** the approve flow is designed for a single human approver; no multi-reviewer workflow is implemented.
-- **No database:** all state lives in Markdown files under `ARBITER_DOCS` and a small `.specledger/` JSON marker in `ARBITER_ROOT`.
+- **No database:** all state lives in Markdown files under `ARBITER_DOCS` and a small `.arbiter/` JSON marker in `ARBITER_ROOT`.

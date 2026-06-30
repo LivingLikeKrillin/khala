@@ -9,7 +9,7 @@ def test_defaults_when_missing(tmp_path):
 
 
 def test_loads_yaml(tmp_path):
-    d = tmp_path / ".specledger"
+    d = tmp_path / ".arbiter"
     d.mkdir()
     (d / "config.yaml").write_text(
         "exempt_paths: ['scripts/**']\nnexus: {url: 'http://x'}\n", encoding="utf-8")

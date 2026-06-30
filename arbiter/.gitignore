@@ -14,8 +14,8 @@ venv/
 .ruff_cache/
 .mypy_cache/
 
-# specledger runtime state (per-consumer-project, not part of the tool repo)
-.specledger/
+# arbiter runtime state (per-consumer-project, not part of the tool repo)
+.arbiter/
 
 # OS
 .DS_Store

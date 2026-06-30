@@ -20,7 +20,7 @@ def _utc_now() -> str:
 
 
 def build_app(ledger: Ledger, gate: Gate, critic, config: ArbiterConfig) -> FastMCP:
-    app = FastMCP("specledger")
+    app = FastMCP("arbiter")
 
     @app.tool()
     def record(type: str, title: str, slug: str | None = None) -> str:

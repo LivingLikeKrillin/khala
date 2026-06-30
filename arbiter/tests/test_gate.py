@@ -69,7 +69,7 @@ def test_exempt_path_allows_and_logs(tmp_path):
     cfg = ArbiterConfig(exempt_paths=["scripts/**"])
     res = g.check_gate(["scripts/gen.py"], led, cfg, tool_name="Write")
     assert res["allowed"] is True
-    log = (tmp_path / ".specledger" / "exempt.log").read_text(encoding="utf-8")
+    log = (tmp_path / ".arbiter" / "exempt.log").read_text(encoding="utf-8")
     assert "scripts/gen.py" in log
     assert "Write" in log  # tool name threaded into the exempt audit log
 
