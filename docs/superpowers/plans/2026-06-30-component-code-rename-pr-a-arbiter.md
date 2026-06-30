@@ -250,8 +250,10 @@ matrix can validate.
 In `tests/test_a2a_e2e_external_spec.py` and `tests/test_a2a_e2e_specledger_to_nexus.py`:
 rewrite `from specledger.<mod> import …` → `from khala.arbiter.<mod> import …`,
 `pytest.importorskip("specledger")` → `importorskip("khala.arbiter")`, and any
-`specledger/src` sys.path / path strings → `arbiter/src`. Then rename the file:
-`git mv tests/test_a2a_e2e_specledger_to_nexus.py tests/test_a2a_e2e_arbiter_to_nexus.py`.
+`specledger/src` sys.path / path strings → `arbiter/src`. Also update in-file **prose
+comments** that name the tool (`external_spec` lines 4–5/107) → Arbiter, and any comment
+referencing the old `test_a2a_e2e_specledger_to_nexus.py` filename → the renamed file. Then
+rename: `git mv tests/test_a2a_e2e_specledger_to_nexus.py tests/test_a2a_e2e_arbiter_to_nexus.py`.
 
 - [ ] **Step 2: Repoint `ken/tests/test_hashing_parity.py` (forced by PR-A's move)**
 
