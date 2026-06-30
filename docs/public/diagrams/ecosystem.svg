@@ -18,7 +18,7 @@
 <text x="765" y="88.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Developer</text>
 <text x="515" y="88.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Agent</text>
 <text x="640" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Archon</text>
-<text x="390" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">specledger</text>
-<text x="140" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Probe</text>
+<text x="390" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Arbiter</text>
+<text x="140" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Observer</text>
 <text x="390" y="421.2583333333334" font-size="13" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Nexus — the Khala link</text>
 </svg>
