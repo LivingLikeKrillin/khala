@@ -1,7 +1,7 @@
 [project]
-name = "ken"
+name = "khala-adept"
 version = "0.1.0"
-description = "Cognitive-debt meter — measures whether a named human can vouch for an artifact"
+description = "Adept — cognitive-debt meter that measures whether a named human can vouch for an artifact"
 requires-python = ">=3.11"
 dependencies = ["typer>=0.12", "pyyaml>=6", "anthropic>=0.40"]
 
@@ -11,14 +11,18 @@ dev = ["pytest>=8", "ruff>=0.5"]
 postgres = ["psycopg[binary]>=3.2"]
 
 [project.scripts]
-ken = "ken.cli:app"
+adept = "khala.adept.cli:app"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+
 [tool.setuptools.packages.find]
 where = ["src"]
+namespaces = true
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
