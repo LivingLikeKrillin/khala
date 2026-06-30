@@ -136,7 +136,7 @@ def claim_seed(
 
 @app.command("claim-value")
 def claim_value(
-    concept: str = typer.Argument(..., help="개념(예: 준회원)"),
+    concept: str = typer.Argument(..., help="개념(예: Basic)"),
     config_path: str = typer.Option("config.yaml", "--config", "-c"),
     tenant: str = typer.Option("default", "--tenant", "-t"),
 ) -> None:

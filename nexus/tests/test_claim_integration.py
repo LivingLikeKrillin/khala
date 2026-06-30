@@ -47,22 +47,22 @@ def test_upsert_and_find_by_concept():
     async def inner(pool):
         repo = ClaimRepository(pool)
         c = Claim(
-            claim_id="associate-max-playlists",
+            claim_id="basic-max-projects",
             kind="invariant",
-            concepts=["준회원", "플레이리스트"],
-            statement="준회원 최대 N개",
-            value_source="PlaylistPolicy.ASSOCIATE_MAX_PLAYLISTS",
+            concepts=["Basic", "프로젝트"],
+            statement="Basic 최대 N개",
+            value_source="PlanPolicy.BASIC_MAX_PROJECTS",
             value_ref_kind="code_constant",
             owner="@be",
             value_symbol_hash="abc123",
             last_verified_commit="deadbee",
         )
         await repo.upsert(c)
-        return await repo.find_by_concept("준회원", tenant="default", clearance="INTERNAL")
+        return await repo.find_by_concept("Basic", tenant="default", clearance="INTERNAL")
 
     found = _run(inner)
-    got = next(x for x in found if x.claim_id == "associate-max-playlists")
-    assert got.value_source.endswith("ASSOCIATE_MAX_PLAYLISTS")
+    got = next(x for x in found if x.claim_id == "basic-max-projects")
+    assert got.value_source.endswith("BASIC_MAX_PROJECTS")
     assert got.value_symbol_hash == "abc123"  # 신선도용 hash 왕복 보존
     assert got.claim_status == "unverified"
 

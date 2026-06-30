@@ -6,15 +6,15 @@ FIX = Path(__file__).parent / "fixtures"
 
 
 def test_reads_current_int_constant():
-    res = CodeValueResolver(FIX).resolve("PlaylistPolicy.ASSOCIATE_MAX_PLAYLISTS")
+    res = CodeValueResolver(FIX).resolve("PlanPolicy.BASIC_MAX_PROJECTS")
     assert res.found and res.value == "5"
-    assert res.symbol == "ASSOCIATE_MAX_PLAYLISTS"
-    assert res.rel_path.endswith("PlaylistPolicy.java")
+    assert res.symbol == "BASIC_MAX_PROJECTS"
+    assert res.rel_path.endswith("PlanPolicy.java")
     assert res.symbol_hash
 
 
 def test_tolerates_extra_whitespace():
-    res = CodeValueResolver(FIX).resolve("PlaylistPolicy.TRACK_TIME_LIMIT_SECONDS")
+    res = CodeValueResolver(FIX).resolve("PlanPolicy.SESSION_TIMEOUT_SECONDS")
     assert res.value == "360"
 
 
@@ -28,4 +28,4 @@ def test_hash_changes_with_value(tmp_path):
 
 
 def test_missing_symbol_not_found():
-    assert CodeValueResolver(FIX).resolve("PlaylistPolicy.NOPE").found is False
+    assert CodeValueResolver(FIX).resolve("PlanPolicy.NOPE").found is False

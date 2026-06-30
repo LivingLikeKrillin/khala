@@ -880,7 +880,7 @@ async def list_documents(
 
 @app.get("/claims/value", response_model=NexusResponse)
 async def claim_value(
-    concept: str = Query(..., min_length=1, description="개념 (예: 준회원)"),
+    concept: str = Query(..., min_length=1, description="개념 (예: Basic)"),
     tenant: str = Query(default="default"),
     classification_max: str = Query(default="INTERNAL"),
     principal: Principal = Depends(get_principal),
