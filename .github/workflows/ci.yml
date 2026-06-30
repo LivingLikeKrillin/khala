@@ -50,19 +50,19 @@ jobs:
         working-directory: probe
         run: pnpm test:run
 
-  specledger:
-    name: specledger (pytest)
+  arbiter:
+    name: arbiter (pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Install specledger
-        working-directory: specledger
+      - name: Install arbiter
+        working-directory: arbiter
         run: pip install -e ".[dev]"
       - name: Run tests
-        working-directory: specledger
+        working-directory: arbiter
         run: python -m pytest -q
 
   mutqa:
