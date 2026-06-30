@@ -64,21 +64,28 @@ def test_register_roundtrip_and_idempotent(store, tmp_path):
     assert len(man) == 1 and man[0].path == str(art) and man[0].content_hash  # hash live
 
 
-def test_save_questions_replace_hash_ids_order(store):
-    store.save_questions("a1", "sha256:h1", [Question(id="", text="Q1"), Question(id="", text="Q2")])
-    h, qs = store.load_questions("a1")
+def test_save_questions_replace_hash_ids_order(store, tmp_path):
+    art = tmp_path / "a.md"
+    art.write_text("hello\n", encoding="utf-8")
+    aid = store.register(str(art)).artifact_id  # FK needs a real artifact
+    store.save_questions(aid, "sha256:h1", [Question(id="", text="Q1"), Question(id="", text="Q2")])
+    h, qs = store.load_questions(aid)
     assert h == "sha256:h1" and [q.text for q in qs] == ["Q1", "Q2"]  # order preserved
     from khala.adept.questions import make_question_id
 
-    assert qs[0].id == make_question_id("a1", "sha256:h1", 0)  # stable id scheme
-    store.save_questions("a1", "sha256:h2", [Question(id="", text="NEW")])  # replace
-    h2, qs2 = store.load_questions("a1")
+    assert qs[0].id == make_question_id(aid, "sha256:h1", 0)  # stable id scheme
+    store.save_questions(aid, "sha256:h2", [Question(id="", text="NEW")])  # replace
+    h2, qs2 = store.load_questions(aid)
     assert h2 == "sha256:h2" and [q.text for q in qs2] == ["NEW"]
 
 
-def test_attempts_append_only_in_order(store):
+def test_attempts_append_only_in_order(store, tmp_path):
+    art = tmp_path / "a.md"
+    art.write_text("hello\n", encoding="utf-8")
+    aid = store.register(str(art)).artifact_id  # FK needs a real artifact
+
     def a(p, ts):
-        return Attempt("kr", "a1", "q1", "sha256:h", p, 1.0, ts)
+        return Attempt("kr", aid, "q1", "sha256:h", p, 1.0, ts)
 
     store.append_attempt(a(True, "2026-06-20T00:00:00Z"))
     store.append_attempt(a(False, "2026-06-20T01:00:00Z"))
@@ -146,3 +153,19 @@ def test_postgres_two_tenant_isolation(tmp_path):
     # B's questions don't leak into A
     b.save_questions(rb.artifact_id, "h", [Question(text="Q?")])
     assert a.load_questions(ra.artifact_id) == (None, [])
+
+
+@pytest.mark.skipif(_PG_DSN is None, reason="ADEPT_TEST_DATABASE_URL unset")
+def test_postgres_fk_rejects_unregistered_artifact():
+    import psycopg
+    from khala.adept.stores.postgres_store import PostgresStore
+
+    with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
+        cur.execute("TRUNCATE artifacts, questions, attempts, users, sessions, tenants CASCADE")
+        cur.execute("INSERT INTO tenants (slug, name) VALUES ('contract', 'Contract')")
+    s = PostgresStore(_PG_DSN, "contract")
+    # 'ghost' was never registered -> the composite FK rejects both writes
+    with pytest.raises(Exception):
+        s.save_questions("ghost", "h", [Question(text="Q?")])
+    with pytest.raises(Exception):
+        s.append_attempt(Attempt("u", "ghost", "q1", "h", True, 1.0, "2026-06-24T00:00:00+00:00"))
