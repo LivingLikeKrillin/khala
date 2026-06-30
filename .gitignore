@@ -15,3 +15,4 @@ __pycache__/
 
 # adept-web manual E2E: isolated data dir + dropped server key (never commit)
 .e2e-data/
+.superpowers/
