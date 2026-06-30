@@ -14,7 +14,7 @@ Observer (옛 Probe)는 리뷰어가 머릿속에 들고 있어야 할 맥락에
 한 줄 정체성: 범위·계약·규정 준수를 근거시켜 PR 리뷰를 정직하게 유지하는 도구 — Nexus가 있으면 풍부해지지만, 없어도 완전히 동작합니다.
 
 <img
-  src="/diagrams/probe.svg"
+  src="/diagrams/observer.svg"
   alt="범위 분석: 변경 파일 → 역할 배정 → 응집 그룹 매칭 → 심각도 점수 → 관심사가 섞였는가? 그렇다면 병합 순서와 함께 분할 제안, 응집적이면 침묵."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
@@ -24,8 +24,8 @@ Observer (옛 Probe)는 리뷰어가 머릿속에 들고 있어야 할 맥락에
 - **플랫폼 프로파일** — 프레임워크별(Spring Boot, Next.js, React SPA) 파일 패턴 → 역할 매핑. 역할이 모여 **응집 그룹**을 이룹니다.
 - **범위 분석** — 변경 파일에 역할을 부여하고 응집 그룹에 매칭, severity를 매겨 관심사가 섞였으면 머지 순서까지 담은 분할을 제안합니다.
 - **관심사 드리프트** — 편집 중 현재 변경과 *다른* 관심사의 파일이 들어오면 즉시 경고합니다.
-- **API 린트 + diff** — 10개 내장 룰(`probe/nullable`, `probe/error-response` 등)로 스펙을 검사하고, base 대비 breaking change를 감지합니다.
+- **API 린트 + diff** — 10개 내장 룰(`observer/nullable`, `observer/error-response` 등)로 스펙을 검사하고, base 대비 breaking change를 감지합니다.
 - **PR 타입 → 체크리스트** — 10개 PR 타입이 각각 리뷰 체크리스트로 매핑됩니다.
 - **Nexus는 선택적** — 없어도 모든 기능이 동작하고, 있으면 규정·영향·설계-관측 갭이 더해집니다.
 
-설치(`pnpm add -D probe`), 명령어(`npx probe check` 등), MCP 등록은 영어 페이지([Observer](/tools/observer/))를 참고하세요.
+설치(`pnpm add -D @khala/observer`), 명령어(`observer check` 등), MCP 등록은 영어 페이지([Observer](/tools/observer/))를 참고하세요.

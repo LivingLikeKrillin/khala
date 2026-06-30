@@ -78,7 +78,7 @@ def test_approve_with_zero_issues_succeeds(docs_root):
     assert Artifact.load(ledger._resolve(sid)).status == Status.APPROVED
 
 
-# --- behavioral post-state of dispositioned issues (mutqa Gap A) ---
+# --- behavioral post-state of dispositioned issues (Probe Gap A) ---
 # Every test above asserts the Artifact's meta (status/approved_by/hash) but none
 # pins the Sidecar issue records that approve() writes. Mutation testing showed the
 # whole disposition-writeback loop could be disabled (`for i in []`) or its guard

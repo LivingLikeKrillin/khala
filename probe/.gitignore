@@ -1,4 +1,7 @@
-node_modules/
-dist/
-*.tsbuildinfo
-.claude/settings.local.json
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.cosmic-ray*/
+*.egg-info/

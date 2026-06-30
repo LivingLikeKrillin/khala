@@ -23,9 +23,9 @@
 | 프로젝트 | 역할 | 기술 |
 |---------|------|------|
 | **Nexus** | 근거 기반 지식 검색 시스템 (RAG + GraphRAG) | Python, FastAPI, PostgreSQL, mecab-ko |
-| **Probe** | 플랫폼 인식 PR 분석 + API 검증 도구 | TypeScript, Node.js, MCP |
+| **Observer** | 플랫폼 인식 PR 분석 + API 검증 도구 | TypeScript, Node.js, MCP |
 
-Probe는 Nexus 없이도 100% 동작한다. Nexus가 있으면 조직 맥락이 풍부해진다.
+Observer는 Nexus 없이도 100% 동작한다. Nexus가 있으면 조직 맥락이 풍부해진다.
 
 ---
 
@@ -88,7 +88,7 @@ Probe는 Nexus 없이도 100% 동작한다. Nexus가 있으면 조직 맥락이 
 
 ---
 
-## Probe 로드맵 — 버전 기반
+## Observer 로드맵 — 버전 기반
 
 ### 완료
 
@@ -175,5 +175,5 @@ A2A에서 했던 "검토 후 명시적 배제" 규율을 GraphRAG에도 동일�
 1. **Grounded answers only** — 근거 없는 답변은 제공하지 않는다
 2. **System decides, LLM narrates** — 접근 통제/분류/검색 경로는 코드가 결정. LLM은 요약만
 3. **팀 맞춤형 > 범용** — 전체 조직이 하나의 설정을 공유하는 것은 비효율적이다
-4. **정상일 때는 조용히** — 노이즈는 신뢰를 죽인다 (Probe)
-5. **없어도 동작, 있으면 풍부** — Probe는 Nexus 없이도 100% 동작한다
+4. **정상일 때는 조용히** — 노이즈는 신뢰를 죽인다 (Observer)
+5. **없어도 동작, 있으면 풍부** — Observer는 Nexus 없이도 100% 동작한다

@@ -43,12 +43,12 @@ tasks:
 
   # ---- aggregate ----------------------------------------------------------
   test:
-    desc: Run all subproject test suites (nexus, probe, arbiter, mutqa, docs)
+    desc: Run all subproject test suites (nexus, observer, arbiter, probe, docs)
     cmds:
       - task: test:nexus
-      - task: test:probe
+      - task: test:observer
       - task: test:arbiter
-      - task: test:mutqa
+      - task: test:probe
       - task: test:docs
 
   build:
@@ -71,9 +71,9 @@ tasks:
       - pip install -e ".[dev,mcp]"
       - python -m pytest -q -m "not integration"
 
-  test:probe:
-    desc: probe tests (vitest)
-    dir: probe
+  test:observer:
+    desc: observer tests (vitest)
+    dir: observer
     cmds:
       - pnpm install
       - pnpm test:run
@@ -85,9 +85,9 @@ tasks:
       - pip install -e ".[dev]"
       - python -m pytest -q
 
-  test:mutqa:
-    desc: mutqa tests (pytest)
-    dir: mutqa
+  test:probe:
+    desc: probe tests (pytest)
+    dir: probe
     cmds:
       - pip install -e ".[dev]"
       - python -m pytest -q
@@ -113,4 +113,4 @@ tasks:
   lint:ruff:
     desc: ruff check on the Python subprojects (check-only baseline)
     cmds:
-      - ruff check nexus arbiter mutqa
+      - ruff check nexus arbiter probe

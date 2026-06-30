@@ -15,6 +15,6 @@
 - artifact_id: 06700043dc0b
   path: arbiter/src/khala/arbiter/review.py
 - artifact_id: 7c5d255f8266
-  path: mutqa/src/mutqa/ledger.py
+  path: probe/src/khala/probe/ledger.py
 - artifact_id: b2c3e57428da
-  path: probe/src/core/concern-drift.ts
+  path: observer/src/core/concern-drift.ts
