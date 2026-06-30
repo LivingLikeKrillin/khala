@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from ken.models import Attempt
-from ken.schedule import LADDER, due, next_due_at, rebuild
+from khala.adept.models import Attempt
+from khala.adept.schedule import LADDER, due, next_due_at, rebuild
 
 
 def att(qid, passed, ts, h="sha256:cur"):

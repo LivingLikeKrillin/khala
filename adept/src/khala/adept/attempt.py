@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ken.models import Attempt
+from khala.adept.models import Attempt
 
 
 def append_attempt(

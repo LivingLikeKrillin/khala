@@ -1,7 +1,7 @@
-"""FileStore — KenStore over the existing file-backed registry/questions/attempt.
+"""FileStore — AdeptStore over the existing file-backed registry/questions/attempt.
 
 A thin wrapper: paths are injected at construction; each method delegates to the
-existing module function with the held path. Behavior is identical to ken today —
+existing module function with the held path. Behavior is identical to adept today —
 fail-loud writes, append-only attempts, live content hashes.
 """
 
@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ken.attempt import append_attempt as _append_attempt
-from ken.attempt import load_attempts as _load_attempts
-from ken.models import ArtifactRef, Attempt, Question
-from ken.questions import load_questions as _load_questions
-from ken.questions import save_questions as _save_questions
-from ken.registry import load_manifest as _load_manifest
-from ken.registry import register as _register
+from khala.adept.attempt import append_attempt as _append_attempt
+from khala.adept.attempt import load_attempts as _load_attempts
+from khala.adept.models import ArtifactRef, Attempt, Question
+from khala.adept.questions import load_questions as _load_questions
+from khala.adept.questions import save_questions as _save_questions
+from khala.adept.registry import load_manifest as _load_manifest
+from khala.adept.registry import register as _register
 
 
 class FileStore:

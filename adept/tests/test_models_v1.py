@@ -1,4 +1,4 @@
-from ken.models import Attempt, Question, ReviewState
+from khala.adept.models import Attempt, Question, ReviewState
 
 
 def test_question_has_id():

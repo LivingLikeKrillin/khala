@@ -1,4 +1,4 @@
-from ken.paths import discover_root, MANIFEST_NAME
+from khala.adept.paths import discover_root, MANIFEST_NAME
 
 
 def test_finds_marker_in_start(tmp_path):

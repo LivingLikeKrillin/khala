@@ -1,4 +1,4 @@
-"""KenStore — the storage abstraction the service layer persists through.
+"""AdeptStore — the storage abstraction the service layer persists through.
 
 A single Protocol covering exactly the persistence operations `service.*` needs.
 Two implementations (`FileStore`, `PostgresStore`) satisfy one shared contract test
@@ -13,11 +13,11 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from ken.models import ArtifactRef, Attempt, Question
+from khala.adept.models import ArtifactRef, Attempt, Question
 
 
 @runtime_checkable
-class KenStore(Protocol):
+class AdeptStore(Protocol):
     def load_manifest(self) -> list[ArtifactRef]: ...
     def register(self, path: str) -> ArtifactRef: ...
     def load_questions(self, artifact_id: str) -> tuple[str | None, list[Question]]: ...

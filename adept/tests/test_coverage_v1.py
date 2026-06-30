@@ -1,5 +1,5 @@
-from ken.coverage import compute_coverage_v1
-from ken.models import ArtifactRef, Attempt, Question
+from khala.adept.coverage import compute_coverage_v1
+from khala.adept.models import ArtifactRef, Attempt, Question
 
 
 def att(qid, passed, ts, h="sha256:cur"):  # local helper

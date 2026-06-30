@@ -1,7 +1,7 @@
 import pytest
 
-from ken.attempt import append_attempt, load_attempts
-from ken.models import Attempt
+from khala.adept.attempt import append_attempt, load_attempts
+from khala.adept.models import Attempt
 
 
 def mk(passed=True, ts="2026-06-23T00:00:00Z", qid="q1"):

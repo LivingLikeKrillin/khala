@@ -12,8 +12,8 @@ from pathlib import Path
 
 import yaml
 
-from ken.hashing import content_hash
-from ken.models import ArtifactRef
+from khala.adept.hashing import content_hash
+from khala.adept.models import ArtifactRef
 
 
 def _artifact_id(path: str) -> str:
@@ -74,7 +74,7 @@ def register(path: str, *, manifest_path, root=None) -> ArtifactRef:
         try:
             stored = abs_path.relative_to(Path(root).resolve()).as_posix()
         except ValueError:
-            raise ValueError(f"artifact {path} is outside the ken root {root}") from None
+            raise ValueError(f"artifact {path} is outside the adept root {root}") from None
         read_path = str(abs_path)
 
     man = Path(manifest_path)

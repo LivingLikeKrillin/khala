@@ -3,9 +3,9 @@ import pathlib
 
 import pytest
 
-from ken.hashing import content_hash
+from khala.adept.hashing import content_hash
 
-SPEC_SRC = pathlib.Path(__file__).parents[2] / "arbiter" / "src"  # tests->ken->khala root
+SPEC_SRC = pathlib.Path(__file__).parents[2] / "arbiter" / "src"  # tests->adept->khala root
 
 
 @pytest.mark.parametrize("body", ["", "a\n", "x \r\ny\n\n", "한국어\n  trailing  \n"])

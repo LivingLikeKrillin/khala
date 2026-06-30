@@ -1,8 +1,8 @@
 from typer.testing import CliRunner
 
-from ken.cli import app
-from ken.llm import FakeLLM
-from ken.questions import load_questions, make_question_id
+from khala.adept.cli import app
+from khala.adept.llm import FakeLLM
+from khala.adept.questions import load_questions, make_question_id
 
 runner = CliRunner()
 
@@ -14,7 +14,7 @@ def _register(man, art_path):
 
 
 def _current_hash(art_path):
-    from ken.registry import current_hash
+    from khala.adept.registry import current_hash
 
     return current_hash(str(art_path))
 
@@ -174,7 +174,7 @@ def test_review_headless_records_per_question(tmp_path, monkeypatch):
 
     # Call order: probe(1) -> grade Q1 pass(1) -> grade Q2 fail(1) -> remediate Q2(1)
     monkeypatch.setattr(
-        "ken.cli._make_llm",
+        "khala.adept.cli._make_llm",
         lambda: FakeLLM(responses=[
             "Q1?\nQ2?",
             '{"passed": true,  "score": 0.9, "rationale": "ok"}',
@@ -224,10 +224,10 @@ def test_cli_runs_from_subdir(tmp_path, monkeypatch):
 
 
 def test_cli_no_root_errors_cleanly(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)  # no ken.manifest.yaml anywhere up
+    monkeypatch.chdir(tmp_path)  # no adept.manifest.yaml anywhere up
     r = runner.invoke(app, ["coverage", "--as", "kr"])
     assert r.exit_code == 1
-    assert "no ken.manifest.yaml found" in (r.stdout + (r.stderr or ""))
+    assert "no adept.manifest.yaml found" in (r.stdout + (r.stderr or ""))
 
 
 def test_cli_register_outside_root_errors_cleanly(tmp_path, monkeypatch):
@@ -243,5 +243,5 @@ def test_cli_register_outside_root_errors_cleanly(tmp_path, monkeypatch):
     outside.write_text("x\n", encoding="utf-8")
     r = runner.invoke(app, ["register", str(outside)])
     assert r.exit_code == 1
-    assert "outside the ken root" in (r.stdout + (r.stderr or ""))
+    assert "outside the adept root" in (r.stdout + (r.stderr or ""))
     assert "Traceback" not in r.stdout  # clean message, not a stack trace

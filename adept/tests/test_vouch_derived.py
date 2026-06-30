@@ -1,6 +1,6 @@
-from ken.models import Attempt, Question
-from ken.schedule import rebuild
-from ken.vouch import is_vouched
+from khala.adept.models import Attempt, Question
+from khala.adept.schedule import rebuild
+from khala.adept.vouch import is_vouched
 
 
 def att(qid, passed, ts, h="sha256:cur"):  # local helper

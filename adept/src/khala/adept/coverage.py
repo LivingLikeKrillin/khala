@@ -8,9 +8,9 @@ lifetime per-question failure count from the rebuilt ReviewState.
 
 from __future__ import annotations
 
-from ken.models import Attempt, ArtifactRef, CoverageReport, Question, WeaknessItem
-from ken.schedule import rebuild
-from ken.vouch import is_vouched
+from khala.adept.models import Attempt, ArtifactRef, CoverageReport, Question, WeaknessItem
+from khala.adept.schedule import rebuild
+from khala.adept.vouch import is_vouched
 
 
 def compute_coverage_v1(

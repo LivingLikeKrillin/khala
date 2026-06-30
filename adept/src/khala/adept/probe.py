@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-from ken.llm import LLMClient
-from ken.models import Question
+from khala.adept.llm import LLMClient
+from khala.adept.models import Question
 
 _SYSTEM = (
     "You are a comprehension examiner. Given an artifact, generate exactly {n} "

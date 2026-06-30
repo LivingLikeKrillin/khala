@@ -1,8 +1,8 @@
-"""PostgresStore — KenStore over Postgres (psycopg3, sync, fail-loud).
+"""PostgresStore — AdeptStore over Postgres (psycopg3, sync, fail-loud).
 
 A per-request connection backend with parameterized SQL only. `psycopg` is
 imported LAZILY (inside `_conn`) so the default file-backend install does not
-need the optional `ken[postgres]` extra.
+need the optional `adept[postgres]` extra.
 
 Contract parity with FileStore is deliberate:
   - `register` is idempotent on `(tenant_slug, path)` (INSERT ... ON CONFLICT
@@ -25,9 +25,9 @@ All writes are FAIL-LOUD: exceptions propagate (the `with conn` block rolls back
 
 from __future__ import annotations
 
-from ken.models import ArtifactRef, Attempt, Question
-from ken.questions import make_question_id
-from ken.registry import _artifact_id, current_hash
+from khala.adept.models import ArtifactRef, Attempt, Question
+from khala.adept.questions import make_question_id
+from khala.adept.registry import _artifact_id, current_hash
 
 
 class PostgresStore:

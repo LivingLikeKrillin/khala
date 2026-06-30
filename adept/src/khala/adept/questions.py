@@ -11,7 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from ken.models import Question
+from khala.adept.models import Question
 
 
 def make_question_id(artifact_id: str, content_hash: str, index: int) -> str:

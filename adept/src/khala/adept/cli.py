@@ -1,11 +1,11 @@
-"""ken CLI — agent primitives over a deterministic substrate, + headless review.
+"""adept CLI — agent primitives over a deterministic substrate, + headless review.
 
 Agent-driven loop (no API key): `due` -> `save-questions` -> `record-attempt` ->
 `coverage`. The Claude Code agent supplies cognition (questions, grading,
-remediation); ken owns the question store, attempt ledger, and pure derivations.
+remediation); adept owns the question store, attempt ledger, and pure derivations.
 
 Headless self-drive: `review` uses the v0 LLM seam (AnthropicLLM via `_make_llm`),
-generating questions and grading itself. Tests monkeypatch `ken.cli._make_llm`.
+generating questions and grading itself. Tests monkeypatch `khala.adept.cli._make_llm`.
 """
 
 from __future__ import annotations
@@ -16,14 +16,14 @@ from pathlib import Path
 
 import typer
 
-from ken import service
-from ken.llm import AnthropicLLM, LLMClient
-from ken.models import Attempt, Question
-from ken.paths import LEDGER_NAME, MANIFEST_NAME, QUESTIONS_NAME, discover_root
-from ken.store import KenStore
-from ken.stores.file_store import FileStore
+from khala.adept import service
+from khala.adept.llm import AnthropicLLM, LLMClient
+from khala.adept.models import Attempt, Question
+from khala.adept.paths import LEDGER_NAME, MANIFEST_NAME, QUESTIONS_NAME, discover_root
+from khala.adept.store import AdeptStore
+from khala.adept.stores.file_store import FileStore
 
-app = typer.Typer(help="ken — cognitive-debt repayment loop")
+app = typer.Typer(help="adept — cognitive-debt repayment loop")
 
 DEFAULT_N_QUESTIONS = 5
 
@@ -41,7 +41,7 @@ def _resolve_paths(manifest, questions, ledger, *, allow_bootstrap):
     """Resolve the three state-file paths, anchoring to the discovered root.
 
     An explicit --manifest is used verbatim (root = its dir). Otherwise walk up
-    for ken.manifest.yaml. allow_bootstrap=True (register only): a missing root
+    for adept.manifest.yaml. allow_bootstrap=True (register only): a missing root
     bootstraps at cwd. allow_bootstrap=False: a missing root is a clean exit 1.
     Explicit --questions/--ledger always override the root-anchored default.
     """
@@ -53,7 +53,7 @@ def _resolve_paths(manifest, questions, ledger, *, allow_bootstrap):
             if not allow_bootstrap:
                 typer.echo(
                     f"no {MANIFEST_NAME} found in {Path.cwd()} or any parent; "
-                    "run 'ken register' first",
+                    "run 'adept register' first",
                     err=True,
                 )
                 raise typer.Exit(code=1)
@@ -71,7 +71,7 @@ def _store(manifest, questions, ledger, *, allow_bootstrap):
     return FileStore(manifest=m, questions=q, ledger=ldg, relative_to_root=True)
 
 
-def _find_ref(store: KenStore, artifact_id: str):
+def _find_ref(store: AdeptStore, artifact_id: str):
     return next(
         (r for r in store.load_manifest() if r.artifact_id == artifact_id), None
     )

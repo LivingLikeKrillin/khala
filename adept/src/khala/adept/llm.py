@@ -12,7 +12,7 @@ from typing import Protocol, runtime_checkable
 
 @runtime_checkable
 class LLMClient(Protocol):
-    """The seam every ken LLM unit talks to."""
+    """The seam every adept LLM unit talks to."""
 
     def generate(self, system: str, user: str) -> str: ...
 

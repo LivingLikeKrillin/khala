@@ -1,8 +1,8 @@
-"""Shared test fixtures for ken."""
+"""Shared test fixtures for adept."""
 
 import pytest
 
-from ken.llm import FakeLLM
+from khala.adept.llm import FakeLLM
 
 
 @pytest.fixture

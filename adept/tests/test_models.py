@@ -1,4 +1,4 @@
-from ken.models import Question
+from khala.adept.models import Question
 
 
 def test_question_default_id_is_empty():

@@ -8,8 +8,8 @@ recorded attempt timestamp (production callers use wall-clock now).
 
 from __future__ import annotations
 
-from ken.models import Question, ReviewState
-from ken.schedule import due
+from khala.adept.models import Question, ReviewState
+from khala.adept.schedule import due
 
 
 def is_vouched(questions: list[Question], states: dict[str, ReviewState], *, now: str) -> bool:

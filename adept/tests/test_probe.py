@@ -1,5 +1,5 @@
-from ken.probe import make_questions
-from ken.llm import FakeLLM
+from khala.adept.probe import make_questions
+from khala.adept.llm import FakeLLM
 
 
 def test_make_questions_parses_lines():

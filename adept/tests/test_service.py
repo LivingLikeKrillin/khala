@@ -1,10 +1,10 @@
-"""Tests for ken.service — the shared orchestration layer (CLI + API)."""
+"""Tests for khala.adept.service — the shared orchestration layer (CLI + API)."""
 
 import pytest
 
-from ken.llm import FakeLLM
-from ken.models import Attempt
-from ken.service import (
+from khala.adept.llm import FakeLLM
+from khala.adept.models import Attempt
+from khala.adept.service import (
     artifact_detail,
     coverage_report,
     ensure_questions,
@@ -12,7 +12,7 @@ from ken.service import (
     list_artifacts,
     register_artifact,
 )
-from ken.stores.file_store import FileStore
+from khala.adept.stores.file_store import FileStore
 
 
 class _Boom:

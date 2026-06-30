@@ -1,4 +1,4 @@
-"""Domain models for ken — frozen dataclasses, pure (no IO/LLM imports)."""
+"""Domain models for adept — frozen dataclasses, pure (no IO/LLM imports)."""
 
 from __future__ import annotations
 

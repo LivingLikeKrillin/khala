@@ -1,11 +1,11 @@
-"""ken service — shared orchestration over the deterministic substrate.
+"""adept service — shared orchestration over the deterministic substrate.
 
 This layer factors the question/grade/coverage orchestration out of the CLI so it
-can be reused by other front-ends (e.g. the ken-web API). It owns no derivation
+can be reused by other front-ends (e.g. the adept-web API). It owns no derivation
 logic of its own — it composes the pure modules (registry, questions, schedule,
 coverage) with the cognition seams (probe, judge) behind the `LLMClient` protocol.
 
-Persistence goes through a `KenStore` (FileStore or PostgresStore), injected by the
+Persistence goes through a `AdeptStore` (FileStore or PostgresStore), injected by the
 caller. `registry.current_hash(path)` and `Path(ref.path).read_text(...)` stay
 DIRECT (filesystem) — the store is an index, not the artifact archive.
 
@@ -20,25 +20,25 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ken.coverage import compute_coverage_v1
-from ken.judge import grade as judge_grade
-from ken.llm import LLMClient
-from ken.models import ArtifactRef, Attempt, CoverageReport, Question
-from ken.probe import make_questions
-from ken.schedule import due as schedule_due
-from ken.schedule import next_due_at, rebuild
-from ken.store import KenStore
+from khala.adept.coverage import compute_coverage_v1
+from khala.adept.judge import grade as judge_grade
+from khala.adept.llm import LLMClient
+from khala.adept.models import ArtifactRef, Attempt, CoverageReport, Question
+from khala.adept.probe import make_questions
+from khala.adept.schedule import due as schedule_due
+from khala.adept.schedule import next_due_at, rebuild
+from khala.adept.store import AdeptStore
 
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def find_ref(artifact_id: str, *, store: KenStore) -> ArtifactRef | None:
+def find_ref(artifact_id: str, *, store: AdeptStore) -> ArtifactRef | None:
     return next((r for r in store.load_manifest() if r.artifact_id == artifact_id), None)
 
 
-def _bound_questions(ref: ArtifactRef, *, store: KenStore) -> list[Question] | None:
+def _bound_questions(ref: ArtifactRef, *, store: AdeptStore) -> list[Question] | None:
     """The artifact's questions IFF currently bound to its live content, else None.
 
     Mirrors the artifact-level stale gate used by coverage/due: questions missing,
@@ -51,14 +51,14 @@ def _bound_questions(ref: ArtifactRef, *, store: KenStore) -> list[Question] | N
     return qs
 
 
-def register_artifact(path: str, *, store: KenStore) -> ArtifactRef:
+def register_artifact(path: str, *, store: AdeptStore) -> ArtifactRef:
     return store.register(path)
 
 
 def ensure_questions(
     artifact_id: str,
     *,
-    store: KenStore,
+    store: AdeptStore,
     llm: LLMClient,
     n: int,
 ) -> list[Question]:
@@ -81,7 +81,7 @@ class DueLine:
     questions: list  # list[tuple[qid, text]] when not needs_questions
 
 
-def due_items(*, store: KenStore, now: str) -> list[DueLine]:
+def due_items(*, store: AdeptStore, now: str) -> list[DueLine]:
     """Per-artifact due lines: needs-questions when missing/stale, else due (qid, text)."""
     refs = store.load_manifest()
     attempts = store.load_attempts()
@@ -125,7 +125,7 @@ def grade_answer(
     answer: str,
     *,
     person: str,
-    store: KenStore,
+    store: AdeptStore,
     llm: LLMClient,
     now: str,
 ) -> AttemptResult:
@@ -159,7 +159,7 @@ def grade_answer(
     return AttemptResult(passed=verdict.passed, score=verdict.score, remediation=rem)
 
 
-def coverage_report(*, store: KenStore, now: str) -> CoverageReport:
+def coverage_report(*, store: AdeptStore, now: str) -> CoverageReport:
     refs = store.load_manifest()
     attempts = store.load_attempts()
     qmap = {r.artifact_id: store.load_questions(r.artifact_id) for r in refs}
@@ -174,7 +174,7 @@ class ArtifactStatus:
     weak_count: int
 
 
-def list_artifacts(*, store: KenStore, now: str) -> list[ArtifactStatus]:
+def list_artifacts(*, store: AdeptStore, now: str) -> list[ArtifactStatus]:
     """One status row per manifest ref, derived from `coverage_report` (no new logic)."""
     refs = store.load_manifest()
     report = coverage_report(store=store, now=now)
@@ -206,7 +206,7 @@ class QuestionDetail:
     due: bool
 
 
-def artifact_detail(artifact_id: str, *, store: KenStore, now: str) -> list[QuestionDetail]:
+def artifact_detail(artifact_id: str, *, store: AdeptStore, now: str) -> list[QuestionDetail]:
     """Per-question schedule/mastery rows for one artifact. Read-only; no LLM.
 
     Returns [] when the artifact has no current questions or its questions are stale

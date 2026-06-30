@@ -1,5 +1,5 @@
-from ken.judge import grade
-from ken.llm import FakeLLM
+from khala.adept.judge import grade
+from khala.adept.llm import FakeLLM
 
 
 def test_grade_parses_verdict_json():

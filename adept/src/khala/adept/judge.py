@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 import re
 
-from ken.llm import LLMClient
-from ken.models import Verdict
+from khala.adept.llm import LLMClient
+from khala.adept.models import Verdict
 
 _SYSTEM = (
     "You are a strict grader. Given an artifact and a person's answers to grounded "

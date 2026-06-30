@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from ken.models import Attempt, ReviewState
+from khala.adept.models import Attempt, ReviewState
 
 LADDER = [
     timedelta(0),

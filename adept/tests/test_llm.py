@@ -1,4 +1,4 @@
-from ken.llm import LLMClient, FakeLLM
+from khala.adept.llm import LLMClient, FakeLLM
 
 
 def test_fake_llm_returns_scripted():

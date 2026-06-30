@@ -1,7 +1,7 @@
 import pytest
 
-from ken.models import Question
-from ken.questions import load_questions, make_question_id, save_questions
+from khala.adept.models import Question
+from khala.adept.questions import load_questions, make_question_id, save_questions
 
 
 def test_save_load_roundtrip_replaces(tmp_path):

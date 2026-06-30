@@ -1,6 +1,6 @@
-"""Shared KenStore contract — one parametrized suite both backends must satisfy.
+"""Shared AdeptStore contract — one parametrized suite both backends must satisfy.
 
-FileStore runs ALWAYS. PostgresStore runs only when `KEN_TEST_DATABASE_URL` is set
+FileStore runs ALWAYS. PostgresStore runs only when `ADEPT_TEST_DATABASE_URL` is set
 (mirrors nexus's integration gate); otherwise its param is skipped. Proving both
 backends pass the SAME contract makes parity enforced, not assumed.
 """
@@ -9,13 +9,13 @@ import os
 
 import pytest
 
-from ken.models import Attempt, Question
+from khala.adept.models import Attempt, Question
 
-_PG_DSN = os.getenv("KEN_TEST_DATABASE_URL")
+_PG_DSN = os.getenv("ADEPT_TEST_DATABASE_URL")
 
 
 def _file_store(tmp_path):
-    from ken.stores.file_store import FileStore
+    from khala.adept.stores.file_store import FileStore
 
     return FileStore(
         manifest=str(tmp_path / "m.yaml"),
@@ -30,7 +30,7 @@ def _postgres_store(tmp_path):
     # tenants is the FK parent so TRUNCATE needs CASCADE.
     import psycopg
 
-    from ken.stores.postgres_store import PostgresStore
+    from khala.adept.stores.postgres_store import PostgresStore
 
     with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
         cur.execute("TRUNCATE artifacts, questions, attempts, users, sessions, tenants CASCADE")
@@ -38,13 +38,13 @@ def _postgres_store(tmp_path):
     return PostgresStore(_PG_DSN, "contract")  # 'contract' (not 'default') keeps the contract tenant isolated from the seeded 'default' row
 
 
-# FileStore always; PostgresStore gated on KEN_TEST_DATABASE_URL (skipped when unset).
+# FileStore always; PostgresStore gated on ADEPT_TEST_DATABASE_URL (skipped when unset).
 STORE_FACTORIES = [
     pytest.param(_file_store, id="file"),
     pytest.param(
         _postgres_store,
         id="postgres",
-        marks=pytest.mark.skipif(_PG_DSN is None, reason="KEN_TEST_DATABASE_URL unset"),
+        marks=pytest.mark.skipif(_PG_DSN is None, reason="ADEPT_TEST_DATABASE_URL unset"),
     ),
 ]
 
@@ -68,7 +68,7 @@ def test_save_questions_replace_hash_ids_order(store):
     store.save_questions("a1", "sha256:h1", [Question(id="", text="Q1"), Question(id="", text="Q2")])
     h, qs = store.load_questions("a1")
     assert h == "sha256:h1" and [q.text for q in qs] == ["Q1", "Q2"]  # order preserved
-    from ken.questions import make_question_id
+    from khala.adept.questions import make_question_id
 
     assert qs[0].id == make_question_id("a1", "sha256:h1", 0)  # stable id scheme
     store.save_questions("a1", "sha256:h2", [Question(id="", text="NEW")])  # replace
@@ -95,8 +95,8 @@ def test_load_absent_is_empty(store):
 
 
 def test_filestore_default_is_verbatim_outside_any_root(tmp_path):
-    # Guards the opt-in default: ken-web registers arbitrary paths verbatim.
-    from ken.stores.file_store import FileStore
+    # Guards the opt-in default: adept-web registers arbitrary paths verbatim.
+    from khala.adept.stores.file_store import FileStore
 
     art = tmp_path / "artifacts" / "a.md"
     art.parent.mkdir(parents=True)
@@ -113,7 +113,7 @@ def test_filestore_default_is_verbatim_outside_any_root(tmp_path):
 
 
 def test_append_attempt_fail_loud(tmp_path):
-    from ken.stores.file_store import FileStore
+    from khala.adept.stores.file_store import FileStore
 
     s = FileStore(
         manifest="x",
@@ -125,10 +125,10 @@ def test_append_attempt_fail_loud(tmp_path):
         s.append_attempt(Attempt("k", "a", "q", "h", True, 1.0, "2026-06-20T00:00:00Z"))
 
 
-@pytest.mark.skipif(_PG_DSN is None, reason="KEN_TEST_DATABASE_URL unset")
+@pytest.mark.skipif(_PG_DSN is None, reason="ADEPT_TEST_DATABASE_URL unset")
 def test_postgres_two_tenant_isolation(tmp_path):
     import psycopg
-    from ken.stores.postgres_store import PostgresStore
+    from khala.adept.stores.postgres_store import PostgresStore
     art = tmp_path / "a.md"
     art.write_text("Payment service publishes orders.\n", encoding="utf-8")
     with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:

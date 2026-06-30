@@ -1,8 +1,8 @@
--- ken Postgres schema. Tenant-isolated (one tenant per user); tenant key = slug.
+-- adept Postgres schema. Tenant-isolated (one tenant per user); tenant key = slug.
 -- The DB is an INDEX, not the artifact archive: artifacts live in the filesystem/git
 -- and content_hash is computed LIVE from the file on read (never stored as truth).
 -- Derivations (schedule/vouch/coverage) are recomputed in Python from these rows.
--- Apply with:  psql "$KEN_DATABASE_URL" -f db/init.sql
+-- Apply with:  psql "$ADEPT_DATABASE_URL" -f db/init.sql
 
 CREATE TABLE tenants (
     slug       TEXT PRIMARY KEY,
