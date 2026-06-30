@@ -2,69 +2,148 @@
 title: Khala
 description: An alliance of tools that calibrates the AI era.
 template: splash
-hero:
-  tagline: Two failure modes of the AI era — the machine lies, and the human stops judging. Khala answers both with deterministic grounding, not advice.
-  image:
-    file: ../../assets/logo.svg
-  actions:
-    # Hero actions live in frontmatter (outside the rehype base-prefix plugin),
-    # so the /khala base is written explicitly here.
-    - text: Get Started
-      link: /khala/start/
-      icon: right-arrow
-    - text: Philosophy
-      link: /khala/philosophy/
-      variant: minimal
 ---
 
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+<div class="kh-hero kh-blueprint">
+  <div class="kh-hero-grid">
+    <div>
+      <span class="kh-eyebrow">An alliance of tools</span>
+      <h1 class="kh-hero-title">Grounding,<br/>not advice.</h1>
+      <p class="kh-hero-sub">The machine lies; the human stops judging. Khala answers both failure modes of the AI era by grounding every answer in a citable source — no source, no answer.</p>
+      <div class="kh-hero-actions">
+        <a class="kh-btn kh-btn--solid" href="/start/">Get started</a>
+        <a class="kh-link" href="/philosophy/">Read the philosophy →</a>
+      </div>
+    </div>
+    <div class="kh-hero-art">
+      <svg class="kh-dia" viewBox="0 0 500 200" role="img" aria-label="A query fans out to three retrievers run in parallel — BM25 (mecab-ko), vector (768-d), and graph (2-hop) — which fuse via RRF (k=60) into a grounded answer.">
+        <rect class="kh-dia-grp" x="114" y="14" width="150" height="170" rx="4"/>
+        <text class="kh-dia-glbl" x="120" y="9">HYBRID RETRIEVAL</text>
+        <path class="kh-dia-line-acc" d="M78 99 L114 99"/>
+        <path class="kh-dia-line" d="M114 99 L121 99 L121 43 L128 43 M114 99 L128 99 M114 99 L121 99 L121 155 L128 155"/>
+        <path class="kh-dia-line" d="M250 43 L257 43 L257 99 L264 99 M250 99 L264 99 M250 155 L257 155 L257 99 L264 99"/>
+        <path class="kh-dia-line-acc" d="M264 99 L298 99"/>
+        <path class="kh-dia-line-acc" d="M376 99 L410 99"/>
+        <rect class="kh-dia-box-acc" x="8" y="80" width="70" height="38" rx="4"/>
+        <text class="kh-dia-t-acc" x="43" y="103" text-anchor="middle">query</text>
+        <rect class="kh-dia-box" x="128" y="28" width="122" height="30" rx="4"/>
+        <text class="kh-dia-t" x="136" y="47">BM25</text>
+        <text class="kh-dia-s" x="242" y="47" text-anchor="end">mecab-ko</text>
+        <rect class="kh-dia-box" x="128" y="84" width="122" height="30" rx="4"/>
+        <text class="kh-dia-t" x="136" y="103">vector</text>
+        <text class="kh-dia-s" x="242" y="103" text-anchor="end">768-d</text>
+        <rect class="kh-dia-box" x="128" y="140" width="122" height="30" rx="4"/>
+        <text class="kh-dia-t" x="136" y="159">graph</text>
+        <text class="kh-dia-s" x="242" y="159" text-anchor="end">2-hop</text>
+        <text class="kh-dia-lbl" x="268" y="92">FUSE</text>
+        <rect class="kh-dia-box" x="298" y="80" width="78" height="38" rx="4"/>
+        <text class="kh-dia-t" x="337" y="103" text-anchor="middle">RRF · k=60</text>
+        <rect class="kh-dia-box-acc" x="410" y="80" width="82" height="38" rx="4"/>
+        <text class="kh-dia-t-acc" x="451" y="103" text-anchor="middle">answer</text>
+      </svg>
+    </div>
+  </div>
+</div>
 
 <p class="kh-section-lead">Start here</p>
 
-<CardGrid>
-  <LinkCard title="Getting Started" href="/start/" description="Install, configure, and ground your first answer in minutes." />
-  <LinkCard title="Philosophy" href="/philosophy/" description="Why deterministic grounding beats advice in the AI era." />
-  <LinkCard title="Ecosystem" href="/ecosystem/" description="How the tools share one link — the Khala — and compose." />
-</CardGrid>
+<div class="kh-tiles">
+  <a class="kh-tile" href="/start/">
+    <span class="kh-num">01</span>
+    <h3>Getting Started</h3>
+    <p>Install, configure, and ground your first answer in minutes.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/philosophy/">
+    <span class="kh-num">02</span>
+    <h3>Philosophy</h3>
+    <p>Why deterministic grounding beats advice in the AI era.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/ecosystem/">
+    <span class="kh-num">03</span>
+    <h3>Ecosystem</h3>
+    <p>How the tools share one link — the Khala — and compose.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+</div>
 
 <p class="kh-section-lead">The two failure modes</p>
 
-<CardGrid>
-  <Card title="The machine lies" icon="warning">
-    Stale or wrong, asserted with confidence. **Archon** + **Nexus** defend by grounding answers in verifiable sources — never asserting soft answers.
-  </Card>
-  <Card title="The human stops judging" icon="approve-check">
-    AI output rubber-stamped without reading. **Arbiter** defends by making accountable review a gate before code is written.
-  </Card>
-</CardGrid>
+<div class="kh-grid-2">
+  <div class="kh-cell">
+    <span class="kh-num">01</span>
+    <h3>The machine lies</h3>
+    <p>Stale or wrong, asserted with confidence. <strong>Archon</strong> + <strong>Nexus</strong> defend by grounding answers in verifiable sources — never asserting soft answers.</p>
+  </div>
+  <div class="kh-cell">
+    <span class="kh-num">02</span>
+    <h3>The human stops judging</h3>
+    <p>AI output rubber-stamped without reading. <strong>Arbiter</strong> defends by making accountable review a gate before code is written.</p>
+  </div>
+</div>
 
 <p class="kh-section-lead">The three debts of the AI era</p>
 
-<CardGrid>
-  <Card title="Technical debt">
-    Artifacts pile up faster than they're maintained. **Probe** + **Observer** service it.
-  </Card>
-  <Card title="Intent debt">
-    Why a thing was built — its constraints and trade-offs — is lost. **Arbiter** services it.
-  </Card>
-  <Card title="Cognitive debt">
-    Nobody understands the system the org ships. The open leg Khala is built to close — *AI builds it, you understand it.*
-  </Card>
-</CardGrid>
+<div class="kh-debts">
+  <div class="kh-cell">
+    <span class="kh-num">01</span>
+    <h3>Technical debt</h3>
+    <p>Artifacts pile up faster than they're maintained.</p>
+    <span class="kh-tag">Serviced by Probe · Observer</span>
+  </div>
+  <div class="kh-cell">
+    <span class="kh-num">02</span>
+    <h3>Intent debt</h3>
+    <p>Why a thing was built — its constraints and trade-offs — is lost.</p>
+    <span class="kh-tag">Serviced by Arbiter</span>
+  </div>
+  <div class="kh-cell kh-cell--wide">
+    <span class="kh-num">03</span>
+    <h3>Cognitive debt</h3>
+    <p>Nobody understands the system the org ships — the open leg Khala is built to close. <strong>AI builds it; you understand it.</strong></p>
+    <span class="kh-tag">The open leg — what Khala closes</span>
+  </div>
+</div>
 
 <p class="kh-section-lead">The tools</p>
 
-<CardGrid>
-  <LinkCard title="Nexus" href="/tools/nexus/" description="Grounded knowledge — RAG + GraphRAG over your docs & telemetry." />
-  <LinkCard title="Archon" href="/tools/archon/" description="Domain truth governance — values, invariants, authority, calibrated." />
-  <LinkCard title="Observer" href="/tools/observer/" description="Grounded code review — PR scope, API contracts, troubleshooting." />
-  <LinkCard title="Arbiter" href="/tools/arbiter/" description="Decision accountability — anti-rubber-stamp spec/ADR gate." />
-  <LinkCard title="Probe" href="/tools/probe/" description="Test quality — mutation-driven, catches what advisory review misses." />
-</CardGrid>
+<div class="kh-tools">
+  <a class="kh-tile" href="/tools/nexus/">
+    <span class="kh-tile-kind">RAG · GraphRAG</span>
+    <h3>Nexus</h3>
+    <p>Grounded knowledge over your docs & telemetry.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/tools/archon/">
+    <span class="kh-tile-kind">Domain truth</span>
+    <h3>Archon</h3>
+    <p>Values, invariants, and authority — calibrated and governed.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/tools/observer/">
+    <span class="kh-tile-kind">Code review</span>
+    <h3>Observer</h3>
+    <p>Grounded review — PR scope, API contracts, troubleshooting.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/tools/arbiter/">
+    <span class="kh-tile-kind">Spec / ADR gate</span>
+    <h3>Arbiter</h3>
+    <p>Decision accountability — the anti-rubber-stamp gate.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/tools/probe/">
+    <span class="kh-tile-kind">Mutation testing</span>
+    <h3>Probe</h3>
+    <p>Test quality — catches what advisory review misses.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+</div>
 
 <p class="kh-section-lead">Resources</p>
 
-<CardGrid>
-  <LinkCard title="Contributing" href="/contributing/" description="Conventions, naming, versioning, and the contribution flow." />
-  <LinkCard title="GitHub" href="https://github.com/LivingLikeKrillin" description="Source, issues, and releases for the Khala ecosystem." />
-</CardGrid>
+<div class="kh-inline">
+  <a class="kh-inline-link" href="/contributing/">Contributing →</a>
+  <a class="kh-inline-link" href="https://github.com/LivingLikeKrillin">GitHub →</a>
+</div>
