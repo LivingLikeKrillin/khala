@@ -91,8 +91,8 @@ So Archon is **not** fully absorbed: only the entry point unifies, while the eng
 internal answer typing, and the user-facing grounding signal stay distinct. The intent
 distinction (casual info access vs decision-grade fact-check; the name "집정관/Archon") maps
 onto the mechanism distinction (index retrieval vs live evaluation) — principled, not
-cosmetic. (`claims.yaml` is already seeded with real PFPlay constants, e.g.
-`PlaylistCreationPolicy.AM_MAX`.)
+cosmetic. (`claims.yaml` is already seeded with real sample-app constants, e.g.
+`PlanPolicy.BASIC_MAX_PROJECTS`.)
 
 ### 3. Interaction modality and deployment differ by class
 
@@ -141,7 +141,7 @@ forwards the artifact's current `status` with no `APPROVED` check, and the Nexus
 path gates on *capability*, not status. "Canonical-only" is today a **convention, not an
 enforced invariant** (a status guard is follow-on work).
 
-(Note: PFPlay's human-authored Notion planning docs are a different intake from the AI stream
+(Note: the partner team's human-authored Notion planning docs are a different intake from the AI stream
 — they enter Nexus directly via `nexus ingest-notion`, classified by the deterministic
 engine. Multiple intake paths converge on the same two tiers.)
 
@@ -162,7 +162,7 @@ per the standing decision it stays minimal and is not extended until a real agen
 - Dogfooding is correctly split into *hosting UI tools* vs *wiring agent tools*.
 
 **Honest state.** Concept-coherence is not demand-validation. Only **ken** has a real puller
-today (the PFPlay dogfood, [[khala-operating-loop-and-pfplay-dogfood]]). The remaining "why
+today (the partner-team dogfood, [[khala-operating-loop-and-partner-dogfood]]). The remaining "why
 does this exist" reduces from *redundancy* (resolved: none, bar Archon-packaging) to
 *demand* — the open question for specledger/Probe/mutqa is **"are they actually wired into a
 real Claude Code workflow yet?"**, which the dogfood is meant to answer.

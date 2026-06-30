@@ -309,12 +309,12 @@ async def archon_claim_value(
 ) -> str:
     """Archon — 개념의 도메인 값/불변식 현재값 조회.
 
-    "준회원 플레이리스트 최대 몇 개?", "재생곡 제한 시간?" 같은 도메인 전제조건의
+    "Basic 프로젝트 최대 몇 개?", "작업 제한 시간?" 같은 도메인 전제조건의
     *현재 값*을 코드 상수에서 직접 읽어 답한다. 값은 조회 시점에 재읽기하므로 낡지 않으며,
     확실한 것은 단정하고 모르는 것은 모른다고 정직히 표기한다(캘리브레이션).
 
     Args:
-        concept: 개념 (예: 준회원, 파티룸, 재생곡)
+        concept: 개념 (예: Basic, 프로젝트, 작업)
         tenant: 테넌트 ID
         classification_max: 최대 접근 등급 (PUBLIC|INTERNAL|RESTRICTED)
     """
@@ -350,14 +350,14 @@ async def archon_grade_authority(
     enum_name: str = "GradeType",
     subpath: str = "",
 ) -> str:
-    """Archon — 등급 계층의 권한 도출. "CLUBBER가 뭘 할 수 있나" 같은 *창발적/여집합* 질문.
+    """Archon — 등급 계층의 권한 도출. "MEMBER가 뭘 할 수 있나" 같은 *창발적/여집합* 질문.
 
     코드의 권한 게이트(예: '이 액션은 ≥MODERATOR 필요')를 추출해, 각 등급이 차단되는
     액션을 여집합으로 도출한다. 고정 게이트 여집합은 확실(high), '액션가드 vs 필터'
     의미확정은 확인 필요(medium) — 정직하게 구분해 표기한다.
 
     Args:
-        grade: 특정 등급만 (예: CLUBBER). 생략 시 전체 등급.
+        grade: 특정 등급만 (예: MEMBER). 생략 시 전체 등급.
         enum_name: 등급 enum 이름 (기본 GradeType)
         subpath: 코드 하위경로로 범위 제한
     """

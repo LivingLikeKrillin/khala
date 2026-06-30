@@ -55,7 +55,7 @@ nexus claim-seed claims.yaml
 ### 3. Ask for a current value
 
 ```bash
-nexus claim-value 준회원
+nexus claim-value Basic
 ```
 
 Archon reads the value from the code constant at query time and answers with confidence + freshness — asserting the certain, declining on the unknown.
@@ -65,8 +65,8 @@ Archon reads the value from the code constant at query time and answers with con
 ### Look up a domain value
 
 ```bash
-nexus claim-value 준회원        # e.g. "associate member max playlists?"
-nexus claim-value 재생곡        # play-track limit, etc.
+nexus claim-value Basic        # e.g. "basic tier max projects?"
+nexus claim-value 작업          # task limit, etc.
 ```
 
 Returns the current value with a calibrated label: high-confidence when read cleanly from the code constant, an honest "couldn't verify" otherwise, and a drift warning if the source changed since last verified.
@@ -85,7 +85,7 @@ Extracts permission gates from code (via free tree-sitter AST, no CodeQL) and de
 Archon exposes MCP tools so agents answer domain questions from the governed source instead of guessing:
 
 - `archon_claim_value(concept, tenant, classification_max)` — current value of a concept's invariant/value.
-- `archon_grade_authority(grade, enum_name, subpath)` — emergent/complement authority questions ("what can CLUBBER do?").
+- `archon_grade_authority(grade, enum_name, subpath)` — emergent/complement authority questions ("what can MEMBER do?").
 
 ## Reference
 

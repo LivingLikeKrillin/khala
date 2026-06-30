@@ -89,7 +89,7 @@ llm:
 
 # Archon — 도메인 불변식·값 거버넌스 (코드 상수 해석)
 code_source:
-  repo_path: ""   # pfplay 코드 checkout 경로 (예: .../pfplay-platform). 비면 값 조회 비활성.
+  repo_path: ""   # 대상 코드 checkout 경로 (예: .../sample-app). 비면 값 조회 비활성.
 
 # ── Auth (identity layer) ──
 # Binds a bearer token to a fixed (tenant, clearance). Callers can only NARROW scope.

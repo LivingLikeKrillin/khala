@@ -4,11 +4,11 @@ from nexus.rid import claim_rid
 
 def test_claim_defaults_and_crm_separation():
     c = Claim(
-        claim_id="associate-max-playlists",
+        claim_id="basic-max-projects",
         kind="invariant",
-        concepts=["준회원", "플레이리스트"],
-        statement="준회원은 플레이리스트를 최대 N개 가질 수 있다",
-        value_source="PlaylistPolicy.ASSOCIATE_MAX_PLAYLISTS",
+        concepts=["Basic", "프로젝트"],
+        statement="Basic 등급은 프로젝트를 최대 N개 가질 수 있다",
+        value_source="PlanPolicy.BASIC_MAX_PROJECTS",
         value_ref_kind="code_constant",
         criticality="core",
         owner="@backend-lead",
@@ -23,6 +23,6 @@ def test_claim_defaults_and_crm_separation():
 
 
 def test_claim_rid_stable_and_prefixed():
-    a = claim_rid("default", "associate-max-playlists")
-    assert a == claim_rid("default", "associate-max-playlists")
+    a = claim_rid("default", "basic-max-projects")
+    assert a == claim_rid("default", "basic-max-projects")
     assert a.startswith("claim_") and ":" not in a

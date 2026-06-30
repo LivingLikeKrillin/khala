@@ -26,7 +26,7 @@ class CodeValueResolver:
         self.repo_path = Path(repo_path)
 
     def resolve(self, source: str) -> ResolvedValue:
-        # source 예: "PlaylistPolicy.ASSOCIATE_MAX_PLAYLISTS"
+        # source 예: "PlanPolicy.BASIC_MAX_PROJECTS"
         _, _, symbol = source.rpartition(".")
         if not symbol:
             return ResolvedValue(found=False)
