@@ -1,7 +1,7 @@
 """approved_hash rides the retrieval read path end-to-end (SPEC §5.4 read-back side).
 
 The Phase 3 E2E (ecosystem `tests/`) found that `retrieve_grounded` provenance dropped the
-`approved_hash` — so Probe's `SpecRef.approvedHash` could not resolve *via retrieval*. This
+`approved_hash` — so Observer's `SpecRef.approvedHash` could not resolve *via retrieval*. This
 locks the field through every read-path hop: a `SearchHit` carrying `approved_hash` →
 `assemble_packet` Provenance → `generate_answer` provenance dict → `build_grounded_artifact`
 artifact provenance. Pure unit tests; no DB/LLM (the DB column `documents.content_hash` already

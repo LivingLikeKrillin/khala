@@ -4,7 +4,7 @@ Proves end-to-end against a **real Postgres** (docker-compose.test.yml): the pro
 ingest bridge (`server._default_ingest_fn` — exactly what the `ingest_governed_doc` skill calls)
 persists the governed doc's `content_hash` into `documents.approved_hash`, and the retrieval
 read path (`hybrid._enrich_hits` → `assemble_packet`) surfaces it — so the stamp Arbiter
-sends is the stamp a retrieving consumer (Probe's `SpecRef.approvedHash`) reads back.
+sends is the stamp a retrieving consumer (Observer's `SpecRef.approvedHash`) reads back.
 
 No Ollama/LLM: vector/graph steps fail gracefully (caught in `run_ingest`); the read-back is
 driven from the BM25/enrichment path, which needs neither. Uses its own SelectorEventLoop —
