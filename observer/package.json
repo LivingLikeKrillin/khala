@@ -1,13 +1,13 @@
 {
-  "name": "probe",
+  "name": "@khala/observer",
   "version": "0.6.0",
-  "description": "플랫폼 인식 PR 분석 + API 검증 + MCP 서버 + Nexus 연동",
+  "description": "Observer — 플랫폼 인식 PR 분석 + API 검증 + MCP 서버 + Nexus 연동",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "probe": "dist/cli/index.js",
-    "probe-mcp": "dist/mcp/server.js"
+    "observer": "dist/cli/index.js",
+    "observer-mcp": "dist/mcp/server.js"
   },
   "scripts": {
     "build": "tsup",
