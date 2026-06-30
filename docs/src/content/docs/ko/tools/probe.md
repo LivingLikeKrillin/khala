@@ -10,7 +10,7 @@ Probe가 보정하는 문제는 이렇습니다. 통과하는 테스트 스위�
 한 줄 정체성: "테스트가 통과한다"를 "테스트가 실제로 행위를 검증한다"로 바꾸는 하네스 — 살아남은 변이가 그 결정론적 신호입니다.
 
 <img
-  src="/diagrams/mutqa.svg"
+  src="/diagrams/probe.svg"
   alt="변이 흐름: green 스위트 → cosmic-ray 변이 → 변이별 스위트 실행 → 살아남은 변이? 없으면 공백 없음 보고, 있으면 Critic triage → 원장 → biting real-gap 리포트."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
@@ -20,7 +20,7 @@ Probe가 보정하는 문제는 이렇습니다. 통과하는 테스트 스위�
 - **변이(cosmic-ray)** — 변경된 소스 모듈을 변이시키고 각 변이마다 스위트를 돌립니다.
 - **survivor** — 스위트가 잡지 못한 변이 = 테스트가 고정하지 못한 행위. 러너의 survivor 목록이 판단으로 넘어가는 유일한 계약입니다.
 - **Test Quality Critic** — 각 survivor를 `real-gap`/`equivalent`/`low-value`로 triage하는 서브에이전트로, 결정론 증거에만 근거해 `{verdict, rationale, suggested_test_intent}`를 돌려줍니다.
-- **원장(`mutqa-ledger.yaml`)** — 커밋되는 판정 기록. 재실행 시 *새* survivor만 재심의하므로 동치 노이즈를 매번 재심의하던 비용이 사라집니다.
+- **원장(`probe-ledger.yaml`)** — 커밋되는 판정 기록. 재실행 시 *새* survivor만 재심의하므로 동치 노이즈를 매번 재심의하던 비용이 사라집니다.
 - **무는(unwaived) real-gap = headline** — 리포트의 머리줄은 변이 점수가 아니라 무는 real-gap의 수입니다.
 - **아직은 어드바이저리, 게이트 아님** — 현재는 리포트만 냅니다. 강제(무는 real-gap이 있으면 커밋 실패)는 다음 마일스톤입니다.
 

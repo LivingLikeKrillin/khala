@@ -14,7 +14,7 @@ A design principle runs through all of it: **when everything is fine, Observer s
 One-line identity: the tool that keeps PR review honest by grounding scope, contracts, and conformance — optionally enriched by Nexus, but fully functional without it.
 
 <img
-  src="/diagrams/probe.svg"
+  src="/diagrams/observer.svg"
   alt="Scope analysis: changed files → assign roles → match cohesion groups → score severity → are concerns mixed? If yes, propose a split with merge order; if cohesive, stay silent."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
@@ -24,53 +24,53 @@ One-line identity: the tool that keeps PR review honest by grounding scope, cont
 - **Platform profile.** A mapping from file patterns to roles, per framework (Spring Boot, Next.js, React SPA). Roles compose into **cohesion groups** — e.g. Spring Boot `domain-crud` = entity + repository + service + controller + dto + mapper + exception + test.
 - **Scope analysis.** Changed files are assigned roles, matched to cohesion groups, scored for severity, and — if concerns are mixed — a split is proposed with a suggested merge order.
 - **Concern drift.** As you edit, Observer watches for files belonging to a *different* concern than the current change and warns immediately.
-- **API lint + diff.** Ten built-in rules (`probe/nullable`, `probe/error-response`, `probe/path-naming`, `probe/field-naming`, `probe/pagination`, and more) check the spec; the differ detects breaking changes against a base.
+- **API lint + diff.** Ten built-in rules (`observer/nullable`, `observer/error-response`, `observer/path-naming`, `observer/field-naming`, `observer/pagination`, and more) check the spec; the differ detects breaking changes against a base.
 - **PR type → checklist.** Ten PR types (`domain-crud`, `api-change`, `ui-feature`, `config-change`, `db-migration`, `test-only`, `docs-only`, …) each map to a review checklist; passing checks are auto-verified.
 - **Nexus is optional.** Without it, every feature still works; with it, results gain related guidelines, service impact, and design-observation gaps.
 
 ## Quickstart
 
-Observer is a TypeScript / Node ≥ 20 package; pnpm is the package manager. CLI invoked via `npx probe`. Commands transcribed from the source repo README and `package.json`.
+Observer is a TypeScript / Node ≥ 20 package; pnpm is the package manager. CLI invoked via `observer`. Commands transcribed from the source repo README and `package.json`.
 
 ### Install
 
 ```bash
-pnpm add -D probe
+pnpm add -D @khala/observer
 ```
 
 ### Core commands
 
 ```bash
 # PR scope analysis + review checklist
-npx probe check
+observer check
 
 # API spec lint (10 built-in rules)
-npx probe api:lint api/openapi.json
+observer api:lint api/openapi.json
 
 # API spec diff (breaking-change detection)
-npx probe api:diff --base origin/main
+observer api:diff --base origin/main
 
 # Generate a review checklist
-npx probe review
+observer review
 ```
 
 ### Output formats
 
 ```bash
-npx probe check                  # markdown (default)
-npx probe check --format json    # JSON (for agents / pipelines)
-npx probe check --format brief   # one-line summary (CI)
-npx probe check --silent         # no output when clean
+observer check                  # markdown (default)
+observer check --format json    # JSON (for agents / pipelines)
+observer check --format brief   # one-line summary (CI)
+observer check --silent         # no output when clean
 ```
 
-If everything is in scope, `probe check` says nothing.
+If everything is in scope, `observer check` says nothing.
 
 ## How-to
 
 ### Check PR scope before opening it
 
 ```bash
-npx probe check
+observer check
 ```
 
 Analyzes changed files against the platform profile; if concerns are mixed, it proposes a split. Stays silent when the change is cohesive.
@@ -78,19 +78,19 @@ Analyzes changed files against the platform profile; if concerns are mixed, it p
 ### Validate an API change
 
 ```bash
-npx probe api:lint api/openapi.json     # spec self-check (nullable, naming, …)
-npx probe api:diff --base origin/main   # detect breaking changes vs. main
+observer api:lint api/openapi.json     # spec self-check (nullable, naming, …)
+observer api:diff --base origin/main   # detect breaking changes vs. main
 ```
 
 ### Run inside Claude Code via MCP
 
-Register Observer's MCP server so Claude Code calls scope analysis, API lint, and checklist generation automatically from conversation context. The bin `probe-mcp` maps to `dist/mcp/server.js`:
+Register Observer's MCP server so Claude Code calls scope analysis, API lint, and checklist generation automatically from conversation context. The bin `observer-mcp` maps to `dist/mcp/server.js`:
 
 ```json
 // .mcp.json
 {
   "mcpServers": {
-    "probe": {
+    "observer": {
       "command": "node",
       "args": ["dist/mcp/server.js"],
       "cwd": "."
@@ -99,12 +99,12 @@ Register Observer's MCP server so Claude Code calls scope analysis, API lint, an
 }
 ```
 
-The MCP server exposes eight tools, including `probe.analyzeScope`, `probe.lintApiSpec`, `probe.diffApiSpecs`, `probe.reviewChecklist`, `probe.detectPlatform`, `probe.queryNexus`, `probe.groundTroubleshooting`, and `probe.groundReview`.
+The MCP server exposes eight tools, including `observer.analyzeScope`, `observer.lintApiSpec`, `observer.diffApiSpecs`, `observer.reviewChecklist`, `observer.detectPlatform`, `observer.queryNexus`, `observer.groundTroubleshooting`, and `observer.groundReview`.
 
 ### Gate scope in CI (GitHub Actions)
 
 ```yaml
-- run: npx probe check --base origin/main --format brief --silent
+- run: observer check --base origin/main --format brief --silent
 ```
 
 ## Reference
