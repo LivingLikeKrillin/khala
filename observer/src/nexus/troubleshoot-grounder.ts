@@ -4,8 +4,6 @@
  * Suspect[]와 NexusClient로 §2~§6 섹션을 병렬 조립한다.
  * 각 섹션은 독립 실패해도 나머지를 막지 않는다 (withNexusFallback).
  * §5 지식 그라운딩은 client.search()를 직접 호출한다 (context-enricher 재사용 안 함 — 스펙 §5.1).
- *
- * 규정 문서: docs/superpowers/specs/2026-06-06-troubleshooting-grounding-design.md §2~§6
  */
 
 import { NexusClient, withNexusFallback } from './client.js';

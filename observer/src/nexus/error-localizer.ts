@@ -6,8 +6,6 @@
  *
  * 주의(스펙 §4.2 seam): Archon 코드 심볼 인덱스가 생기면 그쪽을 결정론적 1순위로,
  * 본 휴리스틱은 fallback이 된다. 따라서 과투자하지 않는다 (스펙 Q2).
- *
- * 규정 문서: docs/superpowers/specs/2026-06-06-troubleshooting-grounding-design.md §1, §3.3
  */
 
 import type { TroubleshootInput, Suspect } from './types.js';
