@@ -16,7 +16,7 @@ linked_adrs:
 - ADR-0002
 approved_by: LivingLikeKrillin
 reviewed_at: '2026-06-25T19:23:47Z'
-content_hash: sha256:c744f6300ee16c8ddee93966a2c3ebf5bb41e58dc5bafff42353e4d9ecfed452
+content_hash: sha256:0a549ef01a0edae18ce97c1970c914c0eb50fff80dad67ad38e7c59d3ec74dc6
 ---
 
 # ADR-0003: The AI-era artifact lifecycle and the debt-repayment loop
@@ -29,7 +29,7 @@ serviced. It **extends ADR-0002** (it *designs how to fill* the *empty leg* that
 named but did not design); it does **not** supersede it — the mission framing of ADR-0002
 stands. It
 ships **zero new product code**; it names a direction whose implementation is gated on a
-real pulling signal (the PFPlay team dogfood — see *Demand-pull*). It is reversible.
+real pulling signal (the partner-team dogfood — see *Demand-pull*). It is reversible.
 
 ## Date
 
@@ -182,7 +182,7 @@ These are implementation, gated on the demand-pull signal below.
 
 ## Demand-pull
 
-The **anticipated** puller for this loop is the PFPlay team — who already feel the
+The **anticipated** puller for this loop is the partner team — who already feel the
 accumulated-AI-debt risk — dogfooding the ecosystem on a shared hosted instance. This is a
 stated intent, not yet a logged signal; it should be anchored to a concrete commitment
 (the dogfood instance going live and producing usage) before construction begins.
@@ -190,7 +190,7 @@ stated intent, not yet a logged signal; it should be anchored to a concrete comm
 **Design now, build on the gate.** Designing the loop now is cheap and reversible (this ADR
 ships zero code). *Construction* of the out-of-scope items still honors ADR-0002's
 discipline: ADR-0002 gated the cognitive-debt window on **gate ⓐ** — an observed, logged
-rate crossing a threshold. The PFPlay dogfood is the *qualitative* pull that motivates the
+rate crossing a threshold. The partner-team dogfood is the *qualitative* pull that motivates the
 design; it does not retire gate ⓐ. Build proceeds when the dogfood produces that observed
 pull (the quantitative signal), not merely on the intent to dogfood.
 
@@ -209,8 +209,8 @@ rhetorical over-claim, not factual fabrication. Dispositions below.
 |----|-----|------|---------|-------------|
 | I-001 | high | overreach | "The empty leg, now **closed**" asserted as done while the connective halves are unbuilt | **accepted** — retitled "now **designed**"; body now states the leg is designed, not closed in code |
 | I-002 | medium | unsupported-claim | "almost no human reads the plans an AI proposes" stated as fact | **accepted** — reframed as a falsifiable *working assumption*, to be confirmed against a signal per ADR-0002's standard |
-| I-003 | medium | risky-assumption | PFPlay dogfood (sole "real puller") uncited/unverifiable | **accepted** — downgraded to *anticipated* pull; flagged to anchor to a concrete commitment before build |
-| I-004 | medium | contradiction | "design now" via PFPlay never reconciled with ADR-0002's gate ⓐ + threshold | **accepted** — added "design now, build on the gate": PFPlay is qualitative motivation; gate ⓐ still governs construction |
+| I-003 | medium | risky-assumption | partner-team dogfood (sole "real puller") uncited/unverifiable | **accepted** — downgraded to *anticipated* pull; flagged to anchor to a concrete commitment before build |
+| I-004 | medium | contradiction | "design now" via the partner team never reconciled with ADR-0002's gate ⓐ + threshold | **accepted** — added "design now, build on the gate": the partner team is qualitative motivation; gate ⓐ still governs construction |
 | I-005 | medium | overreach | "by construction, on the orphan hotlist" — no code couples promotion→ken | **accepted** — softened to "by design (not yet by code)"; named as unbuilt wiring |
 | I-006 | medium | scope-creep | §5 cross-product "identity = spine / structural" forward-declares an unbuilt platform | **accepted** — trimmed to named-accountability principle + forward-pointer; unified identity left to the platform spec |
 | I-007 | low | nit | citation paths imprecise (`review.py`/`critique.py`/`promote.py` under `src/`) | **accepted** — paths corrected, `critique`/`approve` split across the two files |
