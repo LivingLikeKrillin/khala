@@ -20,10 +20,10 @@ import { enrichWithNexus } from '../nexus/context-enricher.js';
  * MCP 서버에 프롬프트를 등록한다.
  */
 export function registerPrompts(server: McpServer): void {
-  // ─── probe.prReview ───
+  // ─── observer.prReview ───
   server.prompt(
-    'probe.prReview',
-    '현재 변경에 대해 probe 분석 결과를 기반으로 구조화된 코드 리뷰를 수행한다.',
+    'observer.prReview',
+    '현재 변경에 대해 Observer 분석 결과를 기반으로 구조화된 코드 리뷰를 수행한다.',
     { base: z.string().optional().describe('기준 브랜치 (기본: origin/main)') },
     async ({ base }) => {
       const baseRef = base ?? 'origin/main';
@@ -133,9 +133,9 @@ ${analysisJson}
     },
   );
 
-  // ─── probe.splitPr ───
+  // ─── observer.splitPr ───
   server.prompt(
-    'probe.splitPr',
+    'observer.splitPr',
     '현재 변경을 여러 PR로 분할하는 방법을 안내한다.',
     { base: z.string().optional().describe('기준 브랜치 (기본: origin/main)') },
     async ({ base }) => {

@@ -8,7 +8,7 @@
  *   observer api:lint [spec-path] [--format <markdown|json|brief>]
  *   observer api:diff [--base <ref>] [--spec <path>] [--format <markdown|json|brief>]
  *   observer review   [--base <ref>] [--format <markdown|json|brief>]
- *   probe version
+ *   observer version
  *
  * 규정 문서: docs/probe-v0.2-scope.md § 3.4
  */
@@ -575,7 +575,7 @@ switch (command) {
     void runReviewGroundCmd(args.slice(1));
     break;
   case 'version':
-    logger.info('probe v0.6.0');
+    logger.info('observer v0.6.0');
     break;
   default:
     logger.info(`\u2699\uFE0F Observer \u2014 프로덕트 개발 워크플로 자동 검증 도구
@@ -590,7 +590,7 @@ Usage:
   observer nexus:status    Nexus 연결 상태 확인
   observer troubleshoot    에러/스택트레이스 → 트러블슈팅 그라운딩
   observer review:ground   git diff → 리뷰 그라운딩 (설계-관측 갭·규정·토폴로지·승인 스펙)
-  probe version         버전 출력
+  observer version      버전 출력
 
 Options:
   --base <ref>       기준 브랜치 (기본: origin/main)

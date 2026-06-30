@@ -227,32 +227,32 @@ OpenAPI 스펙을 린트한다. v0.2 내장 린트 엔진 직접 호출.
 
 MCP 리소스는 Claude에게 참조 데이터를 제공한다.
 
-### 4.1 `probe://profiles/{platform}`
+### 4.1 `observer://profiles/{platform}`
 
 플랫폼 프로파일 정보를 제공한다.
 
 ```
-probe://profiles/spring-boot  → Spring Boot 프로파일 JSON
-probe://profiles/nextjs        → Next.js 프로파일 JSON
-probe://profiles/react-spa     → React SPA 프로파일 JSON
+observer://profiles/spring-boot  → Spring Boot 프로파일 JSON
+observer://profiles/nextjs        → Next.js 프로파일 JSON
+observer://profiles/react-spa     → React SPA 프로파일 JSON
 ```
 
-### 4.2 `probe://config`
+### 4.2 `observer://config`
 
 현재 프로젝트의 probe 설정을 제공한다.
 
 ```
-probe://config  → 로드된 ObserverConfig JSON
+observer://config  → 로드된 ObserverConfig JSON
 ```
 
-### 4.3 `probe://guidelines/{name}`
+### 4.3 `observer://guidelines/{name}`
 
 규정 문서를 텍스트로 제공한다.
 
 ```
-probe://guidelines/api-contract      → 규정 ② API 계약 가이드라인
-probe://guidelines/state-matrix      → 규정 ① State Matrix 가이드라인
-probe://guidelines/ui-change         → 규정 ③ UI 변경 가이드라인
+observer://guidelines/api-contract      → 규정 ② API 계약 가이드라인
+observer://guidelines/state-matrix      → 규정 ① State Matrix 가이드라인
+observer://guidelines/ui-change         → 규정 ③ UI 변경 가이드라인
 ```
 
 ---
@@ -261,13 +261,13 @@ probe://guidelines/ui-change         → 규정 ③ UI 변경 가이드라인
 
 MCP 프롬프트는 사전 정의된 상호작용 템플릿이다.
 
-### 5.1 `probe.prReview`
+### 5.1 `observer.prReview`
 
 PR 리뷰를 수행하는 프롬프트.
 
 ```typescript
 {
-  name: "probe.prReview",
+  name: "observer.prReview",
   description: "현재 변경에 대해 probe 분석 결과를 기반으로 구조화된 코드 리뷰를 수행한다.",
   arguments: [
     { name: "base", description: "기준 브랜치", required: false }
@@ -277,13 +277,13 @@ PR 리뷰를 수행하는 프롬프트.
 
 프롬프트 생성 시 `observer.analyzeScope`와 `observer.reviewChecklist` 결과를 포함한 리뷰 지시 프롬프트를 반환한다.
 
-### 5.2 `probe.splitPr`
+### 5.2 `observer.splitPr`
 
 PR 분할을 안내하는 프롬프트.
 
 ```typescript
 {
-  name: "probe.splitPr",
+  name: "observer.splitPr",
   description: "현재 변경을 여러 PR로 분할하는 방법을 안내한다.",
   arguments: []
 }
@@ -300,10 +300,10 @@ MCP 서버가 도입되어도 기존 skills/hooks/agents는 유지한다:
 | 기존 | MCP 대응 | 공존 |
 |------|----------|------|
 | `/check-scope` skill | `observer.analyzeScope` 도구 | skill은 MCP 미지원 환경 폴백 |
-| `/split-pr` skill | `probe.splitPr` 프롬프트 | 동일 |
+| `/split-pr` skill | `observer.splitPr` 프롬프트 | 동일 |
 | `/state-matrix` skill | (없음, v0.4 범위) | skill 유지 |
 | PostToolUse hook | (유지) | hook은 자동 실행, MCP는 요청 시 |
-| code-reviewer agent | `probe.prReview` 프롬프트 | agent가 MCP 도구를 호출하도록 개선 |
+| code-reviewer agent | `observer.prReview` 프롬프트 | agent가 MCP 도구를 호출하도록 개선 |
 | test-writer agent | (유지) | agent 자체는 MCP 불필요 |
 
 ### Skills → MCP 마이그레이션
@@ -497,7 +497,7 @@ Claude: (PR 생성 전에 observer.analyzeScope 자동 호출)
 ```
 사용자: "에러 응답 규정이 어떻게 되지?"
 
-Claude: (probe://guidelines/api-contract 리소스 참조)
+Claude: (observer://guidelines/api-contract 리소스 참조)
 
         "규정 ② § 2.3.2에 따르면, 모든 4xx/5xx 응답은 ErrorResponse 스키마를
         참조해야 합니다. 구조는:

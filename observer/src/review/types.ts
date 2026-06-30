@@ -27,7 +27,7 @@ export interface ReviewChecklist {
   /** 체크리스트 항목 */
   items: ChecklistItem[];
 
-  /** 자동 검증된 항목 (probe가 확인 가능한 것) */
+  /** 자동 검증된 항목 (observer가 확인 가능한 것) */
   autoVerified: VerifiedItem[];
 
   /** 수동 확인 필요 항목 */

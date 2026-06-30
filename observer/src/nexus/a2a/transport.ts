@@ -96,7 +96,7 @@ export class A2ANexusTransport {
       params: {
         message: {
           role: 'user',
-          messageId: 'probe-1',
+          messageId: 'observer-1',
           kind: 'message',
           parts: [{ kind: 'text', text: query }],
         },

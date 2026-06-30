@@ -39,7 +39,7 @@ function shouldLog(level: LogLevel): boolean {
 /** 디버그 로그 */
 export function debug(message: string, ...args: unknown[]): void {
   if (shouldLog('debug')) {
-    process.stderr.write(`[probe:debug] ${message} ${args.map(String).join(' ')}\n`);
+    process.stderr.write(`[observer:debug] ${message} ${args.map(String).join(' ')}\n`);
   }
 }
 

@@ -420,7 +420,7 @@ Nexus에 직접 자연어 질의를 보내는 범용 도구.
 
 ### 6.4 MCP 프롬프트 확장
 
-#### `probe.prReview` 확장
+#### `observer.prReview` 확장
 
 기존 프롬프트의 분석 결과에 Nexus 컨텍스트를 포함한다:
 

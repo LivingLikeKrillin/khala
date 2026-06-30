@@ -33,10 +33,10 @@ const GUIDELINE_FILES: Record<string, string> = {
  * MCP 서버에 리소스를 등록한다.
  */
 export function registerResources(server: McpServer): void {
-  // ─── probe://profiles/{platform} ───
+  // ─── observer://profiles/{platform} ───
   server.resource(
     'profiles',
-    new ResourceTemplate('probe://profiles/{platform}', { list: undefined }),
+    new ResourceTemplate('observer://profiles/{platform}', { list: undefined }),
     async (uri, { platform }) => {
       const platformName = Array.isArray(platform) ? platform[0] : platform;
       const profile = platformName ? PROFILES[platformName] : undefined;
@@ -65,8 +65,8 @@ export function registerResources(server: McpServer): void {
     },
   );
 
-  // ─── probe://config ───
-  server.resource('config', 'probe://config', async (uri) => {
+  // ─── observer://config ───
+  server.resource('config', 'observer://config', async (uri) => {
     const config = await loadConfigAsync();
 
     return {
@@ -80,10 +80,10 @@ export function registerResources(server: McpServer): void {
     };
   });
 
-  // ─── probe://guidelines/{name} ───
+  // ─── observer://guidelines/{name} ───
   server.resource(
     'guidelines',
-    new ResourceTemplate('probe://guidelines/{name}', { list: undefined }),
+    new ResourceTemplate('observer://guidelines/{name}', { list: undefined }),
     async (uri, { name }) => {
       const guideName = Array.isArray(name) ? name[0] : name;
       const filePath = guideName ? GUIDELINE_FILES[guideName] : undefined;
