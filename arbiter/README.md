@@ -23,8 +23,8 @@ Add to your project's `.mcp.json` (or the global `~/.claude/mcp.json`):
       "command": "python",
       "args": ["-m", "specledger.server"],
       "env": {
-        "SPECLEDGER_ROOT": "/abs/path/to/your/project",
-        "SPECLEDGER_DOCS": "/abs/path/to/your/project/docs",
+        "ARBITER_ROOT": "/abs/path/to/your/project",
+        "ARBITER_DOCS": "/abs/path/to/your/project/docs",
         "ANTHROPIC_API_KEY": "sk-ant-..."
       }
     }
@@ -32,8 +32,8 @@ Add to your project's `.mcp.json` (or the global `~/.claude/mcp.json`):
 }
 ```
 
-`SPECLEDGER_ROOT` — project root where `.specledger/` state lives (defaults to `.`).
-`SPECLEDGER_DOCS` — directory where spec and ADR Markdown files are written (defaults to `$SPECLEDGER_ROOT/docs`).
+`ARBITER_ROOT` — project root where `.specledger/` state lives (defaults to `.`).
+`ARBITER_DOCS` — directory where spec and ADR Markdown files are written (defaults to `$ARBITER_ROOT/docs`).
 `ANTHROPIC_API_KEY` — required only when using the built-in `AnthropicCritic` (the `critique` tool).
 
 ---
@@ -60,7 +60,7 @@ Register the gate hook in `.claude/settings.json` (project-level) or `~/.claude/
 }
 ```
 
-The hook reads the tool payload from stdin and exits `0` (allow) or `2` (block). It respects the same `SPECLEDGER_ROOT` / `SPECLEDGER_DOCS` environment variables.
+The hook reads the tool payload from stdin and exits `0` (allow) or `2` (block). It respects the same `ARBITER_ROOT` / `ARBITER_DOCS` environment variables.
 
 > **MVP note:** The `Bash` tool is not intercepted — only the first-class file-edit tools (`Write`, `Edit`, `MultiEdit`) are gated.
 
@@ -118,7 +118,7 @@ the doc's content hash riding along as provenance. Add to `.specledger/config.ya
 ```yaml
 nexus:
   url: "https://your-nexus-instance"   # Nexus base URL (A2A card is discovered under it)
-  token: "<write-capability token>"     # or set SPECLEDGER_NEXUS_TOKEN
+  token: "<write-capability token>"     # or set ARBITER_NEXUS_TOKEN
 ```
 
 Then call the `publish` tool. Ingest is **capability-gated** server-side: the token must carry
@@ -132,7 +132,7 @@ no-op returning `{"published": false, "reason": "nexus not configured"}`.
 
 ## MVP Boundaries
 
-- **Path-agnostic gate:** paths are normalized relative to `SPECLEDGER_ROOT`; no project-structure assumptions beyond the `docs/**` and `tests/**` allow-globs (configurable via `allow_globs` in config).
+- **Path-agnostic gate:** paths are normalized relative to `ARBITER_ROOT`; no project-structure assumptions beyond the `docs/**` and `tests/**` allow-globs (configurable via `allow_globs` in config).
 - **Bash not gated:** only `Write`, `Edit`, and `MultiEdit` tools are intercepted by the PreToolUse hook.
 - **Solo-user:** the approve flow is designed for a single human approver; no multi-reviewer workflow is implemented.
-- **No database:** all state lives in Markdown files under `SPECLEDGER_DOCS` and a small `.specledger/` JSON marker in `SPECLEDGER_ROOT`.
+- **No database:** all state lives in Markdown files under `ARBITER_DOCS` and a small `.specledger/` JSON marker in `ARBITER_ROOT`.

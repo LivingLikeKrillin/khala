@@ -84,8 +84,8 @@ def build_app(ledger: Ledger, gate: Gate, critic, config: ArbiterConfig) -> Fast
 
 
 def main() -> None:
-    root = Path(os.environ.get("SPECLEDGER_ROOT", "."))
-    docs = Path(os.environ.get("SPECLEDGER_DOCS", str(root / "docs")))
+    root = Path(os.environ.get("ARBITER_ROOT", "."))
+    docs = Path(os.environ.get("ARBITER_DOCS", str(root / "docs")))
     config = ArbiterConfig.load(root)
     ledger = Ledger(docs, now=_utc_now)
     gate = Gate(root, now=_utc_now)

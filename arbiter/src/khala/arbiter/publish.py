@@ -155,7 +155,7 @@ def _build_sink(config) -> NexusSink:
     """Build the A2A sink — the sole transport (SPEC §16). HTTP fallback retired."""
     nexus = config.nexus or {}
     base = nexus.get("base_url") or nexus.get("url")
-    token = os.environ.get("SPECLEDGER_NEXUS_TOKEN") or nexus.get("token")
+    token = os.environ.get("ARBITER_NEXUS_TOKEN") or nexus.get("token")
     return A2ANexusSink(base, token=token)
 
 

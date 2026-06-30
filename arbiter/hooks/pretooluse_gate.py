@@ -37,8 +37,8 @@ def decide(payload: dict, now=_utc_now) -> dict:
     if payload.get("tool_name") not in _EDIT_TOOLS:
         return {"allow": True, "reason": "non-edit tool"}
     cwd = Path(payload.get("cwd", ".")).resolve()
-    root = Path(os.environ.get("SPECLEDGER_ROOT", cwd)).resolve()
-    docs = Path(os.environ.get("SPECLEDGER_DOCS", cwd / "docs")).resolve()
+    root = Path(os.environ.get("ARBITER_ROOT", cwd)).resolve()
+    docs = Path(os.environ.get("ARBITER_DOCS", cwd / "docs")).resolve()
     if not docs.exists():
         return {"allow": True, "reason": "no Arbiter docs root; not governed"}
     rel = []
