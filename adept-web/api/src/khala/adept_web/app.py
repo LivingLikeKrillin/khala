@@ -1,10 +1,10 @@
-"""FastAPI app — the 5 endpoints of the ken-web repayment slice over `ken.service`.
+"""FastAPI app — the 5 endpoints of the adept-web repayment slice over `adept.service`.
 
 Each handler resolves storage paths from `deps` and constructs the LLM via
 `deps.make_llm()` at REQUEST TIME (the test seam). Error mapping:
   - unknown artifact / question id (`KeyError`) -> 404
   - storage write failure (`OSError`) -> 500 (fail-loud; never silently drop)
-Grade LLM failure is fail-closed inside `ken.service` (passed=False); remediation
+Grade LLM failure is fail-closed inside `adept.service` (passed=False); remediation
 LLM failure yields `remediation=None` there. Neither surfaces as an HTTP error.
 """
 
@@ -20,8 +20,8 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from ken import service
-from ken.schedule import _parse_ts
+from khala.adept import service
+from khala.adept.schedule import _parse_ts
 
 from . import deps
 from .schemas import (
@@ -40,9 +40,9 @@ from .schemas import (
 )
 from .security import DUMMY_HASH, new_session_token, verify_password
 
-logger = logging.getLogger("ken_web_api")
+logger = logging.getLogger("khala.adept_web")
 
-app = FastAPI(title="ken-web API", version="0.1.0")
+app = FastAPI(title="adept-web API", version="0.1.0")
 
 # Permissive CORS for the Vite dev server (same-origin in prod -> no CORS needed).
 app.add_middleware(
@@ -55,8 +55,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def _auth_startup_guard() -> None:
-    if deps.auth_enabled() and not os.getenv("KEN_DATABASE_URL"):
-        raise RuntimeError("KEN_AUTH=1 requires KEN_DATABASE_URL (Postgres)")
+    if deps.auth_enabled() and not os.getenv("ADEPT_DATABASE_URL"):
+        raise RuntimeError("ADEPT_AUTH=1 requires ADEPT_DATABASE_URL (Postgres)")
     logger.info("auth: %s", "ENABLED" if deps.auth_enabled() else "OFF")
 
 
@@ -92,7 +92,7 @@ def login(req: LoginReq, response: Response) -> MeOut:
     store.create_session(found[0].id, token, expires)
     response.set_cookie(
         deps.SESSION_COOKIE, token, httponly=True, samesite="lax", path="/",
-        secure=os.getenv("KEN_COOKIE_SECURE") == "1",
+        secure=os.getenv("ADEPT_COOKIE_SECURE") == "1",
         max_age=deps.SESSION_TTL_DAYS * 86400,
     )
     return MeOut(email=found[0].email)
@@ -217,7 +217,7 @@ def get_coverage(principal: Principal = Depends(require_user)) -> CoverageOut:
 
 
 # --- prod single-origin static serve -------------------------------------------
-# In production the built SPA (`ken-web/web/dist`) is served at `/` so the API and
+# In production the built SPA (`adept-web/web/dist`) is served at `/` so the API and
 # UI share one origin (no CORS). The `/api/*` routes above are registered first and
 # therefore take precedence; the catch-all mount only handles the rest. `html=True`
 # falls back to index.html for client-side routes. The mount is GUARDED: when

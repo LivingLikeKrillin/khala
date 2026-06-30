@@ -1,4 +1,4 @@
-"""ken-web-admin — operator CLI for the auth user store (Postgres). No public signup."""
+"""adept-web-admin — operator CLI for the auth user store (Postgres). No public signup."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import getpass
 import os
 import sys
 
-from ken_web_api.auth_store import AuthStore, PostgresAuthStore, User
-from ken_web_api.security import hash_password
+from khala.adept_web.auth_store import AuthStore, PostgresAuthStore, User
+from khala.adept_web.security import hash_password
 
 MIN_PASSWORD_LEN = 8
 
@@ -27,9 +27,9 @@ def create_tenant_in_store(store: AuthStore, slug: str, name: str) -> None:
 
 
 def _add_user_cli(email: str, tenant: str) -> int:
-    dsn = os.getenv("KEN_DATABASE_URL")
+    dsn = os.getenv("ADEPT_DATABASE_URL")
     if not dsn:
-        print("error: KEN_DATABASE_URL is required (auth is Postgres-only)", file=sys.stderr)
+        print("error: ADEPT_DATABASE_URL is required (auth is Postgres-only)", file=sys.stderr)
         return 1
     pw1 = getpass.getpass("password: ")
     pw2 = getpass.getpass("confirm:  ")
@@ -46,9 +46,9 @@ def _add_user_cli(email: str, tenant: str) -> int:
 
 
 def _create_tenant_cli(slug: str, name: str) -> int:
-    dsn = os.getenv("KEN_DATABASE_URL")
+    dsn = os.getenv("ADEPT_DATABASE_URL")
     if not dsn:
-        print("error: KEN_DATABASE_URL is required (auth is Postgres-only)", file=sys.stderr)
+        print("error: ADEPT_DATABASE_URL is required (auth is Postgres-only)", file=sys.stderr)
         return 1
     try:
         create_tenant_in_store(PostgresAuthStore(dsn), slug, name)
@@ -60,7 +60,7 @@ def _create_tenant_cli(slug: str, name: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="ken-web-admin")
+    parser = argparse.ArgumentParser(prog="adept-web-admin")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     add = sub.add_parser("add-user", help="create a user (prompts for password)")

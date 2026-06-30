@@ -1,4 +1,4 @@
-from ken_web_api.security import (
+from khala.adept_web.security import (
     DUMMY_HASH,
     hash_password,
     new_session_token,

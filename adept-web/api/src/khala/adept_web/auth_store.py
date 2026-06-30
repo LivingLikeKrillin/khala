@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from ken.schedule import _parse_ts
+from khala.adept.schedule import _parse_ts
 
 
 @dataclass(frozen=True)

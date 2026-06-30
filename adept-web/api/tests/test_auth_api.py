@@ -2,22 +2,22 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from ken.llm import FakeLLM
-from ken.schedule import _parse_ts
-from ken_web_api import deps
-from ken_web_api.app import app
-from ken_web_api.auth_store import FakeAuthStore
-from ken_web_api.security import hash_password
+from khala.adept.llm import FakeLLM
+from khala.adept.schedule import _parse_ts
+from khala.adept_web import deps
+from khala.adept_web.app import app
+from khala.adept_web.auth_store import FakeAuthStore
+from khala.adept_web.security import hash_password
 
 
 def _auth_client(tmp_path, monkeypatch, *, auth_store=None, responses=()):
     """Auth-ON client: file data backend (monkeypatched) + Fake auth store.
-    A dummy KEN_DATABASE_URL satisfies the startup guard; make_store is patched
+    A dummy ADEPT_DATABASE_URL satisfies the startup guard; make_store is patched
     to the file backend so data calls never touch Postgres."""
-    monkeypatch.setenv("KEN_AUTH", "1")
-    monkeypatch.setenv("KEN_DATABASE_URL", "postgresql://dummy")  # guard only
-    monkeypatch.setenv("KEN_DATA_DIR", str(tmp_path))
-    from ken.stores.file_store import FileStore
+    monkeypatch.setenv("ADEPT_AUTH", "1")
+    monkeypatch.setenv("ADEPT_DATABASE_URL", "postgresql://dummy")  # guard only
+    monkeypatch.setenv("ADEPT_DATA_DIR", str(tmp_path))
+    from khala.adept.stores.file_store import FileStore
     store = FileStore(
         manifest=str(tmp_path / "m.yaml"),
         questions=str(tmp_path / "q.json"),
@@ -98,8 +98,8 @@ def test_person_is_server_derived_from_session(tmp_path, monkeypatch):
 
 
 def test_startup_guard_fails_when_auth_on_without_db(monkeypatch):
-    monkeypatch.setenv("KEN_AUTH", "1")
-    monkeypatch.delenv("KEN_DATABASE_URL", raising=False)
+    monkeypatch.setenv("ADEPT_AUTH", "1")
+    monkeypatch.delenv("ADEPT_DATABASE_URL", raising=False)
     import pytest
     with pytest.raises(RuntimeError):
         with TestClient(app):  # entering context triggers startup (lifespan)
@@ -107,8 +107,8 @@ def test_startup_guard_fails_when_auth_on_without_db(monkeypatch):
 
 
 def test_auth_off_endpoints_open_and_person_local(tmp_path, monkeypatch):
-    monkeypatch.delenv("KEN_AUTH", raising=False)
-    monkeypatch.setenv("KEN_DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("ADEPT_AUTH", raising=False)
+    monkeypatch.setenv("ADEPT_DATA_DIR", str(tmp_path))
     monkeypatch.setattr(deps, "make_llm", lambda: FakeLLM(responses=["Q1?", '{"passed": true, "score": 0.9, "rationale":"ok"}']))
     c = TestClient(app)
     assert c.get("/api/coverage").status_code == 200       # open
@@ -119,13 +119,13 @@ def test_auth_off_endpoints_open_and_person_local(tmp_path, monkeypatch):
     qid = c.get(f"/api/artifacts/{aid}/due").json()["questions"][0]["question_id"]
     c.post("/api/attempts", json={"artifact_id": aid, "question_id": qid, "answer": "x"})
     # person defaulted to "local" — read it back via a FileStore over the app's
-    # DEFAULT KEN_DATA_DIR paths (deps defaults: ken.manifest.yaml / .questions.json
+    # DEFAULT ADEPT_DATA_DIR paths (deps defaults: adept.manifest.yaml / .questions.json
     # / .attempts.jsonl — NOT the m.yaml/q.json/l.jsonl used by the auth-ON helper).
-    from ken.stores.file_store import FileStore
+    from khala.adept.stores.file_store import FileStore
     store = FileStore(
-        manifest=str(tmp_path / "ken.manifest.yaml"),
-        questions=str(tmp_path / "ken.questions.json"),
-        ledger=str(tmp_path / "ken.attempts.jsonl"),
+        manifest=str(tmp_path / "adept.manifest.yaml"),
+        questions=str(tmp_path / "adept.questions.json"),
+        ledger=str(tmp_path / "adept.attempts.jsonl"),
     )
     assert store.load_attempts()[0].person == deps.DEFAULT_PERSON  # "local"
 

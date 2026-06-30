@@ -1,8 +1,8 @@
 import pytest
 
-from ken_web_api.admin import add_user_to_store, create_tenant_in_store
-from ken_web_api.auth_store import FakeAuthStore, User
-from ken_web_api.security import verify_password
+from khala.adept_web.admin import add_user_to_store, create_tenant_in_store
+from khala.adept_web.auth_store import FakeAuthStore, User
+from khala.adept_web.security import verify_password
 
 
 def test_add_user_stores_verifiable_hash():

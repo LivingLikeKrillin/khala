@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from ken.llm import FakeLLM
-from ken_web_api import deps
-from ken_web_api.app import app
+from khala.adept.llm import FakeLLM
+from khala.adept_web import deps
+from khala.adept_web.app import app
 
 
 def _client(tmp_path, monkeypatch, responses):
-    monkeypatch.setenv("KEN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ADEPT_DATA_DIR", str(tmp_path))
     # A single shared FakeLLM so scripted responses pop in cumulative call order
     # across requests (e.g. /due consumes the generate response before /attempts
     # consumes the grade [+remediation] responses).
@@ -141,7 +141,7 @@ def test_storage_write_failure_returns_500(tmp_path, monkeypatch):
 
     # Storage write fails: the store's append_attempt raises OSError. The service
     # lets it propagate (fail-loud) and the handler maps it to HTTP 500.
-    from ken.stores.file_store import FileStore
+    from khala.adept.stores.file_store import FileStore
 
     def _boom(*args, **kwargs):
         raise OSError("disk full")

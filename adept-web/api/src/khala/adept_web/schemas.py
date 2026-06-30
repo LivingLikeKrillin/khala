@@ -1,6 +1,6 @@
-"""Pydantic v2 request/response DTOs for the ken-web API.
+"""Pydantic v2 request/response DTOs for the adept-web API.
 
-These are the wire contract the React SPA consumes. They mirror ken-core's
+These are the wire contract the React SPA consumes. They mirror adept-core's
 dataclasses but live here so the API surface is decoupled from the substrate.
 """
 

@@ -2,13 +2,13 @@ import os
 
 import pytest
 
-from ken_web_api.auth_store import FakeAuthStore, User
+from khala.adept_web.auth_store import FakeAuthStore, User
 
 
 def _ttl(now_iso: str, days: int) -> str:
     from datetime import timedelta
 
-    from ken.schedule import _parse_ts
+    from khala.adept.schedule import _parse_ts
 
     return (_parse_ts(now_iso) + timedelta(days=days)).isoformat()
 
@@ -56,15 +56,15 @@ def test_delete_session():
     s.delete_session("already-gone")  # idempotent, no raise
 
 
-_PG_DSN = os.getenv("KEN_TEST_DATABASE_URL")
-pg_only = pytest.mark.skipif(_PG_DSN is None, reason="KEN_TEST_DATABASE_URL unset")
+_PG_DSN = os.getenv("ADEPT_TEST_DATABASE_URL")
+pg_only = pytest.mark.skipif(_PG_DSN is None, reason="ADEPT_TEST_DATABASE_URL unset")
 
 
 @pg_only
 def test_postgres_auth_store_roundtrip():
     import psycopg
 
-    from ken_web_api.auth_store import PostgresAuthStore
+    from khala.adept_web.auth_store import PostgresAuthStore
 
     with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
         cur.execute("TRUNCATE users, sessions CASCADE")
@@ -125,7 +125,7 @@ def test_create_user_unknown_tenant_raises():
 def test_postgres_auth_store_tenant_slug_roundtrip():
     import psycopg
 
-    from ken_web_api.auth_store import PostgresAuthStore
+    from khala.adept_web.auth_store import PostgresAuthStore
 
     with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
         cur.execute("TRUNCATE users, sessions CASCADE")
