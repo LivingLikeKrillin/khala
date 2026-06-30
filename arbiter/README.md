@@ -97,7 +97,7 @@ The hook reads the tool payload from stdin and exits `0` (allow) or `2` (block).
                   Then calls `approve` with dispositions:
                   [{"issue_id": "I-001", "disposition": "accepted"}]
 
-4. approve      → Claude calls `approve("SPEC-playlist-self-update", dispositions, "eisen")`
+4. approve      → Claude calls `approve("SPEC-playlist-self-update", dispositions, "reviewer")`
                   Verifies body was modified, stamps content hash, sets status=approved.
 
 5. begin_implementation

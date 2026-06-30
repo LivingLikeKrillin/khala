@@ -22,7 +22,7 @@ def test_record_critique_fix_approve_then_gate_allows(tmp_path):
     a = Artifact.load(led._resolve(sid))
     a.body += "\nadded the invariant\n"
     a.save()
-    approve(led, sid, [{"issue_id": "I-001", "disposition": "accepted"}], "eisen", now=lambda: "t")
+    approve(led, sid, [{"issue_id": "I-001", "disposition": "accepted"}], "reviewer", now=lambda: "t")
 
     assert Artifact.load(led._resolve(sid)).status == Status.APPROVED
     assert gate.check_gate(["src/app.py"], led, cfg)["allowed"] is True
@@ -37,7 +37,7 @@ def test_tamper_after_approval_reblocks_gate(tmp_path):
     a = Artifact.load(led._resolve(sid))
     a.body += "\nfix\n"
     a.save()
-    approve(led, sid, [{"issue_id": "I-001", "disposition": "accepted"}], "eisen", now=lambda: "t")
+    approve(led, sid, [{"issue_id": "I-001", "disposition": "accepted"}], "reviewer", now=lambda: "t")
     gate.begin_implementation(sid)
     assert gate.check_gate(["src/x.py"], led, ArbiterConfig())["allowed"] is True
     a2 = Artifact.load(led._resolve(sid))

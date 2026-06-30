@@ -86,7 +86,7 @@ The first-consumer flow, transcribed from the README:
 1. record                 → record("spec", "Playlist Self-Update")  → SPEC-playlist-self-update
 2. critique               → critique("SPEC-playlist-self-update")    → opens issues (e.g. I-001)
 3. fix + disposition      → human edits the body to address each issue
-4. approve                → approve(id, [{"issue_id":"I-001","disposition":"accepted"}], "eisen")
+4. approve                → approve(id, [{"issue_id":"I-001","disposition":"accepted"}], "reviewer")
                              verifies body changed, stamps content hash, status=approved
 5. begin_implementation   → arms the gate; Write/Edit on src/ paths now allowed
 6. end_implementation     → disarms the gate when coding is complete
