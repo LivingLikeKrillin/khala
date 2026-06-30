@@ -1,7 +1,7 @@
 # Adept — cognitive-debt meter
 
-`ken` (Scots/English: "to know, to understand") measures whether a *named human* can
-currently **vouch** for an artifact — not via a rubber-stamp click, but by passing
+Adept (from the Scots/English `ken`, "to know, to understand") measures whether a *named
+human* can currently **vouch** for an artifact — not via a rubber-stamp click, but by passing
 graded, grounded comprehension questions generated from the artifact's actual content.
 
 A passing vouch is bound to the artifact's `content_hash`, so it goes **stale** when the
