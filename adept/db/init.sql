@@ -20,26 +20,30 @@ CREATE TABLE artifacts (
 );
 
 CREATE TABLE questions (
-    tenant_slug  TEXT NOT NULL REFERENCES tenants(slug),
+    tenant_slug  TEXT NOT NULL,
     artifact_id  TEXT NOT NULL,
     content_hash TEXT NOT NULL,
     question_id  TEXT NOT NULL,
     idx          INTEGER NOT NULL,
     text         TEXT NOT NULL,
-    PRIMARY KEY (tenant_slug, artifact_id, question_id)
+    PRIMARY KEY (tenant_slug, artifact_id, question_id),
+    CONSTRAINT questions_artifact_fk FOREIGN KEY (tenant_slug, artifact_id)
+        REFERENCES artifacts (tenant_slug, artifact_id)
 );
 CREATE INDEX idx_questions_tenant_artifact ON questions (tenant_slug, artifact_id);
 
 CREATE TABLE attempts (
     id           BIGSERIAL PRIMARY KEY,
-    tenant_slug  TEXT NOT NULL REFERENCES tenants(slug),
+    tenant_slug  TEXT NOT NULL,
     person       TEXT NOT NULL,
     artifact_id  TEXT NOT NULL,
     question_id  TEXT NOT NULL,
     content_hash TEXT NOT NULL,
     passed       BOOLEAN NOT NULL,
     score        DOUBLE PRECISION NOT NULL,
-    ts           TIMESTAMPTZ NOT NULL
+    ts           TIMESTAMPTZ NOT NULL,
+    CONSTRAINT attempts_artifact_fk FOREIGN KEY (tenant_slug, artifact_id)
+        REFERENCES artifacts (tenant_slug, artifact_id)
 );
 CREATE INDEX idx_attempts_tenant_question ON attempts (tenant_slug, question_id);
 CREATE INDEX idx_attempts_tenant          ON attempts (tenant_slug, id);
