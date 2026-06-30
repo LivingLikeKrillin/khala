@@ -3,7 +3,7 @@
 __pycache__/
 *.pyc
 
-# Editable-install / build metadata (e.g. ken/src/ken.egg-info from `pip install -e`)
+# Editable-install / build metadata (e.g. adept/src/khala_adept.egg-info from `pip install -e`)
 *.egg-info/
 
 # arbiter transient gate runtime state (active spec marker + exempt log)
@@ -13,5 +13,5 @@ __pycache__/
 # machine-specific MCP registration (absolute paths)
 .mcp.json
 
-# ken-web manual E2E: isolated data dir + dropped server key (never commit)
+# adept-web manual E2E: isolated data dir + dropped server key (never commit)
 .e2e-data/

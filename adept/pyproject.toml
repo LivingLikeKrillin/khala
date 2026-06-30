@@ -1,0 +1,32 @@
+[project]
+name = "khala-adept"
+version = "0.1.0"
+description = "Adept — cognitive-debt meter that measures whether a named human can vouch for an artifact"
+requires-python = ">=3.11"
+dependencies = ["typer>=0.12", "pyyaml>=6", "anthropic>=0.40"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+# Postgres backend (S2) — kept optional so the default file-backend install stays light.
+postgres = ["psycopg[binary]>=3.2"]
+
+[project.scripts]
+adept = "khala.adept.cli:app"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
