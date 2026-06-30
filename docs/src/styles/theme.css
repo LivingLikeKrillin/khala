@@ -1,32 +1,14 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Khala docs theme — X-docs structure, Khala brand.
+   Khala docs theme — restrained engineering/Swiss system.
+   Flat surfaces, 1px hairlines, monochrome + a single quiet accent.
+   No glow, no gradient text, no atmospheric gradients. See docs/DESIGN.md.
    Self-hosted fonts (no external CDN, consistent with the mermaid policy).
    ───────────────────────────────────────────────────────────────────────── */
 
 /* Self-hosted variable fonts, declared explicitly so we control `font-display`.
    `optional` kills the fallback→webfont swap flash: after first load the file
-   is cached and applies on the very first paint, so the header title no longer
-   flickers on navigation. Latin + latin-ext only — Korean has no glyphs in
-   these faces and falls back to the system stack regardless. */
-@font-face {
-  font-family: 'Sora Variable';
-  font-style: normal;
-  font-display: optional;
-  font-weight: 100 800;
-  src: url('@fontsource-variable/sora/files/sora-latin-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
-    U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
-    U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Sora Variable';
-  font-style: normal;
-  font-display: optional;
-  font-weight: 100 800;
-  src: url('@fontsource-variable/sora/files/sora-latin-ext-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
-    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
+   is cached and applies on the very first paint. Latin + latin-ext only —
+   Korean falls back to the system stack regardless. */
 @font-face {
   font-family: 'Hanken Grotesk Variable';
   font-style: normal;
@@ -70,128 +52,121 @@
     U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* ── Brand palette (extracted from the Khala crystal logo) ───────────────── */
+/* ── Design tokens (single source of truth — see docs/DESIGN.md) ──────────── */
 :root {
-  --kh-navy-900: #070d1d; /* deepest background          */
-  --kh-navy-800: #0a1124; /* page background             */
-  --kh-navy-700: #0d1630; /* raised surface / sidebar    */
-  --kh-navy-600: #111d3a; /* card surface                */
-  --kh-navy-500: #16315c; /* logo inner glow             */
+  /* Accent — the ONE accent. Used on 1px lines, small marks, links, hover.
+     Never as a fill, background, or glow. */
+  --kh-accent: #6fb0e6;
+  --kh-accent-line: rgba(111, 176, 230, 0.55);
 
-  --kh-cyan-200: #c7f1ff;
-  --kh-cyan-300: #8fdcff; /* tendrils — light accent     */
-  --kh-cyan-400: #4fb6ee; /* primary accent              */
-  --kh-cyan-500: #2272c4; /* deep accent                 */
+  /* Rare semantic — verified / approved trust marks ONLY. */
+  --kh-verified: #d8b25c;
 
-  --kh-gold-400: #d8b25c; /* ring — rare highlight       */
-  --kh-gold-500: #cb9b3f;
-
-  --kh-ink-100: #eaf1fb; /* brightest text / headings    */
-  --kh-ink-300: #c2cfe2; /* body text                    */
-  --kh-ink-500: #8295ad; /* muted text                   */
-
-  --kh-radius: 14px;
-  --kh-radius-sm: 10px;
-  --kh-hairline: color-mix(in srgb, var(--kh-cyan-300) 12%, transparent);
-  --kh-hairline-strong: color-mix(in srgb, var(--kh-cyan-300) 24%, transparent);
+  --kh-radius: 8px;
+  --kh-radius-sm: 6px;
 
   /* Fonts */
   --sl-font: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
   --sl-font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
-  --kh-font-display: 'Sora Variable', var(--sl-font);
 }
 
 /* ── Dark theme (default) ────────────────────────────────────────────────── */
 :root,
 :root[data-theme='dark'] {
-  --sl-color-accent-low: #0f2742;
-  --sl-color-accent: var(--kh-cyan-500);
-  --sl-color-accent-high: var(--kh-cyan-300);
+  --kh-bg: #0a0c10;
+  --kh-surface: #0e1117;
+  --kh-surface-2: #11161d;
+  --kh-hairline: rgba(255, 255, 255, 0.1);
+  --kh-hairline-strong: rgba(255, 255, 255, 0.16);
+  --kh-grid: rgba(255, 255, 255, 0.05);
+  --kh-fg: #e9ecf1;
+  --kh-fg-muted: #aab2bf;
+  --kh-fg-dim: #7b8492;
 
-  --sl-color-white: var(--kh-ink-100);
-  --sl-color-gray-1: #dbe5f2;
-  --sl-color-gray-2: var(--kh-ink-300);
-  --sl-color-gray-3: var(--kh-ink-500);
-  --sl-color-gray-4: #4a5b75;
-  --sl-color-gray-5: #2a3a55;
-  --sl-color-gray-6: #16223c;
-  --sl-color-gray-7: #0f1830;
+  --sl-color-accent-low: #11202e;
+  --sl-color-accent: var(--kh-accent);
+  --sl-color-accent-high: #a9d2f0;
 
-  --sl-color-black: var(--kh-navy-800);
-  --sl-color-bg: var(--kh-navy-800);
-  --sl-color-bg-nav: color-mix(in srgb, var(--kh-navy-900) 78%, transparent);
-  --sl-color-bg-sidebar: var(--kh-navy-900);
-  --sl-color-bg-inline-code: color-mix(in srgb, var(--kh-cyan-500) 16%, transparent);
+  --sl-color-white: var(--kh-fg);
+  --sl-color-gray-1: #d7dde6;
+  --sl-color-gray-2: var(--kh-fg-muted);
+  --sl-color-gray-3: var(--kh-fg-dim);
+  --sl-color-gray-4: #565e6b;
+  --sl-color-gray-5: #363d49;
+  --sl-color-gray-6: #1c222b;
+  --sl-color-gray-7: #12161d;
 
-  --sl-color-text: var(--kh-ink-300);
-  --sl-color-text-accent: var(--kh-cyan-300);
+  --sl-color-black: var(--kh-bg);
+  --sl-color-bg: var(--kh-bg);
+  --sl-color-bg-nav: color-mix(in srgb, var(--kh-bg) 82%, transparent);
+  --sl-color-bg-sidebar: var(--kh-bg);
+  --sl-color-bg-inline-code: color-mix(in srgb, var(--kh-accent) 12%, transparent);
+
+  --sl-color-text: var(--kh-fg-muted);
+  --sl-color-text-accent: var(--kh-accent);
 
   --sl-color-hairline: var(--kh-hairline);
   --sl-color-hairline-light: var(--kh-hairline);
-  --sl-color-hairline-shade: color-mix(in srgb, var(--kh-cyan-300) 8%, transparent);
+  --sl-color-hairline-shade: var(--kh-hairline);
 }
 
-/* ── Light theme ─────────────────────────────────────────────────────────── */
+/* ── Light theme — true Swiss paper, dark-first derived ───────────────────── */
 :root[data-theme='light'] {
-  --sl-color-accent-low: #d6ebfb;
-  --sl-color-accent: var(--kh-cyan-500);
-  --sl-color-accent-high: #0b3a66;
+  --kh-bg: #fbfbfc;
+  --kh-surface: #ffffff;
+  --kh-surface-2: #f4f6f8;
+  --kh-hairline: rgba(20, 24, 31, 0.1);
+  --kh-hairline-strong: rgba(20, 24, 31, 0.18);
+  --kh-grid: rgba(20, 24, 31, 0.05);
+  --kh-fg: #14181f;
+  --kh-fg-muted: #3a424e;
+  --kh-fg-dim: #6b7480;
+  --kh-accent: #2f6fa8;
+  --kh-accent-line: rgba(47, 111, 168, 0.5);
 
-  --sl-color-white: #0a1124;
-  --sl-color-gray-1: #14213b;
-  --sl-color-gray-2: #2c3c58;
-  --sl-color-gray-3: #4c5d79;
-  --sl-color-gray-4: #6c7d99;
-  --sl-color-gray-5: #aebccf;
-  --sl-color-gray-6: #d7e1ee;
-  --sl-color-gray-7: #eef3f9;
+  --sl-color-accent-low: #dceaf6;
+  --sl-color-accent: var(--kh-accent);
+  --sl-color-accent-high: #0d3a63;
 
-  --sl-color-black: #ffffff;
-  --sl-color-bg: #f7fafd;
-  --sl-color-bg-nav: color-mix(in srgb, #ffffff 82%, transparent);
-  --sl-color-bg-sidebar: #ffffff;
-  --sl-color-bg-inline-code: color-mix(in srgb, var(--kh-cyan-500) 12%, transparent);
+  --sl-color-white: var(--kh-fg);
+  --sl-color-gray-1: #1f2730;
+  --sl-color-gray-2: #3a424e;
+  --sl-color-gray-3: #565e6b;
+  --sl-color-gray-4: #7b8492;
+  --sl-color-gray-5: #b7bfca;
+  --sl-color-gray-6: #e2e6ec;
+  --sl-color-gray-7: #f1f3f6;
 
-  --sl-color-text: #2c3c58;
-  --sl-color-text-accent: var(--kh-cyan-500);
+  --sl-color-black: var(--kh-surface);
+  --sl-color-bg: var(--kh-bg);
+  --sl-color-bg-nav: color-mix(in srgb, #ffffff 85%, transparent);
+  --sl-color-bg-sidebar: var(--kh-surface);
+  --sl-color-bg-inline-code: color-mix(in srgb, var(--kh-accent) 10%, transparent);
 
-  --kh-hairline: color-mix(in srgb, #0a1124 9%, transparent);
-  --kh-hairline-strong: color-mix(in srgb, var(--kh-cyan-500) 30%, transparent);
+  --sl-color-text: var(--kh-fg-muted);
+  --sl-color-text-accent: var(--kh-accent);
+
   --sl-color-hairline: var(--kh-hairline);
   --sl-color-hairline-light: var(--kh-hairline);
-  --sl-color-hairline-shade: color-mix(in srgb, #0a1124 6%, transparent);
+  --sl-color-hairline-shade: var(--kh-hairline);
 }
 
-/* ── Page atmosphere ─────────────────────────────────────────────────────── */
+/* ── Page surface — flat. No atmospheric gradients (both themes). ─────────── */
 body {
   background-color: var(--sl-color-bg);
-  background-image:
-    radial-gradient(
-      120% 90% at 85% -10%,
-      color-mix(in srgb, var(--kh-cyan-500) 16%, transparent),
-      transparent 55%
-    ),
-    radial-gradient(
-      90% 70% at 0% 0%,
-      color-mix(in srgb, var(--kh-navy-500) 40%, transparent),
-      transparent 50%
-    );
-  background-attachment: fixed;
   letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
 }
 
-:root[data-theme='light'] body {
+/* Reusable blueprint grid — apply to hero/landing surfaces only (PR2+). */
+.kh-blueprint {
   background-image:
-    radial-gradient(
-      120% 90% at 85% -10%,
-      color-mix(in srgb, var(--kh-cyan-400) 14%, transparent),
-      transparent 55%
-    ),
-    radial-gradient(90% 70% at 0% 0%, color-mix(in srgb, #cfe6fb 60%, transparent), transparent 50%);
+    linear-gradient(var(--kh-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--kh-grid) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
-/* ── Typography ──────────────────────────────────────────────────────────── */
+/* ── Typography — flat, confident, tight. No gradient clip-text. ─────────── */
 h1,
 h2,
 h3,
@@ -199,9 +174,10 @@ h3,
 .sl-markdown-content h1,
 .sl-markdown-content h2,
 .sl-markdown-content h3 {
-  font-family: var(--kh-font-display);
+  font-family: var(--sl-font);
   font-weight: 600;
   letter-spacing: -0.022em;
+  color: var(--sl-color-white);
 }
 
 h1,
@@ -211,20 +187,18 @@ h1,
 
 site-title,
 .site-title {
-  font-family: var(--kh-font-display);
+  font-family: var(--sl-font);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
-/* ── Top nav: glassy, hairline underline (X-docs header feel) ─────────────
-   NOTE: Starlight gives BOTH the outer <header> and the inner flex <div>
-   a `header` class. Scope to the element selector so only the outer bar
-   carries the border + blur — otherwise the inner div draws a second line
-   that collides with the search box. */
+/* ── Top nav: hairline underline, subtle blur ─────────────────────────────
+   Starlight gives BOTH the outer <header> and the inner flex <div> a `header`
+   class — scope the border/blur to the outer element only. */
 header.header {
   border-bottom: 1px solid var(--kh-hairline);
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
 }
 
 div.header {
@@ -232,22 +206,20 @@ div.header {
   backdrop-filter: none;
 }
 
-/* Search box → pill, with a little vertical breathing room from the bar edge */
+/* Search box → flat field with hairline */
 site-search button[data-open-modal] {
   height: 2.25rem;
-  border-radius: 999px;
+  border-radius: var(--kh-radius-sm);
   border: 1px solid var(--kh-hairline);
-  background: color-mix(in srgb, var(--kh-navy-700) 55%, transparent);
+  background: var(--kh-surface);
   transition:
     border-color 0.15s ease,
-    background-color 0.15s ease,
     color 0.15s ease;
 }
 
 site-search button[data-open-modal]:hover {
-  border-color: var(--kh-cyan-400);
-  background: color-mix(in srgb, var(--kh-navy-600) 70%, transparent);
-  color: var(--kh-cyan-200);
+  border-color: var(--kh-hairline-strong);
+  color: var(--kh-accent);
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
@@ -264,176 +236,132 @@ site-search button[data-open-modal]:hover {
 
 .sidebar-content a[aria-current='page'],
 .sidebar-content a[aria-current='page']:hover {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--kh-cyan-500) 26%, transparent),
-    color-mix(in srgb, var(--kh-cyan-500) 6%, transparent)
-  );
-  color: var(--kh-cyan-200);
-  box-shadow: inset 2px 0 0 var(--kh-cyan-400);
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-white);
+  box-shadow: inset 2px 0 0 var(--kh-accent);
 }
 
 ul.top-level > li > a.group-label > span,
 .sidebar-content .group-label span {
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.72rem;
-  color: var(--kh-ink-500);
-  font-weight: 600;
+  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  font-family: var(--sl-font-mono);
+  color: var(--kh-fg-dim);
+  font-weight: 500;
 }
 
 /* ── Content alignment ───────────────────────────────────────────────────
    On two-column pages Starlight sets `--sl-content-margin-inline: auto 0`,
-   so the auto left margin pushes the article to the TOC side (big gap next
-   to the sidebar). Use `auto` on both sides instead, centering the article
-   in its pane so the left and right margins are roughly equal.
-   `html[...]` out-specifies Starlight's `[...] .main-pane` rule. */
+   pushing the article toward the TOC. Center it in its pane instead. */
 @media (min-width: 72rem) {
   html[data-has-sidebar][data-has-toc] .main-pane {
     --sl-content-margin-inline: auto;
   }
 }
 
-/* ── Hero (splash landing) ───────────────────────────────────────────────── */
+/* ── Hero (splash landing) — flat, no glow ───────────────────────────────── */
 .hero {
   padding-block: clamp(2rem, 8vw, 5.5rem);
 }
 
 .hero h1 {
-  font-size: clamp(2.6rem, 7vw, 4.4rem);
-  line-height: 1.02;
-  background: linear-gradient(180deg, var(--kh-ink-100), var(--kh-cyan-300) 180%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-size: clamp(2.4rem, 6.5vw, 4rem);
+  line-height: 1.0;
+  color: var(--sl-color-white);
 }
 
 .hero .tagline {
-  color: var(--kh-ink-300);
-  font-size: clamp(1.05rem, 1.6vw, 1.25rem);
+  color: var(--kh-fg-muted);
+  font-size: clamp(1.02rem, 1.6vw, 1.2rem);
   max-width: 52ch;
 }
 
-/* Static cyan glow. No perpetual transform animation here — animating a
-   drop-shadowed element re-rasterizes the blur each frame and reads as a
-   subpixel "shake" on load. A still glow matches the clean reference. */
+/* Logo: no drop-shadow glow. */
 .hero img {
-  filter: drop-shadow(0 14px 50px color-mix(in srgb, var(--kh-cyan-400) 45%, transparent));
+  filter: none;
 }
 
-/* ── Buttons → pills with motion (X-docs CTA feel) ───────────────────────── */
+/* ── Buttons → flat. Solid foreground button + hairline ghost. ───────────── */
 .hero .actions a,
 a.action {
-  border-radius: 999px;
-  font-family: var(--kh-font-display);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  border-radius: var(--kh-radius-sm);
+  font-family: var(--sl-font);
+  font-weight: 500;
+  letter-spacing: -0.005em;
   transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 a.action.primary {
-  background: linear-gradient(135deg, var(--kh-cyan-400), var(--kh-cyan-500));
-  color: #04101f;
-  border: 1px solid transparent;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--kh-cyan-500) 40%, transparent);
+  background: var(--sl-color-white);
+  color: var(--kh-bg);
+  border: 1px solid var(--sl-color-white);
+  box-shadow: none;
 }
 
 a.action.primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--kh-cyan-400) 55%, transparent);
+  background: color-mix(in srgb, var(--sl-color-white) 88%, var(--kh-accent));
+  border-color: transparent;
 }
 
 a.action.minimal,
 a.action.secondary {
   border: 1px solid var(--kh-hairline-strong);
-  background: color-mix(in srgb, var(--kh-navy-600) 50%, transparent);
+  background: transparent;
+  color: var(--sl-color-white);
 }
 
 a.action.minimal:hover,
 a.action.secondary:hover {
-  transform: translateY(-2px);
-  border-color: var(--kh-cyan-400);
-  color: var(--kh-cyan-200);
+  border-color: var(--kh-accent);
+  color: var(--kh-accent);
 }
 
-/* ── Cards (Card / CardGrid / LinkCard) → X-docs tiles ───────────────────── */
+/* ── Cards (Card / CardGrid / LinkCard) → flat hairline tiles ─────────────── */
 .card,
 .sl-link-card {
-  position: relative;
   border-radius: var(--kh-radius);
   border: 1px solid var(--kh-hairline);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--kh-navy-600) 70%, transparent),
-      color-mix(in srgb, var(--kh-navy-700) 70%, transparent)
-    );
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--kh-cyan-300) 6%, transparent) inset;
+  background: var(--kh-surface);
+  box-shadow: none;
   transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
-  overflow: hidden;
-}
-
-:root[data-theme='light'] .card,
-:root[data-theme='light'] .sl-link-card {
-  background: #ffffff;
-  box-shadow: 0 1px 2px color-mix(in srgb, #0a1124 6%, transparent);
-}
-
-/* top hairline accent that lights up on hover */
-.card::after,
-.sl-link-card::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--kh-cyan-400), transparent);
-  opacity: 0;
-  transition: opacity 0.2s ease;
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .card:hover,
 .sl-link-card:hover {
-  transform: translateY(-3px);
   border-color: var(--kh-hairline-strong);
-  box-shadow: 0 14px 36px color-mix(in srgb, var(--kh-navy-900) 55%, transparent);
-}
-
-.card:hover::after,
-.sl-link-card:hover::after {
-  opacity: 0.9;
+  background: var(--kh-surface-2);
 }
 
 .card .icon {
-  background: color-mix(in srgb, var(--kh-cyan-500) 20%, transparent);
-  color: var(--kh-cyan-300);
+  background: transparent;
+  color: var(--kh-accent);
   border: 1px solid var(--kh-hairline);
-  border-radius: 10px;
+  border-radius: var(--kh-radius-sm);
   padding: 0.3em;
 }
 
 .card .title,
 .sl-link-card .link-title {
-  font-family: var(--kh-font-display);
+  font-family: var(--sl-font);
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--sl-color-white);
 }
 
 .sl-link-card .icon {
-  color: var(--kh-cyan-400);
+  color: var(--kh-accent);
 }
 
 /* ── Code & inline code ──────────────────────────────────────────────────── */
 .sl-markdown-content code:not(:where(.not-content *)) {
-  border-radius: 6px;
-  color: var(--kh-cyan-200);
+  border-radius: var(--kh-radius-sm);
+  color: var(--kh-accent);
 }
 
 .expressive-code .frame,
@@ -442,22 +370,23 @@ a.action.secondary:hover {
   border: 1px solid var(--kh-hairline);
 }
 
-/* ── Tables & callouts polish ────────────────────────────────────────────── */
+/* ── Tables & links ──────────────────────────────────────────────────────── */
 .sl-markdown-content :is(th, td) {
   border-color: var(--kh-hairline);
 }
 
 .sl-markdown-content a:not(:where(.not-content *)) {
   text-underline-offset: 0.25em;
-  text-decoration-color: color-mix(in srgb, var(--kh-cyan-400) 50%, transparent);
+  text-decoration-color: var(--kh-accent-line);
 }
 
-/* ── Custom landing section: lead paragraph above card groups ────────────── */
+/* ── Section label (used on the landing) — mono, dim, uppercase ──────────── */
 .kh-section-lead {
-  color: var(--kh-ink-500);
-  font-size: 0.82rem;
-  letter-spacing: 0.12em;
+  color: var(--kh-fg-dim);
+  font-family: var(--sl-font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  font-weight: 600;
-  margin-block: 2.5rem 0.25rem;
+  font-weight: 500;
+  margin-block: 2.5rem 0.5rem;
 }
