@@ -1,7 +1,5 @@
 /**
  * 트러블슈팅 오케스트레이션 — 입력검증, 티어 결정, grounder 호출, caveat 수집
- *
- * 규정 문서: docs/superpowers/specs/2026-06-06-troubleshooting-grounding-design.md §5, §6
  */
 
 import { NexusClient } from '../nexus/client.js';

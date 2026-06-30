@@ -1,8 +1,7 @@
 """Nexus identity layer.
 
 Binds an opaque bearer token to a fixed ``(tenant, clearance)`` server-side so callers
-can never widen their own scope. Fail-closed by default. See
-docs/superpowers/specs/2026-06-18-nexus-identity-layer-design.md.
+can never widen their own scope. Fail-closed by default.
 
 The pure pieces (`clearance`, `principal`, `scope`) are dependency-free and are the exact
 contract the A2A `policy.py` reuses (ADR-0001 / SPEC Phase 0).

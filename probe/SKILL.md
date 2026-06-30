@@ -115,4 +115,4 @@ EVAL-3=low-value)로 회귀 검사하라 — 결정론 증거를 보고 옳게 t
 
 **게이트(pre-commit 강제)** = M3 — `biting(survivors, ledger, today)`가 그 입력이다(무는 real-gap이 있으면
 커밋 실패). diff 라인 단위 정밀 coverage 매핑, survivor의 behavioral clustering(동일 갭을 증거하는 변이 묶기)도
-향후 작업. 계획서: `docs/superpowers/plans/2026-06-06-mutqa-m1-runner-advisory.md`(M1; M2/M3은 spec §5–6).
+향후 작업(M1 완료; M2/M3 후속).
