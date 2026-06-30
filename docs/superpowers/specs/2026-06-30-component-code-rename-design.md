@@ -101,7 +101,7 @@ repo URLs, and the diagram asset filename + its `img src`) → rename the diagra
   `ken.manifest.yaml`; root `Taskfile.yml`, `.github/workflows/ci.yml`, `ruff.toml`,
   `.gitignore`.
 - Docs: `docs/src/content/docs/tools/arbiter.md` (+ko) code identifiers (`SPECLEDGER_DOCS`,
-  `specledger.server`, MCP key, hook path, source-repo URL) and `/diagrams/specledger.svg`
+  `specledger.server`, MCP key, hook path) and `/diagrams/specledger.svg`
   → `/diagrams/arbiter.svg` (rename `docs/public/diagrams/specledger.svg` +
   `docs/src/diagrams/specledger.excalidraw`).
 - Verify: Arbiter pytest + Nexus pytest (cross-ref) + full CI green.
@@ -128,7 +128,9 @@ repo URLs, and the diagram asset filename + its `img src`) → rename the diagra
   `observer`/`observer-mcp`, MCP key `observer`, rule ids `observer/*`, env `OBSERVER_*`,
   CI `probe.yml`→`observer.yml`, `.claude/` adapter references.
 - `mutqa/` (Python mutation tool) → `probe/`, namespace `khala.probe`, dist `khala-probe`,
-  imports `khala.probe`, `MUTQA_*`→`PROBE_*`, skill `name:` id is retained, but its
+  imports `khala.probe`, `MUTQA_*`→`PROBE_*` (renamed **after** Observer's
+  `PROBE_*`→`OBSERVER_*` above, mirroring the dir/asset ordering so the `PROBE_*` prefix is
+  unambiguous mid-PR), skill `name:` id is retained, but its
   directory and package move; `mutqa-ledger.yaml`→`probe-ledger.yaml`. The mutation
   tool exposes **no MCP server** (it is a skill), so the `probe` MCP key freed by Observer is
   **retired, not reused**.
@@ -145,7 +147,9 @@ repo URLs, and the diagram asset filename + its `img src`) → rename the diagra
 
 - Rename archived repos `specledger`→`arbiter`, `probe`→`observer` (and `mutqa`/`ken` if
   they exist) via `gh repo rename`. GitHub auto-redirects old URLs, so the doc source-repo
-  links keep working; update them to the new names for cleanliness.
+  links keep working. PR-D also updates **all** tool-doc source-repo URLs
+  (`github.com/.../specledger`, `/ken`, `/probe`, `/mutqa` — deferred from PR-A/B/C) to the
+  new repo names, in the **same** PR as the rename, so there is no broken-link window.
 - No code impact; the live code is in the `khala` monorepo. Verify: links resolve.
 
 ## Database migration (PR-B detail)
@@ -168,8 +172,14 @@ auth-cookie name. Two cases:
   is green before merge. Hard cutover means a red intermediate is a blocker, not a step.
 - **Residual grep gate (component-specific):** after each PR, a repo-wide grep (excluding
   historical records) for that component's old identifiers must return **zero**
-  non-historical hits. For the three components with **unique** old names this is a plain
-  grep: PR-A `specledger`, PR-B `\bken\b`, and (mutation half of PR-C) `mutqa`.
+  non-historical hits. PR-A (`specledger`) and the mutation half of PR-C (`mutqa`) are plain
+  greps. **PR-B (`\bken\b`) is a carve-out:** the Scots-etymology `ken` note is deliberately
+  retained (it explains the English word, not the identifier), so PR-B's gate is zero
+  `\bken\b` *except* that etymology note in `adept/README.md` / `adept.md`(+ko); every
+  surviving `ken` must resolve to the etymology prose.
+  - **Repo-URL survivors (all of PR-A/B/C):** old GitHub source-repo URLs
+    (`github.com/LivingLikeKrillin/<oldname>`) are **expected** survivors until PR-D renames
+    the repos and updates the URLs; they are excluded from each tool's gate until then.
   - **Observer (review-tool half of PR-C) is a special case:** the bare string `probe` is
     **legitimately reintroduced** in the same PR (the mutation tool becomes `probe/`, dist
     `khala-probe`, `khala.probe`, `probe-ledger.yaml`) and Adept retains its internal
