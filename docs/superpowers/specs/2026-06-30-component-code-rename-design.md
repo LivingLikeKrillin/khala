@@ -29,8 +29,11 @@ which retain old names by design.
 2. **Cutover: hard.** No compatibility shims/aliases. Old env vars, CLI names, MCP keys are
    removed immediately, not deprecated. Justified because the ecosystem is pre-launch; the
    one live consumer (PFPlay dogfood) is handed a migration note and updates config in lockstep.
-3. **Sequencing: incremental, one component group per PR.** Each PR leaves `master` fully
-   green (all tests + CI pass). No half-renamed intermediate state on `master`.
+3. **Sequencing: incremental, one component group per PR, fixed order A → B → C → D**
+   (defined under "Migration units"). Each PR leaves `master` fully green (all tests + CI
+   pass). No half-renamed intermediate state on `master`. The per-PR cross-reference lists
+   below are the audit snapshot of *current* `master`; the residual-grep gate re-derives the
+   actual reference set at execution time, so the lists stay valid even if `master` drifts.
 4. **Namespace: `khala.*` namespace packages now.** Full ADR-0005 §4 compliance — Python
    tools become namespace packages under `khala.<tool>`; npm tools move to the `@khala/*`
    scope. This is the most invasive option (every import statement changes shape, not just
@@ -125,17 +128,20 @@ repo URLs, and the diagram asset filename + its `img src`) → rename the diagra
   `observer`/`observer-mcp`, MCP key `observer`, rule ids `observer/*`, env `OBSERVER_*`,
   CI `probe.yml`→`observer.yml`, `.claude/` adapter references.
 - `mutqa/` (Python mutation tool) → `probe/`, namespace `khala.probe`, dist `khala-probe`,
-  imports `khala.probe`, `MUTQA_*`→`PROBE_*`, skill `name:` stays a skill id but the
-  directory/package move; `mutqa-ledger.yaml`→`probe-ledger.yaml`.
+  imports `khala.probe`, `MUTQA_*`→`PROBE_*`, skill `name:` id is retained, but its
+  directory and package move; `mutqa-ledger.yaml`→`probe-ledger.yaml`. The mutation
+  tool exposes **no MCP server** (it is a skill), so the `probe` MCP key freed by Observer is
+  **retired, not reused**.
 - Cross-references: `nexus` mentions of `probe`; `ken`'s own `probe.py` module is unrelated
   (Adept's internal "probe" — **not** renamed, it is Adept-internal vocabulary, confirmed by
   audit) and must be left intact.
 - Docs: `observer.md`/`probe.md` (the mutation page) code identifiers; `/diagrams/probe.svg`
-  →`observer.svg` and `/diagrams/mutqa.svg`→`probe.svg` (asset + excalidraw renames, ordered
-  to avoid collision).
+  →`observer.svg` and `/diagrams/mutqa.svg`→`probe.svg` — each `.svg` + `.excalidraw`
+  source + `img src` move together, ordered to avoid the `probe.svg` filename collision:
+  `probe.svg`→`observer.svg` **first**, then `mutqa.svg`→`probe.svg`.
 - Verify: Observer vitest + Probe(mutation) pytest + both CI workflows green.
 
-### PR-D — Archived GitHub repos (lowest priority, optional)
+### PR-D — Archived GitHub repos (last, lowest-risk; in scope per Decision #1)
 
 - Rename archived repos `specledger`→`arbiter`, `probe`→`observer` (and `mutqa`/`ken` if
   they exist) via `gh repo rename`. GitHub auto-redirects old URLs, so the doc source-repo
@@ -160,9 +166,18 @@ auth-cookie name. Two cases:
 - **Per PR:** run the renamed component's full test suite **and** every cross-referencing
   component's suite (enumerated per PR above) locally; push and confirm the full CI matrix
   is green before merge. Hard cutover means a red intermediate is a blocker, not a step.
-- **Residual grep gate:** after each PR, a repo-wide grep for the old identifier (excluding
-  historical records) must return **zero** non-historical hits for that component — the same
-  audit method that validated the doc rename.
+- **Residual grep gate (component-specific):** after each PR, a repo-wide grep (excluding
+  historical records) for that component's old identifiers must return **zero**
+  non-historical hits. For the three components with **unique** old names this is a plain
+  grep: PR-A `specledger`, PR-B `\bken\b`, and (mutation half of PR-C) `mutqa`.
+  - **Observer (review-tool half of PR-C) is a special case:** the bare string `probe` is
+    **legitimately reintroduced** in the same PR (the mutation tool becomes `probe/`, dist
+    `khala-probe`, `khala.probe`, `probe-ledger.yaml`) and Adept retains its internal
+    `probe.py`. So the Observer gate is **not** "grep `probe` → zero". It is zero hits for the
+    *review-tool-specific* artifacts only: the npm bins `probe`/`probe-mcp`, the `probe/<rule>`
+    lint-rule ids, the MCP key `probe`, the `probe/src/...` (TypeScript review-tool) paths,
+    and the `probe.yml` CI workflow. Every surviving bare `probe` after PR-C must resolve to
+    the new mutation tool (`khala.probe` / `probe/` Python) or Adept-internal `probe.py`.
 - **No-shim assertion:** grep confirms the old env var / CLI / MCP key names are gone (not
   aliased), per the hard-cutover decision.
 
