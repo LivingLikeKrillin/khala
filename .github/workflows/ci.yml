@@ -80,75 +80,75 @@ jobs:
         working-directory: mutqa
         run: python -m pytest -q
 
-  ken:
-    name: ken (pytest)
+  adept:
+    name: adept (pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Install ken
-        working-directory: ken
+      - name: Install adept
+        working-directory: adept
         run: pip install -e ".[dev]"
       - name: Run tests
-        working-directory: ken
+        working-directory: adept
         run: python -m pytest -q
 
-  ken-postgres:
-    name: ken (pytest, postgres)
+  adept-postgres:
+    name: adept (pytest, postgres)
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: ken
-          POSTGRES_USER: ken
-          POSTGRES_PASSWORD: ken
+          POSTGRES_DB: adept
+          POSTGRES_USER: adept
+          POSTGRES_PASSWORD: adept
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U ken -d ken"
+          --health-cmd "pg_isready -U adept -d adept"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      KEN_TEST_DATABASE_URL: postgresql://ken:ken@localhost:5432/ken
+      ADEPT_TEST_DATABASE_URL: postgresql://adept:adept@localhost:5432/adept
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Install ken (with postgres extra)
-        working-directory: ken
+      - name: Install adept (with postgres extra)
+        working-directory: adept
         run: pip install -e ".[dev,postgres]"
       - name: Apply schema
-        working-directory: ken
-        run: psql "$KEN_TEST_DATABASE_URL" -f db/init.sql
-      # Runs the shared store contract; with KEN_TEST_DATABASE_URL set the
-      # PostgresStore params run too (the default ken job stays DB-free / file-only).
+        working-directory: adept
+        run: psql "$ADEPT_TEST_DATABASE_URL" -f db/init.sql
+      # Runs the shared store contract; with ADEPT_TEST_DATABASE_URL set the
+      # PostgresStore params run too (the default adept job stays DB-free / file-only).
       - name: Run store contract (file + postgres)
-        working-directory: ken
+        working-directory: adept
         run: python -m pytest -q tests/test_store_contract.py
 
-  ken-web-api:
-    name: ken-web-api (pytest)
+  adept-web-api:
+    name: adept-web-api (pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Install ken-web-api
-        working-directory: ken-web/api
-        # ken is a path dependency installed editable alongside the API.
-        run: pip install -e ../../ken -e ".[dev]"
+      - name: Install adept-web-api
+        working-directory: adept-web/api
+        # adept is a path dependency installed editable alongside the API.
+        run: pip install -e ../../adept -e ".[dev]"
       - name: Run tests
-        working-directory: ken-web/api
+        working-directory: adept-web/api
         run: python -m pytest -q
 
-  ken-web:
-    name: ken-web (vitest)
+  adept-web:
+    name: adept-web (vitest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -156,15 +156,15 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: ken-web/web/package-lock.json
-      - name: Install ken-web
-        working-directory: ken-web/web
+          cache-dependency-path: adept-web/web/package-lock.json
+      - name: Install adept-web
+        working-directory: adept-web/web
         run: npm ci
       - name: Run tests
-        working-directory: ken-web/web
+        working-directory: adept-web/web
         run: npm run test -- --run
       - name: Build
-        working-directory: ken-web/web
+        working-directory: adept-web/web
         run: npm run build
 
   docs:
