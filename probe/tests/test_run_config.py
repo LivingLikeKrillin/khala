@@ -1,6 +1,6 @@
 import tomllib
 
-from mutqa.run import build_config
+from khala.probe.run import build_config
 
 
 def test_config_targets_given_module():

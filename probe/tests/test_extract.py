@@ -1,7 +1,7 @@
 import pytest
 
-from mutqa.extract import extract_survivors
-from mutqa.models import Survivor
+from khala.probe.extract import extract_survivors
+from khala.probe.models import Survivor
 
 
 def test_extract_keeps_only_survivors(fixtures_dir):

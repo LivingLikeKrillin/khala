@@ -1,4 +1,4 @@
-from mutqa.scope import changed_source_modules
+from khala.probe.scope import changed_source_modules
 
 
 def test_filters_to_python_sources():

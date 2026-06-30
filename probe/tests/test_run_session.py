@@ -1,10 +1,10 @@
 """run_mutation 오케스트레이션 seam 단위 테스트(cosmic-ray 없이, runner 주입).
 
-M-2 회귀: 고정 세션 파일명(mutqa.sqlite/.cfg.toml)이 다중 모듈 루프에서 충돌하고
+M-2 회귀: 고정 세션 파일명(probe.sqlite/.cfg.toml)이 다중 모듈 루프에서 충돌하고
 소비자 작업트리에 잔여물을 남기던 문제를 고정 — 호출별 고유 세션 + 자동 정리.
 """
 
-from mutqa.run import run_mutation
+from khala.probe.run import run_mutation
 
 
 def _recording_runner(seen, dump_text=""):

@@ -1,12 +1,12 @@
 ---
-name: mutqa
+name: probe
 description: Use when you want to find weak spots in a Python test suite that advisory review misses — runs cosmic-ray mutation testing on changed modules, triages surviving mutants with a Test Quality Critic subagent (judging from deterministic evidence), and emits an advisory report of real behavioral-test gaps. First consumer = Arbiter. Requires cosmic-ray installed (Windows-native OK; mutmut is not).
 ---
 
 # Probe (옛 mutqa) — 뮤테이션-구동 테스트 품질 하네스 (M2: 원장)
 
 기존 어드바이저리 리뷰(TDD 스킬, LLM 테스트 리뷰어)가 놓치는 **행위검증 공백**을, 변이가 살아남는지로
-**결정론적으로** 드러낸다. M2는 영속 **원장**(`mutqa-ledger.yaml`)으로 판정을 쌓아 **재실행 시 새
+**결정론적으로** 드러낸다. M2는 영속 **원장**(`probe-ledger.yaml`)으로 판정을 쌓아 **재실행 시 새
 survivor만 재심의**한다(동치 노이즈 재심의 제거). 아직 게이트 없이 리포트만 낸다(강제 bite는 M3).
 
 **핵심 원칙:** 결정론 영역(러너, LLM 없음)과 판단 영역(Critic)을 섞지 않는다. 러너가 산출한
@@ -20,16 +20,16 @@ triage한다 — 이게 순수 LLM 리뷰 대비 차별점.
 
 ## 절차
 
-작업 디렉토리 = 분석 대상 소비자 repo(예: Arbiter). mutqa 패키지가 import 가능해야 한다
-(`pythonpath`에 mutqa의 `src` 추가하거나 설치).
+작업 디렉토리 = 분석 대상 소비자 repo(예: Arbiter). khala.probe 패키지가 import 가능해야 한다
+(`pythonpath`에 khala.probe의 `src` 추가하거나 설치).
 
 ### 1. 변경 모듈 식별 + 변이 실행 → survivor 산출 (결정론, LLM 없음)
 
 ```python
 from pathlib import Path
 import json, dataclasses
-from mutqa.scope import changed_source_modules
-from mutqa.run import run_mutation
+from khala.probe.scope import changed_source_modules
+from khala.probe.run import run_mutation
 
 modules = changed_source_modules(base="HEAD~1")   # diff 대상; 전체 분석이면 명시적으로 모듈 지정
 survivors = []
@@ -52,9 +52,9 @@ Path("survivors.json").write_text(
 ```python
 import datetime
 from pathlib import Path
-from mutqa.ledger import load_ledger, new_survivors
+from khala.probe.ledger import load_ledger, new_survivors
 
-ledger_path = Path("mutqa-ledger.yaml")
+ledger_path = Path("probe-ledger.yaml")
 ledger = load_ledger(ledger_path.read_text(encoding="utf-8") if ledger_path.exists() else "")
 fresh = new_survivors(survivors, ledger)   # 원장에 없는 것만 = Critic 재심의 대상
 ```
@@ -83,10 +83,10 @@ green이었으므로). 이 거친 요약을 Critic에 전달한다(per-survivor 
 ### 5. verdict를 원장에 흡수 + 영속 (M2)
 
 ```python
-from mutqa.ledger import absorb, dump_ledger
+from khala.probe.ledger import absorb, dump_ledger
 
 ledger = absorb(ledger, fresh_verdicts, today)        # 새 판정을 원장에 기록(불변)
-ledger_path.write_text(dump_ledger(ledger), encoding="utf-8")   # mutqa-ledger.yaml 커밋 대상
+ledger_path.write_text(dump_ledger(ledger), encoding="utf-8")   # probe-ledger.yaml 커밋 대상
 ```
 - **이 파일은 커밋된다** — 판정 기록이 소스와 함께 버전관리된다. equivalent/low-value는 영구 waive,
   real-gap은 surface 유지(사람이 `waived_until`을 손으로 달면 만료까지만 침묵).
@@ -95,7 +95,7 @@ ledger_path.write_text(dump_ledger(ledger), encoding="utf-8")   # mutqa-ledger.y
 ### 6. 어드바이저리 리포트 조립 + 제시
 
 ```python
-from mutqa.report import build_report
+from khala.probe.report import build_report
 print(build_report(survivors, ledger, today))
 ```
 - **headline = 무는(unwaived) real-gap 수** = `biting(survivors, ledger, today)` 길이. 변이 점수가 아니다.

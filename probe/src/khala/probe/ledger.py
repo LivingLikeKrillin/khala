@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import yaml
 
-from mutqa.models import Survivor, Verdict
+from khala.probe.models import Survivor, Verdict
 
 _PERMANENT = {"equivalent", "low-value"}
 
@@ -16,7 +16,7 @@ class Ledger:
 
 
 def load_ledger(text: str) -> Ledger:
-    """mutqa-ledger.yaml 텍스트 -> Ledger. 빈/없는 내용은 빈 원장."""
+    """probe-ledger.yaml 텍스트 -> Ledger. 빈/없는 내용은 빈 원장."""
     data = yaml.safe_load(text) or {}
     waivers = {w["key"]: w for w in (data.get("waivers") or [])}
     return Ledger(waivers=waivers)
@@ -42,7 +42,7 @@ def is_silenced(waiver: dict, today: datetime.date) -> bool:
 
 
 def dump_ledger(ledger: Ledger) -> str:
-    """Ledger -> mutqa-ledger.yaml 텍스트(커밋되는 영속 형식, spec §5)."""
+    """Ledger -> probe-ledger.yaml 텍스트(커밋되는 영속 형식, spec §5)."""
     waivers = list(ledger.waivers.values())
     return yaml.safe_dump({"waivers": waivers}, sort_keys=False, allow_unicode=True)
 

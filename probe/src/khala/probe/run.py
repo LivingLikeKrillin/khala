@@ -4,8 +4,8 @@ import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
-from mutqa.extract import extract_survivors
-from mutqa.models import Survivor
+from khala.probe.extract import extract_survivors
+from khala.probe.models import Survivor
 
 DEFAULT_TEST_COMMAND = "python -m pytest -q -x"
 
@@ -60,7 +60,7 @@ def run_mutation(
     실패(init/exec 비정상 종료)는 예외로 전파 — 게이트 fail-open 금지(spec §8).
     """
     workdir = Path(workdir)
-    session_dir = Path(tempfile.mkdtemp(prefix="mutqa-"))
+    session_dir = Path(tempfile.mkdtemp(prefix="probe-"))
     try:
         cfg_path = session_dir / "config.toml"
         session = session_dir / "session.sqlite"

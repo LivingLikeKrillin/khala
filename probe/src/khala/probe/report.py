@@ -1,7 +1,7 @@
 import datetime
 
-from mutqa.ledger import Ledger, is_silenced
-from mutqa.models import Survivor
+from khala.probe.ledger import Ledger, is_silenced
+from khala.probe.models import Survivor
 
 # 정렬 우선순위: 무는 real-gap이 최상단, 침묵된 것(동치/저가치/유예된 real-gap)은 하단.
 _ORDER = {"real-gap": 0, "unknown": 1, "low-value": 2, "equivalent": 3, "waived": 4}
@@ -31,7 +31,7 @@ def build_report(survivors: list[Survivor], ledger: Ledger, today: datetime.date
 
     biting = sum(1 for _, label, _, silenced, _ in rows if label == "real-gap" and not silenced)
     lines = [
-        "# mutqa 어드바이저리 리포트",
+        "# Probe 어드바이저리 리포트",
         "",
         f"**unwaived real-gap: {biting}** · survivor 총 {len(survivors)}",
         "",

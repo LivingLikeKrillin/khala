@@ -1,8 +1,8 @@
 import datetime
 
-from mutqa.ledger import load_ledger
-from mutqa.models import Survivor
-from mutqa.report import build_report
+from khala.probe.ledger import load_ledger
+from khala.probe.models import Survivor
+from khala.probe.report import build_report
 
 TODAY = datetime.date(2026, 6, 10)
 

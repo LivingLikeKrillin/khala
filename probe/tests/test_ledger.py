@@ -1,7 +1,7 @@
 import datetime
 
-from mutqa.ledger import absorb, biting, dump_ledger, is_silenced, load_ledger, new_survivors
-from mutqa.models import Survivor, Verdict
+from khala.probe.ledger import absorb, biting, dump_ledger, is_silenced, load_ledger, new_survivors
+from khala.probe.models import Survivor, Verdict
 
 TODAY = datetime.date(2026, 6, 10)
 

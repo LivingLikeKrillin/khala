@@ -1,6 +1,6 @@
 import json
 
-from mutqa.models import Survivor
+from khala.probe.models import Survivor
 
 
 def extract_survivors(dump_text: str) -> list[Survivor]:

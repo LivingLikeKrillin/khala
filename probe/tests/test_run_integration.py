@@ -3,7 +3,7 @@ import textwrap
 
 import pytest
 
-from mutqa.run import run_mutation
+from khala.probe.run import run_mutation
 
 pytestmark = pytest.mark.skipif(
     shutil.which("cosmic-ray") is None, reason="cosmic-ray 미설치"
