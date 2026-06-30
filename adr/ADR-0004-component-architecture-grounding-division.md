@@ -141,7 +141,7 @@ forwards the artifact's current `status` with no `APPROVED` check, and the Nexus
 path gates on *capability*, not status. "Canonical-only" is today a **convention, not an
 enforced invariant** (a status guard is follow-on work).
 
-(Note: PFPlay's human-authored Notion planning docs are a different intake from the AI stream
+(Note: the partner team's human-authored Notion planning docs are a different intake from the AI stream
 — they enter Nexus directly via `nexus ingest-notion`, classified by the deterministic
 engine. Multiple intake paths converge on the same two tiers.)
 
