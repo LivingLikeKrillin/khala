@@ -53,7 +53,7 @@ Every hit must be **dispositioned** by end of this PR (renamed, or confirmed an 
 - Naming references in `nexus/` (Task 7), `probe/src/nexus/types.ts`, `mutqa/tests/**` + `mutqa/references/critic-eval.md`, `ken.manifest.yaml` (Task 8).
 - Top-level docs with functional links/titles (Task 8): `README.md`, `adr/README.md`, `CONVENTIONS.md`, `INDEX.md`.
 - Root config (Task 9) and Arbiter docs + asset (Task 10).
-- **Expected survivors (do NOT rename in this PR — gate carve-out, Task 11):** `github.com/.../specledger` source-repo URLs (PR-D); `docs/astro.config.mjs` redirect entries `'/tools/specledger' → '/tools/arbiter'` (+ko) which intentionally keep old doc URLs working; the transitional gloss "Arbiter (formerly specledger)" / "(옛 specledger)" in `arbiter.md`(+ko).
+- **Expected survivors (do NOT rename in this PR — gate carve-out, Task 11):** `github.com/.../specledger` source-repo URLs (PR-D); `docs/astro.config.mjs` redirect entries `'/tools/specledger' → '/tools/arbiter'` (+ko) which intentionally keep old doc URLs working; the transitional gloss "Arbiter (formerly specledger)" / "(옛 specledger)" in `arbiter.md`(+ko) and `README.md`:34.
 
 ### Task 2: Move directory and restructure to the `khala` namespace
 
@@ -103,33 +103,49 @@ git add -A
 git commit -m "refactor(arbiter): move specledger/ → arbiter/src/khala/arbiter (namespace package)"
 ```
 
-### Task 4: Rewrite absolute imports and entry-point module paths
+### Task 4: Rewrite ALL in-package `specledger` identifiers (imports, classes, data keys, generated literals, message ids, prose)
 
-**Files:**
-- Modify: `arbiter/src/khala/arbiter/*.py` (only files with **absolute** `specledger.` imports — relative `from .x` imports are unaffected)
-- Modify: `arbiter/tests/*.py` (tests use absolute imports)
-- Modify: `arbiter/hooks/pretooluse_gate.py`
-- Modify: `arbiter/tests/conftest.py`, `arbiter/tests/helpers.py`
+A rename is not just imports. This task dispositions **every** `specledger` token inside the
+package + its tests so the Task 11 gate (which is case-**insensitive**) has nothing left.
 
-- [ ] **Step 1: Find every absolute `specledger` import / module reference inside `arbiter/`**
+**Files:** `arbiter/src/khala/arbiter/*.py`, `arbiter/tests/*.py`, `arbiter/hooks/pretooluse_gate.py`, `arbiter/src/khala/arbiter/document_types.yaml`
 
-Run: `git grep -n -E "specledger" -- arbiter/`
-Inspect each hit: classify as (a) absolute import `from specledger.x` / `import specledger.x` / `python -m specledger.x`, or (b) a string/comment naming the tool.
+- [ ] **Step 1: Case-insensitive discovery grep (must match the gate)**
 
-- [ ] **Step 2: Rewrite absolute imports `specledger` → `khala.arbiter`**
+Run: `git grep -n -i "specledger" -- arbiter/`
+Classify each hit: absolute import; class/symbol name; data key/API; generated string literal; messageId prefix; or prose/comment. (Relative imports `from .x` won't appear — they're already correct.)
 
-For every `from specledger.<mod> import …` → `from khala.arbiter.<mod> import …`; every `import specledger.<mod>` → `import khala.arbiter.<mod>`; `python -m specledger.server` → `python -m khala.arbiter.server` (in the hook and any docstring usage). Relative imports (`from .errors import …`) are left untouched.
+- [ ] **Step 2: Absolute imports + `python -m` paths → `khala.arbiter`**
 
-- [ ] **Step 3: Run the suite — must still be green**
+`from specledger.<mod> import …` → `from khala.arbiter.<mod> import …`; `import specledger.<mod>` → `import khala.arbiter.<mod>`; `python -m specledger.server` → `python -m khala.arbiter.server` (hook + docstrings). Relative imports untouched.
+
+- [ ] **Step 3: Rename classes/symbols (repo-wide, including callers)**
+
+`class SpecledgerConfig` (`config.py`) → `ArbiterConfig`; `class SpecledgerError` + its subclasses (`errors.py`) → `ArbiterError` + subclasses. Then update **every** reference repo-wide — `server.py`'s `from .config import SpecledgerConfig`, and the root e2e test's `from khala.arbiter.config import SpecledgerConfig` repointed in Task 8 must use the new symbol. Run: `git grep -n -E "SpecledgerConfig|SpecledgerError"` and confirm zero after.
+
+- [ ] **Step 4: Rename the `specledger_type` data key/field/API → `arbiter_type`**
+
+In `document_types.yaml` (the key), `doctypes.py` (`DocType.specledger_type` field + `specledger_type_of()` → `arbiter_type_of()`), and callers in `promote.py` + `test_doctypes.py`. This concept is package-internal (no cross-component consumer per the audit), so the rename is contained.
+
+- [ ] **Step 5: Fix generated string literals and wire values**
+
+- `ledger.py` literal `"# Specledger Index"` → `"# Arbiter Index"` (this **generates** `INDEX.md`; leaving it would revert Task 8's INDEX.md edit on regeneration).
+- `publish.py` A2A `messageId` prefix `f"specledger-{…}"` → `f"arbiter-{…}"` (the e2e publish→ingest test in Task 8 is the safety net for any consumer that reads it).
+
+- [ ] **Step 6: In-source prose/comments naming the tool → Arbiter**
+
+`critique.py`, `promote.py`, and any remaining docstring/comment saying "specledger" → "Arbiter".
+
+- [ ] **Step 7: Run the arbiter suite — must be green**
 
 Run: `python -m pytest arbiter/tests -q`
-Expected: all pass. A failure here means a missed import — fix before continuing.
+Expected: all pass. Then `git grep -n -i "specledger" -- arbiter/` → expect **zero** hits (the package is fully renamed internally).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add -A
-git commit -m "refactor(arbiter): rewrite absolute imports specledger → khala.arbiter"
+git commit -m "refactor(arbiter): rename all in-package specledger identifiers → arbiter (imports, classes, data key, generated INDEX literal, messageId)"
 ```
 
 ---
@@ -249,7 +265,7 @@ Expected: all pass (or skip cleanly if a DB/Docker `importorskip` guard trips �
 - [ ] **Step 4: Functional doc links + titles**
 
 Update relative links and titles that break on the move:
-- `README.md`: `[./specledger](./specledger)` → `[./arbiter](./arbiter)` (+ any prose path).
+- `README.md`: the `[./specledger](./specledger)` directory link → `[./arbiter](./arbiter)`. **Leave** the line-34 transitional gloss "**Arbiter** (formerly specledger)" — it is an intentional bridge phrase (declared survivor in Task 11), not a straggler.
 - `adr/README.md`: `[Arbiter](../specledger)` → `[Arbiter](../arbiter)` (the link path; brand text already "Arbiter").
 - `CONVENTIONS.md`: the `specledger/` directory-name example → `arbiter/`.
 - `INDEX.md`: `# Specledger Index` / `specledger` entries → `# Arbiter Index` / `arbiter`.
@@ -340,7 +356,7 @@ Run:
 ```bash
 git grep -n -i "specledger" -- ':!**/superpowers/**' ':!specs/**' ':!**/CHANGELOG.md' ':!**/dogfood*' ':!MIGRATION.md' ':!adr/ADR-000[1-3]*' ':!adr/ADR-000[4-5]*'
 ```
-Expected: the only surviving hits are the **declared expected survivors** — `github.com/.../specledger` source-repo URLs (PR-D), `docs/astro.config.mjs` redirect entries (`'/tools/specledger' → '/tools/arbiter'`, +ko — they intentionally keep old doc URLs alive, the same deferral rationale as the repo URLs), and the transitional gloss "Arbiter (formerly specledger)" / "(옛 specledger)" in `arbiter.md`(+ko). **Any hit outside that set is a straggler** — fix it and re-run. (ADR-0004/0005 already excluded above as mapping records.)
+Expected: the only surviving hits are the **declared expected survivors** — `github.com/.../specledger` source-repo URLs (PR-D), `docs/astro.config.mjs` redirect entries (`'/tools/specledger' → '/tools/arbiter'`, +ko — they intentionally keep old doc URLs alive, the same deferral rationale as the repo URLs), and the transitional gloss "Arbiter (formerly specledger)" / "(옛 specledger)" in `arbiter.md`(+ko) **and `README.md`:34**. **Any hit outside that set is a straggler** — fix it and re-run. (ADR-0004/0005 already excluded above as mapping records.)
 
 - [ ] **Step 2: No-shim assertion**
 
