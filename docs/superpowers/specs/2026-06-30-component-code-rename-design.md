@@ -130,7 +130,9 @@ repo URLs, and the diagram asset filename + its `img src`) → rename the diagra
 - `mutqa/` (Python mutation tool) → `probe/`, namespace `khala.probe`, dist `khala-probe`,
   imports `khala.probe`, `MUTQA_*`→`PROBE_*` (renamed **after** Observer's
   `PROBE_*`→`OBSERVER_*` above, mirroring the dir/asset ordering so the `PROBE_*` prefix is
-  unambiguous mid-PR), skill `name:` id is retained, but its
+  unambiguous mid-PR), the skill `name: mutqa`→`name: probe` (a user-facing
+  invocation handle, renamed per Decision #1's interface cutover — this supersedes the
+  doc-phase retention of `name: mutqa` in PR #74); its
   directory and package move; `mutqa-ledger.yaml`→`probe-ledger.yaml`. The mutation
   tool exposes **no MCP server** (it is a skill), so the `probe` MCP key freed by Observer is
   **retired, not reused**.
