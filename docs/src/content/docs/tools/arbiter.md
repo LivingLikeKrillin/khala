@@ -10,7 +10,7 @@ The problem it calibrates: when an assistant produces a confident spec, the path
 One-line identity: a ledger that makes "who approved what, and why" a recorded, attributable act — so you cannot rubber-stamp your way past it.
 
 <img
-  src="/diagrams/specledger.svg"
+  src="/diagrams/arbiter.svg"
   alt="Spec lifecycle: Recorded → Critiqued (issues) → Approved (content-hashed) → Implementing (gate armed, edits allowed) → Done. Write/Edit stays blocked until approval."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
@@ -21,7 +21,7 @@ One-line identity: a ledger that makes "who approved what, and why" a recorded, 
 - **Arm / disarm.** `begin_implementation` arms the gate for a specific spec; `end_implementation` disarms it. The gate is only enforced during implementation.
 - **Accountable review flow.** `critique` runs AI review and opens issues in a sidecar; the human edits the body to address each; `approve` takes per-issue dispositions, verifies the body actually changed, then stamps the content hash and sets `status=approved`.
 - **Content-hash stamping + tamper detection.** Approval binds the spec to a hash; `status` reports state and detects tampering.
-- **No database.** All state lives in Markdown files under `SPECLEDGER_DOCS` plus a small `.specledger/` marker under `SPECLEDGER_ROOT`.
+- **No database.** All state lives in Markdown files under `ARBITER_DOCS` plus a small `.arbiter/` marker under `ARBITER_ROOT`.
 - **Optional Nexus publish.** `publish` pushes an approved doc to a configured Nexus sink — a safe no-op when not configured.
 
 ## Quickstart
@@ -39,12 +39,12 @@ pip install -e ".[dev]"
 ```json
 {
   "mcpServers": {
-    "specledger": {
+    "arbiter": {
       "command": "python",
-      "args": ["-m", "specledger.server"],
+      "args": ["-m", "khala.arbiter.server"],
       "env": {
-        "SPECLEDGER_ROOT": "/abs/path/to/your/project",
-        "SPECLEDGER_DOCS": "/abs/path/to/your/project/docs",
+        "ARBITER_ROOT": "/abs/path/to/your/project",
+        "ARBITER_DOCS": "/abs/path/to/your/project/docs",
         "ANTHROPIC_API_KEY": "sk-ant-..."
       }
     }
@@ -52,7 +52,7 @@ pip install -e ".[dev]"
 }
 ```
 
-`SPECLEDGER_ROOT` is the project root where `.specledger/` state lives (defaults to `.`); `SPECLEDGER_DOCS` is where spec/ADR Markdown is written (defaults to `$SPECLEDGER_ROOT/docs`); `ANTHROPIC_API_KEY` is required only for the built-in `AnthropicCritic`.
+`ARBITER_ROOT` is the project root where `.arbiter/` state lives (defaults to `.`); `ARBITER_DOCS` is where spec/ADR Markdown is written (defaults to `$ARBITER_ROOT/docs`); `ANTHROPIC_API_KEY` is required only for the built-in `AnthropicCritic`.
 
 ### Register the PreToolUse hook (`.claude/settings.json`)
 
@@ -65,7 +65,7 @@ pip install -e ".[dev]"
         "hooks": [
           {
             "type": "command",
-            "command": "python /abs/path/specledger/hooks/pretooluse_gate.py"
+            "command": "python /abs/path/arbiter/hooks/pretooluse_gate.py"
           }
         ]
       }
@@ -98,7 +98,7 @@ Use `check_gate` to query whether a list of paths would pass the gate, and `stat
 
 ### Publish an approved doc to Nexus (optional)
 
-Add to `.specledger/config.yaml`:
+Add to `.arbiter/config.yaml`:
 
 ```yaml
 nexus:
