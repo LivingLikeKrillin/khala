@@ -1,4 +1,4 @@
-# Specledger Index
+# Arbiter Index
 
 ## 🔴 미검토 (0)
 

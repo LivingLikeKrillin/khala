@@ -13,7 +13,7 @@
 - artifact_id: ad4940ce2f44
   path: nexus/nexus/search/signals.py
 - artifact_id: 06700043dc0b
-  path: specledger/src/specledger/review.py
+  path: arbiter/src/khala/arbiter/review.py
 - artifact_id: 7c5d255f8266
   path: mutqa/src/mutqa/ledger.py
 - artifact_id: b2c3e57428da

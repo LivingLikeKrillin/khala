@@ -357,11 +357,11 @@ export interface ChangedEntity {
   cohesionGroup?: string;
 }
 
-/** specledger가 Nexus에 발행한 승인 스펙의 읽기전용 투영 (v0.6) */
+/** Arbiter가 Nexus에 발행한 승인 스펙의 읽기전용 투영 (v0.6) */
 export interface SpecRef {
   docTitle: string;
   sectionPath: string;
-  /** specledger content-hash 스탬프 (있으면) */
+  /** Arbiter content-hash 스탬프 (있으면) */
   approvedHash?: string;
   snippet: string;
   classification: string;
