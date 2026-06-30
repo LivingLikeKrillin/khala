@@ -39,7 +39,7 @@ Expected: all pass. Record counts.
 
 - [ ] **Step 3: Authoritative inventory (this grep is the source of truth)**
 
-Run: `git grep -n -i -E "\bken\b|ken-web|ken_web|KEN_" -- ':!**/superpowers/**' ':!specs/**' ':!**/CHANGELOG.md' ':!**/dogfood*' ':!MIGRATION.md' ':!adr/**' ':!**/*.png'`
+Run: `git grep -n -i -E "\bken\b|ken-web|ken_web|\bKEN_" -- ':!**/superpowers/**' ':!specs/**' ':!**/CHANGELOG.md' ':!**/dogfood*' ':!MIGRATION.md' ':!adr/**' ':!**/*.png'`
 Every hit must be dispositioned. **Expected legitimate survivors (do NOT rename):** the Scots-etymology `ken` note in `adept/README.md`(+`docs/.../tools` if any); any `github.com/.../ken` repo URL (PR-D). Everything else is a rename target.
 
 ### Task 2: Move `ken/` and restructure to the `khala` namespace
@@ -59,8 +59,9 @@ Confirm there is **no** `adept/src/khala/__init__.py` (PEP 420 implicit namespac
 
 - `name = "khala-adept"`; description updated.
 - `[project.scripts]`: `adept = "khala.adept.cli:app"` (was `ken = "ken.cli:app"`).
-- setuptools package discovery: set `[tool.setuptools.packages.find] where = ["src"]` and `include = ["khala*"]` (or `[tool.setuptools] package-dir={"" = "src"}` + `packages=["khala.adept", …]`). **Critical (PR-A lesson):** the install must expose `khala.adept`, NOT a top-level `adept`. After install, verify `python -c "import khala.adept"` works and `python -c "import adept"` fails as a real package.
+- setuptools package discovery — use the **explicit** form (do NOT rely on namespace auto-discovery, which can ship an empty wheel): `[tool.setuptools] package-dir = {"" = "src"}` and `[tool.setuptools.packages] = ["khala.adept"]` (list every sub-package, or use `packages.find` with `namespaces = true`). **Critical (PR-A lesson):** the install must expose `khala.adept`, NOT a top-level `adept`.
 - Update `[tool.pytest.ini_options]`/`pythonpath` if it referenced `ken` paths.
+- **Verify by editable install, NOT just pytest** (local `pythonpath=["src"]` masks a packaging misconfig that only fails in CI): `pip install -e adept && python -c "import khala.adept; print('ok')" && (python -c "import adept" && echo "FAIL: top-level adept exists" || echo "ok: no top-level adept")`.
 
 - [ ] **Step 3: Commit the structural move**
 
@@ -75,7 +76,7 @@ git commit -m "refactor(adept): move ken/ → adept/src/khala/adept (namespace p
 
 - [ ] **Step 1: Case-insensitive discovery (match the gate)**
 
-Run: `git grep -n -i -E "\bken\b|KEN_" -- adept/`
+Run: `git grep -n -i -E "\bken\b|\bKEN_" -- adept/`
 Classify: absolute imports; class/symbol names (grep `git grep -nE "class Ken|KenError|KenConfig"`); CLI name; env vars; DB identifiers; the Scots etymology (KEEP); the internal `probe.py` module (KEEP module name).
 
 - [ ] **Step 2: Imports + CLI entry**
@@ -92,7 +93,7 @@ All nine: `KEN_AUTH`, `KEN_COOKIE_SECURE`, `KEN_DATABASE_URL`, `KEN_DATA_DIR`, `
 
 - [ ] **Step 5: DB identifiers (config-only, fresh DB)**
 
-In `adept/docker-compose.yml` and `adept/db/init.sql`: `POSTGRES_DB: ken`→`adept`, `POSTGRES_USER: ken`→`adept`, and the connection string `postgresql://ken:ken@…/ken` → `postgresql://adept:adept@…/adept` wherever it appears (compose comments, README handled in Chunk 3). No data migration (reprovisionable per spec).
+In `adept/docker-compose.yml` and `adept/db/init.sql`, flip **every** `ken` Postgres identifier together (a half-renamed compose breaks auth/healthcheck): `POSTGRES_DB: ken`→`adept`, `POSTGRES_USER: ken`→`adept`, `POSTGRES_PASSWORD: ken`→`adept`, the service/container name `ken-db`→`adept-db`, the volume `ken-db-data`→`adept-db-data`, the healthcheck `pg_isready -U ken -d ken`→`-U adept -d adept`, and the connection string `postgresql://ken:ken@…/ken` → `postgresql://adept:adept@…/adept` wherever it appears (compose comments, README handled in Chunk 3). No data migration (reprovisionable per spec).
 
 - [ ] **Step 6: KEEP the internal `probe.py` module + Scots etymology**
 
@@ -100,7 +101,7 @@ Confirm `adept/src/khala/adept/probe.py` keeps its module name and that the only
 
 - [ ] **Step 7: Run the core suite — green**
 
-Run: `python -m pytest adept/tests -q` ; then `git grep -n -i "\bken\b\|KEN_" -- adept/` → only the Scots etymology survives.
+Run: `python -m pytest adept/tests -q` ; then `git grep -n -i -E "\bken\b|\bKEN_" -- adept/` → only the Scots etymology survives.
 Expected: all pass.
 
 - [ ] **Step 8: Commit**
@@ -126,9 +127,12 @@ mkdir -p adept-web/api/src/khala
 git mv adept-web/api/src/ken_web_api adept-web/api/src/khala/adept_web
 ```
 
-- [ ] **Step 2: API `pyproject.toml`**
+- [ ] **Step 2: API `pyproject.toml` (incl. the core-package dependency)**
 
-`name = "khala-adept-web"`; `[project.scripts] adept-web-admin = "khala.adept_web.admin:main"` (was `ken-web-admin = "ken_web_api.admin:main"`); setuptools discovery exposes `khala.adept_web` (verify `import khala.adept_web` works, top-level `adept_web` does not).
+First run a discovery grep so nothing is missed: `git grep -n -i -E "\bken\b|\bKEN_|ken_web" -- adept-web/`. Then:
+- `name = "khala-adept-web"`; `[project.scripts] adept-web-admin = "khala.adept_web.admin:main"` (was `ken-web-admin = "ken_web_api.admin:main"`); explicit setuptools discovery exposing `khala.adept_web` (same form as Task 2 Step 2).
+- **The `ken` core dependency** (master-red if missed): `dependencies = ["ken", …]` → `["khala-adept", …]`, and `[tool.uv.sources] ken = { path = "../../ken", editable = true }` → `khala-adept = { path = "../../adept", editable = true }` (the dist name + the path both change). Update any comments naming these.
+- Verify by editable install: `pip install -e adept -e adept-web/api && python -c "import khala.adept_web; print('ok')"`.
 
 - [ ] **Step 3: Rewrite API imports**
 
@@ -226,18 +230,18 @@ git commit -m "docs(adept): update kept code-identifiers ken→adept in READMEs 
 
 Run:
 ```bash
-git grep -n -i -E "\bken\b|ken-web|ken_web|KEN_" -- ':!**/superpowers/**' ':!specs/**' ':!**/CHANGELOG.md' ':!**/dogfood*' ':!MIGRATION.md' ':!adr/**' ':!**/*.png'
+git grep -n -i -E "\bken\b|ken-web|ken_web|\bKEN_" -- ':!**/superpowers/**' ':!specs/**' ':!**/CHANGELOG.md' ':!**/dogfood*' ':!MIGRATION.md' ':!adr/**' ':!**/*.png'
 ```
 Expected survivors only: the Scots-etymology `ken` note (`adept/README.md`), and any `github.com/.../ken` repo URL (PR-D). **Anything else is a straggler** — fix and re-run. Watch for false-positive substrings (`token`, `broken`) — those are fine and won't match `\bken\b`.
 
 - [ ] **Step 2: No-shim assertion**
 
-Run: `git grep -n -E "KEN_|\"ken\"|ken-web-admin|ken_session" -- ':!**/superpowers/**' ':!specs/**' ':!adr/**'`
+Run: `git grep -n -E "\bKEN_|\"ken\"|ken-web-admin|ken_session" -- ':!**/superpowers/**' ':!specs/**' ':!adr/**'`
 Expected: zero — old env vars, CLI, cookie are gone, not aliased.
 
 - [ ] **Step 3: Full matrix green (run suites individually — combined invocation hits a pre-existing basename collision)**
 
-Run separately: `python -m pytest adept/tests -q`; `python -m pytest adept-web/api/tests -q`; `cd adept-web/web && npm test -- --run && npm run build; cd ../..`; `npm --prefix docs run build`. Also re-run the cross-ref suites that could be affected: `python -m pytest nexus/tests -q` and the root `tests/` and `arbiter/tests` (the `arbiter` ken-parity test was repointed in PR-A; confirm still green).
+Run separately: `python -m pytest adept/tests -q`; `python -m pytest adept-web/api/tests -q`; `cd adept-web/web && npm test -- --run && npm run build; cd ../..`; `npm --prefix docs run build`. Also re-run the suites that could be affected: `python -m pytest nexus/tests -q`, the root `tests/`, and `arbiter/tests`. Note the hashing-parity test moved **with** ken to `adept/tests/test_hashing_parity.py`; it imports `khala.adept.hashing` (renamed in Task 3) **and** `khala.arbiter.hashing` (untouched, stays valid) — confirm it passes.
 Expected: all green.
 
 - [ ] **Step 4: Push + PR (controller does the merge after review + CI)**
