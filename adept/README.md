@@ -14,27 +14,27 @@ cognitive-debt hotlist. It never consults git history, so it is AI-authorship-sa
 ## Install
 
 ```bash
-uv tool install ./ken           # or: pipx install ./ken  — installs the global `ken` command
-pip install -e 'ken[dev]'       # development (editable + pytest/ruff)
-pip install -e 'ken[postgres]'  # optional Postgres backend
+uv tool install ./adept           # or: pipx install ./adept  — installs the global `adept` command
+pip install -e 'adept[dev]'       # development (editable + pytest/ruff)
+pip install -e 'adept[postgres]'  # optional Postgres backend
 ```
 
 ## CLI
 
-Run `ken` from anywhere in your project — the root is the nearest `ken.manifest.yaml`
+Run `adept` from anywhere in your project — the root is the nearest `adept.manifest.yaml`
 (walking up from the current directory). Artifact paths are stored relative to that root,
 so the manifest is clone-portable.
 
 ```bash
-ken register PATH                              # register an artifact; prints its artifact_id
-ken due --as PERSON                            # list due questions / artifacts needing questions
-ken save-questions ARTIFACT_ID --hash HASH     # store questions (one per stdin line)
-ken record-attempt --as PERSON --question QID --artifact AID --passed|--failed
-ken coverage --as PERSON                       # covered/total, orphan hotlist, weakness map
-ken review ARTIFACT_ID --as PERSON             # headless self-drive (needs ANTHROPIC_API_KEY)
+adept register PATH                              # register an artifact; prints its artifact_id
+adept due --as PERSON                            # list due questions / artifacts needing questions
+adept save-questions ARTIFACT_ID --hash HASH     # store questions (one per stdin line)
+adept record-attempt --as PERSON --question QID --artifact AID --passed|--failed
+adept coverage --as PERSON                       # covered/total, orphan hotlist, weakness map
+adept review ARTIFACT_ID --as PERSON             # headless self-drive (needs ANTHROPIC_API_KEY)
 ```
 
 The agent-driven loop (`due` → `save-questions` → `record-attempt` → `coverage`) needs no
 API key — a Claude Code session supplies the cognition (question generation, grading,
-remediation). Only `ken review` calls the model directly and therefore needs
+remediation). Only `adept review` calls the model directly and therefore needs
 `ANTHROPIC_API_KEY`.

@@ -1,19 +1,19 @@
 # Adept — agent-driven review protocol (the keyless loop)
 
 This is the loop the Claude Code agent (or any session LLM) follows to repay
-cognitive debt **without an API key**. Adept (formerly ken; the CLI is still `ken`)
+cognitive debt **without an API key**. Adept
 owns the deterministic substrate (the question store, the attempt ledger, and the
 pure derivations); the agent owns cognition (generating grounded questions, grading
 answers, writing remediation). Adept is a subprocess and cannot call back into the
 agent — so control is inverted: the agent drives, calling Adept's primitives.
 
-The keyed `ken review` command exists only for headless/CI; the loop below uses no
+The keyed `adept review` command exists only for headless/CI; the loop below uses no
 key.
 
 ## The loop
 
 ```
-1. ken due --as <person>
+1. adept due --as <person>
      → for each registered artifact, prints either:
          needs-questions <artifact_id>          (no questions, or stored hash is stale)
          due <artifact_id> <question_id> <text> (a question that is due now)
@@ -24,20 +24,20 @@ key.
      - read the artifact's REAL content (from the manifest path)
      - generate N grounded questions answerable ONLY by someone who understands
        THIS artifact's specific content (not generic domain knowledge)
-     - ken save-questions <artifact_id> --hash <current_content_hash>
+     - adept save-questions <artifact_id> --hash <current_content_hash>
          (questions piped on stdin, one per line)
        save-questions REJECTS a --hash that != the artifact's current hash, and
-       REPLACES the artifact's prior question set. Re-run `ken due` to get the
+       REPLACES the artifact's prior question set. Re-run `adept due` to get the
        freshly-assigned question ids.
 
 3. present each DUE question to the person (at most once per run — see below).
    The person answers; the agent grades:
-     pass → ken record-attempt --as <person> --question <id> --artifact <aid> --passed [--score S]
+     pass → adept record-attempt --as <person> --question <id> --artifact <aid> --passed [--score S]
      fail → the agent shows a GROUNDED remediation explanation (drawn from the
             artifact's content), then
-            ken record-attempt --as <person> --question <id> --artifact <aid> --failed
+            adept record-attempt --as <person> --question <id> --artifact <aid> --failed
 
-4. ken coverage --as <person>
+4. adept coverage --as <person>
      → covered/total + ratio, the orphan hotlist, and the weakness map
        (questions with the highest lifetime fail counts).
 ```
@@ -46,7 +46,7 @@ key.
 
 - **Present each question at most once per run.** A failed question is rescheduled
   to relearn (its `next_due` becomes its last-attempt time, i.e. due immediately)
-  and re-surfaces on the *next* `ken due` invocation — never in an infinite
+  and re-surfaces on the *next* `adept due` invocation — never in an infinite
   same-session relearn loop. This bounds each run.
 - **Cognition is the agent's job, keyless.** Question generation, grading, and
   remediation are produced by the session LLM on the fly. Remediation text is
@@ -68,4 +68,4 @@ key.
 "System decides, LLM narrates" applied to the whole loop: Adept decides *what* is
 due, *whether* the set passes, and *where* the weakness is; the agent narrates the
 questions, the grading judgement, and the remediation. No `ANTHROPIC_API_KEY` is
-needed in this mode — only the headless `ken review` path calls a keyed model.
+needed in this mode — only the headless `adept review` path calls a keyed model.
