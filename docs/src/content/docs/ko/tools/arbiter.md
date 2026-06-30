@@ -10,7 +10,7 @@ Arbiter가 보정하는 문제는 이렇습니다. 어시스턴트가 확신에 
 한 줄 정체성: "누가 무엇을, 왜 승인했는가"를 기록되고 귀속 가능한 행위로 만드는 원장 — 그 위로 고무도장을 찍고 지나갈 수 없습니다.
 
 <img
-  src="/diagrams/specledger.svg"
+  src="/diagrams/arbiter.svg"
   alt="명세 생명주기: 기록됨 → 비평됨(이슈) → 승인됨(content hash) → 구현 중(게이트 무장, 편집 허용) → 완료. 승인 전까지 Write/Edit는 차단된다."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
@@ -21,7 +21,7 @@ Arbiter가 보정하는 문제는 이렇습니다. 어시스턴트가 확신에 
 - **무장 / 해제** — `begin_implementation`이 특정 명세에 대해 게이트를 무장하고, `end_implementation`이 해제합니다.
 - **책임 있는 리뷰 흐름** — `critique`(AI 리뷰 → 이슈 개설) → 사람이 본문 수정 → `approve`(이슈별 처분 + 본문 변경 검증 + content hash 스탬프).
 - **content-hash 스탬프 + 변조 감지** — 승인이 명세를 hash에 묶고, `status`가 상태와 변조를 보고합니다.
-- **DB 없음** — 모든 상태가 `SPECLEDGER_DOCS` 아래 Markdown과 `SPECLEDGER_ROOT`의 작은 `.specledger/` 마커에 존재합니다.
+- **DB 없음** — 모든 상태가 `ARBITER_DOCS` 아래 Markdown과 `ARBITER_ROOT`의 작은 `.arbiter/` 마커에 존재합니다.
 - **선택적 Nexus 발행** — `publish`는 승인 문서를 Nexus 싱크로 보내며, 미설정 시 안전한 no-op입니다.
 
 설치(`pip install -e ".[dev]"`), `.mcp.json`·`settings.json` 등록, 10개 MCP 도구는 영어 페이지([Arbiter](/tools/arbiter/))를 참고하세요.

@@ -2,7 +2,7 @@
 #
 # CHECK-ONLY / ADD-ONLY: this file provides common defaults ONLY for Python
 # subprojects that do NOT declare their own [tool.ruff]. Subprojects that DO
-# (nexus: line-length 120; specledger / mutqa: line-length 100) keep their own
+# (nexus: line-length 120; arbiter / mutqa: line-length 100) keep their own
 # pyproject.toml config as authoritative — ruff uses the closest config to each
 # file, so this root file is a no-op for them.
 #

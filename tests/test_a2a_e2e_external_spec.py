@@ -1,8 +1,8 @@
 """Ecosystem E2E — 외부 spec 인바운드(서브프로젝트 A): 메모 예치 + 선택 승격.
 
 실제 Nexus A2A 서버(mount_a2a → 카드 + JSON-RPC + capability 게이트 + audit + 외부 ingest
-매핑)를 in-memory 외부 스토어에 와이어. 승격은 specledger promote_external 로 직접. 기존
-test_a2a_e2e_specledger_to_nexus.py 와 같은 형태(유일한 스텁은 DB 인덱싱).
+매핑)를 in-memory 외부 스토어에 와이어. 승격은 Arbiter promote_external 로 직접. 기존
+test_a2a_e2e_arbiter_to_nexus.py 와 같은 형태(유일한 스텁은 DB 인덱싱).
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import hashlib
 import pytest
 
 pytest.importorskip("nexus")
-pytest.importorskip("specledger")
+pytest.importorskip("khala.arbiter")
 pytest.importorskip("a2a.compat.v0_3.types")
 
 from fastapi import FastAPI  # noqa: E402
@@ -23,9 +23,9 @@ from nexus.a2a.config import A2AConfig  # noqa: E402
 from nexus.a2a.external_ingest_skill import EXTERNAL_LABEL, ExternalIngestOutcome  # noqa: E402
 from nexus.a2a.server import mount_a2a  # noqa: E402
 from nexus.auth.principal import hash_token  # noqa: E402
-from specledger.artifacts import Artifact  # noqa: E402
-from specledger.ledger import Ledger  # noqa: E402
-from specledger.promote import promote_external  # noqa: E402
+from khala.arbiter.artifacts import Artifact  # noqa: E402
+from khala.arbiter.ledger import Ledger  # noqa: E402
+from khala.arbiter.promote import promote_external  # noqa: E402
 
 _BASE = "http://nexus.test"
 _WRITE = "ext-writer-token"
@@ -104,7 +104,7 @@ def test_deposit_then_idempotent_then_promote(tmp_path):
     _send(client, _WRITE, _csf())
     assert store.hits == 1 and len(store.docs) == 1
 
-    # 3) 선택 승격 — 호출자가 들고 있던 CSF 를 specledger DRAFT 로
+    # 3) 선택 승격 — 호출자가 들고 있던 CSF 를 Arbiter DRAFT 로
     led = Ledger(tmp_path, now=lambda: "2026-06-24T00:00:00Z")
     out = promote_external(led, _csf(), "SPEC")
     art = Artifact.load(led._resolve(out["artifact_id"]))

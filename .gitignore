@@ -6,9 +6,9 @@ __pycache__/
 # Editable-install / build metadata (e.g. ken/src/ken.egg-info from `pip install -e`)
 *.egg-info/
 
-# specledger transient gate runtime state (active spec marker + exempt log)
-.specledger/active.json
-.specledger/exempt.log
+# arbiter transient gate runtime state (active spec marker + exempt log)
+.arbiter/active.json
+.arbiter/exempt.log
 
 # machine-specific MCP registration (absolute paths)
 .mcp.json

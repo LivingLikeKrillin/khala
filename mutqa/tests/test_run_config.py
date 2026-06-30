@@ -4,9 +4,9 @@ from mutqa.run import build_config
 
 
 def test_config_targets_given_module():
-    cfg = build_config(module_path="src/specledger/review.py")
+    cfg = build_config(module_path="src/khala/arbiter/review.py")
     parsed = tomllib.loads(cfg)
-    assert parsed["cosmic-ray"]["module-path"] == "src/specledger/review.py"
+    assert parsed["cosmic-ray"]["module-path"] == "src/khala/arbiter/review.py"
 
 
 def test_config_default_test_command():

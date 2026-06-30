@@ -1,7 +1,7 @@
 # Test Quality Critic — 골든 이밸 케이스
 
 Critic 프롬프트(`critic-prompt.md`)를 바꿀 때마다 **회귀 검사**로 돌리는 고정 케이스.
-각 케이스는 입력(변이 증거) + 기대 verdict + 근거로 구성. ground-truth는 specledger PoC에서 옴.
+각 케이스는 입력(변이 증거) + 기대 verdict + 근거로 구성. ground-truth는 Arbiter PoC에서 옴.
 
 > **실행 방식 (M1):** 수동. 각 케이스의 입력으로 Critic 서브에이전트를 dispatch하고, 반환 verdict가
 > 기대와 일치하는지 사람이 확인한다. 자동 이밸 러너는 M2+ (YAGNI).
@@ -12,11 +12,11 @@ Critic 프롬프트(`critic-prompt.md`)를 바꿀 때마다 **회귀 검사**로
 
 ## EVAL-1 — 반드시 `real-gap` (핵심 ground-truth, 실데이터)
 
-specledger `review.py:38` `approve()` 내 **이슈 상태 갱신 루프 무력화**. PoC + 2026-06-06 dogfood에서
+Arbiter `review.py:38` `approve()` 내 **이슈 상태 갱신 루프 무력화**. PoC + 2026-06-06 dogfood에서
 이 변이는 **69 테스트 전부 green인데도 살아남았다** — 상태 갱신 부수효과에 행위검증이 0개라는 결정론적 증거.
 dogfood에서 Critic이 실제로 `real-gap` 판정함.
 
-- **module:** `src/specledger/review.py`
+- **module:** `src/khala/arbiter/review.py`
 - **line:** 38
 - **operator:** `core/ZeroIterationForLoop`
 - **mutation diff:**
@@ -36,10 +36,10 @@ dogfood에서 Critic이 실제로 `real-gap` 판정함.
 
 ## EVAL-2 — 반드시 `equivalent` (실데이터 확정, 2026-06-06 dogfood)
 
-**실 cosmic-ray survivor.** specledger `review.py` line 47의 enum 비교 연산자 변이.
+**실 cosmic-ray survivor.** Arbiter `review.py` line 47의 enum 비교 연산자 변이.
 Task 9 dogfood에서 깨끗한 동치 survivor로 채집·확정(폴백 발동 안 함). Critic이 실제로 `equivalent` 판정함.
 
-- **module:** `src/specledger/review.py`
+- **module:** `src/khala/arbiter/review.py`
 - **line:** 47
 - **operator:** `core/ReplaceComparisonOperator_Is_Eq`
 - **mutation diff:**

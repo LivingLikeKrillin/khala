@@ -39,7 +39,7 @@ CREATE TABLE documents (
     doc_type        TEXT NOT NULL DEFAULT 'markdown',
     language        TEXT NOT NULL DEFAULT 'ko',
     content_hash    TEXT NOT NULL DEFAULT '',
-    -- accountable-review stamp from an upstream governance tool (specledger content_hash);
+    -- accountable-review stamp from an upstream governance tool (Arbiter content_hash);
     -- distinct from content_hash (nexus's own change-detection hash). '' for non-governed docs.
     approved_hash   TEXT NOT NULL DEFAULT '',
     CONSTRAINT chk_doc_rtype CHECK (rtype = 'document')

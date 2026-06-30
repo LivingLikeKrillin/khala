@@ -56,7 +56,7 @@ async def _save_document(
 ) -> str:
     """문서 메타데이터를 DB에 저장. rid 반환.
 
-    ``approved_hash``는 상위 거버넌스 도구(specledger)의 accountable-review 스탬프로,
+    ``approved_hash``는 상위 거버넌스 도구(Arbiter)의 accountable-review 스탬프로,
     nexus 자체의 변경 감지 해시(content_hash)와 구분된다. 일반 문서는 ''.
     """
     rid = doc_rid(collected.canonical_uri)
@@ -253,7 +253,7 @@ async def run_ingest(
         config_path: 설정 파일 경로
         skip_index: True면 BM25/Vector 인덱싱 건너뜀
         skip_graph: True면 Graph 추출 건너뜀
-        approved_hash: 이 실행의 문서에 부여할 거버넌스 스탬프(specledger content_hash).
+        approved_hash: 이 실행의 문서에 부여할 거버넌스 스탬프(Arbiter content_hash).
             단일 거버넌스 문서 ingest(예: A2A ingest_governed_doc 브리지)용. 기본 ''.
 
     Returns:

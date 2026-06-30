@@ -43,11 +43,11 @@ tasks:
 
   # ---- aggregate ----------------------------------------------------------
   test:
-    desc: Run all subproject test suites (nexus, probe, specledger, mutqa, docs)
+    desc: Run all subproject test suites (nexus, probe, arbiter, mutqa, docs)
     cmds:
       - task: test:nexus
       - task: test:probe
-      - task: test:specledger
+      - task: test:arbiter
       - task: test:mutqa
       - task: test:docs
 
@@ -78,9 +78,9 @@ tasks:
       - pnpm install
       - pnpm test:run
 
-  test:specledger:
-    desc: specledger tests (pytest)
-    dir: specledger
+  test:arbiter:
+    desc: arbiter tests (pytest)
+    dir: arbiter
     cmds:
       - pip install -e ".[dev]"
       - python -m pytest -q
@@ -113,4 +113,4 @@ tasks:
   lint:ruff:
     desc: ruff check on the Python subprojects (check-only baseline)
     cmds:
-      - ruff check nexus specledger mutqa
+      - ruff check nexus arbiter mutqa

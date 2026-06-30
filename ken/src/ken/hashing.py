@@ -1,7 +1,7 @@
-"""Vendored content_hash — byte-identical to specledger.hashing.content_hash.
+"""Vendored content_hash — byte-identical to khala.arbiter.hashing.content_hash.
 
 Vendored (not imported) to avoid cross-module path coupling in the monorepo;
-tests/test_hashing_parity.py asserts byte-identical output to specledger to
+tests/test_hashing_parity.py asserts byte-identical output to Arbiter to
 catch drift.
 """
 

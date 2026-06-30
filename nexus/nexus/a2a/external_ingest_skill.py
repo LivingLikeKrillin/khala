@@ -2,8 +2,8 @@
 
 외부 도구(Manifest/Notion/Cursor/...)가 CSF(canonical spec format) 문서를 예치한다. governed
 경로와 달리 approved_hash provenance가 없다 — 신뢰 앵커는 소스 콘텐츠 자체(source_hash)다. 문서는
-**메모**로 인덱싱되며(label "external_spec") specledger 거버넌스 lifecycle에 들어가지 않는다.
-거버넌스 SPEC/ADR로의 승격은 별도의 인간 행위(specledger.promote_external)다. 이 모듈은 순수
+**메모**로 인덱싱되며(label "external_spec") Arbiter 거버넌스 lifecycle에 들어가지 않는다.
+거버넌스 SPEC/ADR로의 승격은 별도의 인간 행위(khala.arbiter.promote_external)다. 이 모듈은 순수
 프로토콜 경계(추출 + 검증 + 결과 매핑)이며, DB/인덱스 작업은 ingest_fn으로 주입된다(서버 와이어링).
 """
 
@@ -24,7 +24,7 @@ _REQUIRED_PROV = ("source_tool", "source_id", "source_hash")
 # 둘 다 막아, production rid(safe_id basename)가 id 와 1:1 로 유지되게 한다(아래 validate 참조).
 _UNSAFE_ID_CHARS = ("/", "\\", "\x00")
 
-# 레거시 CSF kind → 축-A 정본 타입(S1). specledger doctypes 레지스트리의 aliases 미러 —
+# 레거시 CSF kind → 축-A 정본 타입(S1). Arbiter doctypes 레지스트리의 aliases 미러 —
 # 패키지 디커플링 때문에 소량 중복하며, read-path 통합은 S3.
 _KIND_ALIASES = {"SPEC": "DESIGN", "FLOW": "NOTE"}
 

@@ -83,7 +83,7 @@ def build_grounded_artifact(
                 "source_version": p.get("source_version", ""),
                 "doc_rid": p.get("doc_rid", ""),
                 # SPEC §5.4: the accountable-review stamp, so a consumer (Probe's
-                # SpecRef.approvedHash) can verify retrieval against specledger's hash.
+                # SpecRef.approvedHash) can verify retrieval against Arbiter's hash.
                 "approved_hash": p.get("approved_hash", ""),
             }
             for p in result.provenance

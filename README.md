@@ -42,7 +42,7 @@ The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.m
 |---|---|---|
 | **Nexus** | Enterprise RAG + GraphRAG — grounds answers in your docs and OTel telemetry. | [`./nexus`](./nexus) |
 | **Observer** | Platform-aware PR analyzer — PR scope, API spec lint/diff, review checklists; consumes Nexus. | [`./probe`](./probe) |
-| **Arbiter** | ADR/SDD governance MCP — reviewable, traceable decision records; publishes to Nexus. | [`./specledger`](./specledger) |
+| **Arbiter** | ADR/SDD governance MCP — reviewable, traceable decision records; publishes to Nexus. | [`./arbiter`](./arbiter) |
 | **Probe** | Mutation-driven test-quality harness — catches what advisory review misses. | [`./mutqa`](./mutqa) |
 | **docs** | Astro Starlight bilingual ecosystem documentation site. | [`./docs`](./docs) |
 

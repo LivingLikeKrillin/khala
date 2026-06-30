@@ -12,7 +12,7 @@ def test_extract_keeps_only_survivors(fixtures_dir):
 def test_survivor_fields_normalized(fixtures_dir):
     [s] = extract_survivors((fixtures_dir / "cr_dump_sample.jsonl").read_text())
     assert isinstance(s, Survivor)
-    assert s.module == "src/specledger/review.py"
+    assert s.module == "src/khala/arbiter/review.py"
     assert s.lineno == 88                       # start_pos[0]
     assert s.operator == "core/ReplaceComparisonOperator_Lt_LtE"
     assert "for d in []:" in s.mutation_diff

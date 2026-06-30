@@ -33,7 +33,7 @@ def test_run_mutation_leaves_no_litter_in_workdir(tmp_path):
 def test_run_mutation_extracts_survivors_from_dump(tmp_path, fixtures_dir):
     dump_text = (fixtures_dir / "cr_dump_sample.jsonl").read_text(encoding="utf-8")
     survivors = run_mutation(
-        "src/specledger/review.py", tmp_path,
+        "src/khala/arbiter/review.py", tmp_path,
         runner=_recording_runner([], dump_text=dump_text),
     )
     assert len(survivors) == 1  # 샘플 픽스처는 survivor 1건
