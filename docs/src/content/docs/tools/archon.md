@@ -91,7 +91,6 @@ Archon exposes MCP tools so agents answer domain questions from the governed sou
 
 - Branch: `spec/domain-invariant-governance` of [github.com/LivingLikeKrillin/khala](https://github.com/LivingLikeKrillin/khala).
 - Package: `nexus/claims/` (`seed.py`, `value_query.py`, `grade_authority.py`, `answer.py`, `repository.py`). CLI in `nexus/cli.py`; MCP tools in `nexus/mcp/server.py`.
-- Design & plan docs: `docs/superpowers/specs/2026-06-06-domain-invariant-governance-design.md`, `docs/superpowers/specs/2026-06-06-value-validation-protocol.md`, and `docs/superpowers/plans/2026-06-06-domain-invariant-mvp-value-query.md`.
 
 :::note[Last verified]
 Transcribed from the `spec/domain-invariant-governance` branch (`nexus/cli.py`, `nexus/mcp/server.py`, design specs). Site re-run verification pending.

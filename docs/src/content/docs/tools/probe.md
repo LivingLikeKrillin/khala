@@ -89,7 +89,6 @@ When you change the Critic prompt, re-run the golden cases in `references/critic
 ## Reference
 
 - Source: `SKILL.md` for the Probe skill (mutation-driven test-quality harness, M2 = ledger).
-- Plan/spec: `docs/superpowers/plans/2026-06-06-mutqa-m1-runner-advisory.md` (M1; M2/M3 in the spec §5–6); dogfood notes under the skill's `docs/`.
 - Package modules: `khala.probe.scope`, `khala.probe.run`, `khala.probe.ledger`, `khala.probe.report`; Critic prompt + eval under `references/`.
 
 :::note[Last verified]
