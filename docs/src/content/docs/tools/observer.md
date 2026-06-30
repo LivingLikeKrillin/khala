@@ -109,7 +109,7 @@ The MCP server exposes eight tools, including `observer.analyzeScope`, `observer
 
 ## Reference
 
-- Source repo README: [github.com/LivingLikeKrillin/probe](https://github.com/LivingLikeKrillin/probe) (`README.md`).
+- Source: [`observer/` in the Khala monorepo](https://github.com/LivingLikeKrillin/khala/tree/master/observer) (`README.md`).
 - Per-version scope docs live under the repo's `docs/` (`probe-v{N}-scope.md`); guideline docs under `docs/guidelines/`.
 - Build/test scripts (`pnpm build`, `pnpm test:run`, `pnpm typecheck`) are in `package.json`.
 

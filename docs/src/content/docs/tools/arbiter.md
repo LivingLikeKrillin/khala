@@ -109,7 +109,7 @@ Then call `publish`. Without this config it returns `{"published": false, "reaso
 
 ## Reference
 
-- Source repo README: [github.com/LivingLikeKrillin/specledger](https://github.com/LivingLikeKrillin/specledger) (`README.md`); roadmap in `BACKLOG.md`.
+- Source: [`arbiter/` in the Khala monorepo](https://github.com/LivingLikeKrillin/khala/tree/master/arbiter) (`README.md`; roadmap in `BACKLOG.md`).
 - Ten MCP tools: `record`, `critique`, `approve`, `status`, `supersede`, `begin_implementation`, `end_implementation`, `check_gate`, `index`, `publish`.
 - MVP boundaries: the `Bash` tool is *not* gated (only `Write`/`Edit`/`MultiEdit`); single-approver flow; no database.
 
