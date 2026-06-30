@@ -2,69 +2,148 @@
 title: Khala
 description: AI 시대를 보정하는 도구들의 연합.
 template: splash
-hero:
-  tagline: AI 시대의 두 실패 모드 — 기계가 거짓말하고, 사람이 판단을 포기한다. Khala는 조언이 아니라 결정론적 그라운딩으로 둘 다에 답한다.
-  image:
-    file: ../../../assets/logo.svg
-  actions:
-    # Hero actions live in frontmatter (outside the rehype base-prefix plugin),
-    # so the /khala base is written explicitly here.
-    - text: 시작하기
-      link: /khala/ko/start/
-      icon: right-arrow
-    - text: 철학
-      link: /khala/ko/philosophy/
-      variant: minimal
 ---
 
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+<div class="kh-hero kh-blueprint">
+  <div class="kh-hero-grid">
+    <div>
+      <span class="kh-eyebrow">도구들의 연합</span>
+      <h1 class="kh-hero-title">조언이 아니라,<br/>그라운딩.</h1>
+      <p class="kh-hero-sub">기계는 거짓말하고, 사람은 판단을 멈춘다. Khala는 AI 시대의 두 실패 모드 모두에, 모든 답을 인용 가능한 출처에 묶어 답한다 — 출처가 없으면, 답하지 않는다.</p>
+      <div class="kh-hero-actions">
+        <a class="kh-btn kh-btn--solid" href="/ko/start/">시작하기</a>
+        <a class="kh-link" href="/ko/philosophy/">철학 읽기 →</a>
+      </div>
+    </div>
+    <div class="kh-hero-art">
+      <svg class="kh-dia" viewBox="0 0 500 200" role="img" aria-label="쿼리가 세 리트리버 — BM25(mecab-ko), 벡터(768-d), 그래프(2-hop) — 로 병렬 분기하고, RRF(k=60)로 융합되어 그라운딩된 답이 된다.">
+        <rect class="kh-dia-grp" x="114" y="14" width="150" height="170" rx="4"/>
+        <text class="kh-dia-glbl" x="120" y="9">HYBRID RETRIEVAL</text>
+        <path class="kh-dia-line-acc" d="M78 99 L114 99"/>
+        <path class="kh-dia-line" d="M114 99 L121 99 L121 43 L128 43 M114 99 L128 99 M114 99 L121 99 L121 155 L128 155"/>
+        <path class="kh-dia-line" d="M250 43 L257 43 L257 99 L264 99 M250 99 L264 99 M250 155 L257 155 L257 99 L264 99"/>
+        <path class="kh-dia-line-acc" d="M264 99 L298 99"/>
+        <path class="kh-dia-line-acc" d="M376 99 L410 99"/>
+        <rect class="kh-dia-box-acc" x="8" y="80" width="70" height="38" rx="4"/>
+        <text class="kh-dia-t-acc" x="43" y="103" text-anchor="middle">query</text>
+        <rect class="kh-dia-box" x="128" y="28" width="122" height="30" rx="4"/>
+        <text class="kh-dia-t" x="136" y="47">BM25</text>
+        <text class="kh-dia-s" x="242" y="47" text-anchor="end">mecab-ko</text>
+        <rect class="kh-dia-box" x="128" y="84" width="122" height="30" rx="4"/>
+        <text class="kh-dia-t" x="136" y="103">vector</text>
+        <text class="kh-dia-s" x="242" y="103" text-anchor="end">768-d</text>
+        <rect class="kh-dia-box" x="128" y="140" width="122" height="30" rx="4"/>
+        <text class="kh-dia-t" x="136" y="159">graph</text>
+        <text class="kh-dia-s" x="242" y="159" text-anchor="end">2-hop</text>
+        <text class="kh-dia-lbl" x="268" y="92">FUSE</text>
+        <rect class="kh-dia-box" x="298" y="80" width="78" height="38" rx="4"/>
+        <text class="kh-dia-t" x="337" y="103" text-anchor="middle">RRF · k=60</text>
+        <rect class="kh-dia-box-acc" x="410" y="80" width="82" height="38" rx="4"/>
+        <text class="kh-dia-t-acc" x="451" y="103" text-anchor="middle">answer</text>
+      </svg>
+    </div>
+  </div>
+</div>
 
 <p class="kh-section-lead">여기서 시작</p>
 
-<CardGrid>
-  <LinkCard title="시작하기" href="/ko/start/" description="설치하고 설정해서, 몇 분 만에 첫 답을 근거에 묶는다." />
-  <LinkCard title="철학" href="/ko/philosophy/" description="AI 시대에 왜 조언보다 결정론적 그라운딩이 이기는가." />
-  <LinkCard title="생태계" href="/ko/ecosystem/" description="도구들이 하나의 링 — Khala — 을 어떻게 공유하고 조합되는가." />
-</CardGrid>
+<div class="kh-tiles">
+  <a class="kh-tile" href="/ko/start/">
+    <span class="kh-num">01</span>
+    <h3>시작하기</h3>
+    <p>설치하고 설정해서, 몇 분 만에 첫 답을 근거에 묶는다.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/ko/philosophy/">
+    <span class="kh-num">02</span>
+    <h3>철학</h3>
+    <p>AI 시대에 왜 조언보다 결정론적 그라운딩이 이기는가.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/ko/ecosystem/">
+    <span class="kh-num">03</span>
+    <h3>생태계</h3>
+    <p>도구들이 하나의 링 — Khala — 을 어떻게 공유하고 조합되는가.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+</div>
 
 <p class="kh-section-lead">두 실패 모드</p>
 
-<CardGrid>
-  <Card title="기계가 거짓말한다" icon="warning">
-    낡거나 틀린 답을 확신에 차서 단언한다. **Archon** + **Nexus**는 검증 가능한 출처에 답을 묶어 방어한다 — 근거 없는 답은 결코 단언하지 않는다.
-  </Card>
-  <Card title="사람이 판단을 포기한다" icon="approve-check">
-    AI 출력을 읽지도 않고 고무도장처럼 승인한다. **Arbiter**는 코드가 작성되기 전, 책임 있는 리뷰를 게이트로 만들어 방어한다.
-  </Card>
-</CardGrid>
+<div class="kh-grid-2">
+  <div class="kh-cell">
+    <span class="kh-num">01</span>
+    <h3>기계가 거짓말한다</h3>
+    <p>낡거나 틀린 답을 확신에 차서 단언한다. <strong>Archon</strong> + <strong>Nexus</strong>는 검증 가능한 출처에 답을 묶어 방어한다 — 근거 없는 답은 결코 단언하지 않는다.</p>
+  </div>
+  <div class="kh-cell">
+    <span class="kh-num">02</span>
+    <h3>사람이 판단을 멈춘다</h3>
+    <p>AI 출력을 읽지도 않고 고무도장처럼 승인한다. <strong>Arbiter</strong>는 코드가 작성되기 전, 책임 있는 리뷰를 게이트로 만들어 방어한다.</p>
+  </div>
+</div>
 
 <p class="kh-section-lead">AI 시대의 세 가지 부채</p>
 
-<CardGrid>
-  <Card title="기술부채">
-    산출물이 유지보수 속도보다 빨리 쌓인다. **Probe** + **Observer**가 갚는다.
-  </Card>
-  <Card title="의도부채">
-    왜 만들어졌는지 — 제약과 트레이드오프 — 가 사라진다. **Arbiter**가 갚는다.
-  </Card>
-  <Card title="인지부채">
-    조직이 내보내는 시스템을 아무도 이해하지 못한다. Khala가 닫으려는 빈 다리 — *AI가 짓고, 당신이 이해한다.*
-  </Card>
-</CardGrid>
+<div class="kh-debts">
+  <div class="kh-cell">
+    <span class="kh-num">01</span>
+    <h3>기술부채</h3>
+    <p>산출물이 유지보수 속도보다 빨리 쌓인다.</p>
+    <span class="kh-tag">Probe · Observer 가 갚는다</span>
+  </div>
+  <div class="kh-cell">
+    <span class="kh-num">02</span>
+    <h3>의도부채</h3>
+    <p>왜 만들어졌는지 — 제약과 트레이드오프 — 가 사라진다.</p>
+    <span class="kh-tag">Arbiter 가 갚는다</span>
+  </div>
+  <div class="kh-cell kh-cell--wide">
+    <span class="kh-num">03</span>
+    <h3>인지부채</h3>
+    <p>조직이 내보내는 시스템을 아무도 이해하지 못한다 — Khala가 닫으려는 열린 다리. <strong>AI가 짓고, 당신이 이해한다.</strong></p>
+    <span class="kh-tag">열린 다리 — Khala가 닫는 것</span>
+  </div>
+</div>
 
 <p class="kh-section-lead">도구</p>
 
-<CardGrid>
-  <LinkCard title="Nexus" href="/ko/tools/nexus/" description="그라운딩된 지식 — 문서와 텔레메트리 위의 RAG + GraphRAG." />
-  <LinkCard title="Archon" href="/ko/tools/archon/" description="도메인 진실 거버넌스 — 값, 불변식, 권위를 보정한다." />
-  <LinkCard title="Observer" href="/ko/tools/observer/" description="그라운딩된 코드 리뷰 — PR 범위, API 계약, 트러블슈팅." />
-  <LinkCard title="Arbiter" href="/ko/tools/arbiter/" description="결정 책임 — 고무도장을 막는 명세/ADR 게이트." />
-  <LinkCard title="Probe" href="/ko/tools/probe/" description="테스트 품질 — 변이 기반으로, 조언형 리뷰가 놓치는 것을 잡는다." />
-</CardGrid>
+<div class="kh-tools">
+  <a class="kh-tile" href="/ko/tools/nexus/">
+    <span class="kh-tile-kind">RAG · GraphRAG</span>
+    <h3>Nexus</h3>
+    <p>문서와 텔레메트리 위의 그라운딩된 지식.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/ko/tools/archon/">
+    <span class="kh-tile-kind">도메인 진실</span>
+    <h3>Archon</h3>
+    <p>값·불변식·권위를 보정하고 거버넌스한다.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/ko/tools/observer/">
+    <span class="kh-tile-kind">코드 리뷰</span>
+    <h3>Observer</h3>
+    <p>그라운딩된 리뷰 — PR 범위, API 계약, 트러블슈팅.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/ko/tools/arbiter/">
+    <span class="kh-tile-kind">명세 / ADR 게이트</span>
+    <h3>Arbiter</h3>
+    <p>결정 책임 — 고무도장을 막는 게이트.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+  <a class="kh-tile" href="/ko/tools/probe/">
+    <span class="kh-tile-kind">변이 테스트</span>
+    <h3>Probe</h3>
+    <p>테스트 품질 — 조언형 리뷰가 놓치는 것을 잡는다.</p>
+    <span class="kh-arrow">→</span>
+  </a>
+</div>
 
 <p class="kh-section-lead">리소스</p>
 
-<CardGrid>
-  <LinkCard title="기여하기" href="/ko/contributing/" description="컨벤션, 네이밍, 버저닝, 그리고 기여 흐름." />
-  <LinkCard title="GitHub" href="https://github.com/LivingLikeKrillin" description="Khala 생태계의 소스, 이슈, 릴리스." />
-</CardGrid>
+<div class="kh-inline">
+  <a class="kh-inline-link" href="/ko/contributing/">기여하기 →</a>
+  <a class="kh-inline-link" href="https://github.com/LivingLikeKrillin">GitHub →</a>
+</div>

@@ -390,3 +390,405 @@ a.action.secondary:hover {
   font-weight: 500;
   margin-block: 2.5rem 0.5rem;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Landing (splash) — V2 engineering hero + editorial sections.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Give the landing a wider canvas than the default prose column so the hero
+   diagram has room to read at a legible size. */
+.sl-markdown-content:has(.kh-hero) {
+  max-width: 72rem;
+}
+
+.kh-hero {
+  position: relative;
+  border: 1px solid var(--kh-hairline);
+  border-radius: var(--kh-radius);
+  padding: clamp(1.6rem, 4vw, 2.75rem);
+  overflow: hidden;
+  margin-block: 1rem 2.5rem;
+}
+
+.kh-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+}
+
+@media (max-width: 50rem) {
+  .kh-hero-grid {
+    grid-template-columns: 1fr;
+  }
+  .kh-hero-art {
+    order: -1;
+  }
+}
+
+.kh-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+  font-family: var(--sl-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--kh-fg-dim);
+}
+.kh-eyebrow::before {
+  content: '';
+  width: 16px;
+  height: 1px;
+  background: var(--kh-accent);
+}
+
+.kh-hero-title {
+  font-family: var(--sl-font);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+  font-size: clamp(2.3rem, 5.5vw, 3.4rem);
+  color: var(--sl-color-white);
+  margin: 1rem 0 0;
+}
+
+.kh-hero-sub {
+  color: var(--kh-fg-muted);
+  font-size: clamp(0.98rem, 1.4vw, 1.1rem);
+  line-height: 1.55;
+  max-width: 40ch;
+  margin: 1rem 0 1.6rem;
+}
+
+.kh-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.kh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--sl-font);
+  font-size: 0.92rem;
+  font-weight: 500;
+  padding: 0.6em 1.1em;
+  border-radius: var(--kh-radius-sm);
+  border: 1px solid var(--kh-hairline-strong);
+  color: var(--sl-color-white);
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.kh-btn--solid {
+  background: var(--sl-color-white);
+  color: var(--kh-bg);
+  border-color: var(--sl-color-white);
+}
+.kh-btn--solid:hover {
+  background: color-mix(in srgb, var(--sl-color-white) 88%, var(--kh-accent));
+}
+.kh-btn--ghost:hover {
+  border-color: var(--kh-accent);
+  color: var(--kh-accent);
+}
+.kh-link {
+  font-family: var(--sl-font);
+  font-size: 0.92rem;
+  color: var(--kh-fg-muted);
+  text-decoration: none;
+}
+.kh-link:hover {
+  color: var(--kh-accent);
+}
+
+/* Starlight colors `.sl-markdown-content a` with the accent + underline; the
+   hero buttons live in content, so out-specify it to keep their own colors. */
+.kh-hero-actions a.kh-btn,
+.kh-hero-actions a.kh-link {
+  text-decoration: none;
+}
+.kh-hero-actions a.kh-btn {
+  color: var(--sl-color-white);
+}
+.kh-hero-actions a.kh-btn--solid {
+  color: var(--kh-bg);
+}
+.kh-hero-actions a.kh-link {
+  color: var(--kh-fg-muted);
+}
+.kh-hero-actions a.kh-link:hover,
+.kh-hero-actions a.kh-btn--ghost:hover {
+  color: var(--kh-accent);
+}
+
+/* Editorial sections */
+.kh-rule {
+  height: 1px;
+  background: var(--kh-hairline);
+  border: 0;
+  margin: 0;
+}
+
+.kh-grid-2,
+.kh-grid-3 {
+  display: grid;
+  gap: 1px;
+  background: var(--kh-hairline);
+  border: 1px solid var(--kh-hairline);
+  border-radius: var(--kh-radius);
+  overflow: hidden;
+  margin-block: 0.75rem 0;
+}
+.kh-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.kh-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 50rem) {
+  .kh-grid-2,
+  .kh-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kh-cell {
+  background: var(--kh-bg);
+  padding: clamp(1.1rem, 2.4vw, 1.6rem);
+}
+.kh-cell--accent {
+  box-shadow: inset 2px 0 0 var(--kh-accent);
+}
+.kh-cell .kh-num {
+  font-family: var(--sl-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--kh-accent);
+}
+.kh-cell h3 {
+  font-family: var(--sl-font);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+  margin: 0.5rem 0 0.4rem;
+  color: var(--sl-color-white);
+}
+.kh-cell p {
+  color: var(--kh-fg-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin: 0;
+}
+.kh-cell strong {
+  color: var(--sl-color-white);
+  font-weight: 600;
+}
+
+.kh-tag {
+  display: block;
+  margin-top: 0.7rem;
+  font-family: var(--sl-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kh-fg-dim);
+}
+
+/* Three debts — 2 serviced + 1 open leg. Asymmetry is layout-only: the open
+   debt spans full width; type, color, and surface match the other cells. */
+.kh-debts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--kh-hairline);
+  border: 1px solid var(--kh-hairline);
+  border-radius: var(--kh-radius);
+  overflow: hidden;
+  margin-block: 0.75rem 0;
+}
+.kh-debts .kh-cell {
+  background: var(--kh-bg);
+}
+.kh-debts .kh-cell--wide {
+  grid-column: 1 / -1;
+}
+@media (max-width: 50rem) {
+  .kh-debts {
+    grid-template-columns: 1fr;
+  }
+  .kh-debts .kh-cell--wide {
+    grid-column: auto;
+  }
+}
+
+/* Start here — linkable entry tiles (3-up) */
+.kh-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--kh-hairline);
+  border: 1px solid var(--kh-hairline);
+  border-radius: var(--kh-radius);
+  overflow: hidden;
+  margin-block: 0.75rem 0;
+}
+@media (max-width: 50rem) {
+  .kh-tiles {
+    grid-template-columns: 1fr;
+  }
+}
+.kh-tiles .kh-tile {
+  display: flex;
+  flex-direction: column;
+  background: var(--kh-bg);
+  padding: clamp(1.1rem, 2.4vw, 1.6rem);
+  text-decoration: none;
+  color: var(--kh-fg-muted);
+}
+.kh-tiles a.kh-tile {
+  transition: background-color 0.15s ease;
+}
+.kh-tiles a.kh-tile:hover {
+  background: var(--kh-surface-2);
+}
+.kh-tile-kind {
+  font-family: var(--sl-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kh-accent);
+}
+.kh-tile h3 {
+  font-family: var(--sl-font);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+  margin: 0.5rem 0 0.4rem;
+  color: var(--sl-color-white);
+}
+.kh-tile p {
+  flex: 1;
+  margin: 0;
+  color: var(--kh-fg-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.kh-arrow {
+  margin-top: 0.9rem;
+  font-family: var(--sl-font-mono);
+  color: var(--kh-fg-dim);
+  transition: color 0.15s ease;
+}
+a.kh-tile:hover .kh-arrow {
+  color: var(--kh-accent);
+}
+
+/* The tools — flat tile catalog. Grows with the toolset: tiles wrap cleanly
+   at any count (no fixed-grid empty-cell artifact, no hardcoded count). */
+.kh-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: 0.75rem;
+  margin-block: 0.75rem 0;
+}
+.kh-tools .kh-tile {
+  display: flex;
+  flex-direction: column;
+  background: var(--kh-bg);
+  border: 1px solid var(--kh-hairline);
+  border-radius: var(--kh-radius);
+  padding: clamp(1.1rem, 2.4vw, 1.5rem);
+  text-decoration: none;
+  color: var(--kh-fg-muted);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.kh-tools a.kh-tile:hover {
+  border-color: var(--kh-hairline-strong);
+  background: var(--kh-surface-2);
+}
+
+/* Resources — inline links */
+.kh-inline {
+  display: flex;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--kh-hairline);
+}
+.kh-inline a.kh-inline-link {
+  font-family: var(--sl-font);
+  font-size: 0.95rem;
+  color: var(--kh-fg-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.kh-inline a.kh-inline-link:hover {
+  color: var(--kh-accent);
+}
+
+/* ── Inline diagram primitives (hero T2; reused by PR3 figures) ───────────── */
+.kh-dia-box {
+  fill: var(--kh-surface);
+  stroke: var(--kh-hairline-strong);
+}
+.kh-dia-box-acc {
+  fill: var(--kh-surface);
+  stroke: var(--kh-accent-line);
+}
+.kh-dia-line {
+  stroke: var(--kh-hairline-strong);
+  stroke-width: 1;
+  fill: none;
+}
+.kh-dia-line-acc {
+  stroke: var(--kh-accent-line);
+  stroke-width: 1;
+  fill: none;
+}
+.kh-dia-grp {
+  stroke: var(--kh-hairline);
+  stroke-width: 1;
+  fill: none;
+  stroke-dasharray: 3 3;
+}
+.kh-dia-t {
+  fill: var(--kh-fg-muted);
+  font-family: var(--sl-font-mono);
+  font-size: 11px;
+}
+.kh-dia-t-acc {
+  fill: var(--kh-fg);
+  font-family: var(--sl-font-mono);
+  font-size: 11px;
+}
+.kh-dia-s {
+  fill: var(--kh-fg-dim);
+  font-family: var(--sl-font-mono);
+  font-size: 8.5px;
+}
+.kh-dia-lbl {
+  fill: var(--kh-accent);
+  font-family: var(--sl-font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+}
+.kh-dia-glbl {
+  fill: var(--kh-fg-dim);
+  font-family: var(--sl-font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+}
+.kh-dia {
+  width: 100%;
+  height: auto;
+}
