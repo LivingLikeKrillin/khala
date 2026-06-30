@@ -59,7 +59,7 @@ Confirm there is **no** `adept/src/khala/__init__.py` (PEP 420 implicit namespac
 
 - `name = "khala-adept"`; description updated.
 - `[project.scripts]`: `adept = "khala.adept.cli:app"` (was `ken = "ken.cli:app"`).
-- setuptools package discovery — use the **explicit** form (do NOT rely on namespace auto-discovery, which can ship an empty wheel): `[tool.setuptools] package-dir = {"" = "src"}` and `[tool.setuptools.packages] = ["khala.adept"]` (list every sub-package, or use `packages.find` with `namespaces = true`). **Critical (PR-A lesson):** the install must expose `khala.adept`, NOT a top-level `adept`.
+- setuptools package discovery — use the **explicit** form (do NOT rely on namespace auto-discovery, which can ship an empty wheel): `[tool.setuptools] package-dir = {"" = "src"}` + `packages = ["khala.adept"]` (list every sub-package; or `[tool.setuptools.packages.find]` with `where = ["src"]` + `namespaces = true`). **Critical (PR-A lesson):** the install must expose `khala.adept`, NOT a top-level `adept`.
 - Update `[tool.pytest.ini_options]`/`pythonpath` if it referenced `ken` paths.
 - **Verify by editable install, NOT just pytest** (local `pythonpath=["src"]` masks a packaging misconfig that only fails in CI): `pip install -e adept && python -c "import khala.adept; print('ok')" && (python -c "import adept" && echo "FAIL: top-level adept exists" || echo "ok: no top-level adept")`.
 
@@ -77,7 +77,7 @@ git commit -m "refactor(adept): move ken/ → adept/src/khala/adept (namespace p
 - [ ] **Step 1: Case-insensitive discovery (match the gate)**
 
 Run: `git grep -n -i -E "\bken\b|\bKEN_" -- adept/`
-Classify: absolute imports; class/symbol names (grep `git grep -nE "class Ken|KenError|KenConfig"`); CLI name; env vars; DB identifiers; the Scots etymology (KEEP); the internal `probe.py` module (KEEP module name).
+Classify: absolute imports; class/symbol names (grep `git grep -nE "class Ken|\bKen[A-Za-z]+"` — the real one is `KenStore`); CLI name; env vars; DB identifiers; the Scots etymology (KEEP); the internal `probe.py` module (KEEP module name).
 
 - [ ] **Step 2: Imports + CLI entry**
 
@@ -85,7 +85,7 @@ Classify: absolute imports; class/symbol names (grep `git grep -nE "class Ken|Ke
 
 - [ ] **Step 3: Classes/symbols → Adept (repo-wide callers)**
 
-Rename any `KenConfig`/`KenError`/`Ken*` class or top-level symbol → `Adept*`, updating every reference (incl. `adept/tests/`, and `ken-web/api` callers handled in Chunk 2). Run `git grep -nE "\bKen[A-Za-z]+"` → expect zero after (outside historical).
+Rename every `Ken*` class/top-level symbol → `Adept*` (the real one is `KenStore`→`AdeptStore`; used across core + `ken-web/api/deps.py`), updating every reference (incl. `adept/tests/`, and `ken-web/api` callers handled in Chunk 2). Run `git grep -nE "\bKen[A-Za-z]+"` → expect zero after (outside historical).
 
 - [ ] **Step 4: Env vars `KEN_*` → `ADEPT_*` (hard cutover)**
 
