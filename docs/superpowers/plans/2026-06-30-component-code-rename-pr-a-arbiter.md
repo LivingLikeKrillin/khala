@@ -43,10 +43,17 @@ git checkout -b rename/pr-a-arbiter
 Run: `python -m pytest specledger/tests -q`
 Expected: all pass (this is the safety net the rename must preserve).
 
-- [ ] **Step 3: Record the cross-reference inventory (re-derive per spec)**
+- [ ] **Step 3: Record the cross-reference inventory — this grep is the AUTHORITATIVE checklist**
 
 Run: `git grep -n -i "specledger" -- ':!**/superpowers/**' ':!specs/**' ':!**/CHANGELOG.md' ':!**/dogfood*' ':!MIGRATION.md' ':!adr/ADR-000[1-3]*'`
-Expected: a list dominated by `specledger/` itself plus the cross-refs (nexus comments, `probe/src/nexus/types.ts`, `mutqa/tests/fixtures/*`, `ken.manifest.yaml`, root configs, `docs/...`). Keep this list open; it is the work checklist for Tasks 7–10.
+
+Every hit must be **dispositioned** by end of this PR (renamed, or confirmed an expected survivor). The per-task file lists below are a guide, but this grep is the source of truth. Expect these groups (verified against current master):
+- `specledger/` package itself (Tasks 2–6) and `arbiter/` after the move.
+- **Functional importers** (Task 8): root `tests/test_a2a_e2e_external_spec.py`, `tests/test_a2a_e2e_specledger_to_nexus.py`, and `ken/tests/test_hashing_parity.py` — these literally `from specledger… import`/`importorskip("specledger")` and **break on the move**.
+- Naming references in `nexus/` (Task 7), `probe/src/nexus/types.ts`, `mutqa/tests/**` + `mutqa/references/critic-eval.md`, `ken.manifest.yaml` (Task 8).
+- Top-level docs with functional links/titles (Task 8): `README.md`, `adr/README.md`, `CONVENTIONS.md`, `INDEX.md`.
+- Root config (Task 9) and Arbiter docs + asset (Task 10).
+- **Expected survivors (do NOT rename in this PR — gate carve-out, Task 11):** `github.com/.../specledger` source-repo URLs (PR-D); `docs/astro.config.mjs` redirect entries `'/tools/specledger' → '/tools/arbiter'` (+ko) which intentionally keep old doc URLs working; the transitional gloss "Arbiter (formerly specledger)" / "(옛 specledger)" in `arbiter.md`(+ko).
 
 ### Task 2: Move directory and restructure to the `khala` namespace
 
@@ -137,7 +144,7 @@ git commit -m "refactor(arbiter): rewrite absolute imports specledger → khala.
 - [ ] **Step 1: Enumerate the env vars**
 
 Run: `git grep -n -E "SPECLEDGER_[A-Z_]+" -- arbiter/`
-Expected set (verify against output): `SPECLEDGER_ROOT`, `SPECLEDGER_DOCS`, and any `SPECLEDGER_NEXUS_TOKEN` / others.
+Expected set (verify against output): `SPECLEDGER_ROOT`, `SPECLEDGER_DOCS`, `SPECLEDGER_NEXUS_TOKEN`, `SPECLEDGER_NEXUS_TRANSPORT`, and any others the grep surfaces.
 
 - [ ] **Step 2: Rename each to the `ARBITER_` prefix (no alias kept)**
 
@@ -209,30 +216,55 @@ git add -A
 git commit -m "refactor(nexus): update specledger→Arbiter naming references (no functional change)"
 ```
 
-### Task 8: Remaining cross-refs — probe (TS), mutqa fixtures, ken.manifest
+### Task 8: Functional cross-refs — importers, doc links, fixtures, manifest
+
+This task fixes the references that **break on the move** (real importers + functional doc
+links) plus the data/string references. Order matters: do the importers first so the test
+matrix can validate.
 
 **Files:**
-- Modify: `probe/src/nexus/types.ts`
-- Rename + edit: `mutqa/tests/fixtures/cr_dump_specledger.jsonl` → `cr_dump_arbiter.jsonl` (and any test referencing the filename)
-- Modify: `ken.manifest.yaml`
+- Modify (importers — break on move): `tests/test_a2a_e2e_external_spec.py`, `tests/test_a2a_e2e_specledger_to_nexus.py` (root), `ken/tests/test_hashing_parity.py`, `ken/src/ken/hashing.py` (docstring)
+- Rename: `tests/test_a2a_e2e_specledger_to_nexus.py` → `tests/test_a2a_e2e_arbiter_to_nexus.py`
+- Modify (functional doc links/titles): `README.md`, `adr/README.md`, `CONVENTIONS.md`, `INDEX.md`
+- Modify (naming/strings): `probe/src/nexus/types.ts`, `mutqa/references/critic-eval.md`, `mutqa/tests/test_extract.py`, `mutqa/tests/test_run_config.py`, `mutqa/tests/test_run_session.py`, `mutqa/tests/test_ledger_integration.py`, `ken.manifest.yaml`
+- Rename: `mutqa/tests/fixtures/cr_dump_specledger.jsonl` → `cr_dump_arbiter.jsonl`; edit `mutqa/tests/fixtures/cr_dump_sample.jsonl` path strings
 
-- [ ] **Step 1: probe TS reference**
+- [ ] **Step 1: Repoint the root e2e importers (they `from specledger… import`)**
 
-Run: `git grep -n -i "specledger" -- probe/`. Update the `specledger` mentions in `probe/src/nexus/types.ts` (a label/string/comment) → `arbiter`/Arbiter as the kind dictates. Then run `cd probe && pnpm test` (or `npm test`); expected: pass.
+In `tests/test_a2a_e2e_external_spec.py` and `tests/test_a2a_e2e_specledger_to_nexus.py`:
+rewrite `from specledger.<mod> import …` → `from khala.arbiter.<mod> import …`,
+`pytest.importorskip("specledger")` → `importorskip("khala.arbiter")`, and any
+`specledger/src` sys.path / path strings → `arbiter/src`. Then rename the file:
+`git mv tests/test_a2a_e2e_specledger_to_nexus.py tests/test_a2a_e2e_arbiter_to_nexus.py`.
 
-- [ ] **Step 2: mutqa test fixture**
+- [ ] **Step 2: Repoint `ken/tests/test_hashing_parity.py` (forced by PR-A's move)**
 
-Run: `git grep -n -i "specledger" -- mutqa/`. The fixture `mutqa/tests/fixtures/cr_dump_specledger.jsonl` is a captured cosmic-ray dump *of the specledger subject*. Rename the file → `cr_dump_arbiter.jsonl`, update its internal path strings and any test that loads it by name. Run `python -m pytest mutqa/tests -q`; expected: pass.
+This test does `SPEC_SRC = parents[2] / "specledger" / "src"` + `from specledger.hashing import content_hash` to assert ken↔arbiter hash parity. Update the path to `parents[2] / "arbiter" / "src"` and the import to `from khala.arbiter.hashing import content_hash`. Also fix the `specledger` mention in `ken/src/ken/hashing.py`'s docstring → `Arbiter`. (This is a forced cross-ref repoint caused by PR-A's directory move — **not** the PR-B `ken→adept` brand rename, which stays out of scope.)
 
-- [ ] **Step 3: ken.manifest.yaml**
+- [ ] **Step 3: Run the importer safety net**
 
-Update the `specledger`/path entries in `ken.manifest.yaml` (a registry of artifacts; the path/label `specledger` → `arbiter`). This is data, not code — no test, but verify YAML still parses: `python -c "import yaml,sys; yaml.safe_load(open('ken.manifest.yaml'))"`.
+Run: `python -m pytest tests/test_a2a_e2e_arbiter_to_nexus.py tests/test_a2a_e2e_external_spec.py ken/tests/test_hashing_parity.py -q`
+Expected: all pass (or skip cleanly if a DB/Docker `importorskip` guard trips — confirm it is the guard, not an import error).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Functional doc links + titles**
+
+Update relative links and titles that break on the move:
+- `README.md`: `[./specledger](./specledger)` → `[./arbiter](./arbiter)` (+ any prose path).
+- `adr/README.md`: `[Arbiter](../specledger)` → `[Arbiter](../arbiter)` (the link path; brand text already "Arbiter").
+- `CONVENTIONS.md`: the `specledger/` directory-name example → `arbiter/`.
+- `INDEX.md`: `# Specledger Index` / `specledger` entries → `# Arbiter Index` / `arbiter`.
+
+- [ ] **Step 5: Naming/string references (probe TS, mutqa, ken.manifest)**
+
+- `probe/src/nexus/types.ts`: `specledger` label/string/comment → `arbiter`/Arbiter per kind. Run `cd probe && pnpm test`; expected: pass.
+- `mutqa/` strings: the cosmic-ray subject path `src/specledger/review.py` (in `cr_dump_*.jsonl` fixtures, `critic-eval.md`, and the `test_extract/run_config/run_session/ledger_integration` assertions) → `src/khala/arbiter/review.py`; rename `cr_dump_specledger.jsonl` → `cr_dump_arbiter.jsonl` and update any test loading it by name. Run `python -m pytest mutqa/tests -q`; expected: pass.
+- `ken.manifest.yaml`: the `specledger` path/label entry → `arbiter`. Verify parse: `python -c "import yaml; yaml.safe_load(open('ken.manifest.yaml'))"`.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add -A
-git commit -m "refactor: update specledger→arbiter cross-refs (probe types, mutqa fixture, ken.manifest)"
+git commit -m "refactor: repoint specledger→khala.arbiter importers, doc links, fixtures, manifest"
 ```
 
 ### Task 9: Root build/config
@@ -253,7 +285,9 @@ Run: `git grep -n -i "specledger" -- Taskfile.yml .github/ ruff.toml .gitignore`
 
 - [ ] **Step 3: Validate config locally**
 
-Run: `task --list` (expect no error; the arbiter task is listed) and `python -m pytest arbiter/tests nexus/tests mutqa/tests -q` (expect all green).
+Run: `task --list` (expect no error; the arbiter task is listed) and the full Python matrix
+`python -m pytest arbiter/tests nexus/tests mutqa/tests ken/tests tests/ -q` (expect all
+green — note `ken/tests` and root `tests/` are included because Task 8 repointed importers there).
 
 - [ ] **Step 4: Commit**
 
@@ -306,7 +340,7 @@ Run:
 ```bash
 git grep -n -i "specledger" -- ':!**/superpowers/**' ':!specs/**' ':!**/CHANGELOG.md' ':!**/dogfood*' ':!MIGRATION.md' ':!adr/ADR-000[1-3]*' ':!adr/ADR-000[4-5]*'
 ```
-Expected: the **only** surviving hits are `github.com/.../specledger` source-repo URLs (deferred to PR-D). Any other hit is a straggler — fix it and re-run. (ADR-0004/0005 are excluded: they are the mapping records.)
+Expected: the only surviving hits are the **declared expected survivors** — `github.com/.../specledger` source-repo URLs (PR-D), `docs/astro.config.mjs` redirect entries (`'/tools/specledger' → '/tools/arbiter'`, +ko — they intentionally keep old doc URLs alive, the same deferral rationale as the repo URLs), and the transitional gloss "Arbiter (formerly specledger)" / "(옛 specledger)" in `arbiter.md`(+ko). **Any hit outside that set is a straggler** — fix it and re-run. (ADR-0004/0005 already excluded above as mapping records.)
 
 - [ ] **Step 2: No-shim assertion**
 
@@ -315,8 +349,8 @@ Expected: **zero** hits — confirms the old env vars and MCP key are gone, not 
 
 - [ ] **Step 3: Full local test + build matrix green**
 
-Run: `python -m pytest arbiter/tests nexus/tests mutqa/tests -q` and `cd probe && pnpm test` and `npm --prefix docs run build`.
-Expected: all green.
+Run: `python -m pytest arbiter/tests nexus/tests mutqa/tests ken/tests tests/ -q` and `cd probe && pnpm test` and `npm --prefix docs run build`.
+Expected: all green (full matrix — every suite that imports the renamed package or a repointed cross-ref).
 
 - [ ] **Step 4: Push and open the PR**
 
