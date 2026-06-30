@@ -10,7 +10,7 @@ Arbiter가 보정하는 문제는 이렇습니다. 어시스턴트가 확신에 
 한 줄 정체성: "누가 무엇을, 왜 승인했는가"를 기록되고 귀속 가능한 행위로 만드는 원장 — 그 위로 고무도장을 찍고 지나갈 수 없습니다.
 
 <img
-  src="/diagrams/arbiter.svg"
+  src="/khala/diagrams/arbiter.svg"
   alt="명세 생명주기: 기록됨 → 비평됨(이슈) → 승인됨(content hash) → 구현 중(게이트 무장, 편집 허용) → 완료. 승인 전까지 Write/Edit는 차단된다."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />

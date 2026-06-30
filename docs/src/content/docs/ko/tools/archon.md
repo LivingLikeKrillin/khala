@@ -14,7 +14,7 @@ Archon이 보정(calibrate)하는 문제는 이렇습니다. 기획자(비엔지
 한 줄 정체성: **Nexus 확장으로 구현한 도메인 값·불변식·권위 거버넌스** — 기계가 당신의 비즈니스 규칙의 의미를 제멋대로 지어내는 실패 모드에 대한 방어입니다.
 
 <img
-  src="/diagrams/archon.svg"
+  src="/khala/diagrams/archon.svg"
   alt="Archon이 도메인 질문에 답하는 흐름: 클레임을 찾고, 조회 시점에 코드 상수를 읽는다. 출처를 읽을 수 없으면 단언을 거부하고, 클레임의 마지막 검증 이후 코드 해시가 드리프트했으면 드리프트 경고와 함께, 아니면 보정된 답을 돌려준다."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />

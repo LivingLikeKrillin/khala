@@ -13,6 +13,43 @@ import { visit } from 'unist-util-visit';
 // module statically imports `mermaid-isomorphic`, which imports Playwright at
 // load time — that would require Chromium at build and break Cloudflare Pages.
 // This local plugin produces identical output without any browser dependency.
+// GitHub Pages serves this project site under /khala/. Starlight base-prefixes
+// its own nav/sidebar (slug-derived) but NOT author-written links in page
+// *bodies* (markdown links/images, MDX <LinkCard href>). This plugin prepends
+// the base to root-absolute internal URLs in the content tree so authors keep
+// writing base-agnostic `/tools/nexus/` and `/diagrams/x.svg`. (Hero actions
+// live in frontmatter, outside this tree — they carry the base explicitly.)
+const BASE = '/khala';
+
+function rehypeBaseUrl() {
+  /** @param {string} url */
+  const withBase = (url) => {
+    if (!url.startsWith('/') || url.startsWith('//')) return url; // external / protocol-relative / non-absolute
+    if (url === BASE || url.startsWith(BASE + '/')) return url; // already based (e.g. Starlight-emitted)
+    return BASE + url;
+  };
+  /** @param {import('hast').Root} tree */
+  return (tree) => {
+    // `node` is `any`: the content tree mixes hast elements with MDX JSX nodes
+    // (mdxJsxFlowElement/…), which @types/hast does not model.
+    visit(tree, (/** @type {any} */ node) => {
+      if (node.type === 'element' && node.properties) {
+        if (typeof node.properties.href === 'string') node.properties.href = withBase(node.properties.href);
+        if (typeof node.properties.src === 'string') node.properties.src = withBase(node.properties.src);
+      } else if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
+        for (const attr of node.attributes ?? []) {
+          if (attr.type === 'mdxJsxAttribute' && (attr.name === 'href' || attr.name === 'src') && typeof attr.value === 'string') {
+            attr.value = withBase(attr.value);
+          }
+        }
+      }
+      // NOTE: raw HTML in .md (e.g. <img src="/diagrams/x.svg">) is not reachable
+      // here — Astro stringifies it outside the rehype element/JSX tree. Those few
+      // <img> tags carry the /khala base explicitly (like the frontmatter hero).
+    });
+  };
+}
+
 function rehypeMermaidPre() {
   /** @param {import('hast').Root} tree */
   return (tree) => {
@@ -34,7 +71,9 @@ function rehypeMermaidPre() {
 }
 
 export default defineConfig({
-  site: 'https://khala-docs.pages.dev',
+  // GitHub Pages project site: served under /khala/ (see BASE above).
+  site: 'https://livinglikekrillin.github.io',
+  base: BASE,
   // Component rename (ADR-0005): old tool slugs redirect to new ones.
   // NOTE: /tools/probe is intentionally NOT redirected — that slug is now a LIVE
   // page (the mutation tool, formerly mutqa, took the "Probe" name). The old
@@ -46,7 +85,7 @@ export default defineConfig({
     '/ko/tools/mutqa': '/ko/tools/probe',
   },
   markdown: {
-    rehypePlugins: [rehypeMermaidPre],
+    rehypePlugins: [rehypeMermaidPre, rehypeBaseUrl],
   },
   integrations: [
     starlight({

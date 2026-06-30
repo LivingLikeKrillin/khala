@@ -14,7 +14,7 @@ Observer (옛 Probe)는 리뷰어가 머릿속에 들고 있어야 할 맥락에
 한 줄 정체성: 범위·계약·규정 준수를 근거시켜 PR 리뷰를 정직하게 유지하는 도구 — Nexus가 있으면 풍부해지지만, 없어도 완전히 동작합니다.
 
 <img
-  src="/diagrams/observer.svg"
+  src="/khala/diagrams/observer.svg"
   alt="범위 분석: 변경 파일 → 역할 배정 → 응집 그룹 매칭 → 심각도 점수 → 관심사가 섞였는가? 그렇다면 병합 순서와 함께 분할 제안, 응집적이면 침묵."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />

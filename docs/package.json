@@ -8,8 +8,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "linkcheck": "start-server-and-test preview http://localhost:4321 linkcheck:run",
-    "linkcheck:run": "linkinator http://localhost:4321/ http://localhost:4321/ko/ --recurse --skip \"github\\.com|pages\\.dev|astro\\.build|cloudflare\\.com|jsdelivr\\.net|taskfile\\.dev\""
+    "linkcheck": "start-server-and-test preview http://localhost:4321/khala/ linkcheck:run",
+    "linkcheck:run": "linkinator http://localhost:4321/khala/ http://localhost:4321/khala/ko/ --recurse --skip \"github\\.com|github\\.io|pages\\.dev|astro\\.build|cloudflare\\.com|jsdelivr\\.net|taskfile\\.dev\""
   },
   "dependencies": {
     "@astrojs/starlight": "^0.30.0",

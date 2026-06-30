@@ -10,7 +10,7 @@ Probe가 보정하는 문제는 이렇습니다. 통과하는 테스트 스위�
 한 줄 정체성: "테스트가 통과한다"를 "테스트가 실제로 행위를 검증한다"로 바꾸는 하네스 — 살아남은 변이가 그 결정론적 신호입니다.
 
 <img
-  src="/diagrams/probe.svg"
+  src="/khala/diagrams/probe.svg"
   alt="변이 흐름: green 스위트 → cosmic-ray 변이 → 변이별 스위트 실행 → 살아남은 변이? 없으면 공백 없음 보고, 있으면 Critic triage → 원장 → biting real-gap 리포트."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
