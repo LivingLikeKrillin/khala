@@ -30,8 +30,8 @@ As AI becomes the producer, three debts accumulate (Martin Fowler, "the three de
 AI era", 2026-04-02). Khala is the window where you pay them down cheaply — so you stay in
 command of your own system:
 
-- **Technical debt** — artifacts pile up faster than they're maintained → **mutqa** + **Probe**.
-- **Intent debt** — *why* a thing was built is lost → **specledger**.
+- **Technical debt** — artifacts pile up faster than they're maintained → **Probe** (formerly mutqa) + **Observer** (formerly Probe).
+- **Intent debt** — *why* a thing was built is lost → **Arbiter** (formerly specledger).
 - **Cognitive debt** — *nobody understands the system* → the open leg Khala is built to close.
 
 The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.md).
@@ -41,9 +41,9 @@ The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.m
 | Tool | One-liner | Directory |
 |---|---|---|
 | **Nexus** | Enterprise RAG + GraphRAG — grounds answers in your docs and OTel telemetry. | [`./nexus`](./nexus) |
-| **Probe** | Platform-aware PR analyzer — PR scope, API spec lint/diff, review checklists; consumes Nexus. | [`./probe`](./probe) |
-| **specledger** | ADR/SDD governance MCP — reviewable, traceable decision records; publishes to Nexus. | [`./specledger`](./specledger) |
-| **mutqa** | Mutation-driven test-quality harness — catches what advisory review misses. | [`./mutqa`](./mutqa) |
+| **Observer** | Platform-aware PR analyzer — PR scope, API spec lint/diff, review checklists; consumes Nexus. | [`./probe`](./probe) |
+| **Arbiter** | ADR/SDD governance MCP — reviewable, traceable decision records; publishes to Nexus. | [`./specledger`](./specledger) |
+| **Probe** | Mutation-driven test-quality harness — catches what advisory review misses. | [`./mutqa`](./mutqa) |
 | **docs** | Astro Starlight bilingual ecosystem documentation site. | [`./docs`](./docs) |
 
 ## Quickstart (Nexus · ~5분)

@@ -1,9 +1,9 @@
 ---
 name: mutqa
-description: Use when you want to find weak spots in a Python test suite that advisory review misses — runs cosmic-ray mutation testing on changed modules, triages surviving mutants with a Test Quality Critic subagent (judging from deterministic evidence), and emits an advisory report of real behavioral-test gaps. First consumer = specledger. Requires cosmic-ray installed (Windows-native OK; mutmut is not).
+description: Use when you want to find weak spots in a Python test suite that advisory review misses — runs cosmic-ray mutation testing on changed modules, triages surviving mutants with a Test Quality Critic subagent (judging from deterministic evidence), and emits an advisory report of real behavioral-test gaps. First consumer = Arbiter. Requires cosmic-ray installed (Windows-native OK; mutmut is not).
 ---
 
-# mutqa — 뮤테이션-구동 테스트 품질 하네스 (M2: 원장)
+# Probe (옛 mutqa) — 뮤테이션-구동 테스트 품질 하네스 (M2: 원장)
 
 기존 어드바이저리 리뷰(TDD 스킬, LLM 테스트 리뷰어)가 놓치는 **행위검증 공백**을, 변이가 살아남는지로
 **결정론적으로** 드러낸다. M2는 영속 **원장**(`mutqa-ledger.yaml`)으로 판정을 쌓아 **재실행 시 새
@@ -20,7 +20,7 @@ triage한다 — 이게 순수 LLM 리뷰 대비 차별점.
 
 ## 절차
 
-작업 디렉토리 = 분석 대상 소비자 repo(예: specledger). mutqa 패키지가 import 가능해야 한다
+작업 디렉토리 = 분석 대상 소비자 repo(예: Arbiter). mutqa 패키지가 import 가능해야 한다
 (`pythonpath`에 mutqa의 `src` 추가하거나 설치).
 
 ### 1. 변경 모듈 식별 + 변이 실행 → survivor 산출 (결정론, LLM 없음)

@@ -1,4 +1,4 @@
-# ken — cognitive-debt meter
+# Adept — cognitive-debt meter
 
 `ken` (Scots/English: "to know, to understand") measures whether a *named human* can
 currently **vouch** for an artifact — not via a rubber-stamp click, but by passing

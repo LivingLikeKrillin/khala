@@ -1,12 +1,12 @@
 # Architecture Decision Records
 
 Ecosystem-level Architecture Decision Records (ADRs) for **Khala** — decisions that
-span more than one tool (Nexus, Probe, specledger, mutqa). Single-tool decisions live
+span more than one tool (Nexus, Observer, Arbiter, Probe). Single-tool decisions live
 in that tool's own `docs/`.
 
-These ADRs follow the [specledger](../specledger) house format
+These ADRs follow the [Arbiter](../specledger) house format
 (`ADR-NNNN-<slug>.md`, frontmatter `id/type/title/status/date`) so they can be run
-through specledger's accountable-review gate (`record` → `critique` →
+through Arbiter's accountable-review gate (`record` → `critique` →
 human disposition → `approve`).
 
 ## Index

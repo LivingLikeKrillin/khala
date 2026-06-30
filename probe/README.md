@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Probe" width="180" />
+  <img src="logo.png" alt="Observer" width="180" />
 </p>
 
 <p align="center">
@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
 </p>
 
-<h1 align="center">Probe</h1>
+<h1 align="center">Observer</h1>
 
 <p align="center">
   <strong>Platform-Aware PR Analyzer + API Contract Validator</strong><br/>
@@ -18,9 +18,9 @@
 
 ---
 
-## What is Probe?
+## What is Observer?
 
-Probe는 PR의 범위, API 계약, 리뷰 체크리스트를 자동으로 검증하는 도구입니다.
+Observer (formerly Probe)는 PR의 범위, API 계약, 리뷰 체크리스트를 자동으로 검증하는 도구입니다.
 
 코드 리뷰에서 반복되는 세 가지 문제를 해결합니다:
 
@@ -38,7 +38,7 @@ nullable 누락, 에러 응답 불일치, breaking change가 리뷰에서 빠진
 
 ---
 
-## Probe가 하는 일
+## Observer가 하는 일
 
 ```
 변경 파일 수집 (git diff)
@@ -134,7 +134,7 @@ npx probe review
 
 ### "Claude Code에서 대화하면서 자동으로 검증받고 싶다"
 
-`.mcp.json`에 Probe MCP 서버를 등록하면, Claude Code가 대화 맥락에 따라 범위 분석·API 린트·체크리스트를 알아서 호출한다. 자세한 설정은 [CI 연동 > Claude Code](#claude-code) 참조.
+`.mcp.json`에 Observer MCP 서버를 등록하면, Claude Code가 대화 맥락에 따라 범위 분석·API 린트·체크리스트를 알아서 호출한다. 자세한 설정은 [CI 연동 > Claude Code](#claude-code) 참조.
 
 ### "Nexus 지식베이스에서 관련 규정을 찾고 싶다"
 
@@ -201,7 +201,7 @@ Nexus가 연결되어 있으면 리뷰 결과에 관련 규정과 영향 범위�
 
 ### v0.3 — MCP 서버
 
-Claude Code에서 자연어 대화 중 Probe 분석을 **자동으로** 호출한다.
+Claude Code에서 자연어 대화 중 Observer 분석을 **자동으로** 호출한다.
 
 ```json
 // .mcp.json
@@ -347,7 +347,7 @@ jobs:
 
 ### Claude Code
 
-MCP 서버로 등록하면 Claude Code가 맥락에 따라 Probe 도구를 자동으로 호출한다.
+MCP 서버로 등록하면 Claude Code가 맥락에 따라 Observer 도구를 자동으로 호출한다.
 
 **자동 훅 (파일 편집 시마다 실행):**
 

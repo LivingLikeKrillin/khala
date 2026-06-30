@@ -21,8 +21,9 @@ ecosystem. When in doubt: Khala is the alliance, Nexus is a member.
   name. Adding a tool means adding a lowercase directory and a row in the
   README tool map. (Exception: shared non-tool directories such as `assets/`
   are also lowercase but are not tools and do not get a README entry.)
-- Within a tool, follow that tool's own file-naming convention (e.g. Probe uses
-  kebab-case TypeScript files; Nexus uses Python module conventions).
+- Within a tool, follow that tool's own file-naming convention (e.g. Observer
+  (formerly Probe) uses kebab-case TypeScript files; Nexus uses Python module
+  conventions).
 
 ## Versioning
 
