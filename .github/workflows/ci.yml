@@ -1,0 +1,191 @@
+# CI for the khala monorepo.
+#
+# One job per subproject. Configured now; it activates automatically once the
+# repo is pushed to GitHub (owner action). Versions match the local environment
+# that passed: Python 3.13, Node 20.
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  nexus:
+    name: nexus (pytest, unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install nexus
+        working-directory: nexus
+        # [mcp] extra is required so tests/test_mcp.py can import nexus.mcp.server.
+        run: pip install -e ".[dev,mcp]"
+      # Unit tests only. DB integration tests (-m integration) need Postgres and
+      # are run locally / by the owner — no postgres service in the baseline job.
+      - name: Run unit tests
+        working-directory: nexus
+        run: python -m pytest -q -m "not integration"
+
+  observer:
+    name: observer (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: observer/pnpm-lock.yaml
+      - name: Install observer
+        working-directory: observer
+        run: pnpm install
+      - name: Run tests
+        working-directory: observer
+        run: pnpm test:run
+
+  arbiter:
+    name: arbiter (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install arbiter
+        working-directory: arbiter
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        working-directory: arbiter
+        run: python -m pytest -q
+
+  probe:
+    name: probe (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install probe
+        working-directory: probe
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        working-directory: probe
+        run: python -m pytest -q
+
+  adept:
+    name: adept (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install adept
+        working-directory: adept
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        working-directory: adept
+        run: python -m pytest -q
+
+  adept-postgres:
+    name: adept (pytest, postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: adept
+          POSTGRES_USER: adept
+          POSTGRES_PASSWORD: adept
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U adept -d adept"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ADEPT_TEST_DATABASE_URL: postgresql://adept:adept@localhost:5432/adept
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install adept (with postgres extra)
+        working-directory: adept
+        run: pip install -e ".[dev,postgres]"
+      - name: Apply schema
+        working-directory: adept
+        run: psql "$ADEPT_TEST_DATABASE_URL" -f db/init.sql
+      # Runs the shared store contract; with ADEPT_TEST_DATABASE_URL set the
+      # PostgresStore params run too (the default adept job stays DB-free / file-only).
+      - name: Run store contract (file + postgres)
+        working-directory: adept
+        run: python -m pytest -q tests/test_store_contract.py
+
+  adept-web-api:
+    name: adept-web-api (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install adept-web-api
+        working-directory: adept-web/api
+        # adept is a path dependency installed editable alongside the API.
+        run: pip install -e ../../adept -e ".[dev]"
+      - name: Run tests
+        working-directory: adept-web/api
+        run: python -m pytest -q
+
+  adept-web:
+    name: adept-web (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: adept-web/web/package-lock.json
+      - name: Install adept-web
+        working-directory: adept-web/web
+        run: npm ci
+      - name: Run tests
+        working-directory: adept-web/web
+        run: npm run test -- --run
+      - name: Build
+        working-directory: adept-web/web
+        run: npm run build
+
+  docs:
+    name: docs (build + linkcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - name: Install docs
+        working-directory: docs
+        run: npm install
+      - name: Build site
+        working-directory: docs
+        run: npm run build
+      - name: Type check
+        working-directory: docs
+        run: npm run check
+      - name: Link check
+        working-directory: docs
+        run: npm run linkcheck

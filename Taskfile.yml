@@ -1,0 +1,116 @@
+# Taskfile for the khala monorepo (https://taskfile.dev).
+#
+# Wraps the per-subproject commands (the source of truth in each subproject)
+# so the whole repo can be tested / built / linted from the root.
+#
+#   task test     -> run every subproject's test suite
+#   task build    -> build the docs site
+#   task lint     -> ruff check across the Python subprojects
+#
+# Install go-task: https://taskfile.dev/installation/  (the CLI is not required
+# to read this file — CI calls the underlying commands directly.)
+version: "3"
+
+tasks:
+  # ---- run (one-command quickstart) --------------------------------------
+  up:
+    desc: "Nexus 기동 (db·ollama·app 등). 최초엔 'task models'로 임베딩 모델도 받으세요"
+    dir: nexus
+    cmds:
+      - docker compose up -d
+      - 'echo "Nexus → http://localhost:8000  (최초 1회: task models)"'
+
+  models:
+    desc: "임베딩 모델 받기 (최초 1회) — nomic-embed-text (config.yaml embedding.model 과 일치)"
+    dir: nexus
+    cmds:
+      - docker compose exec nexus-ollama ollama pull nomic-embed-text
+
+  update:
+    desc: "Nexus 업데이트 — 이미지 재빌드·재기동 + DB 마이그레이션 적용 (코드는 먼저 git pull 하세요)"
+    dir: nexus
+    cmds:
+      - docker compose build nexus-app
+      - docker compose up -d
+      - docker compose exec -T nexus-app python -m scripts.migrate
+      - 'echo "업데이트 완료 → http://localhost:8000"'
+
+  down:
+    desc: "Nexus 정지"
+    dir: nexus
+    cmds:
+      - docker compose down
+
+  # ---- aggregate ----------------------------------------------------------
+  test:
+    desc: Run all subproject test suites (nexus, observer, arbiter, probe, docs)
+    cmds:
+      - task: test:nexus
+      - task: test:observer
+      - task: test:arbiter
+      - task: test:probe
+      - task: test:docs
+
+  build:
+    desc: Build the docs site (Astro Starlight)
+    cmds:
+      - task: build:docs
+
+  lint:
+    desc: Lint the Python subprojects (ruff, check-only)
+    cmds:
+      - task: lint:ruff
+
+  # ---- per-subproject test subtasks --------------------------------------
+  test:nexus:
+    desc: nexus unit tests (DB integration tests need Docker — run locally)
+    dir: nexus
+    cmds:
+      # [mcp] extra lets tests/test_mcp.py import nexus.mcp.server in a clean env.
+      # -m "not integration" keeps the baseline run DB-free.
+      - pip install -e ".[dev,mcp]"
+      - python -m pytest -q -m "not integration"
+
+  test:observer:
+    desc: observer tests (vitest)
+    dir: observer
+    cmds:
+      - pnpm install
+      - pnpm test:run
+
+  test:arbiter:
+    desc: arbiter tests (pytest)
+    dir: arbiter
+    cmds:
+      - pip install -e ".[dev]"
+      - python -m pytest -q
+
+  test:probe:
+    desc: probe tests (pytest)
+    dir: probe
+    cmds:
+      - pip install -e ".[dev]"
+      - python -m pytest -q
+
+  test:docs:
+    desc: docs typecheck (astro check)
+    dir: docs
+    cmds:
+      - npm install
+      - npm run check
+
+  # ---- build subtasks -----------------------------------------------------
+  build:docs:
+    desc: Build the docs site and run the link checker
+    dir: docs
+    cmds:
+      - npm install
+      - npm run build
+      - npm run check
+      - npm run linkcheck
+
+  # ---- lint subtasks ------------------------------------------------------
+  lint:ruff:
+    desc: ruff check on the Python subprojects (check-only baseline)
+    cmds:
+      - ruff check nexus arbiter probe

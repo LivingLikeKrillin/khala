@@ -1,0 +1,20 @@
+# Shared ruff defaults for the khala monorepo (Python).
+#
+# CHECK-ONLY / ADD-ONLY: this file provides common defaults ONLY for Python
+# subprojects that do NOT declare their own [tool.ruff]. Subprojects that DO
+# (nexus: line-length 120; arbiter / probe: line-length 100) keep their own
+# pyproject.toml config as authoritative — ruff uses the closest config to each
+# file, so this root file is a no-op for them.
+#
+# Rule selection is intentionally minimal: ruff's default rule set (Pyflakes `F`
+# + a subset of pycodestyle `E`) only — the same set the existing code already
+# passes. Do NOT add new rule families here without re-capturing the lint
+# baseline; never run `ruff format` (check-only).
+
+target-version = "py311"
+line-length = 100
+
+[lint]
+# Default selection only (Pyflakes F + pycodestyle E). Listed explicitly so the
+# shared baseline is obvious and stable across ruff version bumps.
+select = ["E", "F"]

@@ -1,0 +1,36 @@
+# Local single-Postgres for adept-web's Postgres backend (S2).
+#
+# Brings up one postgres:16 with db/user/pw `adept` on host port 5434 (avoids the
+# nexus stack's 5432). The schema is applied automatically on first boot by
+# mounting db/init.sql into /docker-entrypoint-initdb.d; alternatively apply it
+# by hand against any Postgres:
+#
+#     psql "$ADEPT_DATABASE_URL" -f db/init.sql
+#
+# Usage:
+#     docker compose up -d
+#     export ADEPT_DATABASE_URL=postgresql://adept:adept@localhost:5434/adept
+#     # ... run adept-web / tests ...
+#     docker compose down
+
+services:
+  adept-db:
+    image: postgres:16
+    container_name: adept-db
+    environment:
+      POSTGRES_DB: adept
+      POSTGRES_USER: adept
+      POSTGRES_PASSWORD: adept
+    ports:
+      - "5434:5432"
+    volumes:
+      - adept-db-data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adept -d adept"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  adept-db-data:

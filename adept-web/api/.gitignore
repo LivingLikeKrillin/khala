@@ -1,0 +1,6 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+adept.manifest.yaml
+adept.questions.json
+adept.attempts.jsonl

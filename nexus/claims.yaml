@@ -1,0 +1,35 @@
+# Archon 도메인 claim 시드 (예시 앱(sample-app)의 코드 상수)
+# `nexus claim-seed claims.yaml` — config.code_source.repo_path를 sample-app으로 설정 후.
+# value_source는 대상 코드의 static final 상수. 조회 시점에 현재값을 재읽기.
+- claim_id: basic-max-projects
+  kind: invariant
+  concepts: [Basic, 프로젝트]
+  statement: "Basic 등급은 프로젝트를 최대 N개 가질 수 있다"
+  value_source: "PlanPolicy.BASIC_MAX_PROJECTS"
+  value_ref_kind: code_constant
+  criticality: core
+  owner: "@backend-lead"
+- claim_id: pro-max-projects
+  kind: invariant
+  concepts: [Pro, 프로젝트]
+  statement: "Pro 등급은 프로젝트를 최대 N개 가질 수 있다"
+  value_source: "PlanPolicy.PRO_MAX_PROJECTS"
+  value_ref_kind: code_constant
+  criticality: core
+  owner: "@backend-lead"
+- claim_id: max-tasks-per-project
+  kind: invariant
+  concepts: [프로젝트, 작업]
+  statement: "프로젝트 하나에 작업을 최대 N개 담을 수 있다"
+  value_source: "ProjectService.MAX_TASKS_PER_PROJECT"
+  value_ref_kind: code_constant
+  criticality: core
+  owner: "@backend-lead"
+- claim_id: guest-name-max-attempts
+  kind: invariant
+  concepts: [게스트, 이름]
+  statement: "게스트 이름 자동 생성은 최대 N회 시도한다"
+  value_source: "GuestService.NAME_MAX_ATTEMPTS"
+  value_ref_kind: code_constant
+  criticality: peripheral
+  owner: "@backend-lead"

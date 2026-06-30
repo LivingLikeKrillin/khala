@@ -1,0 +1,110 @@
+services:
+  # ── PostgreSQL + pgvector ──
+  nexus-db:
+    image: pgvector/pgvector:pg16
+    container_name: nexus-db
+    environment:
+      POSTGRES_DB: nexus
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus
+    ports:
+      - "5432:5432"
+    volumes:
+      - nexus-db-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Ollama (embedding model) ──
+  nexus-ollama:
+    image: ollama/ollama
+    container_name: nexus-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - nexus-ollama-data:/root/.ollama
+    # GPU 사용 시 아래 주석 해제
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities: [gpu]
+
+  # ── OTel Collector ──
+  nexus-otel:
+    image: otel/opentelemetry-collector:latest
+    container_name: nexus-otel
+    command: ["--config=/etc/otel/config.yaml"]
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./otel-config.yaml:/etc/otel/config.yaml:ro
+    depends_on:
+      - nexus-tempo
+    profiles:
+      - observability   # 관측 파이프라인 — 기본 미기동(Reader Deploy 경량화). 옵트인: docker compose --profile observability up
+
+  # ── Grafana Tempo (trace storage) ──
+  nexus-tempo:
+    image: grafana/tempo:latest
+    container_name: nexus-tempo
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    ports:
+      - "3200:3200"   # Tempo query API
+      - "4320:4317"   # OTLP gRPC (Tempo 직접)
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo/config.yaml:ro
+      - nexus-tempo-data:/var/tempo
+    profiles:
+      - observability
+      - grafana   # grafana 프로필도 tempo 가 필요(depends_on)
+
+  # ── Grafana (선택: trace 시각화) ──
+  nexus-grafana:
+    image: grafana/grafana:latest
+    container_name: nexus-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - nexus-grafana-data:/var/lib/grafana
+    depends_on:
+      - nexus-tempo
+    profiles:
+      - grafana  # docker-compose --profile grafana up 으로 선택 기동
+
+  # ── Nexus App ──
+  nexus-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-app
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://nexus:nexus@nexus-db:5432/nexus
+      OLLAMA_URL: http://nexus-ollama:11434
+      TEMPO_URL: http://nexus-tempo:3200   # OTel 집계(nexus otel-aggregate) 시에만 사용 — 그 땐 --profile observability
+      DEFAULT_TENANT: default
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - .:/app                    # 개발 중 코드 변경 반영 (hot reload)
+      - ./docs:/app/docs:ro       # 인덱싱할 문서 폴더
+    depends_on:
+      nexus-db:
+        condition: service_healthy
+      nexus-ollama:
+        condition: service_started
+      # nexus-otel/tempo 의존 제거 — 앱은 collector 에 접속하지 않는다(코드 미참조). 관측은 옵트인 profile.
+
+volumes:
+  nexus-db-data:
+  nexus-ollama-data:
+  nexus-tempo-data:
+  nexus-grafana-data:

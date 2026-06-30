@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Khala">
+  <defs>
+    <radialGradient id="khala-bg" cx="50%" cy="40%" r="62%">
+      <stop offset="0%" stop-color="#16315c"/>
+      <stop offset="100%" stop-color="#070d1d"/>
+    </radialGradient>
+    <linearGradient id="khala-ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f6dc92"/>
+      <stop offset="50%" stop-color="#cb9b3f"/>
+      <stop offset="100%" stop-color="#875b21"/>
+    </linearGradient>
+    <linearGradient id="khala-crystal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c7f1ff"/>
+      <stop offset="55%" stop-color="#4fb6ee"/>
+      <stop offset="100%" stop-color="#2272c4"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="32" cy="32" r="29" fill="url(#khala-bg)" stroke="url(#khala-ring)" stroke-width="3.2"/>
+
+  <!-- crystal glow -->
+  <path d="M32 16 L44 37 L32 54 L20 37 Z" fill="#5cc6ff" opacity="0.22"/>
+
+  <!-- rising tendrils -->
+  <path d="M30 24 C24 18 23 12 27.5 7" fill="none" stroke="#8fdcff" stroke-width="2.1" stroke-linecap="round" opacity="0.85"/>
+  <path d="M34 24 C40 18 41 12 36.5 7" fill="none" stroke="#8fdcff" stroke-width="2.1" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- crystal -->
+  <path d="M32 19 L41 36 L32 50 L23 36 Z" fill="url(#khala-crystal)"/>
+  <!-- facets -->
+  <path d="M32 19 L32 50 L23 36 Z" fill="#ffffff" opacity="0.16"/>
+  <path d="M32 19 L41 36 L32 36 Z" fill="#ffffff" opacity="0.30"/>
+</svg>

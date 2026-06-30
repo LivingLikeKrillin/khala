@@ -1,0 +1,68 @@
+---
+title: Khala
+description: An alliance of tools that calibrates the AI era.
+template: splash
+hero:
+  tagline: Two failure modes of the AI era — the machine lies, and the human stops judging. Khala answers both with deterministic grounding, not advice.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Get Started
+      link: /start/
+      icon: right-arrow
+    - text: Philosophy
+      link: /philosophy/
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+<p class="kh-section-lead">Start here</p>
+
+<CardGrid>
+  <LinkCard title="Getting Started" href="/start/" description="Install, configure, and ground your first answer in minutes." />
+  <LinkCard title="Philosophy" href="/philosophy/" description="Why deterministic grounding beats advice in the AI era." />
+  <LinkCard title="Ecosystem" href="/ecosystem/" description="How the tools share one link — the Khala — and compose." />
+</CardGrid>
+
+<p class="kh-section-lead">The two failure modes</p>
+
+<CardGrid>
+  <Card title="The machine lies" icon="warning">
+    Stale or wrong, asserted with confidence. **Archon** + **Nexus** defend by grounding answers in verifiable sources — never asserting soft answers.
+  </Card>
+  <Card title="The human stops judging" icon="approve-check">
+    AI output rubber-stamped without reading. **Arbiter** defends by making accountable review a gate before code is written.
+  </Card>
+</CardGrid>
+
+<p class="kh-section-lead">The three debts of the AI era</p>
+
+<CardGrid>
+  <Card title="Technical debt">
+    Artifacts pile up faster than they're maintained. **Probe** + **Observer** service it.
+  </Card>
+  <Card title="Intent debt">
+    Why a thing was built — its constraints and trade-offs — is lost. **Arbiter** services it.
+  </Card>
+  <Card title="Cognitive debt">
+    Nobody understands the system the org ships. The open leg Khala is built to close — *AI builds it, you understand it.*
+  </Card>
+</CardGrid>
+
+<p class="kh-section-lead">The tools</p>
+
+<CardGrid>
+  <LinkCard title="Nexus" href="/tools/nexus/" description="Grounded knowledge — RAG + GraphRAG over your docs & telemetry." />
+  <LinkCard title="Archon" href="/tools/archon/" description="Domain truth governance — values, invariants, authority, calibrated." />
+  <LinkCard title="Observer" href="/tools/observer/" description="Grounded code review — PR scope, API contracts, troubleshooting." />
+  <LinkCard title="Arbiter" href="/tools/arbiter/" description="Decision accountability — anti-rubber-stamp spec/ADR gate." />
+  <LinkCard title="Probe" href="/tools/probe/" description="Test quality — mutation-driven, catches what advisory review misses." />
+</CardGrid>
+
+<p class="kh-section-lead">Resources</p>
+
+<CardGrid>
+  <LinkCard title="Contributing" href="/contributing/" description="Conventions, naming, versioning, and the contribution flow." />
+  <LinkCard title="GitHub" href="https://github.com/LivingLikeKrillin" description="Source, issues, and releases for the Khala ecosystem." />
+</CardGrid>

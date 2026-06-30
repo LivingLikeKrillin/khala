@@ -1,0 +1,77 @@
+[project]
+name = "nexus"
+version = "0.1.0"
+description = "Enterprise RAG + GraphRAG - grounded knowledge retrieval with Korean NLP + OTel integration"
+requires-python = ">=3.11"
+readme = "README.md"
+
+dependencies = [
+    # Web framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    # CLI
+    "typer[all]>=0.12.0",
+    # Database
+    "asyncpg>=0.30.0",
+    "pgvector>=0.3.0",
+    # Korean NLP
+    "mecab-python3>=1.0.9",
+    # HTTP client (Ollama, Tempo)
+    "httpx>=0.27.0",
+    # LLM
+    "anthropic>=0.39.0",
+    # Utilities
+    "pyyaml>=6.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "tiktoken>=0.8.0",
+    "python-frontmatter>=1.1.0",
+    "structlog>=24.4.0",
+    # Archon — 코드 구조 분석(권한 게이트 추출) via AST (무료, CodeQL 대체)
+    "tree-sitter>=0.21",
+    "tree-sitter-java>=0.21",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+]
+slack = [
+    "slack-bolt[async]>=1.20.0",
+    "slack-sdk>=3.33.0",
+]
+mcp = [
+    "mcp[cli]>=1.0.0",
+]
+notion = [
+    # S4 Notion importer — lazy-imported by NotionSource; off by default.
+    "notion-client>=2.2.0",
+]
+a2a = [
+    # A2A (Agent2Agent) Phase 0 spike — pinned to the A2A v1.0 SDK build.
+    # Off by default; only the `nexus/a2a/` surface imports it (flag-gated).
+    "a2a-sdk==1.1.0",
+]
+
+[project.scripts]
+nexus = "nexus.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = [
+    "integration: 실제 DB 연결이 필요한 통합 테스트 (NEXUS_TEST_DB_URL 필요)",
+]

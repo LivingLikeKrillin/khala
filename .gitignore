@@ -1,0 +1,17 @@
+
+# Python bytecode caches
+__pycache__/
+*.pyc
+
+# Editable-install / build metadata (e.g. adept/src/khala_adept.egg-info from `pip install -e`)
+*.egg-info/
+
+# arbiter transient gate runtime state (active spec marker + exempt log)
+.arbiter/active.json
+.arbiter/exempt.log
+
+# machine-specific MCP registration (absolute paths)
+.mcp.json
+
+# adept-web manual E2E: isolated data dir + dropped server key (never commit)
+.e2e-data/

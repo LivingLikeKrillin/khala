@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="905" height="503.33333333333337" viewBox="0 0 905 503.33333333333337">
+<rect x="675" y="50" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="425" y="50" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="550" y="214.22222222222223" width="180" height="70" rx="7.2" fill="#132f4c" stroke="#90caf9" stroke-width="2" />
+<rect x="300" y="214.22222222222223" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="50" y="214.22222222222223" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<rect x="300" y="383.33333333333337" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
+<defs><marker id="marker-el_13" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 765 120 L 670 214.22222222222223" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_13)" />
+<defs><marker id="marker-el_14" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 515 120 L 610 214.22222222222223" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_14)" />
+<defs><marker id="marker-el_15" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 640 284.22222222222223 L 435 383.33333333333337" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_15)" />
+<defs><marker id="marker-el_16" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 390 284.22222222222223 L 390 383.33333333333337" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_16)" />
+<defs><marker id="marker-el_17" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
+<path d="M 140 284.22222222222223 L 345 383.33333333333337" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_17)" />
+<text x="765" y="88.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Developer</text>
+<text x="515" y="88.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Agent</text>
+<text x="640" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Archon</text>
+<text x="390" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Arbiter</text>
+<text x="140" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Observer</text>
+<text x="390" y="421.2583333333334" font-size="13" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Nexus — the Khala link</text>
+</svg>

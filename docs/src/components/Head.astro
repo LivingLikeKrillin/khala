@@ -1,0 +1,17 @@
+---
+// Override of Starlight's <Head> that preloads the Latin UI fonts.
+// Pairing `rel="preload"` with `font-display: optional` (see theme.css) means
+// the font is fetched before first paint and applied immediately — Sora shows
+// on the first render AND never flashes/swaps on navigation.
+// Importing Starlight's `Props` type makes Astro infer `Astro.props` as the full
+// StarlightRouteData (an override component otherwise types props as `{ children }`),
+// so spreading it into <Default> type-checks.
+import type { Props } from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/Head.astro';
+import soraUrl from '@fontsource-variable/sora/files/sora-latin-wght-normal.woff2?url';
+import hankenUrl from '@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-normal.woff2?url';
+---
+
+<Default {...Astro.props}><slot /></Default>
+<link rel="preload" href={soraUrl} as="font" type="font/woff2" crossorigin="anonymous" />
+<link rel="preload" href={hankenUrl} as="font" type="font/woff2" crossorigin="anonymous" />
