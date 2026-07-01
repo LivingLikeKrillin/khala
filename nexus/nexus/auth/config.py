@@ -5,8 +5,14 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 PLACEHOLDER = "REPLACE_ME"
 _DEFAULT_ORIGINS = ["http://localhost:8000"]
+_WEAK_DEV_TOKEN_DEFAULT = "nexus-local-dev"
+_MIN_DEV_TOKEN_LEN = 24
 
 
 @dataclass
@@ -14,6 +20,7 @@ class AuthConfig:
     mode: str = "enforced"  # "enforced" (default, fail-closed) | "permissive"
     allowed_origins: list[str] = field(default_factory=lambda: list(_DEFAULT_ORIGINS))
     principals: list[dict] = field(default_factory=list)
+    dev_token_weak: bool = False
 
     @classmethod
     def from_dict(cls, cfg: dict | None) -> "AuthConfig":
@@ -31,6 +38,7 @@ class AuthConfig:
         # enforced + principals:[] 그대로라 prod(override 미사용)는 영향 없음. 토큰은 env 로만
         # 들어오고 리포에 커밋되지 않는다. override 를 prod 에 쓰지 말 것.
         dev_token = os.getenv("NEXUS_DEV_TOKEN")
+        dev_token_weak = False
         if dev_token:
             from .principal import hash_token
             principals.append({
@@ -39,7 +47,15 @@ class AuthConfig:
                 "tenant": "default",
                 "clearance": "INTERNAL",
             })
-        return cls(mode=mode, allowed_origins=list(origins), principals=principals)
+            dev_token_weak = (
+                dev_token == _WEAK_DEV_TOKEN_DEFAULT or len(dev_token) < _MIN_DEV_TOKEN_LEN
+            )
+        return cls(
+            mode=mode,
+            allowed_origins=list(origins),
+            principals=principals,
+            dev_token_weak=dev_token_weak,
+        )
 
     @property
     def permissive(self) -> bool:
@@ -51,6 +67,19 @@ class AuthConfig:
         Prevents shipping a known credential: an operator must mint a real token before the
         server will serve in enforced mode.
         """
+        # Weak-dev-token guard runs regardless of mode: the exposure risk (GET /auth/dev-token
+        # handing an INTERNAL bearer to any caller) is independent of enforced/permissive.
+        if self.dev_token_weak:
+            msg = (
+                "NEXUS_DEV_TOKEN is weak/default — GET /auth/dev-token serves an INTERNAL bearer "
+                "to anyone who can reach it. Safe only on localhost. If exposing beyond localhost "
+                "(tunnel/LAN), set a strong random NEXUS_DEV_TOKEN (`nexus auth gen-token`) AND gate "
+                "at the edge (e.g. Cloudflare Access)."
+            )
+            if os.getenv("NEXUS_REQUIRE_STRONG_DEV_TOKEN") == "1":
+                raise RuntimeError("auth: " + msg)
+            logger.warning("weak_dev_token", detail=msg)
+
         if self.permissive:
             return
         for p in self.principals:
