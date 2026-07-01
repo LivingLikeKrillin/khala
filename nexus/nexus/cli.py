@@ -458,19 +458,21 @@ def status() -> None:
 
 @app.command()
 def supersede(
-    old_rid: str = typer.Argument(..., help="대체될(옛) 문서 rid"),
-    by: str = typer.Option(..., "--by", help="대체할(새) 문서 rid"),
+    old_ref: str = typer.Argument(..., help="대체될(옛) 문서 — rid 또는 경로/URI"),
+    by: str = typer.Option(..., "--by", help="대체할(새) 문서 — rid 또는 경로/URI"),
     tenant: str = typer.Option("default", "--tenant", "-t"),
 ) -> None:
-    """옛 문서를 새 문서로 supersede(검색에서 배제). 명시적·멱등."""
+    """옛 문서를 새 문서로 supersede(검색에서 배제). 명시적·멱등. ref = rid | 경로 | URI."""
 
     async def _do() -> None:
         from nexus import db
-        from nexus.supersede import supersede as _supersede
+        from nexus.supersede import resolve_active_doc, supersede as _supersede
 
         try:
-            result = await _supersede(old_rid, by, tenant)
-            typer.echo(f"{old_rid} → {by}: {result}")
+            old_rid = await resolve_active_doc(old_ref, tenant)
+            new_rid = await resolve_active_doc(by, tenant)
+            result = await _supersede(old_rid, new_rid, tenant)
+            typer.echo(f"{old_ref} → {by}: {result}")
         except ValueError as e:
             typer.echo(f"거부: {e}", err=True)
             raise typer.Exit(1) from None
