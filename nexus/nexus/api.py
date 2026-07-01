@@ -35,6 +35,7 @@ from nexus.search.evidence_packet import assemble_packet, format_for_llm
 from nexus.search.hybrid import hybrid_search
 from nexus.search.router import determine_route
 from nexus.search.signals import extract_signals, record_search
+from nexus.supersede import supersede
 
 
 # 로컬 dev 온램프: ANTHROPIC_API_KEY 미설정 시, 일시적 API 오류와 구분되는 *행동지침* 안내.
@@ -180,6 +181,12 @@ class UploadRequest(BaseModel):
 class OtelAggregateRequest(BaseModel):
     window_minutes: int = 5
     lookback_minutes: int = 60
+    tenant: str = "default"
+
+
+class SupersedeRequest(BaseModel):
+    old_rid: str
+    new_rid: str
     tenant: str = "default"
 
 
@@ -640,6 +647,21 @@ async def get_diff(
             },
         )
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/supersede", response_model=NexusResponse)
+async def supersede_docs(req: SupersedeRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
+    """문서 supersession 선언(명시적·멱등). old 를 new 로 대체. 반환: 'superseded' | 'noop'."""
+    req.tenant, _ = effective_scope(principal, req.tenant, None)  # writes are tenant-bound
+    try:
+        result = await supersede(req.old_rid, req.new_rid, req.tenant)
+        return NexusResponse(data={"result": result})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        if "connect" in str(e).lower():
+            raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
         raise HTTPException(status_code=500, detail=str(e))
 
 

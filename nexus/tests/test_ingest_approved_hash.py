@@ -24,6 +24,17 @@ def _collected() -> CollectedFile:
     )
 
 
+async def _no_prior_doc(query, *args):
+    """Stub for db.fetch_one: no previously-stored document (prev-hash lookup → None).
+
+    _save_document queries the prior content_hash before upserting (re-ingest event
+    detection). These unit tests run without a DB, so that lookup is stubbed to None
+    to preserve no-DB isolation (a real prior-row round-trip is covered by the
+    DB-backed tests/test_reingest_event_db.py).
+    """
+    return None
+
+
 async def test_save_document_writes_approved_hash(monkeypatch):
     captured = {}
 
@@ -32,6 +43,7 @@ async def test_save_document_writes_approved_hash(monkeypatch):
         captured["args"] = args
         return "INSERT 0 1"
 
+    monkeypatch.setattr(pipeline.db, "fetch_one", _no_prior_doc)
     monkeypatch.setattr(pipeline.db, "execute", fake_execute)
 
     await pipeline._save_document(
@@ -51,6 +63,7 @@ async def test_save_document_defaults_approved_hash_empty(monkeypatch):
         captured["args"] = args
         return "INSERT 0 1"
 
+    monkeypatch.setattr(pipeline.db, "fetch_one", _no_prior_doc)
     monkeypatch.setattr(pipeline.db, "execute", fake_execute)
     await pipeline._save_document(_collected(), ClassificationResult(), tenant="acme")
 
