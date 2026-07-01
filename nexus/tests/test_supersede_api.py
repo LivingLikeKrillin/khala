@@ -122,7 +122,7 @@ def test_supersede_valid_pair_returns_superseded():
     with _client() as client:
         resp = client.post(
             "/supersede",
-            json={"old_rid": _RID_A, "new_rid": _RID_B, "tenant": _TENANT},
+            json={"old_ref": _RID_A, "new_ref": _RID_B, "tenant": _TENANT},
         )
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -130,12 +130,20 @@ def test_supersede_valid_pair_returns_superseded():
     assert body["data"]["result"] == "superseded"
 
 
+def test_supersede_by_path_ref_returns_superseded():
+    with _client() as client:
+        resp = client.post("/supersede",
+                           json={"old_ref": "specs/A.md", "new_ref": "specs/B.md", "tenant": _TENANT})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["result"] == "superseded"
+
+
 def test_self_supersession_is_400():
     """자기참조(old==new)는 ValueError → HTTP 400, 메시지가 detail로 노출된다."""
     with _client() as client:
         resp = client.post(
             "/supersede",
-            json={"old_rid": _RID_A, "new_rid": _RID_A, "tenant": _TENANT},
+            json={"old_ref": _RID_A, "new_ref": _RID_A, "tenant": _TENANT},
         )
     assert resp.status_code == 400, resp.text
     assert "self-supersession" in resp.json()["detail"]
@@ -152,9 +160,9 @@ def test_cross_tenant_old_rid_is_confined_not_superseded():
         resp = client.post(
             "/supersede",
             # 클라이언트가 rival 을 요청해도 서버는 principal(acme)로 강제한다.
-            json={"old_rid": _RID_FOREIGN, "new_rid": _RID_B, "tenant": _OTHER_TENANT},
+            json={"old_ref": _RID_FOREIGN, "new_ref": _RID_B, "tenant": _OTHER_TENANT},
         )
     assert resp.status_code == 400, resp.text
-    assert "old_rid not found" in resp.json()["detail"]
+    assert "일치하는 active 문서 없음" in resp.json()["detail"]
     # 격리 확인: rival 문서는 손대지 않았다 — 여전히 active.
     assert _doc_status(_RID_FOREIGN, _OTHER_TENANT) == "active"
