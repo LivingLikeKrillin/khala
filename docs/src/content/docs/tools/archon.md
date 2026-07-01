@@ -1,6 +1,6 @@
 ---
 title: Archon
-description: Domain truth governance — the authority window over your invariants and values, answered from code with calibrated honesty.
+description: The authority window over your domain's invariants and values, read from code and calibrated.
 ---
 
 :::caution[Status]

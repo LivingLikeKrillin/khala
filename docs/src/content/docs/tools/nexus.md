@@ -1,6 +1,6 @@
 ---
 title: Nexus
-description: Grounded knowledge retrieval — RAG + GraphRAG that answers only from citable sources, with confidence and provenance.
+description: RAG + GraphRAG that answers only from citable sources, with confidence and provenance.
 ---
 
 Nexus is the ecosystem's knowledge base. It answers questions about your organization's knowledge (documents, policies, configs) and its operational reality (OpenTelemetry traces) **only from evidence it can cite**. Every answer carries a confidence score and a link back to the source chunk or trace it came from.

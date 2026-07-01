@@ -1,6 +1,6 @@
 ---
 title: Arbiter
-description: Decision accountability — records AI-generated specs/ADRs and gates code edits behind accountable, signed-off review.
+description: Records AI-generated specs and ADRs, and gates code edits behind signed-off review.
 ---
 
 Arbiter (formerly specledger) makes the moment of judgment accountable instead of assumed. It's a Python MCP server plus a Claude Code `PreToolUse` hook: it records AI-generated ADRs and design specs as Markdown with frontmatter, and enforces a review sequence before any code is written: **AI critique, then human issue-disposition, then sign-off.** Approved documents can be published to a Nexus sink.

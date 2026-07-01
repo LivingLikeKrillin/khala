@@ -1,6 +1,6 @@
 ---
 title: Observer
-description: Platform-aware PR analyzer + API contract validator — grounds code review in platform cohesion, backward compatibility, and org guidelines.
+description: Platform-aware PR analyzer and API contract validator; grounds review in cohesion, backward compatibility, and org guidelines.
 ---
 
 Observer (formerly Probe) grounds the review of a change in context a reviewer would otherwise have to hold in their head. It's a **platform-aware PR analyzer and API contract validator** that turns three recurring review questions into deterministic checks:

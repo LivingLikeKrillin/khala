@@ -1,6 +1,6 @@
 ---
 title: Using the Nexus web app
-description: A reader's guide to the Nexus web UI — asking questions, reading the evidence panel, and understanding trust badges.
+description: A reader's guide to the Nexus web UI, covering questions, the evidence panel, and trust badges.
 ---
 
 This is a guide for **using** the Nexus web app — no setup required. If you need to run it first, see the [Quickstart](/tools/nexus/#quickstart).

@@ -1,6 +1,6 @@
 ---
 title: Nexus 웹 사용 가이드
-description: Nexus 웹 UI를 쓰는 법 — 질문하기, 근거 패널 읽기, 신뢰 배지 이해하기.
+description: Nexus 웹 UI를 쓰는 법. 질문하기, 근거 패널 읽기, 신뢰 배지.
 ---
 
 설치 없이 Nexus 웹을 **사용하는** 가이드입니다. 먼저 띄워야 한다면 [빠른 시작](/ko/tools/nexus/#빠른-시작)을 보세요.

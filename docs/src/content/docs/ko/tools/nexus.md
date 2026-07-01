@@ -1,6 +1,6 @@
 ---
 title: Nexus
-description: 근거 기반 지식 검색 — 인용 가능한 출처에서만 답하는 RAG + GraphRAG.
+description: 인용 가능한 출처에서만 답하는 RAG + GraphRAG.
 ---
 
 Nexus는 에코시스템의 지식 베이스입니다. 조직 내부 지식(문서·정책·설정)과 운영 사실(OpenTelemetry 트레이스)에 대한 질문에 **인용 가능한 근거가 있을 때만** 답합니다. 모든 답에는 신뢰도(confidence)와, 그 답을 떠받치는 source chunk 또는 trace로 돌아가는 링크가 붙습니다.
