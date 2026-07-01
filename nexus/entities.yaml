@@ -5,17 +5,17 @@
 entities:
   - name: payment-service
     type: Service
-    aliases: ["결제 서비스", "결제서비스", "payment"]
+    aliases: ["결제 서비스", "결제서비스"]
     description: "결제 처리 핵심 서비스"
 
   - name: notification-service
     type: Service
-    aliases: ["알림 서비스", "알림서비스", "notification"]
+    aliases: ["알림 서비스", "알림서비스"]
     description: "이메일/SMS/푸시 알림 전송"
 
   - name: order-service
     type: Service
-    aliases: ["주문 서비스", "주문서비스", "order"]
+    aliases: ["주문 서비스", "주문서비스"]
     description: "주문 생성 및 관리"
 
   - name: payment.completed

@@ -138,8 +138,9 @@ def extract_relations(
     Returns:
         EdgeCandidate 리스트
     """
-    # 문장 분할 (한국어/영어 혼합)
-    sentences = re.split(r'[.!?。]\s*|\n', chunk_text)
+    # 문장 분할 (한국어/영어 혼합). 문장부호 뒤에 공백/개행이 올 때만 분할한다 —
+    # "order.created"처럼 점을 포함한 엔티티 이름이 두 문장으로 쪼개지지 않도록.
+    sentences = re.split(r'(?<=[.!?。])\s+|\n+', chunk_text)
     candidates: list[EdgeCandidate] = []
     seen: set[tuple[str, str, str]] = set()  # (edge_type, from, to) 중복 방지
 
@@ -150,8 +151,9 @@ def extract_relations(
         window_end = min(len(sentences), i + 2)
         window_text = " ".join(sentences[window_start:window_end])
 
-        # 윈도우에서 엔티티 검색
+        # 윈도우에서 엔티티 검색 (등장 위치 순으로 정렬 → 앞 엔티티=from, 뒤=to)
         entities = find_entities_in_text(window_text, entity_patterns)
+        entities.sort(key=lambda e: e.position)
         if len(entities) < 2:
             continue
 
