@@ -23,10 +23,13 @@ _TENANT = "acme"
 _RID_A = doc_rid("specs/A.md")
 _RID_B = doc_rid("specs/B.md")
 _CHUNK_A = chunk_rid(_RID_A, "", 0)
+_RID_D = doc_rid("specs/D.md")  # soft_deleted 문서 (범위 밖 — 카스케이드 금지)
+_CHUNK_D = chunk_rid(_RID_D, "", 0)
+_RID_N = doc_rid("specs/N.md")  # superseded 문서 (비활성 new 후보)
 
 
 async def _seed(conn) -> None:
-    """활성 문서 A(청크 1개 포함) + 활성 문서 B 를 심는다."""
+    """활성 문서 A(청크 1개 포함) + 활성 문서 B + soft_deleted D(청크 포함) + superseded N 을 심는다."""
     await conn.execute(
         "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, status) "
         "VALUES ($1, $2, $3, $4, $5, 'active')",
@@ -41,6 +44,23 @@ async def _seed(conn) -> None:
         "INSERT INTO chunks (rid, tenant, source_uri, doc_rid, chunk_text, status) "
         "VALUES ($1, $2, $3, $4, $5, 'active')",
         _CHUNK_A, _TENANT, "specs/A.md", _RID_A, "본문 A",
+    )
+    # soft_deleted 문서 D + soft_deleted 청크 — supersede 는 이를 건드리면 안 된다.
+    await conn.execute(
+        "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, status) "
+        "VALUES ($1, $2, $3, $4, $5, 'soft_deleted')",
+        _RID_D, _TENANT, "specs/D.md", "hash-d", "chash-d",
+    )
+    await conn.execute(
+        "INSERT INTO chunks (rid, tenant, source_uri, doc_rid, chunk_text, status) "
+        "VALUES ($1, $2, $3, $4, $5, 'soft_deleted')",
+        _CHUNK_D, _TENANT, "specs/D.md", _RID_D, "본문 D",
+    )
+    # superseded 문서 N — 비활성이므로 new_rid 로 쓰면 거부되어야 한다.
+    await conn.execute(
+        "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, status) "
+        "VALUES ($1, $2, $3, $4, $5, 'superseded')",
+        _RID_N, _TENANT, "specs/N.md", "hash-n", "chash-n",
     )
 
 
@@ -110,5 +130,40 @@ def test_supersede_decision_rules():
             _RID_A, _TENANT,
         )
         assert a_row2["superseded_by"] == _RID_B
+
+    _run(inner)
+
+
+def test_soft_deleted_old_is_noop_no_chunk_corruption():
+    """Issue 1 회귀 가드: soft_deleted old → 'noop', 청크 카스케이드 없음, 상태 불변."""
+    from nexus import db
+    from nexus.supersede import supersede
+
+    async def inner():
+        result = await supersede(_RID_D, _RID_B, _TENANT)
+        assert result == "noop"
+
+        d_row = await db.fetch_one(
+            "SELECT status, superseded_by FROM documents WHERE rid = $1 AND tenant = $2",
+            _RID_D, _TENANT,
+        )
+        assert d_row["status"] == "soft_deleted"  # 문서 상태 불변
+        assert d_row["superseded_by"] == ""        # superseded_by 미설정 (기본값)
+
+        chunk_row = await db.fetch_one(
+            "SELECT status FROM chunks WHERE rid = $1", _CHUNK_D,
+        )
+        assert chunk_row["status"] == "soft_deleted"  # 청크 오염 없음 (NOT 'superseded')
+
+    _run(inner)
+
+
+def test_new_exists_but_not_active_raises():
+    """규칙 2 후반: new 가 존재하되 비활성(superseded)이면 ValueError."""
+    from nexus.supersede import supersede
+
+    async def inner():
+        with pytest.raises(ValueError):
+            await supersede(_RID_A, _RID_N, _TENANT)
 
     _run(inner)
