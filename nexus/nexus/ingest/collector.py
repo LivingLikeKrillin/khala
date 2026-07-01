@@ -14,6 +14,7 @@ import frontmatter
 import structlog
 
 from nexus import db
+from nexus.ingest.normalize import normalize_for_hash
 
 logger = structlog.get_logger(__name__)
 
@@ -52,11 +53,10 @@ async def collect_files(
             logger.warning("file_read_failed", path=str(file_path), error=str(e))
             continue
 
-        content_hash = hashlib.sha256(raw_content.encode("utf-8")).hexdigest()
         relative = str(file_path.relative_to(base)).replace("\\", "/")
         canonical_uri = f"{tenant}:{relative}"
 
-        # frontmatter 파싱
+        # frontmatter 파싱 (해시 전에 body 확보)
         fm: dict = {}
         body = raw_content
         try:
@@ -65,6 +65,11 @@ async def collect_files(
             body = post.content
         except Exception:
             pass
+
+        # 변경감지 해시 = frontmatter 제외 body 를 정규화한 것 (스펙 ⑥)
+        content_hash = hashlib.sha256(
+            normalize_for_hash(body).encode("utf-8")
+        ).hexdigest()
 
         # hash 변경 감지 (force가 아닐 때만)
         if not force:
