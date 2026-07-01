@@ -62,6 +62,11 @@ async def _save_document(
     rid = doc_rid(collected.canonical_uri)
     now = datetime.now(timezone.utc)
 
+    # 재수집 감지: upsert 전 기존 content_hash를 조회해 둔다(상태 무관 — 이미 active인 행).
+    prev = await db.fetch_one(
+        "SELECT content_hash FROM documents WHERE rid = $1", rid,
+    )
+
     await db.execute(
         """
         INSERT INTO documents (
@@ -96,6 +101,15 @@ async def _save_document(
         derive_title(collected.frontmatter, collected.content, collected.relative_path),
         classification.doc_type, classification.language, approved_hash,
     )
+
+    # content_hash가 바뀐 재수집(덮어쓰기)이면 이벤트 1건 기록 → v_entropy_signals 신호원.
+    if prev is not None and prev["content_hash"] != collected.content_hash:
+        await db.execute(
+            "INSERT INTO doc_reingest_events (rid, tenant, old_content_hash, new_content_hash) "
+            "VALUES ($1, $2, $3, $4)",
+            rid, tenant, prev["content_hash"], collected.content_hash,
+        )
+
     return rid
 
 
