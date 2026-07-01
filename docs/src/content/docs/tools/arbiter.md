@@ -3,11 +3,11 @@ title: Arbiter
 description: Decision accountability — records AI-generated specs/ADRs and gates code edits behind accountable, signed-off review.
 ---
 
-Arbiter (formerly specledger) makes the moment of judgment accountable instead of assumed. It is a Python MCP server plus a Claude Code `PreToolUse` hook: it records AI-generated ADRs and design specs in a consistent Markdown + frontmatter format and enforces accountable review — **AI critique → human issue-disposition → sign-off** — before any code edits are written, optionally publishing approved documents to a Nexus sink.
+Arbiter (formerly specledger) makes the moment of judgment accountable instead of assumed. It's a Python MCP server plus a Claude Code `PreToolUse` hook: it records AI-generated ADRs and design specs as Markdown with frontmatter, and enforces a review sequence before any code is written: **AI critique, then human issue-disposition, then sign-off.** Approved documents can be published to a Nexus sink.
 
-The problem it calibrates: when an assistant produces a confident spec, the path of least resistance is to approve it. Review degrades into ceremony — a green checkmark on text nobody truly read. Arbiter forces judgment to happen where it is cheap and where it leaves a trace. Until a spec is approved and stamped with a content hash, all `Write`/`Edit`/`MultiEdit` calls targeting non-exempt source paths are **blocked**. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it.
+When an assistant produces a confident spec, the easiest thing to do is approve it. Review turns into ceremony: a green check on text nobody really read. Arbiter forces judgment to happen where it's cheap and where it leaves a record. Until a spec is approved and stamped with a content hash, every `Write`/`Edit`/`MultiEdit` on a non-exempt source path is **blocked**. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it.
 
-One-line identity: a ledger that makes "who approved what, and why" a recorded, attributable act — so you cannot rubber-stamp your way past it.
+In short: a ledger that makes "who approved what, and why" a recorded, attributable act, so you can't rubber-stamp your way past it.
 
 <svg class="kh-fig" viewBox="0 0 560 224" role="img" aria-label="Arbiter gates implementation on an approved, content-hashed spec. SPEC-014 goes Recorded → Critiqued (2 issues) → Approved and locked; the approved hash e34a17c9 must match the change hash for the gate to open — a mismatch blocks Write/Edit.">
 <defs><marker id="ab-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>

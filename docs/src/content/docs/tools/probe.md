@@ -3,11 +3,11 @@ title: Probe
 description: Test quality via mutation — surfaces behavioral-test gaps that advisory review misses, deterministically, through surviving mutants.
 ---
 
-Probe (formerly mutqa) is a mutation-driven test-quality harness. It surfaces the **behavioral-test gaps** that advisory review — a TDD skill, an LLM test reviewer — systematically misses, and it does so *deterministically*: by mutating your code and seeing which mutations the suite fails to catch. A mutation that survives a green suite is measured proof that some behavior is not actually verified.
+Probe (formerly mutqa) is a mutation-driven test-quality harness. It finds the **behavioral-test gaps** that advisory review (a TDD skill or an LLM test reviewer) tends to miss, and it does so *deterministically*: it mutates your code and checks which mutations the suite fails to catch. A mutation that survives a green suite is measured proof that some behavior isn't actually verified.
 
-The problem it calibrates: a passing test suite is not the same as a suite that verifies behavior. AI-generated tests in particular can be green and hollow — they assert structure, not behavior. Advisory reviewers give opinions; Probe gives evidence. Its core discipline is to keep the **deterministic runner separate from judgment**: the runner produces the only contract — a list of surviving mutants — and a Test Quality Critic triages each one reasoning *only from the measured fact* that the suite stayed green under that mutation. That grounding is what distinguishes it from a pure LLM review.
+A passing test suite isn't the same as one that verifies behavior. AI-generated tests especially can be green but hollow, asserting structure rather than behavior. Advisory reviewers give opinions; Probe gives evidence. Its core discipline is to keep the **deterministic runner separate from judgment**: the runner produces the only hard output, a list of surviving mutants, and a Test Quality Critic triages each one reasoning *only from the measured fact* that the suite stayed green under that mutation. That grounding is what separates it from a pure LLM review.
 
-One-line identity: the harness that turns "tests pass" into "tests actually verify behavior," with surviving mutants as the deterministic signal.
+In short: it turns "tests pass" into "tests actually verify behavior," using surviving mutants as the signal.
 
 <svg class="kh-fig" viewBox="0 0 560 230" role="img" aria-label="Probe mutation-tests a green suite: of 12 mutants, 10 are killed and 2 survive. The survivors expose a real gap in ledger.py:reconcile where a boundary is not covered — add a test.">
 <defs><marker id="pb-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
