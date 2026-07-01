@@ -90,7 +90,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Khala',
-      tagline: 'AI 시대의 캘리브레이션 — 도구들의 연합',
+      tagline: '코드·문서·서비스에 대한, 출처가 붙는 답',
       customCss: ['./src/styles/theme.css'],
       components: {
         Head: './src/components/Head.astro',

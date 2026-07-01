@@ -1,6 +1,6 @@
 ---
 title: Arbiter
-description: 의사결정 책임성 — AI가 생성한 명세/ADR을 기록하고, 책임 있는 리뷰·사인오프 뒤로 코드 편집을 게이트한다.
+description: AI가 생성한 명세·ADR을 기록하고, 사인오프된 리뷰 뒤로 코드 편집을 게이트한다.
 ---
 
 Arbiter (옛 specledger)는 판단의 순간을 가정하지 않고 **책임질 수 있게** 만듭니다. Python MCP 서버와 Claude Code `PreToolUse` 훅으로, AI가 생성한 ADR·설계 명세를 Markdown + frontmatter로 기록하고, 코드가 쓰이기 전에 리뷰 절차를 강제합니다: **AI 비평 → 사람의 이슈 처분 → 사인오프.** 승인된 문서는 Nexus 싱크로 발행할 수 있습니다.

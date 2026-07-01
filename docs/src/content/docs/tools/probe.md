@@ -1,6 +1,6 @@
 ---
 title: Probe
-description: Test quality via mutation — surfaces behavioral-test gaps that advisory review misses, deterministically, through surviving mutants.
+description: Test quality via mutation. Finds behavioral-test gaps that advisory review misses, using surviving mutants.
 ---
 
 Probe (formerly mutqa) is a mutation-driven test-quality harness. It finds the **behavioral-test gaps** that advisory review (a TDD skill or an LLM test reviewer) tends to miss, and it does so *deterministically*: it mutates your code and checks which mutations the suite fails to catch. A mutation that survives a green suite is measured proof that some behavior isn't actually verified.
