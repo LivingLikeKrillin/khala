@@ -52,3 +52,24 @@ def test_strong_token_ok_even_in_strict_mode(monkeypatch):
     from nexus.auth import gen_token
     cfg = _cfg(monkeypatch, dev_token=gen_token(), strict=True)
     cfg.validate_startup()  # no raise
+
+
+def test_weak_token_refused_in_strict_mode_even_when_permissive(monkeypatch):
+    monkeypatch.delenv("NEXUS_DEV_TOKEN", raising=False)
+    monkeypatch.setenv("NEXUS_DEV_TOKEN", "nexus-local-dev")
+    monkeypatch.setenv("NEXUS_REQUIRE_STRONG_DEV_TOKEN", "1")
+    cfg = AuthConfig.from_dict({"auth": {"mode": "permissive", "principals": []}})
+    assert cfg.permissive is True
+    with pytest.raises(RuntimeError, match="NEXUS_DEV_TOKEN"):
+        cfg.validate_startup()
+
+
+def test_weak_token_emits_warning_event(monkeypatch):
+    import structlog
+    monkeypatch.delenv("NEXUS_DEV_TOKEN", raising=False)
+    monkeypatch.delenv("NEXUS_REQUIRE_STRONG_DEV_TOKEN", raising=False)
+    monkeypatch.setenv("NEXUS_DEV_TOKEN", "nexus-local-dev")
+    cfg = AuthConfig.from_dict({"auth": {"mode": "enforced", "principals": []}})
+    with structlog.testing.capture_logs() as logs:
+        cfg.validate_startup()
+    assert any(e.get("event") == "weak_dev_token" for e in logs)
