@@ -20,6 +20,15 @@ def test_empty_stays_empty():
     assert normalize_for_hash("\n\n") == ""
 
 
+def test_internal_blank_lines_preserved():
+    # 내부 빈 줄은 보존(끝 빈 줄만 접힘) — "모든 빈 줄 접기"와 구별되는 핵심 불변식
+    assert normalize_for_hash("a\n\nb") == "a\n\nb\n"
+
+
+def test_whitespace_only_line_collapses_to_empty():
+    assert normalize_for_hash("   \n\t\n") == ""
+
+
 def test_jitter_variants_collapse_equal_but_real_change_differs():
     base = "# 제목\n\n본문 한 줄\n"
     crlf = "# 제목\r\n\r\n본문 한 줄\r\n"
