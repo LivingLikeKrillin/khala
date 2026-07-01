@@ -385,6 +385,28 @@ async def archon_grade_authority(
 
 
 @mcp.tool()
+async def nexus_supersede(old_rid: str, new_rid: str, tenant: str = "default") -> str:
+    """옛 문서를 새 문서로 supersede(명시적·멱등). old 를 new 로 대체하고 검색에서 배제한다.
+
+    자동 감지 없음 — 책임자가 명시적으로 선언한다. tenant 는 인자로 받되
+    NEXUS_MCP_TOKEN 이 (tenant, clearance) 상한이다.
+
+    Args:
+        old_rid: 대체될 옛 문서 rid
+        new_rid: 대체하는 새 문서 rid
+        tenant: 테넌트 ID
+    """
+    result = await _api_call("post", "/supersede", json={
+        "old_rid": old_rid,
+        "new_rid": new_rid,
+        "tenant": tenant,
+    })
+    if not result.get("success"):
+        return f"supersede 실패: {result.get('error', '알 수 없는 오류')}"
+    return f"{old_rid} → {new_rid}: {result['data']['result']}"
+
+
+@mcp.tool()
 async def nexus_status() -> str:
     """Nexus 시스템 상태 확인.
 
