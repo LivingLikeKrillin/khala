@@ -42,7 +42,7 @@ async def resolve_active_doc(ref: str, tenant: str) -> str:
     결정 순서: (1) rid 패스스루 → (2) source_uri 정확일치(active) → (3) basename LIKE(active).
     판정: 정확히 1건→rid · 0건→ValueError · 2건+→ValueError(후보 나열).
 
-    주의: step 1 rid 패스스루는 status 무관(이미 superseded 인 rid 도 반환) — 하위호환·자동화용.
+    주의: step 1 rid 패스스루는 status 무관(superseded/soft_deleted 포함) — 하위호환·자동화용.
     코어 supersede() 가 상태를 재검증하므로 안전. 이 패스스루를 'active 만'으로 좁히지 말 것.
     """
     # 1) rid 패스스루 (status 무관)
@@ -62,7 +62,8 @@ async def resolve_active_doc(ref: str, tenant: str) -> str:
         escaped = ref.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         rows = await db.fetch_all(
             "SELECT DISTINCT rid, source_uri FROM documents "
-            "WHERE tenant = $1 AND status = 'active' AND source_uri LIKE $2 ESCAPE '\\'",
+            "WHERE tenant = $1 AND status = 'active' AND source_uri LIKE $2 ESCAPE '\\' "
+            "ORDER BY source_uri",
             tenant, f"%/{escaped}")
 
     # 4) 판정

@@ -74,8 +74,10 @@ def test_resolve_active_doc_rules():
         # 5) 0건 → ValueError
         with pytest.raises(ValueError, match="일치하는 active 문서 없음"):
             await resolve_active_doc("nope.md", _T)
-        # 6) 다건 → ValueError (후보 나열)
-        with pytest.raises(ValueError, match="여러 문서가 일치"):
+        # 6) 다건 → ValueError (후보 source_uri 나열)
+        with pytest.raises(ValueError, match="여러 문서가 일치") as ei:
             await resolve_active_doc("D.md", _T)
+        msg = str(ei.value)
+        assert f"{_T}:x/D.md" in msg and f"{_T}:y/D.md" in msg
 
     _run(body)
