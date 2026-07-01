@@ -37,7 +37,7 @@ class SearchHit:
     bm25_rank: int | None = None
     vector_rank: int | None = None
     classification: str = "INTERNAL"
-    approved_hash: str = ""  # documents.content_hash — accountable-review stamp (SPEC §5.4)
+    approved_hash: str = ""  # documents.approved_hash — accountable-review stamp (SPEC §5.4)
     doc_type: str = ""  # documents.doc_type — 축-A 타입(S3 intake 보존)
 
 

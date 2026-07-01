@@ -30,6 +30,7 @@ _RID_A = doc_rid("specs/A.md")
 _RID_B = doc_rid("specs/B.md")
 _CHUNK_A = chunk_rid(_RID_A, "", 0)
 _RID_FOREIGN = doc_rid("specs/FOREIGN.md")  # rival 테넌트의 활성 문서
+_RID_SUP = doc_rid("specs/SUP.md")  # acme 테넌트의 superseded(비활성) 문서
 
 
 async def _seed(conn) -> None:
@@ -54,6 +55,13 @@ async def _seed(conn) -> None:
         "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, status) "
         "VALUES ($1, $2, $3, $4, $5, 'active')",
         _RID_FOREIGN, _OTHER_TENANT, "specs/FOREIGN.md", "hash-f", "chash-f",
+    )
+    # acme 테넌트의 superseded(비활성) 문서 — resolver 는 rid passthrough(status-agnostic)로
+    # 이 rid 를 그대로 통과시키고, core 가 active 여부를 재검증한다(seam guard).
+    await conn.execute(
+        "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, status, superseded_by) "
+        "VALUES ($1, $2, $3, $4, $5, 'superseded', $6)",
+        _RID_SUP, _TENANT, "specs/SUP.md", "hash-s", "chash-s", _RID_B,
     )
 
 
@@ -147,6 +155,36 @@ def test_self_supersession_is_400():
         )
     assert resp.status_code == 400, resp.text
     assert "self-supersession" in resp.json()["detail"]
+
+
+def test_superseded_new_ref_rejected_400():
+    """seam guard: resolver 는 superseded rid 를 status-agnostic 하게 통과시키고,
+    core 가 new 는 active 여야 한다며 거부 → HTTP 400.
+
+    (rid 를 ref 로 써서 passthrough 분기를 태운다 — 경로였다면 active-only source_uri
+    조회에서 0-match 로 걸러져 다른 경로가 된다.)
+    """
+    with _client() as client:
+        resp = client.post(
+            "/supersede",
+            json={"old_ref": _RID_A, "new_ref": _RID_SUP, "tenant": _TENANT},
+        )
+    assert resp.status_code == 400, resp.text
+    assert "not found or not active" in resp.json()["detail"]
+
+
+def test_superseded_old_ref_noops_200():
+    """seam guard: old 가 비활성(superseded)이면 core 가 noop → HTTP 200, result=='noop'.
+
+    resolver 는 여기서도 superseded rid 를 그대로 통과시킨다(passthrough).
+    """
+    with _client() as client:
+        resp = client.post(
+            "/supersede",
+            json={"old_ref": _RID_SUP, "new_ref": _RID_B, "tenant": _TENANT},
+        )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["result"] == "noop"
 
 
 def test_cross_tenant_old_rid_is_confined_not_superseded():
