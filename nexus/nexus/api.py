@@ -656,9 +656,13 @@ async def supersede_docs(req: SupersedeRequest, principal: Principal = Depends(g
     req.tenant, _ = effective_scope(principal, req.tenant, None)  # writes are tenant-bound
     try:
         result = await supersede(req.old_rid, req.new_rid, req.tenant)
+        return NexusResponse(data={"result": result})
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return NexusResponse(data={"result": result})
+    except Exception as e:
+        if "connect" in str(e).lower():
+            raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/otel/aggregate", response_model=NexusResponse)
