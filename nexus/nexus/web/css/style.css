@@ -344,7 +344,7 @@ body { display: flex; flex-direction: column; }
 .chat-bubble {
   /* cap the line measure on wide screens (empty evidence panel = full-width main) */
   max-width: min(84%, 760px);
-  padding: 13px 17px;
+  padding: 15px 18px;
   border-radius: var(--radius-lg);
   line-height: 1.72;
   word-break: break-word;
@@ -389,6 +389,35 @@ body { display: flex; flex-direction: column; }
   margin: 10px 0;
 }
 .chat-bubble.assistant pre code { background: none; border: none; padding: 0; color: var(--ink-300); }
+
+/* Assistant markdown — restore list indentation (global reset strips it) + block spacing */
+.chat-bubble.assistant > :first-child { margin-top: 0; }
+.chat-bubble.assistant ul,
+.chat-bubble.assistant ol { margin: 8px 0; padding-left: 1.5em; }
+.chat-bubble.assistant ul { list-style: disc; }
+.chat-bubble.assistant ol { list-style: decimal; }
+.chat-bubble.assistant li { margin: 4px 0; }
+.chat-bubble.assistant li::marker { color: var(--ink-700); }
+.chat-bubble.assistant li > ul,
+.chat-bubble.assistant li > ol { margin: 4px 0; }
+.chat-bubble.assistant li > p { margin: 0; }
+.chat-bubble.assistant h1,
+.chat-bubble.assistant h2,
+.chat-bubble.assistant h3,
+.chat-bubble.assistant h4 { font-family: var(--font-display); color: var(--ink-100); font-weight: 600; line-height: 1.35; margin: 15px 0 7px; }
+.chat-bubble.assistant h1 { font-size: 17px; }
+.chat-bubble.assistant h2 { font-size: 15.5px; }
+.chat-bubble.assistant h3 { font-size: 14px; }
+.chat-bubble.assistant h4 { font-size: 13px; }
+.chat-bubble.assistant blockquote {
+  margin: 10px 0; padding: 4px 0 4px 14px;
+  border-left: 2px solid var(--hairline-strong); color: var(--ink-500);
+}
+.chat-bubble.assistant hr { border: 0; border-top: 1px solid var(--hairline); margin: 14px 0; }
+.chat-bubble.assistant table { border-collapse: collapse; margin: 10px 0; width: 100%; font-size: 12.5px; }
+.chat-bubble.assistant th,
+.chat-bubble.assistant td { border: 1px solid var(--hairline); padding: 6px 10px; text-align: left; }
+.chat-bubble.assistant th { color: var(--ink-100); font-weight: 600; background: color-mix(in srgb, var(--void-900) 40%, transparent); }
 
 .chat-bubble .streaming-cursor {
   display: inline-block;

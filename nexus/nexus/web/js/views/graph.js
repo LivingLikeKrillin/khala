@@ -220,8 +220,11 @@ async function loadEntity(entityName, hops = 2) {
     }
     updateEmptyState();
   } catch (err) {
-    if (err.status === 404) showToast('엔티티를 찾을 수 없습니다', 'warning');
-    else showToast(err.message, 'error');
+    if (err.status === 404) {
+      showToast('이 엔티티에는 관계 데이터가 없습니다 (관계 미추출·관측 미집계, 또는 이름 불일치)', 'warning');
+    } else {
+      showToast(err.message, 'error');
+    }
   }
 }
 
