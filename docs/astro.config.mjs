@@ -94,6 +94,7 @@ export default defineConfig({
       customCss: ['./src/styles/theme.css'],
       components: {
         Head: './src/components/Head.astro',
+        PageTitle: './src/components/PageTitle.astro',
       },
       logo: { src: './src/assets/logo.svg', alt: 'Khala' },
       defaultLocale: 'root',
