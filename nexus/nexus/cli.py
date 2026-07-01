@@ -480,6 +480,25 @@ def supersede(
     _run(_do())
 
 
+@app.command("entropy-signals")
+def entropy_signals() -> None:
+    """공존 잔차 신호(재수집 덮어쓰기·정확중복·제목충돌·supersession)를 표시.
+
+    migration 001의 v_entropy_signals 뷰를 읽어 4개 신호를 출력. 전역 스냅샷
+    (뷰에 tenant 컬럼 없음 — Slice 2에서 tenant/최근-윈도우 그룹핑 추가).
+    """
+
+    async def _do() -> None:
+        from nexus import db
+
+        row = await db.fetch_one("SELECT * FROM v_entropy_signals")
+        for k, v in dict(row).items():
+            typer.echo(f"{k}: {v}")
+        await db.close_pool()
+
+    _run(_do())
+
+
 @app.command("ingest-notion")
 def ingest_notion(
     tenant: str = "default",
