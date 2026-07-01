@@ -139,7 +139,11 @@ async def _save_chunks(
                 chunk_text = EXCLUDED.chunk_text,
                 classification = EXCLUDED.classification,
                 updated_at = EXCLUDED.updated_at,
-                status = 'active'
+                status = 'active',
+                embedding   = CASE WHEN chunks.chunk_text IS DISTINCT FROM EXCLUDED.chunk_text
+                                   THEN NULL ELSE chunks.embedding END,
+                tsvector_ko = CASE WHEN chunks.chunk_text IS DISTINCT FROM EXCLUDED.chunk_text
+                                   THEN NULL ELSE chunks.tsvector_ko END
             """,
             rid, tenant, classification.classification,
             collected.canonical_uri, collected.content_hash,
