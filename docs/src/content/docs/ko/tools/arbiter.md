@@ -9,11 +9,27 @@ Arbiter가 보정하는 문제는 이렇습니다. 어시스턴트가 확신에 
 
 한 줄 정체성: "누가 무엇을, 왜 승인했는가"를 기록되고 귀속 가능한 행위로 만드는 원장 — 그 위로 고무도장을 찍고 지나갈 수 없습니다.
 
-<img
-  src="/khala/diagrams/arbiter.svg"
-  alt="명세 생명주기: 기록됨 → 비평됨(이슈) → 승인됨(content hash) → 구현 중(게이트 무장, 편집 허용) → 완료. 승인 전까지 Write/Edit는 차단된다."
-  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
-/>
+<svg class="kh-fig" viewBox="0 0 560 224" role="img" aria-label="Arbiter는 승인·content-hash된 명세에만 구현을 허용한다. SPEC-014는 기록됨 → 비평됨(이슈 2) → 승인·잠금으로 진행하고, 승인 해시 e34a17c9가 변경 해시와 일치해야 게이트가 열린다 — 불일치면 Write/Edit 차단.">
+<defs><marker id="ab-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="kh-fig-box" x="24" y="28" width="120" height="38" rx="6"/>
+<text class="kh-fig-d" x="84" y="47" text-anchor="middle">Recorded</text>
+<path class="kh-fig-line" d="M144 47 L176 47" marker-end="url(#ab-a)"/>
+<rect class="kh-fig-box" x="176" y="28" width="150" height="38" rx="6"/>
+<text class="kh-fig-d" x="251" y="47" text-anchor="middle">Critiqued · 2 issues</text>
+<path class="kh-fig-line" d="M326 47 L358 47" marker-end="url(#ab-a)"/>
+<rect class="kh-fig-box-acc" x="358" y="28" width="164" height="38" rx="6"/>
+<text class="kh-fig-d" x="440" y="47" text-anchor="middle">Approved · locked</text>
+<rect class="kh-fig-panel" x="24" y="92" width="512" height="118" rx="8"/>
+<text class="kh-fig-h" x="42" y="116">GATE · APPROVED_HASH</text>
+<line class="kh-fig-rule" x1="42" y1="128" x2="518" y2="128"/>
+<text class="kh-fig-d" x="42" y="152">approved</text>
+<text class="kh-fig-d" x="140" y="152">e34a17c9</text>
+<text class="kh-fig-d" x="42" y="176">change</text>
+<text class="kh-fig-d" x="140" y="176">e34a17c9</text>
+<path class="kh-fig-line-acc" d="M244 152 L256 152 L256 164 M244 176 L256 176 L256 164 M256 164 L274 164" marker-end="url(#ab-a)"/>
+<text class="kh-fig-verified" x="286" y="164">✓ MATCH · gate open</text>
+<text class="kh-fig-s" x="42" y="200">mismatch → Write / Edit blocked</text>
+</svg>
 
 ## 핵심 개념
 

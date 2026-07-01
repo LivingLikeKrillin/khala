@@ -9,11 +9,36 @@ Probe가 보정하는 문제는 이렇습니다. 통과하는 테스트 스위�
 
 한 줄 정체성: "테스트가 통과한다"를 "테스트가 실제로 행위를 검증한다"로 바꾸는 하네스 — 살아남은 변이가 그 결정론적 신호입니다.
 
-<img
-  src="/khala/diagrams/probe.svg"
-  alt="변이 흐름: green 스위트 → cosmic-ray 변이 → 변이별 스위트 실행 → 살아남은 변이? 없으면 공백 없음 보고, 있으면 Critic triage → 원장 → biting real-gap 리포트."
-  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
-/>
+<svg class="kh-fig" viewBox="0 0 560 230" role="img" aria-label="Probe는 green 스위트를 변이 테스트한다: 변이 12개 중 10개는 killed, 2개가 survived. 살아남은 변이가 ledger.py:reconcile의 경계가 커버되지 않은 실제 갭을 드러낸다 — 테스트 추가.">
+<defs><marker id="pb-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="kh-fig-panel" x="24" y="28" width="250" height="180" rx="8"/>
+<text class="kh-fig-h" x="42" y="52">MUTANTS · 12</text>
+<line class="kh-fig-rule" x1="42" y1="64" x2="256" y2="64"/>
+<rect class="kh-fig-track" x="44" y="80" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="82" y="80" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="120" y="80" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="158" y="80" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="44" y="110" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="82" y="110" width="30" height="22" rx="3"/>
+<rect class="kh-fig-box-acc" x="120" y="110" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="158" y="110" width="30" height="22" rx="3"/>
+<rect class="kh-fig-box-acc" x="44" y="140" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="82" y="140" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="120" y="140" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="158" y="140" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="42" y="180" width="12" height="12" rx="2"/>
+<text class="kh-fig-s" x="60" y="187">killed ×10</text>
+<rect class="kh-fig-box-acc" x="150" y="180" width="12" height="12" rx="2"/>
+<text class="kh-fig-s" x="168" y="187">survived ×2</text>
+<path class="kh-fig-line-acc" d="M274 118 L300 118" marker-end="url(#pb-a)"/>
+<rect class="kh-fig-panel" x="300" y="28" width="236" height="180" rx="8"/>
+<text class="kh-fig-h" x="318" y="52">GAP FOUND</text>
+<line class="kh-fig-rule" x1="318" y1="64" x2="518" y2="64"/>
+<text class="kh-fig-ans" x="318" y="94">2 survived</text>
+<text class="kh-fig-d" x="318" y="122">ledger.py:reconcile</text>
+<text class="kh-fig-s" x="318" y="144">boundary not covered</text>
+<text class="kh-fig-d" x="318" y="176">→ add test</text>
+</svg>
 
 ## 핵심 개념
 

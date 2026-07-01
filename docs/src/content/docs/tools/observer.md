@@ -13,11 +13,27 @@ A design principle runs through all of it: **when everything is fine, Observer s
 
 One-line identity: the tool that keeps PR review honest by grounding scope, contracts, and conformance — optionally enriched by Nexus, but fully functional without it.
 
-<img
-  src="/khala/diagrams/observer.svg"
-  alt="Scope analysis: changed files → assign roles → match cohesion groups → score severity → are concerns mixed? If yes, propose a split with merge order; if cohesive, stay silent."
-  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
-/>
+<svg class="kh-fig" viewBox="0 0 560 220" role="img" aria-label="Observer assigns roles to a 3-file change — api (routes/pay.py, schemas/pay.py) and data (models/ledger.py) — finds two roles mixed, and proposes splitting into PR-a (api) and PR-b (data) with merge order preserved.">
+<defs><marker id="ob-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="kh-fig-panel" x="24" y="28" width="284" height="168" rx="8"/>
+<text class="kh-fig-h" x="42" y="52">SCOPE · 3 FILES</text>
+<line class="kh-fig-rule" x1="42" y1="64" x2="290" y2="64"/>
+<text class="kh-fig-h" x="42" y="88">API</text>
+<text class="kh-fig-d" x="88" y="88">routes/pay.py</text>
+<text class="kh-fig-d" x="88" y="108">schemas/pay.py</text>
+<text class="kh-fig-h" x="42" y="140">DATA</text>
+<text class="kh-fig-d" x="88" y="140">models/ledger.py</text>
+<text class="kh-fig-s" x="42" y="176">cohesion scored · roles matched</text>
+<path class="kh-fig-line-acc" d="M308 112 L334 112" marker-end="url(#ob-a)"/>
+<rect class="kh-fig-panel" x="334" y="28" width="202" height="168" rx="8"/>
+<text class="kh-fig-h" x="352" y="52">VERDICT</text>
+<line class="kh-fig-rule" x1="352" y1="64" x2="518" y2="64"/>
+<text class="kh-fig-ans" x="352" y="92">mixed · 2 roles</text>
+<text class="kh-fig-d" x="352" y="122">propose split</text>
+<text class="kh-fig-d" x="352" y="146">› PR-a  api</text>
+<text class="kh-fig-d" x="352" y="166">› PR-b  data</text>
+<text class="kh-fig-s" x="352" y="186">merge order preserved</text>
+</svg>
 
 ## Core concepts
 
