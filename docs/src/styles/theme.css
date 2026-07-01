@@ -391,6 +391,35 @@ a.action.secondary:hover {
   margin-block: 2.5rem 0.5rem;
 }
 
+/* ── Copy-page action (PageTitle override) ───────────────────────────────── */
+.kh-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.kh-copy {
+  flex: none;
+  margin-top: 0.5rem;
+  font-family: var(--sl-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--kh-fg-dim);
+  background: transparent;
+  border: 1px solid var(--kh-hairline);
+  border-radius: var(--kh-radius-sm);
+  padding: 0.4em 0.7em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.kh-copy:hover {
+  border-color: var(--kh-accent);
+  color: var(--kh-accent);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Landing (splash) — V2 engineering hero + editorial sections.
    ═══════════════════════════════════════════════════════════════════════════ */

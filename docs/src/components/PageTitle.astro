@@ -1,0 +1,41 @@
+---
+// Override of Starlight's <PageTitle> that adds a "Copy page" action next to
+// the page heading. The button copies the rendered article text so a reader
+// can paste the page straight into an LLM — the copy-for-LLM pattern modern
+// AI-tool docs ship. Skipped on the splash landing (it has no page heading).
+import type { Props } from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/PageTitle.astro';
+
+const isSplash = Astro.props.entry?.data?.template === 'splash';
+---
+
+{
+  isSplash ? (
+    <Default {...Astro.props} />
+  ) : (
+    <div class="kh-title-row">
+      <Default {...Astro.props} />
+      <button class="kh-copy" type="button" data-kh-copy title="Copy this page as text to paste into an LLM">
+        Copy page
+      </button>
+    </div>
+  )
+}
+
+<script>
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement | null;
+    const btn = target?.closest('[data-kh-copy]');
+    if (!(btn instanceof HTMLElement)) return;
+    const main = document.querySelector('.sl-markdown-content');
+    const text = (main instanceof HTMLElement ? main.innerText : '').trim();
+    if (!text || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const prev = btn.textContent;
+      btn.textContent = 'Copied';
+      window.setTimeout(() => {
+        btn.textContent = prev;
+      }, 1400);
+    });
+  });
+</script>
