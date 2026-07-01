@@ -12,7 +12,7 @@ from nexus.api import app, get_principal
 PRIVILEGED = {
     "/search", "/search/answer", "/search/answer/stream", "/graph/{entity_rid_param}",
     "/diff", "/documents", "/entities/suggest", "/claims/value", "/claims/grade-authority",
-    "/ingest", "/upload", "/otel/aggregate",
+    "/ingest", "/upload", "/otel/aggregate", "/supersede",
 }
 # Discovery / static / dev-onramp — intentionally unauthenticated.
 # /auth/dev-token returns the local dev token *before* a principal exists (env-gated; null in prod).
