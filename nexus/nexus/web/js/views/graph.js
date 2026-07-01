@@ -173,7 +173,11 @@ function startEntity(name) {
 async function loadEntity(entityName, hops = 2) {
   try {
     if (network) network.setOptions({ physics: true });
-    const { data } = await getGraph(entityName, { hops, include_evidence: true });
+    const { data, meta } = await getGraph(entityName, { hops, include_evidence: true });
+
+    if (meta && meta.no_relations) {
+      showToast('이 엔티티는 인덱싱돼 있으나 아직 관계 데이터가 없어 노드만 표시합니다', 'info');
+    }
 
     const center = data.center_entity;
     const centerId = center.name;

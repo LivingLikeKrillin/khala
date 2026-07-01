@@ -943,6 +943,7 @@ body { display: flex; flex-direction: column; }
 .toast.error   { border-left: 3px solid var(--danger); }
 .toast.success { border-left: 3px solid var(--success); }
 .toast.warning { border-left: 3px solid var(--gold-400); }
+.toast.info    { border-left: 3px solid var(--cyan-400); }
 @keyframes toast-in { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
 /* ── Scrollbar ───────────────────────────────────────────────── */

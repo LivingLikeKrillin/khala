@@ -496,14 +496,32 @@ async def get_graph(
 
         subgraph = await graph_repo.get_neighbors(rid, hops=hops)
 
-        if not subgraph.edges and not subgraph.observed_edges:
-            raise HTTPException(status_code=404, detail="엔티티를 찾을 수 없습니다.")
-
-        # 엔티티 상세 정보 조회
+        # 엔티티 상세 정보 조회 (존재 여부 판정에도 사용)
         entity_row = await db.fetch_one(
             "SELECT rid, name, entity_type, aliases, description FROM entities WHERE rid = $1",
             rid,
         )
+
+        # 엣지가 하나도 없을 때: 엔티티 자체가 없으면 404, 존재하면 노드 1개만 반환한다.
+        # (엔티티는 인덱싱됐지만 관계가 아직 추출/관측되지 않은 정상 상태를 404로 오인시키지 않기 위함)
+        if not subgraph.edges and not subgraph.observed_edges:
+            if not entity_row:
+                raise HTTPException(status_code=404, detail="엔티티를 찾을 수 없습니다.")
+            return NexusResponse(
+                data={
+                    "center_entity": {
+                        "rid": entity_row["rid"],
+                        "name": entity_row["name"],
+                        "type": entity_row["entity_type"],
+                        "aliases": list(entity_row["aliases"] or []),
+                        "description": entity_row["description"] or "",
+                    },
+                    "edges": [],
+                    "observed_edges": [],
+                },
+                meta={"edge_count": 0, "observed_count": 0, "no_relations": True},
+            )
+
         center_entity = {
             "rid": subgraph.center_rid,
             "name": subgraph.center_name,
