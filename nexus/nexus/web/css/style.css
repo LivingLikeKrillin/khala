@@ -6,28 +6,28 @@
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* — Void (backgrounds) — */
-  --void-900: #070d1d;   /* deepest — page void          */
-  --void-800: #0a1124;   /* base background              */
-  --void-700: #0d1630;   /* raised surface / rail        */
-  --void-600: #111d3a;   /* card surface                 */
-  --void-500: #16315c;   /* logo inner glow              */
+  /* — Surfaces (neutral near-black — shares the docs token ramp, not navy) — */
+  --void-900: #0a0c10;   /* page background              */
+  --void-800: #0d1117;   /* base                         */
+  --void-700: #12161d;   /* raised surface / rail        */
+  --void-600: #161b23;   /* card surface                 */
+  --void-500: #1c2531;   /* subtle raised                */
 
-  /* — Cyan (psionic energy / primary accent) — */
-  --cyan-200: #c7f1ff;
-  --cyan-300: #8fdcff;   /* tendrils — bright accent     */
-  --cyan-400: #4fb6ee;   /* PRIMARY accent               */
-  --cyan-500: #2272c4;   /* deep accent                  */
+  /* — Cyan (single quiet accent — used sparingly, on marks/links) — */
+  --cyan-200: #cfe3f5;
+  --cyan-300: #a9cdec;   /* light accent                 */
+  --cyan-400: #6fb0e6;   /* PRIMARY accent               */
+  --cyan-500: #3f7fb8;   /* deep accent                  */
 
   /* — Gold (the ring — rare, precious highlight only) — */
   --gold-400: #d8b25c;
   --gold-500: #cb9b3f;
 
   /* — Ink (text) — */
-  --ink-100: #eaf1fb;    /* headings / brightest         */
-  --ink-300: #c2cfe2;    /* body                         */
-  --ink-500: #8295ad;    /* secondary                    */
-  --ink-700: #7286a8;    /* muted — raised for WCAG AA on void surfaces (was #56678a ≈ 3.7:1) */
+  --ink-100: #e9ecf1;    /* headings / brightest         */
+  --ink-300: #aab2bf;    /* body                         */
+  --ink-500: #7b8492;    /* secondary                    */
+  --ink-700: #8b95a3;    /* muted — ~6:1 on near-black for AA */
 
   /* — Semantic — */
   --success: #3ad6a0;
@@ -42,8 +42,8 @@
   --glass-rail: var(--void-800);
 
   /* — Hairlines & focus ring (flat, no glow) — */
-  --hairline:  color-mix(in srgb, var(--cyan-300) 12%, transparent);
-  --hairline-strong: color-mix(in srgb, var(--cyan-300) 22%, transparent);
+  --hairline:  rgba(255, 255, 255, 0.09);
+  --hairline-strong: rgba(255, 255, 255, 0.15);
   --accent-dim: color-mix(in srgb, var(--cyan-400) 14%, transparent);
   --accent-glow: 0 0 0 1px color-mix(in srgb, var(--cyan-400) 45%, transparent);
   --shadow-1: 0 4px 16px rgba(2, 7, 18, 0.38);
@@ -630,7 +630,34 @@ body { display: flex; flex-direction: column; }
 /* ── Graph view ──────────────────────────────────────────────── */
 .graph-layout { display: flex; height: 100%; }
 .graph-container { flex: 1; position: relative; }
-.graph-canvas { width: 100%; height: 100%; background: transparent; }
+.graph-canvas { width: 100%; height: 100%; background: transparent; position: relative; }
+
+/* Graph — empty-state guidance, hint, autocomplete (restrained, docs-tone) */
+.graph-search-wrap { position: relative; }
+.graph-hint { align-self: center; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-700); letter-spacing: 0.02em; }
+.graph-empty {
+  position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 24px;
+}
+.graph-empty-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--ink-300); margin-bottom: 10px; }
+.graph-empty-text { max-width: 380px; font-size: 13px; line-height: 1.6; color: var(--ink-700); }
+.graph-empty-text strong { color: var(--ink-500); font-weight: 600; }
+.graph-autocomplete {
+  position: absolute; top: calc(100% + 6px); left: 0; min-width: 240px; max-width: 320px;
+  background: var(--void-700); border: 1px solid var(--hairline); border-radius: var(--radius);
+  box-shadow: var(--shadow-1); overflow: hidden; z-index: 20;
+}
+.graph-autocomplete.hidden { display: none; }
+.graph-ac-item {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%;
+  padding: 8px 12px; background: transparent; border: 0; cursor: pointer; text-align: left;
+  border-bottom: 1px solid var(--hairline);
+}
+.graph-ac-item:last-child { border-bottom: 0; }
+.graph-ac-item:hover { background: var(--void-600); }
+.graph-ac-name { color: var(--ink-100); font-size: 13px; }
+.graph-ac-type { font-family: var(--font-mono); font-size: 10px; color: var(--ink-700); text-transform: uppercase; letter-spacing: 0.06em; }
 
 .graph-toolbar { position: absolute; top: 18px; left: 18px; display: flex; gap: 8px; z-index: 10; }
 .graph-search {
@@ -740,6 +767,44 @@ body { display: flex; flex-direction: column; }
 .doc-pagination button:hover { border-color: var(--hairline-strong); color: var(--ink-100); }
 .doc-pagination button:disabled { opacity: 0.35; cursor: not-allowed; }
 .doc-pagination span { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-700); }
+
+/* Documents — clickable rows + detail drawer (restrained, docs-tone) */
+.documents-scroll { flex: 1; overflow-y: auto; border: 1px solid var(--hairline); border-radius: var(--radius-lg); }
+.doc-row { cursor: pointer; }
+.doc-num { font-family: var(--font-mono); color: var(--ink-700); }
+.doc-empty { text-align: center; color: var(--ink-700); padding: 24px; }
+
+.doc-detail-panel {
+  position: fixed;
+  top: var(--statusbar-height); right: 0; bottom: 0;
+  width: min(380px, 82vw);
+  z-index: 30;
+  background: var(--void-800);
+  border-left: 1px solid var(--hairline);
+  padding: 22px 24px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-2);
+}
+.doc-detail-panel.hidden { display: none; }
+.doc-detail-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.doc-detail-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; color: var(--ink-700); }
+.doc-detail-close {
+  background: transparent; border: 1px solid var(--hairline); color: var(--ink-500);
+  width: 26px; height: 26px; border-radius: var(--radius-sm); cursor: pointer; line-height: 1;
+  transition: border-color 0.15s, color 0.15s;
+}
+.doc-detail-close:hover { border-color: var(--hairline-strong); color: var(--ink-100); }
+.doc-detail-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--ink-100); margin-bottom: 16px; line-height: 1.35; }
+.doc-detail-meta { margin-bottom: 18px; }
+.doc-detail-meta > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--hairline); }
+.doc-detail-meta dt { font-family: var(--font-mono); font-size: 11px; color: var(--ink-700); }
+.doc-detail-meta dd { font-size: 12.5px; color: var(--ink-300); text-align: right; }
+.doc-detail-note { color: var(--ink-700); font-size: 11px; }
+.doc-detail-source { margin-bottom: 14px; }
+.doc-detail-source .doc-detail-eyebrow { display: block; margin-bottom: 6px; }
+.doc-detail-link { color: var(--cyan-300); font-size: 12.5px; word-break: break-all; }
+.doc-detail-uri { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-300); word-break: break-all; display: block; padding: 8px 10px; background: var(--void-700); border: 1px solid var(--hairline); border-radius: var(--radius-sm); }
+.doc-detail-hint { font-size: 11.5px; color: var(--ink-700); line-height: 1.5; }
 
 /* ── Diff view ───────────────────────────────────────────────── */
 .diff-layout { height: 100%; display: flex; flex-direction: column; padding: 28px; overflow-y: auto; }
