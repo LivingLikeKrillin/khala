@@ -120,7 +120,17 @@ async def _save_chunks(
     classification: ClassificationResult,
     tenant: str,
 ) -> int:
-    """청크를 DB에 저장. 기존 청크 soft_delete 후 새로 삽입."""
+    """청크를 DB에 저장. 기존 청크 soft_delete 후 새로 삽입.
+
+    청크 상태는 저장 시점의 부모 문서 상태를 따른다: 문서가 active면 청크도 active,
+    문서가 non-active(superseded/soft_deleted)면 청크도 superseded로 기록한다.
+    이로써 이미 superseded된 문서의 소스를 재수집(편집/``--force``)해도 청크가
+    active로 되살아나 '죽은 문서 아래 살아있는 청크'라는 엔트로피 분열을 만들지 않는다.
+    """
+    # 부모 문서가 active가 아니면 새/upsert 청크도 살리지 않는다.
+    parent = await db.fetch_one("SELECT status FROM documents WHERE rid = $1", parent_rid)
+    chunk_status = "active" if (parent is not None and parent["status"] == "active") else "superseded"
+
     # 기존 청크 soft_delete
     await db.execute(
         "UPDATE chunks SET status = 'superseded', updated_at = $1 WHERE doc_rid = $2 AND status = 'active'",
@@ -144,7 +154,7 @@ async def _save_chunks(
             ) VALUES (
                 $1, 'chunk', $2, $3::classification_level, 'indexer',
                 $4, 'git', $5,
-                false, 'active',
+                false, $12,
                 $6, $6,
                 $7, $8, $9,
                 $10, 'indexer-v1', $11
@@ -153,7 +163,7 @@ async def _save_chunks(
                 chunk_text = EXCLUDED.chunk_text,
                 classification = EXCLUDED.classification,
                 updated_at = EXCLUDED.updated_at,
-                status = 'active',
+                status = $12,
                 embedding   = CASE WHEN chunks.chunk_text IS DISTINCT FROM EXCLUDED.chunk_text
                                    THEN NULL ELSE chunks.embedding END,
                 tsvector_ko = CASE WHEN chunks.chunk_text IS DISTINCT FROM EXCLUDED.chunk_text
@@ -163,7 +173,7 @@ async def _save_chunks(
             collected.canonical_uri, collected.content_hash,
             now,
             parent_rid, chunk.section_path, chunk.chunk_text,
-            chunk.chunk_index, [parent_rid],
+            chunk.chunk_index, [parent_rid], chunk_status,
         )
         saved += 1
 
