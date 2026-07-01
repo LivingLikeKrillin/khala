@@ -9,9 +9,9 @@ Observer (옛 Probe)는 리뷰어가 머릿속에 들고 있어야 할 맥락에
 2. **API 변경이 하위 호환인가?** nullable 누락, 에러 응답 불일치, breaking change가 리뷰에서 빠집니다. Observer는 스펙을 린트하고 base와 diff합니다.
 3. **이 변경이 규정에 맞는가?** 가이드라인이 있어도 리뷰어가 매번 기억해 대조하기 어렵습니다. Observer는 PR 타입을 추론해 맞는 체크리스트를 생성하고, Nexus가 연결돼 있으면 관련 규정과 영향까지 붙입니다.
 
-관통하는 설계 원칙: **정상일 때는 아무 말도 하지 않는다.** 노이즈는 신뢰를 죽입니다. 경고할 때는 분할 방법까지 제안합니다.
+관통하는 원칙 하나: **정상일 때는 아무 말도 하지 않는다.** 노이즈는 신뢰를 죽입니다. 경고할 때는 어떻게 분할할지까지 제안합니다.
 
-한 줄 정체성: 범위·계약·규정 준수를 근거시켜 PR 리뷰를 정직하게 유지하는 도구 — Nexus가 있으면 풍부해지지만, 없어도 완전히 동작합니다.
+한마디로: 범위·계약·규정 준수를 근거시켜 PR 리뷰를 정직하게 유지합니다. Nexus가 연결되면 더 풍부해지지만, 없어도 완전히 동작합니다.
 
 <svg class="kh-fig" viewBox="0 0 560 220" role="img" aria-label="Observer는 3개 변경 파일에 역할을 배정한다 — api(routes/pay.py, schemas/pay.py)와 data(models/ledger.py) — 두 역할이 섞였음을 발견하고, 병합 순서를 보존한 채 PR-a(api)와 PR-b(data)로 분할을 제안한다.">
 <defs><marker id="ob-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>

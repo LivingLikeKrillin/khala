@@ -3,11 +3,11 @@ title: Nexus
 description: 근거 기반 지식 검색 — 인용 가능한 출처에서만 답하는 RAG + GraphRAG.
 ---
 
-Nexus는 에코시스템의 근거 기반(grounded) 지식 베이스입니다. 조직 내부 지식(문서·정책·설정)과 운영 사실(OpenTelemetry 트레이스)에 대한 질문에, **인용 가능한 근거가 있을 때만** 답합니다. 모든 답변에는 신뢰도(confidence)와 함께, 그 답을 떠받치는 source chunk 또는 trace로 돌아가는 포인터가 붙습니다.
+Nexus는 에코시스템의 지식 베이스입니다. 조직 내부 지식(문서·정책·설정)과 운영 사실(OpenTelemetry 트레이스)에 대한 질문에 **인용 가능한 근거가 있을 때만** 답합니다. 모든 답에는 신뢰도(confidence)와, 그 답을 떠받치는 source chunk 또는 trace로 돌아가는 링크가 붙습니다.
 
-Nexus가 보정(calibrate)하는 문제는 이렇습니다. 일반적인 RAG는 텍스트를 검색한 뒤 모델이 즉흥적으로 답하게 두므로, 근거가 있든 없든 그럴듯한 답을 만들어 냅니다. Nexus는 이를 뒤집습니다. 무엇을 검색할 수 있고 그 답이 근거로 뒷받침되는지는 시스템(결정론적 코드)이 판정하고, LLM은 이미 존재하는 근거 위에서 서술만 합니다. 인용할 출처가 없으면 답은 만들어지지 않습니다.
+일반적인 RAG는 텍스트를 검색한 뒤 모델이 즉흥적으로 답하게 두므로, 근거가 있든 없든 그럴듯한 답을 만들어 냅니다. Nexus는 반대로 동작합니다. 무엇을 검색할 수 있고 그 답이 근거로 뒷받침되는지는 시스템이 판정하고, 모델은 이미 존재하는 근거 위에서 서술만 합니다. 인용할 출처가 없으면 답을 내지 않습니다.
 
-한 줄 정체성: **근거 기반 지식 검색을 위한 엔터프라이즈 RAG + GraphRAG** — AI 에이전트(코드 리뷰, 트러블슈팅)가 추측이 아니라 실제 문서와 관측된 텔레메트리에서 추론하도록 받쳐 주는 context provider입니다.
+한마디로: **근거 기반 검색을 위한 엔터프라이즈 RAG + GraphRAG.** 코드 리뷰·트러블슈팅 에이전트를 위한 컨텍스트 계층으로, 추측이 아니라 실제 문서와 관측된 텔레메트리에서 일하도록 받칩니다.
 
 <svg class="kh-fig" viewBox="0 0 580 384" role="img" aria-label="질의 'payment-service dependencies'에 대한 검색 트레이스. 세 검색기(BM25/mecab-ko, 벡터/768-d, 그래프/2-hop)가 각각 후보 출처를 점수화하고, RRF가 하나의 랭킹으로 통합해 근거 기반 답을 낸다: payment-service는 ledger·fx-rate에 의존, PIPELINE_SPEC.md 인용, 신뢰도 0.92.">
 <defs><marker id="nx-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>

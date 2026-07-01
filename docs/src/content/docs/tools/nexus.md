@@ -3,11 +3,11 @@ title: Nexus
 description: Grounded knowledge retrieval — RAG + GraphRAG that answers only from citable sources, with confidence and provenance.
 ---
 
-Nexus is the grounded knowledge base of the ecosystem. It answers questions about your organization's knowledge (documents, policies, configs) and your operational reality (OpenTelemetry traces) **only from evidence it can cite** — every answer carries a confidence and a pointer back to the source chunk or trace that grounds it.
+Nexus is the ecosystem's knowledge base. It answers questions about your organization's knowledge (documents, policies, configs) and its operational reality (OpenTelemetry traces) **only from evidence it can cite**. Every answer carries a confidence score and a link back to the source chunk or trace it came from.
 
-The problem it calibrates: ordinary RAG retrieves text and lets the model improvise, producing a plausible answer whether or not it has grounds. Nexus inverts that — the system decides what is retrievable and whether the answer is supportable; the LLM only narrates over evidence that already exists. No citable source, no answer.
+Ordinary RAG retrieves text and lets the model improvise, so it returns a plausible answer whether or not it has grounds. Nexus works the other way around: the system decides what can be retrieved and whether an answer is supported, and the model only writes over evidence that already exists. If nothing can be cited, Nexus returns no answer.
 
-One-line identity: **enterprise RAG + GraphRAG for grounded knowledge retrieval** — the context layer that code-review and troubleshooting agents lean on, so they reason from real documents and observed telemetry instead of guessing.
+In short: **enterprise RAG + GraphRAG for grounded retrieval.** It's the context layer for code-review and troubleshooting agents, so they work from real documents and observed telemetry rather than guesses.
 
 <svg class="kh-fig" viewBox="0 0 580 384" role="img" aria-label="A retrieval trace and its answer. For the query 'payment-service dependencies', three retrievers — BM25/mecab-ko, vector/768-d, graph/2-hop — each score candidate sources; RRF fuses them into one ranked list, producing a grounded answer: payment-service depends on ledger and fx-rate, cited to PIPELINE_SPEC.md at confidence 0.92.">
 <defs><marker id="nx-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
@@ -57,7 +57,7 @@ One-line identity: **enterprise RAG + GraphRAG for grounded knowledge retrieval*
 
 ## Core concepts
 
-- **Hybrid search.** Three retrievers run in parallel and fuse with RRF (Reciprocal Rank Fusion, `k=60`): BM25 over Korean morphology (mecab-ko, so 조사/어미 are stripped correctly), Vector (768-dimension embeddings via Ollama), and Graph (2-hop entity traversal).
+- **Hybrid search.** Three retrievers run in parallel and fuse with RRF (Reciprocal Rank Fusion, `k=60`): BM25 over Korean morphology (mecab-ko, so particles and endings are stripped correctly), Vector (768-dimension embeddings via Ollama), and Graph (2-hop entity traversal).
 - **Evidence-driven edges.** No relationship (edge) exists without evidence. Every edge is bound to a source chunk or a trace query reference.
 - **Dual knowledge layer — Designed vs. Observed.** Relationships extracted from design documents (`CALLS`, `PUBLISHES`) live alongside relationships observed in real traces (`CALLS_OBSERVED`, with call counts, error rates, latency).
 - **Design-Observation diff.** Nexus flags `doc_only` (documented but never observed — dead docs), `observed_only` (observed but undocumented — shadow dependencies), and `conflict` (both present but mismatched).
@@ -103,7 +103,7 @@ Open `http://localhost:8000/` and ask in the chat — or use the CLI:
 
 ```bash
 docker compose exec nexus-app nexus ingest ./docs
-docker compose exec nexus-app nexus query "결제 서비스 의존성"
+docker compose exec nexus-app nexus query "payment service dependencies"
 ```
 
 The Web UI is served directly from FastAPI at `http://localhost:8000/` — no build step. New to it? See **[Using the Nexus web app](/tools/nexus-web/)**.
@@ -122,7 +122,7 @@ task down                  # stop (or: docker compose down)
 ```bash
 curl -X POST http://localhost:8000/search/answer \
   -H "Content-Type: application/json" \
-  -d '{"query": "결제 서비스가 어떤 서비스를 호출하나요?", "clearance": "INTERNAL"}'
+  -d '{"query": "which services does the payment service call?", "clearance": "INTERNAL"}'
 ```
 
 The response includes evidence snippets with source URIs and provenance. Use `/search/answer/stream` for SSE streaming in the chat UI.

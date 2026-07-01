@@ -19,22 +19,22 @@
   <text class="lbl" x="24" y="24">FRAGMENTED · TACIT</text>
   <text class="lbl" x="636" y="24" text-anchor="end">ONE SHARED VIEW</text>
 
-  <path class="tacit" d="M108 61 L288 150"/>
-  <path class="tacit" d="M200 95 L288 150"/>
-  <path class="tacit" d="M102 139 L288 150"/>
-  <path class="tacit" d="M194 181 L288 150"/>
-  <path class="tacit" d="M114 225 L288 150"/>
+  <path class="tacit" d="M124 59 L288 150"/>
+  <path class="tacit" d="M124 97 L288 150"/>
+  <path class="tacit" d="M124 135 L288 150"/>
+  <path class="tacit" d="M124 173 L288 150"/>
+  <path class="tacit" d="M124 211 L288 150"/>
 
-  <rect class="box" x="24" y="48" width="84" height="26" rx="5"/>
-  <text class="n" x="66" y="61" text-anchor="middle">docs</text>
-  <rect class="box" x="116" y="82" width="84" height="26" rx="5"/>
-  <text class="n" x="158" y="95" text-anchor="middle">specs</text>
-  <rect class="box" x="18" y="126" width="84" height="26" rx="5"/>
-  <text class="n" x="60" y="139" text-anchor="middle">traces</text>
-  <rect class="box" x="110" y="168" width="84" height="26" rx="5"/>
-  <text class="n" x="152" y="181" text-anchor="middle">configs</text>
-  <rect class="box" x="30" y="212" width="84" height="26" rx="5"/>
-  <text class="n" x="72" y="225" text-anchor="middle">know-how</text>
+  <rect class="box" x="24" y="46" width="100" height="26" rx="5"/>
+  <text class="n" x="74" y="59" text-anchor="middle">docs</text>
+  <rect class="box" x="24" y="84" width="100" height="26" rx="5"/>
+  <text class="n" x="74" y="97" text-anchor="middle">specs</text>
+  <rect class="box" x="24" y="122" width="100" height="26" rx="5"/>
+  <text class="n" x="74" y="135" text-anchor="middle">traces</text>
+  <rect class="box" x="24" y="160" width="100" height="26" rx="5"/>
+  <text class="n" x="74" y="173" text-anchor="middle">configs</text>
+  <rect class="box" x="24" y="198" width="100" height="26" rx="5"/>
+  <text class="n" x="74" y="211" text-anchor="middle">know-how</text>
 
   <rect class="khala" x="290" y="60" width="44" height="200" rx="12"/>
   <text class="k" x="312" y="44" text-anchor="middle">KHALA</text>

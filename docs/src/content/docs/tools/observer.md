@@ -3,15 +3,15 @@ title: Observer
 description: Platform-aware PR analyzer + API contract validator — grounds code review in platform cohesion, backward compatibility, and org guidelines.
 ---
 
-Observer (formerly Probe) grounds the review of a change in context the reviewer would otherwise have to hold in their head. It is a **platform-aware PR analyzer + API contract validator** that turns three recurring review questions into deterministic checks:
+Observer (formerly Probe) grounds the review of a change in context a reviewer would otherwise have to hold in their head. It's a **platform-aware PR analyzer and API contract validator** that turns three recurring review questions into deterministic checks:
 
 1. **Is this PR's scope appropriate?** The same seven files can be one cohesive change in Spring Boot and three separate concerns in Next.js. Judging by file count misfires; Observer judges by *logical cohesion* against a platform profile.
 2. **Is this API change backward-compatible?** Missing nullable flags, inconsistent error responses, and breaking changes slip past review. Observer lints the spec and diffs it against the base.
 3. **Does this change conform to org guidelines?** Even with written guidelines, a reviewer can't recall and cross-check them every time. Observer infers the PR type and generates the matching checklist — and, when Nexus is connected, attaches the relevant rules and impact.
 
-A design principle runs through all of it: **when everything is fine, Observer says nothing.** Noise kills trust. When it does warn, it proposes how to split.
+One principle runs through all of it: **when everything is fine, Observer says nothing.** Noise kills trust. When it does warn, it proposes how to split the change.
 
-One-line identity: the tool that keeps PR review honest by grounding scope, contracts, and conformance — optionally enriched by Nexus, but fully functional without it.
+In short: it keeps PR review honest by grounding scope, contracts, and conformance. It's richer with Nexus connected, but works fully without it.
 
 <svg class="kh-fig" viewBox="0 0 560 220" role="img" aria-label="Observer assigns roles to a 3-file change — api (routes/pay.py, schemas/pay.py) and data (models/ledger.py) — finds two roles mixed, and proposes splitting into PR-a (api) and PR-b (data) with merge order preserved.">
 <defs><marker id="ob-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>

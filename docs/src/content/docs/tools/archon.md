@@ -7,11 +7,11 @@ description: Domain truth governance — the authority window over your invarian
 Archon currently lives as a branch (`spec/domain-invariant-governance`) and the `claims` package inside the Nexus repo. Paths below reference that.
 :::
 
-Archon is the authority window over domain truth — the single place a person or an agent goes to ask "what is true here, and on whose authority?" and get an answer grounded in a governed source, with its freshness and confidence stated plainly.
+Archon is the authority window over domain truth: the one place a person or an agent asks "what is true here, and on whose authority?" and gets an answer grounded in a governed source, with its freshness and confidence stated plainly.
 
-The problem it calibrates: planners (non-engineers) constantly touch the system's preconditions in meetings — limits, policies, invariants — but have no fast way to confirm the *current* value. They corner an engineer, or trust a possibly-stale Notion page, and decisions pile up on wrong premises. Archon's answer is not "always correct" (impossible) but **calibrated**: it never dresses a soft or stale answer up as a hard one. It reads the value from the authoritative source (a code constant) at query time, so it cannot go stale; what it knows it asserts, what it does not it declines to assert.
+Non-engineers constantly touch the system's preconditions in meetings (limits, policies, invariants), but have no fast way to confirm the *current* value. They corner an engineer, or trust a stale Notion page, and decisions pile up on wrong premises. Archon can't be always correct, but it is **calibrated**: it never presents a soft or stale answer as a hard one. It reads each value from its source, a code constant, at query time, so it can't go stale. What it knows, it states plainly; what it can't verify, it declines to answer.
 
-One-line identity: **domain value / invariant / authority governance, built as a Nexus extension** — the defense against the failure mode where the machine confidently invents the meaning of your own business rules.
+In short: **domain value, invariant, and authority governance, built on Nexus.** It guards against the failure mode where a model confidently invents what your own business rules mean.
 
 <svg class="kh-fig" viewBox="0 0 560 210" role="img" aria-label="Archon reads the code constant config/limits.py:12 (MAX_RETRIES = 5) at query time and verifies its content-hash matches the approved hash, returning a calibrated, cited answer: MAX_RETRIES = 5.">
 <defs><marker id="ar-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
@@ -80,7 +80,7 @@ Archon reads the value from the code constant at query time and answers with con
 
 ```bash
 nexus claim-value Basic        # e.g. "basic tier max projects?"
-nexus claim-value 작업          # task limit, etc.
+nexus claim-value Task         # task limit, etc.
 ```
 
 Returns the current value with a calibrated label: high-confidence when read cleanly from the code constant, an honest "couldn't verify" otherwise, and a drift warning if the source changed since last verified.
