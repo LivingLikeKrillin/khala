@@ -105,14 +105,14 @@ def test_view_reflects_seeded_entropy_state():
 
 
 def test_entropy_signals_command_registered():
-    """The `entropy-signals` command is registered on the Typer app (RED until Step 3)."""
+    """The `entropy-signals` command is registered on the Typer app."""
     from nexus.cli import app
 
     names = {c.name for c in app.registered_commands}
     assert "entropy-signals" in names
 
 
-def test_entropy_signals_cli_prints_four_signals():
+def test_entropy_signals_cli_prints_four_signals(monkeypatch):
     """Invoking `entropy-signals` prints all four signal lines from the seeded view.
 
     The command manages its own pool via db.get_pool()/DATABASE_URL, so we point DATABASE_URL
@@ -126,7 +126,7 @@ def test_entropy_signals_cli_prints_four_signals():
     # seed the real DB (the _run harness truncates → seeds → commits → closes its pool)
     _run(_seed_entropy_state)
 
-    os.environ["DATABASE_URL"] = DB_URL
+    monkeypatch.setenv("DATABASE_URL", DB_URL)  # auto-reverted after the test
     prev_policy = asyncio.get_event_loop_policy()
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
