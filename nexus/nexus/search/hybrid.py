@@ -72,6 +72,8 @@ async def _bm25_search(
           AND c.classification <= $3::classification_level
           AND c.is_quarantined = false
           AND c.status = 'active'
+          AND EXISTS (SELECT 1 FROM documents d
+                      WHERE d.rid = c.doc_rid AND d.status = 'active')
         ORDER BY rank_score DESC
         LIMIT $4
         """,
@@ -106,6 +108,8 @@ async def _vector_search(
           AND c.classification <= $3::classification_level
           AND c.is_quarantined = false
           AND c.status = 'active'
+          AND EXISTS (SELECT 1 FROM documents d
+                      WHERE d.rid = c.doc_rid AND d.status = 'active')
         ORDER BY distance ASC
         LIMIT $4
         """,
