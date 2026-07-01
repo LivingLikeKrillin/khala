@@ -9,11 +9,51 @@ Nexus가 보정(calibrate)하는 문제는 이렇습니다. 일반적인 RAG는 
 
 한 줄 정체성: **근거 기반 지식 검색을 위한 엔터프라이즈 RAG + GraphRAG** — AI 에이전트(코드 리뷰, 트러블슈팅)가 추측이 아니라 실제 문서와 관측된 텔레메트리에서 추론하도록 받쳐 주는 context provider입니다.
 
-<img
-  src="/khala/diagrams/nexus.svg"
-  alt="하이브리드 검색: 질의가 BM25(mecab-ko)·벡터(768차원)·그래프(2-hop) 검색기로 갈라지고, 그 결과가 RRF(k=60)로 통합되어 출처를 인용하거나 거부하는 근거 기반 답변이 된다."
-  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
-/>
+<svg class="kh-fig" viewBox="0 0 580 384" role="img" aria-label="질의 'payment-service dependencies'에 대한 검색 트레이스. 세 검색기(BM25/mecab-ko, 벡터/768-d, 그래프/2-hop)가 각각 후보 출처를 점수화하고, RRF가 하나의 랭킹으로 통합해 근거 기반 답을 낸다: payment-service는 ledger·fx-rate에 의존, PIPELINE_SPEC.md 인용, 신뢰도 0.92.">
+<defs><marker id="nx-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<text class="kh-fig-q" x="24" y="22">› payment-service dependencies?</text>
+<text class="kh-fig-h" x="24" y="52">BM25 · MECAB-KO</text>
+<text class="kh-fig-d" x="30" y="72">PIPELINE_SPEC</text>
+<rect class="kh-fig-track" x="150" y="67" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="67" width="86" height="6" rx="3"/>
+<text class="kh-fig-d" x="30" y="92">API_CONTRACT</text>
+<rect class="kh-fig-track" x="150" y="87" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="87" width="44" height="6" rx="3"/>
+<text class="kh-fig-h" x="24" y="122">VECTOR · 768-D</text>
+<text class="kh-fig-d" x="30" y="142">PIPELINE_SPEC</text>
+<rect class="kh-fig-track" x="150" y="137" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="137" width="74" height="6" rx="3"/>
+<text class="kh-fig-d" x="30" y="162">ledger.svc</text>
+<rect class="kh-fig-track" x="150" y="157" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="157" width="58" height="6" rx="3"/>
+<text class="kh-fig-h" x="24" y="192">GRAPH · 2-HOP</text>
+<text class="kh-fig-d" x="30" y="212">payment→fx</text>
+<rect class="kh-fig-track" x="150" y="207" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="207" width="66" height="6" rx="3"/>
+<path class="kh-fig-line-acc" d="M250 72 C 296 72, 292 132, 320 132"/>
+<path class="kh-fig-line-acc" d="M250 150 C 296 150, 302 132, 320 132"/>
+<path class="kh-fig-line-acc" d="M250 210 C 296 210, 292 132, 320 132"/>
+<path class="kh-fig-line-acc" d="M320 132 L336 132" marker-end="url(#nx-a)"/>
+<rect class="kh-fig-panel" x="336" y="44" width="212" height="176" rx="8"/>
+<text class="kh-fig-h" x="354" y="66">RRF · FUSED</text>
+<line class="kh-fig-rule" x1="354" y1="80" x2="530" y2="80"/>
+<text class="kh-fig-rk" x="354" y="102">1</text>
+<text class="kh-fig-d" x="376" y="102">PIPELINE_SPEC.md</text>
+<text class="kh-fig-rk" x="354" y="126">2</text>
+<text class="kh-fig-d" x="376" y="126">ledger.svc</text>
+<text class="kh-fig-rk" x="354" y="150">3</text>
+<text class="kh-fig-d" x="376" y="150">payment→fx</text>
+<path class="kh-fig-line-acc" d="M442 220 L442 252" marker-end="url(#nx-a)"/>
+<rect class="kh-fig-panel" x="24" y="252" width="532" height="116" rx="8"/>
+<text class="kh-fig-h" x="42" y="276">GROUNDED ANSWER</text>
+<text class="kh-fig-verified" x="538" y="276" text-anchor="end">✓ CITED</text>
+<line class="kh-fig-rule" x1="42" y1="290" x2="538" y2="290"/>
+<text class="kh-fig-ans" x="42" y="313">payment-service → ledger, fx-rate</text>
+<text class="kh-fig-s" x="42" y="333">documented + observed · no drift</text>
+<text class="kh-fig-s" x="42" y="356">SOURCE</text>
+<text class="kh-fig-d" x="96" y="356">PIPELINE_SPEC.md</text>
+<text class="kh-fig-s" x="538" y="356" text-anchor="end">CONFIDENCE 0.92</text>
+</svg>
 
 ## 핵심 개념
 

@@ -13,11 +13,25 @@ The problem it calibrates: planners (non-engineers) constantly touch the system'
 
 One-line identity: **domain value / invariant / authority governance, built as a Nexus extension** — the defense against the failure mode where the machine confidently invents the meaning of your own business rules.
 
-<img
-  src="/khala/diagrams/archon.svg"
-  alt="Archon answers a domain question: locate the claim, then read its code constant at query time. If the source is not readable, Archon declines to assert; if the code hash has drifted since the claim was last verified, it answers with a drift warning; otherwise it returns a calibrated answer."
-  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
-/>
+<svg class="kh-fig" viewBox="0 0 560 210" role="img" aria-label="Archon reads the code constant config/limits.py:12 (MAX_RETRIES = 5) at query time and verifies its content-hash matches the approved hash, returning a calibrated, cited answer: MAX_RETRIES = 5.">
+<defs><marker id="ar-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<text class="kh-fig-q" x="24" y="22">› max retry limit?</text>
+<rect class="kh-fig-panel" x="24" y="36" width="250" height="150" rx="8"/>
+<text class="kh-fig-h" x="42" y="60">READ CONSTANT</text>
+<line class="kh-fig-rule" x1="42" y1="72" x2="256" y2="72"/>
+<text class="kh-fig-d" x="42" y="94">config/limits.py:12</text>
+<text class="kh-fig-ans" x="42" y="120">MAX_RETRIES = 5</text>
+<text class="kh-fig-s" x="42" y="146">content-hash 3f9a2c</text>
+<text class="kh-fig-verified" x="42" y="168">✓ matches approved</text>
+<path class="kh-fig-line-acc" d="M274 111 L300 111" marker-end="url(#ar-a)"/>
+<rect class="kh-fig-panel" x="300" y="36" width="236" height="150" rx="8"/>
+<text class="kh-fig-h" x="318" y="60">GROUNDED ANSWER</text>
+<line class="kh-fig-rule" x1="318" y1="72" x2="518" y2="72"/>
+<text class="kh-fig-ans" x="318" y="98">MAX_RETRIES = 5</text>
+<text class="kh-fig-d" x="318" y="124">→ config/limits.py:12</text>
+<text class="kh-fig-s" x="318" y="148">read at query time · calibrated</text>
+<text class="kh-fig-verified" x="318" y="170">✓ VERIFIED · no drift</text>
+</svg>
 
 ## Core concepts
 

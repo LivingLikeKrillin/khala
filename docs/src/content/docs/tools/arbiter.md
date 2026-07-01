@@ -9,11 +9,27 @@ The problem it calibrates: when an assistant produces a confident spec, the path
 
 One-line identity: a ledger that makes "who approved what, and why" a recorded, attributable act — so you cannot rubber-stamp your way past it.
 
-<img
-  src="/khala/diagrams/arbiter.svg"
-  alt="Spec lifecycle: Recorded → Critiqued (issues) → Approved (content-hashed) → Implementing (gate armed, edits allowed) → Done. Write/Edit stays blocked until approval."
-  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
-/>
+<svg class="kh-fig" viewBox="0 0 560 224" role="img" aria-label="Arbiter gates implementation on an approved, content-hashed spec. SPEC-014 goes Recorded → Critiqued (2 issues) → Approved and locked; the approved hash e34a17c9 must match the change hash for the gate to open — a mismatch blocks Write/Edit.">
+<defs><marker id="ab-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="kh-fig-box" x="24" y="28" width="120" height="38" rx="6"/>
+<text class="kh-fig-d" x="84" y="47" text-anchor="middle">Recorded</text>
+<path class="kh-fig-line" d="M144 47 L176 47" marker-end="url(#ab-a)"/>
+<rect class="kh-fig-box" x="176" y="28" width="150" height="38" rx="6"/>
+<text class="kh-fig-d" x="251" y="47" text-anchor="middle">Critiqued · 2 issues</text>
+<path class="kh-fig-line" d="M326 47 L358 47" marker-end="url(#ab-a)"/>
+<rect class="kh-fig-box-acc" x="358" y="28" width="164" height="38" rx="6"/>
+<text class="kh-fig-d" x="440" y="47" text-anchor="middle">Approved · locked</text>
+<rect class="kh-fig-panel" x="24" y="92" width="512" height="118" rx="8"/>
+<text class="kh-fig-h" x="42" y="116">GATE · APPROVED_HASH</text>
+<line class="kh-fig-rule" x1="42" y1="128" x2="518" y2="128"/>
+<text class="kh-fig-d" x="42" y="152">approved</text>
+<text class="kh-fig-d" x="140" y="152">e34a17c9</text>
+<text class="kh-fig-d" x="42" y="176">change</text>
+<text class="kh-fig-d" x="140" y="176">e34a17c9</text>
+<path class="kh-fig-line-acc" d="M244 152 L256 152 L256 164 M244 176 L256 176 L256 164 M256 164 L274 164" marker-end="url(#ab-a)"/>
+<text class="kh-fig-verified" x="286" y="164">✓ MATCH · gate open</text>
+<text class="kh-fig-s" x="42" y="200">mismatch → Write / Edit blocked</text>
+</svg>
 
 ## Core concepts
 

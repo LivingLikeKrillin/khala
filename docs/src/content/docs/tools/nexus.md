@@ -9,11 +9,51 @@ The problem it calibrates: ordinary RAG retrieves text and lets the model improv
 
 One-line identity: **enterprise RAG + GraphRAG for grounded knowledge retrieval** — the context layer that code-review and troubleshooting agents lean on, so they reason from real documents and observed telemetry instead of guessing.
 
-<img
-  src="/khala/diagrams/nexus.svg"
-  alt="Hybrid retrieval: a query fans out to BM25 (mecab-ko), Vector (768-d), and Graph (2-hop) retrievers; their results fuse via RRF (k=60) into a grounded answer that cites a source or refuses."
-  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
-/>
+<svg class="kh-fig" viewBox="0 0 580 384" role="img" aria-label="A retrieval trace and its answer. For the query 'payment-service dependencies', three retrievers — BM25/mecab-ko, vector/768-d, graph/2-hop — each score candidate sources; RRF fuses them into one ranked list, producing a grounded answer: payment-service depends on ledger and fx-rate, cited to PIPELINE_SPEC.md at confidence 0.92.">
+<defs><marker id="nx-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<text class="kh-fig-q" x="24" y="22">› payment-service dependencies?</text>
+<text class="kh-fig-h" x="24" y="52">BM25 · MECAB-KO</text>
+<text class="kh-fig-d" x="30" y="72">PIPELINE_SPEC</text>
+<rect class="kh-fig-track" x="150" y="67" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="67" width="86" height="6" rx="3"/>
+<text class="kh-fig-d" x="30" y="92">API_CONTRACT</text>
+<rect class="kh-fig-track" x="150" y="87" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="87" width="44" height="6" rx="3"/>
+<text class="kh-fig-h" x="24" y="122">VECTOR · 768-D</text>
+<text class="kh-fig-d" x="30" y="142">PIPELINE_SPEC</text>
+<rect class="kh-fig-track" x="150" y="137" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="137" width="74" height="6" rx="3"/>
+<text class="kh-fig-d" x="30" y="162">ledger.svc</text>
+<rect class="kh-fig-track" x="150" y="157" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="157" width="58" height="6" rx="3"/>
+<text class="kh-fig-h" x="24" y="192">GRAPH · 2-HOP</text>
+<text class="kh-fig-d" x="30" y="212">payment→fx</text>
+<rect class="kh-fig-track" x="150" y="207" width="100" height="6" rx="3"/>
+<rect class="kh-fig-bar" x="150" y="207" width="66" height="6" rx="3"/>
+<path class="kh-fig-line-acc" d="M250 72 C 296 72, 292 132, 320 132"/>
+<path class="kh-fig-line-acc" d="M250 150 C 296 150, 302 132, 320 132"/>
+<path class="kh-fig-line-acc" d="M250 210 C 296 210, 292 132, 320 132"/>
+<path class="kh-fig-line-acc" d="M320 132 L336 132" marker-end="url(#nx-a)"/>
+<rect class="kh-fig-panel" x="336" y="44" width="212" height="176" rx="8"/>
+<text class="kh-fig-h" x="354" y="66">RRF · FUSED</text>
+<line class="kh-fig-rule" x1="354" y1="80" x2="530" y2="80"/>
+<text class="kh-fig-rk" x="354" y="102">1</text>
+<text class="kh-fig-d" x="376" y="102">PIPELINE_SPEC.md</text>
+<text class="kh-fig-rk" x="354" y="126">2</text>
+<text class="kh-fig-d" x="376" y="126">ledger.svc</text>
+<text class="kh-fig-rk" x="354" y="150">3</text>
+<text class="kh-fig-d" x="376" y="150">payment→fx</text>
+<path class="kh-fig-line-acc" d="M442 220 L442 252" marker-end="url(#nx-a)"/>
+<rect class="kh-fig-panel" x="24" y="252" width="532" height="116" rx="8"/>
+<text class="kh-fig-h" x="42" y="276">GROUNDED ANSWER</text>
+<text class="kh-fig-verified" x="538" y="276" text-anchor="end">✓ CITED</text>
+<line class="kh-fig-rule" x1="42" y1="290" x2="538" y2="290"/>
+<text class="kh-fig-ans" x="42" y="313">payment-service → ledger, fx-rate</text>
+<text class="kh-fig-s" x="42" y="333">documented + observed · no drift</text>
+<text class="kh-fig-s" x="42" y="356">SOURCE</text>
+<text class="kh-fig-d" x="96" y="356">PIPELINE_SPEC.md</text>
+<text class="kh-fig-s" x="538" y="356" text-anchor="end">CONFIDENCE 0.92</text>
+</svg>
 
 ## Core concepts
 

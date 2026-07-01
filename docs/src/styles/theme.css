@@ -792,3 +792,89 @@ a.kh-tile:hover .kh-arrow {
   width: 100%;
   height: auto;
 }
+
+/* ── Inline figures (bespoke per-tool "trace" illustrations) ──────────────
+   Inlined in page bodies so they use the site's mono font and adapt to the
+   active theme via tokens — no external <img> font fallback. */
+.kh-fig {
+  display: block;
+  width: 100%;
+  max-width: 580px;
+  height: auto;
+  margin: 1.85rem auto;
+}
+.kh-fig text {
+  dominant-baseline: middle;
+  font-family: var(--sl-font-mono);
+}
+.kh-fig-q {
+  fill: var(--kh-fg-dim);
+  font-size: 11px;
+}
+.kh-fig-h {
+  fill: var(--kh-accent);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.kh-fig-d {
+  fill: var(--kh-fg-muted);
+  font-size: 10.5px;
+}
+.kh-fig-s {
+  fill: var(--kh-fg-dim);
+  font-size: 9.5px;
+}
+.kh-fig-rk {
+  fill: var(--kh-accent);
+  font-size: 10.5px;
+}
+.kh-fig-box {
+  fill: none;
+  stroke: var(--kh-hairline-strong);
+  stroke-width: 1.3;
+}
+.kh-fig-box-acc {
+  fill: none;
+  stroke: var(--kh-accent-line);
+  stroke-width: 1.5;
+}
+.kh-fig-surface {
+  fill: var(--kh-surface);
+  stroke: var(--kh-hairline);
+}
+.kh-fig-line {
+  stroke: var(--kh-hairline-strong);
+  stroke-width: 1.1;
+  fill: none;
+}
+.kh-fig-line-acc {
+  stroke: var(--kh-accent-line);
+  stroke-width: 1.2;
+  fill: none;
+}
+.kh-fig-bar {
+  fill: var(--kh-accent);
+  opacity: 0.5;
+}
+.kh-fig-rule {
+  stroke: var(--kh-hairline);
+  stroke-width: 1;
+}
+.kh-fig-ah {
+  fill: var(--kh-accent-line);
+}
+.kh-fig-panel {
+  fill: var(--kh-surface);
+  stroke: var(--kh-accent-line);
+  stroke-width: 1.4;
+}
+.kh-fig-track {
+  fill: var(--kh-hairline);
+}
+.kh-fig-verified {
+  fill: var(--kh-verified);
+}
+.kh-fig-ans {
+  fill: var(--kh-fg);
+  font-size: 12.5px;
+}

@@ -1,24 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="905" height="503.33333333333337" viewBox="0 0 905 503.33333333333337">
-<rect x="675" y="50" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
-<rect x="425" y="50" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
-<rect x="550" y="214.22222222222223" width="180" height="70" rx="7.2" fill="#132f4c" stroke="#90caf9" stroke-width="2" />
-<rect x="300" y="214.22222222222223" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
-<rect x="50" y="214.22222222222223" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
-<rect x="300" y="383.33333333333337" width="180" height="70" rx="7.2" fill="#0d2137" stroke="#5c9ce6" stroke-width="2" />
-<defs><marker id="marker-el_13" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
-<path d="M 765 120 L 670 214.22222222222223" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_13)" />
-<defs><marker id="marker-el_14" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
-<path d="M 515 120 L 610 214.22222222222223" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_14)" />
-<defs><marker id="marker-el_15" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
-<path d="M 640 284.22222222222223 L 435 383.33333333333337" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_15)" />
-<defs><marker id="marker-el_16" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
-<path d="M 390 284.22222222222223 L 390 383.33333333333337" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_16)" />
-<defs><marker id="marker-el_17" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5c9ce6"/></marker></defs>
-<path d="M 140 284.22222222222223 L 345 383.33333333333337" fill="none" stroke="#5c9ce6" stroke-width="2" marker-end="url(#marker-el_17)" />
-<text x="765" y="88.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Developer</text>
-<text x="515" y="88.6" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Agent</text>
-<text x="640" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Archon</text>
-<text x="390" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Arbiter</text>
-<text x="140" y="252.82222222222222" font-size="16" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Observer</text>
-<text x="390" y="421.2583333333334" font-size="13" font-family="'Cascadia Code','Fira Code',monospace" fill="#e3f2fd" text-anchor="middle" opacity="1">Nexus — the Khala link</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="316" viewBox="0 0 660 316" role="img" aria-label="Khala unifies fragmented, tacit knowledge — docs, specs, traces, configs, know-how — into one link. From that single link, a human developer and an AI agent read the same shared view: one source of truth. The tools connect only through Khala.">
+  <style>
+    text { font-family: ui-monospace, 'JetBrains Mono', 'Cascadia Code', monospace; dominant-baseline: middle; }
+    .lbl { fill: #6b7480; font-size: 10px; letter-spacing: .14em; }
+    .n { fill: #8b95a3; font-size: 11px; }
+    .k { fill: #4f8fc4; font-size: 12px; letter-spacing: .14em; }
+    .kd { fill: #6b7480; font-size: 9.5px; letter-spacing: .14em; }
+    .box { fill: none; stroke: #7b8492; stroke-width: 1.3; }
+    .khala { fill: none; stroke: #4f8fc4; stroke-width: 1.6; }
+    .card { fill: none; stroke: #4f8fc4; stroke-width: 1.5; }
+    .tacit { stroke: #7b8492; stroke-width: 1; fill: none; stroke-dasharray: 3 3; opacity: .8; }
+    .ln { stroke: #4f8fc4; stroke-width: 1.2; fill: none; }
+    .cap { fill: #6b7480; font-size: 10px; letter-spacing: .04em; }
+  </style>
+  <defs>
+    <marker id="ec-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#4f8fc4"/></marker>
+  </defs>
+
+  <text class="lbl" x="24" y="24">FRAGMENTED · TACIT</text>
+  <text class="lbl" x="636" y="24" text-anchor="end">ONE SHARED VIEW</text>
+
+  <path class="tacit" d="M108 61 L288 150"/>
+  <path class="tacit" d="M200 95 L288 150"/>
+  <path class="tacit" d="M102 139 L288 150"/>
+  <path class="tacit" d="M194 181 L288 150"/>
+  <path class="tacit" d="M114 225 L288 150"/>
+
+  <rect class="box" x="24" y="48" width="84" height="26" rx="5"/>
+  <text class="n" x="66" y="61" text-anchor="middle">docs</text>
+  <rect class="box" x="116" y="82" width="84" height="26" rx="5"/>
+  <text class="n" x="158" y="95" text-anchor="middle">specs</text>
+  <rect class="box" x="18" y="126" width="84" height="26" rx="5"/>
+  <text class="n" x="60" y="139" text-anchor="middle">traces</text>
+  <rect class="box" x="110" y="168" width="84" height="26" rx="5"/>
+  <text class="n" x="152" y="181" text-anchor="middle">configs</text>
+  <rect class="box" x="30" y="212" width="84" height="26" rx="5"/>
+  <text class="n" x="72" y="225" text-anchor="middle">know-how</text>
+
+  <rect class="khala" x="290" y="60" width="44" height="200" rx="12"/>
+  <text class="k" x="312" y="44" text-anchor="middle">KHALA</text>
+  <text class="kd" x="312" y="278" text-anchor="middle">THE LINK</text>
+
+  <path class="ln" d="M334 150 L406 150" marker-end="url(#ec-a)"/>
+
+  <rect class="card" x="410" y="104" width="176" height="92" rx="8"/>
+  <text class="k" x="428" y="128" style="font-size:10px">SHARED VIEW</text>
+  <text class="n" x="428" y="152">payment-service → ledger</text>
+  <text class="kd" x="428" y="174" style="letter-spacing:.04em">one source of truth</text>
+
+  <rect class="box" x="440" y="52" width="120" height="30" rx="6"/>
+  <text class="n" x="500" y="67" text-anchor="middle">Developer</text>
+  <path class="ln" d="M500 82 L500 104" marker-end="url(#ec-a)"/>
+  <rect class="box" x="440" y="216" width="120" height="30" rx="6"/>
+  <text class="n" x="500" y="231" text-anchor="middle">Agent</text>
+  <path class="ln" d="M500 216 L500 196" marker-end="url(#ec-a)"/>
+
+  <text class="cap" x="330" y="302" text-anchor="middle">every source → one link → human and agent share one view</text>
 </svg>

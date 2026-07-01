@@ -9,11 +9,36 @@ The problem it calibrates: a passing test suite is not the same as a suite that 
 
 One-line identity: the harness that turns "tests pass" into "tests actually verify behavior," with surviving mutants as the deterministic signal.
 
-<img
-  src="/khala/diagrams/probe.svg"
-  alt="Mutation flow: green suite → cosmic-ray mutate → run the suite per mutant → any survivors? None reports no gaps; otherwise Critic triage → ledger → report of biting real-gaps."
-  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
-/>
+<svg class="kh-fig" viewBox="0 0 560 230" role="img" aria-label="Probe mutation-tests a green suite: of 12 mutants, 10 are killed and 2 survive. The survivors expose a real gap in ledger.py:reconcile where a boundary is not covered — add a test.">
+<defs><marker id="pb-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="kh-fig-panel" x="24" y="28" width="250" height="180" rx="8"/>
+<text class="kh-fig-h" x="42" y="52">MUTANTS · 12</text>
+<line class="kh-fig-rule" x1="42" y1="64" x2="256" y2="64"/>
+<rect class="kh-fig-track" x="44" y="80" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="82" y="80" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="120" y="80" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="158" y="80" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="44" y="110" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="82" y="110" width="30" height="22" rx="3"/>
+<rect class="kh-fig-box-acc" x="120" y="110" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="158" y="110" width="30" height="22" rx="3"/>
+<rect class="kh-fig-box-acc" x="44" y="140" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="82" y="140" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="120" y="140" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="158" y="140" width="30" height="22" rx="3"/>
+<rect class="kh-fig-track" x="42" y="180" width="12" height="12" rx="2"/>
+<text class="kh-fig-s" x="60" y="187">killed ×10</text>
+<rect class="kh-fig-box-acc" x="150" y="180" width="12" height="12" rx="2"/>
+<text class="kh-fig-s" x="168" y="187">survived ×2</text>
+<path class="kh-fig-line-acc" d="M274 118 L300 118" marker-end="url(#pb-a)"/>
+<rect class="kh-fig-panel" x="300" y="28" width="236" height="180" rx="8"/>
+<text class="kh-fig-h" x="318" y="52">GAP FOUND</text>
+<line class="kh-fig-rule" x1="318" y1="64" x2="518" y2="64"/>
+<text class="kh-fig-ans" x="318" y="94">2 survived</text>
+<text class="kh-fig-d" x="318" y="122">ledger.py:reconcile</text>
+<text class="kh-fig-s" x="318" y="144">boundary not covered</text>
+<text class="kh-fig-d" x="318" y="176">→ add test</text>
+</svg>
 
 ## Core concepts
 

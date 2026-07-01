@@ -13,11 +13,27 @@ Observer (옛 Probe)는 리뷰어가 머릿속에 들고 있어야 할 맥락에
 
 한 줄 정체성: 범위·계약·규정 준수를 근거시켜 PR 리뷰를 정직하게 유지하는 도구 — Nexus가 있으면 풍부해지지만, 없어도 완전히 동작합니다.
 
-<img
-  src="/khala/diagrams/observer.svg"
-  alt="범위 분석: 변경 파일 → 역할 배정 → 응집 그룹 매칭 → 심각도 점수 → 관심사가 섞였는가? 그렇다면 병합 순서와 함께 분할 제안, 응집적이면 침묵."
-  style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
-/>
+<svg class="kh-fig" viewBox="0 0 560 220" role="img" aria-label="Observer는 3개 변경 파일에 역할을 배정한다 — api(routes/pay.py, schemas/pay.py)와 data(models/ledger.py) — 두 역할이 섞였음을 발견하고, 병합 순서를 보존한 채 PR-a(api)와 PR-b(data)로 분할을 제안한다.">
+<defs><marker id="ob-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="kh-fig-panel" x="24" y="28" width="284" height="168" rx="8"/>
+<text class="kh-fig-h" x="42" y="52">SCOPE · 3 FILES</text>
+<line class="kh-fig-rule" x1="42" y1="64" x2="290" y2="64"/>
+<text class="kh-fig-h" x="42" y="88">API</text>
+<text class="kh-fig-d" x="88" y="88">routes/pay.py</text>
+<text class="kh-fig-d" x="88" y="108">schemas/pay.py</text>
+<text class="kh-fig-h" x="42" y="140">DATA</text>
+<text class="kh-fig-d" x="88" y="140">models/ledger.py</text>
+<text class="kh-fig-s" x="42" y="176">cohesion scored · roles matched</text>
+<path class="kh-fig-line-acc" d="M308 112 L334 112" marker-end="url(#ob-a)"/>
+<rect class="kh-fig-panel" x="334" y="28" width="202" height="168" rx="8"/>
+<text class="kh-fig-h" x="352" y="52">VERDICT</text>
+<line class="kh-fig-rule" x1="352" y1="64" x2="518" y2="64"/>
+<text class="kh-fig-ans" x="352" y="92">mixed · 2 roles</text>
+<text class="kh-fig-d" x="352" y="122">propose split</text>
+<text class="kh-fig-d" x="352" y="146">› PR-a  api</text>
+<text class="kh-fig-d" x="352" y="166">› PR-b  data</text>
+<text class="kh-fig-s" x="352" y="186">merge order preserved</text>
+</svg>
 
 ## 핵심 개념
 
