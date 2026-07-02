@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="660" height="316" viewBox="0 0 660 316" role="img" aria-label="Khala unifies fragmented, tacit knowledge — docs, specs, traces, configs, know-how — into one link. From that single link, a human developer and an AI agent read the same shared view: one source of truth. The tools connect only through Khala.">
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="352" viewBox="0 0 660 352" role="img" aria-label="Khala unifies fragmented, tacit knowledge — docs, specs, traces, configs, know-how — into one link. From that single link, a human developer and an AI agent read the same shared view: one source of truth. Below, Adept reads the same link as a ledger: what must be known is the denominator of cognitive debt, measured as vouch coverage. The tools connect only through Khala.">
   <style>
     text { font-family: ui-monospace, 'JetBrains Mono', 'Cascadia Code', monospace; dominant-baseline: middle; }
     .lbl { fill: #6b7480; font-size: 10px; letter-spacing: .14em; }
@@ -11,6 +11,7 @@
     .tacit { stroke: #7b8492; stroke-width: 1; fill: none; stroke-dasharray: 3 3; opacity: .8; }
     .ln { stroke: #4f8fc4; stroke-width: 1.2; fill: none; }
     .cap { fill: #6b7480; font-size: 10px; letter-spacing: .04em; }
+    .s { fill: #6b7480; font-size: 9px; }
   </style>
   <defs>
     <marker id="ec-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#4f8fc4"/></marker>
@@ -37,8 +38,8 @@
   <text class="n" x="74" y="211" text-anchor="middle">know-how</text>
 
   <rect class="khala" x="290" y="60" width="44" height="200" rx="12"/>
-  <text class="k" x="312" y="44" text-anchor="middle">KHALA</text>
-  <text class="kd" x="312" y="278" text-anchor="middle">THE LINK</text>
+  <text class="k" x="312" y="34" text-anchor="middle">KHALA</text>
+  <text class="kd" x="312" y="49" text-anchor="middle">THE LINK</text>
 
   <path class="ln" d="M334 150 L406 150" marker-end="url(#ec-a)"/>
 
@@ -54,5 +55,11 @@
   <text class="n" x="500" y="231" text-anchor="middle">Agent</text>
   <path class="ln" d="M500 216 L500 196" marker-end="url(#ec-a)"/>
 
-  <text class="cap" x="330" y="302" text-anchor="middle">every source → one link → human and agent share one view</text>
+  <path class="ln" d="M312 260 L312 282" marker-end="url(#ec-a)"/>
+  <rect class="box" x="250" y="286" width="124" height="32" rx="6"/>
+  <text class="n" x="312" y="302" text-anchor="middle">Adept</text>
+  <text class="s" x="386" y="295">reads the link as a ledger:</text>
+  <text class="s" x="386" y="310">what must be known → vouch coverage</text>
+
+  <text class="cap" x="330" y="338" text-anchor="middle">every source → one link → one shared view · and a ledger of who still understands it</text>
 </svg>

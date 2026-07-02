@@ -67,7 +67,7 @@ Each narrows the gap between how confident the system sounds and how much it act
 
 <img
   src="/khala/diagrams/ecosystem.svg"
-  alt="Developers and agents reach Archon, the authority window; Archon, Arbiter, and Observer publish to and query Nexus — the Khala link. The tools connect only through Khala."
+  alt="Fragmented sources — docs, specs, traces, configs, know-how — flow into one link, Khala. A developer and an agent read the same shared view from it, and Adept reads the same link as a ledger: what must be known, measured as vouch coverage. The tools connect only through Khala."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
 
