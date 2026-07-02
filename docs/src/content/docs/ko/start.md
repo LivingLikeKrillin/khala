@@ -12,10 +12,11 @@ description: 목표를 고르면, 맞는 도구로 안내합니다.
 | PR·트러블슈팅을 조직 맥락에 근거시키고 싶다 | [Observer](/ko/tools/observer/) |
 | 명세 고무도장을 멈추고 싶다 | [Arbiter](/ko/tools/arbiter/) |
 | AI가 생성한 테스트가 실제로 행위를 검증하게 하고 싶다 | [Probe](/ko/tools/probe/) |
+| AI가 쓴 것을 사람이 여전히 보증할 수 있는지 알고 싶다 | [Adept](/ko/tools/adept/) |
 
 ## 5분 투어
 [Khala란?](/ko/) → [철학](/ko/philosophy/) → [생태계](/ko/ecosystem/)
 
 ## 사전 준비
 - 공통: git, 최신 런타임.
-- Nexus: Docker (Postgres 등은 compose 스택 안에서 실행 — 별도 설치 불필요). Observer: Node ≥20. Arbiter / Probe: Python (Probe는 `cosmic-ray` 필요).
+- Nexus: Docker (Postgres 등은 compose 스택 안에서 실행 — 별도 설치 불필요). Observer: Node ≥20. Arbiter / Probe / Adept: Python (Probe는 `cosmic-ray` 필요).

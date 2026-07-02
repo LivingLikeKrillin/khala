@@ -11,6 +11,17 @@ In the lore that gives this ecosystem its name, the Khala is the psychic link th
 
 This matters now because large language models are extraordinarily fluent and extraordinarily willing: they answer anything, in confident prose, whether or not they have grounds to. That fluency changes how teams build software, and it opens two distinct failure modes that no single tool can close on its own. Khala exists to defend against both.
 
+## The same information
+
+Khala's founding expectation is simple to state: everyone who builds and runs the service thinks from the **same information**. The AI era changes that sentence twice. "Everyone" now includes agents — a stakeholder that reads faster than any human and never asks a colleague. And "information" turns out to be four different things, drifting apart at four different speeds:
+
+1. **What the org knows** — documents, specs, know-how. Kept the same by one warehouse with two doors: humans and agents read the same governed corpus — same approvals, same current version, same citations. (**Nexus**)
+2. **Why it was built** — design decisions. Coding agents make hundreds of micro-decisions nobody would have documented before; recording them now costs nothing, and approval remains a named human's accountable act. A flight recorder, not paperwork. (**Arbiter**)
+3. **What the system is actually doing** — traces, metrics, logs. Khala doesn't try to be another observability stack; it joins telemetry with approved knowledge — specs, runbooks, decisions — into judgment context for review and troubleshooting. (**Observer**, over Nexus)
+4. **Who still understands it** — comprehension. The quiet one. It lives in heads, not files, and it decays silently as agent output grows. It becomes manageable only next to the warehouse: what must be known is the denominator, what a named human can still vouch for is the numerator, and the gap is cognitive debt — measured, listed, repayable. (**Adept**)
+
+The fourth kind is why the other three live in one place. You cannot measure "what we should know but don't" without an inventory of what should be known — the warehouse *is* that inventory. Cognitive debt isn't managed by a dashboard bolted onto a search tool; it's the same substrate, read as a ledger.
+
 ## Failure ① — the machine lies
 
 The first failure is the obvious one, the one everyone has felt: the machine states something stale or wrong with the same confidence it uses for what it actually knows. It doesn't lie out of malice; it lies because a plausible answer is cheaper to generate than a true one. Ask it about your domain (your invariants, your business rules, the meaning of a status code in your own system) and it will happily invent an answer that sounds right and isn't.
@@ -37,6 +48,7 @@ The thread through all of this is **calibration**. Khala doesn't promise correct
 - **Nexus** grounds knowledge in sources.
 - **Arbiter** grounds approval in accountable judgment.
 - **Probe** grounds the test suite's promise in measurable fact.
+- **Adept** grounds the claim "a human still understands this" in tested comprehension.
 
 Each narrows the gap between how confident the system sounds and how much it actually knows. That gap, closed, is calibration.
 
@@ -49,6 +61,7 @@ Each narrows the gap between how confident the system sounds and how much it act
 | Arbiter | Human-judgment accountability ledger | The human's judgment | Decision-makers | Producer (approved specs) | Decision gate (pre-code) |
 | Observer | Grounding agent | Engineering output (review/troubleshoot) | Engineers + AI | Consumer | Post-code + runtime |
 | Probe | Mutation-driven test-quality harness | The claim "these tests verify behavior" | Devs writing/reviewing tests | Independent (deterministic) | Pre-commit (gate, roadmap M3) |
+| Adept | Cognitive-debt meter | The claim "a named human still understands this" | Teams + artifact owners | Consumer (reads the warehouse as denominator) | Continuous (vouches go stale with content) |
 
 ## How they connect
 
