@@ -17,12 +17,12 @@ ecosystem. When in doubt: Khala is the alliance, Nexus is a member.
 ## Naming
 
 - **A lowercase top-level directory is a tool.** `nexus/`, `observer/`,
-  `arbiter/`, `probe/`, `docs/`. The directory name is the tool's canonical
+  `arbiter/`, `probe/`, `adept/`, `adept-web/`, `docs/`. The directory name is the tool's canonical
   name. Adding a tool means adding a lowercase directory and a row in the
   README tool map. (Exception: shared non-tool directories such as `assets/`
   are also lowercase but are not tools and do not get a README entry.)
 - Within a tool, follow that tool's own file-naming convention (e.g. Observer
-  (formerly Probe) uses kebab-case TypeScript files; Nexus uses Python module
+  uses kebab-case TypeScript files; Nexus uses Python module
   conventions).
 
 ## Versioning

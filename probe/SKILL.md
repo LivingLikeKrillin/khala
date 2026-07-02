@@ -3,7 +3,7 @@ name: probe
 description: Use when you want to find weak spots in a Python test suite that advisory review misses — runs cosmic-ray mutation testing on changed modules, triages surviving mutants with a Test Quality Critic subagent (judging from deterministic evidence), and emits an advisory report of real behavioral-test gaps. First consumer = Arbiter. Requires cosmic-ray installed (Windows-native OK; mutmut is not).
 ---
 
-# Probe (옛 mutqa) — 뮤테이션-구동 테스트 품질 하네스 (M2: 원장)
+# Probe — 뮤테이션-구동 테스트 품질 하네스 (M2: 원장)
 
 기존 어드바이저리 리뷰(TDD 스킬, LLM 테스트 리뷰어)가 놓치는 **행위검증 공백**을, 변이가 살아남는지로
 **결정론적으로** 드러낸다. M2는 영속 **원장**(`probe-ledger.yaml`)으로 판정을 쌓아 **재실행 시 새
