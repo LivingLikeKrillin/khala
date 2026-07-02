@@ -18,3 +18,5 @@
   path: probe/src/khala/probe/ledger.py
 - artifact_id: b2c3e57428da
   path: observer/src/core/concern-drift.ts
+- artifact_id: 294c8ee02960
+  path: adr/ADR-0002-reframe-system-command-debt.md
