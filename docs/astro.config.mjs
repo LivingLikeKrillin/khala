@@ -126,6 +126,7 @@ export default defineConfig({
             { label: 'Observer', slug: 'tools/observer' },
             { label: 'Arbiter', slug: 'tools/arbiter' },
             { label: 'Probe', slug: 'tools/probe' },
+            { label: 'Adept', slug: 'tools/adept' },
           ],
         },
         {

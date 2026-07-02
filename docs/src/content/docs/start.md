@@ -12,10 +12,11 @@ New here? Start from what you're trying to do — each goal points to the tool t
 | ground my PRs & troubleshooting in org context | [Observer](/tools/observer/) |
 | stop rubber-stamping specs | [Arbiter](/tools/arbiter/) |
 | make AI-generated tests actually verify behavior | [Probe](/tools/probe/) |
+| know whether a human can still vouch for what the AI wrote | [Adept](/tools/adept/) |
 
 ## 5-minute tour
 [What is Khala?](/) → [Philosophy](/philosophy/) → [Ecosystem](/ecosystem/)
 
 ## Prerequisites
 - Common: git, a recent runtime.
-- Nexus: Docker (Postgres etc. run inside the compose stack — no separate install). Observer: Node ≥20. Arbiter / Probe: Python (Probe needs `cosmic-ray`).
+- Nexus: Docker (Postgres etc. run inside the compose stack — no separate install). Observer: Node ≥20. Arbiter / Probe / Adept: Python (Probe needs `cosmic-ray`).
