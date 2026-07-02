@@ -20,7 +20,7 @@
 
 ## What is Observer?
 
-Observer (formerly Probe)는 PR의 범위, API 계약, 리뷰 체크리스트를 자동으로 검증하는 도구입니다.
+Observer는 PR의 범위, API 계약, 리뷰 체크리스트를 자동으로 검증하는 도구입니다.
 
 코드 리뷰에서 반복되는 세 가지 문제를 해결합니다:
 

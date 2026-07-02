@@ -1,6 +1,6 @@
 # CLAUDE.md — Observer
 
-> Observer (formerly Probe)는 프로덕트 팀의 개발 워크플로를 자동 검증하는 도구다.
+> Observer는 프로덕트 팀의 개발 워크플로를 자동 검증하는 도구다.
 > Nexus 지식 시스템과 연동하여 PR 검증, 영향 분석, 규칙 집행을 수행한다.
 
 ## 아키텍처

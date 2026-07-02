@@ -3,7 +3,7 @@ title: Observer
 description: Platform-aware PR analyzer and API contract validator; grounds review in cohesion, backward compatibility, and org guidelines.
 ---
 
-Observer (formerly Probe) grounds the review of a change in context a reviewer would otherwise have to hold in their head. It's a **platform-aware PR analyzer and API contract validator** that turns three recurring review questions into deterministic checks:
+Observer grounds the review of a change in context a reviewer would otherwise have to hold in their head. It's a **platform-aware PR analyzer and API contract validator** that turns three recurring review questions into deterministic checks:
 
 1. **Is this PR's scope appropriate?** The same seven files can be one cohesive change in Spring Boot and three separate concerns in Next.js. Judging by file count misfires; Observer judges by *logical cohesion* against a platform profile.
 2. **Is this API change backward-compatible?** Missing nullable flags, inconsistent error responses, and breaking changes slip past review. Observer lints the spec and diffs it against the base.

@@ -3,7 +3,7 @@ title: Arbiter
 description: Records AI-generated specs and ADRs, and gates code edits behind signed-off review.
 ---
 
-Arbiter (formerly specledger) makes the moment of judgment accountable instead of assumed. It's a Python MCP server plus a Claude Code `PreToolUse` hook: it records AI-generated ADRs and design specs as Markdown with frontmatter, and enforces a review sequence before any code is written: **AI critique, then human issue-disposition, then sign-off.** Approved documents can be published to a Nexus sink.
+Arbiter makes the moment of judgment accountable instead of assumed. It's a Python MCP server plus a Claude Code `PreToolUse` hook: it records AI-generated ADRs and design specs as Markdown with frontmatter, and enforces a review sequence before any code is written: **AI critique, then human issue-disposition, then sign-off.** Approved documents can be published to a Nexus sink.
 
 When an assistant produces a confident spec, the easiest thing to do is approve it. Review turns into ceremony: a green check on text nobody really read. Arbiter forces judgment to happen where it's cheap and where it leaves a record. Until a spec is approved and stamped with a content hash, every `Write`/`Edit`/`MultiEdit` on a non-exempt source path is **blocked**. The gate is active during implementation: `begin_implementation` arms it, `end_implementation` disarms it.
 

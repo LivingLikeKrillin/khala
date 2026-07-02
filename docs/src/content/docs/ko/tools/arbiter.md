@@ -3,7 +3,7 @@ title: Arbiter
 description: AI가 생성한 명세·ADR을 기록하고, 사인오프된 리뷰 뒤로 코드 편집을 게이트한다.
 ---
 
-Arbiter (옛 specledger)는 판단의 순간을 가정하지 않고 **책임질 수 있게** 만듭니다. Python MCP 서버와 Claude Code `PreToolUse` 훅으로, AI가 생성한 ADR·설계 명세를 Markdown + frontmatter로 기록하고, 코드가 쓰이기 전에 리뷰 절차를 강제합니다: **AI 비평 → 사람의 이슈 처분 → 사인오프.** 승인된 문서는 Nexus 싱크로 발행할 수 있습니다.
+Arbiter는 판단의 순간을 가정하지 않고 **책임질 수 있게** 만듭니다. Python MCP 서버와 Claude Code `PreToolUse` 훅으로, AI가 생성한 ADR·설계 명세를 Markdown + frontmatter로 기록하고, 코드가 쓰이기 전에 리뷰 절차를 강제합니다: **AI 비평 → 사람의 이슈 처분 → 사인오프.** 승인된 문서는 Nexus 싱크로 발행할 수 있습니다.
 
 어시스턴트가 확신에 찬 명세를 내놓으면 가장 쉬운 길은 그냥 승인하는 것입니다. 리뷰는 아무도 제대로 읽지 않은 텍스트에 찍히는 녹색 체크, 곧 의례로 전락합니다. Arbiter는 판단이 비용이 싸고 기록이 남는 곳에서 일어나도록 강제합니다. 명세가 승인되고 content hash로 스탬프되기 전까지, 비면제 소스 경로에 대한 모든 `Write`/`Edit`/`MultiEdit`는 **차단**됩니다. 게이트는 구현 중에만 켜집니다. `begin_implementation`이 무장하고 `end_implementation`이 해제합니다.
 
