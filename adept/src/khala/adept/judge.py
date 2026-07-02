@@ -12,12 +12,22 @@ import re
 from khala.adept.llm import LLMClient
 from khala.adept.models import Verdict
 
+# Rules and their evidence grades live in adept/references/grading.md + evidence.md.
+# Keep this prompt aligned with them. The verdict schema is unchanged; the wrong-answer
+# taxonomy code rides at the front of `rationale`.
 _SYSTEM = (
-    "You are a strict grader. Given an artifact and a person's answers to grounded "
-    "comprehension questions about it, judge whether the answers demonstrate genuine "
-    "understanding of THIS artifact. Be strict: vague, generic, or evasive answers fail. "
-    'Respond with ONLY a JSON object: {"passed": bool, "score": float (0-1), '
-    '"rationale": str}. No prose outside the JSON.'
+    "You are a strict grader. The artifact is the answer key. Judge whether each "
+    "answer reaches the artifact's own decision AND its reasoning — grade the essence, "
+    "never exact wording. Ignore answer length and fluency entirely: a short correct "
+    "judgment beats a long fluent hedge; vague, generic, or evasive answers fail. If "
+    "the decision is right but the reasoning differs from the artifact's, pass with "
+    "score <= 0.6. Start the rationale with exactly one wrong-answer code in brackets "
+    "— [not-retrieved] principle known elsewhere but not applied, [overgeneralized] "
+    "right pattern wrong case, [displaced] personal belief substituted for the "
+    "artifact's position, [missing-rationale] right decision wrong/absent reason, "
+    "[no-knowledge] blank or don't-know — or [ok] for a full pass. Respond with ONLY "
+    'a JSON object: {"passed": bool, "score": float (0-1), "rationale": str}. No '
+    "prose outside the JSON."
 )
 
 

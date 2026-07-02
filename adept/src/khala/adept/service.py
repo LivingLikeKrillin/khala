@@ -107,10 +107,15 @@ class AttemptResult:
 
 def remediate(artifact_text: str, question_text: str, answer: str, *, llm: LLMClient) -> str | None:
     """Generate a grounded remediation for a wrong answer; None on any LLM failure."""
+    # Structure per adept/references/grading.md — explanatory feedback is a
+    # precondition for learning transfer (evidence.md E3), so this never degrades
+    # to a bare "wrong, the answer is X".
     sys_p = (
         "You are tutoring a developer who answered a comprehension question wrong. "
-        "Using ONLY the artifact, explain the correct understanding concisely and "
-        "concretely. No preamble."
+        "Using ONLY the artifact: acknowledge what their answer got right (if "
+        "anything), state the artifact's own decision AND its reasoning, then give "
+        "one concrete work moment where this knowledge changes what they would do. "
+        "Concise, no preamble, no lecture — a retry will complete the learning."
     )
     user = f"ARTIFACT:\n{artifact_text}\n\nQUESTION: {question_text}\nTHEIR ANSWER: {answer}"
     try:
