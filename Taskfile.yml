@@ -97,11 +97,14 @@ tasks:
       - docker compose -f docker-compose.yml exec -T nexus-app python -m scripts.migrate
       - 'echo "업데이트 완료"'
 
+  # 예)  task ingest:notion ROOTS="p1,p2"
+  #      task ingest:notion ROOTS="p1,p2" FLAGS="--reconcile --dry-run"   # 삭제 반영 계획만
+  #      task ingest:notion ROOTS="p1,p2" FLAGS="--reconcile"             # soft_delete + revive
   ingest:notion:
-    desc: "팀 Notion 적재 — ROOTS='pageId1,pageId2' task ingest:notion (콘텐츠해시 멱등 → cron 재실행 안전)"
+    desc: "팀 Notion 적재 — ROOTS='pageId1,pageId2' [FLAGS='--reconcile'] (콘텐츠해시 멱등 → cron 재실행 안전)"
     dir: nexus
     cmds:
-      - docker compose -f docker-compose.yml exec -T nexus-app python -m nexus.cli ingest-notion --roots "{{.ROOTS}}"
+      - docker compose -f docker-compose.yml exec -T nexus-app python -m nexus.cli ingest-notion --roots "{{.ROOTS}}" {{.FLAGS}}
 
   # ---- aggregate ----------------------------------------------------------
   test:
