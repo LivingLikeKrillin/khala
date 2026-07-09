@@ -134,8 +134,11 @@ async def import_notion(
     report.watermark = max_seen or None
 
     if reconcile_fn is not None:
-        live_rids = {notion_doc_rid(tenant, pid) for pid in index}
-        outcome = await reconcile_fn(tenant, walked_roots, live_rids)
+        # rid → 이 페이지에 닿은 root 들. 재조정이 **적재를 거쳤든 아니든** 모든 live 페이지의
+        # prov_inputs 를 갱신할 수 있어야 한다 — 그래야 `--since` 가 백필을 막지 못한다
+        # (SPEC-nexus-notion-source-console §4.5). live 집합 자체는 since 와 무관하다.
+        live_by_rid = {notion_doc_rid(tenant, pid): sorted(roots) for pid, roots in index.items()}
+        outcome = await reconcile_fn(tenant, walked_roots, live_by_rid)
         report.pruned = outcome.pruned
         report.revived = outcome.revived
         report.refused = outcome.refused

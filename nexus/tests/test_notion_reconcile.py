@@ -199,9 +199,9 @@ async def test_import_notion_reconciles_after_ingest_with_full_live_set():
         order.append("ingest")
         return _Outcome(rid="r")
 
-    async def fake_reconcile(tenant, walked_roots, live_rids):
+    async def fake_reconcile(tenant, walked_roots, live_by_rid):
         order.append("reconcile")
-        captured.update(tenant=tenant, roots=walked_roots, live=live_rids)
+        captured.update(tenant=tenant, roots=walked_roots, live=set(live_by_rid))
         return type("O", (), {"pruned": 2, "revived": 1, "refused": False, "reason": ""})()
 
     src = _IndexedSource({"p1": {"rootA"}, "p2": {"rootA"}})
@@ -281,8 +281,8 @@ async def test_reconcile_sees_full_live_set_even_with_since_watermark():
     async def fake_ingest(csf, tenant):
         return _Outcome(rid="r")
 
-    async def fake_reconcile(tenant, walked_roots, live_rids):
-        captured["live"] = live_rids
+    async def fake_reconcile(tenant, walked_roots, live_by_rid):
+        captured["live"] = set(live_by_rid)
         return type("O", (), {"pruned": 0, "revived": 0, "refused": False, "reason": ""})()
 
     # p_old 는 since 이전 → 적재 스킵. 그래도 live 집합에는 있어야 한다.

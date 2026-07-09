@@ -75,8 +75,26 @@ async def lifespan(app: FastAPI):
     await db.get_pool()
     await _bootstrap_gazetteer()
     await db.ensure_search_log()   # ← 추가: 멱등, 기존 DB도 적재 시작
+    await _sweep_orphaned_syncs()
     yield
     await db.close_pool()
+
+
+async def _sweep_orphaned_syncs() -> None:
+    """죽은 프로세스가 남긴 running sync 행을 정리한다 (SPEC-nexus-notion-source-console §4.2).
+
+    advisory lock 을 잡을 수 있는 행만 — 다른 커넥션에서 도는 잡은 건드리지 않는다.
+    소스 콘솔 테이블이 아직 없는 DB(마이그레이션 전)면 조용히 넘어간다.
+    """
+    try:
+        import structlog
+
+        from nexus.sources.runs_store import sweep_orphaned_runs
+        swept = await sweep_orphaned_runs()
+        if swept:
+            structlog.get_logger(__name__).warning("notion_sync_runs_swept", run_ids=swept)
+    except Exception:  # noqa: BLE001 — 부팅을 막지 않는다
+        pass
 
 
 app = FastAPI(title="Nexus", version="0.1.0", lifespan=lifespan)
@@ -99,6 +117,19 @@ def _auth_config() -> AuthConfig:
 
 # FastAPI dependency: resolves Authorization: Bearer -> Principal (401 in enforced mode).
 get_principal = make_get_principal(_auth_config)
+
+
+def _mount_sources(app) -> None:
+    """소스 콘솔 라우터를 붙이고 principal 해석기를 꽂는다.
+
+    라우터는 `nexus.api` 를 임포트할 수 없다(순환). 그래서 플레이스홀더 의존성 `dep` 를
+    두고 여기서 override 한다 — 꽂히지 않으면 라우터는 500 으로 죽지, 무인증으로 열리지 않는다.
+    """
+    from nexus.sources.api import dep as sources_dep
+    from nexus.sources.api import router as sources_router
+
+    app.include_router(sources_router)
+    app.dependency_overrides[sources_dep] = get_principal
 
 
 def _dev_token() -> str | None:
@@ -138,6 +169,7 @@ def _mount_a2a_if_enabled() -> None:
 
 
 _mount_a2a_if_enabled()
+_mount_sources(app)
 
 
 # ── Response wrapper ──
