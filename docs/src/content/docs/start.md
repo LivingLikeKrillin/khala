@@ -25,7 +25,7 @@ cd nexus
 docker compose exec nexus-app nexus ingest ./docs   # index the shipped design docs
 ```
 
-Open **http://localhost:8000** and ask a question. Answers cite the chunks they came from; if the corpus doesn't contain the answer, Nexus says so instead of guessing.
+Open `http://localhost:8000/` and ask a question. Answers cite the chunks they came from; if the corpus doesn't contain the answer, Nexus says so instead of guessing.
 
 Without `ANTHROPIC_API_KEY` you still get the retrieved evidence — just not a narrated answer.
 
