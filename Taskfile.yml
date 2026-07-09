@@ -13,11 +13,15 @@ version: "3"
 
 tasks:
   # ---- run (one-command quickstart) --------------------------------------
+  # `up` 은 마이그레이션까지 돌린다. init.sql 은 빈 DB 베이스라인일 뿐이라, 이게 없으면
+  # 새 설치는 영원히 migration 0 에 머문다 — supersede·entropy-signals·소스 콘솔이
+  # "relation does not exist" 로 죽는다. 멱등이므로 매번 돌려도 무해하다.
   up:
-    desc: "Nexus 기동 (db·ollama·app 등). 최초엔 'task models'로 임베딩 모델도 받으세요"
+    desc: "Nexus 기동 (db·ollama·app + DB 마이그레이션). 최초엔 'task models'로 임베딩 모델도 받으세요"
     dir: nexus
     cmds:
-      - docker compose up -d
+      - docker compose up -d --wait
+      - docker compose exec -T nexus-app python -m scripts.migrate
       - 'echo "Nexus → http://localhost:8000  (최초 1회: task models)"'
 
   models:
