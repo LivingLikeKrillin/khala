@@ -62,10 +62,10 @@ class Planner:
                 return ReconcileOutcome(reason="plan_stale")
 
         if self.dry_run:
-            return ReconcileOutcome(
-                pruned=len(plan.prune), revived=len(plan.revive),
-                reason="dry-run: 적용하지 않음",
-            )
+            # 적용한 개수는 0 이다. 계획의 크기는 plan_payload 가 들고 있다.
+            # 여기서 len(plan.prune) 을 돌려주면 화면이 "내림 1" 이라고 말한다 — 아무것도
+            # 내리지 않았는데. 이 화면에서 가장 위험한 거짓말이라 숫자를 섞지 않는다.
+            return ReconcileOutcome(pruned=0, revived=0, reason="dry-run: 적용하지 않음")
 
         from nexus.lifecycle import revive, soft_delete
 

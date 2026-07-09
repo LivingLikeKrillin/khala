@@ -58,8 +58,10 @@ export async function request(method, path, body = null, params = null) {
   }
 
   const json = await res.json();
-  if (!json.success) {
-    throw new ApiError(json.error || `HTTP ${res.status}`, res.status);
+  if (!res.ok || !json.success) {
+    // FastAPI 의 HTTPException 은 {detail} 로 온다(봉투가 아니다). 이걸 읽지 않으면
+    // 403/409/400 이 전부 "HTTP 403" 이 되어, 사용자는 왜 막혔는지 알 수 없다.
+    throw new ApiError(json.error || json.detail || `HTTP ${res.status}`, res.status);
   }
   return { data: json.data, meta: json.meta || {} };
 }
@@ -229,4 +231,34 @@ export async function uploadFile(file, path = 'uploads', tenant = 'default') {
     throw new ApiError(json.error || json.detail || `HTTP ${res.status}`, res.status);
   }
   return { data: json.data, meta: json.meta || {} };
+}
+
+// ── 소스 (Notion) ──
+// 엔드포인트가 정본이다. 이 함수들은 그 위의 얇은 래퍼일 뿐이다.
+// (SPEC-nexus-notion-source-console §4.6)
+
+export async function listSources() {
+  return request('GET', '/sources/notion/roots');
+}
+
+export async function addSource(urlOrId, label = '') {
+  return request('POST', '/sources/notion/roots', { url_or_id: urlOrId, label });
+}
+
+export async function removeSource(rootId) {
+  return request('DELETE', `/sources/notion/roots/${encodeURIComponent(rootId)}`);
+}
+
+/** 동기화 시작. 즉시 run_id 를 돌려준다 — 진행은 getSyncRun 으로 폴링. */
+export async function startSync({ reconcile = false, dryRun = false, confirmPlan = null } = {}) {
+  const body = confirmPlan ? { confirm_plan: confirmPlan } : { reconcile, dry_run: dryRun };
+  return request('POST', '/sources/notion/sync', body);
+}
+
+export async function getSyncRun(runId) {
+  return request('GET', `/sources/notion/sync/${encodeURIComponent(runId)}`);
+}
+
+export async function getLatestSync() {
+  return request('GET', '/sources/notion/sync/latest');
 }

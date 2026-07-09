@@ -47,7 +47,10 @@ async def _api_call(method: str, path: str, **kwargs) -> dict:
 
     data = resp.json()
     if not data.get("success"):
-        return {"success": False, "error": data.get("error", f"API 오류 (HTTP {resp.status_code})")}
+        # FastAPI 의 HTTPException 은 {detail} 로 온다(봉투가 아니다). 이걸 읽지 않으면
+        # 403/409/400 이 전부 "API 오류 (HTTP 403)" 이 되어, 에이전트는 왜 막혔는지 모른다.
+        reason = data.get("error") or data.get("detail") or f"API 오류 (HTTP {resp.status_code})"
+        return {"success": False, "error": reason}
 
     return data
 
@@ -446,4 +449,80 @@ async def nexus_status() -> str:
                 f"conflict={diff.get('conflict_count', 0)}"
             )
 
+    return "\n".join(lines)
+
+
+# ── 소스(Notion) 관리 — SPEC-nexus-notion-source-console §4.8 ──
+# 웹 UI 와 **같은 엔드포인트**를 쓴다. 기능이 API 를 건너뛰면 사람도 에이전트도 그것을 잃는다.
+
+
+@mcp.tool()
+async def nexus_sources_list() -> str:
+    """연결된 Notion root 페이지 목록과 토큰 설정 여부를 조회한다."""
+    result = await _api_call("get", "/sources/notion/roots")
+    if not result.get("success"):
+        return f"소스 조회 실패: {result['error']}"
+
+    data = result["data"]
+    if not data["roots"]:
+        return "연결된 Notion 페이지가 없습니다. nexus_sources_add 로 추가하세요."
+    lines = [f"Notion 토큰: {'설정됨' if data['token_configured'] else '없음 — 동기화 불가'}"]
+    lines += [f"- {r['root_id']}  {r['label'] or ''}".rstrip() for r in data["roots"]]
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def nexus_sources_add(url_or_id: str, label: str = "") -> str:
+    """Notion root 페이지를 연결한다. 브라우저 URL 도, 대시 유무 무관한 page id 도 받는다.
+
+    그 페이지 하위 트리 전체가 이후 동기화 대상이 된다.
+    """
+    result = await _api_call("post", "/sources/notion/roots",
+                             json={"url_or_id": url_or_id, "label": label})
+    if not result.get("success"):
+        return f"추가 실패: {result['error']}"
+    return f"연결됨: {result['data']['root_id']}"
+
+
+@mcp.tool()
+async def nexus_sources_sync(reconcile: bool = False, dry_run: bool = False,
+                             confirm_plan: str = "") -> str:
+    """Notion 동기화를 시작한다. 즉시 run_id 를 돌려주고 백그라운드에서 돈다.
+
+    reconcile=True 는 Notion 에서 사라진 문서를 검색에서 내린다. **먼저 dry_run=True 로
+    무엇이 내려갈지 확인**하고, 그 run_id 를 confirm_plan 에 넣어 적용하는 것이 안전하다.
+    confirm_plan 은 다른 인자와 함께 쓸 수 없다(미리보기와 다른 조건으로 적용되는 것을 막는다).
+    """
+    body = {"confirm_plan": confirm_plan} if confirm_plan else {
+        "reconcile": reconcile, "dry_run": dry_run,
+    }
+    result = await _api_call("post", "/sources/notion/sync", json=body)
+    if not result.get("success"):
+        return f"동기화 시작 실패: {result['error']}"
+    return f"run_id={result['data']['run_id']} — nexus_sync_status 로 진행을 확인하세요"
+
+
+@mcp.tool()
+async def nexus_sync_status(run_id: str = "") -> str:
+    """동기화 실행 상태. run_id 를 비우면 가장 최근 실행을 본다."""
+    path = f"/sources/notion/sync/{run_id}" if run_id else "/sources/notion/sync/latest"
+    result = await _api_call("get", path)
+    if not result.get("success"):
+        return f"상태 조회 실패: {result['error']}"
+
+    d = result["data"]
+    c = d.get("counts") or {}
+    lines = [
+        f"run {d['run_id']} — {d['status']}",
+        f"적재 {c.get('ingested', 0)} · 변경없음 {c.get('idempotent', 0)} · 건너뜀 {c.get('skipped', 0)}",
+    ]
+    if d.get("reconcile"):
+        lines.append(f"내림 {c.get('pruned', 0)} · 되살림 {c.get('revived', 0)}")
+    if d.get("reason"):
+        lines.append(f"사유: {d['reason']}")
+    plan = d.get("plan") or {}
+    if d.get("dry_run") and plan.get("prune"):
+        lines.append(f"적용 시 내려갈 문서 {len(plan['prune'])}건:")
+        lines += [f"  - {p.get('title') or p['rid']}" for p in plan["prune"][:20]]
+        lines.append(f"적용하려면: nexus_sources_sync(confirm_plan='{d['run_id']}')")
     return "\n".join(lines)

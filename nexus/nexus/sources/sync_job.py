@@ -106,6 +106,10 @@ async def _walk_and_apply(*, run_id: str, tenant: str, roots: list[str], reconci
         reconcile_fn=planner.reconcile_fn if reconcile else None,
     )
 
+    # planner 는 reconcile 을 돌았을 때만 walked_roots 를 채운다. 비-reconcile 실행에서
+    # 빈 리스트를 그대로 쓰면 create_run 이 기록해 둔 roots 를 지워버린다(confirm_plan 이 참조한다).
+    walked = planner.walked_roots or None
+
     counts = {
         "ingested": report.ingested, "idempotent": report.idempotent,
         "empty": report.empty, "skipped": report.skipped,
@@ -123,11 +127,11 @@ async def _walk_and_apply(*, run_id: str, tenant: str, roots: list[str], reconci
     if report.refused:
         await runs_store.finish_run(
             run_id, status="refused", counts=counts, plan=plan, plan_hash=plan_hash,
-            reason=report.reason, walked_roots=planner.walked_roots,
+            reason=report.reason, walked_roots=walked,
         )
         return
 
     await runs_store.finish_run(
         run_id, status="succeeded", counts=counts, plan=plan, plan_hash=plan_hash,
-        walked_roots=planner.walked_roots,
+        walked_roots=walked,
     )

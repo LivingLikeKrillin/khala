@@ -68,6 +68,18 @@ async def finish_run(
     )
 
 
+def _decode(row) -> dict:
+    """asyncpg 는 JSONB 를 **문자열**로 준다. 디코딩하지 않으면 UI 는 counts 를 전부 0 으로 보고,
+    삭제 미리보기 목록은 영원히 렌더링되지 않는다 — 이 기능의 핵심 안전장치가 죽는다."""
+    out = dict(row)
+    for key in ("counts", "plan"):
+        value = out.get(key)
+        if isinstance(value, str):
+            out[key] = json.loads(value)
+    out["walked_roots"] = list(out.get("walked_roots") or [])
+    return out
+
+
 async def get_run(run_id: str) -> dict | None:
     row = await db.fetch_one(
         "SELECT run_id, tenant, started_at, finished_at, status::text AS status, dry_run, "
@@ -75,7 +87,7 @@ async def get_run(run_id: str) -> dict | None:
         "FROM notion_sync_runs WHERE run_id = $1",
         run_id,
     )
-    return dict(row) if row else None
+    return _decode(row) if row else None
 
 
 async def latest_run(tenant: str) -> dict | None:
@@ -85,7 +97,7 @@ async def latest_run(tenant: str) -> dict | None:
         "FROM notion_sync_runs WHERE tenant = $1 ORDER BY started_at DESC LIMIT 1",
         tenant,
     )
-    return dict(row) if row else None
+    return _decode(row) if row else None
 
 
 async def running_run_id(tenant: str) -> str | None:

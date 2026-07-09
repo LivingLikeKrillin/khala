@@ -178,3 +178,73 @@ def test_startup_sweep_leaves_a_live_run_alone():
             await pool.release(holder)
 
     _run(inner)
+
+
+# ── 브라우저에서 잡아낸 두 결함의 회귀 가드 ─────────────────────────────────
+
+def test_counts_and_plan_come_back_as_objects_not_json_strings():
+    """asyncpg 는 JSONB 를 str 로 준다. 디코딩하지 않으면 UI 는 전부 0 을 보여주고
+    삭제 미리보기 목록은 영원히 렌더링되지 않는다 — 이 기능의 핵심 안전장치가 죽는다."""
+    from nexus.sources import runs_store
+
+    async def inner():
+        rid = await runs_store.create_run(_TENANT, reconcile=True, dry_run=True)
+        await runs_store.finish_run(
+            rid, status="succeeded",
+            counts={"ingested": 2, "idempotent": 1},
+            plan={"prune": [{"rid": "d1", "title": "옛 문서"}], "revive": []},
+            plan_hash="sha256:abc",
+        )
+        run = await runs_store.get_run(rid)
+        assert run["counts"] == {"ingested": 2, "idempotent": 1}
+        assert run["plan"]["prune"][0]["title"] == "옛 문서"
+
+        latest = await runs_store.latest_run(_TENANT)
+        assert latest["counts"]["ingested"] == 2
+
+    _run(inner)
+
+
+def test_finishing_a_run_does_not_erase_the_roots_it_walked():
+    """비-reconcile 실행이 walked_roots 를 [] 로 덮어쓰면, confirm_plan 이 참조할 근거가 사라진다."""
+    from nexus.sources import runs_store
+
+    async def inner():
+        rid = await runs_store.create_run(
+            _TENANT, reconcile=False, dry_run=False, walked_roots=[_ROOT]
+        )
+        await runs_store.finish_run(rid, status="succeeded", counts={"ingested": 1})
+        run = await runs_store.get_run(rid)
+        assert run["walked_roots"] == [_ROOT]
+
+    _run(inner)
+
+
+def test_dry_run_reports_zero_applied_and_carries_the_plan_instead():
+    """dry-run 이 pruned=1 을 돌려주면 화면이 '내림 1' 이라고 말한다 — 아무것도 안 내렸는데."""
+    from nexus.ingest.sources.notion_reconcile import write_source_roots
+    from nexus.sources.reconcile_planner import make_planner
+    from nexus import db
+
+    async def inner():
+        # 이 root 에 귀속되지만 live 에 없는 문서 하나 = Notion 에서 지워진 것처럼
+        await db.execute("DELETE FROM chunks WHERE doc_rid='doc_gone'")
+        await db.execute("DELETE FROM documents WHERE rid='doc_gone'")
+        await db.execute(
+            "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, title, status) "
+            "VALUES ($1,$2,$3,'h','h','옛 문서','active')",
+            "doc_gone", _TENANT, f"{_TENANT}:ext-notion-gone.md",
+        )
+        await write_source_roots("doc_gone", _TENANT, reached=[_ROOT], walked=[_ROOT])
+
+        planner = make_planner(tenant=_TENANT, dry_run=True, force=True,
+                               threshold=0.5, expected_plan_hash=None)
+        out = await planner.reconcile_fn(_TENANT, {_ROOT}, {})   # live 없음
+
+        assert out.pruned == 0 and out.revived == 0          # 적용한 것은 없다
+        assert [p["title"] for p in planner.plan_payload["prune"]] == ["옛 문서"]
+
+        row = await db.fetch_one("SELECT status FROM documents WHERE rid='doc_gone'")
+        assert row["status"] == "active"                      # DB 도 그대로
+
+    _run(inner)

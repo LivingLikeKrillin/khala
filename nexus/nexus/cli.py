@@ -534,7 +534,16 @@ def ingest_notion(
 
     root_list = [r.strip() for r in roots.split(",") if r.strip()]
     if not root_list:
-        typer.echo("roots 가 비었습니다 (--roots 'pageid1,pageid2')")
+        # --roots 미지정 → DB 에 등록된 소스를 쓴다 (SPEC-nexus-notion-source-console §4.1).
+        # cron 명령에서 페이지 id 를 지우고, 오타로 코퍼스를 날릴 여지를 없앤다.
+        from nexus.sources.roots_store import list_roots
+
+        root_list = [r["root_id"] for r in asyncio.run(list_roots(tenant))]
+    if not root_list:
+        typer.echo(
+            "등록된 Notion 소스가 없습니다. 웹 UI 의 '소스' 탭에서 추가하거나 "
+            "--roots 'pageid1,pageid2' 를 주세요."
+        )
         raise typer.Exit(code=1)
     if (dry_run or force) and not reconcile:
         typer.echo("--dry-run / --force 는 --reconcile 과 함께 써야 의미가 있습니다")
