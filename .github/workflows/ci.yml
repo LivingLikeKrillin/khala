@@ -24,11 +24,56 @@ jobs:
         working-directory: nexus
         # [mcp] extra is required so tests/test_mcp.py can import nexus.mcp.server.
         run: pip install -e ".[dev,mcp]"
-      # Unit tests only. DB integration tests (-m integration) need Postgres and
-      # are run locally / by the owner — no postgres service in the baseline job.
+      # Unit tests only. The DB-backed tests run in `nexus-postgres` below.
       - name: Run unit tests
         working-directory: nexus
         run: python -m pytest -q -m "not integration"
+
+  nexus-postgres:
+    name: nexus (pytest, postgres)
+    runs-on: ubuntu-latest
+    # Nexus has three code paths that hide data — supersede, soft_delete, revive —
+    # and their guarantees live entirely in DB-backed tests. Without this job CI is
+    # blind to the only failures that lose a corpus.
+    services:
+      postgres:
+        # pgvector: init.sql needs the `vector` and `pg_trgm` extensions.
+        # mecab is NOT needed — tsvector_ko is filled by the app, not a generated column.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: nexus_test
+          POSTGRES_USER: nexus
+          POSTGRES_PASSWORD: nexus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexus -d nexus_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NEXUS_TEST_DB_URL: postgresql://nexus:nexus@localhost:5432/nexus_test
+      DATABASE_URL: postgresql://nexus:nexus@localhost:5432/nexus_test
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install nexus
+        working-directory: nexus
+        # [a2a] so the external-ingest sink and its tests are exercised, not silently skipped.
+        run: pip install -e ".[dev,mcp,a2a]"
+      - name: Apply baseline schema
+        working-directory: nexus
+        run: psql "$DATABASE_URL" -f init.sql
+      - name: Apply migrations
+        working-directory: nexus
+        # init.sql is only the empty-DB baseline; superseded_by and v_entropy_signals
+        # arrive as deltas. Skipping this is exactly how a fresh install ends up broken.
+        run: python -m scripts.migrate
+      - name: Run full suite against Postgres
+        working-directory: nexus
+        run: python -m pytest -q
 
   observer:
     name: observer (vitest)
