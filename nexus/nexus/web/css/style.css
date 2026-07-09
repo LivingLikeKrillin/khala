@@ -907,3 +907,60 @@ input::placeholder { color: var(--ink-500); opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
+
+/* ── 소스(Notion) 뷰 — SPEC-nexus-notion-source-console §4.8 ── */
+.sources-layout { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
+.sources-head h2 { font-family: var(--font-display); font-size: 22px; margin: 0 0 6px; }
+.sources-sub { color: var(--text-muted); font-size: 13px; margin: 0 0 24px; }
+
+.sources-add { display: flex; gap: 8px; margin-bottom: 16px; }
+.sources-add input {
+  flex: 1; padding: 10px 12px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--bg-secondary); color: inherit; font: inherit;
+}
+.sources-add input:nth-child(2) { flex: 0 0 160px; }
+
+.btn-primary, .btn-secondary, .btn-ghost, .btn-danger {
+  padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--border);
+  font: inherit; cursor: pointer; background: var(--bg-tertiary); color: inherit;
+}
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #04121c; font-weight: 600; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary:hover, .btn-ghost:hover { background: var(--bg-hover); }
+.btn-ghost { background: transparent; padding: 6px 12px; font-size: 12px; }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+
+.sources-warn {
+  padding: 10px 14px; border-radius: var(--radius); margin-bottom: 16px;
+  border: 1px solid var(--danger); color: var(--danger); font-size: 13px;
+}
+
+.sources-list { margin-bottom: 20px; }
+.sources-loading, .sources-empty {
+  padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px;
+  border: 1px dashed var(--border); border-radius: var(--radius);
+}
+.sources-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-secondary); margin-bottom: 8px;
+}
+.sources-row-label { font-weight: 600; font-size: 14px; }
+.sources-row-id { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.sources-actions { display: flex; gap: 8px; margin-bottom: 24px; }
+
+.run-card { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-secondary); }
+.run-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.run-id { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.run-badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border); }
+.run-badge.running { border-color: var(--accent); color: var(--accent); }
+.run-badge.ok { border-color: var(--governed); color: var(--governed); }
+.run-badge.err, .run-badge.warn { border-color: var(--danger); color: var(--danger); }
+.run-counts { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--text-muted); }
+.run-counts b { color: inherit; font-weight: 600; }
+.run-reason { margin-top: 10px; font-size: 12px; color: var(--danger); }
+.run-preview { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.run-preview-head { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.run-preview ul { margin: 0 0 14px; padding-left: 18px; font-size: 13px; }
+.run-preview li { margin: 3px 0; }

@@ -9,13 +9,14 @@
 ## 🟡 검토중 (0)
 
 
-## 🟢 승인 (10)
+## 🟢 승인 (11)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
 | SPEC-nexus-a2a-external-exposure-audit-phase2 | Phase 2 — Nexus A2A external exposure + audit trail | LivingLikeKrillin | 2026-06-18 | ADR-0001 |
 | SPEC-nexus-a2a-server-phase0-spike | Phase 0 spike — Nexus A2A grounded-retrieval server | LivingLikeKrillin | 2026-06-18 | ADR-0001 |
 | SPEC-nexus-notion-reconciliation | Notion deletion reconciliation — soft_delete/revive primitives + root-scoped prune | LivingLikeKrillin | 2026-07-09 | ADR-0006 |
+| SPEC-nexus-notion-source-console | Notion source console — endpoint-first source management, background sync, previewed deletion | LivingLikeKrillin | 2026-07-10 | ADR-0006 |
 | SPEC-probe-a2a-client-phase1 | Phase 1 — Probe as an A2A client of Nexus | LivingLikeKrillin | 2026-06-18 | ADR-0001 |
 | ADR-0001 | Adopt A2A (Agent2Agent) as Khala's agent-to-agent interoperability layer | LivingLikeKrillin | 2026-06-18 |  |
 | ADR-0002 | Reframe Khala around staying in command of your own system in the AI era | LivingLikeKrillin | 2026-06-23 | ADR-0001 |
