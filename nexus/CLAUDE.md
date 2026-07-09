@@ -42,7 +42,7 @@ Phase 3 — 거버넌스
 - **Language**: Python 3.11+
 - **Framework**: FastAPI (API) + Typer (CLI)
 - **DB**: PostgreSQL 16 + pgvector + tsvector(mecab-ko) + pg_trgm
-- **Embedding**: multilingual-e5-base via Ollama (로컬) → `EmbeddingService` 래퍼
+- **Embedding**: nomic-embed-text via Ollama (로컬, 768d) → `EmbeddingService` 래퍼
 - **LLM**: Claude Sonnet API → `LLMService` 래퍼
 - **한국어**: mecab-ko + mecab-ko-dic (Docker 내 설치)
 - **OTel**: OpenTelemetry Collector + Grafana Tempo
@@ -292,8 +292,8 @@ def base_filter() -> str:
 # 인프라 기동
 docker-compose up -d
 
-# Ollama 모델 pull (최초 1회)
-docker exec nexus-ollama ollama pull multilingual-e5-base
+# Ollama 모델 pull (최초 1회) — config.yaml embedding.model 과 일치해야 한다
+docker exec nexus-ollama ollama pull nomic-embed-text
 
 # 문서 인덱싱
 nexus ingest ./docs

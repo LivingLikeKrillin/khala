@@ -41,6 +41,68 @@ tasks:
     cmds:
       - docker compose down
 
+  # ---- 팀 도그푸딩 배포 (prod 오버레이) -----------------------------------
+  # 로컬 dev 와 달리 docker-compose.override.yml 을 병합하지 않는다(-f 명시).
+  # 자세한 절차는 nexus/docs/TEAM_DOGFOOD_DEPLOY.md.
+  # 기동 전에 토큰 강도를 확인한다. 이게 없으면 앱이 부트 거부 → restart:unless-stopped 가
+  # 크래시루프로 감싸버려서, 운영자는 `Restarting (3)` 만 보고 이유는 로그를 파야 안다.
+  preflight:prod:
+    internal: true
+    dir: nexus
+    silent: true
+    cmds:
+      - |
+        tok="${NEXUS_DEV_TOKEN:-}"
+        if [ -z "$tok" ] && [ -f .env ]; then
+          tok=$(sed -n 's/^NEXUS_DEV_TOKEN=//p' .env | tail -1 | tr -d '\r"')
+        fi
+        if [ -z "$tok" ]; then
+          echo "✗ NEXUS_DEV_TOKEN 이 없습니다."
+          echo "  발급: docker compose run --rm nexus-app python -m nexus.cli auth gen-token"
+          echo "  → nexus/.env 의 NEXUS_DEV_TOKEN 에 넣으세요 (docs/TEAM_DOGFOOD_DEPLOY.md §1)"
+          exit 1
+        fi
+        if [ "$tok" = "nexus-local-dev" ] || [ ${#tok} -lt 24 ]; then
+          echo "✗ NEXUS_DEV_TOKEN 이 약합니다 (기본값이거나 24자 미만, 현재 ${#tok}자)."
+          echo "  GET /auth/dev-token 은 도달한 누구에게나 INTERNAL bearer 를 내줍니다."
+          echo "  터널 배포에는 강값이 필수입니다 (docs/TEAM_DOGFOOD_DEPLOY.md §0)."
+          exit 1
+        fi
+        echo "✓ NEXUS_DEV_TOKEN 강도 확인 (${#tok}자)"
+
+  up:prod:
+    desc: "팀 배포 기동 — reload·코드마운트 없이, 127.0.0.1:8000 바인드. NEXUS_DEV_TOKEN(강값) 필수"
+    dir: nexus
+    cmds:
+      - task: preflight:prod
+      # --wait: 컨테이너가 healthy 가 될 때까지 기다리고, 죽거나 unhealthy 면 0 이 아닌 코드로 끝난다.
+      - docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --wait --wait-timeout 300
+      - 'echo "Nexus(prod) → http://127.0.0.1:8000  · 다음: cloudflared tunnel run <터널명>"'
+
+  # down/exec 은 prod 오버레이를 붙이지 않는다 — compose 는 서브커맨드와 무관하게 변수를
+  # 보간하므로, `-f docker-compose.prod.yml down` 은 NEXUS_DEV_TOKEN 이 없으면 실패한다.
+  # 컨테이너는 프로젝트명(디렉터리 = nexus)으로 찾으므로 base 파일만으로 충분하다.
+  down:prod:
+    desc: "팀 배포 정지"
+    dir: nexus
+    cmds:
+      - docker compose -f docker-compose.yml down
+
+  update:prod:
+    desc: "팀 배포 업데이트 — 재빌드·재기동 + DB 마이그레이션 (코드는 먼저 git pull 하세요)"
+    dir: nexus
+    cmds:
+      - task: preflight:prod
+      - docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --wait --wait-timeout 300
+      - docker compose -f docker-compose.yml exec -T nexus-app python -m scripts.migrate
+      - 'echo "업데이트 완료"'
+
+  ingest:notion:
+    desc: "팀 Notion 적재 — ROOTS='pageId1,pageId2' task ingest:notion (콘텐츠해시 멱등 → cron 재실행 안전)"
+    dir: nexus
+    cmds:
+      - docker compose -f docker-compose.yml exec -T nexus-app python -m nexus.cli ingest-notion --roots "{{.ROOTS}}"
+
   # ---- aggregate ----------------------------------------------------------
   test:
     desc: Run all subproject test suites (nexus, observer, arbiter, probe, docs)

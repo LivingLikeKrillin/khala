@@ -39,17 +39,31 @@ NOTION_TOKEN=<Notion 내부 인테그레이션 토큰>
 
 > `NEXUS_REQUIRE_STRONG_DEV_TOKEN=1`을 켜면 약한/기본 토큰으로는 앱이 **부트를 거부**한다(로컬 무마찰은 이 env 없이 그대로 경고만). 터널 배포엔 반드시 켤 것.
 
-## 2. 스택 기동
+## 2. 스택 기동 (prod 오버레이)
 
 ```bash
-cd nexus
-task up          # core: nexus-db(Postgres+pgvector) · nexus-ollama · nexus-app(:8000)
-task models      # Ollama 임베딩 모델 pull (nomic-embed-text) — 최초 1회
+task up:prod     # 리포 루트에서. 재빌드 + 기동. 임베딩 모델도 자동 pull.
 ```
 
-- 앱: `http://localhost:8000` (웹 Reader UI가 `/`에 서빙됨).
-- 강토큰이 안 먹었으면(약한 기본값 + `NEXUS_REQUIRE_STRONG_DEV_TOKEN=1`) 부트가 거부된다 → §1 다시 확인.
-- 로컬에서 먼저 `http://localhost:8000` 열어 검색이 되는지 확인하고 터널로 넘어갈 것.
+`docker-compose.prod.yml` 오버레이가 로컬 dev와 다르게 하는 것:
+
+| | 로컬 dev (`task up`) | 팀 배포 (`task up:prod`) |
+|---|---|---|
+| uvicorn | `--reload` (watcher) | reload 없음 |
+| 코드 | `.:/app` 바인드 마운트 | **이미지에 구움**(재현 가능) |
+| 재시작 | 없음 | `unless-stopped` (재부팅 후 자동 복구) |
+| app 포트 | `0.0.0.0:8000` | **`127.0.0.1:8000`** (cloudflared만 접근) |
+| db·ollama | 호스트에 5432·11434 게시 | **미게시** (컨테이너 네트워크 전용) |
+| dev 토큰 | 약한 기본값 폴백 | **강값 필수** — 없으면 compose 실패 |
+
+> `task up:prod`는 `docker-compose.override.yml`을 **병합하지 않는다**(`-f` 명시). 그 오버레이는
+> 약한 토큰으로 폴백시키는 로컬 전용이다.
+
+- 앱: `http://127.0.0.1:8000` (웹 Reader UI가 `/`에 서빙됨).
+- `NEXUS_DEV_TOKEN` 미설정 → **compose 단계에서 실패**. 약값 + `NEXUS_REQUIRE_STRONG_DEV_TOKEN=1` →
+  **앱이 부트 거부**(RuntimeError). 둘 다 §1을 다시 확인하라는 뜻이다.
+- 로컬에서 먼저 `http://127.0.0.1:8000` 열어 검색이 되는지 확인하고 터널로 넘어갈 것.
+- 정지는 `task down:prod`, 코드 갱신 후 재배포는 `task update:prod`(마이그레이션 포함).
 
 ## 3. Cloudflare Tunnel 연결
 
@@ -97,13 +111,23 @@ Cloudflare **Zero Trust** 대시보드:
 Notion 내부 인테그레이션을 만들고(토큰 = `.env`의 `NOTION_TOKEN`), 적재할 페이지들에 **그 인테그레이션을 공유**한 뒤:
 
 ```bash
-cd nexus
-# 루트 페이지 ID들(콤마 구분). incremental sync는 since 워터마크로 자동.
-python -m nexus.cli ingest-notion --roots "<pageId1>,<pageId2>"
+# 리포 루트에서 (루트 페이지 ID들, 콤마 구분)
+task ingest:notion ROOTS="<pageId1>,<pageId2>"
 ```
 
-- 루트 페이지 ID는 **매 실행 인자**다(영속 config 필드 없음). 정기 갱신은 이 명령을 크론/수동 재실행.
+- **정본은 Notion에 남는다.** Nexus는 인덱스다(CLAUDE.md 원칙 5). 팀은 계속 Notion에서 쓴다.
+- 적재는 **콘텐츠 해시로 멱등**하다 — 크론으로 반복 실행해도 중복이 안 생기고 변경분만 재인덱싱된다.
+  루트 페이지 ID는 **매 실행 인자**다(영속 config 필드 없음).
 - 첫 도그푸딩은 **좁고 관련성 높은 페이지 뭉치**부터(콜드스타트 방지). 민감 페이지는 애초에 적재 대상에서 빼는 것도 방어선.
+
+### 알려진 한계 (적재 전에 알고 들어갈 것)
+
+- **삭제가 반영되지 않는다.** Notion에서 지우거나 공유를 끊은 페이지가 Nexus에 계속 남는다. 현재는
+  재조정(reconciliation) 경로가 없다. 대량 정리 후에는 해당 tenant를 비우고 전체 재적재하는 편이 안전하다.
+- 표·토글·임베드·컬럼·synced block은 미지원(`rich_text`가 있으면 살리고 없으면 드롭). 이미지는 placeholder.
+- Notion API rate limit 백오프가 없다 — 큰 워크스페이스는 나눠서 적재할 것.
+- `--since` 워터마크는 실패한 페이지를 건너뛸 수 있다(워터마크가 먼저 전진). 주기적으로 `--since` 없이 전체 재실행.
+- 적재된 문서는 `external_spec` 라벨이 붙어 **거버넌스 밖**이다 — 검색에는 뜨지만 승인·신뢰 라벨 체계에는 안 들어간다.
 
 ## 6. 검증 체크리스트
 
