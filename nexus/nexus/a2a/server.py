@@ -36,7 +36,6 @@ from nexus.a2a.external_ingest_skill import (
     build_external_ingest_artifact,
     compute_source_hash,
     extract_external_spec,
-    normalize_csf_kind,
     validate_external_spec,
 )
 from nexus.a2a.ingest_skill import IngestOutcome, build_ingest_artifact, extract_governed_doc
@@ -423,20 +422,14 @@ async def _default_external_ingest_fn(doc: dict, tenant: str) -> ExternalIngestO
         rid, tenant,
     )
     quarantined = bool(row["is_quarantined"]) if row else (result.quarantined > 0)
-    if not idempotent and not quarantined:
-        # external_spec label 부여 (중복 추가 방지). classification 컬럼은 건드리지 않음.
-        # quarantined row 에는 절대 label 을 달지 않는다.
-        await db.execute(
-            "UPDATE documents SET labels = array_append(labels, $3) "
-            "WHERE rid = $1 AND tenant = $2 AND NOT ($3 = ANY(labels))",
-            rid, tenant, EXTERNAL_LABEL,
-        )
-        # 축-A doc_type 보존(S3): CSF 선언 타입을 정규화해 행에 저장(분류기 추측값 override).
-        # quarantine 행에는 절대 쓰지 않는다(위 가드와 동일). kind 없으면 NOTE 기본.
-        await db.execute(
-            "UPDATE documents SET doc_type = $3 WHERE rid = $1 AND tenant = $2",
-            rid, tenant, normalize_csf_kind(str(doc.get("kind", "") or "NOTE")),
-        )
+    # label(external_spec) · 축-A doc_type · prov_inputs(source_roots) 기록.
+    # 규칙은 nexus.ingest.external_metadata 가 갖는다(테스트 가능하도록 sink 밖으로 뺐다):
+    # quarantined 엔 아무것도 쓰지 않고, prov_inputs 는 멱등 히트에도 쓴다(재조정 백필).
+    from nexus.ingest.external_metadata import apply_external_metadata
+
+    await apply_external_metadata(
+        rid, tenant, doc, idempotent=idempotent, quarantined=quarantined
+    )
 
     return ExternalIngestOutcome(
         resource_rid=rid,

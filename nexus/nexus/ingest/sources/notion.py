@@ -97,10 +97,22 @@ class NotionSource:
 
     def live_ids(self) -> set[str]:
         """roots(page id) 하위에 도달 가능한 page id 집합(child_page 재귀 + child_database 행)."""
-        ids: set[str] = set()
+        return set(self.live_index())
+
+    def live_index(self) -> dict[str, set[str]]:
+        """page_id → 그 페이지에 도달하는 root 들의 집합.
+
+        root 별로 따로 걸어야 공유 서브트리의 출처가 보존된다(한 번만 걸으면 먼저 도달한
+        root 에만 귀속되어, containment prune 술어가 무너진다 — SPEC §3.2).
+        열거 중 예외는 삼키지 않는다: 부분 집합이 '삭제된 페이지'로 오독되면 안 된다.
+        """
+        index: dict[str, set[str]] = {}
         for root in self.roots:
-            self._collect(root, ids)
-        return ids
+            reached: set[str] = set()
+            self._collect(root, reached)
+            for page_id in reached:
+                index.setdefault(page_id, set()).add(root)
+        return index
 
     def list_changed(self, since: str | None) -> list[PageRef]:
         raise NotImplementedError  # 증분 sync 는 S4 비범위(후속)

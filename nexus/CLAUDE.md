@@ -299,6 +299,11 @@ docker exec nexus-ollama ollama pull multilingual-e5-base
 nexus ingest ./docs
 nexus ingest ./docs --force          # hash 무시, 전체 재인덱싱
 
+# Notion 적재 (미러 — 정본은 Notion 에 남는다)
+nexus ingest-notion --roots "pageId1,pageId2"
+nexus ingest-notion --roots "..." --reconcile --dry-run   # 사라진/되살아난 페이지 계획만 확인
+nexus ingest-notion --roots "..." --reconcile             # soft_delete + revive 적용
+
 # 검색
 nexus query "결제 서비스가 발행하는 토픽이 뭐야?"
 

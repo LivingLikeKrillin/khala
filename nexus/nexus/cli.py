@@ -507,15 +507,37 @@ def ingest_notion(
     roots: str = typer.Option("", help="쉼표구분 Notion page id 목록"),
     token_env: str = "NOTION_TOKEN",
     since: str = typer.Option("", help="ISO8601 watermark — 이후 변경분만(증분)"),
+    reconcile: bool = typer.Option(
+        False, "--reconcile",
+        help="Notion 에서 사라진 페이지를 soft_delete 하고 되살아난 페이지를 revive 한다",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="--reconcile 의 계획만 출력하고 DB 는 건드리지 않는다",
+    ),
+    force: bool = typer.Option(
+        False, "--force", help="prune 비율이 임계치를 넘어도 강행한다 (--roots 를 먼저 확인하세요)",
+    ),
+    threshold: float = typer.Option(
+        0.5, help="prune 비율이 이 값을 넘으면 거부한다 (0.5 = 50%)",
+    ),
 ) -> None:
-    """Notion 페이지를 CSF로 변환해 S3 타입-인지 intake로 적재(Path B)."""
+    """Notion 페이지를 CSF로 변환해 S3 타입-인지 intake로 적재(Path B).
+
+    --reconcile 을 주면 적재 뒤 재조정한다: 걸어온 root 하위에서 사라진 문서는 검색에서 내리고
+    (soft_delete), 되살아난 문서는 되살린다(revive). 출처 root 가 이번 실행에 전부 포함된 문서만
+    판정 대상이다 — SPEC-nexus-notion-reconciliation.
+    """
     from nexus.a2a.server import _default_external_ingest_fn
     from nexus.ingest.sources.notion import NotionSource
     from nexus.ingest.sources.notion_importer import import_notion
+    from nexus.ingest.sources.notion_reconcile import make_reconcile_fn
 
     root_list = [r.strip() for r in roots.split(",") if r.strip()]
     if not root_list:
         typer.echo("roots 가 비었습니다 (--roots 'pageid1,pageid2')")
+        raise typer.Exit(code=1)
+    if (dry_run or force) and not reconcile:
+        typer.echo("--dry-run / --force 는 --reconcile 과 함께 써야 의미가 있습니다")
         raise typer.Exit(code=1)
     try:
         source = NotionSource(token_env=token_env, roots=root_list, tenant=tenant)
@@ -526,13 +548,25 @@ def ingest_notion(
         typer.echo("notion-client 미설치 — `pip install nexus[notion]`")
         raise typer.Exit(code=1) from None
 
+    reconcile_fn = (
+        make_reconcile_fn(threshold=threshold, force=force, dry_run=dry_run)
+        if reconcile else None
+    )
     report = asyncio.run(
-        import_notion(source, tenant, _default_external_ingest_fn, since=since or None)
+        import_notion(source, tenant, _default_external_ingest_fn,
+                      since=since or None, reconcile_fn=reconcile_fn)
     )
     typer.echo(
         f"ingested={report.ingested} idempotent={report.idempotent} "
         f"empty={report.empty} skipped={report.skipped} watermark={report.watermark or ''}"
     )
+    if reconcile:
+        typer.echo(f"pruned={report.pruned} revived={report.revived}")
+        if report.refused:
+            typer.echo(f"재조정 거부됨: {report.reason}")
+            raise typer.Exit(code=2)
+        if dry_run:
+            typer.echo("dry-run — DB 는 변경되지 않았습니다")
 
 
 if __name__ == "__main__":

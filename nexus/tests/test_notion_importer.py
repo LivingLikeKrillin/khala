@@ -38,6 +38,10 @@ class _FakeSource:
     def live_ids(self):
         return set(self._ids)
 
+    def live_index(self):
+        # 이 페이크는 단일 root 트리를 흉내낸다. root 귀속 자체는 test_notion_reconcile.py 가 검증.
+        return {i: {"root"} for i in self._ids}
+
     def page_ref(self, pid):
         le = self._edits.get(pid, "t")
         return type("R", (), {"id": pid, "url": f"u/{pid}", "last_edited": le})()

@@ -13,6 +13,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
 from nexus.ingest.sources.base import ConvertedDoc
+from nexus.ingest.sources.notion_reconcile import notion_doc_rid
 
 # 제목 첫 토큰 → 축-A 타입(결정론적 휴리스틱; LLM 미사용 — nexus 규율). 미매치 NOTE.
 _KEYWORD_TO_TYPE = {
@@ -27,20 +28,28 @@ def classify_kind(title: str) -> str:
     return _KEYWORD_TO_TYPE.get(tokens[0] if tokens else "", "NOTE")
 
 
-def build_csf(conv: ConvertedDoc, page_id: str) -> dict:
-    """ConvertedDoc(markdown+frontmatter) → CSF dict. kind=제목 분류(미매치 NOTE)."""
+def build_csf(conv: ConvertedDoc, page_id: str, roots: set[str] | None = None) -> dict:
+    """ConvertedDoc(markdown+frontmatter) → CSF dict. kind=제목 분류(미매치 NOTE).
+
+    roots 를 주면 provenance.source_roots 로 실어 보낸다 → sink 가 documents.prov_inputs 에
+    기록하고, 재조정이 containment 술어(prov_inputs ⊆ walked_roots)로 쓴다(SPEC §3.1).
+    정렬해 담는다: 같은 입력이 같은 prov_inputs 를 낳아야 재실행이 멱등하다.
+    """
     body = conv.markdown
+    provenance = {
+        "source_tool": "notion",
+        "source_id": page_id,
+        "source_url": conv.frontmatter.get("origin_url", ""),
+        "source_hash": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+    }
+    if roots:
+        provenance["source_roots"] = sorted(roots)
     return {
         "id": f"ext-notion-{page_id}",
         "kind": classify_kind(conv.frontmatter.get("title", "") or ""),
         "title": conv.frontmatter.get("title") or page_id,
         "body": body,
-        "provenance": {
-            "source_tool": "notion",
-            "source_id": page_id,
-            "source_url": conv.frontmatter.get("origin_url", ""),
-            "source_hash": hashlib.sha256(body.encode("utf-8")).hexdigest(),
-        },
+        "provenance": provenance,
     }
 
 
@@ -52,23 +61,45 @@ class ImportReport:
     empty: int = 0
     watermark: str | None = None
     results: list[dict] = field(default_factory=list)
+    # 재조정(reconcile_fn 을 준 경우에만 채워진다)
+    pruned: int = 0
+    revived: int = 0
+    refused: bool = False
+    reason: str = ""
 
 
 # IngestFn: (csf, tenant) -> outcome(awaitable). 프로덕션은 _default_external_ingest_fn.
 IngestFn = Callable[[dict, str], Awaitable]
 
+# ReconcileFn: (tenant, walked_roots, live_rids) -> outcome(awaitable).
+# 프로덕션은 notion_reconcile.default_reconcile_fn. 미주입 시 재조정을 하지 않는다(기존 동작).
+ReconcileFn = Callable[[str, set, set], Awaitable]
+
 
 async def import_notion(
-    source, tenant: str, ingest_fn: IngestFn, since: str | None = None
+    source,
+    tenant: str,
+    ingest_fn: IngestFn,
+    since: str | None = None,
+    reconcile_fn: ReconcileFn | None = None,
 ) -> ImportReport:
-    """live_ids 페이지를 fetch→csf→ingest. since 이후 변경분만(증분). per-page skip.
+    """live_index 페이지를 fetch→csf→ingest. since 이후 변경분만(증분). per-page skip.
 
     watermark: 본 run 에서 본 ref 의 최대 last_edited(다음 since). 주의(한계): since 범위 내에서
     실패한 변경 페이지는 watermark 가 앞서가 다음 since 로 건너뛸 수 있다 — 복구는 since 없이 재실행.
+
+    reconcile_fn 을 주면 **적재가 끝난 뒤** 재조정한다(SPEC §3.3 — 순서가 중요하다: soft_deleted
+    문서는 collector 의 active-only dedup 에 안 걸려 먼저 재적재되고, 그 다음 상태가 뒤집힌다).
+    live 집합은 `since` 와 무관하게 열거 전체다 — since 는 무엇을 '적재'할지만 좁힌다.
     """
+    index = source.live_index()
+    walked_roots: set[str] = set()
+    for roots in index.values():
+        walked_roots |= roots
+
     report = ImportReport()
     max_seen = since or ""
-    for page_id in sorted(source.live_ids()):
+    for page_id in sorted(index):
         try:
             ref = source.page_ref(page_id)
             le = getattr(ref, "last_edited", "") or ""
@@ -82,7 +113,7 @@ async def import_notion(
                 report.empty += 1
                 report.results.append({"page_id": page_id, "skipped": "empty body"})
                 continue
-            outcome = await ingest_fn(build_csf(conv, page_id), tenant)
+            outcome = await ingest_fn(build_csf(conv, page_id, index[page_id]), tenant)
             if getattr(outcome, "idempotent_hit", False):
                 report.idempotent += 1
             else:
@@ -92,4 +123,12 @@ async def import_notion(
             report.skipped += 1
             report.results.append({"page_id": page_id, "error": str(e)})
     report.watermark = max_seen or None
+
+    if reconcile_fn is not None:
+        live_rids = {notion_doc_rid(tenant, pid) for pid in index}
+        outcome = await reconcile_fn(tenant, walked_roots, live_rids)
+        report.pruned = outcome.pruned
+        report.revived = outcome.revived
+        report.refused = outcome.refused
+        report.reason = outcome.reason
     return report
