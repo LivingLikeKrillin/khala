@@ -64,8 +64,19 @@ Nexus 연동: 규정 검색 + 영향 분석 + 설계-관측 갭   ← v0.4
 
 ### 설치
 
+`@khala/observer` 는 npm 에 게시되어 있지 않다. 이 저장소에서 빌드해서 쓴다 (`dist/` 는 커밋되지 않는다).
+
 ```bash
-pnpm add -D @khala/observer
+cd observer
+pnpm install
+pnpm build            # tsup → dist/
+
+# (a) 저장소 안에서 바로 실행
+node dist/cli/index.js check
+
+# (b) `observer` 명령을 PATH 에 올리려면 (스킬·에이전트가 이 이름을 부른다)
+pnpm link --global
+observer check
 ```
 
 ### 핵심 명령어

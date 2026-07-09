@@ -63,6 +63,7 @@ The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.m
 | Tool | One-liner | Directory |
 |---|---|---|
 | **Nexus** | Enterprise RAG + GraphRAG — grounds answers in your docs and OTel telemetry. | [`./nexus`](./nexus) |
+| **Archon** | Authority window over domain invariants — reads values from code constants at query time. Ships inside Nexus. | [`./nexus/nexus/claims`](./nexus/nexus/claims) |
 | **Observer** | Platform-aware PR analyzer — PR scope, API spec lint/diff, review checklists; consumes Nexus. | [`./observer`](./observer) |
 | **Arbiter** | ADR/SDD governance MCP — reviewable, traceable decision records; publishes to Nexus. | [`./arbiter`](./arbiter) |
 | **Probe** | Mutation-driven test-quality harness — catches what advisory review misses. | [`./probe`](./probe) |
@@ -91,7 +92,7 @@ task models    # 최초 1회 임베딩 모델 — 또는: docker compose exec ne
 ## Documentation
 
 Full ecosystem reference, philosophy, and per-tool guides live at the docs site:
-**https://khala-docs.pages.dev** (source in [`./docs`](./docs)).
+**https://livinglikekrillin.github.io/khala/** (source in [`./docs`](./docs)).
 
 ## Conventions & license
 

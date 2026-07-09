@@ -2,6 +2,19 @@
 
 > Slack에서 `@nexus`로 멘션하거나 DM으로 질문하면, Nexus의 하이브리드 검색 + LLM 답변을 Slack 메시지로 받을 수 있습니다.
 
+> ## ⚠️ 현재 이 봇은 동작하지 않는다
+>
+> 아래 절차를 그대로 따라도 봇은 뜨지 않거나, 떠도 모든 질의가 401 로 실패한다. 결함 두 개가 있고,
+> 둘 다 코드 수정이 필요하다.
+>
+> 1. **실행 진입점이 없다.** `pyproject.toml` 의 `[project.scripts]` 에는 `nexus` 하나뿐이고,
+>    `docker-compose.yml` 에도 slack 서비스가 없다. 아무것도 이 프로세스를 띄우지 않는다.
+> 2. **API 인증을 하지 않는다.** `nexus/slack/bot.py` 의 `_call_nexus_api` 는 `Authorization` 헤더를
+>    붙이지 않고, 봇에는 Nexus 토큰용 환경변수 자체가 없다. Nexus 는 기본이 `auth.mode: enforced` 라
+>    토큰 없는 요청은 401 이다.
+>
+> 이 문서는 Slack App 쪽 설정(스코프·Socket Mode)만 정확하다. 봇을 살릴지 삭제할지는 미결이다.
+
 ---
 
 ## 1. Slack App 생성

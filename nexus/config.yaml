@@ -83,9 +83,10 @@ evidence_weights:
   MEETING_NOTE: 0.05
 
 # LLM
-llm:
-  model: "claude-sonnet-4-20250514"
-  max_tokens: 2048
+# ⚠️ 이 섹션은 코드가 읽지 않는다. LLMService() 는 인자 없이 생성되어(api.py) 모델을
+#    NEXUS_LLM_MODEL 환경변수 → 코드 기본값(claude-sonnet-4-6) 순으로 정하고, max_tokens 는
+#    호출부 기본값(4096)을 쓴다. 모델을 바꾸려면 nexus/.env 의 NEXUS_LLM_MODEL 한 줄을 바꾼다.
+#    (여기 있던 claude-sonnet-4-20250514 는 2026-06-15 EOL 이라, 읽혔다면 404 를 냈을 값이다.)
 
 # Archon — 도메인 불변식·값 거버넌스 (코드 상수 해석)
 code_source:

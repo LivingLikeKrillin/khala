@@ -2,7 +2,9 @@
 # scripts/check-protected-files.sh
 # PreToolUse hook에서 호출되어, 자동 생성 파일의 수작업 편집을 차단
 
-TOOL_INPUT="$1"
+# Claude Code 의 PreToolUse 훅은 페이로드를 **stdin(JSON)** 으로 넘긴다(인자가 아니다).
+# 인자로 준 경우도 받아 준다 — 손으로 테스트할 때 편하도록.
+TOOL_INPUT="${1:-$(cat)}"
 
 # 보호 대상 파일 패턴
 PROTECTED_PATTERNS=(

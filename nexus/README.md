@@ -289,15 +289,34 @@ Response includes evidence snippets with source URIs and provenance.
 
 ## CLI Commands
 
+컨테이너 안에서 돈다: `docker compose exec nexus-app nexus <command>`.
+
 ```bash
-nexus ingest ./docs              # 문서 인덱싱
-nexus ingest ./docs --force      # 전체 재인덱싱 (hash 무시)
-nexus query "검색어"              # 검색
-nexus graph payment-service      # 그래프 조회
-nexus graph payment-service -h 2 # 2-hop 그래프
-nexus otel-aggregate             # OTel 집계
-nexus diff                       # 설계-관측 diff
-nexus status                     # 시스템 상태
+# ── 적재 ──
+nexus ingest ./docs                         # 문서 인덱싱
+nexus ingest ./docs --force                 # 전체 재인덱싱 (hash 무시)
+nexus ingest-notion --roots "id1,id2"       # Notion 트리 적재 (NOTION_TOKEN 필요)
+nexus ingest-notion --roots "..." --reconcile --dry-run   # 삭제 반영 계획만 확인
+nexus ingest-notion --roots "..." --reconcile             # soft_delete + revive 적용
+
+# ── 조회 ──
+nexus query "검색어"                         # 검색 (+ --answer 로 LLM 답변)
+nexus graph payment-service                 # 그래프 조회
+nexus graph payment-service -h 2            # 2-hop 그래프
+nexus diff                                  # 설계-관측 diff
+nexus status                                # 시스템 상태
+nexus entropy-signals                       # 공존 잔차 신호 (재수집 덮어쓰기·중복·제목충돌)
+
+# ── 도메인 값 (Archon) ──
+nexus claim-seed claims.yaml                # 도메인 claim 적재
+nexus claim-value Basic                     # 개념의 현재 값을 코드에서 조회
+nexus grade-authority                       # 등급 계층 권한 도출
+
+# ── 운영 ──
+nexus otel-aggregate                        # OTel trace 집계 (--profile observability 필요)
+nexus supersede <old> --by <new>            # ⚠️ 파괴적: old 를 검색에서 배제. dry-run·역명령 없음
+nexus auth gen-token                        # bearer 토큰 발급
+nexus auth hash-token                       # 토큰 → sha256 (config.yaml auth.principals 용)
 ```
 
 ---
@@ -352,7 +371,7 @@ nexus/
 │   │   └── formatter.py     #   Block Kit 포매터
 │   │
 │   ├── mcp/                 # MCP Server (AI Agent 도구)
-│   │   ├── server.py        #   FastMCP 도구 6개 정의
+│   │   ├── server.py        #   FastMCP 도구 9개 정의
 │   │   └── __main__.py      #   진입점 (stdio/http)
 │   │
 │   ├── web/                 # Web UI (Vanilla JS, 빌드 불필요)
@@ -360,7 +379,7 @@ nexus/
 │   │   ├── css/style.css    #   다크 테마 + 한국어 타이포그래피
 │   │   └── js/              #   라우터, API 클라이언트, 뷰 5개
 │   │
-│   ├── api.py               # FastAPI endpoints (11개)
+│   ├── api.py               # FastAPI endpoints (16개)
 │   ├── cli.py               # Typer CLI
 │   ├── db.py                # PostgreSQL connection pool
 │   ├── rid.py               # Canonical ID generation
@@ -496,14 +515,11 @@ entities:
 
 ## Slack Bot
 
-Slack에서 `@nexus`로 멘션하거나 DM으로 질문하면 근거 기반 답변을 받을 수 있습니다.
+⚠️ **현재 동작하지 않는다.** 실행 진입점이 없고(`[project.scripts]`·compose 모두 미등록),
+`nexus/slack/bot.py` 가 API 호출에 `Authorization` 헤더를 붙이지 않아 기본 `enforced` 모드에서
+모든 질의가 401 이다. 살릴지 삭제할지 미결.
 
-```bash
-pip install -e '.[slack]'
-python -m nexus.slack.app
-```
-
-설정 및 사용법: [docs/SLACK_BOT.md](docs/SLACK_BOT.md)
+자세한 결함 내용: [docs/SLACK_BOT.md](docs/SLACK_BOT.md)
 
 ---
 
@@ -517,7 +533,9 @@ python -m nexus.mcp                    # stdio (로컬)
 python -m nexus.mcp --transport http   # streamable-http (원격)
 ```
 
-6개 도구 제공: `nexus_search`, `nexus_answer`, `nexus_graph`, `nexus_suggest`, `nexus_diff`, `nexus_status`
+9개 도구 제공: `nexus_search`, `nexus_answer`, `nexus_graph`, `nexus_suggest`, `nexus_diff`, `nexus_status`, `nexus_supersede`, `archon_claim_value`, `archon_grade_authority`
+
+⚠️ Nexus 기본 auth 모드가 `enforced` 라 `NEXUS_MCP_TOKEN` 없이는 모든 툴이 401 이다 ([docs/MCP_SERVER.md](./docs/MCP_SERVER.md) §6).
 
 설정 및 사용법: [docs/MCP_SERVER.md](docs/MCP_SERVER.md)
 
