@@ -16,4 +16,7 @@ def test_types_and_protocol():
         def live_ids(self):
             return set()
 
+        def live_index(self):
+            return {}
+
     assert isinstance(Dummy(), DocumentSource)  # runtime_checkable
