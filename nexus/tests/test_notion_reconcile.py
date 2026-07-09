@@ -227,6 +227,51 @@ async def test_import_notion_without_reconcile_fn_changes_nothing():
     assert report.refused is False
 
 
+# ── I-009: page id 표기 정규화 ────────────────────────────────────────────────
+
+class _HexTreeClient:
+    """API 는 대시 포함 소문자 id 를 준다. 사용자는 Notion URL 에서 대시 없는 id 를 복사한다."""
+
+    ROOT_DASHED = "2740c71b-b9dc-80ef-b43a-ea3676e632c8"
+    CHILD_DASHED = "29f0c71b-b9dc-8094-84ca-fc0c416a90e2"
+
+    def __init__(self):
+        self.blocks = type("B", (), {"children": self})()
+        self.pages = type("P", (), {"retrieve": self._retrieve})()
+        self.databases = type("D", (), {"query": self._query})()
+
+    def list(self, block_id, start_cursor=None):
+        kids = ([{"type": "child_page", "id": self.CHILD_DASHED}]
+                if block_id == self.ROOT_DASHED else [])
+        return {"results": kids, "has_more": False, "next_cursor": None}
+
+    def _retrieve(self, page_id):
+        return {"id": page_id, "url": "u", "last_edited_time": "2026-07-09T00:00:00Z"}
+
+    def _query(self, database_id, start_cursor=None):
+        return {"results": [], "has_more": False, "next_cursor": None}
+
+
+def test_undashed_root_id_is_canonicalised_to_the_api_form():
+    """--roots 에 URL 형식(대시 없음)을 줘도 API 가 주는 대시 형식과 같은 페이지로 취급해야 한다.
+
+    아니면 루트 페이지가 다른 doc rid 로 중복 적재되고, walked_roots 표기가 어긋나
+    containment 술어가 조용히 빗나간다.
+    """
+    undashed = _HexTreeClient.ROOT_DASHED.replace("-", "").upper()
+    src = NotionSource(client=_HexTreeClient(), roots=[undashed], tenant="default")
+    index = src.live_index()
+    assert set(index) == {_HexTreeClient.ROOT_DASHED, _HexTreeClient.CHILD_DASHED}
+    # root 귀속도 정규화된 형태여야 한다
+    assert index[_HexTreeClient.CHILD_DASHED] == {_HexTreeClient.ROOT_DASHED}
+
+
+def test_non_uuid_root_strings_are_left_alone():
+    """테스트 픽스처나 비-UUID id 를 망가뜨리지 않는다."""
+    src = NotionSource(client=FakeForkedTreeClient(), roots=["rootA"], tenant="default")
+    assert "rootA" in src.live_index()
+
+
 async def test_reconcile_sees_full_live_set_even_with_since_watermark():
     """--since 는 무엇을 '적재'할지만 좁힌다. 무엇이 '살아있는지'는 전체 열거가 정한다."""
     from nexus.ingest.sources.notion_importer import import_notion

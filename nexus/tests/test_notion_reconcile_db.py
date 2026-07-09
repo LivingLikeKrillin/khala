@@ -230,15 +230,56 @@ def test_revive_never_resurrects_a_superseded_doc():
 
 # ── §3.1 prov_inputs 기록 (백필의 실질) ────────────────────────────────────────
 
-def test_write_source_roots_replaces_not_appends():
-    """루트가 바뀌면 prov_inputs 는 갈아끼워야 한다. append 하면 낡은 root 가 남아 containment 가 무너진다."""
+def test_write_source_roots_refreshes_only_the_walked_roots():
+    """이번에 걸은 root 에 대해서만 귀속을 갱신하고, 걷지 않은 root 의 기록은 보존한다.
+
+    I-010 회귀 가드. 통째로 덮어쓰면 rootB 를 걷지 않은 실행이 'P 는 B 에도 걸려 있다'는
+    사실을 지워버리고, 다음 실행에서 P 가 B 밑에 살아있는데도 prune 후보가 된다.
+    """
     from nexus import db
     from nexus.ingest.sources.notion_reconcile import write_source_roots
 
     async def inner():
-        await write_source_roots(_RID_A, _TENANT, ["rootA", "rootC"])
-        row = await db.fetch_one("SELECT prov_inputs FROM documents WHERE rid=$1", _RID_A)
-        assert sorted(row["prov_inputs"]) == ["rootA", "rootC"]
+        # _RID_SHARED 는 {rootA, rootB}. rootA 만 걷고, 이번에도 rootA 에서 닿았다.
+        await write_source_roots(_RID_SHARED, _TENANT, reached=["rootA"], walked=["rootA"])
+        row = await db.fetch_one("SELECT prov_inputs FROM documents WHERE rid=$1", _RID_SHARED)
+        assert sorted(row["prov_inputs"]) == ["rootA", "rootB"]  # rootB 보존
+
+    _run(inner)
+
+
+def test_write_source_roots_drops_a_walked_root_that_no_longer_reaches_the_page():
+    """rootA·rootB 를 모두 걸었는데 이번엔 rootA 에서만 닿았다면 rootB 귀속은 사라져야 한다."""
+    from nexus import db
+    from nexus.ingest.sources.notion_reconcile import write_source_roots
+
+    async def inner():
+        await write_source_roots(_RID_SHARED, _TENANT, reached=["rootA"], walked=["rootA", "rootB"])
+        row = await db.fetch_one("SELECT prov_inputs FROM documents WHERE rid=$1", _RID_SHARED)
+        assert row["prov_inputs"] == ["rootA"]
+
+    _run(inner)
+
+
+def test_subset_run_cannot_make_a_multi_root_page_prunable():
+    """I-010 의 실제 피해 시나리오를 끝까지 재현한다.
+
+    rootA 만 걷는 실행을 두 번 한다. 1회차에 P 는 rootA 에서 닿았고, 2회차엔 rootA 에서
+    사라졌다(하지만 rootB 밑에는 여전히 살아있다). P 가 prune 후보가 되면 안 된다.
+    """
+    from nexus.ingest.sources.notion_reconcile import (
+        fetch_notion_scope,
+        plan_reconcile,
+        write_source_roots,
+    )
+
+    async def inner():
+        # 1회차: rootA 만 걷고 P(shared) 에 닿음
+        await write_source_roots(_RID_SHARED, _TENANT, reached=["rootA"], walked=["rootA"])
+        # 2회차: rootA 만 걷고 P 는 더 이상 rootA 밑에 없다 → live 에서 빠짐
+        scope = await fetch_notion_scope(_TENANT, {"rootA"})
+        plan = plan_reconcile(scope, live_rids={_RID_A}, force=True)
+        assert _RID_SHARED not in plan.prune  # rootB 를 안 걸었으므로 판정 불가 → 건드리지 않음
 
     _run(inner)
 
@@ -250,7 +291,7 @@ def test_write_source_roots_backfills_a_legacy_row():
 
     async def inner():
         assert _RID_BARE not in {r.rid for r in await fetch_notion_scope(_TENANT, {"rootA"})}
-        await write_source_roots(_RID_BARE, _TENANT, ["rootA"])
+        await write_source_roots(_RID_BARE, _TENANT, reached=["rootA"], walked=["rootA"])
         row = await db.fetch_one("SELECT prov_inputs FROM documents WHERE rid=$1", _RID_BARE)
         assert row["prov_inputs"] == ["rootA"]
         assert _RID_BARE in {r.rid for r in await fetch_notion_scope(_TENANT, {"rootA"})}
@@ -263,7 +304,7 @@ def test_write_source_roots_never_touches_a_quarantined_row():
     from nexus.ingest.sources.notion_reconcile import write_source_roots
 
     async def inner():
-        await write_source_roots(_RID_QUAR, _TENANT, ["rootA"])
+        await write_source_roots(_RID_QUAR, _TENANT, reached=["rootA"], walked=["rootA"])
         row = await db.fetch_one("SELECT prov_inputs FROM documents WHERE rid=$1", _RID_QUAR)
         assert row["prov_inputs"] == []
 

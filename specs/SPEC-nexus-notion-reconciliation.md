@@ -1,17 +1,21 @@
 ---
 id: SPEC-nexus-notion-reconciliation
 type: spec
-title: Notion deletion reconciliation — soft_delete/revive primitives + root-scoped prune
-status: draft
+title: Notion deletion reconciliation — soft_delete/revive primitives + root-scoped
+  prune
+status: approved
 date: 2026-07-09
 linked_adrs:
-- ADR-0002
+- ADR-0006
 tags:
 - nexus
 - notion
 - ingestion
 - entropy
 - lifecycle
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-07-09T14:37:12Z'
+content_hash: sha256:7109c7b51f2d23c055a78989d6917a8c31bfe9e916099ec49f6bf9459ed0d7a7
 ---
 
 # Notion deletion reconciliation
@@ -50,14 +54,36 @@ writer is missing.
 
 ### 3.1 Root provenance
 
-`build_csf()` carries the roots that reach a page into `provenance.source_roots`. The
-external-ingest sink writes them to `documents.prov_inputs`.
+**Root identifiers are canonical Notion page ids** — lowercase UUID *with* dashes, the form
+the API returns. `--roots` accepts the dash-less 32-hex form people copy out of a browser URL
+and normalises it (`notion_ids.canonical_page_id`). Without this the root page is enumerated
+under the caller's spelling while its children carry the API's, so the same page lands under
+two different `doc_rid`s and the containment predicate below compares incomparable strings.
+Both sides of `<@` — `prov_inputs` and `walked_roots` — are canonical by construction.
 
-**The sink must write `prov_inputs` even on an idempotent hit.** Today it skips the
-label/`doc_type` writes when nothing was re-indexed; an unchanged page would therefore
-never acquire provenance. Writing it unconditionally (still never on a quarantined row)
-also backfills the rows ingested before this SPEC on the first full run — no schema
-migration, no backfill script.
+`build_csf()` carries into `provenance` both the roots that *reached* this page
+(`source_roots`) and the roots this run *walked* (`walked_roots`). The external-ingest sink
+uses them to update `documents.prov_inputs`:
+
+```
+prov_inputs := (prov_inputs \ walked_roots) ∪ source_roots
+```
+
+**Not a wholesale replace.** A run that walks only root `A` must not erase the record that the
+page is also reachable from `B` — that record is exactly what stops `B`'s page from being
+pruned by an `A`-only run (§3.2). **Nor an append**: a root that no longer reaches the page
+must drop out, or the document becomes permanently un-prunable. Refreshing only the walked
+roots is the one rule that satisfies both.
+
+**The sink must write `prov_inputs` even on an idempotent hit.** `a2a/server.py` skips the
+label/`doc_type` writes when nothing was re-indexed; an unchanged page would therefore never
+acquire provenance. Writing it unconditionally (still never on a quarantined row) backfills
+**still-live** pre-SPEC rows on the first full run — no schema migration, no backfill script.
+
+> This backfill reaches only pages that are still walked. A page deleted from Notion *before*
+> this SPEC shipped will never be enumerated again, so it never acquires `prov_inputs` and is
+> **permanently outside the prune scope**. Those rows need a one-time manual cleanup; the
+> reconciler will not remove them. Failing in this direction is deliberate.
 
 ### 3.2 The prune predicate
 
@@ -80,8 +106,11 @@ WHERE tenant = $1
 ### 3.3 Reconciliation runs *after* the ingest pass
 
 Order is load-bearing. During the ingest pass a `soft_deleted` document is invisible to
-the collector's dedup query (which filters `status='active'`), so it is re-ingested and
-its chunks are rewritten. Reconciliation then flips the statuses:
+the collector's dedup query — it looks only at active rows
+(`ingest/collector.py:78`: `... WHERE source_uri = $1 AND tenant = $2 AND status = 'active'`)
+— so an unchanged soft-deleted page is treated as new, re-ingested, and its chunks rewritten
+(as `superseded`, since `ingest/pipeline.py:132` derives chunk status from the parent's).
+Reconciliation then flips the statuses:
 
 - `prune`  = `scope[status='active']` − `live_rids`  → `soft_delete()`
 - `revive` = `scope[status='soft_deleted']` ∩ `live_rids` → `revive()`
@@ -94,8 +123,22 @@ Reviving a document must not resurrect **stale chunk generations**. When a docum
 text changes, its old chunks stay behind as `superseded`; blindly setting every chunk of
 `doc_rid` back to `active` would bring dead text back into search.
 
-The current generation is identifiable: `pipeline.py` writes `chunks.hash` and
-`documents.content_hash` from the same value. So:
+The current generation is identifiable: `ingest/pipeline.py` binds the same
+`collected.content_hash` to `documents.hash` + `documents.content_hash` (`pipeline.py:80`, bound
+at `:97`) and to `chunks.hash` (`pipeline.py:156`, bound at `:173`).
+So `chunks.hash = documents.content_hash` selects exactly the generation written by the last
+ingest of that content.
+
+> **Invariant (hash collision is benign).** Two generations can share a `content_hash` only if
+> their content is identical. Chunk rids are derived from `(doc_rid, section_path, chunk_index)`
+> — not from text (`rid.py: chunk_rid`) — so identical content re-writes the same rids. A stale
+> chunk carrying the current `content_hash` therefore *is* a chunk of the current content. Reviving
+> it is correct, not a resurrection.
+
+**Invariant (atomicity).** Each primitive updates `documents` and `chunks` inside one
+transaction (`lifecycle.py`, `async with conn.transaction()`). A document is never observed
+`soft_deleted` with active chunks, nor `active` with none — states the search filters and the
+`supersede()` guard were not designed for.
 
 ```sql
 -- soft_delete: only active rows; old superseded generations untouched
@@ -120,18 +163,32 @@ confined to this path.
 - `--reconcile` is **opt-in**. Without it `ingest-notion` behaves exactly as today.
 - `--dry-run` reports the plan and applies nothing.
 - If the prune set exceeds **50%** of the active scope, the run **refuses** and reports,
-  unless `--force`. This is the last line of defence against a mis-typed `--roots`.
-- `live_ids()` raises on enumeration failure, so a partial tree walk can never be mistaken
-  for "these pages were deleted". Per-page *fetch* failures do not affect pruning — a page
-  that failed to fetch is still enumerated, hence still live.
+  unless `--force`. The figure is a heuristic, not a derived bound: it is tunable
+  (`--threshold`) and it is a *tripwire*, not a proof. It does not catch a mis-typed `--roots`
+  that happens to affect under half the scope, and it will refuse a legitimate bulk cleanup —
+  which is what `--force` is for. Its only job is to turn the catastrophic case (a typo that
+  makes the whole corpus look deleted) from silent into loud. The containment predicate (§3.2)
+  is what provides the actual correctness guarantee; this is defence in depth.
+- `live_index()` raises on enumeration failure, so a partial tree walk can never be mistaken
+  for "these pages were deleted". Enumeration is **decoupled from per-page content fetch**:
+  `_collect` walks via `blocks.children.list` / `databases.query` and lets exceptions
+  propagate (`notion.py`), while `page_ref`/`fetch_markdown` failures are caught per page by
+  `import_notion` and counted as `skipped`. A page whose *content* failed to fetch is still
+  enumerated, hence still live, hence never pruned.
 
 ## 4. Known limits (accepted)
 
-- **A page moved out of the walked roots is indistinguishable from a deleted page**, as is
+- **A page moved out of every walked root is indistinguishable from a deleted page**, as is
   a page whose integration share was revoked. Both get pruned. This is self-healing: the
   next run that walks the page's new location revives it.
-- Attribution is per-run. A document ingested before this SPEC has empty `prov_inputs` and
-  is therefore never a prune candidate until one full run re-attributes it.
+- A document ingested before this SPEC has empty `prov_inputs` and is never a prune candidate
+  until a run walks it again and attributes it. **A page deleted before this SPEC shipped is
+  therefore never pruned at all** — it will never be walked. Such rows require a one-time
+  manual `soft_delete`; see §3.1.
+- Attribution converges rather than being exact on the first partial run. A page reachable from
+  `A` and `B` that has only ever been walked under `A` carries `prov_inputs={A}`; an `A`-only run
+  that no longer reaches it **will** prune it, and a later run walking `B` revives it. Walking the
+  full root set once makes attribution complete and removes this window.
 - Walking per root visits shared subtrees once per root. With no rate-limit backoff in the
   Notion client, very large trees may need `--roots` split across runs — which is exactly
   what the containment predicate makes safe.
@@ -143,10 +200,15 @@ Persisting `roots` in `config.yaml`, Notion webhooks, rate-limit backoff, hard d
 ## 6. Acceptance
 
 1. `live_index()` maps each page to the set of walked roots that reach it; a page under two
-   roots reports both.
+   roots reports both. A dash-less root id yields the same keys as the API's dashed form.
 2. A doc whose `prov_inputs` is not a subset of the walked roots is never pruned.
-3. A pruned doc leaves search; its row and chunks remain, `status='soft_deleted'`.
-4. A revived doc returns to search with **only** its current chunk generation active.
-5. `supersede`d docs are untouched by both directions.
-6. Prune ratio over 50% refuses without `--force`.
-7. `--dry-run` mutates nothing.
+3. An `A`-only run over a page attributed `{A,B}` leaves `prov_inputs` still containing `B`;
+   the page does not become a prune candidate.
+4. A pruned doc leaves search; its row and chunks remain, `status='soft_deleted'`.
+5. A revived doc returns to search with **only** its current chunk generation active.
+   *Fixture:* a `soft_deleted` doc with `content_hash = h2` owning two chunks — one with
+   `hash = h2` (current, written `superseded` by the ingest pass) and one with `hash = h1`
+   (a stale generation). After revive, exactly the `h2` chunk is `active`.
+6. `supersede`d docs are untouched by both directions.
+7. Prune ratio over 50% refuses without `--force`; `--force` applies it.
+8. `--dry-run` mutates nothing.

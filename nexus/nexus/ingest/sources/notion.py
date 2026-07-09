@@ -10,6 +10,7 @@ import os
 
 from nexus.ingest.sources.base import ConvertedDoc, PageRef
 from nexus.ingest.sources.notion_convert import blocks_to_markdown
+from nexus.ingest.sources.notion_ids import canonical_page_id
 
 
 class NotionSource:
@@ -27,7 +28,8 @@ class NotionSource:
 
             client = Client(auth=os.environ[token_env])
         self.client = client
-        self.roots = roots or []
+        # URL 에서 복사한 대시 없는 id 도 API 표기로 맞춘다 — 중복 적재/귀속 불일치 방지.
+        self.roots = [canonical_page_id(r) for r in (roots or [])]
         self.tenant = tenant
         self.classification = classification
         self.owner = owner
@@ -84,6 +86,7 @@ class NotionSource:
         return rows
 
     def _collect(self, page_id: str, ids: set[str]) -> None:
+        page_id = canonical_page_id(page_id)
         if page_id in ids:
             return
         ids.add(page_id)

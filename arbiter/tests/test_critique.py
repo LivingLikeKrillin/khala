@@ -69,6 +69,35 @@ def test_anthropic_critic_parses_json():
     assert crit.find_issues("body", [], RUBRIC) == [("scope-creep", "low", "x")]
 
 
+def test_anthropic_critic_parses_fenced_json():
+    """관측된 실제 응답: 프롬프트가 길어지면 모델이 JSON 을 ```json 펜스로 감싼다.
+
+    'ONLY a JSON array' 라는 지시로는 막을 수 없다 — 파서가 견뎌야 한다.
+    (이 버그가 SPEC-nexus-notion-reconciliation 의 승인 게이트를 막았다.)
+    """
+    from khala.arbiter.critique import AnthropicCritic
+    body = '```json\n[{"category":"scope-creep","severity":"low","description":"x"}]\n```'
+    crit = AnthropicCritic(client=_Client(body))
+    assert crit.find_issues("body", [], RUBRIC) == [("scope-creep", "low", "x")]
+
+
+def test_anthropic_critic_parses_bare_fence_and_prose_preamble():
+    from khala.arbiter.critique import AnthropicCritic
+    body = 'Here are the issues I found:\n\n```\n[{"category":"undefined","severity":"high","description":"y"}]\n```\n'
+    crit = AnthropicCritic(client=_Client(body))
+    assert crit.find_issues("body", [], RUBRIC) == [("undefined", "high", "y")]
+
+
+def test_anthropic_critic_reports_truncated_response_clearly():
+    """max_tokens 로 잘린 응답은 조용히 빈 목록이 되면 안 된다 — 실패해야 한다."""
+    import pytest
+
+    from khala.arbiter.critique import AnthropicCritic
+    crit = AnthropicCritic(client=_Client('[{"category":"undefined","severity":"h'))
+    with pytest.raises(Exception):
+        crit.find_issues("body", [], RUBRIC)
+
+
 def test_anthropic_critic_constructs_without_api_key(monkeypatch):
     """Server boot must not require the key: construction is keyless (lazy client)."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
