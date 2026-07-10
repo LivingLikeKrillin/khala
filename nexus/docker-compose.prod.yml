@@ -66,5 +66,5 @@ services:
       NEXUS_DEV_TOKEN: ${NEXUS_DEV_TOKEN:?터널 배포에는 강한 토큰이 필요합니다. `python -m nexus.cli auth gen-token` 으로 발급해 nexus/.env 의 NEXUS_DEV_TOKEN 에 넣으세요}
       # 약한 토큰(기본값 또는 24자 미만)이면 앱이 부트를 거부한다(auth/config.py).
       NEXUS_REQUIRE_STRONG_DEV_TOKEN: "1"
-      # 팀 Notion 적재용(런북 §5). 미설정이면 ingest-notion 만 실패하고 앱은 정상.
-      NOTION_TOKEN: ${NOTION_TOKEN:-}
+      # NOTION_TOKEN·ANTHROPIC_API_KEY 는 여기서 선언하지 않는다 — 베이스 compose 가 주입한다.
+      # 오버레이는 얹고 빼는 것이라, 여기 적은 자격증명은 다음 오버레이가 기억해야 할 짐이 된다.
