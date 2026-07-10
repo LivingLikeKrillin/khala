@@ -107,6 +107,20 @@ auth:
     #   tenant: "default"
     #   clearance: "INTERNAL"
 
+  # ── Cloudflare Access (per-person browser identity) — OFF by default ──
+  # 설정하면 Nexus 는 자신이 Access 뒤에 있다고 선언한다: Cf-Access-Jwt-Assertion 헤더를
+  # 검증하고 email 로 principal 을 고른다. 그리고 공유 dev-token 경로는 꺼진다(SPEC §4.5).
+  # issuer/aud 는 Zero Trust 대시보드에서 온다. 없으면 이 섹션을 통째로 비워 둔다(로컬 dev).
+  # access:
+  #   issuer: "https://<team>.cloudflareaccess.com"
+  #   aud: "<application-audience-tag>"
+  #   default_identity:            # Access 는 통과했으나 매핑에 없는 email 의 기본 신원.
+  #     clearance: "PUBLIC"        # capabilities 는 항상 비어 있다(파괴적 행위 불가).
+  #   identities:
+  #     "eisen@pfplay.com":
+  #       clearance: "INTERNAL"
+  #       capabilities: ["manage_sources", "manage_documents"]
+
 # ── A2A (Agent2Agent) Phase 0 spike — OFF by default ──
 # Flag-gated grounded-retrieval server (SPEC-nexus-a2a-server-phase0-spike). Enable with
 # NEXUS_A2A_ENABLED=1 (or `enabled: true`). The Agent Card is public; skill execution is
