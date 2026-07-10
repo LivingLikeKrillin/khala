@@ -76,14 +76,23 @@ def tokenize_korean(text: str) -> list[str]:
 
 
 def tokens_to_tsquery(tokens: list[str]) -> str:
-    """토큰 리스트 → PostgreSQL tsquery 문자열."""
+    """토큰 리스트 → PostgreSQL tsquery 문자열. **OR 로 잇는다** (SPEC-nexus-search-recall §4.1).
+
+    AND 였다. 그러면 질의의 모든 어휘가 한 청크 안에 있어야 한다 — mecab 이 `엔티티` 를
+    `엔`+`티티` 로 쪼개므로 `Entity 식별` 이라 적힌 문서는 영영 걸리지 않는다.
+    14개 질의 중 11개에서 키워드 다리가 0건을 반환했다(2026-07-10 측정).
+
+    정밀도는 `ts_rank` 가 지킨다. 많은 어휘를, 조밀하게 맞힌 청크가 위로 온다. 그리고 이 다리는
+    `search.bm25_top_k`(기본 20) 개만 돌려주므로, OR 은 **매칭을 넓힐 뿐 반환을 넓히지 않는다.**
+
+    따옴표 이스케이프는 남긴다. mecab 은 따옴표를 내놓지 않지만, 토크나이저는 바뀔 수 있다.
+    """
     if not tokens:
         return ""
-    # 각 토큰을 안전하게 감싸고 AND로 연결
     safe = [t.replace("'", "''") for t in tokens if t.strip()]
     if not safe:
         return ""
-    return " & ".join(f"'{t}'" for t in safe)
+    return " | ".join(f"'{t}'" for t in safe)
 
 
 async def index_chunk_bm25(chunk_rid: str, chunk) -> bool:

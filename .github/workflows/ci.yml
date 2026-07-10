@@ -80,6 +80,49 @@ jobs:
         working-directory: nexus
         run: python -m pytest -q
 
+  nexus-recall:
+    name: nexus (search recall, mecab)
+    runs-on: ubuntu-latest
+    # The recall suite measures the keyword leg, and the keyword leg is mecab-ko. Without the
+    # Korean tokenizer `tokenize_korean` falls back to splitting on spaces — a different ruler,
+    # and a floor measured with it guards nothing. mecab-ko is built from source in the image,
+    # so the suite runs inside the image. `NEXUS_REQUIRE_MECAB=1` turns a silent skip into a
+    # red build, which is the whole lesson: a test that quietly does not run is not a test.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: nexus_test
+          POSTGRES_USER: nexus
+          POSTGRES_PASSWORD: nexus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexus -d nexus_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Apply baseline schema
+        working-directory: nexus
+        run: psql "postgresql://nexus:nexus@localhost:5432/nexus_test" -f init.sql
+      - name: Declare this database disposable
+        working-directory: nexus
+        run: psql "postgresql://nexus:nexus@localhost:5432/nexus_test" -f tests/disposable_db.sql
+      - name: Build the app image (mecab-ko is compiled here)
+        working-directory: nexus
+        run: docker build -t nexus-app:ci .
+      - name: Run the recall suite inside the image
+        working-directory: nexus
+        run: |
+          docker run --rm --network host \
+            -e NEXUS_TEST_DB_URL=postgresql://nexus:nexus@localhost:5432/nexus_test \
+            -e DATABASE_URL=postgresql://nexus:nexus@localhost:5432/nexus_test \
+            -e NEXUS_REQUIRE_MECAB=1 \
+            -v "$PWD:/app" -w /app \
+            nexus-app:ci python -m pytest -q tests/test_search_recall.py tests/test_recall_suite_runs.py
+
   observer:
     name: observer (vitest)
     runs-on: ubuntu-latest
