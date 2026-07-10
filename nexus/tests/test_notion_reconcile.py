@@ -178,7 +178,7 @@ async def test_import_notion_tags_each_page_with_the_roots_that_reach_it():
 
     seen: dict[str, list[str]] = {}
 
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         seen[csf["provenance"]["source_id"]] = csf["provenance"].get("source_roots", [])
         return _Outcome(rid=f"rid-{csf['provenance']['source_id']}")
 
@@ -195,7 +195,7 @@ async def test_import_notion_reconciles_after_ingest_with_full_live_set():
     order: list[str] = []
     captured: dict = {}
 
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         order.append("ingest")
         return _Outcome(rid="r")
 
@@ -218,7 +218,7 @@ async def test_import_notion_without_reconcile_fn_changes_nothing():
     """기존 호출자(재조정 미사용)의 동작은 그대로다."""
     from nexus.ingest.sources.notion_importer import import_notion
 
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         return _Outcome(rid="r")
 
     report = await import_notion(_IndexedSource({"p1": {"rootA"}}), "acme", fake_ingest)
@@ -278,7 +278,7 @@ async def test_reconcile_sees_full_live_set_even_with_since_watermark():
 
     captured: dict = {}
 
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         return _Outcome(rid="r")
 
     async def fake_reconcile(tenant, walked_roots, live_by_rid):

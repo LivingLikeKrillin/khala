@@ -89,6 +89,9 @@ async def _save_document(
             is_quarantined = EXCLUDED.is_quarantined,
             quality_flags = EXCLUDED.quality_flags,
             updated_at = EXCLUDED.updated_at,
+            -- title 이 빠져 있었다. doc_type·language 는 갱신하면서 제목만 최초 삽입값에
+            -- 영원히 갇혔다 — 원본에서 페이지 이름을 고쳐도, 재수집해도, --force 를 줘도.
+            title = EXCLUDED.title,
             doc_type = EXCLUDED.doc_type,
             language = EXCLUDED.language,
             approved_hash = EXCLUDED.approved_hash

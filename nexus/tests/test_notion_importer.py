@@ -59,7 +59,7 @@ async def test_import_notion_ingests_all_pages():
     convs = {"a": _conv(title="A"), "b": _conv(title="B")}
     calls = []
 
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         calls.append(csf["id"])
         return _Outcome(rid=f"doc_{csf['provenance']['source_id']}")
 
@@ -71,7 +71,7 @@ async def test_import_notion_ingests_all_pages():
 async def test_import_notion_skips_failing_page_without_aborting():
     convs = {"a": _conv(), "b": _conv()}
 
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         if csf["provenance"]["source_id"] == "a":
             raise RuntimeError("boom")
         return _Outcome(rid="doc_b")
@@ -85,7 +85,7 @@ async def test_import_notion_skips_empty_body_pages():
     convs = {"a": _conv(body="# 실내용\n\n본문 있음"), "b": _conv(body="  \n  ")}
     ingested_ids = []
 
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         ingested_ids.append(csf["provenance"]["source_id"])
         return _Outcome(rid="x")
 
@@ -96,7 +96,7 @@ async def test_import_notion_skips_empty_body_pages():
 
 
 async def test_import_notion_counts_idempotent():
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         return _Outcome(rid="doc_a", idempotent=True)
 
     report = await import_notion(_FakeSource(["a"], {"a": _conv()}), "acme", fake_ingest)
@@ -108,7 +108,7 @@ async def test_import_notion_since_skips_unchanged():
     edits = {"a": "2026-06-01", "b": "2026-06-10"}
     seen = []
 
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         seen.append(csf["provenance"]["source_id"])
         return _Outcome(rid="x")
 
@@ -123,7 +123,7 @@ async def test_import_notion_since_skips_unchanged():
 async def test_import_notion_no_since_processes_all():
     convs = {"a": _conv(), "b": _conv()}
 
-    async def fake_ingest(csf, tenant):
+    async def fake_ingest(csf, tenant, *, force: bool = False):
         return _Outcome(rid="x")
 
     report = await import_notion(_FakeSource(["a", "b"], convs), "acme", fake_ingest)

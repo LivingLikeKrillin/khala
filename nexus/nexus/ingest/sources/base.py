@@ -15,6 +15,8 @@ class PageRef:
     id: str
     url: str
     last_edited: str
+    #: 원본이 부르는 이름. 없을 수도 있다(제목 속성이 빈 페이지, DB 행).
+    title: str = ""
 
 
 @dataclass

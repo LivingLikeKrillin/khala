@@ -104,6 +104,7 @@ async def _walk_and_apply(*, run_id: str, tenant: str, roots: list[str], reconci
         source, tenant, _default_external_ingest_fn,
         since=since or None,
         reconcile_fn=planner.reconcile_fn if reconcile else None,
+        force=force,
     )
 
     # planner 는 reconcile 을 돌았을 때만 walked_roots 를 채운다. 비-reconcile 실행에서

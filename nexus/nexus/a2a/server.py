@@ -388,13 +388,36 @@ async def _default_ingest_fn(doc: dict, tenant: str) -> IngestOutcome:
     )
 
 
-async def _default_external_ingest_fn(doc: dict, tenant: str) -> ExternalIngestOutcome:
+def _csf_to_markdown_file(doc: dict) -> str:
+    """CSF → 임시 파일에 쓸 마크다운. **제목을 frontmatter 로 실어 보낸다.**
+
+    예전엔 body 만 썼다. 그래서 `run_ingest` 가 파일의 첫 헤딩에서 제목을 다시 만들었고,
+    Notion 페이지 `Index` 가 코퍼스에 `Access 방식` 으로 들어갔다 — CSF 는 진짜 이름을
+    싣고 있었는데 sink 가 버린 것이다. `derive_title` 은 이미 frontmatter 를 우선한다.
+
+    제목이 없으면 frontmatter 를 쓰지 않는다. 첫 헤딩 폴백이 그대로 살아 있어야 한다.
+    """
+    import yaml
+
+    body = str(doc.get("body", ""))
+    title = str(doc.get("title", "") or "").strip()
+    if not title:
+        return body
+    # yaml.safe_dump 로 인용한다 — `선두 컬럼: 제약 #1` 처럼 콜론·해시가 든 제목이 흔하다.
+    fm = yaml.safe_dump({"title": title}, allow_unicode=True, default_flow_style=False)
+    return f"---\n{fm}---\n\n{body}"
+
+
+async def _default_external_ingest_fn(doc: dict, tenant: str, *, force: bool = False) -> ExternalIngestOutcome:
     """Production 외부-ingest 경로: inline CSF body를 기존 파일 기반 파이프라인으로 브리지.
 
     governed 경로(_default_ingest_fn)와 동일하게 transient-file로 ingest 하되, approved_hash
     provenance는 없다. 결정적 id → 안정적 canonical URI 매핑으로 idempotency 가 성립한다
     (run_ingest force=False 의 (tenant, source_uri, content_hash) dedup). ingest 후 documents
     row 에 external_spec label 을 단다(classification 레벨이 아니라 CRM label).
+
+    ``force=True`` 면 그 dedup 을 건너뛴다. 본문이 그대로여도 파생 메타데이터(제목 등)를
+    다시 만들어야 할 때가 있다 — 콘솔의 "강제" 가 여기까지 닿지 않으면 그건 강제가 아니다.
     """
     import tempfile
     from pathlib import Path
@@ -404,7 +427,7 @@ async def _default_external_ingest_fn(doc: dict, tenant: str) -> ExternalIngestO
     from nexus.rid import doc_rid
 
     body = str(doc.get("body", ""))
-    source_hash = compute_source_hash(body)
+    source_hash = compute_source_hash(body)   # 해시는 **본문**만 — frontmatter 는 파생물이다
     # id 는 신뢰 불가 외부 호출자가 보낸다 — 디렉터리 성분을 제거해 temp dir 탈출(path traversal)을
     # 막는다(governed _default_ingest_fn 의 Path(source).name 방어와 동일).
     safe_id = Path(str(doc.get("id", "ext-doc"))).name or "ext-doc"
@@ -412,8 +435,8 @@ async def _default_external_ingest_fn(doc: dict, tenant: str) -> ExternalIngestO
     rid = doc_rid(f"{tenant}:{fname}")  # collector canonical_uri 와 일치(안정적)
 
     with tempfile.TemporaryDirectory() as td:
-        (Path(td) / fname).write_text(body, encoding="utf-8")
-        result = await run_ingest(td, force=False, tenant=tenant)
+        (Path(td) / fname).write_text(_csf_to_markdown_file(doc), encoding="utf-8")
+        result = await run_ingest(td, force=force, tenant=tenant)
 
     idempotent = result.total_files == 0
     # 서버 판정 quarantine 을 저장된 row 에서 읽어온다(governed _default_ingest_fn 와 동일).
