@@ -47,7 +47,10 @@ async def _api_call(method: str, path: str, **kwargs) -> dict:
 
     data = resp.json()
     if not data.get("success"):
-        return {"success": False, "error": data.get("error", f"API 오류 (HTTP {resp.status_code})")}
+        # FastAPI 의 HTTPException 은 {detail} 로 온다(봉투가 아니다). 이걸 읽지 않으면
+        # 403/409/400 이 전부 "API 오류 (HTTP 403)" 이 되어, 에이전트는 왜 막혔는지 모른다.
+        reason = data.get("error") or data.get("detail") or f"API 오류 (HTTP {resp.status_code})"
+        return {"success": False, "error": reason}
 
     return data
 
@@ -405,7 +408,11 @@ async def nexus_supersede(old_ref: str, new_ref: str, tenant: str = "default") -
     })
     if not result.get("success"):
         return f"supersede 실패: {result.get('error', '알 수 없는 오류')}"
-    return f"{old_ref} → {new_ref}: {result['data']['result']}"
+    d = result["data"]
+    old_rid = d.get("old_rid", old_ref)
+    # 되돌리려면 rid 가 필요하다 — 그때 옛 문서는 active 가 아니라 경로로 다시 못 찾는다.
+    return (f"{old_ref} → {new_ref}: {d['result']}\n"
+            f"되돌리려면: nexus_unsupersede(rid='{old_rid}', reason='...')")
 
 
 @mcp.tool()
@@ -447,3 +454,235 @@ async def nexus_status() -> str:
             )
 
     return "\n".join(lines)
+
+
+# ── 소스(Notion) 관리 — SPEC-nexus-notion-source-console §4.8 ──
+# 웹 UI 와 **같은 엔드포인트**를 쓴다. 기능이 API 를 건너뛰면 사람도 에이전트도 그것을 잃는다.
+
+
+@mcp.tool()
+async def nexus_sources_list() -> str:
+    """연결된 Notion root 페이지 목록과 토큰 설정 여부를 조회한다."""
+    result = await _api_call("get", "/sources/notion/roots")
+    if not result.get("success"):
+        return f"소스 조회 실패: {result['error']}"
+
+    data = result["data"]
+    if not data["roots"]:
+        return "연결된 Notion 페이지가 없습니다. nexus_sources_add 로 추가하세요."
+    lines = [f"Notion 토큰: {'설정됨' if data['token_configured'] else '없음 — 동기화 불가'}"]
+    lines += [f"- {r['root_id']}  {r['label'] or ''}".rstrip() for r in data["roots"]]
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def nexus_sources_add(url_or_id: str, label: str = "") -> str:
+    """Notion root 페이지를 연결한다. 브라우저 URL 도, 대시 유무 무관한 page id 도 받는다.
+
+    그 페이지 하위 트리 전체가 이후 동기화 대상이 된다.
+    """
+    result = await _api_call("post", "/sources/notion/roots",
+                             json={"url_or_id": url_or_id, "label": label})
+    if not result.get("success"):
+        return f"추가 실패: {result['error']}"
+    return f"연결됨: {result['data']['root_id']}"
+
+
+_TOKEN_PROSE = {
+    "ok": "정상",
+    "invalid": "거부됨(401) — 폐기되었거나 잘못된 토큰입니다",
+    "not_configured": "설정되지 않음",
+    "unknown": "확인하지 못함 (Notion 에 연결할 수 없습니다)",
+}
+_ROOT_PROSE = {
+    "reachable": "도달 가능",
+    "unreachable": "볼 수 없음",
+    "invalid_id": "id 형식 오류",
+    "unknown": "확인하지 못함",
+}
+
+
+@mcp.tool()
+async def nexus_sources_health() -> str:
+    """Notion 연결 진단: 토큰이 유효한가, 등록된 root 에 정말 닿는가.
+
+    동기화를 시작하기 전에 물어보라. 토큰이 죽었거나 root 가 공유되지 않았다면, 걷는 일 자체가
+    낭비다. `manage_sources` capability 가 필요하다 — 응답이 워크스페이스 이름과 문서 제목을
+    담기 때문이다.
+    """
+    result = await _api_call("get", "/sources/notion/health")
+    if not result.get("success"):
+        return f"연결 진단 실패: {result.get('error', '알 수 없는 오류')}"
+
+    d = result["data"]
+    t = d["token"]
+    lines = [f"토큰: {_TOKEN_PROSE.get(t['state'], t['state'])}"]
+    if t["state"] == "ok":
+        lines.append(f"  integration: {t['integration']} · 워크스페이스: {t['workspace']}")
+
+    if not d["roots"]:
+        lines.append("등록된 root 가 없습니다. nexus_sources_add 로 연결하세요.")
+    for r in d["roots"]:
+        head = f"- {r['title'] or r['root_id']}  [{_ROOT_PROSE.get(r['state'], r['state'])}]"
+        lines.append(head)
+        if r["remedy"]:
+            lines.append(f"    {r['root_id']}: {r['remedy']}")
+    lines.append(f"(확인 시각 {d['checked_at']})")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def nexus_sources_sync(reconcile: bool = False, dry_run: bool = False,
+                             confirm_plan: str = "") -> str:
+    """Notion 동기화를 시작한다. 즉시 run_id 를 돌려주고 백그라운드에서 돈다.
+
+    reconcile=True 는 Notion 에서 사라진 문서를 검색에서 내린다. **먼저 dry_run=True 로
+    무엇이 내려갈지 확인**하고, 그 run_id 를 confirm_plan 에 넣어 적용하는 것이 안전하다.
+    confirm_plan 은 다른 인자와 함께 쓸 수 없다(미리보기와 다른 조건으로 적용되는 것을 막는다).
+    """
+    body = {"confirm_plan": confirm_plan} if confirm_plan else {
+        "reconcile": reconcile, "dry_run": dry_run,
+    }
+    result = await _api_call("post", "/sources/notion/sync", json=body)
+    if not result.get("success"):
+        return f"동기화 시작 실패: {result['error']}"
+    return f"run_id={result['data']['run_id']} — nexus_sync_status 로 진행을 확인하세요"
+
+
+@mcp.tool()
+async def nexus_sync_status(run_id: str = "") -> str:
+    """동기화 실행 상태. run_id 를 비우면 가장 최근 실행을 본다."""
+    path = f"/sources/notion/sync/{run_id}" if run_id else "/sources/notion/sync/latest"
+    result = await _api_call("get", path)
+    if not result.get("success"):
+        return f"상태 조회 실패: {result['error']}"
+
+    d = result["data"]
+    c = d.get("counts") or {}
+    lines = [
+        f"run {d['run_id']} — {d['status']}",
+        f"적재 {c.get('ingested', 0)} · 변경없음 {c.get('idempotent', 0)} · 건너뜀 {c.get('skipped', 0)}",
+        # `empty` 는 counts 에 늘 있었지만 아무도 읽지 않았다. 31개를 연결했는데 12개만
+        # 적재됐을 때 "왜 12개지?" 의 답이 여기 있다 — 나머지는 본문 없는 컨테이너/빈 페이지다.
+        f"본문 없어 건너뜀 {c.get('empty', 0)} (자식 링크만 있는 페이지, 아직 안 쓴 페이지)",
+    ]
+    if d.get("reconcile"):
+        lines.append(f"내림 {c.get('pruned', 0)} · 되살림 {c.get('revived', 0)}")
+    if d.get("reason"):
+        lines.append(f"사유: {d['reason']}")
+    plan = d.get("plan") or {}
+    if d.get("dry_run") and plan.get("prune"):
+        lines.append(f"적용 시 내려갈 문서 {len(plan['prune'])}건:")
+        lines += [f"  - {p.get('title') or p['rid']}" for p in plan["prune"][:20]]
+        lines.append(f"적용하려면: nexus_sources_sync(confirm_plan='{d['run_id']}')")
+    return "\n".join(lines)
+
+
+# ── 문서 생애주기 — SPEC-nexus-document-lifecycle §4.6 ──
+# 웹 UI 와 **같은 엔드포인트**. 사람이 확인 패널에서 읽는 문장을 에이전트도 응답에서 읽는다.
+
+_HIDE_NOTE = "검색에서 사라집니다. 문서와 청크는 지워지지 않으며 언제든 되돌릴 수 있습니다."
+
+_ORIGIN_LABEL = {"notion": "Notion", "upload": "업로드", "file": "파일"}
+
+# API 는 기계코드로 거절한다(HTTP 계약). 그대로 뱉으면 호출자는 다음에 뭘 해야 할지 모른다.
+_ERROR_PROSE = {
+    "reason_required": "사유가 필요합니다 — reason 인자를 채워 다시 호출하세요.",
+    "use_unsupersede": "이 문서는 다른 문서로 대체된 상태입니다. "
+                       "nexus_unsupersede(rid, reason) 를 쓰세요 — 되돌리는 말이 다릅니다.",
+    "already_superseded": "이 문서는 이미 다른 문서로 대체되었습니다. 숨길 대상이 아닙니다.",
+}
+
+
+def _prose(error: str) -> str:
+    return _ERROR_PROSE.get(error, error or "알 수 없는 오류")
+
+
+@mcp.tool()
+async def nexus_documents_search(
+    q: str = "",
+    status: str = "active",
+    origin: str = "",
+    limit: int = 20,
+) -> str:
+    """인덱싱된 문서를 **제목으로** 찾는다. 내용 검색은 nexus_search 를 쓴다.
+
+    다른 문서 생애주기 도구들이 요구하는 rid 를 얻는 경로다.
+
+    Args:
+        q: 제목 부분일치 (대소문자 무시). 비우면 전체.
+        status: active | hidden | pruned | superseded | all
+                (hidden=사람이 숨김, pruned=Notion 에서 사라져 내려감)
+        origin: notion | upload | file — 비우면 전체
+        limit: 최대 건수
+    """
+    result = await _api_call("get", "/documents", params={
+        "q": q, "status": status, "origin": origin, "limit": limit,
+    })
+    if not result.get("success"):
+        return f"문서 조회 실패: {result.get('error', '알 수 없는 오류')}"
+
+    data = result["data"]
+    docs = data.get("documents", [])
+    if not docs:
+        return "해당하는 문서가 없습니다."
+
+    lines = [f"{len(docs)}건 (전체 {data.get('total', len(docs))}건)"]
+    for d in docs:
+        origin_txt = _ORIGIN_LABEL.get(d.get("origin"), d.get("origin", "?"))
+        if d.get("origin_url"):
+            origin_txt += f" {d['origin_url']}"
+        lines.append(
+            f"- {d['title']}  [{d['status']}]  청크 {d.get('chunk_count', 0)}\n"
+            f"    rid: {d['rid']}  출처: {origin_txt}"
+        )
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def nexus_document_hide(rid: str) -> str:
+    """문서를 검색에서 내린다(되돌릴 수 있음). rid 는 nexus_documents_search 로 찾는다.
+
+    Notion 에서 온 문서를 숨기면 다음 동기화가 되살리지 않는다(hold). superseded 문서는
+    거부한다 — 그건 이미 다른 문서로 대체된 것이고, 되돌리는 말이 다르다(nexus_unsupersede).
+    """
+    result = await _api_call("post", f"/documents/{rid}/hide")
+    if not result.get("success"):
+        return f"숨기기 실패: {_prose(result.get('error', ''))}"
+    if result["data"]["result"] == "noop":
+        return f"{rid}: 이미 숨겨져 있습니다."
+    return (f"{rid}: 숨겼습니다. {_HIDE_NOTE}\n"
+            f"되돌리려면: nexus_document_restore(rid='{rid}')")
+
+
+@mcp.tool()
+async def nexus_document_restore(rid: str) -> str:
+    """숨겨졌거나 Notion 에서 사라져 내려간 문서를 다시 검색에 올린다.
+
+    superseded 문서에는 쓸 수 없다 — nexus_unsupersede 를 쓴다(사유가 필요하다).
+    """
+    result = await _api_call("post", f"/documents/{rid}/restore")
+    if not result.get("success"):
+        return f"되돌리기 실패: {_prose(result.get('error', ''))}"
+    if result["data"]["result"] == "noop":
+        return f"{rid}: 이미 검색에 나타납니다."
+    return f"{rid}: 되돌렸습니다. 이 문서가 다시 검색에 나타납니다."
+
+
+@mcp.tool()
+async def nexus_unsupersede(rid: str, reason: str) -> str:
+    """supersession 을 취소해 옛 문서를 다시 검색에 올린다. **사유 필수.**
+
+    체인은 역순으로만 풀린다: v1→v2→v3 에서 v1 을 먼저 되살리면 v3 와 공존하게 되므로
+    서버가 거부하고 막고 있는 문서를 이름으로 알려준다. v2 부터 되돌린다.
+
+    Args:
+        rid: 되살릴 문서 rid (supersede 응답이 old_rid 로 알려준다)
+        reason: 왜 되돌리는가 — 원장(doc_supersession_events)에 남는다
+    """
+    result = await _api_call("post", f"/documents/{rid}/unsupersede", json={"reason": reason})
+    if not result.get("success"):
+        return f"supersession 취소 실패: {_prose(result.get('error', ''))}"
+    if result["data"]["result"] == "noop":
+        return f"{rid}: superseded 상태가 아닙니다."
+    return f"{rid}: supersession 을 취소했습니다. 이 문서가 다시 검색에 나타납니다."

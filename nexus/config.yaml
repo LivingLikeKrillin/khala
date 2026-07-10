@@ -83,9 +83,10 @@ evidence_weights:
   MEETING_NOTE: 0.05
 
 # LLM
-llm:
-  model: "claude-sonnet-4-20250514"
-  max_tokens: 2048
+# ⚠️ 이 섹션은 코드가 읽지 않는다. LLMService() 는 인자 없이 생성되어(api.py) 모델을
+#    NEXUS_LLM_MODEL 환경변수 → 코드 기본값(claude-sonnet-4-6) 순으로 정하고, max_tokens 는
+#    호출부 기본값(4096)을 쓴다. 모델을 바꾸려면 nexus/.env 의 NEXUS_LLM_MODEL 한 줄을 바꾼다.
+#    (여기 있던 claude-sonnet-4-20250514 는 2026-06-15 EOL 이라, 읽혔다면 404 를 냈을 값이다.)
 
 # Archon — 도메인 불변식·값 거버넌스 (코드 상수 해석)
 code_source:
@@ -105,6 +106,20 @@ auth:
     #   token_sha256: "REPLACE_ME"
     #   tenant: "default"
     #   clearance: "INTERNAL"
+
+  # ── Cloudflare Access (per-person browser identity) — OFF by default ──
+  # 설정하면 Nexus 는 자신이 Access 뒤에 있다고 선언한다: Cf-Access-Jwt-Assertion 헤더를
+  # 검증하고 email 로 principal 을 고른다. 그리고 공유 dev-token 경로는 꺼진다(SPEC §4.5).
+  # issuer/aud 는 Zero Trust 대시보드에서 온다. 없으면 이 섹션을 통째로 비워 둔다(로컬 dev).
+  # access:
+  #   issuer: "https://<team>.cloudflareaccess.com"
+  #   aud: "<application-audience-tag>"
+  #   default_identity:            # Access 는 통과했으나 매핑에 없는 email 의 기본 신원.
+  #     clearance: "PUBLIC"        # capabilities 는 항상 비어 있다(파괴적 행위 불가).
+  #   identities:
+  #     "eisen@pfplay.com":
+  #       clearance: "INTERNAL"
+  #       capabilities: ["manage_sources", "manage_documents"]
 
 # ── A2A (Agent2Agent) Phase 0 spike — OFF by default ──
 # Flag-gated grounded-retrieval server (SPEC-nexus-a2a-server-phase0-spike). Enable with

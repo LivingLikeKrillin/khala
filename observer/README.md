@@ -64,9 +64,26 @@ Nexus 연동: 규정 검색 + 영향 분석 + 설계-관측 갭   ← v0.4
 
 ### 설치
 
+`@khala/observer` 는 npm 에 게시되어 있지 않다. 이 저장소에서 빌드해서 쓴다 (`dist/` 는 커밋되지 않는다).
+
 ```bash
-pnpm add -D @khala/observer
+cd observer
+pnpm install
+pnpm build            # tsup → dist/  (dist/ 는 커밋되지 않으므로 클론 후 반드시 빌드)
+
+# (a) 저장소 안에서 바로 실행 — 전역 상태 불필요, 항상 동작
+node dist/cli/index.js check
+
+# (b) `observer` 명령을 PATH 에 올리려면 (스킬·에이전트가 이 bare 이름을 부른다)
+pnpm setup            # 최초 1회 — pnpm 전역 bin 디렉토리 생성 + PATH 등록.
+                      # 안 하면 다음 줄이 ERR_PNPM_NO_GLOBAL_BIN_DIR 로 실패한다.
+pnpm link --global    # 새 셸을 열거나 PATH 를 다시 읽은 뒤
+observer check
 ```
+
+`.claude/` 어댑터(스킬·에이전트·규칙)는 bare `observer` 를 부르므로 (b) 를 마쳐야 그 이름이
+해석된다. (b) 를 건너뛰고 싶으면 (a) 의 `node dist/cli/index.js` 를 쓰면 된다 — 자동 훅
+(`scripts/check-scope.sh`)은 이미 빌드 산출물을 직접 부르므로 링크 없이도 동작한다.
 
 ### 핵심 명령어
 
@@ -329,6 +346,10 @@ NEXUS_DISABLED=false
 
 ### GitHub Actions
 
+`@khala/observer` 는 게시되어 있지 않으므로 CI 도 저장소에서 빌드한 뒤 로컬 bin 을 부른다
+(`npx` 는 방금 빌드한 `node_modules/.bin/observer` 를 찾는다 — 레지스트리를 때리지 않는다).
+이 저장소의 실제 워크플로 `.github/workflows/observer.yml` 와 같은 형태다.
+
 ```yaml
 name: PR Scope Check
 on: [pull_request]
@@ -341,8 +362,15 @@ jobs:
         with:
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
-      - run: pnpm install
-      - run: observer check --base origin/main --format brief --silent
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build            # dist/ 는 커밋되지 않는다 — CI 도 빌드해야 한다
+      - run: npx observer check --base origin/${{ github.base_ref }} --format brief --silent
 ```
 
 ### Claude Code

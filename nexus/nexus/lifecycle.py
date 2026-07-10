@@ -5,14 +5,45 @@
 
 SPEC-nexus-notion-reconciliation §3.4.
 
-두 함수 모두 **상태 가드**를 건다:
+`unsupersede()` 는 supersede 의 역이다 (SPEC-nexus-document-lifecycle §4.2).
+
+모든 함수가 **상태 가드**를 건다:
   · soft_delete 는 active 에서만 출발한다 → superseded 문서를 뒤엎지 않는다.
   · revive 는 soft_deleted 에서만 출발한다 → 의도적으로 대체된 문서를 되살리지 않는다.
+  · unsupersede 는 superseded 에서만 출발하고, **체인이 끊기면 거부한다**.
 """
 
 from __future__ import annotations
 
 from nexus import db
+
+
+class ChainBroken(Exception):
+    """이 문서를 대체한 문서가 그 자신도 대체당했다 — 되살리면 최신본과 공존한다.
+
+    메시지는 두 표면을 동시에 상대한다: 에이전트는 `blocker` rid 로 다음 명령을 만들고,
+    사람은 웹 토스트에서 이 문장을 그대로 읽는다. rid 만 담으면 사람에게는 아무 말도 안 한 셈이다.
+    """
+
+    def __init__(self, rid: str, blocker: str, blocker_title: str = ""):
+        name = f"「{blocker_title}」({blocker})" if blocker_title else blocker
+        super().__init__(
+            f"이 문서를 대체한 {name} 가 그 자신도 superseded 입니다. "
+            f"그것을 먼저 되돌리세요 — 체인은 역순으로만 풀립니다."
+        )
+        self.rid = rid
+        self.blocker = blocker
+        self.blocker_title = blocker_title
+
+
+async def _record_supersession_event(conn, rid: str, tenant: str, action: str,
+                                     superseded_by: str, reason: str = "") -> None:
+    """상태 변경과 **같은 트랜잭션**에서 원장에 남긴다. 롤백되면 기록도 사라진다."""
+    await conn.execute(
+        "INSERT INTO doc_supersession_events (rid, tenant, action, superseded_by, reason) "
+        "VALUES ($1, $2, $3, $4, $5)",
+        rid, tenant, action, superseded_by, reason,
+    )
 
 
 async def soft_delete(rid: str, tenant: str) -> str:
@@ -62,3 +93,57 @@ async def revive(rid: str, tenant: str) -> str:
                 rid,
             )
     return "revived"
+
+
+async def unsupersede(rid: str, tenant: str, *, reason: str) -> str:
+    """supersede 를 되돌린다. 반환: 'unsuperseded' | 'noop'.
+
+    되돌리면 문서가 다시 검색에 나타난다 — ADR-0006 이 엔트로피 1순위로 지목한 **공존**을
+    만드는 행위다. 그래서:
+
+      · 사유(reason)가 없으면 아무것도 쓰지 않고 ValueError. (실수를 고치는 명령이지
+        무심코 누르는 버튼이 아니다.)
+      · **체인 가드**: 이 문서를 대체한 문서가 그 자신도 superseded 면 ChainBroken.
+        v2→v1, v3→v2 인 상태에서 v1 을 되살리면 v1 이 최신본 v3 와 나란히 검색에 뜬다.
+      · 청크는 revive 와 같은 규칙 — 현재 세대(hash = documents.content_hash)만.
+      · 원장(doc_supersession_events)에 한 줄, 상태 변경과 같은 트랜잭션에서.
+
+    막지는 않는다. 잘못 대체한 사람은 고칠 수 있어야 한다. 다만 조용하지 않다.
+    """
+    if not (reason or "").strip():
+        raise ValueError("unsupersede 에는 사유가 필요합니다 (reason)")
+
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                "SELECT status::text AS status, superseded_by FROM documents "
+                "WHERE rid=$1 AND tenant=$2 FOR UPDATE",
+                rid, tenant,
+            )
+            if row is None or row["status"] != "superseded":
+                return "noop"
+
+            blocker = row["superseded_by"]
+            if blocker:
+                b = await conn.fetchrow(
+                    "SELECT status::text AS status, title FROM documents "
+                    "WHERE rid=$1 AND tenant=$2", blocker, tenant
+                )
+                # 대체한 문서가 살아있지 않으면 되살릴 수 없다 — 최신본과 공존하게 된다.
+                if b is not None and b["status"] != "active":
+                    raise ChainBroken(rid, blocker, b["title"] or "")
+
+            await conn.execute(
+                "UPDATE documents SET status='active', superseded_by='', updated_at=now() "
+                "WHERE rid=$1 AND tenant=$2 AND status='superseded'",
+                rid, tenant,
+            )
+            await conn.execute(
+                "UPDATE chunks SET status='active', updated_at=now() "
+                "WHERE doc_rid=$1 AND status <> 'active' "
+                "  AND hash = (SELECT content_hash FROM documents WHERE rid=$1)",
+                rid,
+            )
+            await _record_supersession_event(conn, rid, tenant, "unsuperseded", blocker, reason.strip())
+    return "unsuperseded"

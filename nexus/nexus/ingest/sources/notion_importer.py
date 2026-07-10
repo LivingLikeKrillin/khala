@@ -28,11 +28,17 @@ def classify_kind(title: str) -> str:
     return _KEYWORD_TO_TYPE.get(tokens[0] if tokens else "", "NOTE")
 
 
-def build_csf(conv: ConvertedDoc, page_id: str, roots: set[str] | None = None) -> dict:
+def build_csf(
+    conv: ConvertedDoc,
+    page_id: str,
+    roots: set[str] | None = None,
+    walked_roots: set[str] | None = None,
+) -> dict:
     """ConvertedDoc(markdown+frontmatter) → CSF dict. kind=제목 분류(미매치 NOTE).
 
-    roots 를 주면 provenance.source_roots 로 실어 보낸다 → sink 가 documents.prov_inputs 에
-    기록하고, 재조정이 containment 술어(prov_inputs ⊆ walked_roots)로 쓴다(SPEC §3.1).
+    roots(=이 페이지에 닿은 root)를 주면 provenance.source_roots 로 실어 보낸다. walked_roots
+    (=이번 실행이 걸은 root 전체)도 함께 보낸다 — sink 가 `prov_inputs := (기존 − walked) ∪ reached`
+    로 갱신해야, 부분 root 실행이 걷지 않은 root 의 귀속을 지우지 않는다(SPEC §3.1).
     정렬해 담는다: 같은 입력이 같은 prov_inputs 를 낳아야 재실행이 멱등하다.
     """
     body = conv.markdown
@@ -44,6 +50,7 @@ def build_csf(conv: ConvertedDoc, page_id: str, roots: set[str] | None = None) -
     }
     if roots:
         provenance["source_roots"] = sorted(roots)
+        provenance["walked_roots"] = sorted(walked_roots or roots)
     return {
         "id": f"ext-notion-{page_id}",
         "kind": classify_kind(conv.frontmatter.get("title", "") or ""),
@@ -68,8 +75,9 @@ class ImportReport:
     reason: str = ""
 
 
-# IngestFn: (csf, tenant) -> outcome(awaitable). 프로덕션은 _default_external_ingest_fn.
-IngestFn = Callable[[dict, str], Awaitable]
+# IngestFn: (csf, tenant, *, force) -> outcome(awaitable). 프로덕션은 _default_external_ingest_fn.
+# `force` 를 계약에 넣는다 — 콘솔의 force 는 적재까지 닿아야 강제가 된다.
+IngestFn = Callable[..., Awaitable]
 
 # ReconcileFn: (tenant, walked_roots, live_rids) -> outcome(awaitable).
 # 프로덕션은 notion_reconcile.default_reconcile_fn. 미주입 시 재조정을 하지 않는다(기존 동작).
@@ -82,6 +90,7 @@ async def import_notion(
     ingest_fn: IngestFn,
     since: str | None = None,
     reconcile_fn: ReconcileFn | None = None,
+    force: bool = False,
 ) -> ImportReport:
     """live_index 페이지를 fetch→csf→ingest. since 이후 변경분만(증분). per-page skip.
 
@@ -113,7 +122,11 @@ async def import_notion(
                 report.empty += 1
                 report.results.append({"page_id": page_id, "skipped": "empty body"})
                 continue
-            outcome = await ingest_fn(build_csf(conv, page_id, index[page_id]), tenant)
+            # force 를 여기서 흘리지 않으면 (tenant, source_uri, content_hash) dedup 이 이기고,
+            # 본문이 안 바뀐 페이지는 제목·메타데이터 수정이 있어도 영원히 idempotent 다.
+            outcome = await ingest_fn(
+                build_csf(conv, page_id, index[page_id], walked_roots), tenant, force=force
+            )
             if getattr(outcome, "idempotent_hit", False):
                 report.idempotent += 1
             else:
@@ -125,8 +138,11 @@ async def import_notion(
     report.watermark = max_seen or None
 
     if reconcile_fn is not None:
-        live_rids = {notion_doc_rid(tenant, pid) for pid in index}
-        outcome = await reconcile_fn(tenant, walked_roots, live_rids)
+        # rid → 이 페이지에 닿은 root 들. 재조정이 **적재를 거쳤든 아니든** 모든 live 페이지의
+        # prov_inputs 를 갱신할 수 있어야 한다 — 그래야 `--since` 가 백필을 막지 못한다
+        # (SPEC-nexus-notion-source-console §4.5). live 집합 자체는 since 와 무관하다.
+        live_by_rid = {notion_doc_rid(tenant, pid): sorted(roots) for pid, roots in index.items()}
+        outcome = await reconcile_fn(tenant, walked_roots, live_by_rid)
         report.pruned = outcome.pruned
         report.revived = outcome.revived
         report.refused = outcome.refused

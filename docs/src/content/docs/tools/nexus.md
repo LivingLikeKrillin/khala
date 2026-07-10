@@ -83,19 +83,20 @@ cp nexus/.env.example nexus/.env
 # (optional) set ANTHROPIC_API_KEY in nexus/.env for LLM answer generation
 ```
 
-### 2. Start (core containers only)
+### 2. Start — one line
 
 ```bash
-task up        # or: cd nexus && docker compose up -d
+task up
+```
+
+`task up` starts the containers (waiting for health), **applies DB migrations**, and pulls the embedding model automatically. No Task? Run those three yourself from `nexus/`:
+
+```bash
+docker compose up -d --wait                                  # containers + model auto-pull
+docker compose exec -T nexus-app python -m scripts.migrate   # ← skip this and the source console / document management break
 ```
 
 Starts PostgreSQL 16 + pgvector (5432), Ollama (11434), and the FastAPI app on **8000**. The OTel collector + Tempo are **opt-in** — add them only for trace aggregation: `docker compose --profile observability up -d`.
-
-### 3. Pull the embedding model (first time only)
-
-```bash
-task models    # or: docker compose exec nexus-ollama ollama pull nomic-embed-text
-```
 
 ### 4. Index documents & search
 
@@ -130,8 +131,8 @@ The response includes evidence snippets with source URIs and provenance. Use `/s
 ### Explore the knowledge graph
 
 ```bash
-docker exec nexus-app nexus graph payment-service        # 1-hop
-docker exec nexus-app nexus graph payment-service -h 2   # 2-hop
+docker compose exec nexus-app nexus graph payment-service        # 1-hop
+docker compose exec nexus-app nexus graph payment-service -h 2   # 2-hop
 ```
 
 Or via the API: `GET /graph/{entity}` resolves by name or rid.
@@ -139,8 +140,8 @@ Or via the API: `GET /graph/{entity}` resolves by name or rid.
 ### Find design-vs-observation drift
 
 ```bash
-docker exec nexus-app nexus otel-aggregate   # roll traces up into CALLS_OBSERVED
-docker exec nexus-app nexus diff             # report doc_only / observed_only / conflict
+docker compose exec nexus-app nexus otel-aggregate   # roll traces up into CALLS_OBSERVED
+docker compose exec nexus-app nexus diff             # report doc_only / observed_only / conflict
 ```
 
 The same report is available at `GET /diff`.
@@ -149,7 +150,7 @@ The same report is available at `GET /diff`.
 
 - Source repo README: [github.com/LivingLikeKrillin/khala](https://github.com/LivingLikeKrillin/khala) (`README.md`)
 - API contract, pipeline, MCP server, Slack bot, and UI integration docs live under that repo's `docs/` (`API_CONTRACT.md`, `PIPELINE_SPEC.md`, `MCP_SERVER.md`, `SLACK_BOT.md`, `UI_INTEGRATION.md`).
-- MCP server exposes six tools — `nexus_search`, `nexus_answer`, `nexus_graph`, `nexus_suggest`, `nexus_diff`, `nexus_status` — via `python -m nexus.mcp`.
+- MCP server exposes nine tools — `nexus_search`, `nexus_answer`, `nexus_graph`, `nexus_suggest`, `nexus_diff`, `nexus_status`, `nexus_supersede`, `archon_claim_value`, `archon_grade_authority` — via `python -m nexus.mcp`. Set `NEXUS_MCP_TOKEN`, or every call returns 401 (auth defaults to `enforced`).
 
 :::note[Last verified]
 Source repo README (site re-run verification pending).

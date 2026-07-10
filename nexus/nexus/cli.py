@@ -482,6 +482,165 @@ def supersede(
     _run(_do())
 
 
+# ── 문서 생애주기 — SPEC-nexus-document-lifecycle §4.6 ──
+
+doc_app = typer.Typer(help="문서 생애주기 — 검색에서 내리고, 되돌린다.")
+app.add_typer(doc_app, name="doc")
+
+_HIDE_NOTE = "검색에서 사라집니다. 문서와 청크는 지워지지 않으며 언제든 되돌릴 수 있습니다."
+
+
+def _doc_command(ref: str, tenant: str, action):
+    """ref 해석 → action(rid, tenant) 실행 → 거부는 exit 1. 풀은 반드시 닫는다."""
+
+    async def _do() -> None:
+        from nexus import db
+        from nexus.documents.resolve import resolve_doc
+
+        try:
+            rid = await resolve_doc(ref, tenant)
+            await action(rid, tenant)
+        except ValueError as e:
+            typer.echo(f"거부: {e}", err=True)
+            raise typer.Exit(1) from None
+        finally:
+            await db.close_pool()
+
+    _run(_do())
+
+
+@doc_app.command("hide")
+def doc_hide(
+    ref: str = typer.Argument(..., help="문서 — rid 또는 경로/URI"),
+    tenant: str = typer.Option("default", "--tenant", "-t"),
+) -> None:
+    """문서를 검색에서 내린다. 지우지 않는다 — 언제든 restore 로 되돌린다."""
+
+    async def _act(rid: str, tn: str) -> None:
+        from nexus.documents.lifecycle_ops import AlreadySuperseded, hide_document
+
+        try:
+            result = await hide_document(rid, tn)
+        except AlreadySuperseded:
+            raise ValueError(
+                f"{ref} 는 이미 다른 문서로 대체되었습니다(superseded). "
+                f"되살리려면: nexus unsupersede {ref} --reason \"...\"") from None
+        if result == "noop":
+            typer.echo(f"{ref}: 이미 숨겨져 있습니다.")
+            return
+        typer.echo(f"{ref}: 숨겼습니다. {_HIDE_NOTE}")
+        typer.echo(f"되돌리려면: nexus doc restore {ref}")
+
+    _doc_command(ref, tenant, _act)
+
+
+@doc_app.command("restore")
+def doc_restore(
+    ref: str = typer.Argument(..., help="문서 — rid 또는 경로/URI"),
+    tenant: str = typer.Option("default", "--tenant", "-t"),
+) -> None:
+    """숨겼거나 Notion 에서 사라져 내려간 문서를 다시 검색에 올린다."""
+
+    async def _act(rid: str, tn: str) -> None:
+        from nexus.documents.lifecycle_ops import UseUnsupersede, restore_document
+
+        try:
+            result = await restore_document(rid, tn)
+        except UseUnsupersede:
+            raise ValueError(
+                f"{ref} 는 다른 문서로 대체된 상태입니다(superseded). "
+                f"되살리려면: nexus unsupersede {ref} --reason \"...\"") from None
+        if result == "noop":
+            typer.echo(f"{ref}: 이미 검색에 나타납니다.")
+            return
+        typer.echo(f"{ref}: 되돌렸습니다. 이 문서가 다시 검색에 나타납니다.")
+
+    _doc_command(ref, tenant, _act)
+
+
+@app.command()
+def unsupersede(
+    ref: str = typer.Argument(..., help="되살릴 문서 — rid 또는 경로/URI"),
+    reason: str = typer.Option(..., "--reason", help="왜 되돌리는가 — 원장에 남는다"),
+    tenant: str = typer.Option("default", "--tenant", "-t"),
+) -> None:
+    """supersession 을 취소해 옛 문서를 다시 검색에 올린다. 체인은 역순으로만 풀린다."""
+
+    async def _act(rid: str, tn: str) -> None:
+        from nexus.lifecycle import ChainBroken, unsupersede as _unsupersede
+
+        try:
+            result = await _unsupersede(rid, tn, reason=reason)
+        except ChainBroken as e:
+            raise ValueError(str(e)) from None
+        if result == "noop":
+            typer.echo(f"{ref}: superseded 상태가 아닙니다.")
+            return
+        typer.echo(f"{ref}: supersession 을 취소했습니다. 이 문서가 다시 검색에 나타납니다.")
+
+    _doc_command(ref, tenant, _act)
+
+
+# ── 소스 진단 — SPEC-nexus-notion-connection-health §4.5 ──
+
+sources_app = typer.Typer(help="Notion 소스 — 연결 진단.")
+app.add_typer(sources_app, name="sources")
+
+# 테스트가 갈아끼울 수 있도록 모듈 전역으로 붙든다(전송을 주입해 모든 분기를 밟는다).
+from nexus.sources.notion_health import probe_connection  # noqa: E402
+
+_TOKEN_PROSE = {
+    "ok": "정상",
+    "invalid": "거부됨(401) — 폐기되었거나 잘못된 토큰입니다",
+    "not_configured": "설정되지 않음 (.env 의 NOTION_TOKEN)",
+    "unknown": "확인하지 못함 — Notion 에 연결할 수 없습니다",
+}
+_ROOT_PROSE = {
+    "reachable": "도달 가능",
+    "unreachable": "볼 수 없음",
+    "invalid_id": "id 형식 오류",
+    "unknown": "확인하지 못함",
+}
+
+
+@sources_app.command("health")
+def sources_health(tenant: str = typer.Option("default", "--tenant", "-t")) -> None:
+    """토큰이 유효한가, 등록된 root 에 정말 닿는가. 문제가 있으면 exit 1.
+
+    동기화를 시작하기 전에 물어보라. 토큰이 죽었거나 root 가 공유되지 않았다면 걷는 일이 낭비다.
+    """
+
+    async def _do() -> bool:
+        import os
+
+        from nexus import db
+        from nexus.sources import roots_store
+
+        try:
+            roots = [r["root_id"] for r in await roots_store.list_roots(tenant)]
+            health = await probe_connection(os.getenv("NOTION_TOKEN", ""), roots)
+        finally:
+            await db.close_pool()
+
+        t = health.token
+        typer.echo(f"토큰: {_TOKEN_PROSE.get(t.state.value, t.state.value)}")
+        if t.state.value == "ok":
+            typer.echo(f"  integration: {t.integration} · 워크스페이스: {t.workspace}")
+
+        if not health.roots:
+            typer.echo("등록된 root 가 없습니다.")
+        for r in health.roots:
+            typer.echo(f"- {r.title or r.root_id}  [{_ROOT_PROSE.get(r.state.value, r.state.value)}]")
+            if r.remedy:
+                typer.echo(f"    {r.root_id}: {r.remedy}")
+
+        # 초록은 '토큰 정상 + 모든 root 도달 가능' 뿐이다. 모른다는 것은 초록이 아니다.
+        return t.state.value == "ok" and all(r.state.value == "reachable" for r in health.roots)
+
+    if not _run(_do()):
+        raise typer.Exit(1)
+
+
 @app.command("entropy-signals")
 def entropy_signals() -> None:
     """공존 잔차 신호(재수집 덮어쓰기·정확중복·제목충돌·supersession)를 표시.
@@ -534,7 +693,16 @@ def ingest_notion(
 
     root_list = [r.strip() for r in roots.split(",") if r.strip()]
     if not root_list:
-        typer.echo("roots 가 비었습니다 (--roots 'pageid1,pageid2')")
+        # --roots 미지정 → DB 에 등록된 소스를 쓴다 (SPEC-nexus-notion-source-console §4.1).
+        # cron 명령에서 페이지 id 를 지우고, 오타로 코퍼스를 날릴 여지를 없앤다.
+        from nexus.sources.roots_store import list_roots
+
+        root_list = [r["root_id"] for r in asyncio.run(list_roots(tenant))]
+    if not root_list:
+        typer.echo(
+            "등록된 Notion 소스가 없습니다. 웹 UI 의 '소스' 탭에서 추가하거나 "
+            "--roots 'pageid1,pageid2' 를 주세요."
+        )
         raise typer.Exit(code=1)
     if (dry_run or force) and not reconcile:
         typer.echo("--dry-run / --force 는 --reconcile 과 함께 써야 의미가 있습니다")
@@ -553,8 +721,10 @@ def ingest_notion(
         if reconcile else None
     )
     report = asyncio.run(
+        # force 는 재조정 planner 뿐 아니라 **적재**까지 닿아야 한다. 안 그러면 본문이 안 바뀐
+        # 페이지는 --force 를 줘도 영원히 idempotent 다 (제목 같은 파생 메타데이터가 안 고쳐진다).
         import_notion(source, tenant, _default_external_ingest_fn,
-                      since=since or None, reconcile_fn=reconcile_fn)
+                      since=since or None, reconcile_fn=reconcile_fn, force=force)
     )
     typer.echo(
         f"ingested={report.ingested} idempotent={report.idempotent} "

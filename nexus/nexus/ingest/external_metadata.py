@@ -52,8 +52,11 @@ async def apply_external_metadata(
             rid, tenant, normalize_csf_kind(str(doc.get("kind", "") or "NOTE")),
         )
 
-    roots = (doc.get("provenance") or {}).get("source_roots")
-    if roots:
+    prov = doc.get("provenance") or {}
+    reached = prov.get("source_roots")
+    if reached:
         from nexus.ingest.sources.notion_reconcile import write_source_roots
 
-        await write_source_roots(rid, tenant, list(roots))
+        # walked_roots 가 없으면(단일 root 호출자) 이번에 닿은 root 만 걸었다고 본다.
+        walked = prov.get("walked_roots") or reached
+        await write_source_roots(rid, tenant, reached=list(reached), walked=list(walked))

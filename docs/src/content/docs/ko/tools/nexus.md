@@ -76,11 +76,12 @@ git clone https://github.com/LivingLikeKrillin/khala.git
 cd khala
 cp nexus/.env.example nexus/.env        # (선택) nexus/.env 에 ANTHROPIC_API_KEY 설정 시 LLM 답변 생성
 
-# 2. 기동 (핵심 컨테이너만)
-task up        # 또는: cd nexus && docker compose up -d
+# 2. 기동 — 컨테이너 + DB 마이그레이션 + 모델 자동 pull, 한 줄
+task up
 
-# 3. 임베딩 모델 받기 (최초 1회)
-task models    # 또는: docker compose exec nexus-ollama ollama pull nomic-embed-text
+# Task 없으면 그 세 가지를 직접 (nexus/ 에서):
+#   docker compose up -d --wait                                  # 컨테이너 + 모델 자동 pull
+#   docker compose exec -T nexus-app python -m scripts.migrate   # ← 빠뜨리면 소스 콘솔·문서 관리가 깨진다
 ```
 
 → `http://localhost:8000` 에서 채팅으로 질문(근거와 함께 답). 문서 적재: `docker compose exec nexus-app nexus ingest ./docs`. 웹 UI 사용법은 **[Nexus 웹 사용 가이드](/ko/tools/nexus-web/)** 참고.

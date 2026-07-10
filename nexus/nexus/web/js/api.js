@@ -58,8 +58,10 @@ export async function request(method, path, body = null, params = null) {
   }
 
   const json = await res.json();
-  if (!json.success) {
-    throw new ApiError(json.error || `HTTP ${res.status}`, res.status);
+  if (!res.ok || !json.success) {
+    // FastAPI 의 HTTPException 은 {detail} 로 온다(봉투가 아니다). 이걸 읽지 않으면
+    // 403/409/400 이 전부 "HTTP 403" 이 되어, 사용자는 왜 막혔는지 알 수 없다.
+    throw new ApiError(json.error || json.detail || `HTTP ${res.status}`, res.status);
   }
   return { data: json.data, meta: json.meta || {} };
 }
@@ -181,9 +183,28 @@ export async function listDocuments(opts = {}) {
   return request('GET', '/documents', null, {
     tenant: opts.tenant || 'default',
     classification_max: opts.classification_max || 'INTERNAL',
+    q: opts.q || '',
+    status: opts.status || 'active',
+    origin: opts.origin || '',
     offset: opts.offset || 0,
     limit: opts.limit || 20,
   });
+}
+
+// ── 문서 생애주기 ──
+// 모든 파괴적 행위에는 역이 있다 (SPEC-nexus-document-lifecycle).
+
+export async function hideDocument(rid) {
+  return request('POST', `/documents/${encodeURIComponent(rid)}/hide`);
+}
+
+export async function restoreDocument(rid) {
+  return request('POST', `/documents/${encodeURIComponent(rid)}/restore`);
+}
+
+/** supersession 취소 — 사유가 필수다. 되돌리면 최신본과 공존할 수 있다. */
+export async function unsupersedeDocument(rid, reason) {
+  return request('POST', `/documents/${encodeURIComponent(rid)}/unsupersede`, { reason });
 }
 
 // ── Diff ──
@@ -196,15 +217,9 @@ export async function getDiff(opts = {}) {
   });
 }
 
-// ── OTel ──
-
-export async function otelAggregate(opts = {}) {
-  return request('POST', '/otel/aggregate', {
-    window_minutes: opts.window_minutes || 5,
-    lookback_minutes: opts.lookback_minutes || 60,
-    tenant: opts.tenant || 'default',
-  });
-}
+// OTel 집계는 운영자 도구(nexus otel-aggregate CLI / POST /otel/aggregate)다. 여기 있던
+// otelAggregate() 클라이언트는 어느 뷰도 부르지 않는 죽은 코드였다 — 웹은 OTel 집계를
+// 트리거하는 표면이 아니다. 엔드포인트는 그대로 있고, 필요해지면 그때 되살린다.
 
 // ── 상태 ──
 
@@ -229,4 +244,39 @@ export async function uploadFile(file, path = 'uploads', tenant = 'default') {
     throw new ApiError(json.error || json.detail || `HTTP ${res.status}`, res.status);
   }
   return { data: json.data, meta: json.meta || {} };
+}
+
+// ── 소스 (Notion) ──
+// 엔드포인트가 정본이다. 이 함수들은 그 위의 얇은 래퍼일 뿐이다.
+// (SPEC-nexus-notion-source-console §4.6)
+
+export async function listSources() {
+  return request('GET', '/sources/notion/roots');
+}
+
+/** Notion 에게 직접 묻는다: 토큰이 유효한가, 각 root 에 닿는가. 느릴 수 있다(외부 API). */
+export async function sourcesHealth() {
+  return request('GET', '/sources/notion/health');
+}
+
+export async function addSource(urlOrId, label = '') {
+  return request('POST', '/sources/notion/roots', { url_or_id: urlOrId, label });
+}
+
+export async function removeSource(rootId) {
+  return request('DELETE', `/sources/notion/roots/${encodeURIComponent(rootId)}`);
+}
+
+/** 동기화 시작. 즉시 run_id 를 돌려준다 — 진행은 getSyncRun 으로 폴링. */
+export async function startSync({ reconcile = false, dryRun = false, confirmPlan = null } = {}) {
+  const body = confirmPlan ? { confirm_plan: confirmPlan } : { reconcile, dry_run: dryRun };
+  return request('POST', '/sources/notion/sync', body);
+}
+
+export async function getSyncRun(runId) {
+  return request('GET', `/sources/notion/sync/${encodeURIComponent(runId)}`);
+}
+
+export async function getLatestSync() {
+  return request('GET', '/sources/notion/sync/latest');
 }

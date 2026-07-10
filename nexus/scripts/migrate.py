@@ -71,7 +71,10 @@ async def migrate(migrations_dir: Path = MIGRATIONS_DIR, status_only: bool = Fal
                     migration_version(f),
                 )
             print("applied:", f.name)
-        print(f"up to date — {len(pend)} new applied, {len(applied) + len(pend)} total")
+        # ASCII only: on a Windows console (cp949/cp1252) an em dash raises
+        # UnicodeEncodeError *after* the migrations already applied, so the command
+        # exits 1 and looks like it failed when it did not.
+        print(f"up to date - {len(pend)} new applied, {len(applied) + len(pend)} total")
     return len(pend)
 
 

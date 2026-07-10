@@ -3,7 +3,8 @@
  * SSE 스트리밍 답변 + Evidence 패널 + 인라인 그래프.
  */
 
-import { streamAnswer, suggestEntities } from '../api.js';
+import { getStatus, streamAnswer, suggestEntities } from '../api.js';
+import { corpusHint } from '../corpus-hint.js';
 import { trustSignal } from '../doctype-signal.js';
 import { renderMarkdown } from '../components/markdown.js';
 import { showToast } from '../components/toast.js';
@@ -75,6 +76,30 @@ export function render(container) {
 
   renderChatHistory();
   bindEvents();
+  maybeShowEmptyCorpus();
+}
+
+/**
+ * 코퍼스가 비었으면 예시 질문 대신 "먼저 문서를 올리세요" 를 보여준다.
+ * 안 그러면 새 사용자가 예시를 눌러도 전부 "결과 없음" 으로 끝나 도구가 고장 난 듯 보인다.
+ */
+async function maybeShowEmptyCorpus() {
+  let hint = null;
+  try {
+    const { data } = await getStatus();
+    hint = corpusHint(data?.documents_count);
+  } catch {
+    return;                          // status 실패는 상태바가 알린다 — 여기선 조용히 둔다
+  }
+  if (!hint) return;                 // 문서가 있다 → 예시 질문 그대로
+
+  const suggest = document.getElementById('chat-suggest');
+  const title = document.querySelector('#chat-empty .chat-empty-title');
+  const hints = document.querySelectorAll('#chat-empty .chat-empty-hint');
+  if (suggest) suggest.style.display = 'none';   // 답 못 할 예시는 감춘다
+  if (title) title.textContent = hint.title;
+  if (hints[0]) hints[0].textContent = hint.body;
+  if (hints[1]) hints[1].style.display = 'none';
 }
 
 function bindEvents() {

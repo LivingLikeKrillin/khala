@@ -3,8 +3,11 @@ title: Archon
 description: The authority window over your domain's invariants and values, read from code and calibrated.
 ---
 
-:::caution[Status]
-Archon currently lives as a branch (`spec/domain-invariant-governance`) and the `claims` package inside the Nexus repo. Paths below reference that.
+:::note[Status]
+Archon is not a separate service. It ships **on `master`** as the `nexus/claims/` package, exposed
+through the Nexus CLI (`nexus claim-seed`, `nexus claim-value`, `nexus grade-authority`), the HTTP
+API (`GET /claims/value`, `GET /claims/grade-authority`), and two MCP tools. There is nothing extra
+to check out or install.
 :::
 
 Archon is the authority window over domain truth: the one place a person or an agent asks "what is true here, and on whose authority?" and gets an answer grounded in a governed source, with its freshness and confidence stated plainly.
@@ -44,17 +47,17 @@ In short: **domain value, invariant, and authority governance, built on Nexus.**
 
 ## Quickstart
 
-Archon ships inside the Nexus repo on the `spec/domain-invariant-governance` branch; the implementation is the `nexus/claims/` package. It reuses the Nexus stack (PostgreSQL). The code-value resolver reads constants from a target repo set via `config.yaml` → `code_source.repo_path`. Commands transcribed from the branch's `nexus/cli.py`.
+Archon is the `nexus/claims/` package inside the Nexus repo, on `master`. It reuses the Nexus stack (PostgreSQL). The code-value resolver reads constants from a target repo set via `config.yaml` → `code_source.repo_path`.
 
-### 1. Check out the branch
+### 1. Bring up Nexus
 
 ```bash
-git clone https://github.com/LivingLikeKrillin/khala.git nexus
-cd nexus
-git checkout spec/domain-invariant-governance
+git clone https://github.com/LivingLikeKrillin/khala.git
+cd khala
+task up          # starts containers, runs DB migrations, pulls the model (see the Nexus quickstart for the no-Task path)
 ```
 
-Bring up the stack as for Nexus (`docker compose up -d`), and set `code_source.repo_path` in `config.yaml` to the codebase whose constants you want Archon to read.
+Then set `code_source.repo_path` in `nexus/config.yaml` to the codebase whose constants you want Archon to read. Leave it empty and value lookup stays disabled.
 
 ### 2. Seed your domain claims
 
@@ -103,9 +106,9 @@ Archon exposes MCP tools so agents answer domain questions from the governed sou
 
 ## Reference
 
-- Branch: `spec/domain-invariant-governance` of [github.com/LivingLikeKrillin/khala](https://github.com/LivingLikeKrillin/khala).
-- Package: `nexus/claims/` (`seed.py`, `value_query.py`, `grade_authority.py`, `answer.py`, `repository.py`). CLI in `nexus/cli.py`; MCP tools in `nexus/mcp/server.py`.
+- Repo: [github.com/LivingLikeKrillin/khala](https://github.com/LivingLikeKrillin/khala), branch `master`.
+- Package: `nexus/claims/` (`seed.py`, `value_query.py`, `grade_authority.py`, `answer.py`, `repository.py`). CLI in `nexus/cli.py`; HTTP in `nexus/api.py`; MCP tools in `nexus/mcp/server.py`.
 
 :::note[Last verified]
-Transcribed from the `spec/domain-invariant-governance` branch (`nexus/cli.py`, `nexus/mcp/server.py`, design specs). Site re-run verification pending.
+2026-07-10 — commands and MCP tool names checked against `nexus/cli.py` and `nexus/mcp/server.py` on `master`.
 :::

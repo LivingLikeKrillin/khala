@@ -31,6 +31,45 @@ if importlib.util.find_spec("a2a") is None:
             collect_ignore.append(_f.name)
 
 
+def pytest_sessionstart(session) -> None:
+    """스위트가 붙기 전에, 대상 DB 가 버려도 되는 DB 인지 확인한다.
+
+    `clean_db` 와 여러 픽스처가 TRUNCATE 를 한다. NEXUS_TEST_DB_URL 을 개발 DB 로 두고 돌리면
+    코퍼스가 사라지고 테스트는 초록으로 끝난다 — 실제로 그렇게 한 번 날렸다. URL 은 믿지 않는다
+    (포트·DB 이름은 환경마다 다르고 CI 는 5432 를 쓴다). DB 안의 선언만 믿는다.
+    """
+    db_url = os.getenv("NEXUS_TEST_DB_URL")
+    if not db_url:
+        return
+
+    import asyncio
+    import sys
+
+    from tests.disposable import NotDisposable, assert_disposable
+
+    if sys.platform == "win32":                     # asyncpg 는 Proactor 루프에서 안 돈다
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    try:
+        asyncio.run(assert_disposable(db_url))
+    except NotDisposable as e:
+        pytest.exit(f"\n거부: {e}\n", returncode=2)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _selector_event_loop_policy():
+    """asyncpg 는 Windows 기본 ProactorEventLoop 에서 동작하지 않는다. Linux CI 는 무영향."""
+    import asyncio
+    import sys
+
+    if sys.platform == "win32":
+        prev = asyncio.get_event_loop_policy()
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        yield
+        asyncio.set_event_loop_policy(prev)
+    else:
+        yield
+
+
 def pytest_collection_modifyitems(config, items):
     """integration 마크가 붙은 테스트는 DB URL 없으면 자동 skip."""
     if os.getenv("NEXUS_TEST_DB_URL"):
@@ -46,34 +85,43 @@ def db_url() -> str:
     return os.getenv("NEXUS_TEST_DB_URL", "postgresql://nexus:nexus@localhost:5433/nexus_test")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 async def db_pool(db_url: str):
-    """세션 스코프 asyncpg 연결 풀. integration 테스트에서만 사용.
+    """asyncpg 연결 풀 (함수 스코프).
 
-    NOTE(2026-06-06): 이 환경(Windows + pytest-asyncio)에서 async-generator fixture가
-    `run_until_complete` 재진입으로 깨진다("This event loop is already running"). 따라서
-    이 fixture에 의존하는 통합테스트는 현재 동작하지 않는다. Archon 통합테스트는
-    pytest-asyncio를 우회해 자체 asyncio 루프를 쓴다(tests/test_claim_integration.py 참고).
+    세션 스코프였을 때 pytest-asyncio 의 함수 스코프 event_loop 와 충돌해
+    `ScopeMismatch` 로 **setup 단계에서 죽었다** — 즉 이 fixture 를 쓰는 통합테스트는
+    한 번도 실행된 적이 없다. 풀을 테스트마다 새로 열면(로컬 DB 라 값싸다) 루프 스코프가
+    맞아떨어진다. 새 DB 테스트들이 각자 루프를 직접 돌리던 우회도 이제 필요 없다.
     """
     import asyncpg
 
-    pool = await asyncpg.create_pool(db_url, min_size=2, max_size=5)
-    yield pool
-    await pool.close()
+    pool = await asyncpg.create_pool(db_url, min_size=1, max_size=5)
+    try:
+        yield pool
+    finally:
+        await pool.close()
 
 
 @pytest.fixture(autouse=True)
 async def clean_db(request):
-    """integration 테스트 전 모든 테이블 TRUNCATE."""
+    """integration 테스트 전 모든 테이블 TRUNCATE.
+
+    db_pool 을 `getfixturevalue` 로 끌어오면 async fixture 가 이미 도는 루프 안에서 다시
+    해석되어 "This event loop is already running" 으로 죽는다. 마커가 붙은 테스트에서만
+    지연 요청하되, pytest-asyncio 가 아니라 우리가 직접 풀을 연다.
+    """
     if "integration" not in [m.name for m in request.node.iter_markers()]:
         yield
         return
 
-    pool = request.getfixturevalue("db_pool")
+    import asyncpg
+    pool = await asyncpg.create_pool(request.getfixturevalue("db_url"), min_size=1, max_size=3)
     async with pool.acquire() as conn:
         await conn.execute("""
             TRUNCATE evidence, edges, observed_edges, chunks, documents, entities, claims, search_log
             CASCADE
         """)
+    await pool.close()
 
     yield

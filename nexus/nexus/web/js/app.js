@@ -8,6 +8,7 @@ import * as graphView from './views/graph.js';
 import * as documentsView from './views/documents.js';
 import * as diffView from './views/diff.js';
 import * as uploadView from './views/upload.js';
+import * as sourcesView from './views/sources.js';
 
 const views = {
   chat: chatView,
@@ -15,6 +16,7 @@ const views = {
   documents: documentsView,
   diff: diffView,
   upload: uploadView,
+  sources: sourcesView,
 };
 
 let currentView = null;

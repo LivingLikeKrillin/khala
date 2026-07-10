@@ -184,19 +184,35 @@ Classification: PUBLIC < INTERNAL < RESTRICTED
 
 ```bash
 git clone https://github.com/LivingLikeKrillin/khala.git
-cd nexus
+cd khala/nexus
 
 cp .env.example .env
-# .env에서 ANTHROPIC_API_KEY 설정 (LLM 답변 기능 사용 시)
+# .env에서 ANTHROPIC_API_KEY 설정 (LLM 답변 기능 사용 시 — 없어도 검색·근거는 동작)
 ```
 
-### 2. Start Infrastructure
+### 2. Start Everything
+
+[Task](https://taskfile.dev)가 있으면 한 줄입니다:
 
 ```bash
-docker compose up -d
+task up
 ```
 
-핵심 컨테이너(검색·채팅에 필요한 것만)가 시작됩니다:
+이 한 줄이 컨테이너를 띄우고(`--wait`로 health까지 대기), **DB 마이그레이션을 적용하고**,
+임베딩 모델(`nomic-embed-text`)을 자동으로 받습니다. 최초 실행은 모델 다운로드로 몇 분 걸립니다.
+
+Task가 없다면 그 세 가지를 직접:
+
+```bash
+docker compose up -d --wait                                  # 컨테이너 + 모델 자동 pull
+docker compose exec -T nexus-app python -m scripts.migrate   # ← 빠뜨리면 소스 콘솔·문서 관리가 깨진다
+```
+
+> ⚠️ `docker compose up -d` **만** 하고 마이그레이션을 빠뜨리면, 검색·채팅은 되지만 소스
+> 콘솔·문서 숨김/되돌리기·`supersede`가 `UndefinedTable`로 죽습니다. `task up`이나 위 두 줄을
+> 함께 쓰세요.
+
+뜨는 컨테이너:
 
 | Container | Role | Port |
 |-----------|------|------|
@@ -204,42 +220,28 @@ docker compose up -d
 | nexus-ollama | Embedding model | 11434 |
 | nexus-app | FastAPI server | **8000** |
 
-OTel 관측 파이프라인(`nexus-otel` 4317/4318, `nexus-tempo` 3200)은 **기본 미기동**입니다 —
-검색·채팅에는 불필요하므로 Deploy 마찰을 줄였습니다. OTel 집계(`nexus otel-aggregate`)를
-쓸 때만 옵트인하세요:
+OTel 관측 파이프라인(`nexus-otel`, `nexus-tempo`)은 검색·채팅에 불필요하므로 **기본 미기동**.
+OTel 집계를 쓸 때만 옵트인: `docker compose --profile observability up -d`.
+
+### 3. Index Documents
+
+리포에 함께 오는 설계 문서로 바로 시작해 볼 수 있습니다:
 
 ```bash
-docker compose --profile observability up -d
-```
-
-### 3. Pull Embedding Model (first time only)
-
-```bash
-docker exec nexus-ollama ollama pull nomic-embed-text
-```
-
-### 4. Index Documents
-
-```bash
-# 컨테이너 내 CLI 사용
 docker exec nexus-app nexus ingest ./docs
-
-# 또는 API 호출
-curl -X POST http://localhost:8000/ingest \
-  -H "Content-Type: application/json" \
-  -d '{"path": "./docs"}'
 ```
 
-### 5. Search
+Notion 문서를 쓴다면 터미널 대신 웹 **소스** 탭에서 페이지 URL을 붙여넣으면 됩니다
+(연결 상태·도달 여부까지 그 화면이 알려줍니다).
+
+### 4. Search
+
+브라우저에서 **`http://localhost:8000/`** 을 열고 질문하세요 — 답에는 근거가 함께 붙습니다.
+
+터미널이 편하면:
 
 ```bash
-# CLI
-docker exec nexus-app nexus query "결제 서비스 의존성"
-
-# API
-curl -X POST http://localhost:8000/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "결제 서비스가 발행하는 토픽"}'
+docker exec nexus-app nexus query "하이브리드 검색은 어떻게 결합하나"
 ```
 
 ---
@@ -289,16 +291,47 @@ Response includes evidence snippets with source URIs and provenance.
 
 ## CLI Commands
 
+컨테이너 안에서 돈다: `docker compose exec nexus-app nexus <command>`.
+
 ```bash
-nexus ingest ./docs              # 문서 인덱싱
-nexus ingest ./docs --force      # 전체 재인덱싱 (hash 무시)
-nexus query "검색어"              # 검색
-nexus graph payment-service      # 그래프 조회
-nexus graph payment-service -h 2 # 2-hop 그래프
-nexus otel-aggregate             # OTel 집계
-nexus diff                       # 설계-관측 diff
-nexus status                     # 시스템 상태
+# ── 적재 ──
+nexus ingest ./docs                         # 문서 인덱싱
+nexus ingest ./docs --force                 # 전체 재인덱싱 (hash 무시)
+nexus ingest-notion --roots "id1,id2"       # Notion 트리 적재 (NOTION_TOKEN 필요)
+nexus ingest-notion --roots "..." --reconcile --dry-run   # 삭제 반영 계획만 확인
+nexus ingest-notion --roots "..." --reconcile             # soft_delete + revive 적용
+# ↑ root 를 웹 소스 콘솔에 등록해 두었다면 CLI 대신 그 화면에서 동기화하는 편이 낫다.
+#   미리보기 → 확인 → 적용 흐름이 붙어 있다.
+
+# ── 소스 진단 ──
+nexus sources health                        # 토큰이 유효한가, 등록된 root 에 닿는가 (문제 시 exit 1)
+
+# ── 조회 ──
+nexus query "검색어"                         # 검색 (+ --answer 로 LLM 답변)
+nexus graph payment-service                 # 그래프 조회
+nexus graph payment-service -h 2            # 2-hop 그래프
+nexus diff                                  # 설계-관측 diff
+nexus status                                # 시스템 상태
+nexus entropy-signals                       # 공존 잔차 신호 (재수집 덮어쓰기·중복·제목충돌)
+
+# ── 도메인 값 (Archon) ──
+nexus claim-seed claims.yaml                # 도메인 claim 적재
+nexus claim-value Basic                     # 개념의 현재 값을 코드에서 조회
+nexus grade-authority                       # 등급 계층 권한 도출
+
+# ── 운영 ──
+nexus otel-aggregate                        # OTel trace 집계 (--profile observability 필요)
+nexus auth gen-token                        # bearer 토큰 발급
+nexus auth hash-token                       # 토큰 → sha256 (config.yaml auth.principals 용)
+
+# ── 문서 생애주기 — 모든 파괴적 행위에는 역이 있다 ──
+nexus doc hide <ref>                        # 검색에서 내린다. 지우지 않는다.
+nexus doc restore <ref>                     # 되돌린다. Notion 동기화도 숨긴 문서를 되살리지 않는다.
+nexus supersede <old> --by <new>            # ⚠️ 파괴적: old 를 new 로 대체해 검색에서 배제
+nexus unsupersede <ref> --reason "..."      # 그 역. 사유 필수. 체인은 역순으로만 풀린다.
 ```
+
+`<ref>` 는 rid 든 경로든 받는다 (`README.md`, `doc_a1b2c3`). 숨긴 문서도 경로로 부를 수 있다.
 
 ---
 
@@ -352,7 +385,7 @@ nexus/
 │   │   └── formatter.py     #   Block Kit 포매터
 │   │
 │   ├── mcp/                 # MCP Server (AI Agent 도구)
-│   │   ├── server.py        #   FastMCP 도구 6개 정의
+│   │   ├── server.py        #   FastMCP 도구 9개 정의
 │   │   └── __main__.py      #   진입점 (stdio/http)
 │   │
 │   ├── web/                 # Web UI (Vanilla JS, 빌드 불필요)
@@ -360,7 +393,7 @@ nexus/
 │   │   ├── css/style.css    #   다크 테마 + 한국어 타이포그래피
 │   │   └── js/              #   라우터, API 클라이언트, 뷰 5개
 │   │
-│   ├── api.py               # FastAPI endpoints (11개)
+│   ├── api.py               # FastAPI endpoints (16개)
 │   ├── cli.py               # Typer CLI
 │   ├── db.py                # PostgreSQL connection pool
 │   ├── rid.py               # Canonical ID generation
@@ -496,14 +529,11 @@ entities:
 
 ## Slack Bot
 
-Slack에서 `@nexus`로 멘션하거나 DM으로 질문하면 근거 기반 답변을 받을 수 있습니다.
+⚠️ **현재 동작하지 않는다.** 실행 진입점이 없고(`[project.scripts]`·compose 모두 미등록),
+`nexus/slack/bot.py` 가 API 호출에 `Authorization` 헤더를 붙이지 않아 기본 `enforced` 모드에서
+모든 질의가 401 이다. 살릴지 삭제할지 미결.
 
-```bash
-pip install -e '.[slack]'
-python -m nexus.slack.app
-```
-
-설정 및 사용법: [docs/SLACK_BOT.md](docs/SLACK_BOT.md)
+자세한 결함 내용: [docs/SLACK_BOT.md](docs/SLACK_BOT.md)
 
 ---
 
@@ -517,7 +547,9 @@ python -m nexus.mcp                    # stdio (로컬)
 python -m nexus.mcp --transport http   # streamable-http (원격)
 ```
 
-6개 도구 제공: `nexus_search`, `nexus_answer`, `nexus_graph`, `nexus_suggest`, `nexus_diff`, `nexus_status`
+9개 도구 제공: `nexus_search`, `nexus_answer`, `nexus_graph`, `nexus_suggest`, `nexus_diff`, `nexus_status`, `nexus_supersede`, `archon_claim_value`, `archon_grade_authority`
+
+⚠️ Nexus 기본 auth 모드가 `enforced` 라 `NEXUS_MCP_TOKEN` 없이는 모든 툴이 401 이다 ([docs/MCP_SERVER.md](./docs/MCP_SERVER.md) §6).
 
 설정 및 사용법: [docs/MCP_SERVER.md](docs/MCP_SERVER.md)
 

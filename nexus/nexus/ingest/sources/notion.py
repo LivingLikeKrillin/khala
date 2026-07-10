@@ -10,6 +10,7 @@ import os
 
 from nexus.ingest.sources.base import ConvertedDoc, PageRef
 from nexus.ingest.sources.notion_convert import blocks_to_markdown
+from nexus.ingest.sources.notion_ids import canonical_page_id
 
 
 class NotionSource:
@@ -27,7 +28,8 @@ class NotionSource:
 
             client = Client(auth=os.environ[token_env])
         self.client = client
-        self.roots = roots or []
+        # URL 에서 복사한 대시 없는 id 도 API 표기로 맞춘다 — 중복 적재/귀속 불일치 방지.
+        self.roots = [canonical_page_id(r) for r in (roots or [])]
         self.tenant = tenant
         self.classification = classification
         self.owner = owner
@@ -45,10 +47,13 @@ class NotionSource:
 
     def fetch_markdown(self, ref: PageRef) -> ConvertedDoc:
         md, image_count = blocks_to_markdown(self._all_blocks(ref.id))
+
+        # 제목은 **페이지 이름**이다. 예전엔 마크다운 첫 헤딩을 썼고, 그래서 Notion 의 `Index`
+        # 페이지가 코퍼스에 `Access 방식` 으로 들어갔다 — 사용자는 인용에서 자기가 열어 본 적
+        # 없는 이름을 본다. 이름 없는 페이지(빈 제목 속성)만 첫 헤딩으로, 그것도 없으면 id 로.
         first = md.splitlines()[0] if md.strip() else ""
-        title = (
-            first.removeprefix("### ").removeprefix("## ").removeprefix("# ").strip() or ref.id
-        )
+        heading = first.removeprefix("### ").removeprefix("## ").removeprefix("# ").strip()
+        title = (ref.title or "").strip() or heading or ref.id
         fm = {
             "title": title,
             "doc_type": "wiki",  # classifier 경로판정 무력화 보완
@@ -63,13 +68,22 @@ class NotionSource:
             page_id=ref.id, markdown=md, frontmatter=fm, image_count=image_count
         )
 
+    @staticmethod
+    def _title_of(page: dict) -> str:
+        """제목 속성을 **타입으로** 찾는다. 이름은 임의다 — DB 행에서는 `과제명` 일 수도 있다."""
+        for prop in (page.get("properties") or {}).values():
+            if prop.get("type") == "title":
+                return "".join(t.get("plain_text", "") for t in prop.get("title") or [])
+        return ""
+
     def page_ref(self, page_id: str) -> PageRef:
-        """page id → PageRef(id/url/last_edited). client.pages.retrieve 사용."""
+        """page id → PageRef(id/url/last_edited/title). client.pages.retrieve 사용."""
         p = self.client.pages.retrieve(page_id=page_id)
         return PageRef(
             id=page_id,
             url=p.get("url", f"https://notion.so/{page_id}"),
             last_edited=p.get("last_edited_time", ""),
+            title=self._title_of(p),
         )
 
     def _db_rows(self, database_id: str) -> list[dict]:
@@ -84,6 +98,7 @@ class NotionSource:
         return rows
 
     def _collect(self, page_id: str, ids: set[str]) -> None:
+        page_id = canonical_page_id(page_id)
         if page_id in ids:
             return
         ids.add(page_id)

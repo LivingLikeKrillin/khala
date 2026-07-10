@@ -47,9 +47,22 @@ Unknown or untyped documents default to **Memo** (conservative).
 
 The **Documents** tab lists everything Nexus has indexed, each with its document-type trust badge, so you can see at a glance how governed the corpus is.
 
+Search by title, and filter by state (indexed / hidden / deleted in Notion / superseded). The **origin** column shows whether a document came from Notion, an upload, or a file, and Notion documents link straight back to the page they came from.
+
+**Hiding** takes a document out of search. It does not delete it — the document and its chunks stay, and **되돌리기** brings them back. A confirm panel says exactly that before you commit. A superseded document names, by title, whatever replaced it, and undoing that requires a reason.
+
 ## Add documents (Upload)
 
-The **Upload** tab lets you add documents to the index. (Bulk or automated ingest is a CLI or operator task; see the [Quickstart](/tools/nexus/#quickstart).)
+The **Upload** tab adds documents to the index one at a time.
+
+## Connect Notion (Sources)
+
+Paste a Notion page URL into the **Sources** tab and its whole subtree enters search. No terminal.
+
+- The panel at the top reports the **connection**: whether the token is valid, and which integration and workspace it belongs to. A revoked token says so instead of showing green.
+- Each registered root is marked **reachable or not**. If you never invited the integration to that page in Notion, you learn it here rather than after a sync walks the tree.
+- **지금 동기화** walks the tree. Use it for the first run.
+- To take pages you deleted in Notion out of search, press **삭제 반영 미리보기** first. It lists what would go, by title, and nothing is applied until you confirm that list.
 
 ## Explore relationships (Graph)
 

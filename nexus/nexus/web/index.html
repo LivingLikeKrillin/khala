@@ -60,6 +60,8 @@
         <span class="status-dot" id="dot-tempo" title="Tempo"></span>
       </div>
       <span class="status-badge" id="badge-docs" title="인덱싱된 문서 수">0 문서</span>
+      <!-- 코퍼스 신선도 — Reader 신호. "이 검색이 최근 것인가". 적재 이력이 없으면 숨김. -->
+      <span class="status-badge hidden" id="badge-freshness" title="마지막 적재 시각"></span>
       <span class="status-badge clickable hidden" id="badge-diff" title="설계-관측 불일치">0 불일치</span>
     </div>
   </header>
@@ -121,6 +123,14 @@
           </svg>
         </span>
         <span class="nav-label">업로드</span>
+      </a>
+      <a href="#/sources" class="nav-item" data-view="sources" data-label="소스">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>
+          </svg>
+        </span>
+        <span class="nav-label">소스</span>
       </a>
     </nav>
 

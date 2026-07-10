@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Callable
 from typing import Protocol
 
@@ -57,6 +58,27 @@ _PROMPT = (
 )
 
 
+_FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.S)
+
+
+def _unwrap_json(text: str) -> str:
+    """모델 응답에서 JSON 배열만 꺼낸다.
+
+    'Return ONLY a JSON array' 라고 지시해도 모델은 프롬프트가 길어지면 ```json 펜스로
+    감싸거나 짧은 서두를 붙인다. 지시로 막을 수 없으니 파서가 견딘다. 잘린 응답은 여기서
+    고쳐지지 않고 json.loads 에서 그대로 터진다 — fail closed 가 맞다.
+    """
+    t = text.strip()
+    fenced = _FENCE.search(t)
+    if fenced:
+        t = fenced.group(1).strip()
+    if not t.startswith("["):
+        start = t.find("[")
+        if start != -1:
+            t = t[start:]
+    return t
+
+
 class AnthropicCritic:
     """LLM critic. The ``ANTHROPIC_API_KEY`` is read **lazily** — only when a critique is
     actually run — so constructing the critic (and therefore booting the MCP server) needs no
@@ -64,7 +86,9 @@ class AnthropicCritic:
     An injected ``client`` bypasses the key entirely (offline/local + tests).
     """
 
-    def __init__(self, client=None, model: str = "claude-opus-4-8", max_tokens: int = 2000):
+    # max_tokens: 실측(SPEC-nexus-notion-reconciliation + 링크된 ADR-0002)에서 출력이 1823 토큰까지
+    # 찼다. 2000 이면 조금만 더 긴 문서에서 잘리고, 잘린 JSON 은 CritiqueError 로 죽는다.
+    def __init__(self, client=None, model: str = "claude-opus-4-8", max_tokens: int = 4096):
         self._client = client
         self._model = model
         self._max_tokens = max_tokens
@@ -94,5 +118,5 @@ class AnthropicCritic:
             messages=[{"role": "user", "content": prompt}],
         )
         text = "".join(block.text for block in resp.content if block.type == "text")
-        data = json.loads(text)
+        data = json.loads(_unwrap_json(text))
         return [(d["category"], d["severity"], d["description"]) for d in data]

@@ -20,91 +20,54 @@ triage한다 — 이게 순수 LLM 리뷰 대비 차별점.
 
 ## 절차
 
-작업 디렉토리 = 분석 대상 소비자 repo(예: Arbiter). khala.probe 패키지가 import 가능해야 한다
-(`pythonpath`에 khala.probe의 `src` 추가하거나 설치).
+작업 디렉토리 = 분석 대상 소비자 repo(예: Arbiter). `probe` CLI 가 설치돼 있거나(`pip install -e
+probe/`) `khala.probe` 가 `pythonpath` 에 있어야 한다(`python -m khala.probe.cli`).
 
-### 1. 변경 모듈 식별 + 변이 실행 → survivor 산출 (결정론, LLM 없음)
+세 단계다: **`probe survey`**(결정론) → **Critic dispatch**(판단, CLI 밖) → **`probe absorb`**(흡수).
+파이썬 블록을 손으로 붙여넣지 않는다 — 러너·원장·리포트는 CLI 안에 있고, CLI 가 할 수 없는 유일한
+단계(Critic dispatch)만 손으로 한다. 그게 결정론/판단 분리를 명령 표면으로 표현한 것이다.
 
-```python
-from pathlib import Path
-import json, dataclasses
-from khala.probe.scope import changed_source_modules
-from khala.probe.run import run_mutation
-
-modules = changed_source_modules(base="HEAD~1")   # diff 대상; 전체 분석이면 명시적으로 모듈 지정
-survivors = []
-for m in modules:
-    survivors.extend(run_mutation(module_path=m, workdir=Path(".")))
-
-Path("survivors.json").write_text(
-    json.dumps([dataclasses.asdict(s) for s in survivors], ensure_ascii=False, indent=2)
-)
-```
-- `survivors.json`은 **사람이 보는 산출물 아티팩트**다. 후속 단계는 메모리의 `survivors` 객체를 그대로
-  쓴다(`asdict`는 `key` 프로퍼티를 직렬화하지 않음). 만약 별도 세션에서 `survivors.json`을 재로드하면
-  `.key`가 없으니 **`f"{module}:{lineno}:{operator}"`로 재구성**하라(module은 이미 `/`로 정규화돼 있다 — OS 무관).
-- `run_mutation`은 cosmic-ray `init`/`exec`/`dump`를 돌리고 살아남은 변이만 돌려준다. **실패는 예외로
-  전파**된다(게이트 fail-open 금지) — 에러가 나면 멈추고 원인을 보고하라, 빈 결과로 위장하지 마라.
-- survivor가 0건이면: 변경 모듈의 행위가 현재 스위트로 충분히 고정돼 있다는 뜻 → 리포트에 "갭 없음" 보고하고 종료.
-
-### 2. 원장 로드 + 새 survivor 추림 (M2 — 재심의 최소화)
-
-```python
-import datetime
-from pathlib import Path
-from khala.probe.ledger import load_ledger, new_survivors
-
-ledger_path = Path("probe-ledger.yaml")
-ledger = load_ledger(ledger_path.read_text(encoding="utf-8") if ledger_path.exists() else "")
-fresh = new_survivors(survivors, ledger)   # 원장에 없는 것만 = Critic 재심의 대상
-```
-- **이미 판정된 survivor(`fresh`에 없음)는 Critic을 다시 부르지 않는다** — 동치 노이즈를 매 실행
-  재심의하던 비용이 사라진다. 원장의 verdict를 그대로 재사용한다.
-- `today`(아래에서 쓸 기준일)는 호출 시점의 날짜로 한 번 정해 둔다(`datetime.date.today()`).
-- `fresh`가 0건이면 새로 판정할 게 없다 → 곧장 리포트(6단계)로. survivor 자체가 0건이면 "갭 없음" 종료.
-
-### 3. suite 요약 수집 (Critic 입력용)
+### 1. `probe survey` — 변이 척추 (결정론, LLM 없음)
 
 ```bash
-python -m pytest --collect-only -q
+probe survey --base HEAD~1 --out probe-survey.json --ledger probe-ledger.yaml
+# 전체 분석이면: probe survey --module pkg/a.py --module pkg/b.py ...
 ```
-테스트 **개수**를 세어 `suite_summary` 문자열로 만든다(예: "69개 전부 통과" — 변이 실행 시 스위트가
-green이었으므로). 이 거친 요약을 Critic에 전달한다(per-survivor coverage 매핑은 향후 작업).
+변경 모듈을 식별하고, 각 모듈에 cosmic-ray 를 돌려 survivor 를 산출하고, 원장을 읽어 **새 survivor
+(fresh)** 만 추리고, suite 요약을 수집한다. `probe-survey.json` 에 survivors·fresh·suite_summary,
+그리고 **fresh 마다 슬롯이 채워진 Critic 프롬프트**를 담아 낸다.
 
-### 4. **새** survivor마다 Test Quality Critic dispatch (판단 영역)
+- 변경 모듈 0건 → "변경된 소스 모듈 없음", 종료. survivor 0건 → "갭 없음", 종료. fresh 0건(전부 이미
+  판정됨) → 리포트만 내고 "새로 판정할 survivor 없음" — Critic 단계 불필요.
+- **실패는 빈 survey 로 위장하지 않는다**: cosmic-ray 가 죽으면 CLI 도 비정상 종료하고 원인을 낸다
+  (게이트 fail-open 금지).
+- survey 는 **원장을 읽기만** 한다 — 측정은 영속 상태를 바꾸지 않는다.
 
-`fresh`의 각 survivor에 대해 `references/critic-prompt.md`의 슬롯(`{module}`, `{lineno}`, `{operator}`,
-`{mutation_diff}`, `{suite_summary}`)을 채워 **서브에이전트로 dispatch**한다. survivor들은 서로
-독립이므로 병렬로 띄워도 된다. Critic은 `{verdict, rationale, suggested_test_intent}` JSON을 돌려준다.
+### 2. Test Quality Critic dispatch (판단 영역 — CLI 밖, 설계상)
 
-수집한 verdict를 `Verdict(survivor_key=<survivor.key>, ...)` 리스트로 만든다.
-(`survivor.key` = `module:lineno:operator`.)
+`probe-survey.json` 의 `prompts[]` 각 프롬프트(이미 슬롯이 채워져 있다)를 **서브에이전트로 dispatch**
+한다. survivor 는 서로 독립이라 병렬로 띄워도 된다. Critic 은 `{verdict, rationale,
+suggested_test_intent}` JSON 을 돌려준다(`verdict` ∈ `real-gap|equivalent|low-value`).
 
-### 5. verdict를 원장에 흡수 + 영속 (M2)
+수집한 판정을 `verdicts.json` 리스트로 모은다 — 각 항목은 `{survivor_key, verdict, rationale,
+suggested_test_intent}`. `survivor_key` 는 프롬프트 옆 `prompts[].survivor_key` 를 그대로 쓴다.
 
-```python
-from khala.probe.ledger import absorb, dump_ledger
+> 이 단계만 손으로 하는 이유: CLI 는 Claude 서브에이전트를 dispatch 할 수 없고, 해서도 안 된다 —
+> LLM 을 러너에 넣는 순간 Probe 가 막으려는 그 융합이 된다.
 
-ledger = absorb(ledger, fresh_verdicts, today)        # 새 판정을 원장에 기록(불변)
-ledger_path.write_text(dump_ledger(ledger), encoding="utf-8")   # probe-ledger.yaml 커밋 대상
+### 3. `probe absorb` — 판정 흡수 → 영속 → 리포트
+
+```bash
+probe absorb --verdicts verdicts.json --survey probe-survey.json --ledger probe-ledger.yaml
 ```
-- **이 파일은 커밋된다** — 판정 기록이 소스와 함께 버전관리된다. equivalent/low-value는 영구 waive,
-  real-gap은 surface 유지(사람이 `waived_until`을 손으로 달면 만료까지만 침묵).
-- `absorb`는 사람이 손으로 단 `waived_until`을 덮지 않는다(기존 항목 보존).
+판정을 원장에 기록하고(불변, 사람이 손으로 단 `waived_until` 보존), `probe-ledger.yaml` 을 **커밋
+대상**으로 쓰고, 리포트를 낸다 — **headline = 무는(unwaived) real-gap 수**(변이 점수 아님), real-gap
+최상단, equivalent/low-value/유예된 real-gap 은 강등되지만 누락 안 됨.
 
-### 6. 어드바이저리 리포트 조립 + 제시
-
-```python
-from khala.probe.report import build_report
-print(build_report(survivors, ledger, today))
-```
-- **headline = 무는(unwaived) real-gap 수** = `biting(survivors, ledger, today)` 길이. 변이 점수가 아니다.
-- real-gap이 최상단, equivalent/low-value/유예된 real-gap은 강등되지만 누락되지 않는다(`[real-gap (waived)]` 표시).
-
-### 7. real-gap 후속 제안
-
-무는 real-gap마다 Critic의 `suggested_test_intent`를 사용자에게 제시하고 **행위검증 테스트 추가를
-권유**한다. M2도 아직 어드바이저리라 강제하지 않는다 — 결정은 사용자 몫. (강제 게이트 = M3.)
+- 도메인 밖 `verdict` 값이나 survey 에 없는 `survivor_key` 는 **시끄럽게 거부**하고 원장을 손대지
+  않는다. 부분 verdicts(빠진 fresh)는 삼키지 않고 경고로 이름을 알린다.
+- 무는 real-gap 마다 Critic 의 `suggested_test_intent` 를 사용자에게 제시하고 **행위검증 테스트 추가를
+  권유**한다. M2 는 아직 어드바이저리 — 강제하지 않는다(강제 게이트 = M3).
 
 ## 품질 회귀
 

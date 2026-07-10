@@ -12,6 +12,38 @@ pip install -e ".[dev]"
 
 ---
 
+## CLI (run the gate by hand)
+
+The MCP server is for agents wired through `.mcp.json`. **A human — or an agent without that
+wiring — runs the same gate from the terminal:**
+
+```bash
+arbiter record spec "결제 정책 SPEC"          # register a draft → prints its id
+arbiter critique SPEC-결제-정책-spec           # run the critic → prints issues
+arbiter approve  SPEC-결제-정책-spec \         # apply dispositions + sign off
+    --dispositions disp.json --approver eisen
+arbiter status                                # list all artifacts and their state
+arbiter check-gate specs/SPEC-x.md            # is this path gated right now?
+```
+
+`--dispositions` is a JSON file, one object per open issue:
+
+```json
+[
+  { "issue_id": "I-001", "disposition": "accepted" },
+  { "issue_id": "I-002", "disposition": "rejected", "reason": "관측이 아니라 추측이다" }
+]
+```
+
+`rejected` and `deferred` require a `reason`; `accepted` requires the document body to have
+actually changed since the critique (an unchanged body with an accepted issue is refused). The CLI
+calls the *same* `ledger` / `critique` / `review` functions the MCP tools call — it is a thin
+surface, not a second implementation.
+
+Root and docs directory come from `ARBITER_ROOT` / `ARBITER_DOCS` (default: `.` and `./docs`).
+
+---
+
 ## MCP Server Registration (`.mcp.json`)
 
 Add to your project's `.mcp.json` (or the global `~/.claude/mcp.json`):
