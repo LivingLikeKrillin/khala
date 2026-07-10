@@ -33,6 +33,11 @@ async def supersede(old_rid: str, new_rid: str, tenant: str) -> str:
                 "WHERE rid=$2 AND tenant=$3 AND status='active'", new_rid, old_rid, tenant)
             await conn.execute(
                 "UPDATE chunks SET status='superseded', updated_at=now() WHERE doc_rid=$1", old_rid)
+            # append-only 원장 — 상태 변경과 같은 트랜잭션. 되돌림(unsupersede)만 기록하고
+            # 이쪽을 빼면 원장이 반쪽이 된다 (SPEC-nexus-document-lifecycle §4.2).
+            from nexus.lifecycle import _record_supersession_event
+
+            await _record_supersession_event(conn, old_rid, tenant, "superseded", new_rid)
     return "superseded"
 
 

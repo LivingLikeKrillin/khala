@@ -48,11 +48,12 @@ class AuthConfig:
             #    Cloudflare Access 통과자 누구나 소스를 관리하고 (미리보기를 거쳐) 문서를
             #    내릴 수 있다는 뜻이다. 그게 싫으면 config.yaml 에
             #        auth.local_dev_capabilities: []
+            #    ⚠️ manage_documents 는 문서 숨김·supersede 를 연다(파괴적).
             #    를 두어 로컬 UI 를 읽기 전용으로 만든다. 명시 설정된 principal 은
             #    여전히 default-deny 다.
             dev_caps = auth.get("local_dev_capabilities")
             if dev_caps is None:
-                dev_caps = ["manage_sources"]
+                dev_caps = ["manage_sources", "manage_documents"]
             principals.append({
                 "name": "local-dev",
                 "token_sha256": hash_token(dev_token),
