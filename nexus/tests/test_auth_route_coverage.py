@@ -43,9 +43,23 @@ def _declares(route, dep) -> bool:
     return False
 
 
+def _flatten(routes):
+    """FastAPI ≥0.139 appends an opaque `_IncludedRouter` wrapper to `app.routes` instead of
+    flattening the router's routes into it. Reading `.path` off that wrapper yields None, so a
+    guard that only looks one level deep goes blind to every routed included by `include_router`
+    — which here is *all* of documents and sources. Descend into the wrapper when it appears.
+    """
+    for r in routes:
+        nested = getattr(r, "original_router", None)
+        if nested is not None:
+            yield from _flatten(nested.routes)
+        else:
+            yield r
+
+
 def _routes_by_path() -> dict[str, list]:
     out: dict[str, list] = {}
-    for r in app.routes:
+    for r in _flatten(app.routes):
         path = getattr(r, "path", None)
         if path is not None:
             out.setdefault(path, []).append(r)
