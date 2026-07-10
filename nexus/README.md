@@ -298,6 +298,11 @@ nexus ingest ./docs --force                 # 전체 재인덱싱 (hash 무시)
 nexus ingest-notion --roots "id1,id2"       # Notion 트리 적재 (NOTION_TOKEN 필요)
 nexus ingest-notion --roots "..." --reconcile --dry-run   # 삭제 반영 계획만 확인
 nexus ingest-notion --roots "..." --reconcile             # soft_delete + revive 적용
+# ↑ root 를 웹 소스 콘솔에 등록해 두었다면 CLI 대신 그 화면에서 동기화하는 편이 낫다.
+#   미리보기 → 확인 → 적용 흐름이 붙어 있다.
+
+# ── 소스 진단 ──
+nexus sources health                        # 토큰이 유효한가, 등록된 root 에 닿는가 (문제 시 exit 1)
 
 # ── 조회 ──
 nexus query "검색어"                         # 검색 (+ --answer 로 LLM 답변)
@@ -314,10 +319,17 @@ nexus grade-authority                       # 등급 계층 권한 도출
 
 # ── 운영 ──
 nexus otel-aggregate                        # OTel trace 집계 (--profile observability 필요)
-nexus supersede <old> --by <new>            # ⚠️ 파괴적: old 를 검색에서 배제. dry-run·역명령 없음
 nexus auth gen-token                        # bearer 토큰 발급
 nexus auth hash-token                       # 토큰 → sha256 (config.yaml auth.principals 용)
+
+# ── 문서 생애주기 — 모든 파괴적 행위에는 역이 있다 ──
+nexus doc hide <ref>                        # 검색에서 내린다. 지우지 않는다.
+nexus doc restore <ref>                     # 되돌린다. Notion 동기화도 숨긴 문서를 되살리지 않는다.
+nexus supersede <old> --by <new>            # ⚠️ 파괴적: old 를 new 로 대체해 검색에서 배제
+nexus unsupersede <ref> --reason "..."      # 그 역. 사유 필수. 체인은 역순으로만 풀린다.
 ```
+
+`<ref>` 는 rid 든 경로든 받는다 (`README.md`, `doc_a1b2c3`). 숨긴 문서도 경로로 부를 수 있다.
 
 ---
 
