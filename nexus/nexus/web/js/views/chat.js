@@ -57,7 +57,7 @@ export function render(container) {
           <div class="chat-input-wrapper" style="position:relative">
             <div class="autocomplete-dropdown" id="autocomplete-dropdown"></div>
             <textarea id="chat-input" rows="1"
-              placeholder="무엇이든 물어보세요 —  @ 로 서비스·엔티티 지정"
+              placeholder="무엇이든 물어보세요 — @ 로 서비스·엔티티 지정"
             ></textarea>
             <button id="chat-send" type="button">전송</button>
           </div>
