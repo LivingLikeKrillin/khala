@@ -1,0 +1,12 @@
+{
+  "name": "nexus-web",
+  "private": true,
+  "type": "module",
+  "description": "Nexus web UI — vanilla ESM, no build step. vitest covers the pure logic modules (freshness, corpus hints); DOM wiring is verified in the browser.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

@@ -240,6 +240,26 @@ jobs:
         working-directory: adept-web/api
         run: python -m pytest -q
 
+  nexus-web:
+    name: nexus-web (vitest)
+    runs-on: ubuntu-latest
+    # The web UI is vanilla ESM with no build step, so its logic went untested for a long time —
+    # freshnessLabel and corpusHint were verified only by driving the browser. vitest covers the
+    # pure modules now; DOM wiring stays a browser check.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: nexus/nexus/web/package-lock.json
+      - name: Install
+        working-directory: nexus/nexus/web
+        run: npm ci
+      - name: Run tests
+        working-directory: nexus/nexus/web
+        run: npm test
+
   adept-web:
     name: adept-web (vitest)
     runs-on: ubuntu-latest
