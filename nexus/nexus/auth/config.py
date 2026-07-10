@@ -41,11 +41,25 @@ class AuthConfig:
         dev_token_weak = False
         if dev_token:
             from .principal import hash_token
+            # local-dev 는 **운영자 신원**이지 독자 신원이 아니다. 웹 콘솔(소스 관리)이
+            # 자기 화면에서 403 으로 막히지 않도록 manage_sources 를 기본 부여한다.
+            #
+            # ⚠️ GET /auth/dev-token 은 이 토큰을 도달한 누구에게나 내준다. 터널 뒤에서는
+            #    Cloudflare Access 통과자 누구나 소스를 관리하고 (미리보기를 거쳐) 문서를
+            #    내릴 수 있다는 뜻이다. 그게 싫으면 config.yaml 에
+            #        auth.local_dev_capabilities: []
+            #    ⚠️ manage_documents 는 문서 숨김·supersede 를 연다(파괴적).
+            #    를 두어 로컬 UI 를 읽기 전용으로 만든다. 명시 설정된 principal 은
+            #    여전히 default-deny 다.
+            dev_caps = auth.get("local_dev_capabilities")
+            if dev_caps is None:
+                dev_caps = ["manage_sources", "manage_documents"]
             principals.append({
                 "name": "local-dev",
                 "token_sha256": hash_token(dev_token),
                 "tenant": "default",
                 "clearance": "INTERNAL",
+                "capabilities": list(dev_caps),
             })
             dev_token_weak = (
                 dev_token == _WEAK_DEV_TOKEN_DEFAULT or len(dev_token) < _MIN_DEV_TOKEN_LEN

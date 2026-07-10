@@ -92,7 +92,13 @@ services:
       OLLAMA_URL: http://nexus-ollama:11434
       TEMPO_URL: http://nexus-tempo:3200   # OTel 집계(nexus otel-aggregate) 시에만 사용 — 그 땐 --profile observability
       DEFAULT_TENANT: default
+      # ── 자격증명 ──
+      # 앱이 쓰는 시크릿은 **여기 한 곳**에서 주입한다. compose 는 이 파일 옆의 `.env` 를 읽어
+      # 치환하므로 어떤 오버레이를 얹든 값이 따라온다. 오버레이에만 적으면 그 오버레이를 안
+      # 얹는 배포(=prod)에서 조용히 사라진다 — NOTION_TOKEN 이 실제로 그랬다.
+      # 기본값 빈 문자열: 토큰 없이도 부팅하고, 그 기능만 못 쓴다.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      NOTION_TOKEN: ${NOTION_TOKEN:-}
     volumes:
       - .:/app                    # 개발 중 코드 변경 반영 (hot reload)
       - ./docs:/app/docs:ro       # 인덱싱할 문서 폴더

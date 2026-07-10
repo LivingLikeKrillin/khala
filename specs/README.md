@@ -12,6 +12,8 @@ disposition → `approve`) before implementation begins.
 |----|-------|--------|------------|------|
 | [SPEC-nexus-a2a-server-phase0-spike](SPEC-nexus-a2a-server-phase0-spike.md) | Phase 0 spike — Nexus A2A grounded-retrieval server | Draft | [ADR-0001](../adr/ADR-0001-adopt-a2a-inter-agent-interop.md) | 2026-06-18 |
 | [SPEC-nexus-notion-reconciliation](SPEC-nexus-notion-reconciliation.md) | Notion deletion reconciliation — soft_delete/revive + root-scoped prune | Approved | [ADR-0006](../adr/ADR-0006-nexus-entropy-spine.md) | 2026-07-09 |
+| [SPEC-nexus-notion-source-console](SPEC-nexus-notion-source-console.md) | Notion source console — endpoint-first source management, background sync, previewed deletion | Approved | [ADR-0006](../adr/ADR-0006-nexus-entropy-spine.md) | 2026-07-10 |
+| [SPEC-nexus-document-lifecycle](SPEC-nexus-document-lifecycle.md) | Document lifecycle — origin, search, hide, and the inverse of every destructive act | Approved | [ADR-0006](../adr/ADR-0006-nexus-entropy-spine.md) | 2026-07-10 |
 
 ## Statuses
 

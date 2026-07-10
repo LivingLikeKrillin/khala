@@ -11,6 +11,8 @@ services:
       - "5433:5432"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      # 이 DB 만 TRUNCATE 를 허용한다. 마커가 없으면 스위트가 붙기를 거부한다.
+      - ./tests/disposable_db.sql:/docker-entrypoint-initdb.d/02-disposable.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_test"]
       interval: 3s

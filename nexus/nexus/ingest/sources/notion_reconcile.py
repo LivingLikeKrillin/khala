@@ -29,10 +29,15 @@ def notion_doc_rid(tenant: str, page_id: str) -> str:
 
 @dataclass
 class ScopeRow:
-    """재조정 범위에 든 문서 한 건 (prov_inputs ⊆ walked_roots 인 것만)."""
+    """재조정 범위에 든 문서 한 건 (prov_inputs ⊆ walked_roots 인 것만).
+
+    content_hash·title 은 계획 지문(plan_hash)과 사람이 읽을 미리보기에 쓴다.
+    """
 
     rid: str
     status: str
+    content_hash: str = ""
+    title: str = ""
 
 
 @dataclass
@@ -51,20 +56,29 @@ async def fetch_notion_scope(tenant: str, walked_roots: set[str]) -> list[ScopeR
     막는다. prov_inputs 가 비어 있는 행(백필 전 레거시)은 영원히 후보에서 제외된다.
 
     soft_deleted·superseded 도 함께 반환한다 — revive 후보 판정은 plan_reconcile 의 몫이다.
+
+    **hold=true 인 문서는 제외한다.** 사람이 손으로 숨긴 문서이므로 재조정의 관할이 아니다.
+    빼지 않으면, 페이지가 여전히 live 라는 이유로 다음 동기화가 그 문서를 조용히 되살린다
+    (SPEC-nexus-document-lifecycle §4.1).
     """
     rows = await db.fetch_all(
         """
-        SELECT rid, status::text AS status
+        SELECT rid, status::text AS status, content_hash, title
         FROM documents
         WHERE tenant = $1
           AND source_uri LIKE $2
           AND prov_inputs <> '{}'
           AND prov_inputs <@ $3::text[]
+          AND hold = false
         ORDER BY rid
         """,
         tenant, notion_uri_pattern(tenant), sorted(walked_roots),
     )
-    return [ScopeRow(rid=r["rid"], status=r["status"]) for r in rows]
+    return [
+        ScopeRow(rid=r["rid"], status=r["status"],
+                 content_hash=r["content_hash"], title=r["title"])
+        for r in rows
+    ]
 
 
 @dataclass
@@ -111,12 +125,31 @@ async def write_source_roots(
             )
 
 
+async def backfill_source_roots(tenant: str, walked_roots: set[str], live_by_rid: dict[str, list[str]]) -> None:
+    """살아있는 **모든** 페이지의 root 귀속을 갱신한다 (SPEC-nexus-notion-source-console §4.5).
+
+    예전에는 적재 sink 만 prov_inputs 를 썼다. `--since` 는 변경 없는 페이지의 적재를 건너뛰므로
+    그 페이지들은 영영 귀속을 못 얻었고, 재조정이 조용히 아무 일도 하지 않았다. 런북은 그걸
+    경고로 적었다 — 경고는 수정이 아니다.
+
+    열거(live_index)는 since 와 무관하게 전체를 걷는다. 그러니 여기서 직접 쓴다.
+    dry-run 에서도 쓴다: 낡은 귀속 위에서 계산한 미리보기는 거짓말이다. 문서의 **상태**는
+    건드리지 않으므로 "dry-run 은 아무것도 적용하지 않는다"는 여전히 참이다.
+    """
+    for rid, reached in live_by_rid.items():
+        await write_source_roots(rid, tenant, reached=reached, walked=sorted(walked_roots))
+
+
 def make_reconcile_fn(
     threshold: float = 0.5, force: bool = False, dry_run: bool = False
 ):
     """import_notion 에 주입할 프로덕션 reconcile_fn 을 만든다(합성 루트는 CLI)."""
 
-    async def _reconcile(tenant: str, walked_roots: set[str], live_rids: set[str]) -> ReconcileOutcome:
+    async def _reconcile(
+        tenant: str, walked_roots: set[str], live_by_rid: dict[str, list[str]]
+    ) -> ReconcileOutcome:
+        await backfill_source_roots(tenant, walked_roots, live_by_rid)
+        live_rids = set(live_by_rid)
         scope = await fetch_notion_scope(tenant, walked_roots)
         plan = plan_reconcile(scope, live_rids, threshold=threshold, force=force)
 
