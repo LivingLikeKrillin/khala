@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from nexus import db
 from nexus.auth import Principal, effective_scope
-from nexus.documents.filters import STATUS_FILTERS, reportable_status
+from nexus.documents.filters import ORIGIN_FILTERS, STATUS_FILTERS, reportable_status
 from nexus.documents.lifecycle_ops import (
     AlreadySuperseded,
     UseUnsupersede,
@@ -74,36 +74,48 @@ async def list_documents(
     tenant, classification_max = _scope(principal, tenant, classification_max)
     if status not in STATUS_FILTERS:
         raise HTTPException(status_code=400, detail=f"unknown status filter: {status}")
+    if origin and origin not in ORIGIN_FILTERS:
+        raise HTTPException(status_code=400, detail=f"unknown origin filter: {origin}")
+
+    # 모든 필터는 SQL 에 있다. 파이썬에서 사후 필터링하면 limit 만큼 뽑은 뒤 버리게 되어
+    # 페이지가 조용히 줄고 total 이 거짓말한다.
+    where = f"""
+        d.tenant = $1
+          AND d.classification <= $2::classification_level
+          AND d.is_quarantined = false
+          AND ({STATUS_FILTERS[status]})
+          AND ($3 = '' OR d.title ILIKE '%' || $3 || '%')
+          AND ({ORIGIN_FILTERS[origin] if origin else 'TRUE'})
+    """
 
     rows = await db.fetch_all(
         f"""
         SELECT d.rid, d.title, d.source_uri, d.classification, d.doc_type, d.language,
                d.status::text AS status, d.hold, d.superseded_by, d.updated_at,
+               s.title AS superseded_by_title,
                (SELECT COUNT(*) FROM chunks c WHERE c.doc_rid = d.rid AND c.status='active')
                    AS chunk_count
         FROM documents d
-        WHERE d.tenant = $1
-          AND d.classification <= $2::classification_level
-          AND d.is_quarantined = false
-          AND ({STATUS_FILTERS[status]})
-          AND ($3 = '' OR d.title ILIKE '%' || $3 || '%')
+        -- 대체한 문서의 **제목**. rid 만 보여주면 사람은 그게 무슨 문서인지 알 수 없다.
+        LEFT JOIN documents s ON s.rid = d.superseded_by AND s.tenant = d.tenant
+        WHERE {where}
         ORDER BY d.updated_at DESC
         OFFSET $4 LIMIT $5
         """,
         tenant, classification_max, q, offset, limit,
     )
+    total = await db.fetch_val(
+        f"SELECT COUNT(*) FROM documents d WHERE {where}", tenant, classification_max, q)
 
     docs = []
     for r in rows:
         item = dict(r)
         item["origin"], item["origin_url"] = derive_origin(item["source_uri"])
-        if origin and item["origin"] != origin:
-            continue
         item["status"] = reportable_status(item["status"], item["hold"])
         item["updated_at"] = item["updated_at"].isoformat()
         docs.append(item)
 
-    return _Envelope(data={"documents": docs, "offset": offset, "limit": limit})
+    return _Envelope(data={"documents": docs, "total": total, "offset": offset, "limit": limit})
 
 
 @router.get("/documents/{rid}", response_model=_Envelope)
@@ -182,4 +194,9 @@ async def supersede_docs(req: SupersedeRequest, principal: Principal = Depends(d
         result = await supersede(old_rid, new_rid, tenant)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return _Envelope(data={"result": result})
+    # 해석된 rid 를 돌려준다: 되돌리려면(unsupersede) rid 가 필요한데, 그때 옛 문서는 이미
+    # active 가 아니라 경로로 다시 찾을 수 없다. 파괴한 자리에서 손잡이를 함께 준다.
+    return _Envelope(
+        data={"result": result, "old_rid": old_rid, "new_rid": new_rid},
+        meta={"undo": f"POST /documents/{old_rid}/unsupersede (reason 필수)"},
+    )

@@ -108,7 +108,10 @@ async def test_unsupersede_refuses_a_broken_chain_and_names_the_blocker(seeded):
 
     with pytest.raises(ChainBroken) as e:
         await unsupersede(_V1, _TENANT, reason="되돌리고 싶다")
-    assert _V2 in str(e.value)           # 막고 있는 문서를 이름으로 알려준다
+    assert _V2 in str(e.value)           # 에이전트가 쓸 rid
+    # 사람이 읽는 표면(웹 토스트)에도 이 문장이 그대로 뜬다. rid 만 있으면 아무 말도 안 한 것과 같다.
+    assert "v2.md" in str(e.value)       # 막고 있는 문서의 제목
+    assert e.value.blocker_title == f"{_TENANT}:v2.md"
 
     assert (await db.fetch_one("SELECT status FROM documents WHERE rid=$1", _V1))["status"] == "superseded"
 

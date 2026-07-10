@@ -25,3 +25,12 @@ def reportable_status(status: str, hold: bool) -> str:
     if status == "soft_deleted":
         return "hidden" if hold else "pruned"
     return status
+
+
+#: origin 필터 값 → SQL 술어. **SQL 에서 걸러야 한다.**
+#: 파이썬에서 사후 필터링하면 limit 만큼 뽑은 뒤 버리므로 페이지가 줄고 total 이 거짓말한다.
+ORIGIN_FILTERS: dict[str, str] = {
+    "notion": "d.source_uri LIKE '%:ext-notion-%'",
+    "upload": "d.source_uri LIKE '%:uploads/%'",
+    "file": "d.source_uri NOT LIKE '%:ext-notion-%' AND d.source_uri NOT LIKE '%:uploads/%'",
+}

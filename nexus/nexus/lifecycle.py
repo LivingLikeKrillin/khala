@@ -19,15 +19,21 @@ from nexus import db
 
 
 class ChainBroken(Exception):
-    """이 문서를 대체한 문서가 그 자신도 대체당했다 — 되살리면 최신본과 공존한다."""
+    """이 문서를 대체한 문서가 그 자신도 대체당했다 — 되살리면 최신본과 공존한다.
 
-    def __init__(self, rid: str, blocker: str):
+    메시지는 두 표면을 동시에 상대한다: 에이전트는 `blocker` rid 로 다음 명령을 만들고,
+    사람은 웹 토스트에서 이 문장을 그대로 읽는다. rid 만 담으면 사람에게는 아무 말도 안 한 셈이다.
+    """
+
+    def __init__(self, rid: str, blocker: str, blocker_title: str = ""):
+        name = f"「{blocker_title}」({blocker})" if blocker_title else blocker
         super().__init__(
-            f"{rid} 를 대체한 {blocker} 가 그 자신도 superseded 입니다. "
-            f"{blocker} 를 먼저 unsupersede 하세요 — 체인은 역순으로만 풀립니다."
+            f"이 문서를 대체한 {name} 가 그 자신도 superseded 입니다. "
+            f"그것을 먼저 되돌리세요 — 체인은 역순으로만 풀립니다."
         )
         self.rid = rid
         self.blocker = blocker
+        self.blocker_title = blocker_title
 
 
 async def _record_supersession_event(conn, rid: str, tenant: str, action: str,
@@ -120,12 +126,13 @@ async def unsupersede(rid: str, tenant: str, *, reason: str) -> str:
 
             blocker = row["superseded_by"]
             if blocker:
-                blocker_status = await conn.fetchval(
-                    "SELECT status::text FROM documents WHERE rid=$1 AND tenant=$2", blocker, tenant
+                b = await conn.fetchrow(
+                    "SELECT status::text AS status, title FROM documents "
+                    "WHERE rid=$1 AND tenant=$2", blocker, tenant
                 )
                 # 대체한 문서가 살아있지 않으면 되살릴 수 없다 — 최신본과 공존하게 된다.
-                if blocker_status is not None and blocker_status != "active":
-                    raise ChainBroken(rid, blocker)
+                if b is not None and b["status"] != "active":
+                    raise ChainBroken(rid, blocker, b["title"] or "")
 
             await conn.execute(
                 "UPDATE documents SET status='active', superseded_by='', updated_at=now() "

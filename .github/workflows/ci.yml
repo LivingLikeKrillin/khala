@@ -66,6 +66,11 @@ jobs:
       - name: Apply baseline schema
         working-directory: nexus
         run: psql "$DATABASE_URL" -f init.sql
+      - name: Declare this database disposable
+        working-directory: nexus
+        # The suite TRUNCATEs. It refuses to attach to a database that has not said so —
+        # that guard is what stops someone pointing NEXUS_TEST_DB_URL at a real corpus.
+        run: psql "$DATABASE_URL" -f tests/disposable_db.sql
       - name: Apply migrations
         working-directory: nexus
         # init.sql is only the empty-DB baseline; superseded_by and v_entropy_signals

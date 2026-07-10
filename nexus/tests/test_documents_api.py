@@ -141,6 +141,22 @@ def test_unsupersede_requires_a_reason():
         assert len(c.get("/documents").json()["data"]["documents"]) == 2
 
 
+def test_a_superseded_row_names_the_document_that_replaced_it():
+    """`doc_a1b2c3` 는 사람에게 아무 의미가 없다. 무엇이 대체했는지 제목으로 말한다 (§4.5)."""
+    with _client() as c:
+        c.post("/supersede", json={"old_ref": "doc_a", "new_ref": "doc_b"})
+        rows = c.get("/documents", params={"status": "superseded"}).json()["data"]["documents"]
+        assert rows[0]["superseded_by"] == "doc_b"
+        assert rows[0]["superseded_by_title"] == "배포 런북"
+
+
+def test_supersede_returns_the_rids_it_resolved():
+    """파괴적 응답은 되돌리기 손잡이를 함께 준다 — ref 만 돌려주면 취소할 rid 를 모른다."""
+    with _client() as c:
+        d = c.post("/supersede", json={"old_ref": "doc_a", "new_ref": "doc_b"}).json()["data"]
+        assert d["old_rid"] == "doc_a" and d["new_rid"] == "doc_b"
+
+
 def test_hide_a_superseded_document_is_409():
     with _client() as c:
         c.post("/supersede", json={"old_ref": "doc_a", "new_ref": "doc_b"})
@@ -157,3 +173,26 @@ def test_destructive_paths_require_manage_documents_including_supersede():
         assert c.post("/documents/doc_a/restore").status_code == 403
         assert c.post("/documents/doc_a/unsupersede", json={"reason": "r"}).status_code == 403
         assert c.post("/supersede", json={"old_ref": "doc_a", "new_ref": "doc_b"}).status_code == 403
+
+
+# ── 페이지네이션 정직성 ───────────────────────────────────────────────────────
+
+def test_list_reports_total_so_pagination_can_be_honest():
+    with _client() as c:
+        d = c.get("/documents", params={"limit": 1}).json()["data"]
+        assert len(d["documents"]) == 1
+        assert d["total"] == 2               # 페이지 크기가 아니라 전체
+
+
+def test_origin_filter_is_applied_in_sql_not_after_the_page():
+    """사후 필터링하면 limit 만큼 뽑은 뒤 걸러내므로 페이지가 줄고 total 이 거짓말한다."""
+    with _client() as c:
+        d = c.get("/documents", params={"origin": "notion"}).json()["data"]
+        assert [x["rid"] for x in d["documents"]] == ["doc_a"]
+        assert d["total"] == 1               # notion 문서만 셌다
+
+        d = c.get("/documents", params={"origin": "upload"}).json()["data"]
+        assert [x["rid"] for x in d["documents"]] == ["doc_b"] and d["total"] == 1
+
+        d = c.get("/documents", params={"origin": "file"}).json()["data"]
+        assert d["documents"] == [] and d["total"] == 0

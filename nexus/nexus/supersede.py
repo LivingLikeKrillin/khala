@@ -42,40 +42,15 @@ async def supersede(old_rid: str, new_rid: str, tenant: str) -> str:
 
 
 async def resolve_active_doc(ref: str, tenant: str) -> str:
-    """ref(rid | source_uri | basename)를 문서 rid 로 확정. 위반 시 ValueError. 스펙 §4.1.
+    """ref(rid | source_uri | basename)를 **active** 문서 rid 로 확정. 위반 시 ValueError. 스펙 §4.1.
 
-    결정 순서: (1) rid 패스스루 → (2) source_uri 정확일치(active) → (3) basename LIKE(active).
-    판정: 정확히 1건→rid · 0건→ValueError · 2건+→ValueError(후보 나열).
+    구현은 `nexus.documents.resolve.resolve_doc(active_only=True)` 에 있다. 생애주기 명령들
+    (hide/restore/unsupersede)은 상태를 가리지 않는 같은 해석기를 쓴다 — 두 벌의 SQL 이
+    갈라지면 '이 경로가 어느 문서냐' 는 답이 명령마다 달라진다.
 
-    주의: step 1 rid 패스스루는 status 무관(superseded/soft_deleted 포함) — 하위호환·자동화용.
+    주의: rid 패스스루는 status 무관(superseded/soft_deleted 포함) — 하위호환·자동화용.
     코어 supersede() 가 상태를 재검증하므로 안전. 이 패스스루를 'active 만'으로 좁히지 말 것.
     """
-    # 1) rid 패스스루 (status 무관)
-    hit = await db.fetch_val(
-        "SELECT rid FROM documents WHERE rid = $1 AND tenant = $2", ref, tenant)
-    if hit is not None:
-        return hit
+    from nexus.documents.resolve import resolve_doc
 
-    # 2) source_uri 정확일치 (상대경로는 tenant 접두 자동 조립 후 바인드)
-    rows = await db.fetch_all(
-        "SELECT DISTINCT rid, source_uri FROM documents "
-        "WHERE tenant = $1 AND status = 'active' AND (source_uri = $2 OR source_uri = $3)",
-        tenant, ref, f"{tenant}:{ref}")
-
-    # 3) 정확일치 0건이면 basename LIKE (메타문자 이스케이프 + ESCAPE)
-    if not rows:
-        escaped = ref.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        rows = await db.fetch_all(
-            "SELECT DISTINCT rid, source_uri FROM documents "
-            "WHERE tenant = $1 AND status = 'active' AND source_uri LIKE $2 ESCAPE '\\' "
-            "ORDER BY source_uri",
-            tenant, f"%/{escaped}")
-
-    # 4) 판정
-    if len(rows) == 1:
-        return rows[0]["rid"]
-    if not rows:
-        raise ValueError(f"일치하는 active 문서 없음: {ref}")
-    candidates = ", ".join(r["source_uri"] for r in rows)
-    raise ValueError(
-        f"'{ref}'에 여러 문서가 일치합니다 — 경로를 더 구체적으로 주거나 rid 로 지정하세요. 후보: {candidates}")
+    return await resolve_doc(ref, tenant, active_only=True)

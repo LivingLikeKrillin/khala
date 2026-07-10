@@ -31,6 +31,30 @@ if importlib.util.find_spec("a2a") is None:
             collect_ignore.append(_f.name)
 
 
+def pytest_sessionstart(session) -> None:
+    """스위트가 붙기 전에, 대상 DB 가 버려도 되는 DB 인지 확인한다.
+
+    `clean_db` 와 여러 픽스처가 TRUNCATE 를 한다. NEXUS_TEST_DB_URL 을 개발 DB 로 두고 돌리면
+    코퍼스가 사라지고 테스트는 초록으로 끝난다 — 실제로 그렇게 한 번 날렸다. URL 은 믿지 않는다
+    (포트·DB 이름은 환경마다 다르고 CI 는 5432 를 쓴다). DB 안의 선언만 믿는다.
+    """
+    db_url = os.getenv("NEXUS_TEST_DB_URL")
+    if not db_url:
+        return
+
+    import asyncio
+    import sys
+
+    from tests.disposable import NotDisposable, assert_disposable
+
+    if sys.platform == "win32":                     # asyncpg 는 Proactor 루프에서 안 돈다
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    try:
+        asyncio.run(assert_disposable(db_url))
+    except NotDisposable as e:
+        pytest.exit(f"\n거부: {e}\n", returncode=2)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _selector_event_loop_policy():
     """asyncpg 는 Windows 기본 ProactorEventLoop 에서 동작하지 않는다. Linux CI 는 무영향."""
