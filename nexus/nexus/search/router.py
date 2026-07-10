@@ -33,6 +33,15 @@ def determine_route(
         검색 경로 문자열
     """
     if requested_route != "auto":
+        # 여기가 사용자 입력이 route 가 되는 유일한 관문이다. 검증하지 않으면 임의 문자열이
+        # hybrid_search 까지 내려가 ValueError → 500 이 된다. 존재하지 않는 route 를 고른 것은
+        # 호출자의 잘못이고, 무엇을 고를 수 있는지 알려 주어야 다음 호출을 고칠 수 있다.
+        from nexus.search.hybrid import ROUTES, UnknownRoute
+
+        if requested_route not in ROUTES:
+            raise UnknownRoute(
+                f"unknown_route: {requested_route!r}. "
+                f"가능한 값: auto, {', '.join(sorted(ROUTES))}")
         return requested_route
 
     # 그래프 관련 키워드

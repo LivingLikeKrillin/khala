@@ -29,7 +29,11 @@ class TestTokensToTsquery:
         q = tokens_to_tsquery(["결제", "서비스"])
         assert "'결제'" in q
         assert "'서비스'" in q
-        assert "&" in q
+        # 이 테스트는 `&` 를 고정하고 있었다 — 즉 "모든 어휘가 한 청크 안에" 라는 요구를
+        # 지키고 있었고, 그게 14개 질의 중 11개의 키워드 재현율을 0 으로 만든 원인이다.
+        # SPEC-nexus-search-recall §4.1.
+        assert "|" in q
+        assert "&" not in q
 
     def test_empty(self):
         assert tokens_to_tsquery([]) == ""

@@ -119,6 +119,24 @@ async def _vector_search(
     return [(r["rid"], i + 1) for i, r in enumerate(rows)]
 
 
+class UnknownRoute(ValueError):
+    """호출자가 존재하지 않는 route 를 골랐다. 우리 잘못이 아니므로 400 이다.
+
+    맨 ValueError 를 400 으로 바꾸면 내부 버그의 ValueError 까지 "당신 잘못" 이 된다.
+    """
+
+
+#: route → (BM25 다리를 도는가, 벡터 다리를 도는가). 그래프 보강은 아래에서 따로 판정한다.
+#: SPEC-nexus-search-recall §4.2 — 이 표가 API·MCP·CLI 가 광고하는 계약의 정본이다.
+ROUTES: dict[str, tuple[bool, bool]] = {
+    "keyword_only": (True, False),
+    "vector_only": (False, True),
+    "hybrid_only": (True, True),
+    "hybrid_then_graph": (True, True),
+    "graph_then_hybrid": (True, True),
+}
+
+
 def _rrf_fusion(
     bm25_results: list[tuple[str, int]],
     vector_results: list[tuple[str, int]],
@@ -268,19 +286,32 @@ async def hybrid_search(
     vector_top_k = search_cfg.get("vector_top_k", 20)
     rrf_k = search_cfg.get("rrf_k", 60)
 
+    if route not in ROUTES:
+        # 조용히 hybrid 로 처리하지 않는다. "당신의 route 는 무시됐다" 는 말이 아무 말보다 낫다.
+        raise UnknownRoute(f"unknown_route: {route!r}. 가능한 값: {', '.join(sorted(ROUTES))}")
+
     result = SearchResult(route_used=route)
 
-    # BM25 + Vector 병렬 실행
-    bm25_task = asyncio.create_task(_bm25_search(query, tenant, clearance, bm25_top_k))
+    # route 가 고르는 것은 그래프 보강만이 아니다 — 어느 **다리**를 돌릴지도 고른다.
+    # 예전엔 둘 다 무조건 돌면서 route_used 로 "반영됐다" 고 보고했다.
+    use_bm25, use_vector = ROUTES[route]
 
+    bm25_results: list[tuple[str, int]] = []
     vector_results: list[tuple[str, int]] = []
-    if embedding_svc:
-        vector_task = asyncio.create_task(
-            _vector_search(query, embedding_svc, tenant, clearance, vector_top_k)
-        )
-        bm25_results, vector_results = await asyncio.gather(bm25_task, vector_task)
-    else:
-        bm25_results = await bm25_task
+
+    tasks = {}
+    if use_bm25:
+        tasks["bm25"] = asyncio.create_task(_bm25_search(query, tenant, clearance, bm25_top_k))
+    # embedding_svc 가 없으면 벡터 다리는 못 돈다. 그렇다고 BM25 로 슬그머니 바꿔치기하고
+    # route_used='vector_only' 라 보고하지는 않는다 — 빈 결과가 정직하다.
+    if use_vector and embedding_svc:
+        tasks["vector"] = asyncio.create_task(
+            _vector_search(query, embedding_svc, tenant, clearance, vector_top_k))
+
+    if tasks:
+        done = dict(zip(tasks, await asyncio.gather(*tasks.values())))
+        bm25_results = done.get("bm25", [])
+        vector_results = done.get("vector", [])
 
     bm25_ms = int((time.time() - start) * 1000)
 
