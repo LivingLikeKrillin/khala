@@ -5,7 +5,7 @@
  * 터미널을 열지 않는다. 같은 엔드포인트를 MCP 에이전트도 쓴다.
  */
 
-import { addSource, getLatestSync, getSyncRun, listSources, removeSource, startSync } from '../api.js';
+import { addSource, getLatestSync, getSyncRun, listSources, removeSource, sourcesHealth, startSync } from '../api.js';
 import { showToast } from '../components/toast.js';
 
 let _pollTimer = null;
@@ -34,9 +34,8 @@ export function render(container) {
         <button id="src-add" class="btn-primary">추가</button>
       </section>
 
-      <section id="src-token-warn" class="sources-warn hidden">
-        Notion 토큰이 서버에 설정되지 않았습니다 — 동기화할 수 없습니다.
-      </section>
+      <!-- 연결 상태. 토큰이 정상이면 integration·워크스페이스를, 아니면 무엇이 잘못됐는지 말한다. -->
+      <section id="src-token-warn" class="sources-conn">연결 상태 확인 중…</section>
 
       <section id="src-list" class="sources-list"></section>
 
@@ -58,34 +57,82 @@ export function render(container) {
   showLatestRun();
 }
 
+// 상태 → 사람이 읽을 문장. `unknown` 은 초록도 빨강도 아니다 — 모른다는 뜻이다.
+const TOKEN_PROSE = {
+  ok: null,   // 패널에 integration·워크스페이스를 대신 보여준다
+  invalid: '토큰이 거부되었습니다(401). 폐기되었거나 잘못된 값입니다 — .env 의 NOTION_TOKEN 을 확인하세요.',
+  not_configured: 'Notion 토큰이 서버에 설정되지 않았습니다 — 동기화할 수 없습니다.',
+  unknown: 'Notion 에 연결할 수 없어 토큰을 확인하지 못했습니다.',
+};
+const ROOT_PROSE = {
+  reachable: '도달 가능', unreachable: '볼 수 없음',
+  invalid_id: 'id 형식 오류', unknown: '확인하지 못함',
+};
+
 async function refreshList() {
   const el = document.getElementById('src-list');
   el.innerHTML = '<div class="sources-loading">불러오는 중…</div>';
   try {
     const { data } = await listSources();
-    document.getElementById('src-token-warn').classList.toggle('hidden', data.token_configured);
 
     if (!data.roots.length) {
       el.innerHTML = `<div class="sources-empty">
         연결된 Notion 페이지가 없습니다. 위에 페이지 URL을 붙여넣어 시작하세요.
       </div>`;
-      return;
-    }
-    el.innerHTML = data.roots.map((r) => `
-      <div class="sources-row">
-        <div class="sources-row-main">
-          <div class="sources-row-label">${esc(r.label || r.root_id)}</div>
-          <div class="sources-row-id">${esc(r.root_id)}</div>
+    } else {
+      el.innerHTML = data.roots.map((r) => `
+        <div class="sources-row">
+          <div class="sources-row-main">
+            <div class="sources-row-label">${esc(r.label || r.root_id)}</div>
+            <div class="sources-row-id">${esc(r.root_id)}</div>
+            <div class="sources-row-state" data-state-for="${esc(r.root_id)}">확인 중…</div>
+          </div>
+          <button class="btn-ghost" data-remove="${esc(r.root_id)}">연결 해제</button>
         </div>
-        <button class="btn-ghost" data-remove="${esc(r.root_id)}">연결 해제</button>
-      </div>
-    `).join('');
+      `).join('');
 
-    el.querySelectorAll('[data-remove]').forEach((b) =>
-      b.addEventListener('click', () => onRemove(b.dataset.remove)));
+      el.querySelectorAll('[data-remove]').forEach((b) =>
+        b.addEventListener('click', () => onRemove(b.dataset.remove)));
+    }
+
+    // 외부 API 를 때리므로 목록 렌더를 막지 않는다. 결과가 오면 채운다.
+    refreshHealth();
   } catch (e) {
     el.innerHTML = `<div class="sources-empty">목록을 불러오지 못했습니다: ${esc(e.message)}</div>`;
     showToast(e.message, 'error');
+  }
+}
+
+/** Notion 에게 직접 물어 토큰과 각 root 의 상태를 채운다. 실패해도 목록은 살아 있다. */
+async function refreshHealth() {
+  const warn = document.getElementById('src-token-warn');
+  try {
+    const { data } = await sourcesHealth();
+    const t = data.token;
+
+    if (t.state === 'ok') {
+      warn.className = 'sources-conn';
+      warn.innerHTML = `<strong>${esc(t.integration || 'integration')}</strong>
+        · ${esc(t.workspace || '')}
+        <span class="sources-conn-prefix">${esc(t.prefix)}…</span>`;
+    } else {
+      warn.className = 'sources-warn';
+      warn.textContent = TOKEN_PROSE[t.state] || '토큰 상태를 알 수 없습니다.';
+    }
+
+    for (const r of data.roots) {
+      const cell = document.querySelector(`[data-state-for="${CSS.escape(r.root_id)}"]`);
+      if (!cell) continue;
+      cell.className = `sources-row-state state-${esc(r.state)}`;
+      cell.textContent = r.remedy
+        ? `${ROOT_PROSE[r.state] || r.state} — ${r.remedy}`
+        : `${ROOT_PROSE[r.state] || r.state}${r.title ? ` · ${r.title}` : ''}`;
+    }
+  } catch (e) {
+    // 403(capability 없음)도 여기로 온다. 초록으로 칠하지 않는다 — 못 봤을 뿐이다.
+    warn.className = 'sources-warn';
+    warn.textContent = `연결 상태를 확인하지 못했습니다: ${e.message}`;
+    document.querySelectorAll('[data-state-for]').forEach((c) => { c.textContent = '확인하지 못함'; });
   }
 }
 
@@ -96,7 +143,14 @@ async function onAdd() {
     const { data } = await addSource(url, document.getElementById('src-label').value.trim());
     document.getElementById('src-url').value = '';
     document.getElementById('src-label').value = '';
-    showToast(`연결됨: ${data.root_id}`, 'success');
+    if (data.state === 'unreachable' || data.state === 'invalid_id') {
+      // 등록은 됐다. 다만 지금은 닿지 않는다 — 동기화를 돌려 봐야 알던 것을 여기서 말한다.
+      showToast(`등록했지만 지금은 볼 수 없습니다. ${data.remedy}`, 'error');
+    } else if (data.state === 'unknown') {
+      showToast('등록했습니다. 지금은 Notion 에 물어볼 수 없어 도달 여부를 확인하지 못했습니다.', 'info');
+    } else {
+      showToast(`연결됨: ${data.title || data.root_id}`, 'success');
+    }
     refreshList();
   } catch (e) {
     showToast(e.message, 'error');   // 409 중복 · 400 파싱 실패 · 403 권한

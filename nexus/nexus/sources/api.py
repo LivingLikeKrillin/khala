@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from nexus.auth import Principal, effective_scope
 from nexus.sources import roots_store, runs_store
 from nexus.sources.errors import DuplicateRoot
+from nexus.sources.notion_health import ConnectionHealth, RootState, probe_connection
 
 MANAGE_SOURCES = "manage_sources"
 
@@ -81,8 +82,42 @@ async def list_roots(principal: Principal = Depends(dep)) -> _Envelope:
     return _Envelope(data={"roots": roots, "token_configured": _notion_configured()})
 
 
+def _health_dict(h: ConnectionHealth) -> dict:
+    """응답 모양을 여기서 못 박는다. 자유 텍스트 필드가 없다 — `str(e)` 가 끼어들 자리가 없다."""
+    return {
+        "token": {"state": h.token.state.value, "integration": h.token.integration,
+                  "workspace": h.token.workspace, "prefix": h.token.prefix},
+        "roots": [{"root_id": r.root_id, "state": r.state.value,
+                   "title": r.title, "remedy": r.remedy} for r in h.roots],
+        "checked_at": h.checked_at,
+    }
+
+
+@router.get("/health", response_model=_Envelope)
+async def health(principal: Principal = Depends(dep)) -> _Envelope:
+    """토큰이 진짜인가, 등록된 root 에 정말 닿는가. Notion 에게 직접 묻는다.
+
+    ⚠️ `manage_sources` 뒤에 있다. 토큰만 비밀이 아니다 — 워크스페이스 이름과 문서 제목은
+    조직 문서 트리의 모양을 드러낸다. Cloudflare Access 는 망 경계를, capability 는
+    엔드포인트를 지킨다. 서로를 대신하지 않는다.
+
+    Notion 이 통째로 죽어도 200 을 준다. 진단이 진단 대상과 함께 죽으면 정작 필요할 때 쓸모없다.
+    """
+    _require(principal, MANAGE_SOURCES)
+    tenant = _tenant(principal)
+    roots = [r["root_id"] for r in await roots_store.list_roots(tenant)]
+    h = await probe_connection(os.getenv("NOTION_TOKEN", ""), roots)
+    return _Envelope(data=_health_dict(h))
+
+
 @router.post("/roots", response_model=_Envelope, status_code=201)
 async def add_root(req: AddRootRequest, principal: Principal = Depends(dep)) -> _Envelope:
+    """root 를 등록하고, 지금 그 페이지에 닿는지 **말해 준다**. 거부하지는 않는다.
+
+    등록하고 나서 Notion 에서 공유하는 것은 정상 순서다(URL 을 붙여넣고, 가서 연결을 추가한다).
+    게다가 Notion 은 '아직 공유 안 된 페이지' 와 '없는 페이지' 를 똑같이 404 로 답한다 —
+    잡아내지도 못하는 오타를 막겠다고 멀쩡한 흐름을 깨뜨릴 이유가 없다 (SPEC §4.4).
+    """
     _require(principal, MANAGE_SOURCES)
     try:
         root_id = await roots_store.add_root(_tenant(principal), req.url_or_id, req.label)
@@ -90,7 +125,13 @@ async def add_root(req: AddRootRequest, principal: Principal = Depends(dep)) -> 
         raise HTTPException(status_code=400, detail=str(e)) from e
     except DuplicateRoot as e:
         raise HTTPException(status_code=409, detail=f"root already registered: {e}") from e
-    return _Envelope(data={"root_id": root_id})
+
+    probed = (await probe_connection(os.getenv("NOTION_TOKEN", ""), [root_id])).roots[0]
+    return _Envelope(
+        data={"root_id": root_id, "state": probed.state.value,
+              "title": probed.title, "remedy": probed.remedy},
+        meta={"probed": probed.state is not RootState.UNKNOWN},
+    )
 
 
 @router.delete("/roots/{root_id}", response_model=_Envelope)

@@ -488,6 +488,49 @@ async def nexus_sources_add(url_or_id: str, label: str = "") -> str:
     return f"연결됨: {result['data']['root_id']}"
 
 
+_TOKEN_PROSE = {
+    "ok": "정상",
+    "invalid": "거부됨(401) — 폐기되었거나 잘못된 토큰입니다",
+    "not_configured": "설정되지 않음",
+    "unknown": "확인하지 못함 (Notion 에 연결할 수 없습니다)",
+}
+_ROOT_PROSE = {
+    "reachable": "도달 가능",
+    "unreachable": "볼 수 없음",
+    "invalid_id": "id 형식 오류",
+    "unknown": "확인하지 못함",
+}
+
+
+@mcp.tool()
+async def nexus_sources_health() -> str:
+    """Notion 연결 진단: 토큰이 유효한가, 등록된 root 에 정말 닿는가.
+
+    동기화를 시작하기 전에 물어보라. 토큰이 죽었거나 root 가 공유되지 않았다면, 걷는 일 자체가
+    낭비다. `manage_sources` capability 가 필요하다 — 응답이 워크스페이스 이름과 문서 제목을
+    담기 때문이다.
+    """
+    result = await _api_call("get", "/sources/notion/health")
+    if not result.get("success"):
+        return f"연결 진단 실패: {result.get('error', '알 수 없는 오류')}"
+
+    d = result["data"]
+    t = d["token"]
+    lines = [f"토큰: {_TOKEN_PROSE.get(t['state'], t['state'])}"]
+    if t["state"] == "ok":
+        lines.append(f"  integration: {t['integration']} · 워크스페이스: {t['workspace']}")
+
+    if not d["roots"]:
+        lines.append("등록된 root 가 없습니다. nexus_sources_add 로 연결하세요.")
+    for r in d["roots"]:
+        head = f"- {r['title'] or r['root_id']}  [{_ROOT_PROSE.get(r['state'], r['state'])}]"
+        lines.append(head)
+        if r["remedy"]:
+            lines.append(f"    {r['root_id']}: {r['remedy']}")
+    lines.append(f"(확인 시각 {d['checked_at']})")
+    return "\n".join(lines)
+
+
 @mcp.tool()
 async def nexus_sources_sync(reconcile: bool = False, dry_run: bool = False,
                              confirm_plan: str = "") -> str:

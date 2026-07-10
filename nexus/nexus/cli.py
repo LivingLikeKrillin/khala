@@ -581,6 +581,66 @@ def unsupersede(
     _doc_command(ref, tenant, _act)
 
 
+# ── 소스 진단 — SPEC-nexus-notion-connection-health §4.5 ──
+
+sources_app = typer.Typer(help="Notion 소스 — 연결 진단.")
+app.add_typer(sources_app, name="sources")
+
+# 테스트가 갈아끼울 수 있도록 모듈 전역으로 붙든다(전송을 주입해 모든 분기를 밟는다).
+from nexus.sources.notion_health import probe_connection  # noqa: E402
+
+_TOKEN_PROSE = {
+    "ok": "정상",
+    "invalid": "거부됨(401) — 폐기되었거나 잘못된 토큰입니다",
+    "not_configured": "설정되지 않음 (.env 의 NOTION_TOKEN)",
+    "unknown": "확인하지 못함 — Notion 에 연결할 수 없습니다",
+}
+_ROOT_PROSE = {
+    "reachable": "도달 가능",
+    "unreachable": "볼 수 없음",
+    "invalid_id": "id 형식 오류",
+    "unknown": "확인하지 못함",
+}
+
+
+@sources_app.command("health")
+def sources_health(tenant: str = typer.Option("default", "--tenant", "-t")) -> None:
+    """토큰이 유효한가, 등록된 root 에 정말 닿는가. 문제가 있으면 exit 1.
+
+    동기화를 시작하기 전에 물어보라. 토큰이 죽었거나 root 가 공유되지 않았다면 걷는 일이 낭비다.
+    """
+
+    async def _do() -> bool:
+        import os
+
+        from nexus import db
+        from nexus.sources import roots_store
+
+        try:
+            roots = [r["root_id"] for r in await roots_store.list_roots(tenant)]
+            health = await probe_connection(os.getenv("NOTION_TOKEN", ""), roots)
+        finally:
+            await db.close_pool()
+
+        t = health.token
+        typer.echo(f"토큰: {_TOKEN_PROSE.get(t.state.value, t.state.value)}")
+        if t.state.value == "ok":
+            typer.echo(f"  integration: {t.integration} · 워크스페이스: {t.workspace}")
+
+        if not health.roots:
+            typer.echo("등록된 root 가 없습니다.")
+        for r in health.roots:
+            typer.echo(f"- {r.title or r.root_id}  [{_ROOT_PROSE.get(r.state.value, r.state.value)}]")
+            if r.remedy:
+                typer.echo(f"    {r.root_id}: {r.remedy}")
+
+        # 초록은 '토큰 정상 + 모든 root 도달 가능' 뿐이다. 모른다는 것은 초록이 아니다.
+        return t.state.value == "ok" and all(r.state.value == "reachable" for r in health.roots)
+
+    if not _run(_do()):
+        raise typer.Exit(1)
+
+
 @app.command("entropy-signals")
 def entropy_signals() -> None:
     """공존 잔차 신호(재수집 덮어쓰기·정확중복·제목충돌·supersession)를 표시.
