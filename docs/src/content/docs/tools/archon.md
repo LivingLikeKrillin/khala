@@ -54,7 +54,7 @@ Archon is the `nexus/claims/` package inside the Nexus repo, on `master`. It reu
 ```bash
 git clone https://github.com/LivingLikeKrillin/khala.git
 cd khala
-task up          # or: cd nexus && docker compose up -d
+task up          # starts containers, runs DB migrations, pulls the model (see the Nexus quickstart for the no-Task path)
 ```
 
 Then set `code_source.repo_path` in `nexus/config.yaml` to the codebase whose constants you want Archon to read. Leave it empty and value lookup stays disabled.

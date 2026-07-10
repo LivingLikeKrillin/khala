@@ -289,15 +289,12 @@ def base_filter() -> str:
 ## 커맨드 참조
 
 ```bash
-# 인프라 기동
-docker-compose up -d
-
-# Ollama 모델 pull (최초 1회)
-docker exec nexus-ollama ollama pull multilingual-e5-base
+# 기동 (컨테이너 + DB 마이그레이션 + 모델 자동 pull). Task 없으면 README §2 의 두 줄.
+task up
 
 # 문서 인덱싱
-nexus ingest ./docs
-nexus ingest ./docs --force          # hash 무시, 전체 재인덱싱
+docker exec nexus-app nexus ingest ./docs
+docker exec nexus-app nexus ingest ./docs --force   # hash 무시, 전체 재인덱싱
 
 # Notion 적재 (미러 — 정본은 Notion 에 남는다)
 nexus ingest-notion --roots "pageId1,pageId2"
