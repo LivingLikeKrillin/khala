@@ -3,6 +3,7 @@
  */
 
 import { getStatus } from '../api.js';
+import { freshnessLabel } from '../freshness.js';
 
 let intervalId = null;
 
@@ -37,6 +38,15 @@ async function update() {
 
     const badgeDocs = document.getElementById('badge-docs');
     badgeDocs.textContent = `${data.documents_count ?? 0} 문서`;
+
+    // 코퍼스 신선도 — 적재 이력이 있을 때만. 지난주 코퍼스가 조용히 줄었을 때 화면이
+    // 아무 말도 안 했던 그 침묵을 메운다.
+    const badgeFresh = document.getElementById('badge-freshness');
+    if (badgeFresh) {
+      const label = freshnessLabel(data.last_ingest_at);
+      badgeFresh.textContent = label;
+      badgeFresh.classList.toggle('hidden', !label);
+    }
 
     const badgeDiff = document.getElementById('badge-diff');
     const diff = data.diff_summary;

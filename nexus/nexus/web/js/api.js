@@ -217,15 +217,9 @@ export async function getDiff(opts = {}) {
   });
 }
 
-// ── OTel ──
-
-export async function otelAggregate(opts = {}) {
-  return request('POST', '/otel/aggregate', {
-    window_minutes: opts.window_minutes || 5,
-    lookback_minutes: opts.lookback_minutes || 60,
-    tenant: opts.tenant || 'default',
-  });
-}
+// OTel 집계는 운영자 도구(nexus otel-aggregate CLI / POST /otel/aggregate)다. 여기 있던
+// otelAggregate() 클라이언트는 어느 뷰도 부르지 않는 죽은 코드였다 — 웹은 OTel 집계를
+// 트리거하는 표면이 아니다. 엔드포인트는 그대로 있고, 필요해지면 그때 되살린다.
 
 // ── 상태 ──
 
