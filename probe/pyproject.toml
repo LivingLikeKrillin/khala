@@ -3,10 +3,13 @@ name = "khala-probe"
 version = "0.1.0"
 description = "Probe — mutation-driven test quality harness"
 requires-python = ">=3.11"
-dependencies = ["cosmic-ray>=8.3", "pyyaml>=6"]
+dependencies = ["cosmic-ray>=8.3", "pyyaml>=6", "typer>=0.12"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+probe = "khala.probe.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
