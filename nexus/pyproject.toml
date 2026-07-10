@@ -59,6 +59,7 @@ a2a = [
 
 [project.scripts]
 nexus = "nexus.cli:app"
+nexus-slack = "nexus.slack.app:main"
 
 [build-system]
 requires = ["hatchling"]

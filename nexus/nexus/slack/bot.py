@@ -1,11 +1,13 @@
-"""Slack Bot — Nexus 검색/답변 연동.
+"""Slack Bot — Nexus 검색/답변 연동. SPEC-nexus-slack-bot §4.2·§4.3.
 
-Slack의 @nexus 멘션 또는 DM에 반응하여 /search/answer를 호출하고
-Block Kit 포맷으로 응답한다.
+Slack의 @nexus 멘션 또는 DM에 반응해 /search/answer 를 호출하고 Block Kit 으로 응답한다.
+
+인증(§4.2): 모든 호출에 Authorization: Bearer <NEXUS_SLACK_TOKEN>. 봇은 하나의 읽기 전용
+서비스 principal 로 붙는다. 토큰이 없으면 app.main() 이 시동을 거부한다(여기서 401 루프가 아니라).
 
 환경 변수:
-    SLACK_BOT_TOKEN: xoxb-... (Bot User OAuth Token)
-    SLACK_SIGNING_SECRET: Slack App의 Signing Secret
+    SLACK_BOT_TOKEN / SLACK_APP_TOKEN: Slack 앱 (Socket Mode)
+    NEXUS_SLACK_TOKEN: Nexus bearer (읽기 전용 principal)
     NEXUS_API_URL: Nexus API 주소 (기본: http://localhost:8000)
 """
 
@@ -17,39 +19,36 @@ import re
 
 import httpx
 
-from nexus.slack.formatter import format_answer, format_error
+from nexus.slack.formatter import format_answer
+from nexus.slack.messages import Outcome, message_for
 
 logger = logging.getLogger(__name__)
 
 NEXUS_API_URL = os.getenv("NEXUS_API_URL", "http://localhost:8000")
-SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN", "")
+NEXUS_SLACK_TOKEN = os.getenv("NEXUS_SLACK_TOKEN", "")
+_CLEARANCE = os.getenv("NEXUS_SLACK_CLEARANCE", "PUBLIC")   # 워크스페이스 전원에게 확장하는 신뢰 바닥
+
+
+class NexusCallError(Exception):
+    """Nexus 호출이 답을 못 냈다. outcome 이 어느 대상에게 무슨 말을 할지 정한다."""
+
+    def __init__(self, outcome: Outcome):
+        super().__init__(outcome.value)
+        self.outcome = outcome
+
+
+def _transport():  # pragma: no cover - 테스트가 MockTransport 로 override
+    """httpx transport. 기본 None → 실제 네트워크. 테스트는 MockTransport 를 주입한다."""
+    return None
 
 
 async def handle_mention(event: dict, say) -> None:
-    """app_mention 이벤트 핸들러.
-
-    Args:
-        event: Slack 이벤트 payload
-        say: Slack say 함수 (응답 전송)
-    """
-    text = event.get("text", "")
-    query = _extract_query(text)
-
+    """app_mention 이벤트 핸들러."""
+    query = _extract_query(event.get("text", ""))
     if not query:
         await say(text="검색할 내용을 입력해주세요. 예: `@nexus 결제 서비스 장애 원인?`")
         return
-
-    # 처리 중 표시
-    thread_ts = event.get("thread_ts") or event.get("ts")
-
-    try:
-        answer_data = await _call_nexus_api(query)
-        blocks = format_answer(answer_data)
-        await say(blocks=blocks, thread_ts=thread_ts)
-    except Exception as e:
-        logger.error("nexus_api_call_failed", exc_info=True)
-        blocks = format_error(str(e))
-        await say(blocks=blocks, thread_ts=thread_ts)
+    await _answer(query, say, event)
 
 
 async def handle_dm(event: dict, say) -> None:
@@ -57,49 +56,68 @@ async def handle_dm(event: dict, say) -> None:
     text = event.get("text", "").strip()
     if not text:
         return
+    await _answer(text, say, event)
 
+
+async def _answer(query: str, say, event: dict) -> None:
     thread_ts = event.get("thread_ts") or event.get("ts")
-
     try:
-        answer_data = await _call_nexus_api(text)
-        blocks = format_answer(answer_data)
-        await say(blocks=blocks, thread_ts=thread_ts)
-    except Exception as e:
-        logger.error("nexus_api_call_failed", exc_info=True)
-        blocks = format_error(str(e))
-        await say(blocks=blocks, thread_ts=thread_ts)
+        answer_data = await _call_nexus_api(query)
+        await say(blocks=format_answer(answer_data), thread_ts=thread_ts)
+    except NexusCallError as e:
+        # 401 은 운영자를 위해 로그로도 남긴다(사용자 메시지와 별개).
+        if e.outcome is Outcome.BAD_TOKEN:
+            logger.error("nexus_auth_failed_check_NEXUS_SLACK_TOKEN")
+        await say(text=message_for(e.outcome), thread_ts=thread_ts)
+    except Exception:
+        logger.error("nexus_call_unexpected", exc_info=True)
+        await say(text=message_for(Outcome.OTHER), thread_ts=thread_ts)
 
 
 def _extract_query(text: str) -> str:
-    """Slack 멘션 텍스트에서 @nexus를 제거하고 순수 쿼리를 추출."""
-    # <@U12345> 형태의 멘션 제거
-    cleaned = re.sub(r"<@[A-Z0-9]+>", "", text).strip()
-    return cleaned
+    """Slack 멘션(<@U12345>)을 제거하고 순수 쿼리를 추출."""
+    return re.sub(r"<@[A-Z0-9]+>", "", text).strip()
+
+
+def _documents_count() -> int:
+    """코퍼스가 비었는지 판단용. /status 의 documents_count. 실패 시 -1(=모름)."""
+    try:
+        with httpx.Client(timeout=5.0, transport=_transport()) as client:
+            r = client.get(f"{NEXUS_API_URL}/status",
+                           headers={"Authorization": f"Bearer {NEXUS_SLACK_TOKEN}"})
+        return int(r.json().get("data", {}).get("documents_count", -1))
+    except Exception:  # noqa: BLE001 — 모르면 -1, EMPTY_CORPUS 로 단정하지 않는다
+        return -1
 
 
 async def _call_nexus_api(query: str) -> dict:
-    """Nexus /search/answer API 호출.
-
-    Returns:
-        NexusResponse.data 필드
-    """
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    """Nexus /search/answer 호출. 실패는 NexusCallError(outcome) 로 분류해 올린다."""
+    async with httpx.AsyncClient(timeout=60.0, transport=_transport()) as client:
         resp = await client.post(
             f"{NEXUS_API_URL}/search/answer",
+            headers={"Authorization": f"Bearer {NEXUS_SLACK_TOKEN}"},   # ← 봇 존재 내내 없던 것
             json={
-                "query": query,
-                "top_k": 10,
-                "route": "auto",
-                "classification_max": "INTERNAL",
-                "tenant": "default",
+                "query": query, "top_k": 10, "route": "auto",
+                "classification_max": _CLEARANCE, "tenant": "default",
             },
         )
 
+    if resp.status_code == 401:
+        raise NexusCallError(Outcome.BAD_TOKEN)
     if resp.status_code == 503:
-        raise ConnectionError("Nexus 데이터베이스에 연결할 수 없습니다")
+        raise NexusCallError(Outcome.UNAVAILABLE)
+    if resp.status_code != 200:
+        # 429·500·malformed 등 — 스택트레이스가 아니라 일반 메시지로.
+        raise NexusCallError(Outcome.OTHER)
 
     data = resp.json()
     if not data.get("success"):
-        raise RuntimeError(data.get("error", f"API 오류 (HTTP {resp.status_code})"))
+        raise NexusCallError(Outcome.OTHER)
 
-    return data["data"]
+    payload = data["data"]
+    if not payload.get("evidence_snippets"):
+        # 근거 0건 — 코퍼스가 비었나(EMPTY_CORPUS), 아니면 그냥 못 찾았나(EMPTY_GROUNDING)?
+        raise NexusCallError(
+            Outcome.EMPTY_CORPUS if _documents_count() == 0 else Outcome.EMPTY_GROUNDING)
+
+    return payload

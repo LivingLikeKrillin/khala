@@ -40,7 +40,9 @@ COPY . .
 # `nexus ingest-notion` wires the a2a-resident default external-ingest sink, and the
 # importer reads from Notion via notion-client. (a2a *routes* remain flag-gated off by
 # default — NEXUS_A2A_ENABLED — installing the SDK changes no runtime behavior.)
-RUN pip install --no-cache-dir -e ".[dev,notion,a2a]"
+# slack is baked in too so the same image can run the `--profile slack` bot service;
+# the profile (not the image) decides whether the bot actually runs.
+RUN pip install --no-cache-dir -e ".[dev,notion,a2a,slack]"
 
 # mecab 동작 확인
 RUN echo "결제 서비스가 알림을 보낸다" | mecab || echo "mecab test skipped"

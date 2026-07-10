@@ -9,6 +9,7 @@ Socket Mode로 동작하므로 public URL이 필요 없다.
 환경 변수:
     SLACK_BOT_TOKEN: xoxb-...
     SLACK_APP_TOKEN: xapp-... (Socket Mode용)
+    NEXUS_SLACK_TOKEN: Nexus bearer (읽기 전용 principal) — 없으면 시동 거부
     NEXUS_API_URL: http://localhost:8000
 """
 
@@ -24,6 +25,15 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Slack Bot 시작."""
+    # Nexus bearer 없이 시동하면 봇이 던지는 모든 질문이 401 이 된다 — 오늘의 조용한 실패.
+    # slack_bolt import 보다 먼저 검사해서 그 침묵을 시동 거부로 바꾼다.
+    if not os.getenv("NEXUS_SLACK_TOKEN"):
+        logger.error(
+            "NEXUS_SLACK_TOKEN 환경 변수가 필요합니다 — 봇은 Nexus 에 읽기 전용 principal 로 붙는다. "
+            "nexus auth gen-token 으로 발급하세요."
+        )
+        raise SystemExit(1)
+
     try:
         from slack_bolt.async_app import AsyncApp
         from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
