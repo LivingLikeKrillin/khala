@@ -21,10 +21,14 @@ class AuthConfig:
     allowed_origins: list[str] = field(default_factory=lambda: list(_DEFAULT_ORIGINS))
     principals: list[dict] = field(default_factory=list)
     dev_token_weak: bool = False
+    access: "object | None" = None   # AccessConfig | None (순환 회피용 느슨한 타입)
 
     @classmethod
     def from_dict(cls, cfg: dict | None) -> "AuthConfig":
+        from .access_config import AccessConfig
+
         auth = (cfg or {}).get("auth") or {}
+        access = AccessConfig.from_auth(auth)
         mode = str(auth.get("mode", "enforced")).lower()
         # explicit, loud opt-out only
         if os.getenv("NEXUS_ALLOW_ANONYMOUS") == "1":
@@ -39,6 +43,10 @@ class AuthConfig:
         # 들어오고 리포에 커밋되지 않는다. override 를 prod 에 쓰지 말 것.
         dev_token = os.getenv("NEXUS_DEV_TOKEN")
         dev_token_weak = False
+        # Access 가 설정되면 공유 dev-token 경로는 꺼진다 — 두 신원 경로가 동시에 돌지 않는다.
+        # Access 가 문이면 공유 열쇠는 끈다 (SPEC §4.5).
+        if dev_token and access is not None:
+            dev_token = None
         if dev_token:
             from .principal import hash_token
             # local-dev 는 **운영자 신원**이지 독자 신원이 아니다. 웹 콘솔(소스 관리)이
@@ -69,6 +77,7 @@ class AuthConfig:
             allowed_origins=list(origins),
             principals=principals,
             dev_token_weak=dev_token_weak,
+            access=access,
         )
 
     @property
