@@ -256,12 +256,25 @@ def _search_hit_to_dict(h) -> dict:
     }
 
 
+def _validate_route(route: str) -> None:
+    """DB 를 만지기 전에 route 를 검증한다.
+
+    검증이 검색 안쪽에 있으면, DB 가 없는 환경에서 '없는 route' 가 503(데이터베이스 연결 실패)로
+    보고된다 — 호출자는 자기 오타를 우리 장애로 읽는다. 스트림은 헤더가 나간 뒤라 400 조차 줄 수 없다.
+    """
+    if route != "auto" and route not in hybrid_routes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unknown_route: {route!r}. 가능한 값: auto, {', '.join(sorted(hybrid_routes))}")
+
+
 @app.post("/search", response_model=NexusResponse)
 async def search(req: SearchRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """Hybrid 검색."""
     req.tenant, req.classification_max = effective_scope(principal, req.tenant, req.classification_max)
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
+    _validate_route(req.route)
 
     try:
         _t0 = time.time()
@@ -354,6 +367,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
     req.tenant, req.classification_max = effective_scope(principal, req.tenant, req.classification_max)
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
+    _validate_route(req.route)
 
     try:
         _t0 = time.time()
@@ -728,12 +742,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
 
-    # 스트림을 열면 헤더가 나가고 400 을 줄 수 없다. route 검증은 그 전에 한다 —
-    # 존재하지 않는 route 를 SSE `event: error` 로 알리면 클라이언트는 200 을 받고 시작한다.
-    if req.route != "auto" and req.route not in hybrid_routes:
-        raise HTTPException(
-            status_code=400,
-            detail=f"unknown_route: {req.route!r}. 가능한 값: auto, {', '.join(sorted(hybrid_routes))}")
+    # 스트림을 열면 헤더가 나가고 400 을 줄 수 없다. 그래서 그 전에 검증한다.
+    _validate_route(req.route)
 
     async def event_stream():
         import json

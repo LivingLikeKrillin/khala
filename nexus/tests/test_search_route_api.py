@@ -39,3 +39,15 @@ def test_an_unknown_route_is_a_client_error_not_a_server_error(client):
     detail = body.get("detail") or body.get("error") or ""
     assert "unknown_route" in detail
     assert "keyword_only" in detail          # 무엇을 고를 수 있는지 알려준다
+
+
+@pytest.mark.parametrize("path", ["/search", "/search/answer", "/search/answer/stream"])
+def test_every_search_endpoint_validates_the_route_before_touching_the_db(client, path):
+    """DB 가 없는 환경에서 없는 route 가 503 으로 보고되면, 호출자는 자기 오타를 우리 장애로 읽는다.
+
+    CI 의 무-DB 잡이 실제로 그렇게 붉었다. 검증은 첫 줄에 있어야 한다.
+    """
+    r = client.post(path, json={"query": "결제", "route": "nope"},
+                    headers={"Authorization": "Bearer " + "x" * 40})
+    assert r.status_code == 400, f"{path} → {r.status_code} {r.text[:80]}"
+    assert "unknown_route" in r.json()["detail"]
