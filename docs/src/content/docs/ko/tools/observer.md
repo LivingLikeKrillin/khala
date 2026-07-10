@@ -44,4 +44,4 @@ Observer는 리뷰어가 머릿속에 들고 있어야 할 맥락에 변경을 �
 - **PR 타입 → 체크리스트** — 10개 PR 타입이 각각 리뷰 체크리스트로 매핑됩니다.
 - **Nexus는 선택적** — 없어도 모든 기능이 동작하고, 있으면 규정·영향·설계-관측 갭이 더해집니다.
 
-설치(`pnpm add -D @khala/observer`), 명령어(`observer check` 등), MCP 등록은 영어 페이지([Observer](/tools/observer/))를 참고하세요.
+설치(npm 미게시 — 저장소에서 `pnpm install && pnpm build`), 명령어(`observer check` 등), MCP 등록은 영어 페이지([Observer](/tools/observer/))를 참고하세요.

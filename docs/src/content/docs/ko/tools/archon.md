@@ -3,8 +3,11 @@ title: Archon
 description: 도메인의 불변식과 값에 대한 권위 창구. 코드에서 읽어 보정된 답을 준다.
 ---
 
-:::caution[상태]
-Archon은 현재 Nexus 저장소 안의 브랜치(`spec/domain-invariant-governance`)와 `claims` 패키지로 존재합니다. 아래 경로는 그 브랜치를 참조합니다.
+:::note[상태]
+Archon은 별도 서비스가 아닙니다. **`master`에 있는** `nexus/claims/` 패키지이며, Nexus CLI
+(`nexus claim-seed`·`nexus claim-value`·`nexus grade-authority`), HTTP API
+(`GET /claims/value`·`GET /claims/grade-authority`), MCP 툴 2개로 노출됩니다. 따로 체크아웃하거나
+설치할 것이 없습니다.
 :::
 
 Archon은 도메인 진실(domain truth)에 대한 **권위 창구**입니다. 사람이든 에이전트든 "여기서 무엇이 참이고, 누구의 권위로 그러한가?"를 묻는 단일한 곳이며, 거버넌스된 출처에 근거한 답을 신선도·신뢰도와 함께 정직하게 돌려줍니다.

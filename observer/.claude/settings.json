@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ./scripts/check-protected-files.sh \"$TOOL_INPUT\" 2>/dev/null || true"
+            "command": "bash ./scripts/check-protected-files.sh"
           }
         ]
       }

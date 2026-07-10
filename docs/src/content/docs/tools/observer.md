@@ -46,12 +46,20 @@ In short: it keeps PR review honest by grounding scope, contracts, and conforman
 
 ## Quickstart
 
-Observer is a TypeScript / Node ≥ 20 package; pnpm is the package manager. CLI invoked via `observer`. Commands transcribed from the source repo README and `package.json`.
+Observer is a TypeScript / Node ≥ 20 package; pnpm is the package manager. CLI invoked via `observer`.
 
 ### Install
 
+Observer is **not published to npm**. Build it from the monorepo — `dist/` is not committed.
+
 ```bash
-pnpm add -D @khala/observer
+git clone https://github.com/LivingLikeKrillin/khala.git
+cd khala/observer
+pnpm install
+pnpm build                    # tsup → dist/
+
+node dist/cli/index.js check  # run in place
+pnpm link --global            # …or put `observer` on PATH
 ```
 
 ### Core commands

@@ -43,7 +43,8 @@ python -m nexus.mcp --transport http --port 8001
       "command": "python",
       "args": ["-m", "nexus.mcp"],
       "env": {
-        "NEXUS_API_URL": "http://localhost:8000"
+        "NEXUS_API_URL": "http://localhost:8000",
+        "NEXUS_MCP_TOKEN": "<bearer token — §6 참고. 없으면 모든 툴이 401>"
       }
     }
   }
@@ -62,6 +63,9 @@ python -m nexus.mcp --transport http --port 8001
 | `nexus_suggest` | 엔티티 자동완성/검색 | `query`, `tenant`, `limit` |
 | `nexus_diff` | 설계-관측 불일치 보고서 | `flag_filter`, `entity_filter`, `tenant` |
 | `nexus_status` | 시스템 상태 확인 | (없음) |
+| `nexus_supersede` | 문서 supersession 선언 — **파괴적**(대상 문서가 검색에서 사라짐) | `old_ref`, `new_ref`, `tenant` |
+| `archon_claim_value` | 개념의 현재 값을 코드 상수에서 조회 | `concept`, `tenant`, `classification_max` |
+| `archon_grade_authority` | 등급/열거형 권한 질의 | `grade`, `enum_name`, `subpath` |
 
 ---
 
@@ -89,6 +93,12 @@ Agent: "문서와 실제 관측이 다른 부분이 있어?"
 
 ```bash
 NEXUS_API_URL=http://localhost:8000  # Nexus API 주소 (Docker 내부: http://nexus-app:8000)
+
+# ⚠️ 필수. Nexus 는 기본이 auth.mode=enforced 라, 토큰 없이는 모든 툴이 401 로 실패한다.
+#    발급:  docker compose exec nexus-app nexus auth gen-token
+#    등록:  config.yaml 의 auth.principals[].token_sha256 (nexus auth hash-token 으로 해시)
+#    로컬 dev 는 docker-compose.override.yml 이 주입하는 NEXUS_DEV_TOKEN 값을 그대로 써도 된다.
+NEXUS_MCP_TOKEN=<bearer token>
 ```
 
 ---
