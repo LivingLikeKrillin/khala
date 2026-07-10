@@ -260,6 +260,11 @@ export async function listSources() {
   return request('GET', '/sources/notion/roots');
 }
 
+/** Notion 에게 직접 묻는다: 토큰이 유효한가, 각 root 에 닿는가. 느릴 수 있다(외부 API). */
+export async function sourcesHealth() {
+  return request('GET', '/sources/notion/health');
+}
+
 export async function addSource(urlOrId, label = '') {
   return request('POST', '/sources/notion/roots', { url_or_id: urlOrId, label });
 }
