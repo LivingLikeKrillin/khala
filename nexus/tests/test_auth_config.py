@@ -59,13 +59,17 @@ def test_startup_ok_with_real_hash():
 
 # ── SPEC-nexus-notion-source-console §4.7 ─────────────────────────────────────
 
-def test_local_dev_principal_gets_manage_sources_by_default(monkeypatch):
-    """웹 콘솔이 자기 화면에서 403 으로 막히면 안 된다."""
+def test_local_dev_principal_gets_the_operator_capabilities_by_default(monkeypatch):
+    """웹 콘솔이 자기 화면에서 403 으로 막히면 안 된다.
+
+    manage_documents 가 빠지면 문서 숨김·supersede 가 로컬에서 막힌다
+    (SPEC-nexus-document-lifecycle §4.4 — /supersede 게이팅은 파괴적 변경이다).
+    """
     monkeypatch.setenv("NEXUS_DEV_TOKEN", "x" * 40)
     from nexus.auth.config import AuthConfig
     cfg = AuthConfig.from_dict({"auth": {"mode": "enforced"}})
     dev = next(p for p in cfg.principals if p["name"] == "local-dev")
-    assert dev["capabilities"] == ["manage_sources"]
+    assert dev["capabilities"] == ["manage_sources", "manage_documents"]
 
 
 def test_local_dev_capabilities_can_be_emptied_to_keep_the_ui_read_only(monkeypatch):

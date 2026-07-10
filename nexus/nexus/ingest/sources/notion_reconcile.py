@@ -56,6 +56,10 @@ async def fetch_notion_scope(tenant: str, walked_roots: set[str]) -> list[ScopeR
     막는다. prov_inputs 가 비어 있는 행(백필 전 레거시)은 영원히 후보에서 제외된다.
 
     soft_deleted·superseded 도 함께 반환한다 — revive 후보 판정은 plan_reconcile 의 몫이다.
+
+    **hold=true 인 문서는 제외한다.** 사람이 손으로 숨긴 문서이므로 재조정의 관할이 아니다.
+    빼지 않으면, 페이지가 여전히 live 라는 이유로 다음 동기화가 그 문서를 조용히 되살린다
+    (SPEC-nexus-document-lifecycle §4.1).
     """
     rows = await db.fetch_all(
         """
@@ -65,6 +69,7 @@ async def fetch_notion_scope(tenant: str, walked_roots: set[str]) -> list[ScopeR
           AND source_uri LIKE $2
           AND prov_inputs <> '{}'
           AND prov_inputs <@ $3::text[]
+          AND hold = false
         ORDER BY rid
         """,
         tenant, notion_uri_pattern(tenant), sorted(walked_roots),

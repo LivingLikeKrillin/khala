@@ -408,7 +408,11 @@ async def nexus_supersede(old_ref: str, new_ref: str, tenant: str = "default") -
     })
     if not result.get("success"):
         return f"supersede 실패: {result.get('error', '알 수 없는 오류')}"
-    return f"{old_ref} → {new_ref}: {result['data']['result']}"
+    d = result["data"]
+    old_rid = d.get("old_rid", old_ref)
+    # 되돌리려면 rid 가 필요하다 — 그때 옛 문서는 active 가 아니라 경로로 다시 못 찾는다.
+    return (f"{old_ref} → {new_ref}: {d['result']}\n"
+            f"되돌리려면: nexus_unsupersede(rid='{old_rid}', reason='...')")
 
 
 @mcp.tool()
@@ -526,3 +530,113 @@ async def nexus_sync_status(run_id: str = "") -> str:
         lines += [f"  - {p.get('title') or p['rid']}" for p in plan["prune"][:20]]
         lines.append(f"적용하려면: nexus_sources_sync(confirm_plan='{d['run_id']}')")
     return "\n".join(lines)
+
+
+# ── 문서 생애주기 — SPEC-nexus-document-lifecycle §4.6 ──
+# 웹 UI 와 **같은 엔드포인트**. 사람이 확인 패널에서 읽는 문장을 에이전트도 응답에서 읽는다.
+
+_HIDE_NOTE = "검색에서 사라집니다. 문서와 청크는 지워지지 않으며 언제든 되돌릴 수 있습니다."
+
+_ORIGIN_LABEL = {"notion": "Notion", "upload": "업로드", "file": "파일"}
+
+# API 는 기계코드로 거절한다(HTTP 계약). 그대로 뱉으면 호출자는 다음에 뭘 해야 할지 모른다.
+_ERROR_PROSE = {
+    "reason_required": "사유가 필요합니다 — reason 인자를 채워 다시 호출하세요.",
+    "use_unsupersede": "이 문서는 다른 문서로 대체된 상태입니다. "
+                       "nexus_unsupersede(rid, reason) 를 쓰세요 — 되돌리는 말이 다릅니다.",
+    "already_superseded": "이 문서는 이미 다른 문서로 대체되었습니다. 숨길 대상이 아닙니다.",
+}
+
+
+def _prose(error: str) -> str:
+    return _ERROR_PROSE.get(error, error or "알 수 없는 오류")
+
+
+@mcp.tool()
+async def nexus_documents_search(
+    q: str = "",
+    status: str = "active",
+    origin: str = "",
+    limit: int = 20,
+) -> str:
+    """인덱싱된 문서를 **제목으로** 찾는다. 내용 검색은 nexus_search 를 쓴다.
+
+    다른 문서 생애주기 도구들이 요구하는 rid 를 얻는 경로다.
+
+    Args:
+        q: 제목 부분일치 (대소문자 무시). 비우면 전체.
+        status: active | hidden | pruned | superseded | all
+                (hidden=사람이 숨김, pruned=Notion 에서 사라져 내려감)
+        origin: notion | upload | file — 비우면 전체
+        limit: 최대 건수
+    """
+    result = await _api_call("get", "/documents", params={
+        "q": q, "status": status, "origin": origin, "limit": limit,
+    })
+    if not result.get("success"):
+        return f"문서 조회 실패: {result.get('error', '알 수 없는 오류')}"
+
+    data = result["data"]
+    docs = data.get("documents", [])
+    if not docs:
+        return "해당하는 문서가 없습니다."
+
+    lines = [f"{len(docs)}건 (전체 {data.get('total', len(docs))}건)"]
+    for d in docs:
+        origin_txt = _ORIGIN_LABEL.get(d.get("origin"), d.get("origin", "?"))
+        if d.get("origin_url"):
+            origin_txt += f" {d['origin_url']}"
+        lines.append(
+            f"- {d['title']}  [{d['status']}]  청크 {d.get('chunk_count', 0)}\n"
+            f"    rid: {d['rid']}  출처: {origin_txt}"
+        )
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def nexus_document_hide(rid: str) -> str:
+    """문서를 검색에서 내린다(되돌릴 수 있음). rid 는 nexus_documents_search 로 찾는다.
+
+    Notion 에서 온 문서를 숨기면 다음 동기화가 되살리지 않는다(hold). superseded 문서는
+    거부한다 — 그건 이미 다른 문서로 대체된 것이고, 되돌리는 말이 다르다(nexus_unsupersede).
+    """
+    result = await _api_call("post", f"/documents/{rid}/hide")
+    if not result.get("success"):
+        return f"숨기기 실패: {_prose(result.get('error', ''))}"
+    if result["data"]["result"] == "noop":
+        return f"{rid}: 이미 숨겨져 있습니다."
+    return (f"{rid}: 숨겼습니다. {_HIDE_NOTE}\n"
+            f"되돌리려면: nexus_document_restore(rid='{rid}')")
+
+
+@mcp.tool()
+async def nexus_document_restore(rid: str) -> str:
+    """숨겨졌거나 Notion 에서 사라져 내려간 문서를 다시 검색에 올린다.
+
+    superseded 문서에는 쓸 수 없다 — nexus_unsupersede 를 쓴다(사유가 필요하다).
+    """
+    result = await _api_call("post", f"/documents/{rid}/restore")
+    if not result.get("success"):
+        return f"되돌리기 실패: {_prose(result.get('error', ''))}"
+    if result["data"]["result"] == "noop":
+        return f"{rid}: 이미 검색에 나타납니다."
+    return f"{rid}: 되돌렸습니다. 이 문서가 다시 검색에 나타납니다."
+
+
+@mcp.tool()
+async def nexus_unsupersede(rid: str, reason: str) -> str:
+    """supersession 을 취소해 옛 문서를 다시 검색에 올린다. **사유 필수.**
+
+    체인은 역순으로만 풀린다: v1→v2→v3 에서 v1 을 먼저 되살리면 v3 와 공존하게 되므로
+    서버가 거부하고 막고 있는 문서를 이름으로 알려준다. v2 부터 되돌린다.
+
+    Args:
+        rid: 되살릴 문서 rid (supersede 응답이 old_rid 로 알려준다)
+        reason: 왜 되돌리는가 — 원장(doc_supersession_events)에 남는다
+    """
+    result = await _api_call("post", f"/documents/{rid}/unsupersede", json={"reason": reason})
+    if not result.get("success"):
+        return f"supersession 취소 실패: {_prose(result.get('error', ''))}"
+    if result["data"]["result"] == "noop":
+        return f"{rid}: superseded 상태가 아닙니다."
+    return f"{rid}: supersession 을 취소했습니다. 이 문서가 다시 검색에 나타납니다."

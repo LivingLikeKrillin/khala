@@ -83,8 +83,11 @@ def _doc_status(rid: str, tenant: str) -> str | None:
 
 def _client() -> TestClient:
     """/supersede 만 마운트한 최소 앱. lifespan에서 풀을 portal 루프에 바인딩·시드하고,
-    get_principal을 테넌트 acme 프린시펄로 오버라이드한다."""
-    from nexus.api import NexusResponse, get_principal, supersede_docs
+    principal 을 테넌트 acme + manage_documents 로 오버라이드한다.
+
+    라우트는 nexus.documents.api 로 이전했다(capability 게이트가 붙었다).
+    """
+    from nexus.documents.api import dep, router
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -95,7 +98,9 @@ def _client() -> TestClient:
         pool = await asyncpg.create_pool(DB_URL, min_size=1, max_size=3)
         db._pool = pool
         async with pool.acquire() as con:
-            await con.execute("TRUNCATE documents, chunks CASCADE")
+            from nexus.documents.schema import ensure_lifecycle_schema
+            await ensure_lifecycle_schema(con)
+            await con.execute("TRUNCATE documents, chunks, doc_supersession_events CASCADE")
             await _seed(con)
         try:
             yield
@@ -104,9 +109,10 @@ def _client() -> TestClient:
             db._pool = None
 
     app = FastAPI(lifespan=lifespan)
-    app.post("/supersede", response_model=NexusResponse)(supersede_docs)
-    app.dependency_overrides[get_principal] = lambda: Principal(
+    app.include_router(router)
+    app.dependency_overrides[dep] = lambda: Principal(
         name="test", tenant=_TENANT, clearance="INTERNAL",
+        capabilities=("manage_documents",),
     )
     return TestClient(app)
 

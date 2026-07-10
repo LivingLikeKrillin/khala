@@ -183,9 +183,28 @@ export async function listDocuments(opts = {}) {
   return request('GET', '/documents', null, {
     tenant: opts.tenant || 'default',
     classification_max: opts.classification_max || 'INTERNAL',
+    q: opts.q || '',
+    status: opts.status || 'active',
+    origin: opts.origin || '',
     offset: opts.offset || 0,
     limit: opts.limit || 20,
   });
+}
+
+// ── 문서 생애주기 ──
+// 모든 파괴적 행위에는 역이 있다 (SPEC-nexus-document-lifecycle).
+
+export async function hideDocument(rid) {
+  return request('POST', `/documents/${encodeURIComponent(rid)}/hide`);
+}
+
+export async function restoreDocument(rid) {
+  return request('POST', `/documents/${encodeURIComponent(rid)}/restore`);
+}
+
+/** supersession 취소 — 사유가 필수다. 되돌리면 최신본과 공존할 수 있다. */
+export async function unsupersedeDocument(rid, reason) {
+  return request('POST', `/documents/${encodeURIComponent(rid)}/unsupersede`, { reason });
 }
 
 // ── Diff ──

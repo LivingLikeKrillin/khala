@@ -9,12 +9,13 @@
 ## 🟡 검토중 (0)
 
 
-## 🟢 승인 (11)
+## 🟢 승인 (12)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
 | SPEC-nexus-a2a-external-exposure-audit-phase2 | Phase 2 — Nexus A2A external exposure + audit trail | LivingLikeKrillin | 2026-06-18 | ADR-0001 |
 | SPEC-nexus-a2a-server-phase0-spike | Phase 0 spike — Nexus A2A grounded-retrieval server | LivingLikeKrillin | 2026-06-18 | ADR-0001 |
+| SPEC-nexus-document-lifecycle | Document lifecycle — origin, search, hide, and the inverse of every destructive act | LivingLikeKrillin | 2026-07-10 | ADR-0006 |
 | SPEC-nexus-notion-reconciliation | Notion deletion reconciliation — soft_delete/revive primitives + root-scoped prune | LivingLikeKrillin | 2026-07-09 | ADR-0006 |
 | SPEC-nexus-notion-source-console | Notion source console — endpoint-first source management, background sync, previewed deletion | LivingLikeKrillin | 2026-07-10 | ADR-0006 |
 | SPEC-probe-a2a-client-phase1 | Phase 1 — Probe as an A2A client of Nexus | LivingLikeKrillin | 2026-06-18 | ADR-0001 |

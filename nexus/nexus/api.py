@@ -35,7 +35,6 @@ from nexus.search.evidence_packet import assemble_packet, format_for_llm
 from nexus.search.hybrid import hybrid_search
 from nexus.search.router import determine_route
 from nexus.search.signals import extract_signals, record_search
-from nexus.supersede import resolve_active_doc, supersede
 
 
 # 로컬 dev 온램프: ANTHROPIC_API_KEY 미설정 시, 일시적 API 오류와 구분되는 *행동지침* 안내.
@@ -120,16 +119,20 @@ get_principal = make_get_principal(_auth_config)
 
 
 def _mount_sources(app) -> None:
-    """소스 콘솔 라우터를 붙이고 principal 해석기를 꽂는다.
+    """소스 콘솔·문서 라우터를 붙이고 principal 해석기를 꽂는다.
 
     라우터는 `nexus.api` 를 임포트할 수 없다(순환). 그래서 플레이스홀더 의존성 `dep` 를
     두고 여기서 override 한다 — 꽂히지 않으면 라우터는 500 으로 죽지, 무인증으로 열리지 않는다.
     """
+    from nexus.documents.api import dep as documents_dep
+    from nexus.documents.api import router as documents_router
     from nexus.sources.api import dep as sources_dep
     from nexus.sources.api import router as sources_router
 
     app.include_router(sources_router)
+    app.include_router(documents_router)
     app.dependency_overrides[sources_dep] = get_principal
+    app.dependency_overrides[documents_dep] = get_principal
 
 
 def _dev_token() -> str | None:
@@ -682,22 +685,9 @@ async def get_diff(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/supersede", response_model=NexusResponse)
-async def supersede_docs(req: SupersedeRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
-    """문서 supersession 선언(명시적·멱등). old/new 는 rid 또는 경로/URI. 반환: 'superseded' | 'noop'."""
-    req.tenant, _ = effective_scope(principal, req.tenant, None)  # writes are tenant-bound
-    try:
-        old_rid = await resolve_active_doc(req.old_ref, req.tenant)
-        new_rid = await resolve_active_doc(req.new_ref, req.tenant)
-        result = await supersede(old_rid, new_rid, req.tenant)
-        return NexusResponse(data={"result": result})
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        if "connect" in str(e).lower():
-            raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
-        raise HTTPException(status_code=500, detail=str(e))
-
+# /supersede 와 /documents 는 nexus.documents.api 라우터로 이전했다.
+# 여기 남겨두면 FastAPI 가 먼저 등록된 이 라우트를 쓰고, capability 게이트와
+# 새 필터/출처 필드가 조용히 무시된다 (SPEC-nexus-document-lifecycle §4.4).
 
 @app.post("/otel/aggregate", response_model=NexusResponse)
 async def otel_aggregate(req: OtelAggregateRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
@@ -871,64 +861,6 @@ async def suggest_entities(
                 }
                 for r in rows
             ],
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/documents", response_model=NexusResponse)
-async def list_documents(
-    tenant: str = Query(default="default"),
-    classification_max: str = Query(default="INTERNAL"),
-    offset: int = Query(default=0, ge=0),
-    limit: int = Query(default=20, ge=1, le=100),
-    principal: Principal = Depends(get_principal),
-) -> NexusResponse:
-    """인덱싱된 문서 목록 조회. UI 문서 브라우저용."""
-    tenant, classification_max = effective_scope(principal, tenant, classification_max)
-    try:
-        rows = await db.fetch_all(
-            """
-            SELECT d.rid, d.title, d.source_uri, d.source_version,
-                   d.classification, d.doc_type, d.language,
-                   d.is_quarantined, d.updated_at,
-                   (SELECT COUNT(*) FROM chunks c WHERE c.doc_rid = d.rid AND c.status = 'active') as chunk_count
-            FROM documents d
-            WHERE d.tenant = $1
-              AND d.classification <= $2::classification_level
-              AND d.is_quarantined = false
-              AND d.status = 'active'
-            ORDER BY d.updated_at DESC
-            OFFSET $3 LIMIT $4
-            """,
-            tenant, classification_max, offset, limit,
-        )
-
-        total = await db.fetch_val(
-            """
-            SELECT COUNT(*) FROM documents
-            WHERE tenant = $1 AND classification <= $2::classification_level
-              AND is_quarantined = false AND status = 'active'
-            """,
-            tenant, classification_max,
-        )
-
-        return NexusResponse(
-            data=[
-                {
-                    "rid": r["rid"],
-                    "title": r["title"],
-                    "source_uri": r["source_uri"],
-                    "source_version": r["source_version"] or "",
-                    "classification": r["classification"],
-                    "doc_type": r["doc_type"],
-                    "language": r["language"],
-                    "chunk_count": r["chunk_count"],
-                    "updated_at": r["updated_at"].isoformat() if r["updated_at"] else None,
-                }
-                for r in rows
-            ],
-            meta={"total": total or 0, "offset": offset, "limit": limit},
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

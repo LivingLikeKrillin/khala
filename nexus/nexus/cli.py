@@ -482,6 +482,105 @@ def supersede(
     _run(_do())
 
 
+# ── 문서 생애주기 — SPEC-nexus-document-lifecycle §4.6 ──
+
+doc_app = typer.Typer(help="문서 생애주기 — 검색에서 내리고, 되돌린다.")
+app.add_typer(doc_app, name="doc")
+
+_HIDE_NOTE = "검색에서 사라집니다. 문서와 청크는 지워지지 않으며 언제든 되돌릴 수 있습니다."
+
+
+def _doc_command(ref: str, tenant: str, action):
+    """ref 해석 → action(rid, tenant) 실행 → 거부는 exit 1. 풀은 반드시 닫는다."""
+
+    async def _do() -> None:
+        from nexus import db
+        from nexus.documents.resolve import resolve_doc
+
+        try:
+            rid = await resolve_doc(ref, tenant)
+            await action(rid, tenant)
+        except ValueError as e:
+            typer.echo(f"거부: {e}", err=True)
+            raise typer.Exit(1) from None
+        finally:
+            await db.close_pool()
+
+    _run(_do())
+
+
+@doc_app.command("hide")
+def doc_hide(
+    ref: str = typer.Argument(..., help="문서 — rid 또는 경로/URI"),
+    tenant: str = typer.Option("default", "--tenant", "-t"),
+) -> None:
+    """문서를 검색에서 내린다. 지우지 않는다 — 언제든 restore 로 되돌린다."""
+
+    async def _act(rid: str, tn: str) -> None:
+        from nexus.documents.lifecycle_ops import AlreadySuperseded, hide_document
+
+        try:
+            result = await hide_document(rid, tn)
+        except AlreadySuperseded:
+            raise ValueError(
+                f"{ref} 는 이미 다른 문서로 대체되었습니다(superseded). "
+                f"되살리려면: nexus unsupersede {ref} --reason \"...\"") from None
+        if result == "noop":
+            typer.echo(f"{ref}: 이미 숨겨져 있습니다.")
+            return
+        typer.echo(f"{ref}: 숨겼습니다. {_HIDE_NOTE}")
+        typer.echo(f"되돌리려면: nexus doc restore {ref}")
+
+    _doc_command(ref, tenant, _act)
+
+
+@doc_app.command("restore")
+def doc_restore(
+    ref: str = typer.Argument(..., help="문서 — rid 또는 경로/URI"),
+    tenant: str = typer.Option("default", "--tenant", "-t"),
+) -> None:
+    """숨겼거나 Notion 에서 사라져 내려간 문서를 다시 검색에 올린다."""
+
+    async def _act(rid: str, tn: str) -> None:
+        from nexus.documents.lifecycle_ops import UseUnsupersede, restore_document
+
+        try:
+            result = await restore_document(rid, tn)
+        except UseUnsupersede:
+            raise ValueError(
+                f"{ref} 는 다른 문서로 대체된 상태입니다(superseded). "
+                f"되살리려면: nexus unsupersede {ref} --reason \"...\"") from None
+        if result == "noop":
+            typer.echo(f"{ref}: 이미 검색에 나타납니다.")
+            return
+        typer.echo(f"{ref}: 되돌렸습니다. 이 문서가 다시 검색에 나타납니다.")
+
+    _doc_command(ref, tenant, _act)
+
+
+@app.command()
+def unsupersede(
+    ref: str = typer.Argument(..., help="되살릴 문서 — rid 또는 경로/URI"),
+    reason: str = typer.Option(..., "--reason", help="왜 되돌리는가 — 원장에 남는다"),
+    tenant: str = typer.Option("default", "--tenant", "-t"),
+) -> None:
+    """supersession 을 취소해 옛 문서를 다시 검색에 올린다. 체인은 역순으로만 풀린다."""
+
+    async def _act(rid: str, tn: str) -> None:
+        from nexus.lifecycle import ChainBroken, unsupersede as _unsupersede
+
+        try:
+            result = await _unsupersede(rid, tn, reason=reason)
+        except ChainBroken as e:
+            raise ValueError(str(e)) from None
+        if result == "noop":
+            typer.echo(f"{ref}: superseded 상태가 아닙니다.")
+            return
+        typer.echo(f"{ref}: supersession 을 취소했습니다. 이 문서가 다시 검색에 나타납니다.")
+
+    _doc_command(ref, tenant, _act)
+
+
 @app.command("entropy-signals")
 def entropy_signals() -> None:
     """공존 잔차 신호(재수집 덮어쓰기·정확중복·제목충돌·supersession)를 표시.
