@@ -562,6 +562,9 @@ async def nexus_sync_status(run_id: str = "") -> str:
     lines = [
         f"run {d['run_id']} — {d['status']}",
         f"적재 {c.get('ingested', 0)} · 변경없음 {c.get('idempotent', 0)} · 건너뜀 {c.get('skipped', 0)}",
+        # `empty` 는 counts 에 늘 있었지만 아무도 읽지 않았다. 31개를 연결했는데 12개만
+        # 적재됐을 때 "왜 12개지?" 의 답이 여기 있다 — 나머지는 본문 없는 컨테이너/빈 페이지다.
+        f"본문 없어 건너뜀 {c.get('empty', 0)} (자식 링크만 있는 페이지, 아직 안 쓴 페이지)",
     ]
     if d.get("reconcile"):
         lines.append(f"내림 {c.get('pruned', 0)} · 되살림 {c.get('revived', 0)}")

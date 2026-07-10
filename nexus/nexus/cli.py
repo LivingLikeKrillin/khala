@@ -721,8 +721,10 @@ def ingest_notion(
         if reconcile else None
     )
     report = asyncio.run(
+        # force 는 재조정 planner 뿐 아니라 **적재**까지 닿아야 한다. 안 그러면 본문이 안 바뀐
+        # 페이지는 --force 를 줘도 영원히 idempotent 다 (제목 같은 파생 메타데이터가 안 고쳐진다).
         import_notion(source, tenant, _default_external_ingest_fn,
-                      since=since or None, reconcile_fn=reconcile_fn)
+                      since=since or None, reconcile_fn=reconcile_fn, force=force)
     )
     typer.echo(
         f"ingested={report.ingested} idempotent={report.idempotent} "

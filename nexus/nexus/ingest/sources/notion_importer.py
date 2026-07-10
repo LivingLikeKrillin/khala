@@ -75,8 +75,9 @@ class ImportReport:
     reason: str = ""
 
 
-# IngestFn: (csf, tenant) -> outcome(awaitable). 프로덕션은 _default_external_ingest_fn.
-IngestFn = Callable[[dict, str], Awaitable]
+# IngestFn: (csf, tenant, *, force) -> outcome(awaitable). 프로덕션은 _default_external_ingest_fn.
+# `force` 를 계약에 넣는다 — 콘솔의 force 는 적재까지 닿아야 강제가 된다.
+IngestFn = Callable[..., Awaitable]
 
 # ReconcileFn: (tenant, walked_roots, live_rids) -> outcome(awaitable).
 # 프로덕션은 notion_reconcile.default_reconcile_fn. 미주입 시 재조정을 하지 않는다(기존 동작).
@@ -89,6 +90,7 @@ async def import_notion(
     ingest_fn: IngestFn,
     since: str | None = None,
     reconcile_fn: ReconcileFn | None = None,
+    force: bool = False,
 ) -> ImportReport:
     """live_index 페이지를 fetch→csf→ingest. since 이후 변경분만(증분). per-page skip.
 
@@ -120,8 +122,10 @@ async def import_notion(
                 report.empty += 1
                 report.results.append({"page_id": page_id, "skipped": "empty body"})
                 continue
+            # force 를 여기서 흘리지 않으면 (tenant, source_uri, content_hash) dedup 이 이기고,
+            # 본문이 안 바뀐 페이지는 제목·메타데이터 수정이 있어도 영원히 idempotent 다.
             outcome = await ingest_fn(
-                build_csf(conv, page_id, index[page_id], walked_roots), tenant
+                build_csf(conv, page_id, index[page_id], walked_roots), tenant, force=force
             )
             if getattr(outcome, "idempotent_hit", False):
                 report.idempotent += 1

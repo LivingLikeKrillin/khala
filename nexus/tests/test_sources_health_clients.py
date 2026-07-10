@@ -67,3 +67,20 @@ async def test_a_403_surfaces_as_a_failure_not_as_a_healthy_connection(calls):
     out = await mcp_server.nexus_sources_health()
     assert "manage_sources" in out
     assert "ok" not in out.lower()
+
+
+async def test_sync_status_reports_pages_that_had_no_body(calls):
+    """31개를 연결했는데 12개만 적재됐다. 나머지가 어디 갔는지 화면이 말해야 한다.
+
+    `empty` 는 counts 에 이미 있었다. 어느 표면도 읽지 않았을 뿐이다 — 사용자는
+    "왜 12개지?" 에 답을 얻을 수 없었다.
+    """
+    _, set_reply = calls
+    set_reply({"success": True, "data": {
+        "run_id": "r1", "status": "succeeded", "reconcile": False, "dry_run": False,
+        "counts": {"ingested": 12, "idempotent": 0, "skipped": 0, "empty": 19},
+        "plan": {}}})
+
+    out = await mcp_server.nexus_sync_status()
+    assert "19" in out
+    assert "빈" in out or "본문 없" in out

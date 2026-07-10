@@ -230,6 +230,9 @@ function renderRun(run) {
       <span>새로 적재 <b>${c.ingested ?? 0}</b></span>
       <span>변경 없음 <b>${c.idempotent ?? 0}</b></span>
       <span>건너뜀 <b>${c.skipped ?? 0}</b></span>
+      <!-- 31개를 연결했는데 12개만 적재됐을 때, "왜 12개지?" 의 답. counts 에 늘 있었지만
+           어느 표면도 읽지 않았다. -->
+      <span title="자식 링크만 있는 컨테이너 페이지, 아직 쓰지 않은 빈 페이지">본문 없음 <b>${c.empty ?? 0}</b></span>
       ${run.reconcile && !run.dry_run
         ? `<span>내림 <b>${c.pruned ?? 0}</b></span><span>되살림 <b>${c.revived ?? 0}</b></span>`
         : ''}
