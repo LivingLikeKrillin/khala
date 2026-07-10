@@ -13,10 +13,18 @@ Docker is the only thing you need installed. Everything else runs inside the com
 git clone https://github.com/LivingLikeKrillin/khala.git
 cd khala
 cp nexus/.env.example nexus/.env     # then set ANTHROPIC_API_KEY for narrated answers
-task up                              # or: cd nexus && docker compose up -d
+task up
 ```
 
-The **first** `task up` builds the image, which compiles mecab-ko from source — budget **10–20 minutes**. Later runs start in seconds. The embedding model (`nomic-embed-text`, ~274 MB) is pulled automatically on first boot.
+No Task? `task up` is three commands — run them from `nexus/`:
+
+```bash
+cd nexus
+docker compose up -d --wait                                  # containers + model auto-pull
+docker compose exec -T nexus-app python -m scripts.migrate   # ← skip this and the source console / document management break
+```
+
+The **first** boot builds the image, which compiles mecab-ko from source — budget **10–20 minutes**. Later runs start in seconds. The embedding model (`nomic-embed-text`, ~274 MB) is pulled automatically on first boot.
 
 Now **index something**. An empty corpus answers every question with "not found", so this step is not optional:
 

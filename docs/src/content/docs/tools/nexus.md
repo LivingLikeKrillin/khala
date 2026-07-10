@@ -83,19 +83,20 @@ cp nexus/.env.example nexus/.env
 # (optional) set ANTHROPIC_API_KEY in nexus/.env for LLM answer generation
 ```
 
-### 2. Start (core containers only)
+### 2. Start — one line
 
 ```bash
-task up        # or: cd nexus && docker compose up -d
+task up
+```
+
+`task up` starts the containers (waiting for health), **applies DB migrations**, and pulls the embedding model automatically. No Task? Run those three yourself from `nexus/`:
+
+```bash
+docker compose up -d --wait                                  # containers + model auto-pull
+docker compose exec -T nexus-app python -m scripts.migrate   # ← skip this and the source console / document management break
 ```
 
 Starts PostgreSQL 16 + pgvector (5432), Ollama (11434), and the FastAPI app on **8000**. The OTel collector + Tempo are **opt-in** — add them only for trace aggregation: `docker compose --profile observability up -d`.
-
-### 3. Pull the embedding model (first time only)
-
-```bash
-task models    # or: docker compose exec nexus-ollama ollama pull nomic-embed-text
-```
 
 ### 4. Index documents & search
 
