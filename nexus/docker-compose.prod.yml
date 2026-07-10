@@ -1,0 +1,70 @@
+# 팀 도그푸딩 배포 오버레이 — 로컬 머신 + Cloudflare Tunnel (docs/TEAM_DOGFOOD_DEPLOY.md).
+#
+# 기동:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#   (또는 리포 루트에서 `task up:prod`)
+#
+# ⚠️ docker-compose.override.yml 은 의도적으로 **병합하지 않는다**. 그 오버레이는 로컬 전용이며
+#    NEXUS_DEV_TOKEN 을 약한 기본값 'nexus-local-dev' 로 폴백시킨다. 여기서는 반대로 강한 토큰을
+#    강제한다(아래 `:?` 확장). `-f` 를 명시하면 override 자동 병합이 꺼지므로 두 목적이 양립한다.
+#
+# 이 오버레이가 base 대비 바꾸는 것:
+#   1. uvicorn --reload 제거      — reload watcher 는 개발용이다.
+#   2. `.:/app` 바인드 마운트 제거 — 이미지에 구운 코드로 돈다(재현 가능한 배포).
+#   3. restart: unless-stopped   — 머신 재부팅/크래시 후 팀 검색이 알아서 살아난다.
+#   4. db·ollama 호스트 포트 미게시 — 컨테이너 네트워크 안에서만. LAN 노출 제거.
+#   5. app 은 127.0.0.1 에만 바인드 — cloudflared 가 같은 호스트에서 접속한다. LAN 노출 제거.
+#   6. 강한 NEXUS_DEV_TOKEN 미설정 시 **부트 자체를 거부**(compose 단계에서 실패).
+services:
+  nexus-db:
+    restart: unless-stopped
+    # 호스트로 5432 를 열지 않는다 — nexus-app 만 컨테이너 네트워크로 접속.
+    ports: !reset []
+
+  nexus-ollama:
+    restart: unless-stopped
+    ports: !reset []
+
+  # 임베딩 모델 자동 pull (한 번 실행 후 종료). config.yaml embedding.model 과 일치해야 한다.
+  nexus-ollama-init:
+    image: ollama/ollama
+    container_name: nexus-ollama-init
+    depends_on:
+      nexus-ollama:
+        condition: service_started
+    environment:
+      OLLAMA_HOST: http://nexus-ollama:11434
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "until ollama list >/dev/null 2>&1; do echo 'waiting for ollama...'; sleep 2; done; ollama pull nomic-embed-text"
+    restart: "no"
+
+  nexus-app:
+    restart: unless-stopped
+    # base 의 CMD(--reload)를 덮어쓴다.
+    command: ["uvicorn", "nexus.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    # 살아있지만 먹통인 상태를 잡는다. /status 는 무인증 200 이지만 DB 가 죽어도 200 이므로
+    # 본문의 db_connected 까지 확인해야 의미가 있다. `up --wait` 가 이 신호를 보고 실패한다.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "curl -fsS http://localhost:8000/status | grep -q '\"db_connected\":true'"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s   # 최초 부팅(DB 풀·gazetteer 부트스트랩) 여유
+    # base 의 `.:/app` (rw, hot reload) 을 버린다. 인덱싱 대상 문서만 ro 로 남긴다.
+    volumes: !override
+      - ./docs:/app/docs:ro
+    # cloudflared 는 http://localhost:8000 으로 붙는다(런북 §3). 외부 인터페이스에 열 이유가 없다.
+    ports: !override
+      - "127.0.0.1:8000:8000"
+    environment:
+      # 미설정이면 compose 가 여기서 실패한다 — 약한 기본값으로 팀에 열리는 사고를 원천 차단.
+      # 발급: python -m nexus.cli auth gen-token
+      NEXUS_DEV_TOKEN: ${NEXUS_DEV_TOKEN:?터널 배포에는 강한 토큰이 필요합니다. `python -m nexus.cli auth gen-token` 으로 발급해 nexus/.env 의 NEXUS_DEV_TOKEN 에 넣으세요}
+      # 약한 토큰(기본값 또는 24자 미만)이면 앱이 부트를 거부한다(auth/config.py).
+      NEXUS_REQUIRE_STRONG_DEV_TOKEN: "1"
+      # NOTION_TOKEN·ANTHROPIC_API_KEY 는 여기서 선언하지 않는다 — 베이스 compose 가 주입한다.
+      # 오버레이는 얹고 빼는 것이라, 여기 적은 자격증명은 다음 오버레이가 기억해야 할 짐이 된다.

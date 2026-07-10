@@ -42,7 +42,7 @@ Phase 3 — 거버넌스
 - **Language**: Python 3.11+
 - **Framework**: FastAPI (API) + Typer (CLI)
 - **DB**: PostgreSQL 16 + pgvector + tsvector(mecab-ko) + pg_trgm
-- **Embedding**: multilingual-e5-base via Ollama (로컬) → `EmbeddingService` 래퍼
+- **Embedding**: nomic-embed-text via Ollama (로컬, 768d) → `EmbeddingService` 래퍼
 - **LLM**: Claude Sonnet API → `LLMService` 래퍼
 - **한국어**: mecab-ko + mecab-ko-dic (Docker 내 설치)
 - **OTel**: OpenTelemetry Collector + Grafana Tempo
@@ -291,6 +291,7 @@ def base_filter() -> str:
 ```bash
 # 기동 (컨테이너 + DB 마이그레이션 + 모델 자동 pull). Task 없으면 README §2 의 두 줄.
 task up
+task up:prod          # 팀 배포 — docker-compose.prod.yml 오버레이 (reload 없음·이미지 구움·강토큰 필수)
 
 # 문서 인덱싱
 docker exec nexus-app nexus ingest ./docs
