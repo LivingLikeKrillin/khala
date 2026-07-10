@@ -13,7 +13,7 @@ maxTurns: 20
 
 ## 수행 순서
 
-### 1. 변경 분석 (probe 결과 수집)
+### 1. 변경 분석 (observer 결과 수집)
 ```bash
 # 범위 분석 + 리뷰 체크리스트
 observer check --format json --base origin/main
