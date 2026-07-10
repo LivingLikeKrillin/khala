@@ -109,6 +109,28 @@ services:
         condition: service_started
       # nexus-otel/tempo 의존 제거 — 앱은 collector 에 접속하지 않는다(코드 미참조). 관측은 옵트인 profile.
 
+  # Slack 봇 — opt-in. `docker compose --profile slack up -d` 로만 뜬다.
+  # inbound 포트 없음(Socket Mode): 두 Slack 토큰으로 아웃바운드 연결만 연다 → 터널/도메인 불필요.
+  # 세 토큰이 모두 있어야 뜬다. NEXUS_SLACK_TOKEN 이 없으면 nexus-slack 이 시동을 거부한다(401 루프 대신).
+  nexus-slack:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-slack
+    command: ["nexus-slack"]
+    environment:
+      NEXUS_API_URL: http://nexus-app:8000
+      # Slack 앱 토큰(Socket Mode) — Slack 앱에서 발급.
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
+      # Nexus bearer — nexus auth gen-token 으로 발급한 읽기 전용 principal. auth.slack.clearance 상한.
+      NEXUS_SLACK_TOKEN: ${NEXUS_SLACK_TOKEN:-}
+    depends_on:
+      nexus-app:
+        condition: service_started
+    profiles:
+      - slack
+
 volumes:
   nexus-db-data:
   nexus-ollama-data:

@@ -1,19 +1,10 @@
 # Nexus Slack Bot 설정 가이드
 
 > Slack에서 `@nexus`로 멘션하거나 DM으로 질문하면, Nexus의 하이브리드 검색 + LLM 답변을 Slack 메시지로 받을 수 있습니다.
-
-> ## ⚠️ 현재 이 봇은 동작하지 않는다
 >
-> 아래 절차를 그대로 따라도 봇은 뜨지 않거나, 떠도 모든 질의가 401 로 실패한다. 결함 두 개가 있고,
-> 둘 다 코드 수정이 필요하다.
->
-> 1. **실행 진입점이 없다.** `pyproject.toml` 의 `[project.scripts]` 에는 `nexus` 하나뿐이고,
->    `docker-compose.yml` 에도 slack 서비스가 없다. 아무것도 이 프로세스를 띄우지 않는다.
-> 2. **API 인증을 하지 않는다.** `nexus/slack/bot.py` 의 `_call_nexus_api` 는 `Authorization` 헤더를
->    붙이지 않고, 봇에는 Nexus 토큰용 환경변수 자체가 없다. Nexus 는 기본이 `auth.mode: enforced` 라
->    토큰 없는 요청은 401 이다.
->
-> 이 문서는 Slack App 쪽 설정(스코프·Socket Mode)만 정확하다. 봇을 살릴지 삭제할지는 미결이다.
+> 팀을 Nexus 로 끌어오는 가장 마찰 없는 온램프다 — 새 URL·새 UI 로 보내는 대신, 하루 종일 열어두는
+> 채널에서 `@nexus <질문>` 하면 된다. Socket Mode 라 inbound 포트·도메인·터널이 필요 없고, 터널/Access
+> 작업과 독립적으로 먼저 띄울 수 있다.
 
 ---
 
@@ -56,30 +47,66 @@ App-Level Token을 생성한다 (scope: `connections:write`). 이 토큰이 `SLA
 
 ---
 
-## 2. 환경 변수
+## 2. 환경 변수 — 토큰 셋
+
+봇은 **세 개**의 토큰이 있어야 뜬다. 세 번째(`NEXUS_SLACK_TOKEN`)가 없으면 봇은 시동 자체를 거부한다
+— 토큰 없이 떠서 모든 질의를 401 로 실패하는 조용한 오작동 대신.
 
 ```bash
 # .env에 추가
-SLACK_BOT_TOKEN=xoxb-...          # Bot User OAuth Token
+SLACK_BOT_TOKEN=xoxb-...          # Bot User OAuth Token (Slack 앱)
 SLACK_APP_TOKEN=xapp-...          # App-Level Token (Socket Mode)
-SLACK_SIGNING_SECRET=...          # Basic Information → App Credentials
+SLACK_SIGNING_SECRET=...          # Basic Information → App Credentials (선택)
 
-NEXUS_API_URL=http://localhost:8000  # Nexus API 주소 (Docker 내부: http://nexus-app:8000)
+# Nexus bearer — 봇이 Nexus 에 붙는 읽기 전용 principal.
+NEXUS_SLACK_TOKEN=...             # nexus auth gen-token 으로 발급
 ```
+
+### 2.1 Nexus 토큰 발급 (`NEXUS_SLACK_TOKEN`)
+
+봇은 하나의 서비스 principal 로 Nexus 에 붙는다 — MCP 서버가 `NEXUS_MCP_TOKEN` 을 쓰는 것과 똑같다.
+운영자가 토큰을 발급하고, **capability 없이**(읽기 전용) 등록한다:
+
+```bash
+nexus auth gen-token   # 발급된 bearer 를 NEXUS_SLACK_TOKEN 에 넣는다
+```
+
+읽기 전용은 관례가 아니라 서버가 강제한다: Nexus 의 쓰기 경로(hide/restore/supersede, source 등록)는
+`manage_documents`/`manage_sources` capability 를 요구하고 기본 거부다. capability 0 인 principal 은
+그 엔드포인트에서 403 을 받는다. 봇이 쓰기 경로를 부를 일도 없지만, 버그가 그래도 부른다면 그 벽이 선다.
+
+### 2.2 ⚠️ 봇의 clearance = 워크스페이스 전원에게 확장하는 신뢰의 바닥
+
+단일 서비스 principal 이라는 건, **그 워크스페이스의 모든 멤버**(단일 채널 게스트·외부 공유채널 참여자
+포함)가 그 principal 이 읽을 수 있는 것을 전부 읽는다는 뜻이다. 그래서 clearance 는 `auth.slack.clearance`
+운영자 설정이고, **기본값은 `PUBLIC`** — 안전한 바닥이다.
+
+- 외부 게스트가 있는 워크스페이스 → `PUBLIC` 로 두라.
+- 전원이 직원인 워크스페이스 → `INTERNAL` 로 올려도 된다.
+
+누가 들어오는지는 상류(Slack 워크스페이스 멤버십)에서 정해진다. 그 입장이 **무엇을 읽을 수 있는지**는
+운영자의 명시적 선택이다. 게스트가 있다면 `PUBLIC` 밖으로 올리지 말 것.
 
 ---
 
 ## 3. 설치 및 실행
 
+### 3.1 Docker (권장) — `--profile slack`
+
+봇은 opt-in 프로필 서비스다. 세 토큰을 `.env` 에 넣고:
+
 ```bash
-# slack 의존성 설치
+docker compose --profile slack up -d
+```
+
+`nexus-app` 과 `nexus-slack` 이 함께 뜬다. 봇은 `http://nexus-app:8000` 으로 Nexus 에 붙는다.
+
+### 3.2 로컬 실행 (개발)
+
+```bash
 pip install -e '.[slack]'
-
-# Nexus API가 먼저 실행 중이어야 함
-docker compose up -d
-
-# Slack Bot 실행
-python -m nexus.slack.app
+docker compose up -d          # Nexus API 가 먼저 떠 있어야 함
+nexus-slack                    # 또는: python -m nexus.slack.app
 ```
 
 정상 시작 로그:
@@ -87,20 +114,15 @@ python -m nexus.slack.app
 2026-03-15 12:00:00 nexus.slack.app INFO Nexus Slack Bot 시작 (Socket Mode)
 ```
 
-### Docker로 실행 (선택)
-
-docker-compose.yml에 서비스를 추가할 수 있다:
-
-```yaml
-nexus-slack:
-  build: .
-  command: python -m nexus.slack.app
-  env_file: .env
-  depends_on:
-    nexus-app:
-      condition: service_healthy
-  restart: unless-stopped
+`NEXUS_SLACK_TOKEN` 이 없으면:
 ```
+nexus.slack.app ERROR NEXUS_SLACK_TOKEN 환경 변수가 필요합니다 — 봇은 Nexus 에 읽기 전용 principal 로 붙는다.
+```
+그리고 봇은 뜨지 않는다(exit 1).
+
+### 3.3 토큰 회전
+
+다른 Nexus 토큰과 동일하다: 새로 발급(`nexus auth gen-token`) → env 갱신 → 봇 재시작.
 
 ---
 
@@ -164,13 +186,23 @@ Slack Block Kit으로 구성된 응답:
 | 그래프 관계 | designed 3개 + observed 3개까지 |
 | API 타임아웃 | 60초 |
 
-### 에러 시
+### 봇이 답할 수 없을 때
 
-```
-⚠️ 오류: Nexus 데이터베이스에 연결할 수 없습니다
-```
+봇은 왜 못 답하는지를 **올바른 대상에게** 말한다. 401 은 운영자용(봇 토큰이 틀린 것이지 사용자 질문이
+틀린 게 아니다), 나머지는 사용자에게 정직하게. 스택 트레이스는 절대 노출하지 않는다.
 
-LLM 호출 실패 시에도 근거 snippet은 그대로 제공된다 (CLAUDE.md 규칙 준수).
+| 상황 | 대상 | 메시지 |
+|------|------|--------|
+| Nexus 401 | 운영자 | "봇 인증 설정이 잘못되었습니다 — 운영자에게 알리세요." |
+| 503 / 연결 불가 | 사용자 | "지금 답변할 수 없습니다. 잠시 후 다시 시도하세요." |
+| 근거 0건 (코퍼스는 있음) | 사용자 | "인덱싱된 문서에서 답을 찾지 못했습니다." |
+| 코퍼스 0건 | 사용자 | "아직 인덱싱된 문서가 없습니다. 먼저 문서를 적재하세요." |
+| 그 외 (429/500/timeout) | 사용자 (운영자는 로그) | "답변 중 오류가 발생했습니다. 잠시 후 다시 시도하세요." |
+
+"근거 없음"과 "코퍼스 없음"은 다른 사실이다: 봇은 답변 응답의 `evidence_snippets` 로 전자를,
+`/status` 의 `documents_count` 로 후자를 각각 확인한다 — 하나에서 다른 하나를 추측하지 않는다.
+
+봇 토큰은 어떤 Slack 메시지에도, 어떤 로그 라인에도 나타나지 않는다.
 
 ---
 
@@ -210,10 +242,17 @@ nexus/slack/
 ## 7. 트러블슈팅
 
 ### Bot이 응답하지 않음
-1. `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN` 확인
+1. `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `NEXUS_SLACK_TOKEN` 세 개 모두 확인
 2. Event Subscriptions에서 `app_mention`, `message.im` 구독 확인
 3. Socket Mode가 활성화되어 있는지 확인
 4. Nexus API (`http://localhost:8000/status`)가 정상인지 확인
+
+### "봇 인증 설정이 잘못되었습니다" (운영자용)
+- `NEXUS_SLACK_TOKEN` 이 유효한 Nexus bearer 인지 확인 — Nexus 가 401 을 돌려주고 있다.
+- 재발급: `nexus auth gen-token` → env 갱신 → 봇 재시작.
+
+### 봇이 아예 안 뜸 (exit 1)
+- 로그에 `NEXUS_SLACK_TOKEN 환경 변수가 필요합니다` → 세 번째 토큰이 비어 있다. `.env` 에 넣고 재시작.
 
 ### "데이터베이스 연결 실패" 에러
 - `docker compose up -d`로 인프라가 실행 중인지 확인
