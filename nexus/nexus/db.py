@@ -116,19 +116,28 @@ CREATE TABLE IF NOT EXISTS search_log (
     n_graph_edges   INTEGER NOT NULL DEFAULT 0,
     no_answer       BOOLEAN NOT NULL DEFAULT false,
     llm_failed      BOOLEAN NOT NULL DEFAULT false,
-    latency_ms      INTEGER NOT NULL DEFAULT 0
+    latency_ms      INTEGER NOT NULL DEFAULT 0,
+    n_citations          INTEGER,
+    unverified_citations INTEGER
 );
+-- 기존 테이블(IF NOT EXISTS 로 안 바뀐)에도 인용 컬럼을 더한다(멱등). migration 005 와 동일.
+ALTER TABLE search_log ADD COLUMN IF NOT EXISTS n_citations          INTEGER;
+ALTER TABLE search_log ADD COLUMN IF NOT EXISTS unverified_citations INTEGER;
 CREATE INDEX IF NOT EXISTS idx_search_log_ts     ON search_log (ts DESC);
 CREATE INDEX IF NOT EXISTS idx_search_log_tenant ON search_log (tenant, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_search_log_route  ON search_log (route, ts DESC);
-CREATE OR REPLACE VIEW v_search_health AS
+-- 뷰 컬럼 집합이 바뀌므로 CREATE OR REPLACE 대신 DROP+CREATE.
+DROP VIEW IF EXISTS v_search_health;
+CREATE VIEW v_search_health AS
 SELECT path, route,
        count(*)                                                        AS n,
        avg((no_answer)::int)::numeric(4,3)                             AS no_answer_rate,
        avg((graph_requested AND n_graph_edges = 0)::int)::numeric(4,3) AS graph_empty_rate,
        avg((llm_failed)::int)::numeric(4,3)                            AS llm_fail_rate,
        avg(n_snippets)::numeric(6,2)                                   AS avg_snippets,
-       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms)        AS p95_latency_ms
+       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms)        AS p95_latency_ms,
+       (SUM(unverified_citations)::numeric
+          / NULLIF(SUM(n_citations), 0))::numeric(4,3)                 AS citation_fabrication_rate
 FROM search_log
 WHERE ts > now() - interval '7 days'
 GROUP BY path, route;

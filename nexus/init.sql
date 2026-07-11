@@ -445,7 +445,9 @@ CREATE TABLE IF NOT EXISTS search_log (
     n_graph_edges   INTEGER NOT NULL DEFAULT 0,
     no_answer       BOOLEAN NOT NULL DEFAULT false,
     llm_failed      BOOLEAN NOT NULL DEFAULT false,
-    latency_ms      INTEGER NOT NULL DEFAULT 0
+    latency_ms      INTEGER NOT NULL DEFAULT 0,
+    n_citations          INTEGER,   -- 인용 지표(nullable = 미측정, SPEC-nexus-search-signal-completeness)
+    unverified_citations INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_search_log_ts     ON search_log (ts DESC);
 CREATE INDEX IF NOT EXISTS idx_search_log_tenant ON search_log (tenant, ts DESC);
@@ -458,7 +460,9 @@ SELECT path, route,
        avg((graph_requested AND n_graph_edges = 0)::int)::numeric(4,3) AS graph_empty_rate,
        avg((llm_failed)::int)::numeric(4,3)                            AS llm_fail_rate,
        avg(n_snippets)::numeric(6,2)                                   AS avg_snippets,
-       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms)        AS p95_latency_ms
+       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms)        AS p95_latency_ms,
+       (SUM(unverified_citations)::numeric
+          / NULLIF(SUM(n_citations), 0))::numeric(4,3)                 AS citation_fabrication_rate
 FROM search_log
 WHERE ts > now() - interval '7 days'
 GROUP BY path, route;
