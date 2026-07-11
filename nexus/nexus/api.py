@@ -24,6 +24,7 @@ from nexus.auth.deps import make_get_principal
 from nexus.index.graph_extractor import find_entities_in_text, _build_entity_patterns, _load_gazetteer
 from nexus.ingest.pipeline import run_ingest
 from nexus.llm.answer import generate_answer
+from nexus.llm.citations import validate_citations
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from nexus.otel.aggregator import run_otel_aggregation
 from nexus.otel.diff_engine import run_diff
@@ -428,6 +429,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 "provenance": answer_result.provenance,
                 "route_used": answer_result.route_used,
                 "timing_ms": answer_result.timing_ms,
+                "citations": answer_result.citations,
+                "unverified_citations": answer_result.unverified_citations,
             },
         )
     except UnknownRoute as e:
@@ -826,7 +829,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 }
                 yield f"event: graph\ndata: {json.dumps(graph_data, ensure_ascii=False)}\n\n"
 
-            # 3) LLM 스트리밍 답변
+            # 3) LLM 스트리밍 답변 — 청크를 누적해 완료 후 인용을 검증한다.
+            answer_parts: list[str] = []
             if not packet.snippets:
                 yield f"event: answer_delta\ndata: {json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)}\n\n"
             elif not llm_svc.configured:
@@ -838,12 +842,22 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
 
                 try:
                     async for chunk in llm_svc.stream(SYSTEM_PROMPT, user_prompt):
+                        answer_parts.append(chunk)
                         yield f"event: answer_delta\ndata: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
                 except Exception:
                     yield f"event: answer_delta\ndata: {json.dumps({'text': '답변을 생성할 수 없습니다. 위 근거를 직접 확인해주세요.'}, ensure_ascii=False)}\n\n"
 
-            # 4) 완료 이벤트
-            yield f"event: done\ndata: {json.dumps({'timing_ms': search_result.timing_ms})}\n\n"
+            # 4) 완료 이벤트 — 누적 답변의 인용을 packet 과 대조해 함께 실어 보낸다.
+            report = validate_citations("".join(answer_parts), packet)
+            done_data = {
+                "timing_ms": search_result.timing_ms,
+                "citations": [
+                    {"title": c.title, "section": c.section, "verified": c.verified}
+                    for c in report.citations
+                ],
+                "unverified_citations": report.unverified_count,
+            }
+            yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 
         except Exception as e:
             yield f"event: error\ndata: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
