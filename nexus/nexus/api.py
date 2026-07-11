@@ -757,6 +757,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
 
     async def event_stream():
         import json
+        import time
+        t0 = time.time()                      # 신호 latency 시작점(핸들러 진입~done 신호 조립)
 
         try:
             config = _load_config()
@@ -831,6 +833,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
 
             # 3) LLM 스트리밍 답변 — 청크를 누적해 완료 후 인용을 검증한다.
             answer_parts: list[str] = []
+            llm_failed = False
             if not packet.snippets:
                 yield f"event: answer_delta\ndata: {json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)}\n\n"
             elif not llm_svc.configured:
@@ -845,10 +848,25 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                         answer_parts.append(chunk)
                         yield f"event: answer_delta\ndata: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
                 except Exception:
+                    llm_failed = True
                     yield f"event: answer_delta\ndata: {json.dumps({'text': '답변을 생성할 수 없습니다. 위 근거를 직접 확인해주세요.'}, ensure_ascii=False)}\n\n"
 
             # 4) 완료 이벤트 — 누적 답변의 인용을 packet 과 대조해 함께 실어 보낸다.
             report = validate_citations("".join(answer_parts), packet)
+
+            # 신호 기록은 done yield **전**에 — 클라이언트가 끊기면 제너레이터가 마지막 yield 뒤로
+            # 재개 안 될 수 있어 '뒤에서' 기록하면 조용히 누락된다(fire-and-forget 이라 지연 없음).
+            has_answer = bool(packet.snippets) and llm_svc.configured
+            sig = extract_signals(
+                search_result, None, path="search_answer_stream",
+                tenant=req.tenant, clearance=req.classification_max, query=req.query,
+                n_entities=len(entity_rids), latency_ms=int((time.time() - t0) * 1000),
+                n_citations=len(report.citations) if has_answer else None,
+                unverified_citations=report.unverified_count if has_answer else None,
+                llm_failed=llm_failed,
+            )
+            await record_search(sig)
+
             done_data = {
                 "timing_ms": search_result.timing_ms,
                 "citations": [
