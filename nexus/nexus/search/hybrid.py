@@ -65,7 +65,7 @@ async def _bm25_search(
 
     rows = await db.fetch_all(
         """
-        SELECT c.rid, ts_rank(c.tsvector_ko, to_tsquery('simple', $1)) as rank_score
+        SELECT c.rid, ts_rank_cd(c.tsvector_ko, to_tsquery('simple', $1)) as rank_score
         FROM chunks c
         WHERE c.tsvector_ko @@ to_tsquery('simple', $1)
           AND c.tenant = $2
@@ -141,10 +141,10 @@ def _rrf_fusion(
     bm25_results: list[tuple[str, int]],
     vector_results: list[tuple[str, int]],
     k: int = 60,
-    final_top_k: int = 10,
 ) -> list[dict]:
-    """RRF (Reciprocal Rank Fusion) 스코어 병합.
+    """RRF (Reciprocal Rank Fusion) 스코어 병합. 전체 병합 리스트를 RRF 순서로 반환(컷 없음).
 
+    top_k 컷은 문서 다양성(_diversify) 이후로 미룬다 — 한 문서가 top-k 를 도배하지 않도록.
     score = Σ 1/(k + rank + 1)
     """
     scores: dict[str, dict] = {}
@@ -161,8 +161,30 @@ def _rrf_fusion(
         scores[rid]["score"] += 1.0 / (k + rank + 1)
         scores[rid]["vector_rank"] = rank
 
-    ranked = sorted(scores.values(), key=lambda x: x["score"], reverse=True)
-    return ranked[:final_top_k]
+    return sorted(scores.values(), key=lambda x: x["score"], reverse=True)
+
+
+def _diversify(hits: list, top_k: int, per_doc_cap: int) -> list:
+    """문서별 상한(per_doc_cap)으로 top-k 를 재정렬 — 한 문서가 도배하지 못하게.
+
+    RRF 순서를 돌며 상한 이내인 hit 을 담고, 문서가 부족해 top_k 를 못 채우면 넘긴 hit 으로
+    채운다. 항상 min(top_k, len(hits)) 개를 돌려준다(recall 안전, 빈 결과 만들지 않음). 문서
+    내부 순서는 RRF 순서를 유지한다. 반환 순서 = 다양화된 랭킹(순수 score 정렬 아님, SPEC §4.2).
+    """
+    selected: list = []
+    skipped: list = []
+    counts: dict[str, int] = {}
+    for h in hits:
+        if len(selected) < top_k and counts.get(h.doc_rid, 0) < per_doc_cap:
+            selected.append(h)
+            counts[h.doc_rid] = counts.get(h.doc_rid, 0) + 1
+        else:
+            skipped.append(h)
+    for h in skipped:                      # 문서 부족 시 채워서 count 복구
+        if len(selected) >= top_k:
+            break
+        selected.append(h)
+    return selected
 
 
 def _merge_subgraphs(subgraphs: list[SubGraph]) -> SubGraph | None:
@@ -315,11 +337,15 @@ async def hybrid_search(
 
     bm25_ms = int((time.time() - start) * 1000)
 
-    # RRF Fusion
-    fused = _rrf_fusion(bm25_results, vector_results, k=rrf_k, final_top_k=top_k)
+    # RRF Fusion (전체 병합, 컷은 다양성 이후)
+    fused = _rrf_fusion(bm25_results, vector_results, k=rrf_k)
 
-    # 메타데이터 보강
-    result.hits = await _enrich_hits(fused, tenant)
+    # 메타데이터 보강 (fused 순서 보존)
+    enriched = await _enrich_hits(fused, tenant)
+
+    # 문서 다양성 + top_k 컷 — 한 문서가 결과를 도배하지 않게.
+    per_doc_cap = search_cfg.get("diversity_per_doc_cap", 3)
+    result.hits = _diversify(enriched, top_k, per_doc_cap)
 
     # Graph 보강 (route에 따라)
     if graph_repo and entity_rids and route in ("hybrid_then_graph", "graph_then_hybrid"):
