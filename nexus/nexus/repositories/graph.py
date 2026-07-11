@@ -5,7 +5,10 @@ GraphRepository Protocol은 search.py, diff_engine.py, api.py, otel_aggregator.p
 
 사용법:
     graph: GraphRepository = PostgresGraphRepository(db)
-    neighbors = await graph.get_neighbors(entity_rid, hops=2)
+    neighbors = await graph.get_neighbors(entity_rid, hops=2, tenant=t, clearance=c)
+
+관계 조회(get_neighbors/get_subgraph/find_path)는 호출자의 (tenant, clearance)를 필수로 받아
+양 끝 엔티티에 base_filter 를 강제한다 — 그래프 채널도 예외 없이 스코프를 지킨다.
 """
 
 from __future__ import annotations
@@ -75,12 +78,16 @@ class GraphRepository(Protocol):
     직접 edge/observed_edge SQL을 작성하지 말 것. 이 Protocol을 통해 접근.
     """
 
-    async def get_neighbors(self, entity_rid: str, hops: int = 1) -> SubGraph:
-        """entity의 이웃 조회. designed + observed 양쪽 반환."""
+    async def get_neighbors(
+        self, entity_rid: str, hops: int = 1, *, tenant: str, clearance: str
+    ) -> SubGraph:
+        """entity의 이웃 조회. designed + observed 양쪽 반환. base_filter(tenant/clearance) 강제."""
         ...
 
-    async def get_subgraph(self, center_rid: str, radius: int = 2) -> SubGraph:
-        """entity 중심 서브그래프 조회."""
+    async def get_subgraph(
+        self, center_rid: str, radius: int = 2, *, tenant: str, clearance: str
+    ) -> SubGraph:
+        """entity 중심 서브그래프 조회. base_filter 강제."""
         ...
 
     async def upsert_edges(self, edges: list[dict]) -> int:
@@ -91,8 +98,10 @@ class GraphRepository(Protocol):
         """observed_edge 일괄 upsert. 반환: upsert된 수."""
         ...
 
-    async def find_path(self, from_rid: str, to_rid: str, max_hops: int = 4) -> list[EdgeResult]:
-        """두 entity 간 최단 경로 탐색."""
+    async def find_path(
+        self, from_rid: str, to_rid: str, max_hops: int = 4, *, tenant: str, clearance: str
+    ) -> list[EdgeResult]:
+        """두 entity 간 최단 경로 탐색. base_filter 강제."""
         ...
 
     async def get_diff(self, tenant: str) -> list[DiffItem]:
@@ -118,17 +127,26 @@ class PostgresGraphRepository:
         async with self._pool.acquire() as conn:
             return await conn.execute(query, *args)
 
-    async def get_neighbors(self, entity_rid: str, hops: int = 1) -> SubGraph:
-        """f_graph_neighbors() DB 함수 호출 + observed_edges 조회."""
-        # 엔티티 이름 조회
+    async def get_neighbors(
+        self, entity_rid: str, hops: int = 1, *, tenant: str, clearance: str
+    ) -> SubGraph:
+        """f_graph_neighbors() DB 함수 호출 + observed_edges 조회. base_filter(tenant/clearance) 강제.
+
+        스코프 밖 seed 는 빈 서브그래프(center 이름 누출 없음), 스코프 밖 이웃/증거는 제외한다.
+        """
+        # 엔티티 이름 조회 — seed 도 스코프 안이어야 이름을 되돌려준다(밖이면 rid 폴백).
         center_row = await self._fetch(
-            "SELECT name FROM entities WHERE rid = $1", entity_rid,
+            """SELECT name FROM entities
+               WHERE rid = $1 AND tenant = $2 AND classification <= $3::classification_level
+                 AND is_quarantined = false AND status = 'active'""",
+            entity_rid, tenant, clearance,
         )
         center_name = center_row[0]["name"] if center_row else entity_rid
 
-        # Designed edges (f_graph_neighbors 함수 사용)
+        # Designed edges (f_graph_neighbors 함수 — 양 끝 엔티티에 base_filter 적용)
         edge_rows = await self._fetch(
-            "SELECT * FROM f_graph_neighbors($1, $2)", entity_rid, hops,
+            "SELECT * FROM f_graph_neighbors($1, $2, $3, $4::classification_level)",
+            entity_rid, hops, tenant, clearance,
         )
         edges = [
             EdgeResult(
@@ -154,8 +172,12 @@ class PostgresGraphRepository:
             JOIN entities et ON o.to_rid = et.rid
             WHERE o.status = 'active'
               AND (o.from_rid = $1 OR o.to_rid = $1)
+              AND ef.tenant = $2 AND ef.classification <= $3::classification_level
+              AND ef.is_quarantined = false AND ef.status = 'active'
+              AND et.tenant = $2 AND et.classification <= $3::classification_level
+              AND et.is_quarantined = false AND et.status = 'active'
             """,
-            entity_rid,
+            entity_rid, tenant, clearance,
         )
         observed = [
             ObservedEdgeResult(
@@ -176,9 +198,11 @@ class PostgresGraphRepository:
             edges=edges, observed_edges=observed,
         )
 
-    async def get_subgraph(self, center_rid: str, radius: int = 2) -> SubGraph:
-        """entity 중심 서브그래프 (get_neighbors의 확장판)."""
-        return await self.get_neighbors(center_rid, hops=radius)
+    async def get_subgraph(
+        self, center_rid: str, radius: int = 2, *, tenant: str, clearance: str
+    ) -> SubGraph:
+        """entity 중심 서브그래프 (get_neighbors의 확장판). base_filter 강제."""
+        return await self.get_neighbors(center_rid, hops=radius, tenant=tenant, clearance=clearance)
 
     async def upsert_edges(self, edges: list[dict]) -> int:
         """edge 일괄 upsert. idempotent."""
@@ -262,9 +286,9 @@ class PostgresGraphRepository:
         return count
 
     async def find_path(
-        self, from_rid: str, to_rid: str, max_hops: int = 4,
+        self, from_rid: str, to_rid: str, max_hops: int = 4, *, tenant: str, clearance: str
     ) -> list[EdgeResult]:
-        """두 entity 간 최단 경로 BFS 탐색."""
+        """두 entity 간 최단 경로 BFS 탐색. base_filter(양 끝 엔티티) 강제 — 스코프 밖 노드 미경유."""
         rows = await self._fetch(
             """
             WITH RECURSIVE path AS (
@@ -277,6 +301,10 @@ class PostgresGraphRepository:
                 JOIN entities ef ON e.from_rid = ef.rid
                 JOIN entities et ON e.to_rid = et.rid
                 WHERE e.status = 'active' AND e.from_rid = $1
+                  AND ef.tenant = $4 AND ef.classification <= $5::classification_level
+                  AND ef.is_quarantined = false AND ef.status = 'active'
+                  AND et.tenant = $4 AND et.classification <= $5::classification_level
+                  AND et.is_quarantined = false AND et.status = 'active'
                 UNION ALL
                 SELECT p.hop + 1, e.rid, e.edge_type,
                        e.from_rid, ef.name, e.to_rid, et.name,
@@ -289,11 +317,15 @@ class PostgresGraphRepository:
                 WHERE e.status = 'active'
                   AND e.rid != ALL(p.visited)
                   AND p.hop < $3
+                  AND ef.tenant = $4 AND ef.classification <= $5::classification_level
+                  AND ef.is_quarantined = false AND ef.status = 'active'
+                  AND et.tenant = $4 AND et.classification <= $5::classification_level
+                  AND et.is_quarantined = false AND et.status = 'active'
             )
             SELECT * FROM path WHERE to_rid = $2
             ORDER BY hop LIMIT 1
             """,
-            from_rid, to_rid, max_hops,
+            from_rid, to_rid, max_hops, tenant, clearance,
         )
         return [
             EdgeResult(

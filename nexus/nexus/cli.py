@@ -300,7 +300,9 @@ def graph(
             canonical = canonicalize_entity_name(entity, "Service")
             rid = entity_rid(tenant, "Service", canonical)
 
-        subgraph = await graph_repo.get_neighbors(rid, hops=hops)
+        # CLI 는 clearance 개념이 없다(SPEC §4.4) — 로컬 운영자 상한 INTERNAL 고정.
+        subgraph = await graph_repo.get_neighbors(
+            rid, hops=hops, tenant=tenant, clearance="INTERNAL")
 
         typer.echo(f"\n엔티티: {subgraph.center_name} ({subgraph.center_rid})")
         typer.echo(f"  Hops: {hops}\n")

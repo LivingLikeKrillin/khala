@@ -313,8 +313,12 @@ WHERE false;  -- MVP: conflict 로직은 앱 레벨. 향후 이 뷰 확장.
 -- ============================================================
 -- Function: f_graph_neighbors (GraphRepository에서 사용)
 -- ============================================================
+-- base_filter 를 그래프 채널에도 강제한다(SPEC-nexus-graph-scope-filter): 양 끝 엔티티가
+-- 호출자의 tenant·clearance·비격리·active 를 만족할 때만 엣지를 돌려준다. 필터를 재귀 멤버
+-- '안'에 두므로 스코프 밖 노드를 '통과'하는 순회도 막힌다(경계에서 멈춤 — 의도된 보안 동작).
+DROP FUNCTION IF EXISTS f_graph_neighbors(TEXT, INT);
 CREATE OR REPLACE FUNCTION f_graph_neighbors(
-    p_entity_rid TEXT, p_max_hops INT DEFAULT 1
+    p_entity_rid TEXT, p_max_hops INT, p_tenant TEXT, p_clearance classification_level
 ) RETURNS TABLE (
     hop INT, edge_rid TEXT, edge_type TEXT,
     from_rid TEXT, from_name TEXT, to_rid TEXT, to_name TEXT,
@@ -326,6 +330,10 @@ WITH RECURSIVE neighbors AS (
     FROM edges e
     JOIN entities ef ON e.from_rid = ef.rid JOIN entities et ON e.to_rid = et.rid
     WHERE e.status = 'active' AND (e.from_rid = p_entity_rid OR e.to_rid = p_entity_rid)
+      AND ef.tenant = p_tenant AND ef.classification <= p_clearance
+      AND ef.is_quarantined = false AND ef.status = 'active'
+      AND et.tenant = p_tenant AND et.classification <= p_clearance
+      AND et.is_quarantined = false AND et.status = 'active'
     UNION ALL
     SELECT n.hop + 1, e.rid as edge_rid, e.edge_type, e.from_rid, ef.name,
            e.to_rid, et.name, e.confidence, e.source_category
@@ -333,6 +341,10 @@ WITH RECURSIVE neighbors AS (
     JOIN entities ef ON e.from_rid = ef.rid JOIN entities et ON e.to_rid = et.rid
     JOIN neighbors n ON (e.from_rid = n.to_rid OR e.to_rid = n.from_rid)
     WHERE e.status = 'active' AND n.hop < p_max_hops AND e.rid != n.edge_rid
+      AND ef.tenant = p_tenant AND ef.classification <= p_clearance
+      AND ef.is_quarantined = false AND ef.status = 'active'
+      AND et.tenant = p_tenant AND et.classification <= p_clearance
+      AND et.is_quarantined = false AND et.status = 'active'
 )
 SELECT * FROM neighbors;
 $$ LANGUAGE sql STABLE;

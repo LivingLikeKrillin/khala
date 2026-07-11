@@ -560,7 +560,8 @@ async def get_graph(
             else:
                 rid = row["rid"]
 
-        subgraph = await graph_repo.get_neighbors(rid, hops=hops)
+        subgraph = await graph_repo.get_neighbors(
+            rid, hops=hops, tenant=tenant, clearance=classification_max)
 
         if not subgraph.edges and not subgraph.observed_edges:
             raise HTTPException(status_code=404, detail="엔티티를 찾을 수 없습니다.")
@@ -586,15 +587,21 @@ async def get_graph(
         for e in subgraph.edges:
             evidence_snippets = []
             if include_evidence:
+                # base_filter 를 증거 청크에도 강제(SPEC-nexus-graph-scope-filter §4.3):
+                # 스코프 밖 청크의 chunk_text 가 그래프 증거로 새지 않게 한다. INNER JOIN + 필터라
+                # 스코프 밖(또는 backing chunk 없는) 증거는 배제된다.
                 evi_rows = await db.fetch_all(
                     """
                     SELECT ev.note, c.chunk_text, c.section_path, d.title as doc_title
                     FROM evidence ev
-                    LEFT JOIN chunks c ON ev.evidence_rid = c.rid
-                    LEFT JOIN documents d ON c.doc_rid = d.rid
+                    JOIN chunks c ON ev.evidence_rid = c.rid
+                    JOIN documents d ON c.doc_rid = d.rid
                     WHERE ev.subject_rid = $1 AND ev.status = 'active'
+                      AND c.tenant = $2 AND c.classification <= $3::classification_level
+                      AND c.is_quarantined = false AND c.status = 'active'
+                      AND d.status = 'active'
                     """,
-                    e.rid,
+                    e.rid, tenant, classification_max,
                 )
                 for er in evi_rows:
                     snippet_text = er["chunk_text"][:200] if er["chunk_text"] else ""

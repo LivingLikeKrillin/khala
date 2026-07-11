@@ -329,7 +329,8 @@ async def hybrid_search(
         try:
             # 감지된 모든 엔티티에서 병렬로 이웃 조회 후 병합
             subgraphs = await asyncio.gather(
-                *[graph_repo.get_neighbors(rid, hops=graph_hops) for rid in targets],
+                *[graph_repo.get_neighbors(rid, hops=graph_hops, tenant=tenant, clearance=clearance)
+                  for rid in targets],
                 return_exceptions=True,
             )
             ok: list[SubGraph] = []
