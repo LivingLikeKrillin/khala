@@ -8,7 +8,7 @@ from mcp.server.fastmcp import FastMCP
 
 from . import review
 from .config import ArbiterConfig
-from .critique import AnthropicCritic, critique
+from .critique import critique, make_critic
 from .gate import Gate
 from .ledger import Ledger
 from .promote import promote_external as _promote_external
@@ -89,7 +89,7 @@ def main() -> None:
     config = ArbiterConfig.load(root)
     ledger = Ledger(docs, now=_utc_now)
     gate = Gate(root, now=_utc_now)
-    critic = AnthropicCritic()
+    critic = make_critic()
     build_app(ledger, gate, critic, config).run()
 
 
