@@ -183,3 +183,9 @@ tasks:
     desc: ruff check on the Python subprojects (check-only baseline)
     cmds:
       - ruff check nexus arbiter probe
+
+  llm-bridge:
+    desc: "Dev-only — run the claude-code LLM bridge on the host (keyless narration via the running Claude Code). Requires NEXUS_LLM_BRIDGE_TOKEN. Point Nexus at it with NEXUS_LLM_PROVIDER=claude-code."
+    dir: nexus
+    cmds:
+      - python -m nexus.tools.claude_llm_bridge
