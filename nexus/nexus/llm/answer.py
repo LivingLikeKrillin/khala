@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 import structlog
 
+from nexus.llm.citations import validate_citations
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from nexus.providers.llm import LLMService
 from nexus.search.evidence_packet import EvidencePacket, format_for_llm
@@ -27,6 +28,9 @@ class AnswerResult:
     route_used: str = ""
     timing_ms: dict = field(default_factory=dict)
     llm_failed: bool = False
+    # 인용 사후검증(SPEC-nexus-citation-validation): 각 [출처: …] 가 근거 packet 에 실재하는가.
+    citations: list[dict] = field(default_factory=list)
+    unverified_citations: int = 0
 
 
 async def generate_answer(
@@ -108,6 +112,13 @@ async def generate_answer(
         llm_start = time.time()
         result.answer = await llm_svc.generate(SYSTEM_PROMPT, user_prompt)
         result.timing_ms["llm_ms"] = int((time.time() - llm_start) * 1000)
+        # 인용 검증 — LLM 이 준 답을 packet 과 대조(코드가 판정, LLM 을 신뢰하지 않음).
+        report = validate_citations(result.answer, packet)
+        result.citations = [
+            {"title": c.title, "section": c.section, "verified": c.verified}
+            for c in report.citations
+        ]
+        result.unverified_citations = report.unverified_count
     except Exception as e:
         logger.error("llm_generation_failed", error=str(e))
         result.llm_failed = True
