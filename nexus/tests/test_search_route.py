@@ -28,7 +28,7 @@ def legs(monkeypatch):
         calls["vector"] += 1
         return [("chunk_b", 1)]
 
-    async def fake_enrich(fused, tenant):
+    async def fake_enrich(fused, tenant, max_snippet_chars=300):
         return []
 
     monkeypatch.setattr(hybrid, "_bm25_search", fake_bm25)

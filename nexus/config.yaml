@@ -49,6 +49,7 @@ search:
   rrf_k: 60                    # RRF fusion 파라미터
   final_top_k: 10              # 최종 반환 수
   diversity_per_doc_cap: 3     # top-k 내 한 문서 최대 청크 수(문서 도배 방지, SPEC-nexus-ranking-precision)
+  snippet_max_chars: 300       # 근거 스니펫 최대 길이(문장 경계에서 컷, SPEC-nexus-snippet-boundary-truncation)
 
 # Graph
 graph:
