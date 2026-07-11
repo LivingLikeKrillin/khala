@@ -99,6 +99,11 @@ services:
       # 기본값 빈 문자열: 토큰 없이도 부팅하고, 그 기능만 못 쓴다.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       NOTION_TOKEN: ${NOTION_TOKEN:-}
+      # LLM 백엔드 선택(dev). 미설정이면 anthropic 기본 — 프로덕션 무영향.
+      # claude-code = 호스트에서 도는 Claude Code 를 브리지 경유로 써서 키 없이 서술(`task llm-bridge`).
+      NEXUS_LLM_PROVIDER: ${NEXUS_LLM_PROVIDER:-}
+      NEXUS_LLM_BRIDGE_URL: ${NEXUS_LLM_BRIDGE_URL:-}
+      NEXUS_LLM_BRIDGE_TOKEN: ${NEXUS_LLM_BRIDGE_TOKEN:-}
     volumes:
       - .:/app                    # 개발 중 코드 변경 반영 (hot reload)
       - ./docs:/app/docs:ro       # 인덱싱할 문서 폴더
