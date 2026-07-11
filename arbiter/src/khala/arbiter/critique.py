@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 from collections.abc import Callable
 from typing import Protocol
 
@@ -120,3 +121,70 @@ class AnthropicCritic:
         text = "".join(block.text for block in resp.content if block.type == "text")
         data = json.loads(_unwrap_json(text))
         return [(d["category"], d["severity"], d["description"]) for d in data]
+
+
+# 문 닫기 플래그 — SPEC-arbiter-claude-code-critic §5. injection 이 리뷰를 호스트 실행으로 못 바꾸게:
+# 빌트인 툴·MCP·유저 세팅훅스킬·트랜스크립트 지속을 전부 차단. 순서·값이 테스트로 고정된다.
+_DOORS_CLOSED = [
+    "--allowed-tools", "",
+    "--strict-mcp-config",
+    "--setting-sources", "",
+    "--no-session-persistence",
+]
+
+
+def _default_claude_runner(argv: list[str], prompt: str, timeout: float):
+    """claude 를 실행하고 (returncode, stdout, stderr) 반환. 프롬프트는 stdin, 파이프는 UTF-8.
+
+    (프롬프트의 em-dash 를 Windows cp949 가 못 쓰므로 인코딩을 고정한다.)
+    """
+    p = subprocess.run(
+        argv, input=prompt, capture_output=True, text=True,
+        encoding="utf-8", timeout=timeout,
+    )
+    return (p.returncode, p.stdout, p.stderr)
+
+
+class ClaudeCodeCritic:
+    """키리스 크리틱 — 호스트에서 도는 Claude Code(`claude -p`)로 리뷰. 유료 키 불필요.
+
+    Arbiter 는 호스트 프로세스라 브리지 없이 `claude` 를 직접 부른다. AnthropicCritic 과 같은 `_PROMPT`
+    로 같은 계약(list[(category, severity, description)])을 지킨다. 실패는 예외로 — critique() 가
+    CritiqueError 로 감싼다(fail-closed). runner 는 테스트용 주입 가능.
+    """
+
+    def __init__(self, runner=None, timeout: float | None = None, model: str | None = None):
+        self._runner = runner or _default_claude_runner
+        self._timeout = timeout if timeout is not None else float(
+            os.getenv("ARBITER_CRITIC_TIMEOUT", "300"))
+        self._model = model or os.getenv("ARBITER_CRITIC_MODEL")
+
+    def _argv(self) -> list[str]:
+        argv = ["claude", "-p", "--output-format", "text", *_DOORS_CLOSED]
+        if self._model:
+            argv += ["--model", self._model]
+        return argv
+
+    def find_issues(
+        self, body: str, linked_adr_bodies: list[str], rubric: list[str]
+    ) -> list[tuple[str, str, str]]:
+        prompt = _PROMPT.format(
+            rubric=", ".join(rubric), body=body,
+            adrs="\n---\n".join(linked_adr_bodies) or "(none)",
+        )
+        rc, out, err = self._runner(self._argv(), prompt, self._timeout)
+        if rc != 0:
+            raise CritiqueError(f"claude 크리틱 실패 (exit {rc}): {(err or '')[:300]}")
+        data = json.loads(_unwrap_json(out))
+        return [(d["category"], d["severity"], d["description"]) for d in data]
+
+
+def make_critic(name: str | None = None) -> Critic:
+    """ARBITER_CRITIC(기본 anthropic) 로 크리틱 백엔드 선택. 알 수 없는 값은 거부(오타 은닉 방지)."""
+    name = (name or os.getenv("ARBITER_CRITIC") or "anthropic").strip().lower()
+    if name == "anthropic":
+        return AnthropicCritic()
+    if name == "claude-code":
+        return ClaudeCodeCritic()
+    raise ValueError(
+        f"알 수 없는 ARBITER_CRITIC: {name!r} (기대값: 'anthropic' 또는 'claude-code')")

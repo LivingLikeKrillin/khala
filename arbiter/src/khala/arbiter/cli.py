@@ -33,7 +33,7 @@ if sys.platform == "win32":
 
 from . import review
 from .config import ArbiterConfig
-from .critique import AnthropicCritic, critique
+from .critique import critique, make_critic
 from .errors import ArtifactNotFoundError
 from .gate import Gate
 from .ledger import Ledger
@@ -121,7 +121,7 @@ def build_cli(root: Path, docs: Path, critic) -> typer.Typer:
 def main() -> None:
     root = Path(os.environ.get("ARBITER_ROOT", "."))
     docs = Path(os.environ.get("ARBITER_DOCS", str(root / "docs")))
-    build_cli(root, docs, AnthropicCritic())()
+    build_cli(root, docs, make_critic())()
 
 
 if __name__ == "__main__":
