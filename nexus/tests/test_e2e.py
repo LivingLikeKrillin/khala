@@ -193,7 +193,10 @@ class TestGraph:
                 e_rid, rid_a, rid_b,
             )
 
-            rows = await conn.fetch("SELECT * FROM f_graph_neighbors($1, 1)", rid_a)
+            rows = await conn.fetch(
+                "SELECT * FROM f_graph_neighbors($1, 1, 'default', 'INTERNAL'::classification_level)",
+                rid_a,
+            )
             assert len(rows) >= 1
             assert rows[0]["edge_type"] == "CALLS"
 
