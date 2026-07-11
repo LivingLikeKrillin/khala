@@ -36,23 +36,24 @@ class TestRRFFusion:
     def test_basic_fusion(self):
         bm25 = [("chunk_a", 1), ("chunk_b", 2), ("chunk_c", 3)]
         vector = [("chunk_b", 1), ("chunk_c", 2), ("chunk_d", 3)]
-        fused = _rrf_fusion(bm25, vector, k=60, final_top_k=10)
+        fused = _rrf_fusion(bm25, vector, k=60)
         rids = [f["rid"] for f in fused]
         assert rids[0] == "chunk_b"
 
     def test_empty_inputs(self):
-        assert _rrf_fusion([], [], k=60, final_top_k=10) == []
+        assert _rrf_fusion([], [], k=60) == []
 
     def test_bm25_only(self):
-        fused = _rrf_fusion([("chunk_a", 1)], [], k=60, final_top_k=10)
+        fused = _rrf_fusion([("chunk_a", 1)], [], k=60)
         assert len(fused) == 1
         assert fused[0]["vector_rank"] is None
 
-    def test_top_k_limit(self):
+    def test_returns_full_deduped_union_no_cut(self):
+        # 컷은 이제 _diversify 몫 — fusion 은 전체 병합 리스트를 돌려준다.
         bm25 = [(f"chunk_{i}", i + 1) for i in range(20)]
         vector = [(f"chunk_{i+10}", i + 1) for i in range(20)]
-        fused = _rrf_fusion(bm25, vector, k=60, final_top_k=5)
-        assert len(fused) == 5
+        fused = _rrf_fusion(bm25, vector, k=60)
+        assert len(fused) == 30                       # chunk_0..29 의 합집합
 
 
 class TestRouteDetection:

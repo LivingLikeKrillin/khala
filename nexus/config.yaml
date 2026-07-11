@@ -48,6 +48,7 @@ search:
   vector_top_k: 20
   rrf_k: 60                    # RRF fusion 파라미터
   final_top_k: 10              # 최종 반환 수
+  diversity_per_doc_cap: 3     # top-k 내 한 문서 최대 청크 수(문서 도배 방지, SPEC-nexus-ranking-precision)
 
 # Graph
 graph:
