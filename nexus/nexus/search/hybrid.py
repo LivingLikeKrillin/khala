@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass, field
 
 import structlog
@@ -225,7 +226,35 @@ def _merge_subgraphs(subgraphs: list[SubGraph]) -> SubGraph | None:
     )
 
 
-async def _enrich_hits(fused: list[dict], tenant: str) -> list[SearchHit]:
+# 진짜 문장 종결: 종결부호(+뒤따르는 닫는 인용/괄호) 뒤에 공백/끝. 숫자 사이 마침표(3.14)는 제외.
+_SENT_RE = re.compile(r'[.!?。]["\')\]」』]*(?=\s|$)')
+
+
+def _truncate_snippet(text: str, max_chars: int) -> str:
+    """근거 스니펫을 경계에서 자른다 — 단어/문장 중간 안 자름(SPEC-nexus-snippet-boundary-truncation).
+
+    이 스니펫은 dual-mode: LLM 프롬프트 + 사람 표면(웹/Slack/API) 양쪽이 본다.
+    """
+    if len(text) <= max_chars:
+        return text
+    window = text[:max_chars]
+    # 1) 후반부(>=0.7*max)의 마지막 진짜 문장 종결 — 내용 손실 최소.
+    best = -1
+    for m in _SENT_RE.finditer(window):
+        best = m.end()
+    if best >= max_chars * 0.7:
+        return text[:best].rstrip() + " …"
+    # 2) 단어 경계(마지막 공백) — 내용 최대 보존, 단어 안 자름.
+    sp = window.rfind(" ")
+    if sp > 0:
+        return text[:sp].rstrip() + " …"
+    # 3) 최후: 하드컷(공백 없는 긴 토큰) — 오늘과 동일, 드묾.
+    return window.rstrip() + " …"
+
+
+async def _enrich_hits(
+    fused: list[dict], tenant: str, max_snippet_chars: int = 300,
+) -> list[SearchHit]:
     """RRF 결과에 청크 메타데이터를 보강."""
     if not fused:
         return []
@@ -253,7 +282,7 @@ async def _enrich_hits(fused: list[dict], tenant: str) -> list[SearchHit]:
         r = row_map.get(f["rid"])
         if not r:
             continue
-        snippet = r["chunk_text"][:300] + "..." if len(r["chunk_text"]) > 300 else r["chunk_text"]
+        snippet = _truncate_snippet(r["chunk_text"], max_snippet_chars)
         hits.append(SearchHit(
             rid=f["rid"],
             doc_rid=r["doc_rid"],
@@ -341,7 +370,8 @@ async def hybrid_search(
     fused = _rrf_fusion(bm25_results, vector_results, k=rrf_k)
 
     # 메타데이터 보강 (fused 순서 보존)
-    enriched = await _enrich_hits(fused, tenant)
+    enriched = await _enrich_hits(
+        fused, tenant, max_snippet_chars=search_cfg.get("snippet_max_chars", 300))
 
     # 문서 다양성 + top_k 컷 — 한 문서가 결과를 도배하지 않게.
     per_doc_cap = search_cfg.get("diversity_per_doc_cap", 3)
