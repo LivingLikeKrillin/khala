@@ -5,6 +5,7 @@
 
 import { getStatus, streamAnswer, suggestEntities } from '../api.js';
 import { corpusHint } from '../corpus-hint.js';
+import { citationReport } from '../citations.js';
 import { trustSignal } from '../doctype-signal.js';
 import { renderMarkdown } from '../components/markdown.js';
 import { showToast } from '../components/toast.js';
@@ -294,6 +295,7 @@ async function submitQuery() {
       },
       onDone(data) {
         updateBubble(bubbleId, fullAnswer, false);
+        renderCitations(bubbleId, citationReport(data.citations));
         // 히스토리 업데이트
         const entry = chatHistory.find(h => h.id === bubbleId);
         if (entry) entry.content = fullAnswer;
@@ -415,6 +417,39 @@ function renderEvidence(snippets, provenance) {
   } else {
     provEl.innerHTML = '';
   }
+}
+
+// ── 인용 검증 스트립 ──
+
+/**
+ * 답변 아래에 인용 검증(✓ 근거 확인 / ⚠ 미확인) 스트립을 그린다.
+ * report 가 null 이면(인용 없음) 아무것도 안 그린다.
+ */
+function renderCitations(bubbleId, report) {
+  const bubble = document.getElementById(bubbleId);
+  if (!bubble) return;
+
+  const existing = bubble.querySelector('.citation-strip');
+  if (existing) existing.remove();
+  if (!report) return;
+
+  const chips = report.items.map(it => {
+    const mark = it.verified ? '✓' : '⚠';
+    const cls = it.verified ? 'citation-chip' : 'citation-chip citation-chip--unverified';
+    // label 은 문서 내용(신뢰 불가) → 반드시 escape
+    return `<span class="${cls}"><span class="cite-mark">${mark}</span>${escapeHtml(it.label)}</span>`;
+  }).join('');
+
+  const strip = document.createElement('div');
+  strip.className = `citation-strip citation-strip--${report.tone}`;
+  strip.innerHTML = `
+    <div class="citation-summary">${escapeHtml(report.summary)}</div>
+    <div class="citation-chips">${chips}</div>
+  `;
+  bubble.appendChild(strip);
+
+  const history = document.getElementById('chat-history');
+  history.scrollTop = history.scrollHeight;
 }
 
 // ── 인라인 그래프 ──
