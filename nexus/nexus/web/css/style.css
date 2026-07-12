@@ -722,6 +722,30 @@ body { display: flex; flex-direction: column; }
 .trust-badge--tracked  { border-color: #9a6a1f; color: #9a6a1f; }
 .trust-badge--memo     { border-color: var(--hairline-strong); color: var(--ink-500); }
 
+/* 인용 검증 스트립 (SPEC-nexus-web-citation-verification) — 답변이 인용한 출처가 근거에서
+   확인됐는지(✓) 아닌지(⚠)를 답변 아래 노출. trust-badge 와 동일한 pill/톤 어휘 재사용. */
+.citation-strip {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+.citation-summary { font-size: 11.5px; font-weight: 600; margin-bottom: 7px; }
+.citation-strip--ok .citation-summary   { color: #2f7d4f; }
+.citation-strip--warn .citation-summary { color: var(--danger); }
+.citation-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.citation-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  max-width: 100%;
+  font-size: 11px; line-height: 1.4;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid #2f7d4f;
+  color: #2f7d4f;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.citation-chip--unverified { border-color: var(--danger); color: var(--danger); }
+.citation-chip .cite-mark { font-weight: 700; flex: none; }
+
 /* 문서뷰: 기존 `.doc-table .doc-type-badge`(0-2-0)를 이기도록 동일 스코프 + 클래스(0-3-0) */
 .doc-table .doc-type-badge.trust-badge--governed { border-color: #2f7d4f; color: #2f7d4f; }
 .doc-table .doc-type-badge.trust-badge--tracked  { border-color: #9a6a1f; color: #9a6a1f; }
