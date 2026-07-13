@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 import structlog
 
 from nexus.llm.citations import validate_citations
+from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from nexus.providers.llm import LLMService
 from nexus.search.evidence_packet import EvidencePacket, format_for_llm
@@ -31,6 +32,9 @@ class AnswerResult:
     # 인용 사후검증(SPEC-nexus-citation-validation): 각 [출처: …] 가 근거 packet 에 실재하는가.
     citations: list[dict] = field(default_factory=list)
     unverified_citations: int = 0
+    # 숫자 근거검증(SPEC-nexus-answer-number-verification): 답변의 유의미 숫자가 근거+질의에 실재하는가.
+    numbers: list[dict] = field(default_factory=list)
+    unverified_numbers: int = 0
 
 
 async def generate_answer(
@@ -119,6 +123,12 @@ async def generate_answer(
             for c in report.citations
         ]
         result.unverified_citations = report.unverified_count
+        # 숫자 근거검증 — 답변의 유의미 숫자가 LLM 이 본 것(evidence_text + query)에 실재하는가.
+        nreport = validate_numbers(result.answer, evidence_text, query)
+        result.numbers = [
+            {"value": n.value, "grounded": n.grounded} for n in nreport.numbers
+        ]
+        result.unverified_numbers = nreport.unverified_count
     except Exception as e:
         logger.error("llm_generation_failed", error=str(e))
         result.llm_failed = True
