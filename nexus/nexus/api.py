@@ -25,6 +25,7 @@ from nexus.index.graph_extractor import find_entities_in_text, _build_entity_pat
 from nexus.ingest.pipeline import run_ingest
 from nexus.llm.answer import generate_answer
 from nexus.llm.citations import validate_citations
+from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from nexus.otel.aggregator import run_otel_aggregation
 from nexus.otel.diff_engine import run_diff
@@ -431,6 +432,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 "timing_ms": answer_result.timing_ms,
                 "citations": answer_result.citations,
                 "unverified_citations": answer_result.unverified_citations,
+                "unverified_numbers": answer_result.unverified_numbers,
             },
         )
     except UnknownRoute as e:
@@ -851,8 +853,11 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     llm_failed = True
                     yield f"event: answer_delta\ndata: {json.dumps({'text': '답변을 생성할 수 없습니다. 위 근거를 직접 확인해주세요.'}, ensure_ascii=False)}\n\n"
 
-            # 4) 완료 이벤트 — 누적 답변의 인용을 packet 과 대조해 함께 실어 보낸다.
-            report = validate_citations("".join(answer_parts), packet)
+            # 4) 완료 이벤트 — 누적 답변의 인용·숫자를 근거와 대조해 함께 실어 보낸다.
+            full_answer = "".join(answer_parts)
+            report = validate_citations(full_answer, packet)
+            # evidence_text 는 위 else 분기에서만 잡히므로 여기서 안전하게 재구성(멱등·저비용).
+            nreport = validate_numbers(full_answer, format_for_llm(packet), req.query)
 
             # 신호 기록은 done yield **전**에 — 클라이언트가 끊기면 제너레이터가 마지막 yield 뒤로
             # 재개 안 될 수 있어 '뒤에서' 기록하면 조용히 누락된다(fire-and-forget 이라 지연 없음).
@@ -874,6 +879,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     for c in report.citations
                 ],
                 "unverified_citations": report.unverified_count,
+                "unverified_numbers": nreport.unverified_count,
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 
