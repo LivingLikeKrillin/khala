@@ -59,6 +59,19 @@ llm:
       input_per_mtok: 3.0
       output_per_mtok: 15.0
 
+# 근거 신선도(SPEC-nexus-answer-staleness-warning) — doc_type 별 TTL(일). 나이 > TTL → stale 경고.
+# updated_at(적재시각) 기준(적재≠검토, 보수적 하한). null = 무제한(never stale). default = 미분류(wiki/markdown 등).
+staleness:
+  ttl_days:
+    ADR: 365
+    DESIGN: 365
+    RFC: 365
+    PRD: 180
+    RUNBOOK: 90
+    POSTMORTEM: 180
+    NOTE: 730
+    default: 365
+
 # Graph
 graph:
   max_hops: 2

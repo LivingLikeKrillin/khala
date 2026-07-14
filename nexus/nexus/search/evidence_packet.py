@@ -7,6 +7,7 @@ LLM에 전달할 evidence packet을 구성한다.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import structlog
 
@@ -28,6 +29,7 @@ class EvidenceSnippet:
     score: float
     classification: str
     doc_type: str = ""
+    updated_at: datetime | None = None  # 신선도 판정용(SPEC-nexus-answer-staleness-warning)
 
 
 @dataclass
@@ -75,6 +77,7 @@ def assemble_packet(
             score=hit.score,
             classification=hit.classification,
             doc_type=hit.doc_type,
+            updated_at=hit.updated_at,
         ))
 
         if hit.doc_rid not in seen_docs:

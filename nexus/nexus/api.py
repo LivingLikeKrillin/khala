@@ -23,7 +23,8 @@ from nexus.auth import AuthConfig, Principal, effective_scope
 from nexus.auth.deps import make_get_principal
 from nexus.index.graph_extractor import find_entities_in_text, _build_entity_patterns, _load_gazetteer
 from nexus.ingest.pipeline import run_ingest
-from nexus.llm.answer import generate_answer
+from nexus.llm.answer import _load_staleness_ttl, generate_answer
+from nexus.documents.staleness import annotate_staleness
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
@@ -434,6 +435,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 "unverified_citations": answer_result.unverified_citations,
                 "unverified_numbers": answer_result.unverified_numbers,
                 "usage": answer_result.usage,
+                "n_stale": answer_result.n_stale,
             },
         )
     except UnknownRoute as e:
@@ -796,19 +798,27 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
 
             packet = assemble_packet(search_result.hits, search_result.graph)
 
-            # 1) evidence 이벤트 전송
+            # 1) evidence 이벤트 전송 — 신선도(staleness) 판정 포함
+            from datetime import datetime, timezone
+            _snips = [
+                {
+                    "chunk_rid": s.chunk_rid,
+                    "doc_title": s.doc_title,
+                    "section_path": s.section_path,
+                    "source_uri": s.source_uri,
+                    "text": s.text,
+                    "score": s.score,
+                    "doc_type": s.doc_type,
+                    "updated_at": s.updated_at,
+                }
+                for s in packet.snippets
+            ]
+            _snips, n_stale = annotate_staleness(_snips, datetime.now(timezone.utc), _load_staleness_ttl())
+            for _sn in _snips:
+                _ua = _sn.get("updated_at")
+                _sn["updated_at"] = _ua.isoformat() if _ua else None
             evidence_data = {
-                "evidence_snippets": [
-                    {
-                        "chunk_rid": s.chunk_rid,
-                        "doc_title": s.doc_title,
-                        "section_path": s.section_path,
-                        "source_uri": s.source_uri,
-                        "text": s.text,
-                        "score": s.score,
-                    }
-                    for s in packet.snippets
-                ],
+                "evidence_snippets": _snips,
                 "provenance": [
                     {"doc_rid": p.doc_rid, "source_uri": p.source_uri,
                      "source_version": p.source_version, "doc_title": p.doc_title}
@@ -889,6 +899,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 "usage": (lambda u: {"input_tokens": u.input_tokens, "output_tokens": u.output_tokens,
                                      "cost_usd": u.cost_usd, "model": u.model})(usage_out[0])
                          if usage_out else None,
+                "n_stale": n_stale,
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 

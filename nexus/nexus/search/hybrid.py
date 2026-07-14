@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import structlog
 
@@ -40,6 +41,7 @@ class SearchHit:
     classification: str = "INTERNAL"
     approved_hash: str = ""  # documents.approved_hash — accountable-review stamp (SPEC §5.4)
     doc_type: str = ""  # documents.doc_type — 축-A 타입(S3 intake 보존)
+    updated_at: datetime | None = None  # documents.updated_at — 신선도 판정용(SPEC-nexus-answer-staleness-warning)
 
 
 @dataclass
@@ -267,7 +269,7 @@ async def _enrich_hits(
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.source_uri,
                c.classification, c.source_version,
                d.title as doc_title, d.approved_hash as approved_hash,
-               d.doc_type as doc_type
+               d.doc_type as doc_type, d.updated_at as updated_at
         FROM chunks c
         LEFT JOIN documents d ON c.doc_rid = d.rid
         WHERE c.rid IN ({placeholders})
@@ -297,6 +299,7 @@ async def _enrich_hits(
             classification=r["classification"],
             approved_hash=r["approved_hash"] or "",
             doc_type=r["doc_type"] or "",
+            updated_at=r["updated_at"],
         ))
 
     return hits
