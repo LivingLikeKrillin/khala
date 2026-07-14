@@ -1068,6 +1068,10 @@ async def status() -> NexusResponse:
                 "SELECT COUNT(*) FROM documents WHERE is_quarantined = true"
             ) or 0
 
+            # 임베딩 세대 건전성 — 부분 재임베딩(mixed) 감지(SPEC-nexus-embed-generation-drift).
+            from nexus.index.embed_health import embed_generation_report, fetch_embed_generations
+            data["embed_generations"] = embed_generation_report(await fetch_embed_generations())
+
             # last_ingest_at / last_otel_aggregate_at
             data["last_ingest_at"] = await db.fetch_val(
                 "SELECT MAX(updated_at) FROM documents WHERE status = 'active'"
