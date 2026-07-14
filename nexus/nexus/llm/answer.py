@@ -35,6 +35,8 @@ class AnswerResult:
     # 숫자 근거검증(SPEC-nexus-answer-number-verification): 답변의 유의미 숫자가 근거+질의에 실재하는가.
     numbers: list[dict] = field(default_factory=list)
     unverified_numbers: int = 0
+    # LLM 토큰/비용(SPEC-nexus-llm-usage-capture): {input_tokens, output_tokens, cost_usd, model} | None.
+    usage: dict | None = None
 
 
 async def generate_answer(
@@ -114,7 +116,11 @@ async def generate_answer(
     try:
         import time
         llm_start = time.time()
-        result.answer = await llm_svc.generate(SYSTEM_PROMPT, user_prompt)
+        llm_result = await llm_svc.generate_full(SYSTEM_PROMPT, user_prompt)
+        result.answer = llm_result.text
+        _u = llm_result.usage
+        result.usage = {"input_tokens": _u.input_tokens, "output_tokens": _u.output_tokens,
+                        "cost_usd": _u.cost_usd, "model": _u.model}
         result.timing_ms["llm_ms"] = int((time.time() - llm_start) * 1000)
         # 인용 검증 — LLM 이 준 답을 packet 과 대조(코드가 판정, LLM 을 신뢰하지 않음).
         report = validate_citations(result.answer, packet)
