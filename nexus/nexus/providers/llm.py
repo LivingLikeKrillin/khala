@@ -16,6 +16,7 @@ provider seam (SPEC-nexus-claude-code-llm-dev-backend): `NEXUS_LLM_PROVIDER` 로
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass, replace
 from typing import AsyncIterator
 
 import httpx
@@ -24,9 +25,58 @@ _DEFAULT_BRIDGE_URL = "http://host.docker.internal:8900"
 _BRIDGE_TIMEOUT = 180.0
 
 
+@dataclass(frozen=True)
+class Usage:
+    """LLM 콜 1건의 토큰/비용. 미상은 None(0 아님) — 지어내지 않는다(SPEC §3)."""
+    input_tokens: int | None
+    output_tokens: int | None
+    cost_usd: float | None
+    model: str
+
+
+@dataclass(frozen=True)
+class LLMResult:
+    text: str
+    usage: Usage
+
+
+def compute_cost(
+    input_tokens: int | None, output_tokens: int | None, model: str, pricing: dict
+) -> float | None:
+    """USD 비용 = in/1e6*단가 + out/1e6*단가. 순수·무예외.
+
+    다음 중 하나라도면 None(부분/추정 금지): 토큰 미상 · 모델이 단가표에 없음 ·
+    엔트리가 불완전/비수치. 단가는 백만토큰당(per_mtok), 운영자 관리.
+    """
+    if input_tokens is None or output_tokens is None:
+        return None
+    entry = pricing.get(model)
+    if not isinstance(entry, dict):
+        return None
+    try:
+        in_price = float(entry["input_per_mtok"])
+        out_price = float(entry["output_per_mtok"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return input_tokens / 1e6 * in_price + output_tokens / 1e6 * out_price
+
+
 def _bridge_transport():  # pragma: no cover - 테스트가 MockTransport 로 override
     """claude-code 백엔드용 httpx transport. 기본 None → 실제 네트워크. 테스트가 주입."""
     return None
+
+
+def _load_pricing() -> dict:
+    """config.yaml 의 llm.pricing 을 읽는다. best-effort — 실패/부재 시 {} (모든 cost=None)."""
+    try:
+        import yaml  # 지연 임포트
+        from pathlib import Path
+
+        cfg = yaml.safe_load(Path("config.yaml").read_text(encoding="utf-8")) or {}
+        pricing = (cfg.get("llm") or {}).get("pricing") or {}
+        return pricing if isinstance(pricing, dict) else {}
+    except Exception:
+        return {}
 
 
 class _AnthropicBackend:
@@ -44,15 +94,22 @@ class _AnthropicBackend:
             self._client = anthropic.AsyncAnthropic(api_key=self._resolved_key)
         return self._client
 
-    async def generate(self, system_prompt: str, user_message: str, max_tokens: int) -> str:
+    async def generate_full(
+        self, system_prompt: str, user_message: str, max_tokens: int
+    ) -> LLMResult:
         resp = await self._get_client().messages.create(
             model=self.model, max_tokens=max_tokens,
             system=system_prompt, messages=[{"role": "user", "content": user_message}],
         )
-        return resp.content[0].text
+        u = resp.usage
+        return LLMResult(
+            text=resp.content[0].text,
+            usage=Usage(u.input_tokens, u.output_tokens, None, self.model),  # cost 는 service 가 채움
+        )
 
     async def stream(
-        self, system_prompt: str, user_message: str, max_tokens: int
+        self, system_prompt: str, user_message: str, max_tokens: int,
+        usage_out: list | None = None,
     ) -> AsyncIterator[str]:
         async with self._get_client().messages.stream(
             model=self.model, max_tokens=max_tokens,
@@ -60,6 +117,11 @@ class _AnthropicBackend:
         ) as stream:
             async for text in stream.text_stream:
                 yield text
+            # 성공 완료 시에만 usage 를 남긴다(예외 시엔 여기 못 와서 sink 는 빈 채 — SPEC I-004).
+            if usage_out is not None:
+                final = await stream.get_final_message()
+                fu = final.usage
+                usage_out.append(Usage(fu.input_tokens, fu.output_tokens, None, self.model))
 
 
 class _ClaudeCodeBackend:
@@ -75,7 +137,9 @@ class _ClaudeCodeBackend:
         self._token = os.getenv("NEXUS_LLM_BRIDGE_TOKEN", "")
         self.configured = bool(self.bridge_url)
 
-    async def generate(self, system_prompt: str, user_message: str, max_tokens: int) -> str:
+    async def generate_full(
+        self, system_prompt: str, user_message: str, max_tokens: int
+    ) -> LLMResult:
         async with httpx.AsyncClient(timeout=_BRIDGE_TIMEOUT, transport=_bridge_transport()) as c:
             resp = await c.post(
                 f"{self.bridge_url}/v1/generate",
@@ -83,13 +147,18 @@ class _ClaudeCodeBackend:
                 json={"system": system_prompt, "prompt": user_message, "model": self.model},
             )
         resp.raise_for_status()   # 브리지 502/504 → 예외 → 호출부의 API-error 폴백
-        return resp.json()["text"]
+        # 브리지는 오늘 text 만 준다 → usage 미상(None). 지어내지 않는다(Unit C 에서 브리지 확장).
+        return LLMResult(text=resp.json()["text"], usage=Usage(None, None, None, self.model))
 
     async def stream(
-        self, system_prompt: str, user_message: str, max_tokens: int
+        self, system_prompt: str, user_message: str, max_tokens: int,
+        usage_out: list | None = None,
     ) -> AsyncIterator[str]:
         # dev 폴백: claude -p 는 버퍼링이라 토큰 단위 스트림이 없다 → 전체를 한 번에 yield.
-        yield await self.generate(system_prompt, user_message, max_tokens)
+        r = await self.generate_full(system_prompt, user_message, max_tokens)
+        yield r.text
+        if usage_out is not None:
+            usage_out.append(r.usage)
 
 
 class LLMService:
@@ -99,8 +168,12 @@ class LLMService:
     # 다음 EOL 은 코드가 아니라 NEXUS_LLM_MODEL 환경변수 한 줄로 넘긴다(.env 온램프).
     DEFAULT_MODEL = "claude-sonnet-4-6"
 
-    def __init__(self, model: str | None = None, api_key: str | None = None) -> None:
+    def __init__(
+        self, model: str | None = None, api_key: str | None = None,
+        pricing: dict | None = None,
+    ) -> None:
         self.model = model or os.getenv("NEXUS_LLM_MODEL") or self.DEFAULT_MODEL
+        self._pricing = pricing if pricing is not None else _load_pricing()
         provider = (os.getenv("NEXUS_LLM_PROVIDER") or "anthropic").strip().lower()
         if provider == "anthropic":
             self._backend: _AnthropicBackend | _ClaudeCodeBackend = _AnthropicBackend(
@@ -114,18 +187,32 @@ class LLMService:
         # 호출 전 결정적 신호: 키/브리지가 실제로 해석됐는가. 호출자가 일시적 API 오류와 구분해 안내.
         self.configured = self._backend.configured
 
+    async def generate_full(
+        self, system_prompt: str, user_message: str, max_tokens: int = 4096
+    ) -> LLMResult:
+        """답변 + 토큰/비용(usage). 비용은 여기서 config 단가로 채운다(백엔드는 토큰만)."""
+        r = await self._backend.generate_full(system_prompt, user_message, max_tokens)
+        cost = compute_cost(r.usage.input_tokens, r.usage.output_tokens, self.model, self._pricing)
+        return LLMResult(text=r.text, usage=replace(r.usage, cost_usd=cost))
+
     async def generate(
         self, system_prompt: str, user_message: str, max_tokens: int = 4096
     ) -> str:
-        """근거 기반 답변 생성. 동기 응답."""
-        return await self._backend.generate(system_prompt, user_message, max_tokens)
+        """근거 기반 답변 생성. -> str 계약 불변(usage 무시). 기존 호출부 무변경."""
+        return (await self.generate_full(system_prompt, user_message, max_tokens)).text
 
     async def stream(
-        self, system_prompt: str, user_message: str, max_tokens: int = 4096
+        self, system_prompt: str, user_message: str, max_tokens: int = 4096,
+        usage_out: list | None = None,
     ) -> AsyncIterator[str]:
-        """스트리밍 답변. 채팅 UI에서 SSE로 활용."""
-        async for text in self._backend.stream(system_prompt, user_message, max_tokens):
+        """스트리밍 답변. usage_out 주면 성공 완료 시 Usage(비용 포함) 1건 append."""
+        sink: list | None = [] if usage_out is not None else None
+        async for text in self._backend.stream(system_prompt, user_message, max_tokens, sink):
             yield text
+        if usage_out is not None and sink:
+            u = sink[0]
+            cost = compute_cost(u.input_tokens, u.output_tokens, self.model, self._pricing)
+            usage_out.append(replace(u, cost_usd=cost))
 
     def get_model_name(self) -> str:
         return self.model

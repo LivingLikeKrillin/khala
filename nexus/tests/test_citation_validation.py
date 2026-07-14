@@ -92,8 +92,9 @@ class _FakeLLM:
         self._answer = answer
         self.configured = True
 
-    async def generate(self, system, user, max_tokens=4096):
-        return self._answer
+    async def generate_full(self, system, user, max_tokens=4096):
+        from nexus.providers.llm import LLMResult, Usage
+        return LLMResult(text=self._answer, usage=Usage(None, None, None, "fake"))
 
 
 @pytest.mark.asyncio

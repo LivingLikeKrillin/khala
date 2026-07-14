@@ -41,8 +41,9 @@ def test_search_hit_dict_keeps_existing_fields():
 
 
 class _FakeLLM:
-    async def generate(self, system_prompt: str, user_prompt: str) -> str:
-        return "근거 기반 답변"
+    async def generate_full(self, system_prompt: str, user_prompt: str):
+        from nexus.providers.llm import LLMResult, Usage
+        return LLMResult(text="근거 기반 답변", usage=Usage(None, None, None, "fake"))
 
 
 async def test_answer_evidence_snippets_include_doc_type():

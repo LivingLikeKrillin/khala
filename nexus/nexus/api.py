@@ -433,6 +433,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 "citations": answer_result.citations,
                 "unverified_citations": answer_result.unverified_citations,
                 "unverified_numbers": answer_result.unverified_numbers,
+                "usage": answer_result.usage,
             },
         )
     except UnknownRoute as e:
@@ -836,6 +837,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 3) LLM 스트리밍 답변 — 청크를 누적해 완료 후 인용을 검증한다.
             answer_parts: list[str] = []
             llm_failed = False
+            usage_out: list = []
             if not packet.snippets:
                 yield f"event: answer_delta\ndata: {json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)}\n\n"
             elif not llm_svc.configured:
@@ -846,7 +848,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 user_prompt = build_user_prompt(req.query, evidence_text)
 
                 try:
-                    async for chunk in llm_svc.stream(SYSTEM_PROMPT, user_prompt):
+                    async for chunk in llm_svc.stream(SYSTEM_PROMPT, user_prompt, usage_out=usage_out):
                         answer_parts.append(chunk)
                         yield f"event: answer_delta\ndata: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
                 except Exception:
@@ -880,6 +882,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 ],
                 "unverified_citations": report.unverified_count,
                 "unverified_numbers": nreport.unverified_count,
+                "usage": (lambda u: {"input_tokens": u.input_tokens, "output_tokens": u.output_tokens,
+                                     "cost_usd": u.cost_usd, "model": u.model})(usage_out[0])
+                         if usage_out else None,
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 

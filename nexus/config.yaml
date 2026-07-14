@@ -51,6 +51,14 @@ search:
   diversity_per_doc_cap: 3     # top-k 내 한 문서 최대 청크 수(문서 도배 방지, SPEC-nexus-ranking-precision)
   snippet_max_chars: 300       # 근거 스니펫 최대 길이(문장 경계에서 컷, SPEC-nexus-snippet-boundary-truncation)
 
+# LLM 단가 — 비용 추적(SPEC-nexus-llm-usage-capture). USD per 1M tokens, 운영자 관리.
+# 키는 NEXUS_LLM_MODEL 값과 일치해야 함(없거나 불완전하면 cost=None, 지어내지 않음).
+llm:
+  pricing:
+    claude-sonnet-4-6:
+      input_per_mtok: 3.0
+      output_per_mtok: 15.0
+
 # Graph
 graph:
   max_hops: 2
