@@ -53,6 +53,10 @@ class SearchSignals:
     # 인용 지표(SPEC-nexus-search-signal-completeness). None = 미측정(답변 없는 경로) ≠ 0(측정된 0건).
     n_citations: int | None = None
     unverified_citations: int | None = None
+    # LLM 토큰/비용(SPEC-nexus-llm-usage-persistence). None = 미측정/미가격 ≠ 0. cost 있으면 토큰도 있음.
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    cost_usd: float | None = None
 
 
 def extract_signals(
@@ -68,6 +72,9 @@ def extract_signals(
     n_citations: int | None = None,
     unverified_citations: int | None = None,
     llm_failed: bool | None = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+    cost_usd: float | None = None,
 ) -> SearchSignals:
     """SearchResult(+선택 AnswerResult)와 진입점 스칼라에서 신호를 조립. 순수.
 
@@ -84,6 +91,14 @@ def extract_signals(
         getattr(answer, "unverified_citations", None) if answer is not None else None)
     failed = llm_failed if llm_failed is not None else (
         bool(answer.llm_failed) if answer is not None else False)
+    # usage 3개는 각각 독립: 명시 인자 우선, 없으면 answer.usage(dict)에서 .get 유도, 없으면 None.
+    _usage = getattr(answer, "usage", None) if answer is not None else None
+    ptok = prompt_tokens if prompt_tokens is not None else (
+        _usage.get("input_tokens") if _usage else None)
+    ctok = completion_tokens if completion_tokens is not None else (
+        _usage.get("output_tokens") if _usage else None)
+    cost = cost_usd if cost_usd is not None else (
+        _usage.get("cost_usd") if _usage else None)
     return SearchSignals(
         path=path,
         tenant=tenant,
@@ -101,6 +116,9 @@ def extract_signals(
         latency_ms=latency_ms,
         n_citations=n_cit,
         unverified_citations=unver,
+        prompt_tokens=ptok,
+        completion_tokens=ctok,
+        cost_usd=cost,
     )
 
 
@@ -112,13 +130,15 @@ async def _persist(sig: SearchSignals) -> None:
             INSERT INTO search_log (
                 path, tenant, clearance, route, query_sha256, query_len,
                 n_snippets, top_score, n_entities, graph_requested, n_graph_edges,
-                no_answer, llm_failed, latency_ms, n_citations, unverified_citations
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+                no_answer, llm_failed, latency_ms, n_citations, unverified_citations,
+                prompt_tokens, completion_tokens, cost_usd
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
             """,
             sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
             sig.n_snippets, sig.top_score, sig.n_entities, sig.graph_requested,
             sig.n_graph_edges, sig.no_answer, sig.llm_failed, sig.latency_ms,
             sig.n_citations, sig.unverified_citations,
+            sig.prompt_tokens, sig.completion_tokens, sig.cost_usd,
         )
     except Exception as exc:  # noqa: BLE001 - signal persistence must never break the request
         log.warning("search.signal.persist_failed", error=str(exc))
@@ -138,6 +158,8 @@ async def record_search(sig: SearchSignals, *, await_persist: bool = False) -> N
         graph_requested=sig.graph_requested, n_graph_edges=sig.n_graph_edges,
         no_answer=sig.no_answer, llm_failed=sig.llm_failed, latency_ms=sig.latency_ms,
         n_citations=sig.n_citations, unverified_citations=sig.unverified_citations,
+        prompt_tokens=sig.prompt_tokens, completion_tokens=sig.completion_tokens,
+        cost_usd=sig.cost_usd,
     )
     if not db.has_pool():
         return

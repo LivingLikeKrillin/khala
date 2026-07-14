@@ -82,3 +82,38 @@ async def test_citation_fabrication_rate_excludes_unmeasured():
     finally:
         await db.execute("DELETE FROM search_log WHERE path = 'test_cit'")
         await db.close_pool()
+
+
+async def test_usage_persisted_and_cost_view_excludes_unpriced():
+    """토큰/비용 적재 + v_search_health 비용집계(priced 행만, NULL 이 0으로 안 끌어내림)."""
+    from nexus import db
+    from nexus.search.signals import SearchSignals, record_search
+    os.environ["DATABASE_URL"] = _DB or ""
+    await db.get_pool()
+
+    def _sig(cost, ptok, ctok):
+        return SearchSignals(
+            path="test_usage", tenant="t", clearance="INTERNAL", route="hybrid_only",
+            query_sha256="x", query_len=1, n_snippets=3, top_score=0.5, n_entities=0,
+            graph_requested=False, n_graph_edges=0, no_answer=False, llm_failed=False,
+            latency_ms=10, prompt_tokens=ptok, completion_tokens=ctok, cost_usd=cost,
+        )
+    try:
+        await db.ensure_search_log()
+        await db.execute("DELETE FROM search_log WHERE path = 'test_usage'")
+        await record_search(_sig(0.004, 1200, 80), await_persist=True)     # priced
+        await record_search(_sig(None, None, None), await_persist=True)    # 미가격/미측정 → NULL
+        # 원시 행: priced 행이 값을 담았는가
+        row = await db.fetch_one(
+            "SELECT prompt_tokens, completion_tokens, cost_usd FROM search_log "
+            "WHERE path='test_usage' AND cost_usd IS NOT NULL")
+        assert row["prompt_tokens"] == 1200 and row["completion_tokens"] == 80
+        assert float(row["cost_usd"]) == pytest.approx(0.004)
+        # 뷰 집계: NULL 행 제외 → 평균은 0.004(0으로 안 끌림), 합도 0.004
+        v = await db.fetch_one(
+            "SELECT avg_cost_priced_usd, total_cost_usd FROM v_search_health WHERE path='test_usage'")
+        assert float(v["avg_cost_priced_usd"]) == pytest.approx(0.004)
+        assert float(v["total_cost_usd"]) == pytest.approx(0.004)
+    finally:
+        await db.execute("DELETE FROM search_log WHERE path = 'test_usage'")
+        await db.close_pool()

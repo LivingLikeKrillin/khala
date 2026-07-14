@@ -118,11 +118,17 @@ CREATE TABLE IF NOT EXISTS search_log (
     llm_failed      BOOLEAN NOT NULL DEFAULT false,
     latency_ms      INTEGER NOT NULL DEFAULT 0,
     n_citations          INTEGER,
-    unverified_citations INTEGER
+    unverified_citations INTEGER,
+    prompt_tokens        INTEGER,
+    completion_tokens    INTEGER,
+    cost_usd             DOUBLE PRECISION
 );
--- 기존 테이블(IF NOT EXISTS 로 안 바뀐)에도 인용 컬럼을 더한다(멱등). migration 005 와 동일.
+-- 기존 테이블(IF NOT EXISTS 로 안 바뀐)에도 컬럼을 더한다(멱등). migration 005·006 과 동일.
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS n_citations          INTEGER;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS unverified_citations INTEGER;
+ALTER TABLE search_log ADD COLUMN IF NOT EXISTS prompt_tokens        INTEGER;
+ALTER TABLE search_log ADD COLUMN IF NOT EXISTS completion_tokens    INTEGER;
+ALTER TABLE search_log ADD COLUMN IF NOT EXISTS cost_usd             DOUBLE PRECISION;
 CREATE INDEX IF NOT EXISTS idx_search_log_ts     ON search_log (ts DESC);
 CREATE INDEX IF NOT EXISTS idx_search_log_tenant ON search_log (tenant, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_search_log_route  ON search_log (route, ts DESC);
@@ -137,7 +143,9 @@ SELECT path, route,
        avg(n_snippets)::numeric(6,2)                                   AS avg_snippets,
        percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms)        AS p95_latency_ms,
        (SUM(unverified_citations)::numeric
-          / NULLIF(SUM(n_citations), 0))::numeric(4,3)                 AS citation_fabrication_rate
+          / NULLIF(SUM(n_citations), 0))::numeric(4,3)                 AS citation_fabrication_rate,
+       avg(cost_usd)::numeric(12,6)                                    AS avg_cost_priced_usd,
+       sum(cost_usd)::numeric(14,6)                                    AS total_cost_usd
 FROM search_log
 WHERE ts > now() - interval '7 days'
 GROUP BY path, route;
