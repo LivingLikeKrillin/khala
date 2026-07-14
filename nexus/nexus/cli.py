@@ -431,6 +431,16 @@ def status() -> None:
             typer.echo(f"\n문서: {docs}  청크: {chunks}  엔티티: {entities}")
             typer.echo(f"설계 edge: {edges}  관측 edge: {obs}  격리: {quarantined}")
 
+            # 임베딩 세대 건전성(SPEC-nexus-embed-generation-drift) — 부분 재임베딩 경고.
+            from nexus.index.embed_health import embed_generation_report, fetch_embed_generations
+            eg = embed_generation_report(await fetch_embed_generations())
+            if eg["generations"]:
+                dist = "  ".join(f"{g['model']}={g['count']}" for g in eg["generations"])
+                typer.echo(f"임베딩 세대: {dist}")
+                if eg["mixed"]:
+                    models = ", ".join(g["model"] for g in eg["generations"])
+                    typer.echo(f"⚠ 혼합 임베딩 세대 {eg['distinct']}종({models}) — 부분 재임베딩일 수 있음")
+
         try:
             row = await db.fetch_one(
                 """
