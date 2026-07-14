@@ -447,7 +447,10 @@ CREATE TABLE IF NOT EXISTS search_log (
     llm_failed      BOOLEAN NOT NULL DEFAULT false,
     latency_ms      INTEGER NOT NULL DEFAULT 0,
     n_citations          INTEGER,   -- 인용 지표(nullable = 미측정, SPEC-nexus-search-signal-completeness)
-    unverified_citations INTEGER
+    unverified_citations INTEGER,
+    prompt_tokens        INTEGER,   -- LLM 토큰/비용(nullable = 미측정/미가격, SPEC-nexus-llm-usage-persistence)
+    completion_tokens    INTEGER,
+    cost_usd             DOUBLE PRECISION
 );
 CREATE INDEX IF NOT EXISTS idx_search_log_ts     ON search_log (ts DESC);
 CREATE INDEX IF NOT EXISTS idx_search_log_tenant ON search_log (tenant, ts DESC);
@@ -462,7 +465,9 @@ SELECT path, route,
        avg(n_snippets)::numeric(6,2)                                   AS avg_snippets,
        percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms)        AS p95_latency_ms,
        (SUM(unverified_citations)::numeric
-          / NULLIF(SUM(n_citations), 0))::numeric(4,3)                 AS citation_fabrication_rate
+          / NULLIF(SUM(n_citations), 0))::numeric(4,3)                 AS citation_fabrication_rate,
+       avg(cost_usd)::numeric(12,6)                                    AS avg_cost_priced_usd,
+       sum(cost_usd)::numeric(14,6)                                    AS total_cost_usd
 FROM search_log
 WHERE ts > now() - interval '7 days'
 GROUP BY path, route;

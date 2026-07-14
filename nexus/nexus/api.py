@@ -864,6 +864,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 신호 기록은 done yield **전**에 — 클라이언트가 끊기면 제너레이터가 마지막 yield 뒤로
             # 재개 안 될 수 있어 '뒤에서' 기록하면 조용히 누락된다(fire-and-forget 이라 지연 없음).
             has_answer = bool(packet.snippets) and llm_svc.configured
+            _u = usage_out[0] if usage_out else None   # 성공 완료 시 Usage(토큰 None 가능), 실패 시 없음
             sig = extract_signals(
                 search_result, None, path="search_answer_stream",
                 tenant=req.tenant, clearance=req.classification_max, query=req.query,
@@ -871,6 +872,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 n_citations=len(report.citations) if has_answer else None,
                 unverified_citations=report.unverified_count if has_answer else None,
                 llm_failed=llm_failed,
+                prompt_tokens=_u.input_tokens if _u else None,
+                completion_tokens=_u.output_tokens if _u else None,
+                cost_usd=_u.cost_usd if _u else None,
             )
             await record_search(sig)
 
