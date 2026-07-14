@@ -23,6 +23,7 @@ class _Snip:
     score: float = 0.9
     doc_type: str = "DESIGN_DOC"
     classification: str = "INTERNAL"
+    updated_at: object = None
 
 
 @dataclass

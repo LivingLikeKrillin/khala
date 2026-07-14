@@ -7,9 +7,11 @@ LLM 실패 시에도 evidence snippet은 그대로 제공한다.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 import structlog
 
+from nexus.documents.staleness import annotate_staleness
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
@@ -17,6 +19,23 @@ from nexus.providers.llm import LLMService
 from nexus.search.evidence_packet import EvidencePacket, format_for_llm
 
 logger = structlog.get_logger(__name__)
+
+
+def _load_staleness_ttl() -> dict:
+    """config.yaml 의 staleness.ttl_days. 부재/오류 시 {} + 경고 로그(조용한 비활성 방지)."""
+    try:
+        import yaml
+        from pathlib import Path
+
+        cfg = yaml.safe_load(Path("config.yaml").read_text(encoding="utf-8")) or {}
+        ttl = (cfg.get("staleness") or {}).get("ttl_days")
+        if isinstance(ttl, dict):
+            return ttl
+        logger.warning("staleness_ttl_missing", detail="staleness.ttl_days 부재 — 신선도 판정 비활성")
+        return {}
+    except Exception as e:
+        logger.warning("staleness_ttl_load_failed", error=str(e))
+        return {}
 
 
 @dataclass
@@ -37,6 +56,8 @@ class AnswerResult:
     unverified_numbers: int = 0
     # LLM 토큰/비용(SPEC-nexus-llm-usage-capture): {input_tokens, output_tokens, cost_usd, model} | None.
     usage: dict | None = None
+    # 근거 신선도(SPEC-nexus-answer-staleness-warning): TTL 초과 근거 개수. 스니펫별 staleness 는 evidence_snippets 에.
+    n_stale: int = 0
 
 
 async def generate_answer(
@@ -63,8 +84,8 @@ async def generate_answer(
         timing_ms=timing_ms or {},
     )
 
-    # Evidence snippets 변환
-    result.evidence_snippets = [
+    # Evidence snippets 변환 (updated_at 은 신선도 판정용 datetime 으로 넣었다가 아래서 판정 후 ISO 직렬화)
+    snippets = [
         {
             "chunk_rid": s.chunk_rid,
             "doc_title": s.doc_title,
@@ -73,9 +94,17 @@ async def generate_answer(
             "text": s.text,
             "score": s.score,
             "doc_type": s.doc_type,  # 축-A 타입(S3) — 웹 클라이언트 타입 배지용
+            "updated_at": s.updated_at,
         }
         for s in packet.snippets
     ]
+    # 근거 신선도 판정(결정론) — TTL 초과 근거를 스니펫별 staleness + 답변레벨 n_stale 로.
+    snippets, result.n_stale = annotate_staleness(
+        snippets, datetime.now(timezone.utc), _load_staleness_ttl())
+    for sn in snippets:                      # datetime → ISO 문자열(응답 직렬화용)
+        _ua = sn.get("updated_at")
+        sn["updated_at"] = _ua.isoformat() if _ua else None
+    result.evidence_snippets = snippets
 
     # Graph findings 변환 (diff_flags 포함)
     if packet.graph:
