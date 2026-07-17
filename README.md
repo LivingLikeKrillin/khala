@@ -20,7 +20,9 @@ tool you run; it is the link the tools share. The ecosystem is **Khala**; one of
 its components is **Nexus**.
 
 - **The machine lies** — stale or wrong, asserted with confidence. Defended by
-  grounding answers in verifiable sources, never asserting soft answers.
+  grounding answers in verifiable sources — and by mechanical checks, not trust:
+  every citation is verified against the retrieved evidence, answer numbers must
+  appear in that evidence, and answers built on stale sources are flagged.
 - **The human stops judging** — AI output rubber-stamped without reading.
   Defended by making accountable review a gate before code is written.
 
@@ -82,6 +84,10 @@ export ANTHROPIC_API_KEY=sk-ant-...
 task up        # 또는: cd nexus && docker compose up -d
 task models    # 최초 1회 임베딩 모델 — 또는: docker compose exec nexus-ollama ollama pull nomic-embed-text
 ```
+
+> **키 없이 답변 생성(dev):** 유료 키 없이도 서술을 돌릴 수 있습니다 — `NEXUS_LLM_PROVIDER=claude-code`
+> 로 두고 `task llm-bridge` 를 띄우면 실행 중인 Claude Code 를 LLM 백엔드로 씁니다. 키는 품질 계층이지
+> 핵심이 아닙니다.
 
 → 브라우저에서 **http://localhost:8000** 열기 → **채팅**에 질문하면 *근거와 함께* 답합니다.
 
