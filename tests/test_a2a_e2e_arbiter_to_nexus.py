@@ -128,7 +128,9 @@ def _sink(app: FastAPI, token: str | None) -> A2ANexusSink:
     return A2ANexusSink(_BASE, token=token, transport=transport)
 
 
-def _stamped_spec(tmp_path, body="# Payment Topics\n\n결제 서비스는 payment.events 토픽을 발행한다."):
+def _stamped_spec(
+    tmp_path, body="# Payment Topics\n\n결제 서비스는 payment.events 토픽을 발행한다."
+):
     """Record a spec and stamp it as approved (content_hash in frontmatter), as `approve` does."""
     led = Ledger(tmp_path, now=lambda: "2026-06-18T00:00:00Z")
     sid = led.record("spec", "Payment Topics")
