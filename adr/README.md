@@ -20,6 +20,7 @@ human disposition → `approve`).
 | [ADR-0005](ADR-0005-component-naming-rename-and-forward-mapping.md) | Component naming — Protoss-unit rename and forward-mapping layer | Accepted | 2026-06-30 |
 | [ADR-0006](ADR-0006-nexus-entropy-spine.md) | Nexus entropy spine — version-aware supersession, retrieval containment, residual measurement | Accepted | 2026-07-01 |
 | [ADR-0007](ADR-0007-component-rename-migration-landed.md) | Component rename migration landed — amends ADR-0005 §3 (path `probe/` is now the mutation tool, not Observer) | Accepted | 2026-07-11 |
+| [ADR-0008](ADR-0008-keep-nexus-substrate-defer-onyx-adoption.md) | Keep Nexus's own substrate; defer the Onyx adoption question with named resume conditions | Accepted | 2026-08-01 |
 
 > **Note on ADR-0005 §3:** ADR-0005's interim path/name disambiguation ("path `probe/` = Observer;
 > new Probe is still `mutqa/`") is **stale** — the code rename has since landed. [ADR-0007](ADR-0007-component-rename-migration-landed.md)
