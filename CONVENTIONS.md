@@ -44,9 +44,16 @@ ecosystem. When in doubt: Khala is the alliance, Nexus is a member.
   regenerated `constraints.txt`** alongside the `pyproject.toml` change. CI's `deps` job
   fails the build if a declared requirement is not pinned, or if a pin violates its
   declared specifier.
-- **Give new dependencies an upper bound when they gate an import path you rely on**
-  (e.g. `mcp>=1.2.0,<2`). Constraints stop CI from drifting; the bound is what stops a
-  fresh `pip install` outside CI from picking up an incompatible major.
+- **Every requirement carries an upper bound**, set at the next major above the version we
+  test (`<1` for a 0.x dependency, e.g. `anthropic>=0.39.0,<1`). Constraints stop CI from
+  drifting; the bound is what stops a fresh `pip install` *outside* CI — a new checkout, a
+  rebuilt image, a developer's machine — from picking up an incompatible major.
+  For CalVer dependencies the year is the major (`structlog>=24.4.0,<27`), which makes the
+  yearly bump a deliberate one.
+- **Raising a bound is a deliberate change**, not a side effect: bump it, run
+  `task deps:lock`, and let the suites say whether the new major is actually fine.
+  The one exception is this repo's own path dependencies (`khala-adept`), which are
+  versioned in lockstep rather than resolved from an index.
 - **Node subprojects install from their lockfiles** — `npm ci` and
   `pnpm install --frozen-lockfile`, never bare `npm install`.
 

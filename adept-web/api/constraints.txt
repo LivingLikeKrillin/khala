@@ -108,5 +108,5 @@ typing-inspection==0.4.2
     # via
     #   fastapi
     #   pydantic
-uvicorn==0.52.0
+uvicorn==0.52.1
     # via khala-adept-web (pyproject.toml)

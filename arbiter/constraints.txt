@@ -136,5 +136,5 @@ typing-inspection==0.4.2
     #   mcp
     #   pydantic
     #   pydantic-settings
-uvicorn==0.52.0 ; sys_platform != 'emscripten'
+uvicorn==0.52.1 ; sys_platform != 'emscripten'
     # via mcp

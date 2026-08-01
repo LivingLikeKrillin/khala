@@ -3,13 +3,18 @@ name = "khala-adept-web"
 version = "0.1.0"
 description = "FastAPI service over Adept core — the repayment web walking skeleton backend"
 requires-python = ">=3.13"
-dependencies = ["khala-adept", "fastapi>=0.115", "uvicorn>=0.30", "argon2-cffi>=23.1"]
+# Upper bounds sit at the next major above the version we test (0.x bounds at <1) —
+# see CONVENTIONS.md. constraints.txt fixes CI; these bounds cover installs outside it.
+# `khala-adept` is unbounded on purpose: it is this repo's own path dependency, versioned
+# in lockstep with this package rather than published and resolved from an index.
+# argon2-cffi is CalVer (the year is the major), so <26 makes the yearly bump deliberate.
+dependencies = ["khala-adept", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "argon2-cffi>=23.1,<26"]
 
 [project.scripts]
 adept-web-admin = "khala.adept_web.admin:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.5"]
+dev = ["pytest>=8,<10", "httpx>=0.27,<1", "ruff>=0.5,<1"]
 
 # `khala-adept` is a path dependency. With uv: `uv sync` resolves it via the source below.
 # With pip: install both editable from this dir — `pip install -e ../../adept -e .`

@@ -3,12 +3,14 @@ name = "khala-arbiter"
 version = "0.1.0"
 description = "Arbiter — ADR/SDD recording & accountable-review governance MCP"
 requires-python = ">=3.11"
+# Upper bounds sit at the next major above the version we test (0.x bounds at <1) —
+# see CONVENTIONS.md. constraints.txt fixes CI; these bounds cover installs outside it.
 dependencies = [
     # See nexus/pyproject.toml — mcp 2.0.0 drops `mcp.server.fastmcp`; pin <2 until migrated.
     "mcp>=1.2.0,<2",
-    "anthropic>=0.40.0",
-    "pyyaml>=6.0",
-    "typer>=0.12",
+    "anthropic>=0.40.0,<1",
+    "pyyaml>=6.0,<7",
+    "typer>=0.12,<1",
 ]
 
 [project.scripts]
@@ -16,7 +18,7 @@ dependencies = [
 arbiter = "khala.arbiter.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.6"]
+dev = ["pytest>=8.0,<10", "ruff>=0.6,<1"]
 
 [build-system]
 requires = ["hatchling"]
