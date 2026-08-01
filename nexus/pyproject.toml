@@ -79,6 +79,16 @@ build-backend = "hatchling.build"
 target-version = "py311"
 line-length = 120
 
+[tool.ruff.lint]
+# Pinned explicitly, not inherited from ruff's default. The default is not a fixed set:
+# ruff 0.16 widened it to include I/B/S/UP/RUF/SIM/..., which turned 301 findings loose
+# across the repo the moment the lint job started running. This is the set the code
+# actually passes — the same one ruff's default meant before 0.16.
+#
+# Note this is narrower than the root ruff.toml's ["E", "F"], which also enables E501.
+# Adopting E501 here costs 64 line rewrites repo-wide; that is a separate cleanup.
+select = ["E4", "E7", "E9", "F"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

@@ -6,7 +6,6 @@ generate()->str 및 기존 호출부는 무변경. 결정론·무예외(비용 �
 
 from __future__ import annotations
 
-import json
 import types
 
 import httpx

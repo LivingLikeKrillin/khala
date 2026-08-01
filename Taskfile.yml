@@ -199,9 +199,11 @@ tasks:
 
   # ---- lint subtasks ------------------------------------------------------
   lint:ruff:
-    desc: ruff check on the Python subprojects (check-only baseline)
+    desc: ruff check across the repo (check-only baseline — same scope as the CI lint job)
     cmds:
-      - ruff check nexus arbiter probe
+      # Whole repo, matching CI. Naming three directories left adept, adept-web and the
+      # root tests/ unlinted, and the gap was invisible because nothing ran this in CI.
+      - ruff check .
 
   llm-bridge:
     desc: "Dev-only — run the claude-code LLM bridge on the host (keyless narration via the running Claude Code). Requires NEXUS_LLM_BRIDGE_TOKEN. Point Nexus at it with NEXUS_LLM_PROVIDER=claude-code."

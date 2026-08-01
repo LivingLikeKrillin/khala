@@ -41,6 +41,31 @@ jobs:
       - name: Verify every declared dependency is pinned and bounded
         run: python scripts/lock_deps.py --check
 
+  lint:
+    name: lint (ruff)
+    runs-on: ubuntu-latest
+    # `task lint` existed but nothing ran it, so it was lint in name only — the same
+    # failure mode as a skipped test. It had drifted red (an unused import, an over-long
+    # line) without anyone seeing it.
+    #
+    # Scope is the whole repo, not the three directories `task lint:ruff` used to name:
+    # adept, adept-web and the root `tests/` were unlinted purely because nobody listed
+    # them. ruff resolves config per file, so nexus keeps line-length 120 and the rest
+    # take the root ruff.toml's 100.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      # ruff comes from the committed lock, not a fresh resolve — a lint job that picks up
+      # whatever version shipped this morning turns master red on someone else's schedule,
+      # which is the whole lesson of #147. `task deps:lock` is how the version moves.
+      - name: Install ruff (pinned by nexus/constraints.txt)
+        run: pip install ruff -c nexus/constraints.txt
+      - run: ruff --version
+      - name: Check
+        run: ruff check .
+
   nexus:
     name: nexus (pytest, unit)
     runs-on: ubuntu-latest
