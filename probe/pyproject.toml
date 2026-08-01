@@ -3,10 +3,12 @@ name = "khala-probe"
 version = "0.1.0"
 description = "Probe — mutation-driven test quality harness"
 requires-python = ">=3.11"
-dependencies = ["cosmic-ray>=8.3", "pyyaml>=6", "typer>=0.12"]
+# Upper bounds sit at the next major above the version we test (0.x bounds at <1) —
+# see CONVENTIONS.md. constraints.txt fixes CI; these bounds cover installs outside it.
+dependencies = ["cosmic-ray>=8.3,<9", "pyyaml>=6,<7", "typer>=0.12,<1"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.5"]
+dev = ["pytest>=8,<10", "ruff>=0.5,<1"]
 
 [project.scripts]
 probe = "khala.probe.cli:main"

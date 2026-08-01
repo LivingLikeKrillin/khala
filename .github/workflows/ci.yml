@@ -13,12 +13,18 @@ on:
 
 jobs:
   deps:
-    name: deps (constraints in sync)
+    name: deps (pinned + bounded)
     runs-on: ubuntu-latest
-    # Every Python job installs with `-c constraints.txt`, which pins only the packages it
-    # lists. Add a dependency to a pyproject.toml without refreshing the lock and that one
-    # package silently goes back to being resolved fresh on every run — the hole reopens a
-    # package at a time. This job closes it.
+    # Two halves of the same guarantee:
+    #
+    #   constraints.txt governs CI. Every Python job installs with `-c constraints.txt`,
+    #   which pins only the packages it lists — add a dependency without refreshing the lock
+    #   and that one package goes back to being resolved fresh on every run.
+    #
+    #   The upper bound governs everywhere else: a new checkout, a rebuilt image, a
+    #   developer's machine. `mcp>=1.2.0` with no ceiling is how 2.0.0 got in.
+    #
+    # This job fails if either half is missing for any declared requirement.
     #
     # The check is offline and does NOT re-resolve: a guard that recompiles against live
     # PyPI would fail the moment anything upstream publishes, which is the exact
@@ -32,7 +38,7 @@ jobs:
       # be the one thing that re-resolves freely. `packaging` is the only dependency the
       # checker has, and it is used for `Requirement` / specifier parsing.
       - run: pip install "packaging>=24,<26"
-      - name: Verify constraints cover every declared dependency
+      - name: Verify every declared dependency is pinned and bounded
         run: python scripts/lock_deps.py --check
 
   nexus:

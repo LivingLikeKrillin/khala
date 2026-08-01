@@ -3,12 +3,14 @@ name = "khala-adept"
 version = "0.1.0"
 description = "Adept — cognitive-debt meter that measures whether a named human can vouch for an artifact"
 requires-python = ">=3.11"
-dependencies = ["typer>=0.12", "pyyaml>=6", "anthropic>=0.40"]
+# Upper bounds sit at the next major above the version we test (0.x bounds at <1) —
+# see CONVENTIONS.md. constraints.txt fixes CI; these bounds cover installs outside it.
+dependencies = ["typer>=0.12,<1", "pyyaml>=6,<7", "anthropic>=0.40,<1"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.5"]
+dev = ["pytest>=8,<10", "ruff>=0.5,<1"]
 # Postgres backend (S2) — kept optional so the default file-backend install stays light.
-postgres = ["psycopg[binary]>=3.2"]
+postgres = ["psycopg[binary]>=3.2,<4"]
 
 [project.scripts]
 adept = "khala.adept.cli:app"

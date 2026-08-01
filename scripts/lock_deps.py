@@ -142,8 +142,14 @@ def check_project(rel_path: str, extras: list[str]) -> list[str]:
 
     Deliberately does NOT re-resolve. A check that recompiles against live PyPI fails the
     moment anything upstream publishes a release — which is the exact nondeterminism these
-    constraints exist to remove. So this asks only the question that drift actually poses:
-    is every declared requirement pinned, and is the pin legal under its specifier?
+    constraints exist to remove. So this asks only the questions drift actually poses:
+
+      1. is every declared requirement pinned, and is the pin legal under its specifier?
+      2. does every declared requirement carry an upper bound?
+
+    (2) covers the half constraints cannot reach. constraints.txt governs CI; the bound is
+    what governs a fresh `pip install` outside it — a new checkout, a rebuilt image, a
+    developer's machine. `mcp>=1.2.0` with no ceiling is how 2.0.0 got in.
     """
     import tomllib
 
@@ -179,6 +185,18 @@ def check_project(rel_path: str, extras: list[str]) -> list[str]:
     for raw in declared:
         req = Requirement(raw)
         key = canonicalize_name(req.name)
+
+        # An upper bound is required on everything resolved from an index. `==` counts:
+        # an exact pin is a ceiling too.
+        if key not in PATH_DEPENDENCIES and not any(
+            spec.operator in ("<", "<=", "==", "===", "~=") for spec in req.specifier
+        ):
+            problems.append(
+                f"{rel_path}: `{req.name}` has no upper bound. Add one at the next major "
+                f"above the version we test (see CONVENTIONS.md) - an unbounded requirement "
+                f"is how mcp 2.0.0 got in."
+            )
+
         version = pinned.get(key)
         if version is None:
             # A path dependency resolved from another subproject is pinned by that
