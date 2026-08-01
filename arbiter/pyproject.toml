@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "Arbiter — ADR/SDD recording & accountable-review governance MCP"
 requires-python = ">=3.11"
 dependencies = [
-    "mcp>=1.2.0",
+    # See nexus/pyproject.toml — mcp 2.0.0 drops `mcp.server.fastmcp`; pin <2 until migrated.
+    "mcp>=1.2.0,<2",
     "anthropic>=0.40.0",
     "pyyaml>=6.0",
     "typer>=0.12",
