@@ -34,6 +34,27 @@ ecosystem. When in doubt: Khala is the alliance, Nexus is a member.
   do not maintain a shared changelog.
 - A change that touches one tool only bumps that tool's version.
 
+## Dependencies
+
+- **`pyproject.toml` declares what is required; `constraints.txt` records which versions we
+  tested.** Every Python subproject carries a committed `constraints.txt` with the fully
+  resolved set, and every install in CI, the Taskfile, and the nexus image passes it with
+  `pip install ... -c constraints.txt`.
+- **After adding, removing, or upgrading a dependency, run `task deps:lock` and commit the
+  regenerated `constraints.txt`** alongside the `pyproject.toml` change. CI's `deps` job
+  fails the build if a declared requirement is not pinned, or if a pin violates its
+  declared specifier.
+- **Give new dependencies an upper bound when they gate an import path you rely on**
+  (e.g. `mcp>=1.2.0,<2`). Constraints stop CI from drifting; the bound is what stops a
+  fresh `pip install` outside CI from picking up an incompatible major.
+- **Node subprojects install from their lockfiles** — `npm ci` and
+  `pnpm install --frozen-lockfile`, never bare `npm install`.
+
+Why: on 2026-08-01 `mcp` 2.0.0 shipped and removed `mcp.server.fastmcp`. Both nexus and
+arbiter declared an unbounded requirement and CI re-resolved on every run, so two
+documentation PRs that touched no code failed with `ModuleNotFoundError`. The version we
+tested was never the version we declared.
+
 ## Contribution flow
 
 - **Branches:** one logical change per branch. Name branches by type and scope:

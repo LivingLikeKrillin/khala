@@ -42,7 +42,11 @@ COPY . .
 # default — NEXUS_A2A_ENABLED — installing the SDK changes no runtime behavior.)
 # slack is baked in too so the same image can run the `--profile slack` bot service;
 # the profile (not the image) decides whether the bot actually runs.
-RUN pip install --no-cache-dir -e ".[dev,notion,a2a,slack]"
+#
+# -c constraints.txt pins the resolved set. The image is the `nexus (search recall, mecab)`
+# CI job's environment as well as the deployed one, so leaving it to re-resolve is the same
+# exposure as an unpinned CI install — the build just happens to be a Dockerfile.
+RUN pip install --no-cache-dir -e ".[dev,notion,a2a,slack]" -c constraints.txt
 
 # mecab 동작 확인
 RUN echo "결제 서비스가 알림을 보낸다" | mecab || echo "mecab test skipped"

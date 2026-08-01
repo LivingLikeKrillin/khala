@@ -3,9 +3,11 @@
 # Wraps the per-subproject commands (the source of truth in each subproject)
 # so the whole repo can be tested / built / linted from the root.
 #
-#   task test     -> run every subproject's test suite
-#   task build    -> build the docs site
-#   task lint     -> ruff check across the Python subprojects
+#   task test       -> run every subproject's test suite
+#   task build      -> build the docs site
+#   task lint       -> ruff check across the Python subprojects
+#   task deps:lock  -> regenerate the committed dependency constraints (after changing a dep)
+#   task deps:check -> verify the constraints still cover every declared dependency
 #
 # Install go-task: https://taskfile.dev/installation/  (the CLI is not required
 # to read this file — CI calls the underlying commands directly.)
@@ -130,6 +132,23 @@ tasks:
     cmds:
       - task: lint:ruff
 
+  # ---- dependency constraints --------------------------------------------
+  # Every install below passes `-c constraints.txt`. pyproject.toml stays the source of
+  # truth for what is required; constraints.txt records which versions we actually tested.
+  # Without it pip re-resolves on every run and an upstream major release breaks unrelated
+  # work — which is what mcp 2.0.0 did to master on 2026-08-01.
+  deps:lock:
+    desc: "Regenerate the committed dependency constraints (run after adding/upgrading a dep, then commit)"
+    cmds:
+      - pip install --quiet uv
+      - python scripts/lock_deps.py
+
+  deps:check:
+    desc: "Verify constraints.txt still covers every declared dependency (offline; no re-resolution)"
+    cmds:
+      - pip install --quiet packaging
+      - python scripts/lock_deps.py --check
+
   # ---- per-subproject test subtasks --------------------------------------
   test:nexus:
     desc: nexus unit tests (DB integration tests need Docker — run locally)
@@ -137,35 +156,35 @@ tasks:
     cmds:
       # [mcp] extra lets tests/test_mcp.py import nexus.mcp.server in a clean env.
       # -m "not integration" keeps the baseline run DB-free.
-      - pip install -e ".[dev,mcp]"
+      - pip install -e ".[dev,mcp]" -c constraints.txt
       - python -m pytest -q -m "not integration"
 
   test:observer:
     desc: observer tests (vitest)
     dir: observer
     cmds:
-      - pnpm install
+      - pnpm install --frozen-lockfile
       - pnpm test:run
 
   test:arbiter:
     desc: arbiter tests (pytest)
     dir: arbiter
     cmds:
-      - pip install -e ".[dev]"
+      - pip install -e ".[dev]" -c constraints.txt
       - python -m pytest -q
 
   test:probe:
     desc: probe tests (pytest)
     dir: probe
     cmds:
-      - pip install -e ".[dev]"
+      - pip install -e ".[dev]" -c constraints.txt
       - python -m pytest -q
 
   test:docs:
     desc: docs typecheck (astro check)
     dir: docs
     cmds:
-      - npm install
+      - npm ci
       - npm run check
 
   # ---- build subtasks -----------------------------------------------------
@@ -173,7 +192,7 @@ tasks:
     desc: Build the docs site and run the link checker
     dir: docs
     cmds:
-      - npm install
+      - npm ci
       - npm run build
       - npm run check
       - npm run linkcheck

@@ -12,6 +12,29 @@ on:
     branches: [master, main]
 
 jobs:
+  deps:
+    name: deps (constraints in sync)
+    runs-on: ubuntu-latest
+    # Every Python job installs with `-c constraints.txt`, which pins only the packages it
+    # lists. Add a dependency to a pyproject.toml without refreshing the lock and that one
+    # package silently goes back to being resolved fresh on every run — the hole reopens a
+    # package at a time. This job closes it.
+    #
+    # The check is offline and does NOT re-resolve: a guard that recompiles against live
+    # PyPI would fail the moment anything upstream publishes, which is the exact
+    # nondeterminism the constraints exist to remove.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      # Bounded for the same reason as everything else here: this job's own install must not
+      # be the one thing that re-resolves freely. `packaging` is the only dependency the
+      # checker has, and it is used for `Requirement` / specifier parsing.
+      - run: pip install "packaging>=24,<26"
+      - name: Verify constraints cover every declared dependency
+        run: python scripts/lock_deps.py --check
+
   nexus:
     name: nexus (pytest, unit)
     runs-on: ubuntu-latest
@@ -23,7 +46,9 @@ jobs:
       - name: Install nexus
         working-directory: nexus
         # [mcp] extra is required so tests/test_mcp.py can import nexus.mcp.server.
-        run: pip install -e ".[dev,mcp]"
+        # -c constraints.txt: pins the whole resolved set. Without it pip re-resolves every
+        # run and an upstream major release turns an unrelated PR red (see constraints.txt).
+        run: pip install -e ".[dev,mcp]" -c constraints.txt
       # Unit tests only. The DB-backed tests run in `nexus-postgres` below.
       - name: Run unit tests
         working-directory: nexus
@@ -62,7 +87,7 @@ jobs:
       - name: Install nexus
         working-directory: nexus
         # [a2a] so the external-ingest sink and its tests are exercised, not silently skipped.
-        run: pip install -e ".[dev,mcp,a2a]"
+        run: pip install -e ".[dev,mcp,a2a]" -c constraints.txt
       - name: Apply baseline schema
         working-directory: nexus
         run: psql "$DATABASE_URL" -f init.sql
@@ -138,7 +163,9 @@ jobs:
           cache-dependency-path: observer/pnpm-lock.yaml
       - name: Install observer
         working-directory: observer
-        run: pnpm install
+        # --frozen-lockfile is pnpm's CI default, but stated explicitly so it does not
+        # hinge on the CI env var being set.
+        run: pnpm install --frozen-lockfile
       - name: Run tests
         working-directory: observer
         run: pnpm test:run
@@ -153,7 +180,7 @@ jobs:
           python-version: "3.13"
       - name: Install arbiter
         working-directory: arbiter
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" -c constraints.txt
       - name: Run tests
         working-directory: arbiter
         run: python -m pytest -q
@@ -168,7 +195,7 @@ jobs:
           python-version: "3.13"
       - name: Install probe
         working-directory: probe
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" -c constraints.txt
       - name: Run tests
         working-directory: probe
         run: python -m pytest -q
@@ -183,7 +210,7 @@ jobs:
           python-version: "3.13"
       - name: Install adept
         working-directory: adept
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" -c constraints.txt
       - name: Run tests
         working-directory: adept
         run: python -m pytest -q
@@ -214,7 +241,7 @@ jobs:
           python-version: "3.13"
       - name: Install adept (with postgres extra)
         working-directory: adept
-        run: pip install -e ".[dev,postgres]"
+        run: pip install -e ".[dev,postgres]" -c constraints.txt
       - name: Apply schema
         working-directory: adept
         run: psql "$ADEPT_TEST_DATABASE_URL" -f db/init.sql
@@ -235,7 +262,7 @@ jobs:
       - name: Install adept-web-api
         working-directory: adept-web/api
         # adept is a path dependency installed editable alongside the API.
-        run: pip install -e ../../adept -e ".[dev]"
+        run: pip install -e ../../adept -e ".[dev]" -c constraints.txt
       - name: Run tests
         working-directory: adept-web/api
         run: python -m pytest -q
@@ -292,7 +319,9 @@ jobs:
           cache-dependency-path: docs/package-lock.json
       - name: Install docs
         working-directory: docs
-        run: npm install
+        # npm ci, not npm install — every other Node job already installs from its lockfile,
+        # and `npm install` is free to resolve something newer and rewrite the lock in place.
+        run: npm ci
       - name: Build site
         working-directory: docs
         run: npm run build
