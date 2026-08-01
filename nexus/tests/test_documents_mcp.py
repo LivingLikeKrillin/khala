@@ -16,15 +16,15 @@ _TOOLS = ("nexus_documents_search", "nexus_document_hide",
           "nexus_document_restore", "nexus_unsupersede")
 
 
-def test_the_four_lifecycle_tools_are_registered():
-    registered = set(mcp_server.mcp._tool_manager._tools)
+def test_the_four_lifecycle_tools_are_registered(mcp_tools):
+    registered = set(mcp_tools)
     assert set(_TOOLS) <= registered, f"누락: {set(_TOOLS) - registered}"
 
 
-def test_unsupersede_makes_reason_required_at_the_tool_boundary():
+def test_unsupersede_makes_reason_required_at_the_tool_boundary(mcp_tools):
     """사유 없는 되돌림은 서버가 400 으로 막지만, 에이전트는 그 전에 알아야 한다."""
-    tool = mcp_server.mcp._tool_manager._tools["nexus_unsupersede"]
-    assert "reason" in tool.parameters.get("required", []), tool.parameters
+    schema = mcp_tools["nexus_unsupersede"].input_schema
+    assert "reason" in schema.get("required", []), schema
 
 
 @pytest.fixture
