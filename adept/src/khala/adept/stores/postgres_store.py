@@ -88,7 +88,8 @@ class PostgresStore:
             for i, q in enumerate(questions):
                 qid = q.id or make_question_id(artifact_id, content_hash, i)
                 cur.execute(
-                    "INSERT INTO questions (tenant_slug, artifact_id, content_hash, question_id, idx, text) "
+                    "INSERT INTO questions (tenant_slug, artifact_id, "
+                    "content_hash, question_id, idx, text) "
                     "VALUES (%s, %s, %s, %s, %s, %s)",
                     (self._tenant, artifact_id, content_hash, qid, i, q.text),
                 )
@@ -131,5 +132,6 @@ class PostgresStore:
                     # file backend's string ts (schedule._parse_ts expects a string).
                     ts.isoformat() if hasattr(ts, "isoformat") else ts,
                 )
-                for person, artifact_id, question_id, content_hash, passed, score, ts in cur.fetchall()
+                for person, artifact_id, question_id, content_hash, passed, score, ts
+                in cur.fetchall()
             ]

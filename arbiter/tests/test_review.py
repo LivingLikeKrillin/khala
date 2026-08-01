@@ -24,13 +24,15 @@ def test_approve_requires_all_issues_dispositioned(docs_root):
 def test_reject_requires_reason(docs_root):
     ledger, sid = _make_critiqued_ledger(docs_root)
     with pytest.raises(ReviewError, match="reason"):
-        approve(ledger, sid, [{"issue_id": "I-001", "disposition": "rejected"}], "reviewer", now=lambda: "t2")
+        approve(ledger, sid, [{"issue_id": "I-001", "disposition": "rejected"}],
+                "reviewer", now=lambda: "t2")
 
 
 def test_accepted_requires_body_edit(docs_root):
     ledger, sid = _make_critiqued_ledger(docs_root)
     with pytest.raises(ReviewError, match="미수정"):
-        approve(ledger, sid, [{"issue_id": "I-001", "disposition": "accepted"}], "reviewer", now=lambda: "t2")
+        approve(ledger, sid, [{"issue_id": "I-001", "disposition": "accepted"}],
+                "reviewer", now=lambda: "t2")
 
 
 def test_accepted_with_edit_succeeds_and_stamps(docs_root):
@@ -38,7 +40,8 @@ def test_accepted_with_edit_succeeds_and_stamps(docs_root):
     art = Artifact.load(ledger._resolve(sid))
     art.body += "\nfixed the invariant\n"
     art.save()
-    approve(ledger, sid, [{"issue_id": "I-001", "disposition": "accepted"}], "reviewer", now=lambda: "t2")
+    approve(ledger, sid, [{"issue_id": "I-001", "disposition": "accepted"}],
+            "reviewer", now=lambda: "t2")
     a2 = Artifact.load(ledger._resolve(sid))
     assert a2.status == Status.APPROVED
     assert a2.meta["approved_by"] == "reviewer"
@@ -66,7 +69,8 @@ def test_approve_adr_yields_accepted_not_approved(docs_root):
     a = Artifact.load(ledger._resolve(aid))
     a.body += "\nfixed\n"
     a.save()
-    approve(ledger, aid, [{"issue_id": "I-001", "disposition": "accepted"}], "reviewer", now=lambda: "t2")
+    approve(ledger, aid, [{"issue_id": "I-001", "disposition": "accepted"}],
+            "reviewer", now=lambda: "t2")
     assert Artifact.load(ledger._resolve(aid)).status == Status.ACCEPTED
 
 

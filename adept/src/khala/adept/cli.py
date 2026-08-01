@@ -80,7 +80,9 @@ def _find_ref(store: AdeptStore, artifact_id: str):
 @app.command()
 def register(
     path: str = typer.Argument(..., help="Path to the artifact to register."),
-    manifest: str = typer.Option(None, "--manifest", help="Manifest path (default: discovered root)."),
+    manifest: str = typer.Option(
+        None, "--manifest", help="Manifest path (default: discovered root)."
+    ),
 ) -> None:
     """Register an artifact into the manifest; prints its artifact_id."""
     store = _store(manifest, None, None, allow_bootstrap=True)
@@ -95,8 +97,12 @@ def register(
 @app.command()
 def due(
     person: str = typer.Option(None, "--as", help="The reviewer (informational)."),
-    manifest: str = typer.Option(None, "--manifest", help="Manifest path (default: discovered root)."),
-    questions: str = typer.Option(None, "--questions", help="Questions store (default: beside manifest)."),
+    manifest: str = typer.Option(
+        None, "--manifest", help="Manifest path (default: discovered root)."
+    ),
+    questions: str = typer.Option(
+        None, "--questions", help="Questions store (default: beside manifest)."
+    ),
     ledger: str = typer.Option(None, "--ledger", help="Attempt ledger (default: beside manifest)."),
 ) -> None:
     """List due questions; flag artifacts with no (or stale) questions.
@@ -120,8 +126,12 @@ def due(
 def save_questions_cmd(
     artifact_id: str = typer.Argument(..., help="The artifact_id."),
     hash_: str = typer.Option(..., "--hash", help="The artifact's current content hash."),
-    manifest: str = typer.Option(None, "--manifest", help="Manifest path (default: discovered root)."),
-    questions: str = typer.Option(None, "--questions", help="Questions store (default: beside manifest)."),
+    manifest: str = typer.Option(
+        None, "--manifest", help="Manifest path (default: discovered root)."
+    ),
+    questions: str = typer.Option(
+        None, "--questions", help="Questions store (default: beside manifest)."
+    ),
 ) -> None:
     """Store questions for an artifact (one per stdin line). Rejects a stale --hash."""
     store = _store(manifest, questions, None, allow_bootstrap=False)
@@ -150,8 +160,12 @@ def record_attempt_cmd(
     artifact_id: str = typer.Option(..., "--artifact", help="The artifact_id."),
     passed: bool = typer.Option(None, "--passed/--failed", help="Pass or fail the question."),
     score: float = typer.Option(1.0, "--score", help="Score 0-1."),
-    manifest: str = typer.Option(None, "--manifest", help="Manifest path (default: discovered root)."),
-    questions: str = typer.Option(None, "--questions", help="Questions store (default: beside manifest)."),
+    manifest: str = typer.Option(
+        None, "--manifest", help="Manifest path (default: discovered root)."
+    ),
+    questions: str = typer.Option(
+        None, "--questions", help="Questions store (default: beside manifest)."
+    ),
     ledger: str = typer.Option(None, "--ledger", help="Attempt ledger (default: beside manifest)."),
 ) -> None:
     """Append one attempt to the ledger (append-only). State is recomputed on read."""
@@ -180,8 +194,12 @@ def record_attempt_cmd(
 @app.command()
 def coverage(
     person: str = typer.Option(None, "--as", help="The reviewer (informational)."),
-    manifest: str = typer.Option(None, "--manifest", help="Manifest path (default: discovered root)."),
-    questions: str = typer.Option(None, "--questions", help="Questions store (default: beside manifest)."),
+    manifest: str = typer.Option(
+        None, "--manifest", help="Manifest path (default: discovered root)."
+    ),
+    questions: str = typer.Option(
+        None, "--questions", help="Questions store (default: beside manifest)."
+    ),
     ledger: str = typer.Option(None, "--ledger", help="Attempt ledger (default: beside manifest)."),
 ) -> None:
     """Report covered/total, ratio, orphan hotlist, and the weakness map."""
@@ -209,8 +227,12 @@ def coverage(
 def review(
     artifact_id: str = typer.Argument(..., help="The artifact_id to review."),
     person: str = typer.Option(..., "--as", help="The reviewer."),
-    manifest: str = typer.Option(None, "--manifest", help="Manifest path (default: discovered root)."),
-    questions: str = typer.Option(None, "--questions", help="Questions store (default: beside manifest)."),
+    manifest: str = typer.Option(
+        None, "--manifest", help="Manifest path (default: discovered root)."
+    ),
+    questions: str = typer.Option(
+        None, "--questions", help="Questions store (default: beside manifest)."
+    ),
     ledger: str = typer.Option(None, "--ledger", help="Attempt ledger (default: beside manifest)."),
     n: int = typer.Option(DEFAULT_N_QUESTIONS, "--n", help="Number of questions to generate."),
 ) -> None:

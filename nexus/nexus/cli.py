@@ -310,7 +310,8 @@ def graph(
         if subgraph.edges:
             typer.echo("설계 관계 (Designed):")
             for e in subgraph.edges:
-                typer.echo(f"  [{e.edge_type}] {e.from_name} → {e.to_name} (confidence: {e.confidence:.2f}, hop: {e.hop})")
+                typer.echo(f"  [{e.edge_type}] {e.from_name} → {e.to_name} "
+                           f"(confidence: {e.confidence:.2f}, hop: {e.hop})")
         else:
             typer.echo("설계 관계: 없음")
 

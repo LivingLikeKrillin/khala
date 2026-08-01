@@ -177,7 +177,8 @@ def chunk_document(
 
     cfg = config or {}
     chunking_cfg = cfg.get("chunking", {})
-    target_tokens = chunking_cfg.get("korean_tokens", 1100) if language == "ko" else chunking_cfg.get("english_tokens", 700)
+    target_tokens = (chunking_cfg.get("korean_tokens", 1100) if language == "ko"
+                     else chunking_cfg.get("english_tokens", 700))
     overlap_ratio = chunking_cfg.get("overlap_ratio", 0.15)
     overlap_tokens = int(target_tokens * overlap_ratio)
 

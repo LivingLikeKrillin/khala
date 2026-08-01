@@ -79,12 +79,14 @@ class TestDocumentCRUD:
 
         async with db_pool.acquire() as conn:
             await conn.execute(
-                "INSERT INTO documents (rid, tenant, source_uri, hash, title) VALUES ($1, 'default', 'test:ctx.md', 'h2', 'ctx')",
+                "INSERT INTO documents (rid, tenant, source_uri, hash, title) "
+                "VALUES ($1, 'default', 'test:ctx.md', 'h2', 'ctx')",
                 d_rid,
             )
             await conn.execute(
                 """
-                INSERT INTO chunks (rid, tenant, source_uri, doc_rid, section_path, chunk_text, context_prefix, chunk_index)
+                INSERT INTO chunks (rid, tenant, source_uri, doc_rid, section_path,
+                                    chunk_text, context_prefix, chunk_index)
                 VALUES ($1, 'default', 'test:ctx.md', $2, '원래 경로', '본문 텍스트', '[커스텀 접두사]', 0)
                 """,
                 c_rid, d_rid,
@@ -104,7 +106,8 @@ class TestQuarantine:
 
         async with db_pool.acquire() as conn:
             await conn.execute(
-                "INSERT INTO documents (rid, tenant, source_uri, hash, title) VALUES ($1, 'default', 'test:q.md', 'hq', 'q')",
+                "INSERT INTO documents (rid, tenant, source_uri, hash, title) "
+                "VALUES ($1, 'default', 'test:q.md', 'hq', 'q')",
                 d_rid,
             )
             await conn.execute(
@@ -157,22 +160,26 @@ class TestGraph:
             d_rid = doc_rid("test:edge-evidence.md")
             c_rid = chunk_rid(d_rid, "관계", 0)
             await conn.execute(
-                "INSERT INTO documents (rid, tenant, source_uri, hash, title) VALUES ($1, 'default', 'test:ee.md', 'he', 'ee')",
+                "INSERT INTO documents (rid, tenant, source_uri, hash, title) "
+                "VALUES ($1, 'default', 'test:ee.md', 'he', 'ee')",
                 d_rid,
             )
             await conn.execute(
-                "INSERT INTO chunks (rid, tenant, source_uri, doc_rid, section_path, chunk_text, chunk_index) VALUES ($1, 'default', 'test:ee.md', $2, '관계', 'A가 B를 호출', 0)",
+                "INSERT INTO chunks (rid, tenant, source_uri, doc_rid, section_path, chunk_text, chunk_index) "
+                "VALUES ($1, 'default', 'test:ee.md', $2, '관계', 'A가 B를 호출', 0)",
                 c_rid, d_rid,
             )
 
             await conn.execute(
-                "INSERT INTO edges (rid, tenant, edge_type, from_rid, to_rid, confidence) VALUES ($1, 'default', 'CALLS', $2, $3, 0.9)",
+                "INSERT INTO edges (rid, tenant, edge_type, from_rid, to_rid, confidence) "
+                "VALUES ($1, 'default', 'CALLS', $2, $3, 0.9)",
                 e_rid, rid_a, rid_b,
             )
 
             ev_rid = evidence_rid(e_rid, c_rid)
             await conn.execute(
-                "INSERT INTO evidence (rid, tenant, subject_rid, evidence_rid, kind, weight) VALUES ($1, 'default', $2, $3, 'text_snippet', 0.15)",
+                "INSERT INTO evidence (rid, tenant, subject_rid, evidence_rid, kind, weight) "
+                "VALUES ($1, 'default', $2, $3, 'text_snippet', 0.15)",
                 ev_rid, e_rid, c_rid,
             )
 
@@ -189,7 +196,8 @@ class TestGraph:
             e_rid = edge_rid("default", "CALLS", rid_a, rid_b)
 
             await conn.execute(
-                "INSERT INTO edges (rid, tenant, edge_type, from_rid, to_rid, confidence) VALUES ($1, 'default', 'CALLS', $2, $3, 0.85)",
+                "INSERT INTO edges (rid, tenant, edge_type, from_rid, to_rid, confidence) "
+                "VALUES ($1, 'default', 'CALLS', $2, $3, 0.85)",
                 e_rid, rid_a, rid_b,
             )
 
@@ -242,7 +250,8 @@ class TestDiffView:
 
             e_rid = edge_rid("default", "CALLS", rid_x, rid_y)
             await conn.execute(
-                "INSERT INTO edges (rid, tenant, edge_type, from_rid, to_rid, confidence) VALUES ($1, 'default', 'CALLS', $2, $3, 0.8)",
+                "INSERT INTO edges (rid, tenant, edge_type, from_rid, to_rid, confidence) "
+                "VALUES ($1, 'default', 'CALLS', $2, $3, 0.8)",
                 e_rid, rid_x, rid_y,
             )
 
@@ -338,11 +347,13 @@ class TestTenantIsolation:
 
         async with db_pool.acquire() as conn:
             await conn.execute(
-                "INSERT INTO documents (rid, tenant, source_uri, hash, title) VALUES ($1, 'team-a', 'a:doc.md', 'ha', 'A doc')",
+                "INSERT INTO documents (rid, tenant, source_uri, hash, title) "
+                "VALUES ($1, 'team-a', 'a:doc.md', 'ha', 'A doc')",
                 d_rid_a,
             )
             await conn.execute(
-                "INSERT INTO documents (rid, tenant, source_uri, hash, title) VALUES ($1, 'team-b', 'b:doc.md', 'hb', 'B doc')",
+                "INSERT INTO documents (rid, tenant, source_uri, hash, title) "
+                "VALUES ($1, 'team-b', 'b:doc.md', 'hb', 'B doc')",
                 d_rid_b,
             )
 

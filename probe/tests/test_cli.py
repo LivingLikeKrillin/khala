@@ -5,8 +5,10 @@
 CliRunner 로 실제 명령 표면을 두드린다.
 
 여기서 고정하는 불변식:
-  · survey 는 fresh survivor마다 슬롯이 채워진 Critic 프롬프트를 아티팩트로 낸다({module} 잔존 금지).
-  · survey 는 원장을 쓰지 않는다(측정은 영속 상태에 read-only). runner 실패는 빈 survey 로 위장 안 함.
+  · survey 는 fresh survivor마다 슬롯이 채워진 Critic 프롬프트를
+    아티팩트로 낸다({module} 잔존 금지).
+  · survey 는 원장을 쓰지 않는다(측정은 영속 상태에 read-only).
+    runner 실패는 빈 survey 로 위장 안 함.
   · absorb 는 verdict 도메인 밖 값·survey에 없는 key 를 시끄럽게 거부하고 원장을 손대지 않는다.
   · 부분 verdicts(빠진 fresh)는 삼키지 않고 경고로 알린다.
 """
@@ -26,8 +28,10 @@ from khala.probe.models import Survivor, Verdict
 runner = CliRunner()
 TODAY = datetime.date(2026, 7, 11)
 
-_S1 = Survivor(module="pkg/a.py", lineno=10, operator="core/ReplaceТrue", mutation_diff="- return True\n+ return False")
-_S2 = Survivor(module="pkg/b.py", lineno=20, operator="core/RemoveLoop", mutation_diff="- for x in xs\n+ for x in []")
+_S1 = Survivor(module="pkg/a.py", lineno=10, operator="core/ReplaceТrue",
+               mutation_diff="- return True\n+ return False")
+_S2 = Survivor(module="pkg/b.py", lineno=20, operator="core/RemoveLoop",
+               mutation_diff="- for x in xs\n+ for x in []")
 
 _PROMPT = "module {module} line {lineno} op {operator} diff {mutation_diff} suite {suite_summary}"
 

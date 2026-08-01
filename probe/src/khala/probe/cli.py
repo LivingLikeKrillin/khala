@@ -3,7 +3,8 @@
 SPEC-probe-cli. 여태 Probe 를 쓰려면 SKILL.md 의 파이썬 블록 6개를 손으로 붙여넣어야 했다 —
 "도구가 아니다"(감사). 이 CLI 가 결정론 부분(변이 실행·survivor·원장·리포트)을 명령으로 감싼다.
 
-    probe survey [--base HEAD~1] [--module PATH ...]   # 변이 척추 → survivor + fresh Critic 프롬프트
+    probe survey [--base HEAD~1] [--module PATH ...]
+        # 변이 척추 → survivor + fresh Critic 프롬프트
     (에이전트/사람이 프롬프트로 Test Quality Critic 을 dispatch → verdicts.json)   ← CLI 밖, 설계상
     probe absorb --verdicts verdicts.json --survey probe-survey.json   # 판정 흡수 → 원장 + 리포트
 
@@ -153,7 +154,7 @@ def build_cli(
         survey: str | None = typer.Option(None, "--survey", help="probe survey 아티팩트"),
         ledger: str = typer.Option("probe-ledger.yaml", "--ledger"),
     ) -> None:
-        """Critic 판정을 원장에 흡수 → 영속 → 리포트. 도메인 밖 값·survey 에 없는 key 는 시끄럽게 거부."""
+        """Critic 판정을 원장에 흡수 → 영속 → 리포트. 도메인 밖 값·survey 에 없는 key 는 시끄럽게 거부."""  # noqa: E501
         ledger_path = Path(ledger)
         led = load_ledger(ledger_path.read_text(encoding="utf-8") if ledger_path.exists() else "")
 
@@ -183,7 +184,8 @@ def build_cli(
         for row in raw:
             vv = row.get("verdict")
             if vv not in _VERDICT_DOMAIN:
-                typer.echo(f"알 수 없는 verdict 값: {vv!r} (key={row.get('survivor_key')})", err=True)
+                typer.echo(f"알 수 없는 verdict 값: {vv!r} "
+                           f"(key={row.get('survivor_key')})", err=True)
                 raise typer.Exit(1)
             key = row.get("survivor_key")
             if survivor_keys is not None and key not in survivor_keys:

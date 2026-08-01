@@ -109,7 +109,10 @@ def test_startup_guard_fails_when_auth_on_without_db(monkeypatch):
 def test_auth_off_endpoints_open_and_person_local(tmp_path, monkeypatch):
     monkeypatch.delenv("ADEPT_AUTH", raising=False)
     monkeypatch.setenv("ADEPT_DATA_DIR", str(tmp_path))
-    monkeypatch.setattr(deps, "make_llm", lambda: FakeLLM(responses=["Q1?", '{"passed": true, "score": 0.9, "rationale":"ok"}']))
+    monkeypatch.setattr(
+        deps, "make_llm",
+        lambda: FakeLLM(responses=["Q1?", '{"passed": true, "score": 0.9, "rationale":"ok"}']),
+    )
     c = TestClient(app)
     assert c.get("/api/coverage").status_code == 200       # open
     assert c.get("/api/auth/me").json() == {"email": deps.DEFAULT_PERSON}

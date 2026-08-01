@@ -226,7 +226,8 @@ def test_artifact_detail_fail_resets_and_counts(tmp_path):
     _answer(store, ref, qs[0].id, False, "2026-06-01T00:00:00Z")
     rows = artifact_detail(ref.artifact_id, store=store, now="2026-06-05T00:00:00Z")
     r = rows[0]
-    assert r.attempted is True and r.rung == 0 and r.fail_count == 1 and r.last_passed is False and r.due is True
+    assert (r.attempted is True and r.rung == 0 and r.fail_count == 1
+            and r.last_passed is False and r.due is True)
 
 
 def test_artifact_detail_stale_content_returns_empty(tmp_path):
