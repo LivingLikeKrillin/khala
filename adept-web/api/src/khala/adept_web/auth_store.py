@@ -125,7 +125,8 @@ class PostgresAuthStore:
     def user_for_session(self, token: str, *, now: str) -> User | None:
         with self._conn() as c, c.cursor() as cur:
             cur.execute(
-                "SELECT u.id, u.email, u.tenant_slug FROM sessions s JOIN users u ON u.id = s.user_id "
+                "SELECT u.id, u.email, u.tenant_slug "
+                "FROM sessions s JOIN users u ON u.id = s.user_id "
                 "WHERE s.token = %s AND s.expires_at > %s",
                 (token, now),
             )

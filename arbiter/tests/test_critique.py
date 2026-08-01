@@ -83,7 +83,8 @@ def test_anthropic_critic_parses_fenced_json():
 
 def test_anthropic_critic_parses_bare_fence_and_prose_preamble():
     from khala.arbiter.critique import AnthropicCritic
-    body = 'Here are the issues I found:\n\n```\n[{"category":"undefined","severity":"high","description":"y"}]\n```\n'
+    body = ('Here are the issues I found:\n\n```\n'
+            '[{"category":"undefined","severity":"high","description":"y"}]\n```\n')
     crit = AnthropicCritic(client=_Client(body))
     assert crit.find_issues("body", [], RUBRIC) == [("undefined", "high", "y")]
 

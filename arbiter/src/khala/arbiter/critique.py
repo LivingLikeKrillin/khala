@@ -123,7 +123,8 @@ class AnthropicCritic:
         return [(d["category"], d["severity"], d["description"]) for d in data]
 
 
-# 문 닫기 플래그 — SPEC-arbiter-claude-code-critic §5. injection 이 리뷰를 호스트 실행으로 못 바꾸게:
+# 문 닫기 플래그 — SPEC-arbiter-claude-code-critic §5.
+# injection 이 리뷰를 호스트 실행으로 못 바꾸게:
 # 빌트인 툴·MCP·유저 세팅훅스킬·트랜스크립트 지속을 전부 차단. 순서·값이 테스트로 고정된다.
 _DOORS_CLOSED = [
     "--allowed-tools", "",
@@ -148,7 +149,8 @@ def _default_claude_runner(argv: list[str], prompt: str, timeout: float):
 class ClaudeCodeCritic:
     """키리스 크리틱 — 호스트에서 도는 Claude Code(`claude -p`)로 리뷰. 유료 키 불필요.
 
-    Arbiter 는 호스트 프로세스라 브리지 없이 `claude` 를 직접 부른다. AnthropicCritic 과 같은 `_PROMPT`
+    Arbiter 는 호스트 프로세스라 브리지 없이 `claude` 를 직접 부른다.
+    AnthropicCritic 과 같은 `_PROMPT`
     로 같은 계약(list[(category, severity, description)])을 지킨다. 실패는 예외로 — critique() 가
     CritiqueError 로 감싼다(fail-closed). runner 는 테스트용 주입 가능.
     """
@@ -180,7 +182,10 @@ class ClaudeCodeCritic:
 
 
 def make_critic(name: str | None = None) -> Critic:
-    """ARBITER_CRITIC(기본 anthropic) 로 크리틱 백엔드 선택. 알 수 없는 값은 거부(오타 은닉 방지)."""
+    """ARBITER_CRITIC(기본 anthropic) 로 크리틱 백엔드 선택.
+
+    알 수 없는 값은 거부(오타 은닉 방지).
+    """
     name = (name or os.getenv("ARBITER_CRITIC") or "anthropic").strip().lower()
     if name == "anthropic":
         return AnthropicCritic()

@@ -17,7 +17,9 @@ from khala.arbiter.critique import (
 RUBRIC = ["risky-assumption", "adr-contradiction"]
 
 
-def _runner(rc=0, out='[{"category":"risky-assumption","severity":"high","description":"d"}]', err=""):
+def _runner(rc=0,
+            out='[{"category":"risky-assumption","severity":"high","description":"d"}]',
+            err=""):
     seen = {}
 
     def run(argv, prompt, timeout):
@@ -51,7 +53,8 @@ def test_find_issues_parses_json_array():
 
 
 def test_find_issues_unwraps_fenced_json():
-    run, _ = _runner(out='```json\n[{"category":"risky-assumption","severity":"low","description":"y"}]\n```')
+    run, _ = _runner(
+        out='```json\n[{"category":"risky-assumption","severity":"low","description":"y"}]\n```')
     issues = ClaudeCodeCritic(runner=run).find_issues("b", [], RUBRIC)
     assert issues == [("risky-assumption", "low", "y")]
 

@@ -67,7 +67,10 @@ class Principal:
 
 
 def require_user(request: Request) -> Principal:
-    """Return the caller's Principal{email, tenant_slug}. 401 when auth is on and no valid session."""
+    """Return the caller's Principal{email, tenant_slug}.
+
+    401 when auth is on and no valid session.
+    """
     if not deps.auth_enabled():
         return Principal(deps.DEFAULT_PERSON, deps.DEFAULT_TENANT)
     token = request.cookies.get(deps.SESSION_COOKIE)
@@ -128,7 +131,9 @@ def list_artifacts(principal: Principal = Depends(require_user)) -> list[Artifac
 
 
 @app.post("/api/artifacts", response_model=ArtifactOut, status_code=201)
-def register_artifact(req: RegisterReq, principal: Principal = Depends(require_user)) -> ArtifactOut:
+def register_artifact(
+    req: RegisterReq, principal: Principal = Depends(require_user)
+) -> ArtifactOut:
     # ONE store for both service calls (register then list) within this request.
     store = deps.make_store(principal.tenant_slug)
     service.register_artifact(req.path, store=store)

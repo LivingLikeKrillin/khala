@@ -91,8 +91,9 @@ def build_cli(root: Path, docs: Path, critic) -> typer.Typer:
     @app.command()
     def approve(
         artifact_id: str = typer.Argument(...),
-        dispositions: Path = typer.Option(..., "--dispositions",
-                                          help="처분 JSON 파일 (리스트: {issue_id, disposition, reason?})"),
+        dispositions: Path = typer.Option(
+            ..., "--dispositions",
+            help="처분 JSON 파일 (리스트: {issue_id, disposition, reason?})"),
         approver: str = typer.Option(..., "--approver", help="승인자 (사람의 서명)"),
     ) -> None:
         """비평 이슈에 처분을 적용하고 승인한다. rejected/deferred 는 사유 필수."""

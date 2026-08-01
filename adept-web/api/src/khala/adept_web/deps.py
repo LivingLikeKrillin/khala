@@ -45,7 +45,8 @@ DEFAULT_TENANT = "default"         # the tenant when auth is OFF or unspecified
 SESSION_TTL_DAYS = 14
 
 
-def make_store(tenant_slug: str = DEFAULT_TENANT) -> AdeptStore:  # default keeps pre-Chunk-4 callers green; handlers pass principal.tenant_slug
+# The default keeps pre-Chunk-4 callers green; handlers pass principal.tenant_slug.
+def make_store(tenant_slug: str = DEFAULT_TENANT) -> AdeptStore:
     """Storage factory — selects the backend by env, called at REQUEST TIME.
 
     `ADEPT_DATABASE_URL` set -> tenant-bound PostgresStore over that DSN (per-request

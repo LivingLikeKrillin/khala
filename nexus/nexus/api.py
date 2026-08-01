@@ -849,10 +849,12 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             llm_failed = False
             usage_out: list = []
             if not packet.snippets:
-                yield f"event: answer_delta\ndata: {json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)}\n\n"
+                _payload = json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)
+                yield f"event: answer_delta\ndata: {_payload}\n\n"
             elif not llm_svc.configured:
                 # 미설정(키 없음): 일시적 오류가 아니라 행동지침을 준다. 근거는 이미 위에서 전송됨.
-                yield f"event: answer_delta\ndata: {json.dumps({'text': LLM_NOT_CONFIGURED_NOTICE}, ensure_ascii=False)}\n\n"
+                _payload = json.dumps({'text': LLM_NOT_CONFIGURED_NOTICE}, ensure_ascii=False)
+                yield f"event: answer_delta\ndata: {_payload}\n\n"
             else:
                 evidence_text = format_for_llm(packet)
                 user_prompt = build_user_prompt(req.query, evidence_text)
@@ -863,7 +865,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                         yield f"event: answer_delta\ndata: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
                 except Exception:
                     llm_failed = True
-                    yield f"event: answer_delta\ndata: {json.dumps({'text': '답변을 생성할 수 없습니다. 위 근거를 직접 확인해주세요.'}, ensure_ascii=False)}\n\n"
+                    _payload = json.dumps(
+                        {'text': '답변을 생성할 수 없습니다. 위 근거를 직접 확인해주세요.'}, ensure_ascii=False)
+                    yield f"event: answer_delta\ndata: {_payload}\n\n"
 
             # 4) 완료 이벤트 — 누적 답변의 인용·숫자를 근거와 대조해 함께 실어 보낸다.
             full_answer = "".join(answer_parts)

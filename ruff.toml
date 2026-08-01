@@ -12,9 +12,10 @@
 # select` instead of inheriting the default. Do NOT add new rule families anywhere
 # without re-capturing the lint baseline; never run `ruff format` (check-only).
 #
-# This file selects all of `E`, which includes E501 (line-too-long). The subprojects
-# deliberately select the narrower `E4`/`E7`/`E9` — adopting E501 across them costs
-# 64 line rewrites and is a separate cleanup, not a side effect of turning lint on.
+# Every subproject now selects this same `["E", "F"]`, so line-too-long (E501) is enforced
+# everywhere against that subproject's own line-length (nexus 120, the rest 100). The one
+# exemption is nexus's LLM prompt file, which is content rather than code — see the
+# per-file-ignores note in nexus/pyproject.toml.
 
 target-version = "py311"
 line-length = 100

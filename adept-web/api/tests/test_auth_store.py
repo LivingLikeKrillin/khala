@@ -44,7 +44,8 @@ def test_session_lifecycle_and_expiry_boundary():
     # Parsed-not-lexicographic proof: +01:00 instant equals UTC midnight. A lexicographic
     # compare would wrongly read this as still-valid ("...T00:00:00+00:00" < "...T01:00:00+01:00").
     s.create_session(u.id, "tz", "2026-06-25T01:00:00+01:00")  # == 2026-06-25T00:00:00Z
-    assert s.user_for_session("tz", now="2026-06-25T00:00:00+00:00") is None  # expired at the same instant
+    # Expired at the same instant.
+    assert s.user_for_session("tz", now="2026-06-25T00:00:00+00:00") is None
 
 
 def test_delete_session():
@@ -68,7 +69,8 @@ def test_postgres_auth_store_roundtrip():
 
     with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
         cur.execute("TRUNCATE users, sessions CASCADE")
-        cur.execute("INSERT INTO tenants (slug, name) VALUES ('default', 'Default') ON CONFLICT DO NOTHING")
+        cur.execute("INSERT INTO tenants (slug, name) VALUES ('default', 'Default') "
+                    "ON CONFLICT DO NOTHING")
     s = PostgresAuthStore(_PG_DSN)
     u = s.create_user("Alice@X.com", "hash1")
     assert u.email == "alice@x.com"
@@ -129,7 +131,8 @@ def test_postgres_auth_store_tenant_slug_roundtrip():
 
     with psycopg.connect(_PG_DSN) as c, c.cursor() as cur:
         cur.execute("TRUNCATE users, sessions CASCADE")
-        cur.execute("INSERT INTO tenants (slug, name) VALUES ('acme', 'Acme') ON CONFLICT DO NOTHING")
+        cur.execute("INSERT INTO tenants (slug, name) VALUES ('acme', 'Acme') "
+                    "ON CONFLICT DO NOTHING")
     s = PostgresAuthStore(_PG_DSN)
     s.create_tenant("acme2", "Acme2")
     u = s.create_user("b@x.com", "hash1", tenant_slug="acme2")
