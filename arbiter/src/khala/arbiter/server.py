@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 
 from . import review
 from .config import ArbiterConfig
@@ -19,8 +19,8 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def build_app(ledger: Ledger, gate: Gate, critic, config: ArbiterConfig) -> FastMCP:
-    app = FastMCP("arbiter")
+def build_app(ledger: Ledger, gate: Gate, critic, config: ArbiterConfig) -> MCPServer:
+    app = MCPServer("arbiter")
 
     @app.tool()
     def record(type: str, title: str, slug: str | None = None) -> str:

@@ -9,9 +9,9 @@ class TestMCPToolRegistration:
     def test_server_name(self):
         assert mcp.name == "Nexus"
 
-    def test_tools_registered(self):
+    def test_tools_registered(self, mcp_tools):
         """필수 도구 6개가 등록되어 있는지."""
-        tool_names = set(mcp._tool_manager._tools.keys())
+        tool_names = set(mcp_tools)
         expected = {
             "nexus_search",
             "nexus_answer",
@@ -22,49 +22,37 @@ class TestMCPToolRegistration:
         }
         assert expected.issubset(tool_names), f"Missing: {expected - tool_names}"
 
-    def test_search_tool_schema(self):
+    def test_search_tool_schema(self, mcp_tools):
         """nexus_search 도구의 파라미터 스키마 검증."""
-        tool = mcp._tool_manager._tools["nexus_search"]
-        schema = tool.parameters
-        props = schema.get("properties", {})
+        props = mcp_tools["nexus_search"].input_schema.get("properties", {})
         assert "query" in props
         assert "top_k" in props
         assert "tenant" in props
 
-    def test_answer_tool_schema(self):
-        tool = mcp._tool_manager._tools["nexus_answer"]
-        schema = tool.parameters
-        props = schema.get("properties", {})
+    def test_answer_tool_schema(self, mcp_tools):
+        props = mcp_tools["nexus_answer"].input_schema.get("properties", {})
         assert "query" in props
 
-    def test_graph_tool_schema(self):
-        tool = mcp._tool_manager._tools["nexus_graph"]
-        schema = tool.parameters
-        props = schema.get("properties", {})
+    def test_graph_tool_schema(self, mcp_tools):
+        props = mcp_tools["nexus_graph"].input_schema.get("properties", {})
         assert "entity" in props
         assert "hops" in props
 
-    def test_suggest_tool_schema(self):
-        tool = mcp._tool_manager._tools["nexus_suggest"]
-        schema = tool.parameters
-        props = schema.get("properties", {})
+    def test_suggest_tool_schema(self, mcp_tools):
+        props = mcp_tools["nexus_suggest"].input_schema.get("properties", {})
         assert "query" in props
 
-    def test_diff_tool_schema(self):
-        tool = mcp._tool_manager._tools["nexus_diff"]
-        schema = tool.parameters
-        props = schema.get("properties", {})
+    def test_diff_tool_schema(self, mcp_tools):
+        props = mcp_tools["nexus_diff"].input_schema.get("properties", {})
         assert "tenant" in props
 
-    def test_status_tool_has_no_required_params(self):
-        tool = mcp._tool_manager._tools["nexus_status"]
-        schema = tool.parameters
-        required = schema.get("required", [])
+    def test_status_tool_has_no_required_params(self, mcp_tools):
+        required = mcp_tools["nexus_status"].input_schema.get("required", [])
         assert len(required) == 0
 
-    def test_tool_descriptions_in_korean(self):
+    def test_tool_descriptions_in_korean(self, mcp_tools):
         """도구 설명이 한국어로 작성되어 있는지."""
-        for name, tool in mcp._tool_manager._tools.items():
+        for name, tool in mcp_tools.items():
             desc = tool.description or ""
             # 최소한 한글이 포함되어야 함
             has_korean = any("\uac00" <= c <= "\ud7a3" for c in desc)

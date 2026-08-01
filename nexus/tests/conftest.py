@@ -81,6 +81,22 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope="session")
+def mcp_tools() -> dict:
+    """등록된 MCP 도구를 이름으로 조회 — 공개 `list_tools()` 경유.
+
+    예전엔 `mcp._tool_manager._tools` 를 직접 열었다. 사설 내부에 스위트를 묶어두면 상류가
+    내부를 옮기는 순간 같이 깨진다 — mcp 2.0 이 `_mcp_server` 를 `_lowlevel_server` 로
+    옮긴 게 정확히 그 예다. 공개 API 는 스키마를 `input_schema` 로 준다(2.0 에서 필드명이
+    snake_case 로 통일됐다. 1.x 의 `inputSchema`/`.parameters` 가 아니다).
+    """
+    import asyncio
+
+    from nexus.mcp.server import mcp
+
+    return {t.name: t for t in asyncio.run(mcp.list_tools())}
+
+
+@pytest.fixture(scope="session")
 def db_url() -> str:
     return os.getenv("NEXUS_TEST_DB_URL", "postgresql://nexus:nexus@localhost:5433/nexus_test")
 

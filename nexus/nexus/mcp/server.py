@@ -1,6 +1,6 @@
 """Nexus MCP Server — AI Agent용 tool provider.
 
-FastMCP를 사용하여 Nexus API를 MCP 도구로 노출한다.
+MCPServer(mcp 2.x — 1.x 의 FastMCP)를 사용하여 Nexus API를 MCP 도구로 노출한다.
 Agent가 stdio 또는 streamable-http로 접속하여 검색/그래프/상태를 질의할 수 있다.
 
 실행:
@@ -16,11 +16,11 @@ from __future__ import annotations
 import os
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 
 NEXUS_API_URL = os.getenv("NEXUS_API_URL", "http://localhost:8000")
 
-mcp = FastMCP(
+mcp = MCPServer(
     "Nexus",
     instructions="Enterprise RAG + GraphRAG — 조직 내부 지식과 운영 사실 기반 검색·추론",
 )

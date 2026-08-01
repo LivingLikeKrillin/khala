@@ -52,10 +52,9 @@ slack = [
     "slack-sdk>=3.33.0,<4",
 ]
 mcp = [
-    # mcp 2.0.0 (2026-07-28) is a major rework that drops `mcp.server.fastmcp`.
-    # Upstream's own guidance is to pin <2 until migrated. Unbounded here is what
-    # turned master red the moment 2.0 shipped.
-    "mcp[cli]>=1.2.0,<2",
+    # Migrated to the 2.x API: `mcp.server.fastmcp.FastMCP` -> `mcp.server.MCPServer`.
+    # 2.x requires Python >=3.10, so the 3.11 image and 3.13 CI are both fine.
+    "mcp[cli]>=2.0.0,<3",
 ]
 notion = [
     # S4 Notion importer — lazy-imported by NotionSource; off by default.
