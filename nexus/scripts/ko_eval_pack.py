@@ -228,8 +228,10 @@ def build(pack_dir: Path, tree: list[dict] | None = None, fetch=fetch_blob, work
         documents = list(ex.map(one, entries))
 
     manifest = build_manifest(documents)
+    # newline="\n": Windows 의 기본 개행 변환이 매니페스트를 플랫폼마다 다른 바이트로 만든다.
+    # 문서 본문은 write_bytes 라 무관하지만, 자 자체가 플랫폼을 타면 안 된다.
     (pack_dir / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        json.dumps(manifest, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
     return manifest
 
 
