@@ -9,7 +9,7 @@
 ## 🟡 검토중 (0)
 
 
-## 🟢 승인 (34)
+## 🟢 승인 (35)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
@@ -25,6 +25,7 @@
 | SPEC-nexus-document-lifecycle | Document lifecycle — origin, search, hide, and the inverse of every destructive act | LivingLikeKrillin | 2026-07-10 | ADR-0006 |
 | SPEC-nexus-embed-generation-drift | Detect mixed embedding generations (partial re-embed guardrail) | LivingLikeKrillin |  |  |
 | SPEC-nexus-graph-scope-filter | The graph channel must obey base_filter — stop cross-tenant / over-clearance / quarantined leakage | LivingLikeKrillin |  | ADR-0004, ADR-0006 |
+| SPEC-nexus-korean-embedding-comparison | Korean embedding comparison — nomic-embed-text vs KURE-v1 on the pinned pack | LivingLikeKrillin | 2026-08-03T12:27:40Z | ADR-0008 |
 | SPEC-nexus-korean-retrieval-eval | Korean retrieval evaluation set — a tokenizer-neutral ruler on a pinned public corpus | LivingLikeKrillin | 2026-08-02T09:52:01Z | ADR-0008 |
 | SPEC-nexus-llm-usage-capture | Capture per-call LLM token usage and cost (Unit A of cost tracking) | LivingLikeKrillin |  |  |
 | SPEC-nexus-llm-usage-persistence | Persist LLM token usage + cost to search_log and v_search_health (Unit B) | LivingLikeKrillin |  |  |
