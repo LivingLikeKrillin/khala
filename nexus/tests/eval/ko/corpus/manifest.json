@@ -1,0 +1,1889 @@
+{
+ "pack": "ko-k8s-2026-08-01",
+ "upstream": {
+  "repo": "kubernetes/website",
+  "sha": "b035ea80a2f666e0a60923560984458806788104",
+  "license": "CC-BY-4.0"
+ },
+ "rule": {
+  "path_prefix": "content/ko/docs/",
+  "sections": [
+   "concepts",
+   "tasks",
+   "tutorials",
+   "setup"
+  ],
+  "skip_basename": "_index.md",
+  "min_bytes": 2048,
+  "max_bytes": 40960,
+  "size_basis": "upstream blob bytes, before normalisation"
+ },
+ "normalisation": [
+  "NFC",
+  "front-matter stripped (title kept as heading)",
+  "hugo shortcodes: text= kept, others removed",
+  "html comments removed",
+  "CRLF->LF",
+  "trailing whitespace",
+  "single final newline"
+ ],
+ "count": 265,
+ "bytes_total": 2675561,
+ "documents": [
+  {
+   "path": "concepts/architecture/cgroups.md",
+   "upstream_path": "content/ko/docs/concepts/architecture/cgroups.md",
+   "blob_sha1": "746f8e9c8cc994e4a58ef023873a11fc5d7bd56e",
+   "sha256": "e6a5d5cf9bde4cdcc8da5a5e130390187c969f5c8ed63abea8403dc82c661505",
+   "bytes": 6284
+  },
+  {
+   "path": "concepts/architecture/cloud-controller.md",
+   "upstream_path": "content/ko/docs/concepts/architecture/cloud-controller.md",
+   "blob_sha1": "68e13124eade52008aefb836da0bedefbe7864fe",
+   "sha256": "0e1e7a71990738681ff09cb085e9e456279a67813bdf51272ab6759902e0d068",
+   "bytes": 7609
+  },
+  {
+   "path": "concepts/architecture/control-plane-node-communication.md",
+   "upstream_path": "content/ko/docs/concepts/architecture/control-plane-node-communication.md",
+   "blob_sha1": "0ea25850f2a35de9b3c8f827b39725c7a8ee3259",
+   "sha256": "6871ebbcffc6eb3c75b7a948cddc32423eb81c847fdfadfd5abd3d620895bc32",
+   "bytes": 7692
+  },
+  {
+   "path": "concepts/architecture/controller.md",
+   "upstream_path": "content/ko/docs/concepts/architecture/controller.md",
+   "blob_sha1": "cf38416206cfb4636edb4af0541b055a946fbedf",
+   "sha256": "e3e93ec6cc90e6acd355768ceed3778424f27c6e63fedf010935144b0d297332",
+   "bytes": 8110
+  },
+  {
+   "path": "concepts/architecture/garbage-collection.md",
+   "upstream_path": "content/ko/docs/concepts/architecture/garbage-collection.md",
+   "blob_sha1": "c4bd7a005a8ed02d228060da4361510f46c0e0bc",
+   "sha256": "82f0a1651a650a5fa904258d50e62814664ed57cef5c145c5924696e88888a42",
+   "bytes": 10881
+  },
+  {
+   "path": "concepts/architecture/leases.md",
+   "upstream_path": "content/ko/docs/concepts/architecture/leases.md",
+   "blob_sha1": "7b112e31dd09cd327dccf382c9c8ec2c76d4f0d3",
+   "sha256": "bc752e205f4795effc1bd288641836464c6b5d6daac64679e67f7e19b375ef02",
+   "bytes": 4293
+  },
+  {
+   "path": "concepts/architecture/nodes.md",
+   "upstream_path": "content/ko/docs/concepts/architecture/nodes.md",
+   "blob_sha1": "11f428854f67e344a34c25d542dcb2b6c26a79e5",
+   "sha256": "73129026b58362d1565d4e0cf582883e7032a54e13a2678025f78e4622abb478",
+   "bytes": 15690
+  },
+  {
+   "path": "concepts/architecture/self-healing.md",
+   "upstream_path": "content/ko/docs/concepts/architecture/self-healing.md",
+   "blob_sha1": "7bd7d9e487f0c0fbee371f5a64a0b9d10375b83d",
+   "sha256": "970a2dc47e4e6002db4dd58d106078318d4a8a06e5f41f0e172b28e9b15129d7",
+   "bytes": 2982
+  },
+  {
+   "path": "concepts/cluster-administration/addons.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/addons.md",
+   "blob_sha1": "21266a91c0d9fdbd19f2c848eea1b85a1b8c5fd4",
+   "sha256": "27ee136ebeb69c6d3f33a5e44a8050a0a59d81d4293affc521aad9eea59fc7c0",
+   "bytes": 6944
+  },
+  {
+   "path": "concepts/cluster-administration/kube-state-metrics.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/kube-state-metrics.md",
+   "blob_sha1": "7c68c425faa34037a960f9a83064ec468f3a19e1",
+   "sha256": "dceba72867e0f519e814c505d45137e004da9b859d9775e286d99b95c4fe2522",
+   "bytes": 2608
+  },
+  {
+   "path": "concepts/cluster-administration/logging.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/logging.md",
+   "blob_sha1": "037bb13dd382b440c2e5bc2b6544f5f76fe1a3fc",
+   "sha256": "591a55c756598eb89e97b581bc9ef6acedf544d2db67e920e31c59f2fda923e9",
+   "bytes": 19890
+  },
+  {
+   "path": "concepts/cluster-administration/manage-deployment.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/manage-deployment.md",
+   "blob_sha1": "cee5ad235dbcd4183091da42f1ae59099556ed79",
+   "sha256": "acda0a9417852add9d03f5395e588fa8f2cdb6bf405cb8b729f6b3f4a0ab9eb0",
+   "bytes": 20122
+  },
+  {
+   "path": "concepts/cluster-administration/networking.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/networking.md",
+   "blob_sha1": "1a6ce86090c11c6b06324c1fced9134d2f18d2c9",
+   "sha256": "68fdf2f679d8a8a9beb4800508be765b11e7bb238f6a7ed11f18a53827b94141",
+   "bytes": 2688
+  },
+  {
+   "path": "concepts/cluster-administration/node-autoscaling.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/node-autoscaling.md",
+   "blob_sha1": "88d8b3fe48241d0dfbc1a7c62a2f175d507179a5",
+   "sha256": "4d7f73890889573d610b8d6d74149a3ff12d405cfeb51039c0234fdf63146f0d",
+   "bytes": 17746
+  },
+  {
+   "path": "concepts/cluster-administration/node-shutdown.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/node-shutdown.md",
+   "blob_sha1": "fb78fdf99f627dc27bbe1f7fb5f8be2c420bfd24",
+   "sha256": "ce5acf96024cd86de56fc29b84d2c66c1d5d8cb142f92d1207f0b30c56329693",
+   "bytes": 16240
+  },
+  {
+   "path": "concepts/cluster-administration/proxies.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/proxies.md",
+   "blob_sha1": "9e777e13683d3eecb752988362783870025904d4",
+   "sha256": "9f4399b84d8c8cf1e69dcd71fd1f62d414f0327ce1b4fabb5e235535340a51bc",
+   "bytes": 2785
+  },
+  {
+   "path": "concepts/cluster-administration/system-logs.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/system-logs.md",
+   "blob_sha1": "a88956dadd91f5982b25c0e731151051c274ea8a",
+   "sha256": "92580e46287ab8c5c0eef7d4d19b887d7132aa3c384dd2136bec0a5da3140bf5",
+   "bytes": 11415
+  },
+  {
+   "path": "concepts/cluster-administration/system-metrics.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/system-metrics.md",
+   "blob_sha1": "92235b1bdb93349474112b1e5523f9e0947a0ac6",
+   "sha256": "dc71f5a427ef01295b1c8dbc260cb884fb32111907ed8176495d89cad15b08a4",
+   "bytes": 11681
+  },
+  {
+   "path": "concepts/cluster-administration/system-traces.md",
+   "upstream_path": "content/ko/docs/concepts/cluster-administration/system-traces.md",
+   "blob_sha1": "a87596d9e65d7f5e6e0cd84e72f99465c5966f2e",
+   "sha256": "6bb52cf699a37b6e7786b74630c23cfc24c9279eb6c632751df03bed1949deb1",
+   "bytes": 5060
+  },
+  {
+   "path": "concepts/configuration/configmap.md",
+   "upstream_path": "content/ko/docs/concepts/configuration/configmap.md",
+   "blob_sha1": "6ee96818391abdccae7825f16d5ee8a04567e7d0",
+   "sha256": "3f693c6b50f0edf02f2055a72e9c35d749d169ce9266ef025ee06225847766e6",
+   "bytes": 11150
+  },
+  {
+   "path": "concepts/configuration/liveness-readiness-startup-probes.md",
+   "upstream_path": "content/ko/docs/concepts/configuration/liveness-readiness-startup-probes.md",
+   "blob_sha1": "048650ec3dbe35bae7b0952546f8cef5bbca61dc",
+   "sha256": "28f1e7aaee56c1d603edccb643be4d8d21c8770a1319cd66bed5007ac8264700",
+   "bytes": 2298
+  },
+  {
+   "path": "concepts/configuration/manage-resources-containers.md",
+   "upstream_path": "content/ko/docs/concepts/configuration/manage-resources-containers.md",
+   "blob_sha1": "4ffca8d5a92d2620c355ab6ae214c7f3cc870460",
+   "sha256": "74e7c3768efc5bb53807dd77aa28bd1bf36a16427989add63e7accb605dc06d0",
+   "bytes": 38066
+  },
+  {
+   "path": "concepts/configuration/organize-cluster-access-kubeconfig.md",
+   "upstream_path": "content/ko/docs/concepts/configuration/organize-cluster-access-kubeconfig.md",
+   "blob_sha1": "eb44669be00ef85407bfcffb6031aa34a57cb79d",
+   "sha256": "8d3c6e4ffc4e8163f99949cf9eb00fc679b68f2c8cd06bef88b503a9d5e17841",
+   "bytes": 7761
+  },
+  {
+   "path": "concepts/configuration/overview.md",
+   "upstream_path": "content/ko/docs/concepts/configuration/overview.md",
+   "blob_sha1": "164e3a359b3b14443e86f7ee417698644f0ec54b",
+   "sha256": "d36ddaa87f38b8ecb966fa5b4a342c30d5539cd4ab15cf35fa92c03428856b66",
+   "bytes": 9435
+  },
+  {
+   "path": "concepts/configuration/windows-resource-management.md",
+   "upstream_path": "content/ko/docs/concepts/configuration/windows-resource-management.md",
+   "blob_sha1": "db45d4ae2207e7ee95896a7ef24a1a6d4706b192",
+   "sha256": "bc077a14a25d652011eb3cd7389bc7afb7dfb500f77041b9afdcffd3ca5f135e",
+   "bytes": 4437
+  },
+  {
+   "path": "concepts/containers/container-environment.md",
+   "upstream_path": "content/ko/docs/concepts/containers/container-environment.md",
+   "blob_sha1": "3fee2a14e8f8fdb397ef96051165ad0cd7a4746d",
+   "sha256": "7153fd3778388e8aeca24f94a468b845be7f43208f090ae3720f5fcafd962a22",
+   "bytes": 2301
+  },
+  {
+   "path": "concepts/containers/container-lifecycle-hooks.md",
+   "upstream_path": "content/ko/docs/concepts/containers/container-lifecycle-hooks.md",
+   "blob_sha1": "85521e32cb3fe79780709f5818b1614508e992e6",
+   "sha256": "0f194231c975ee46f1ff244a5a827245f30156facf4c99ed3291feec4d932709",
+   "bytes": 7497
+  },
+  {
+   "path": "concepts/containers/cri.md",
+   "upstream_path": "content/ko/docs/concepts/containers/cri.md",
+   "blob_sha1": "b26d458521033a4d28bdf09060be2dfe71213a03",
+   "sha256": "45ddedc120395c977687eca113c3764f7f0fc25acbadad53769f7435a5b2e630",
+   "bytes": 1753
+  },
+  {
+   "path": "concepts/containers/images.md",
+   "upstream_path": "content/ko/docs/concepts/containers/images.md",
+   "blob_sha1": "6af4af42815b5ecd25fa672d5b14a996a32cbdd6",
+   "sha256": "9b8a11d5240cf527f184ba27e812842f33820bc2b544ff547fcca0702a34c6be",
+   "bytes": 32742
+  },
+  {
+   "path": "concepts/containers/runtime-class.md",
+   "upstream_path": "content/ko/docs/concepts/containers/runtime-class.md",
+   "blob_sha1": "81c26e133cddce0c05f6b267e2cf672bf85d8078",
+   "sha256": "80748529b355b679c3b06b3cc2f2db52013e54ada4e4fb4b1d67a4845fb5904b",
+   "bytes": 7703
+  },
+  {
+   "path": "concepts/extend-kubernetes/api-extension/apiserver-aggregation.md",
+   "upstream_path": "content/ko/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation.md",
+   "blob_sha1": "ee4a838457ce1bd54cf08ca1fb52207ebe1eccd6",
+   "sha256": "445926e3fb3c70fef62377210ec935912e5acabfb715974ca2a820868758084f",
+   "bytes": 2819
+  },
+  {
+   "path": "concepts/extend-kubernetes/api-extension/custom-resources.md",
+   "upstream_path": "content/ko/docs/concepts/extend-kubernetes/api-extension/custom-resources.md",
+   "blob_sha1": "40af1306d1437ac7cb53ba32c98068ca0650e257",
+   "sha256": "6105ca6c19d1229220eccc2192022083ddeae64bdb66b16df58a0d837bbbcf3d",
+   "bytes": 25565
+  },
+  {
+   "path": "concepts/extend-kubernetes/compute-storage-net/device-plugins.md",
+   "upstream_path": "content/ko/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins.md",
+   "blob_sha1": "846ade405ef187e6de3ce9448894c0cf6b8a1990",
+   "sha256": "d7af0cf67c52608e5489e46bd13393da2588e3fed079113c5930b4daeb52b0df",
+   "bytes": 19804
+  },
+  {
+   "path": "concepts/extend-kubernetes/compute-storage-net/network-plugins.md",
+   "upstream_path": "content/ko/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins.md",
+   "blob_sha1": "93ad7a0cf0995dcef0c72c5166693eb82f4483aa",
+   "sha256": "ea2e211bfa3b9712366a4eb1dbf2d34f6a8102c8e9a83b36fa0f67150ed3f6ed",
+   "bytes": 6821
+  },
+  {
+   "path": "concepts/extend-kubernetes/operator.md",
+   "upstream_path": "content/ko/docs/concepts/extend-kubernetes/operator.md",
+   "blob_sha1": "eab1ba0e9d91e7fd6db00bad4e4905bc19bb7d11",
+   "sha256": "22126e8eac9866c9fcf961396d4303ae355824377c6078760c898bbc9c4f8362",
+   "bytes": 7676
+  },
+  {
+   "path": "concepts/overview/components.md",
+   "upstream_path": "content/ko/docs/concepts/overview/components.md",
+   "blob_sha1": "099c988128d3b56f822bb297eb304e3e22cdc66a",
+   "sha256": "5ab450e788ae16a2c0e0c468fd324c0f5dd57208bfcfa9dd90e429772fd2fe90",
+   "bytes": 3226
+  },
+  {
+   "path": "concepts/overview/kubernetes-api.md",
+   "upstream_path": "content/ko/docs/concepts/overview/kubernetes-api.md",
+   "blob_sha1": "14626f71210e50966ab6edda7b5adee0a5f9efc1",
+   "sha256": "03053ae0c886ea7f605dc1ca827d68c45683042d2828cf00fd0fda0ac12972af",
+   "bytes": 10835
+  },
+  {
+   "path": "concepts/overview/working-with-objects/annotations.md",
+   "upstream_path": "content/ko/docs/concepts/overview/working-with-objects/annotations.md",
+   "blob_sha1": "b3a15c31d084296d7ae124c8dec760ccc15be675",
+   "sha256": "1ae7f3bf7062f095078bac70079703a5494993852941a0e0408b1217f5fc219d",
+   "bytes": 4517
+  },
+  {
+   "path": "concepts/overview/working-with-objects/common-labels.md",
+   "upstream_path": "content/ko/docs/concepts/overview/working-with-objects/common-labels.md",
+   "blob_sha1": "9e02d83bb4d4ee341fa3bedbca52d73a92ed045b",
+   "sha256": "66f4326ea167935e105800879837d9f8a6aae03627e3da00e31540d3aea7428c",
+   "bytes": 6606
+  },
+  {
+   "path": "concepts/overview/working-with-objects/field-selectors.md",
+   "upstream_path": "content/ko/docs/concepts/overview/working-with-objects/field-selectors.md",
+   "blob_sha1": "d0a0b84620d9d0b83222610bd1b59a2673cf9828",
+   "sha256": "f8dc3a173939cf09f4c769ede5689d50e2b92022ce8608b415ccb93c80b0a4d6",
+   "bytes": 6856
+  },
+  {
+   "path": "concepts/overview/working-with-objects/finalizers.md",
+   "upstream_path": "content/ko/docs/concepts/overview/working-with-objects/finalizers.md",
+   "blob_sha1": "740a9e3e4e0b5c3cf7cda1c4578e8e34a32bebf2",
+   "sha256": "e6d3b41e20c6fa97a4663e55fccc7e589ec5870c41bab9acf6173d2c5fbcb8b2",
+   "bytes": 5794
+  },
+  {
+   "path": "concepts/overview/working-with-objects/kubernetes-objects.md",
+   "upstream_path": "content/ko/docs/concepts/overview/working-with-objects/kubernetes-objects.md",
+   "blob_sha1": "5dd33631c5ad3d178bc758667e6e248f1ae5115e",
+   "sha256": "5c11391961e54dc92597f3182e6b5241e7b53eb3d3effdf408078090c23f5e33",
+   "bytes": 7530
+  },
+  {
+   "path": "concepts/overview/working-with-objects/labels.md",
+   "upstream_path": "content/ko/docs/concepts/overview/working-with-objects/labels.md",
+   "blob_sha1": "886d183e0ffd3809de02f0ed30f7303db50f175d",
+   "sha256": "e5e549bbc94d1d23dbcabab4f48d5260224e79a17bd7f2e9e11114f409868967",
+   "bytes": 16821
+  },
+  {
+   "path": "concepts/overview/working-with-objects/names.md",
+   "upstream_path": "content/ko/docs/concepts/overview/working-with-objects/names.md",
+   "blob_sha1": "03696ca4e7606074a51801a85d6c6faadec370b1",
+   "sha256": "1cf617f06531ed506596bdac61e9eebc8c84037b6726eee65a3e049a697b1681",
+   "bytes": 4730
+  },
+  {
+   "path": "concepts/overview/working-with-objects/namespaces.md",
+   "upstream_path": "content/ko/docs/concepts/overview/working-with-objects/namespaces.md",
+   "blob_sha1": "25b41c212c365ac3c87c38c3ea1184da46c85651",
+   "sha256": "6bbeb1af8c94c8d2285e4c00316a383997213124f37df346d40c33c27fa3e9c1",
+   "bytes": 7676
+  },
+  {
+   "path": "concepts/overview/working-with-objects/object-management.md",
+   "upstream_path": "content/ko/docs/concepts/overview/working-with-objects/object-management.md",
+   "blob_sha1": "640c0ad8aa80400215ff82adea6cc4c62b92be34",
+   "sha256": "554ae52e4d28c33c978807a698d698202384897c9c30eb6b4f5dd4f831365f23",
+   "bytes": 7723
+  },
+  {
+   "path": "concepts/policy/limit-range.md",
+   "upstream_path": "content/ko/docs/concepts/policy/limit-range.md",
+   "blob_sha1": "4d2cb4aa419a3e73e96ed3a09e62230b8918e8d0",
+   "sha256": "5b3f0ff63c7cfc8b8af03c9666a02876d8b412248ce6411553ef23dfc2885a21",
+   "bytes": 7389
+  },
+  {
+   "path": "concepts/policy/pid-limiting.md",
+   "upstream_path": "content/ko/docs/concepts/policy/pid-limiting.md",
+   "blob_sha1": "d8490c2fc084e885e331271a4af15bd9866353b7",
+   "sha256": "5a23ef36bc7d663928bc86e2dae51d25ca8e63762d0b95e38f242cb9a72d657f",
+   "bytes": 6835
+  },
+  {
+   "path": "concepts/policy/resource-quotas.md",
+   "upstream_path": "content/ko/docs/concepts/policy/resource-quotas.md",
+   "blob_sha1": "ed66cfd72c38a75565e6c822d45f9bc3b14a89be",
+   "sha256": "e82fce18493fab3256d7e3b211785ccc4f954cd5d1b63ddb6223c548bd8f0f9a",
+   "bytes": 28011
+  },
+  {
+   "path": "concepts/scheduling-eviction/api-eviction.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/api-eviction.md",
+   "blob_sha1": "d8333273d474036749440061bf7353eae8d8dd5b",
+   "sha256": "0553b2d0c45df812d0ffe33bccea96505009266a8d0c6a173d167aad95e7decc",
+   "bytes": 5380
+  },
+  {
+   "path": "concepts/scheduling-eviction/assign-pod-node.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/assign-pod-node.md",
+   "blob_sha1": "3f26bb7c729d6bc01a2480c4a1f9fbec6fe96a2d",
+   "sha256": "8f372a114b06b09f50b2c3c86eace873d35c5f36658e4e74e0bc8b19dd91334c",
+   "bytes": 37373
+  },
+  {
+   "path": "concepts/scheduling-eviction/kube-scheduler.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/kube-scheduler.md",
+   "blob_sha1": "e5ab4ca5f60636f4e13d5a936debf9fe7e025dfa",
+   "sha256": "8a2aac7cbe8423c1cbac6db2dc9e36b5f5066902b52e15a904765a81ecceda68",
+   "bytes": 5516
+  },
+  {
+   "path": "concepts/scheduling-eviction/node-declared-features.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/node-declared-features.md",
+   "blob_sha1": "7c9aab616cb2a64fc622ac0ed53b31e0da20dbc7",
+   "sha256": "1cb808b39284520c7babc95aaaf27a482b64ad4d686a4cd5b250e048c2789e91",
+   "bytes": 3105
+  },
+  {
+   "path": "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/node-pressure-eviction.md",
+   "blob_sha1": "85556c6ca264af28e46ba7818856c08c306a2f68",
+   "sha256": "6cb8133d5fb858fac5445b53db5f426cab1d979c5ded067c0d080775315790dd",
+   "bytes": 23761
+  },
+  {
+   "path": "concepts/scheduling-eviction/pod-overhead.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/pod-overhead.md",
+   "blob_sha1": "a4cb1cdda4698dcc0f759f73db8fb5b2de800b9b",
+   "sha256": "27d62780e09a6e4df0202a53a67b4d05d1461d26c183202d0a772f1dd45dfe8b",
+   "bytes": 7780
+  },
+  {
+   "path": "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/pod-priority-preemption.md",
+   "blob_sha1": "92d7611d030b8cbc98f44ea4c9927b8177717317",
+   "sha256": "e07646eb9e921e93620b713310e118d71d1f80221017cd75c1eee04c3e7741bb",
+   "bytes": 20588
+  },
+  {
+   "path": "concepts/scheduling-eviction/pod-scheduling-readiness.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/pod-scheduling-readiness.md",
+   "blob_sha1": "78472fa4838bb8d4061625fa014bfe5da977fa1f",
+   "sha256": "7b8cbf61c9d1972444a27af0d1dd2ad3b630360bb9a8d0741dedeed5367abf57",
+   "bytes": 3810
+  },
+  {
+   "path": "concepts/scheduling-eviction/resource-bin-packing.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/resource-bin-packing.md",
+   "blob_sha1": "9d3b59b5ff624efee0640d298e248846459e632c",
+   "sha256": "054e83a88371ac095be633c396f44865cd2a143cc692c043bddd09da57f326a4",
+   "bytes": 7585
+  },
+  {
+   "path": "concepts/scheduling-eviction/scheduler-perf-tuning.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/scheduler-perf-tuning.md",
+   "blob_sha1": "f4921466d0a0870c5b1969a29e90b8db031c844f",
+   "sha256": "47516b8c669a74cb91e66ece2ccd804d683378f2e0ccb668753ea33561a433e4",
+   "bytes": 7442
+  },
+  {
+   "path": "concepts/scheduling-eviction/taint-and-toleration.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/taint-and-toleration.md",
+   "blob_sha1": "5c28b579a2e4edb50934cea1585676bec08487ac",
+   "sha256": "e28703a876ea7436aea7c1226578e980e425b913e5850d3b39f78954e8db6dc6",
+   "bytes": 15293
+  },
+  {
+   "path": "concepts/scheduling-eviction/topology-spread-constraints.md",
+   "upstream_path": "content/ko/docs/concepts/scheduling-eviction/topology-spread-constraints.md",
+   "blob_sha1": "ad670bc2a5c9fc8fd3ad458fed8da6dde93fae6b",
+   "sha256": "4b3d47922e3b6541d6a7b8513a0b88044a0051a93a10f0980749b75dfedc5c0e",
+   "bytes": 30657
+  },
+  {
+   "path": "concepts/security/cloud-native-security.md",
+   "upstream_path": "content/ko/docs/concepts/security/cloud-native-security.md",
+   "blob_sha1": "632a631933bea32f71e80b6a0e3e2e4f4e49542c",
+   "sha256": "29473cedccdcf0da2d0b117bd626a82495ba1a7d914814b10d1cae36061a43b8",
+   "bytes": 13004
+  },
+  {
+   "path": "concepts/security/controlling-access.md",
+   "upstream_path": "content/ko/docs/concepts/security/controlling-access.md",
+   "blob_sha1": "7c526a4a3b5ad0a7b0dcc7a4c8efe922a1525725",
+   "sha256": "2d62992f20dd8cf59820f8da6a8c557d464c241097d22de69a0026c1de618841",
+   "bytes": 9147
+  },
+  {
+   "path": "concepts/security/multi-tenancy.md",
+   "upstream_path": "content/ko/docs/concepts/security/multi-tenancy.md",
+   "blob_sha1": "aa3db442b55e07d683987c7c9e196335b15d0fa6",
+   "sha256": "33a137aaef2aece7373514da972710e1f4b28219a0f62bfe0466bceb1929032f",
+   "bytes": 38391
+  },
+  {
+   "path": "concepts/security/overview.md",
+   "upstream_path": "content/ko/docs/concepts/security/overview.md",
+   "blob_sha1": "16acae8f2a3ba123de591e1b782a36892e3eb918",
+   "sha256": "cc2f8a376a0c6b2f1a58d9ff510a0ebca91f3bb01a8def886e9439705336c37f",
+   "bytes": 10669
+  },
+  {
+   "path": "concepts/security/pod-security-admission.md",
+   "upstream_path": "content/ko/docs/concepts/security/pod-security-admission.md",
+   "blob_sha1": "eae2ee36df889028a4e614878af08f7d032e2826",
+   "sha256": "4596c9208463bb98b8d6e700bb5da21d579b6f442a7a28accd2f0e8a0718989c",
+   "bytes": 8246
+  },
+  {
+   "path": "concepts/security/pod-security-standards.md",
+   "upstream_path": "content/ko/docs/concepts/security/pod-security-standards.md",
+   "blob_sha1": "25a9c2ac7bbd906dbd472c09d0743f94fa116ba4",
+   "sha256": "1da0a0805f85c9a53f4c1b945f3ce50d11b4ece0b19514b8383a2639c6d68640",
+   "bytes": 23268
+  },
+  {
+   "path": "concepts/security/rbac-good-practices.md",
+   "upstream_path": "content/ko/docs/concepts/security/rbac-good-practices.md",
+   "blob_sha1": "c4918a1a86b41c625b4c5d6f8711ce7f0db72662",
+   "sha256": "2b9f5d861b427e68115e85e35d18e66663256e6305de7b6d57ad22b0e83ae6bd",
+   "bytes": 12758
+  },
+  {
+   "path": "concepts/security/secrets-good-practices.md",
+   "upstream_path": "content/ko/docs/concepts/security/secrets-good-practices.md",
+   "blob_sha1": "47e2575cb06fe7843e2f753e9533d62fcfd60f3d",
+   "sha256": "e7dfb1b0619a6bb99502840119a764a4cde5b395ab84819a381aea24fdf6ede0",
+   "bytes": 5260
+  },
+  {
+   "path": "concepts/security/service-accounts.md",
+   "upstream_path": "content/ko/docs/concepts/security/service-accounts.md",
+   "blob_sha1": "e9c2aaf08f27313f875c71d323b19d2435de2693",
+   "sha256": "59c0e763b76effa7733591c9169f082118faf945ceb6b6803d5d8394cf4e3aa8",
+   "bytes": 20800
+  },
+  {
+   "path": "concepts/security/windows-security.md",
+   "upstream_path": "content/ko/docs/concepts/security/windows-security.md",
+   "blob_sha1": "7435c07d21ea351cc96774568062d34d02cdeee0",
+   "sha256": "6eea6e4b69a57a80044045bab81e087fccf1c72b23a7c360b300de29c87e6909",
+   "bytes": 2818
+  },
+  {
+   "path": "concepts/services-networking/cluster-ip-allocation.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/cluster-ip-allocation.md",
+   "blob_sha1": "56d29dea1b99b56631e5b11cec61b11010b4a4e7",
+   "sha256": "fae672b2dcfc1508a9568d3b26b361466dd48e46d925a8339b3035cc43ba777f",
+   "bytes": 4971
+  },
+  {
+   "path": "concepts/services-networking/dns-pod-service.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/dns-pod-service.md",
+   "blob_sha1": "35a72f32ada2600e21a51d3b9a51206e82041216",
+   "sha256": "f8752c84fcf7dba90086c7dc9198793454fcc673c1c55b18f6b8efbff752c882",
+   "bytes": 16852
+  },
+  {
+   "path": "concepts/services-networking/dual-stack.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/dual-stack.md",
+   "blob_sha1": "27661c6fbafb581da2a75070035376a48d77f5be",
+   "sha256": "ecf9520cb7201a453d93330886f55049455d9a34462ef804466ff2fc716dde7e",
+   "bytes": 12611
+  },
+  {
+   "path": "concepts/services-networking/endpoint-slices.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/endpoint-slices.md",
+   "blob_sha1": "20cb20f3ef9f2938e1639cc026694b4a5b27db17",
+   "sha256": "d0a8bab661318b383560488b41969806f66019fef30849ac0a1d9cc090893fb8",
+   "bytes": 14185
+  },
+  {
+   "path": "concepts/services-networking/gateway.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/gateway.md",
+   "blob_sha1": "2126a6feb7d7f86bcb99e008cee4a99f3dc00648",
+   "sha256": "2ebb509bdc899eaa8b93f723ec68bb060d9cf6ae8eaf5f6b20b1b9696ae073c6",
+   "bytes": 13726
+  },
+  {
+   "path": "concepts/services-networking/ingress-controllers.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/ingress-controllers.md",
+   "blob_sha1": "9a171815fce916662b50e6ee541308427a4c4654",
+   "sha256": "896e317c1df31a6319bbfe8a50915dc91467b4516d7be77f447f350e72dbbe4a",
+   "bytes": 9101
+  },
+  {
+   "path": "concepts/services-networking/ingress.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/ingress.md",
+   "blob_sha1": "50917c6750fc1313ce0fe763685409a14636f08a",
+   "sha256": "f240e3423ab20c893e4d3af985566cd60b1fea82bd31ff2c645a150410aefd53",
+   "bytes": 28368
+  },
+  {
+   "path": "concepts/services-networking/network-policies.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/network-policies.md",
+   "blob_sha1": "362fa9d3519917242024037e568fdbfafcb5f016",
+   "sha256": "6e2834a1bd166a373eda264c816dd38ad99d990398b4878874e821ef588525db",
+   "bytes": 18968
+  },
+  {
+   "path": "concepts/services-networking/service-topology.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/service-topology.md",
+   "blob_sha1": "270e0ed7f8f4c63e7576831881f8bdae775138b8",
+   "sha256": "861ae8e75f8ad93b58e054432fad746632beab428a249ef4192d54cab2153b40",
+   "bytes": 7638
+  },
+  {
+   "path": "concepts/services-networking/service-traffic-policy.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/service-traffic-policy.md",
+   "blob_sha1": "4d2c0861a6fa47feab80f4851f434b640fd2a0a1",
+   "sha256": "542bec990eda748f2d0200b2b351559499bbcbe2e1e6e19d41b41dacd1b5b801",
+   "bytes": 2002
+  },
+  {
+   "path": "concepts/services-networking/topology-aware-hints.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/topology-aware-hints.md",
+   "blob_sha1": "d9fa8a71fd81d749fa16f28a1ef1ee316f17074a",
+   "sha256": "745ff087737c81fd19f64f8f68d8ee26c740f181ab1ef4de44889af3e1995745",
+   "bytes": 8181
+  },
+  {
+   "path": "concepts/services-networking/windows-networking.md",
+   "upstream_path": "content/ko/docs/concepts/services-networking/windows-networking.md",
+   "blob_sha1": "ba708ec91f2171668641cd99a7d5ddd9c623f6e5",
+   "sha256": "d401a7400c7b76368d01b57aadab1641bfe55a3363013498fb6d30bd0529d912",
+   "bytes": 14518
+  },
+  {
+   "path": "concepts/storage/dynamic-provisioning.md",
+   "upstream_path": "content/ko/docs/concepts/storage/dynamic-provisioning.md",
+   "blob_sha1": "f4c5fa97dfa864ef2a066f3600b6d372468bc429",
+   "sha256": "55874b3793497620e7f70429eb5ca753970e6dd4ebd536439cdfbd3f6f5d6e8a",
+   "bytes": 5701
+  },
+  {
+   "path": "concepts/storage/ephemeral-volumes.md",
+   "upstream_path": "content/ko/docs/concepts/storage/ephemeral-volumes.md",
+   "blob_sha1": "5f5bf13fb4e1cd8dbd47a6b5d9864b09a0927a80",
+   "sha256": "2b240649ffb4753b1eb2689ef5993bb0372f9a61c7b7a64f8491adb16b7f85f9",
+   "bytes": 13617
+  },
+  {
+   "path": "concepts/storage/projected-volumes.md",
+   "upstream_path": "content/ko/docs/concepts/storage/projected-volumes.md",
+   "blob_sha1": "62d05dcde8c4173c618afde2dc4ed4d5ce56c10b",
+   "sha256": "485b894fc6d7d0cd4029c3025a508dce4369186845fa048b59f0b6bad2a85634",
+   "bytes": 7121
+  },
+  {
+   "path": "concepts/storage/storage-capacity.md",
+   "upstream_path": "content/ko/docs/concepts/storage/storage-capacity.md",
+   "blob_sha1": "3f83dc551bc468b02121a3d82d7398a492c7c908",
+   "sha256": "df1d27516cef39d3af90c03338456c640a6656d2d6c078385dda54ff82ecc9a1",
+   "bytes": 5230
+  },
+  {
+   "path": "concepts/storage/storage-classes.md",
+   "upstream_path": "content/ko/docs/concepts/storage/storage-classes.md",
+   "blob_sha1": "b97b89b38d5cce60cda26b5596fce4dffc195b3d",
+   "sha256": "6ea1341a456c02670436d62a768020cc8000d31150ffd385349cf4a3f8ae89e6",
+   "bytes": 29940
+  },
+  {
+   "path": "concepts/storage/storage-limits.md",
+   "upstream_path": "content/ko/docs/concepts/storage/storage-limits.md",
+   "blob_sha1": "326cd84069d324feb7c89363788a4e1a9ebc3999",
+   "sha256": "32782f854d9b7e35f41c4689cd09f3d282db74724aed51516ff371301c9b04cc",
+   "bytes": 3388
+  },
+  {
+   "path": "concepts/storage/volume-health-monitoring.md",
+   "upstream_path": "content/ko/docs/concepts/storage/volume-health-monitoring.md",
+   "blob_sha1": "298f545f92b598e254c6a528cb421e3ff7675ca4",
+   "sha256": "96d369ae2ee13c51a191375275e28ae53d224078295642efa6b73abc59378776",
+   "bytes": 2317
+  },
+  {
+   "path": "concepts/storage/volume-pvc-datasource.md",
+   "upstream_path": "content/ko/docs/concepts/storage/volume-pvc-datasource.md",
+   "blob_sha1": "239df4c3864f76eb9e838f2ec250f671648609db",
+   "sha256": "8f75bee04512627204db578ff4f74c6e9fce56d4d1c4540fde845a374a5a17ef",
+   "bytes": 3242
+  },
+  {
+   "path": "concepts/storage/volume-snapshot-classes.md",
+   "upstream_path": "content/ko/docs/concepts/storage/volume-snapshot-classes.md",
+   "blob_sha1": "e08ffe438150d00aac00079089052aec72d4de22",
+   "sha256": "f408f4cbf388c85e1d7bd3e95ab385a953bcb0762f2fcaaebdc562ee7d9b37e5",
+   "bytes": 3060
+  },
+  {
+   "path": "concepts/storage/volume-snapshots.md",
+   "upstream_path": "content/ko/docs/concepts/storage/volume-snapshots.md",
+   "blob_sha1": "8d594171492ac5ae286adff484c7db12d993430e",
+   "sha256": "41832edac8e4fb101a6fef79d24e0cf2385b0ff52b8c68b5e1dd73ea6c39339a",
+   "bytes": 11501
+  },
+  {
+   "path": "concepts/storage/windows-storage.md",
+   "upstream_path": "content/ko/docs/concepts/storage/windows-storage.md",
+   "blob_sha1": "f5add4af56384ef7ef7e4aab601fa5a3ce1d9ebc",
+   "sha256": "7f15161a2532dcd9dd8cae3e9d6c13007e0b5bdeccd7f55488adbfe895308d38",
+   "bytes": 3672
+  },
+  {
+   "path": "concepts/windows/intro.md",
+   "upstream_path": "content/ko/docs/concepts/windows/intro.md",
+   "blob_sha1": "3396c80586e7f471310fb6b743b05282fee5a544",
+   "sha256": "1b76f3734bc2bb7e8733f0c6f5994ae8759b59bf6215c9a54c5b37f61204a88e",
+   "bytes": 22356
+  },
+  {
+   "path": "concepts/windows/user-guide.md",
+   "upstream_path": "content/ko/docs/concepts/windows/user-guide.md",
+   "blob_sha1": "5a7a277d7ba8a091f8b0ef388c28a5ef8cf4e3a3",
+   "sha256": "cbbf78b66a5cd504bc5c10e91852b97d0688de7f120145a9fcd00a33952e68fc",
+   "bytes": 15121
+  },
+  {
+   "path": "concepts/workloads/autoscaling.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/autoscaling.md",
+   "blob_sha1": "48d6c2513411dd0ba85283e304b83c5a1b112623",
+   "sha256": "244df4733c1c9657a2daeb9d77aa5c89db4a8b14d2dd620840751f0f65ea42e9",
+   "bytes": 7561
+  },
+  {
+   "path": "concepts/workloads/controllers/cron-jobs.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/controllers/cron-jobs.md",
+   "blob_sha1": "b25cee50742bf04e03613bf68676476f4fbcda90",
+   "sha256": "6f5be2013d9627bfa19275ad9cacf5df33eb48f9ac09997183d92050550d6399",
+   "bytes": 14950
+  },
+  {
+   "path": "concepts/workloads/controllers/daemonset.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/controllers/daemonset.md",
+   "blob_sha1": "dbd2de70282fad9566bb83c73a357bcd9044c0c0",
+   "sha256": "485b895f7a32b405223dad0f3b16962bace72ef0fb3b4878f46e323e5a8e4078",
+   "bytes": 16531
+  },
+  {
+   "path": "concepts/workloads/controllers/replicaset.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/controllers/replicaset.md",
+   "blob_sha1": "ecb6d934ee8c1893e6eba6836cdaefcec78c851d",
+   "sha256": "8a30f60c39d7e7aaa6627d459e29f97458071b14637fc42658afe4fed287e615",
+   "bytes": 20574
+  },
+  {
+   "path": "concepts/workloads/controllers/replicationcontroller.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/controllers/replicationcontroller.md",
+   "blob_sha1": "4a9bdc7b2e6e8b6fbda05fd5bfed8b8980b912ba",
+   "sha256": "cbd359c5fc8d0975bc0b4a82cf2f811009aecd4b2ddb484bc6de3456f59eb73b",
+   "bytes": 21048
+  },
+  {
+   "path": "concepts/workloads/controllers/statefulset.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/controllers/statefulset.md",
+   "blob_sha1": "606d0b0a0e458a8fe88745b19121d2e18c79902b",
+   "sha256": "d1d48d9a0eb9da44a6bfd89ead006946caf78d38148bf6e421cdb185c834a6a5",
+   "bytes": 29695
+  },
+  {
+   "path": "concepts/workloads/controllers/ttlafterfinished.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/controllers/ttlafterfinished.md",
+   "blob_sha1": "f4e7eba9079858b4980570d79c526483c4df94e4",
+   "sha256": "12a536d550f033f63f0628c8733bb04f3ebede896d99c149566eabad577aae26",
+   "bytes": 3287
+  },
+  {
+   "path": "concepts/workloads/management.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/management.md",
+   "blob_sha1": "afd371c92755d8cdaa1d98cf30fc6b1e4488311c",
+   "sha256": "e290f266045a62f4c2feabce18c7e194f0aa09923bbbb362c7e0bef1426555f9",
+   "bytes": 17502
+  },
+  {
+   "path": "concepts/workloads/pods/disruptions.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/pods/disruptions.md",
+   "blob_sha1": "1a20f15be740f3e678570d886399bcd0d4f79982",
+   "sha256": "3a4351c9663bbbb70ff700c31ac3a43fb216e5aeff97e3b8308a70e0a2fa5ca8",
+   "bytes": 17945
+  },
+  {
+   "path": "concepts/workloads/pods/downward-api.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/pods/downward-api.md",
+   "blob_sha1": "4e046a8aeb800abc8e140685a6c0b188d7386787",
+   "sha256": "6971ffe0e665a1c1d055cd378f8700bfee304174ceb94903b511937b49078851",
+   "bytes": 5121
+  },
+  {
+   "path": "concepts/workloads/pods/ephemeral-containers.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/pods/ephemeral-containers.md",
+   "blob_sha1": "a3e7f6b026b047f6d80587b4ff6ef2aece701147",
+   "sha256": "de89c76bedb5a151119bf1e97eec543507ce133ddea710b279d3dd9ed58fe062",
+   "bytes": 3544
+  },
+  {
+   "path": "concepts/workloads/pods/init-containers.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/pods/init-containers.md",
+   "blob_sha1": "d0236cd12847875e3df5dfa1d832b2f7001620b5",
+   "sha256": "00cd219d58d107d763684710e6dba4252ee3a3dff3721929a5896eda36a08cdc",
+   "bytes": 18384
+  },
+  {
+   "path": "concepts/workloads/pods/pod-hostname.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/pods/pod-hostname.md",
+   "blob_sha1": "6c7963eb35ff8e4b3834c211d3ceec5027743c1b",
+   "sha256": "99fdd26fd1ac8ef947298f7355e87f4c233840944153169bcefa83e00a791c15",
+   "bytes": 5454
+  },
+  {
+   "path": "concepts/workloads/pods/pod-lifecycle.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/pods/pod-lifecycle.md",
+   "blob_sha1": "d65f4405b8266efa9479cc8143007a40918f2dfb",
+   "sha256": "c042733a96c8071861cfba35c565cfea22faa4ef9d071210b57e55c26c56a96d",
+   "bytes": 30771
+  },
+  {
+   "path": "concepts/workloads/pods/pod-qos.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/pods/pod-qos.md",
+   "blob_sha1": "808c891ac0ba304488643adb9024a42ec5befc7f",
+   "sha256": "147624b41516880b4f84781dc9a03ed0a7f7130c6e1b42669714f4456c3202d4",
+   "bytes": 8077
+  },
+  {
+   "path": "concepts/workloads/pods/sidecar-containers.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/pods/sidecar-containers.md",
+   "blob_sha1": "5cc62116de41dc37b1313060561231952f1fe39d",
+   "sha256": "cf01e6dd5c73d780671df5d6501e86e7f5ce390aa735ec4e365fbaa19ca079b8",
+   "bytes": 10186
+  },
+  {
+   "path": "concepts/workloads/pods/user-namespaces.md",
+   "upstream_path": "content/ko/docs/concepts/workloads/pods/user-namespaces.md",
+   "blob_sha1": "a42a88e2dd6fda1a26328da5df1da8f4a0fb1762",
+   "sha256": "c6eeae243391bbb2a3933e81a2484561fb0d753677e48a70d4cfcc3cbab424a1",
+   "bytes": 8273
+  },
+  {
+   "path": "setup/best-practices/certificates.md",
+   "upstream_path": "content/ko/docs/setup/best-practices/certificates.md",
+   "blob_sha1": "33400f581a73b3c29fa89bae01994f5d302ea158",
+   "sha256": "ee34b9966ed0cc94fb3c77e73cc74ed5cac48fbb1c282d7e3e31e122820340ad",
+   "bytes": 14774
+  },
+  {
+   "path": "setup/best-practices/cluster-large.md",
+   "upstream_path": "content/ko/docs/setup/best-practices/cluster-large.md",
+   "blob_sha1": "c1795990b8e9d6c76ceea7b90916c02b6fcfae43",
+   "sha256": "299ce4ae4f893372099b1bc256fe8a77289668babb2203b19572e75e99e2fcd4",
+   "bytes": 6823
+  },
+  {
+   "path": "setup/best-practices/enforcing-pod-security-standards.md",
+   "upstream_path": "content/ko/docs/setup/best-practices/enforcing-pod-security-standards.md",
+   "blob_sha1": "1ce3d42f243a954640ef77c45aa83576c2aab63c",
+   "sha256": "51cc12807aa09109ca0526dd6ba26418640fc362e7409fef88dfc6285250c855",
+   "bytes": 4398
+  },
+  {
+   "path": "setup/best-practices/multiple-zones.md",
+   "upstream_path": "content/ko/docs/setup/best-practices/multiple-zones.md",
+   "blob_sha1": "02cbe86e80c0acdad414b4a59a3ed4ff86c50841",
+   "sha256": "8b1ddaa6a83fd7def89b7ca8b700310d44aad759fa4e9b444fd0051e8daa0030",
+   "bytes": 7190
+  },
+  {
+   "path": "setup/best-practices/node-conformance.md",
+   "upstream_path": "content/ko/docs/setup/best-practices/node-conformance.md",
+   "blob_sha1": "abfe05249443ceb61ae6bc75a909f51bc5b85a59",
+   "sha256": "bf11cfd2c4e0c11bdc12048f09ebfc82766951ec5c3b7355d07769cf755cf82d",
+   "bytes": 3719
+  },
+  {
+   "path": "setup/production-environment/container-runtimes.md",
+   "upstream_path": "content/ko/docs/setup/production-environment/container-runtimes.md",
+   "blob_sha1": "c1386c005f20eb35d20f10a2bf4c3c3e9bd673c2",
+   "sha256": "4c959daa9b04d19f96670831f7609b4c36992b7766a770fff228575f01d100bd",
+   "bytes": 15815
+  },
+  {
+   "path": "setup/production-environment/tools/kubeadm/control-plane-flags.md",
+   "upstream_path": "content/ko/docs/setup/production-environment/tools/kubeadm/control-plane-flags.md",
+   "blob_sha1": "83e6ce9a7c815bb784c8414c19264b6f1616c543",
+   "sha256": "a66539bda76ef9b32ff8cb27d1a23dca33325bc16b4e523fced0f83d7848e78a",
+   "bytes": 8572
+  },
+  {
+   "path": "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "upstream_path": "content/ko/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "blob_sha1": "1f5b89307f5a2aec2140672be577bd2d2761d5c8",
+   "sha256": "9bd5612ecd34201e70396b002a8dfe79d6b9ea46a5ff0a05d4486ba3460b49fa",
+   "bytes": 30615
+  },
+  {
+   "path": "setup/production-environment/tools/kubeadm/ha-topology.md",
+   "upstream_path": "content/ko/docs/setup/production-environment/tools/kubeadm/ha-topology.md",
+   "blob_sha1": "07ad7687993850f8950704f62eae8d7f545f060a",
+   "sha256": "9fe6b94cc6a652ebe94853130589fde2fbbc704f73ce2f8f128707a6160c5250",
+   "bytes": 4013
+  },
+  {
+   "path": "setup/production-environment/tools/kubeadm/install-kubeadm.md",
+   "upstream_path": "content/ko/docs/setup/production-environment/tools/kubeadm/install-kubeadm.md",
+   "blob_sha1": "52ed82e650a486c706490e3b37bac18a79793167",
+   "sha256": "fec0d67b26c33476438098d9350beb71c9250f1e0d75f8ecb272f7562d33e799",
+   "bytes": 18732
+  },
+  {
+   "path": "setup/production-environment/tools/kubeadm/troubleshooting-kubeadm.md",
+   "upstream_path": "content/ko/docs/setup/production-environment/tools/kubeadm/troubleshooting-kubeadm.md",
+   "blob_sha1": "cf08ea512ccb1074345ad70231ff490e125189dc",
+   "sha256": "be0a1e2a98cba0fba51a6c4488bb9f919bfda99ff783b08c74942af28decd41c",
+   "bytes": 26907
+  },
+  {
+   "path": "tasks/access-application-cluster/access-cluster-services.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/access-cluster-services.md",
+   "blob_sha1": "a63db14fe21587aeee5b04cd4dbdaf24dcb85a12",
+   "sha256": "f1d2fe01d348c2d558bf78cc2f3f60fb135a8b5caf0456a83ae96cf4c2cc4da0",
+   "bytes": 8205
+  },
+  {
+   "path": "tasks/access-application-cluster/access-cluster.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/access-cluster.md",
+   "blob_sha1": "ad5bf250a5fa93f81a0d351e48b8797b2a019996",
+   "sha256": "98803f355a282f457fc0e534d0f64208e00ffa88d34d1cf1928105a02feb96cb",
+   "bytes": 10905
+  },
+  {
+   "path": "tasks/access-application-cluster/communicate-containers-same-pod-shared-volume.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/communicate-containers-same-pod-shared-volume.md",
+   "blob_sha1": "da7a2b1ad9a3d664dc675119d04bc63a07da90aa",
+   "sha256": "a1dd1357e77d7a6938d80ac09b4e29fe2891c98ac09e0d9cc4dbb869334b1810",
+   "bytes": 5066
+  },
+  {
+   "path": "tasks/access-application-cluster/configure-access-multiple-clusters.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/configure-access-multiple-clusters.md",
+   "blob_sha1": "50c1036dc22d170113558ee3466345871cb4c36e",
+   "sha256": "30e6b6ba278b9e94b72e06a5cc1d0a475c108617d4b2d796a6b4b505a30d4d39",
+   "bytes": 13686
+  },
+  {
+   "path": "tasks/access-application-cluster/connecting-frontend-backend.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/connecting-frontend-backend.md",
+   "blob_sha1": "6a7468ad54ee0d78081aa5f2731d90137ef1ae34",
+   "sha256": "4216a788da737098497319508c01173ef2b27d00d102a4d7d2d187f08659e689",
+   "bytes": 7869
+  },
+  {
+   "path": "tasks/access-application-cluster/create-external-load-balancer.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/create-external-load-balancer.md",
+   "blob_sha1": "f39d6d858c776ec00edee2642b4d0903691d08fc",
+   "sha256": "4c568414b9cf407aa7c4b099f005fd6dc500dd89cd1a243ff6250bd90c6508d2",
+   "bytes": 8201
+  },
+  {
+   "path": "tasks/access-application-cluster/ingress-minikube.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/ingress-minikube.md",
+   "blob_sha1": "9c265efde2503ebc53cf44db1acc0e37f9b52100",
+   "sha256": "cdab350c002c129f67d9e6eed323521c62fa1824dc165013637f77606b16d978",
+   "bytes": 10920
+  },
+  {
+   "path": "tasks/access-application-cluster/list-all-running-container-images.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/list-all-running-container-images.md",
+   "blob_sha1": "15b418e523e58d6afbd66d21dd26946255839310",
+   "sha256": "392b4b339a4d79353d6ee78046562cec8ebc6c0857d19ba3b2dbecc137a6fbb6",
+   "bytes": 3654
+  },
+  {
+   "path": "tasks/access-application-cluster/port-forward-access-application-cluster.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/port-forward-access-application-cluster.md",
+   "blob_sha1": "1dcccf6bd1ec6f792836eb9d1050a56e37fa0264",
+   "sha256": "6865684d9612b25f77e47908911456ee129cf160a53c77bf52da9518e5554f45",
+   "bytes": 5626
+  },
+  {
+   "path": "tasks/access-application-cluster/service-access-application-cluster.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/service-access-application-cluster.md",
+   "blob_sha1": "55d427787f58e90b99c7a098b2ea4273203ba237",
+   "sha256": "62b27685c6aef1b99fca6c3eef53a80d4017e7447a5d4d7979fa250890e5de58",
+   "bytes": 5028
+  },
+  {
+   "path": "tasks/access-application-cluster/web-ui-dashboard.md",
+   "upstream_path": "content/ko/docs/tasks/access-application-cluster/web-ui-dashboard.md",
+   "blob_sha1": "5827925e828d9465df7488663920c52763d79d4b",
+   "sha256": "5453bfa7e33571482c0a3e05b8ca147c7aa3ca8f4408a273a4d3c6fea2b032c1",
+   "bytes": 14035
+  },
+  {
+   "path": "tasks/administer-cluster/access-cluster-api.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/access-cluster-api.md",
+   "blob_sha1": "b37f2a6450f26984ac53ae97008597cdba1fac9a",
+   "sha256": "033d542881c8bc796ac78a3cbb504722db94735efdfe5aebda743dd773d227fe",
+   "bytes": 14902
+  },
+  {
+   "path": "tasks/administer-cluster/certificates.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/certificates.md",
+   "blob_sha1": "089971c69696c7aec337000e16fe54103b6954b1",
+   "sha256": "696118febbd77e162227179cd2ffbbd5480ffbec6cf031305bab3d937a810006",
+   "bytes": 9093
+  },
+  {
+   "path": "tasks/administer-cluster/change-default-storage-class.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/change-default-storage-class.md",
+   "blob_sha1": "2f64503d49e361f68bc72e60acad80ace36da1b0",
+   "sha256": "7f05824366be4d5a839cf98264598d9caa258cda3d6ff80c59a4b0c575dbe85c",
+   "bytes": 3888
+  },
+  {
+   "path": "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "blob_sha1": "df1cb0fcb13062c7ec1babd267f235dbf2669931",
+   "sha256": "ce7815df14dbd8563ab5355bee91edca5e848bd56a3a4f77a5b9e2f8edf32f35",
+   "bytes": 6962
+  },
+  {
+   "path": "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "blob_sha1": "1c3b362a56e35740b5909de11ea9afe94e179319",
+   "sha256": "8ee80243fa1968ee8cbb3914e89ae5e3d4a04278cfdf3751bcb0eeabed875c3a",
+   "bytes": 4357
+  },
+  {
+   "path": "tasks/administer-cluster/cluster-upgrade.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/cluster-upgrade.md",
+   "blob_sha1": "972c36c08fd685b58fa450848fc2d332caf40e91",
+   "sha256": "83525ca7d4595bc36ed37bf482914c32a10a361f0bf5f32064509aca65955793",
+   "bytes": 4127
+  },
+  {
+   "path": "tasks/administer-cluster/coredns.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/coredns.md",
+   "blob_sha1": "56f9efedd6f382b4036eec0bbb78fc713ce7ee60",
+   "sha256": "02da03704ae4913c721203dfb0b761c764c209f42965aef3a49ea4091f077311",
+   "bytes": 3144
+  },
+  {
+   "path": "tasks/administer-cluster/declare-network-policy.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/declare-network-policy.md",
+   "blob_sha1": "6e43187fb01e6e56a9f2752307186cc2f1098ff7",
+   "sha256": "8f571181e4d660a0a5bc3bdcd5989df9430d05d10c3c3921bfa9db9572e8cdbf",
+   "bytes": 4860
+  },
+  {
+   "path": "tasks/administer-cluster/dns-custom-nameservers.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/dns-custom-nameservers.md",
+   "blob_sha1": "b88cfa4c9b751fd6eef2f3eb864b824f9cf4cdc1",
+   "sha256": "c481d4d4e4e029d8f8a8026fdb0079a0447254a472c265370b6e4fdab51e985e",
+   "bytes": 8266
+  },
+  {
+   "path": "tasks/administer-cluster/dns-horizontal-autoscaling.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/dns-horizontal-autoscaling.md",
+   "blob_sha1": "607524e7f2fe2049311229cbbcfbca1ec3caf5ac",
+   "sha256": "e11e6ac03100ea7b910c313123ae32b6aaf5a5d70aefb6bc53b6ce53944a6f9f",
+   "bytes": 7559
+  },
+  {
+   "path": "tasks/administer-cluster/extended-resource-node.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/extended-resource-node.md",
+   "blob_sha1": "23ee82e5efc3b2cad9dfcb89778a2811371b2531",
+   "sha256": "52585bc2d20c0304120b4516b87d470ebd426efe342d8df4e4560985f727a3ba",
+   "bytes": 5791
+  },
+  {
+   "path": "tasks/administer-cluster/kubeadm/kubeadm-certs.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/kubeadm/kubeadm-certs.md",
+   "blob_sha1": "784baf8d5dbc8c7f051fb7d3d1b8ffd61c3bef27",
+   "sha256": "be6f1e9b86ed0e003b66f8af162eb3459dac4edd973e64986a6be095cbeb6f9d",
+   "bytes": 18358
+  },
+  {
+   "path": "tasks/administer-cluster/kubeadm/kubeadm-upgrade.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade.md",
+   "blob_sha1": "5143c8037931d2e1415195cd5dde37a173cee4b1",
+   "sha256": "518a491d32776113c26af57076af9e46e510c88ba6bc2d2471484cda568e24c6",
+   "bytes": 13759
+  },
+  {
+   "path": "tasks/administer-cluster/kubeadm/upgrading-linux-nodes.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/kubeadm/upgrading-linux-nodes.md",
+   "blob_sha1": "258ff29c1305ebf51f6b6ffbde066ac9d2f212b1",
+   "sha256": "a8cf07682868ace367bfe7ad703b7d3efaa266042a3f7c4e62bfd1d7b5615618",
+   "bytes": 2218
+  },
+  {
+   "path": "tasks/administer-cluster/kubeadm/upgrading-windows-nodes.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/kubeadm/upgrading-windows-nodes.md",
+   "blob_sha1": "a35a3b4c3227a168237642e16a715ac9d3215383",
+   "sha256": "adc46e03a000a65301bb75e9b7b918c8c7cb4fb7de83f8bedee2787feb43128d",
+   "bytes": 2643
+  },
+  {
+   "path": "tasks/administer-cluster/kubelet-config-file.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/kubelet-config-file.md",
+   "blob_sha1": "9fd905fc0d314792954194c3f790e7c6a20b17be",
+   "sha256": "b5a6e9190302dcd8bf116c4aa2e2bfd9b30799f4f73ea71e60c7b2873454a084",
+   "bytes": 3006
+  },
+  {
+   "path": "tasks/administer-cluster/kubelet-credential-provider.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/kubelet-credential-provider.md",
+   "blob_sha1": "29cd287a0f625b89d5ce9a93bfd12efdea1bef27",
+   "sha256": "f01877cf7438eb2b58c196f249891ff6f92199b5daa1f560091d61005a53eaec",
+   "bytes": 9397
+  },
+  {
+   "path": "tasks/administer-cluster/limit-storage-consumption.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/limit-storage-consumption.md",
+   "blob_sha1": "c718399db1be501d8bd497f93dc0bd1294f35bb4",
+   "sha256": "0b656489eba15441d28b83940a6df7cafbc6e87f99b076b3e61a87c7285d3cb6",
+   "bytes": 3238
+  },
+  {
+   "path": "tasks/administer-cluster/manage-resources/cpu-constraint-namespace.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/manage-resources/cpu-constraint-namespace.md",
+   "blob_sha1": "d4ba8e3f29c4fd8070d0fb753acfe0b1edcb7d86",
+   "sha256": "d60e6ed491fc1841b73b18f8e234019366a1534cf9f58b0f5c95a61fd4668267",
+   "bytes": 9962
+  },
+  {
+   "path": "tasks/administer-cluster/manage-resources/cpu-default-namespace.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/manage-resources/cpu-default-namespace.md",
+   "blob_sha1": "aebfb1290a1b0c91b8b0b7c640fe697ce658a880",
+   "sha256": "ac67a3042e6586150c964e401692a177ff085db3c230094ab7eb9d993b3ea781",
+   "bytes": 7292
+  },
+  {
+   "path": "tasks/administer-cluster/manage-resources/memory-constraint-namespace.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/manage-resources/memory-constraint-namespace.md",
+   "blob_sha1": "246280986530f37bd3c9022c7ff9f210934531c5",
+   "sha256": "ba528cf8a222bdabe8f35c5603008e5d4ddc3a2590fb685118372c9cb174ac63",
+   "bytes": 9817
+  },
+  {
+   "path": "tasks/administer-cluster/manage-resources/memory-default-namespace.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/manage-resources/memory-default-namespace.md",
+   "blob_sha1": "1420ef904b1740969e61099f71a56c14551e835e",
+   "sha256": "0b33e961ea741e4c265948d06e10c1967b0d5058a2d41568adc39753c4f726e7",
+   "bytes": 7934
+  },
+  {
+   "path": "tasks/administer-cluster/manage-resources/quota-memory-cpu-namespace.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/manage-resources/quota-memory-cpu-namespace.md",
+   "blob_sha1": "89dc826e2ce575064f9fde400aef19f7cc359564",
+   "sha256": "3314c9e75c166d7e525c62788c62195213273888dfe81a8d66c387070e83e1f9",
+   "bytes": 6363
+  },
+  {
+   "path": "tasks/administer-cluster/manage-resources/quota-pod-namespace.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/manage-resources/quota-pod-namespace.md",
+   "blob_sha1": "8583f97b7b72c34848ec50568f10639dbf2f4cc1",
+   "sha256": "3962ff3ca4d3791d12b259d898f2aaa64600cbfa5716f67b6eb025a539c7fc81",
+   "bytes": 4054
+  },
+  {
+   "path": "tasks/administer-cluster/migrating-from-dockershim/migrate-dockershim-dockerd.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/migrating-from-dockershim/migrate-dockershim-dockerd.md",
+   "blob_sha1": "78a8458306e2e45eaa2443ff2fb0fb2da6a02127",
+   "sha256": "7227e059d6a6e470857a70d4ef753dcbdab18d5dad1550e5d231f72617d67162",
+   "bytes": 4874
+  },
+  {
+   "path": "tasks/administer-cluster/namespaces.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/namespaces.md",
+   "blob_sha1": "e46db9b8525e0803866c8ed33074b295748f542d",
+   "sha256": "1904eacb9c4b7629a66a644cdb41edb7ca3efa875dd499fd6554ab9cf08dc993",
+   "bytes": 13843
+  },
+  {
+   "path": "tasks/administer-cluster/network-policy-provider/cilium-network-policy.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/network-policy-provider/cilium-network-policy.md",
+   "blob_sha1": "d1426a6a738e78e6d4f4d8fbde902f7196e2899a",
+   "sha256": "56909bd07db5565ceba3953feba24bc86f7b8fb51fe25163d9c1960bb374ced9",
+   "bytes": 3815
+  },
+  {
+   "path": "tasks/administer-cluster/network-policy-provider/weave-network-policy.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/network-policy-provider/weave-network-policy.md",
+   "blob_sha1": "c032d941c7fbb355d9c419522343ab2a632f79a0",
+   "sha256": "38132d6f10e51a46ba2929e722f638f21944cb67c415452b25d5be18766571e9",
+   "bytes": 2265
+  },
+  {
+   "path": "tasks/administer-cluster/quota-api-object.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/quota-api-object.md",
+   "blob_sha1": "8073790ac948bb292ffde6b761bfc0a4d20a6fa5",
+   "sha256": "0581b783ce5b5c009ef25d6c3984c55151e9f5f15fc25c5084e42f1fb4bf739c",
+   "bytes": 5231
+  },
+  {
+   "path": "tasks/administer-cluster/sysctl-cluster.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/sysctl-cluster.md",
+   "blob_sha1": "516f7efee3f7d174f6573500340c4f049018c90f",
+   "sha256": "d4b8235b26c59fa8384efc6a19475e6677cc203f323f0ecf327210f0d3990e2b",
+   "bytes": 6853
+  },
+  {
+   "path": "tasks/administer-cluster/use-cascading-deletion.md",
+   "upstream_path": "content/ko/docs/tasks/administer-cluster/use-cascading-deletion.md",
+   "blob_sha1": "fdb9b9c3a053369558eff2934005ccb1d0457fa2",
+   "sha256": "7b23a3cdbaddc1c22e215839c8b039adf6c46e00e0552c329d2635731bb701c0",
+   "bytes": 6399
+  },
+  {
+   "path": "tasks/configmap-secret/managing-secret-using-config-file.md",
+   "upstream_path": "content/ko/docs/tasks/configmap-secret/managing-secret-using-config-file.md",
+   "blob_sha1": "2b1b6ce9bad48f1d3d30ba0c96a5417e59eefd71",
+   "sha256": "2ebf40cd94b1c67febe5f98d2a6c1f682ceb364531ea230fb8014cbb6024c0df",
+   "bytes": 7034
+  },
+  {
+   "path": "tasks/configmap-secret/managing-secret-using-kubectl.md",
+   "upstream_path": "content/ko/docs/tasks/configmap-secret/managing-secret-using-kubectl.md",
+   "blob_sha1": "ab15d26dbab25ff058076f5ef8ef5c5feb25defd",
+   "sha256": "1c53c121a2b9db614bef875b26e0211d6bd28c0db00eb230d51cdd69553146d3",
+   "bytes": 5916
+  },
+  {
+   "path": "tasks/configmap-secret/managing-secret-using-kustomize.md",
+   "upstream_path": "content/ko/docs/tasks/configmap-secret/managing-secret-using-kustomize.md",
+   "blob_sha1": "e730892ae1d0a6e4c5945e1783daa63631829af6",
+   "sha256": "1a85e7cd946da5eefe45fd8211d0b00b7ebc298e1e4d4ba3865c36798966cff2",
+   "bytes": 3646
+  },
+  {
+   "path": "tasks/configure-pod-container/assign-cpu-resource.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/assign-cpu-resource.md",
+   "blob_sha1": "c46ecd0e60ce73bbaa453aa1db887dd2def2628c",
+   "sha256": "e66457a20a7681002037680501263d7eb1c0e74330aba4ce694bf3ac9c4c4320",
+   "bytes": 10012
+  },
+  {
+   "path": "tasks/configure-pod-container/assign-memory-resource.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/assign-memory-resource.md",
+   "blob_sha1": "93948f34ce2da8c0059166104a3609d173b75284",
+   "sha256": "67ad9b8b74a0eae025001bc3bb268724bb3aed8899aa03eae07963fc404a3e5f",
+   "bytes": 11923
+  },
+  {
+   "path": "tasks/configure-pod-container/assign-pods-nodes-using-node-affinity.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity.md",
+   "blob_sha1": "5ad8b72d5217887fb86bba2615619f2dce77a941",
+   "sha256": "7dd72f315cd6ffeeea7b379e783c1e4648879c8ec04f7aea4cc6fe91f58a296d",
+   "bytes": 3445
+  },
+  {
+   "path": "tasks/configure-pod-container/assign-pods-nodes.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/assign-pods-nodes.md",
+   "blob_sha1": "c83db7231cdb0edb4d02d2b924efa76c860e3e21",
+   "sha256": "3d22b6b6c39946845868e9f3cfa10ae452e8c6971d8b2c980283eeb1b349d4ba",
+   "bytes": 2783
+  },
+  {
+   "path": "tasks/configure-pod-container/assign-resources/allocate-devices-dra.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/assign-resources/allocate-devices-dra.md",
+   "blob_sha1": "576e7f3244ae412e6df0b7a2282168888572f974",
+   "sha256": "eb3991d5ff945f6f1c24c6067931ac199b3f755b57e8f29f2bbac24f9eff6f96",
+   "bytes": 7391
+  },
+  {
+   "path": "tasks/configure-pod-container/configure-gmsa.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/configure-gmsa.md",
+   "blob_sha1": "d5fa867d40cda320514baf7f4a1a573eb75d155d",
+   "sha256": "839e094396065a09b6b1a4f39bec2743a68f6c6886edc89e08a31e4e4bd4697e",
+   "bytes": 14953
+  },
+  {
+   "path": "tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md",
+   "blob_sha1": "537da0babc60667db86d4fa61d00e466ee9e1a19",
+   "sha256": "7b81e474056a1d646a9e0665c3953821ddda8ba1b092cc36437d0e8c954cfd3f",
+   "bytes": 27100
+  },
+  {
+   "path": "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "blob_sha1": "40f4dd7c6db6fdac783f1106050bc068d301825e",
+   "sha256": "5839b13cdd811ebdf0fabc37deea9c62d8a46f22f9e1520abff1af2f207218a8",
+   "bytes": 10681
+  },
+  {
+   "path": "tasks/configure-pod-container/configure-pod-initialization.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/configure-pod-initialization.md",
+   "blob_sha1": "9343b7116f6121af306ff5b62abe6d20a0693880",
+   "sha256": "27b6824e9fcaad42741e31445f4841e91df1e14fdf739808904e1a6b27aed7c2",
+   "bytes": 2596
+  },
+  {
+   "path": "tasks/configure-pod-container/configure-projected-volume-storage.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/configure-projected-volume-storage.md",
+   "blob_sha1": "33dca07994d7abc1e4fa142e3cf2b6fc985f72b5",
+   "sha256": "d4293156e049edc26ca2562a1bc801b5ff080ba279c094eae7dda03a1f4b238a",
+   "bytes": 2615
+  },
+  {
+   "path": "tasks/configure-pod-container/configure-runasusername.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/configure-runasusername.md",
+   "blob_sha1": "ade87ca05203704d8a68cb30d18668d42cdce01f",
+   "sha256": "66fdad8e9243c4dc51fd6bd44086bf6b990a1acb074af94c30d66ec3a8e63ab4",
+   "bytes": 5299
+  },
+  {
+   "path": "tasks/configure-pod-container/configure-volume-storage.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/configure-volume-storage.md",
+   "blob_sha1": "bf636fab4cb572a578d128e5316cdd1fe4c9ef5e",
+   "sha256": "04f56533eeb135930467984424cb8f4f878c1de4798859135a0cf784220fc3e7",
+   "bytes": 4034
+  },
+  {
+   "path": "tasks/configure-pod-container/extended-resource.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/extended-resource.md",
+   "blob_sha1": "3e54b7bef8a0e4ef6949750251838f7ed5f84694",
+   "sha256": "9d6db2422fa16a95bca6c9a7496108e7719b3a867ab2a8f20f63599e161f842e",
+   "bytes": 3368
+  },
+  {
+   "path": "tasks/configure-pod-container/pull-image-private-registry.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/pull-image-private-registry.md",
+   "blob_sha1": "0a11eed5787cb18c8179532cb7b8e7b1a516dbec",
+   "sha256": "944b63be033f945d7646eafa196f59b187e444c5669f19604bd0b5f01c69a29b",
+   "bytes": 8601
+  },
+  {
+   "path": "tasks/configure-pod-container/quality-service-pod.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/quality-service-pod.md",
+   "blob_sha1": "fc3a9e854b2b8e261703d8c4a19f7e94ea19b869",
+   "sha256": "914abddba7e33cbe3c804501b940e9ac69bf0221f0d1ff131fd75613c1dc6c66",
+   "bytes": 7511
+  },
+  {
+   "path": "tasks/configure-pod-container/resize-container-resources.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/resize-container-resources.md",
+   "blob_sha1": "8c7d9e37b7ab9e50a85ad17685b1eee8ee0a708a",
+   "sha256": "cdddadaede6c66da39317be36d0c81aefbe91116b47d31fb6740394b1e4a5ef3",
+   "bytes": 15918
+  },
+  {
+   "path": "tasks/configure-pod-container/static-pod.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/static-pod.md",
+   "blob_sha1": "309a834a9ef82356abf17784abab974d9f27a2cc",
+   "sha256": "f823c5e2a4d4be53e93cf0a12a5aaf9cc39f5c4029c3a6bed9abd3dbc2d31c56",
+   "bytes": 9492
+  },
+  {
+   "path": "tasks/configure-pod-container/translate-compose-kubernetes.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/translate-compose-kubernetes.md",
+   "blob_sha1": "9eb29820f177c3ba7858e54a7de1358e80a5a30e",
+   "sha256": "9f9c88f478b63a98f17e64811e7b311bbe98c5f1272b590c6322ada228e0e3f3",
+   "bytes": 17539
+  },
+  {
+   "path": "tasks/configure-pod-container/user-namespaces.md",
+   "upstream_path": "content/ko/docs/tasks/configure-pod-container/user-namespaces.md",
+   "blob_sha1": "b0e1dc1d0ed7f0ba0c75d58e5a96d75846e01c89",
+   "sha256": "aba1bde0449e319d1723819db8f02b0f823a85efef1b4bd959d764e9febb9a56",
+   "bytes": 3572
+  },
+  {
+   "path": "tasks/debug/debug-application/debug-init-containers.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-application/debug-init-containers.md",
+   "blob_sha1": "206c64cb5fa21563d4c2642589dffccc63fba1ea",
+   "sha256": "b140713a48db3c11ab41ebc8df55140afde0ac26868e30ffbbb3572e12b94ee0",
+   "bytes": 3624
+  },
+  {
+   "path": "tasks/debug/debug-application/debug-pods.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-application/debug-pods.md",
+   "blob_sha1": "0b56847e91aceb863a7f7ab932eb82275e3dbd07",
+   "sha256": "518243b82beae80537e8baa0606245af7e6d417e500c9ad4a8e863c4aa3c1e15",
+   "bytes": 8333
+  },
+  {
+   "path": "tasks/debug/debug-application/debug-running-pod.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-application/debug-running-pod.md",
+   "blob_sha1": "90e3cc86b4b7dc03b8507af0dc2166f84fed6de3",
+   "sha256": "39d1d34ba2b85fe9ace6591873b5597b1da26223c7a8eb3715d16e2652be333b",
+   "bytes": 26135
+  },
+  {
+   "path": "tasks/debug/debug-application/debug-service.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-application/debug-service.md",
+   "blob_sha1": "b89cd9a9ea01d33c3eda1869c47023dcce40db6d",
+   "sha256": "8524d9efd83ef47c8ae9292fa3968d899f788638c3e3238c48eb3a57d5417599",
+   "bytes": 28032
+  },
+  {
+   "path": "tasks/debug/debug-application/determine-reason-pod-failure.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-application/determine-reason-pod-failure.md",
+   "blob_sha1": "d0e0a536407e5d417d37c8d7a4e3f0d20767a30d",
+   "sha256": "920c27e3ea3fd8e303a0ebc74aba0fab7ddd3f9e8f930e9e61836ea985853228",
+   "bytes": 4939
+  },
+  {
+   "path": "tasks/debug/debug-application/get-shell-running-container.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-application/get-shell-running-container.md",
+   "blob_sha1": "353fdfb7aa6906a1d87c560529a77e68f3dc4b64",
+   "sha256": "2cae6e8d39f4ccb1d9cd67b3dad005d93797eab9cf5b45a1e3cdf0cd8fac565b",
+   "bytes": 3584
+  },
+  {
+   "path": "tasks/debug/debug-cluster/audit.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-cluster/audit.md",
+   "blob_sha1": "ee9aa4318db0dcbca465f11809af3172ca1962cd",
+   "sha256": "c731108981eaf1997d5d266c502215a53b5a0c6a02d45839711264e7e28c9c8b",
+   "bytes": 12337
+  },
+  {
+   "path": "tasks/debug/debug-cluster/crictl.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-cluster/crictl.md",
+   "blob_sha1": "f4b0bbc8ae71ef1ff1eec0c4dd8b18af9b94ab09",
+   "sha256": "ca8f4ef784063318d622e6fc78df0d402bbfa80e7ce51eafadcaa79f5319451f",
+   "bytes": 11650
+  },
+  {
+   "path": "tasks/debug/debug-cluster/local-debugging.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-cluster/local-debugging.md",
+   "blob_sha1": "cfb3ff80d9b79f1fc84b42e9fbd88fec1a3b6691",
+   "sha256": "f7f7ef62424f646b746362741c6c53f861e53c24253f719f0b6ef84af0355e88",
+   "bytes": 4544
+  },
+  {
+   "path": "tasks/debug/debug-cluster/monitor-node-health.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-cluster/monitor-node-health.md",
+   "blob_sha1": "f60d418a580cf27ff34bced35fcd41f3bfa43e32",
+   "sha256": "d4aae8befa8b8a4b518c5df7b05c6c4e71efcd98de9fcbc2afa28fb73d0f2b7b",
+   "bytes": 7075
+  },
+  {
+   "path": "tasks/debug/debug-cluster/resource-metrics-pipeline.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-cluster/resource-metrics-pipeline.md",
+   "blob_sha1": "c7f484c79b08cf084d7e19561c19ef2ff68e9908",
+   "sha256": "f785106190b9304057152d4fcc2df83610000f686f79de1da672acd53f8a9ef8",
+   "bytes": 11426
+  },
+  {
+   "path": "tasks/debug/debug-cluster/resource-usage-monitoring.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-cluster/resource-usage-monitoring.md",
+   "blob_sha1": "ca3f57c8ef0047ccdcdb340921b6f6c90815e938",
+   "sha256": "5a7d5ce51b2f273a31f0b41b8e6e5b87ebe809033bc5cd49419b783334c48f49",
+   "bytes": 4323
+  },
+  {
+   "path": "tasks/debug/debug-cluster/windows.md",
+   "upstream_path": "content/ko/docs/tasks/debug/debug-cluster/windows.md",
+   "blob_sha1": "7293cf1d819015857d0d836bcff2baf980ffd55f",
+   "sha256": "dabca74c0334f7beab49aee7c2918d1b426e357e6a80bec32d8f40d7429d8d28",
+   "bytes": 8596
+  },
+  {
+   "path": "tasks/extend-kubectl/kubectl-plugins.md",
+   "upstream_path": "content/ko/docs/tasks/extend-kubectl/kubectl-plugins.md",
+   "blob_sha1": "26fbe8c42b4763663bba423f31371790f27ff15e",
+   "sha256": "078016b48a1bbbb90f9eaef5443a02d182fa4a47ee949d3397dcdcf712ae2eae",
+   "bytes": 15240
+  },
+  {
+   "path": "tasks/extend-kubernetes/configure-multiple-schedulers.md",
+   "upstream_path": "content/ko/docs/tasks/extend-kubernetes/configure-multiple-schedulers.md",
+   "blob_sha1": "6f1e62f172649b2a1684ce634d1f0e851cbca04f",
+   "sha256": "a8e718799dad9dddf0b8641d5b2bc1c52d07d4e6b4089d7c2cbe996700fb1cfb",
+   "bytes": 9616
+  },
+  {
+   "path": "tasks/extend-kubernetes/http-proxy-access-api.md",
+   "upstream_path": "content/ko/docs/tasks/extend-kubernetes/http-proxy-access-api.md",
+   "blob_sha1": "393fde5716b310adb8595fb66d088f6a8c634fde",
+   "sha256": "bab92097c2b9192289abe01d02c4204fda7f2109c40f7114100879a33791831c",
+   "bytes": 1955
+  },
+  {
+   "path": "tasks/extend-kubernetes/setup-extension-api-server.md",
+   "upstream_path": "content/ko/docs/tasks/extend-kubernetes/setup-extension-api-server.md",
+   "blob_sha1": "9d9f34ff1678686ba80d8409225d6c14a4a5bb7a",
+   "sha256": "10fcb8e0043e6d60af1599821ab9088da93ca1f3e89c90408e818d88aca80bc7",
+   "bytes": 4966
+  },
+  {
+   "path": "tasks/extend-kubernetes/setup-konnectivity.md",
+   "upstream_path": "content/ko/docs/tasks/extend-kubernetes/setup-konnectivity.md",
+   "blob_sha1": "d4b083f0679f45116481f896e164da4254f61923",
+   "sha256": "9992afc62170ea71d0da86df5d4e4b8833fe4c84a725f853fb455933f09b3a34",
+   "bytes": 3876
+  },
+  {
+   "path": "tasks/extend-kubernetes/socks5-proxy-access-api.md",
+   "upstream_path": "content/ko/docs/tasks/extend-kubernetes/socks5-proxy-access-api.md",
+   "blob_sha1": "b484a1984964594b2d85d52c3ff0ef24e4271b80",
+   "sha256": "9307f8de763ea3b026ef055b965b757e3393d7133b0375e312b236ba939c6333",
+   "bytes": 5574
+  },
+  {
+   "path": "tasks/inject-data-application/define-command-argument-container.md",
+   "upstream_path": "content/ko/docs/tasks/inject-data-application/define-command-argument-container.md",
+   "blob_sha1": "19eafd4b6ca9275babf98825f151b78f415481f3",
+   "sha256": "088311e9a3175b1d64d2f4b398b4e9ab54d0f170942a25637741b3cc7bf838dd",
+   "bytes": 3614
+  },
+  {
+   "path": "tasks/inject-data-application/define-environment-variable-container.md",
+   "upstream_path": "content/ko/docs/tasks/inject-data-application/define-environment-variable-container.md",
+   "blob_sha1": "5bac1381052a6c1701d7f0d94ddca4a5e1d9c97f",
+   "sha256": "84a25974c15b0ebd91d5843d5e78a1cf0445cf8a060c43074011e24661598e6e",
+   "bytes": 3405
+  },
+  {
+   "path": "tasks/inject-data-application/define-interdependent-environment-variables.md",
+   "upstream_path": "content/ko/docs/tasks/inject-data-application/define-interdependent-environment-variables.md",
+   "blob_sha1": "582860689479ff12a6002f25fd9ee55607e58703",
+   "sha256": "0ceb054595742131c8445266e6ff67adab5d18ca12e80c71e7201332f5f0d05f",
+   "bytes": 2934
+  },
+  {
+   "path": "tasks/inject-data-application/distribute-credentials-secure.md",
+   "upstream_path": "content/ko/docs/tasks/inject-data-application/distribute-credentials-secure.md",
+   "blob_sha1": "f539b8103a8750ee63d7cf70ec760f1bb1736ee2",
+   "sha256": "33a933d3d8cc3eb37f81a2c49fa7616b2cfb616356d167af420bfc8ec1a7b18d",
+   "bytes": 6690
+  },
+  {
+   "path": "tasks/inject-data-application/downward-api-volume-expose-pod-information.md",
+   "upstream_path": "content/ko/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information.md",
+   "blob_sha1": "105eba0d3cb645a15a9c4e810e31357fad729ee5",
+   "sha256": "2a9e619b8e65738d687ad8b1140a84c6761ee1deadf2feca6f3d9b5fb021caeb",
+   "bytes": 7248
+  },
+  {
+   "path": "tasks/inject-data-application/environment-variable-expose-pod-information.md",
+   "upstream_path": "content/ko/docs/tasks/inject-data-application/environment-variable-expose-pod-information.md",
+   "blob_sha1": "edee1a98d19889d93448a959aecc07b836a0c764",
+   "sha256": "ef56309de5ca7da445c4a23457837c91348116b3fdd8a5b1a0333834db93b17d",
+   "bytes": 5138
+  },
+  {
+   "path": "tasks/job/automated-tasks-with-cron-jobs.md",
+   "upstream_path": "content/ko/docs/tasks/job/automated-tasks-with-cron-jobs.md",
+   "blob_sha1": "3743e9b267a7867ce8a0c260db97bb54e13295df",
+   "sha256": "4a1e20e8bb7919f89f51df5b993bd5aa1186666cdcaceaf8da6be75cb9ceb9bb",
+   "bytes": 9050
+  },
+  {
+   "path": "tasks/job/coarse-parallel-processing-work-queue.md",
+   "upstream_path": "content/ko/docs/tasks/job/coarse-parallel-processing-work-queue.md",
+   "blob_sha1": "8073ecc3ace9d9b43e3ec21074b8e71a69d10f85",
+   "sha256": "c2940f488bbf3df44d55ade44150574fb5b7ea11b4d2feeb69c05bc7f61f8321",
+   "bytes": 13248
+  },
+  {
+   "path": "tasks/job/fine-parallel-processing-work-queue.md",
+   "upstream_path": "content/ko/docs/tasks/job/fine-parallel-processing-work-queue.md",
+   "blob_sha1": "3693e40c4244113307d07abe8246202a5e87181e",
+   "sha256": "969edfb568e7488e51e77d15026f5c525c9a0891df788260874c21c0d3d4d70e",
+   "bytes": 8518
+  },
+  {
+   "path": "tasks/job/indexed-parallel-processing-static.md",
+   "upstream_path": "content/ko/docs/tasks/job/indexed-parallel-processing-static.md",
+   "blob_sha1": "e5c19ddc123f14bc455f4cc64036d1a6d918b5fa",
+   "sha256": "da65ccffd681999841c514261d4db73903f66b29e19560eb5f8a7f0b70edef51",
+   "bytes": 7481
+  },
+  {
+   "path": "tasks/job/job-with-pod-to-pod-communication.md",
+   "upstream_path": "content/ko/docs/tasks/job/job-with-pod-to-pod-communication.md",
+   "blob_sha1": "316839b23911901769880534aed7e54c8ccc708d",
+   "sha256": "67c54a5d8b66782eb9835c24d5e24d08f37efd9eb4d6a0b5cf05eebc4df7e6fa",
+   "bytes": 5061
+  },
+  {
+   "path": "tasks/job/parallel-processing-expansion.md",
+   "upstream_path": "content/ko/docs/tasks/job/parallel-processing-expansion.md",
+   "blob_sha1": "ddf1bd0b886aaf7cbc7b48bd7c9b92a3c7ea1a85",
+   "sha256": "3bd3527c5293951f6e32d93cae2ce4a19d4796664fdde46df22e4e05666a0798",
+   "bytes": 10699
+  },
+  {
+   "path": "tasks/manage-daemon/create-daemon-set.md",
+   "upstream_path": "content/ko/docs/tasks/manage-daemon/create-daemon-set.md",
+   "blob_sha1": "ee62128aad697678e0e1444bd92a20e87035b945",
+   "sha256": "86d1cbebd99bf96b6bd9cca807c0fae586bc1b245242486235c7f70fe8586824",
+   "bytes": 2739
+  },
+  {
+   "path": "tasks/manage-daemon/pods-some-nodes.md",
+   "upstream_path": "content/ko/docs/tasks/manage-daemon/pods-some-nodes.md",
+   "blob_sha1": "76df601d9fdfd833830efbdf388688313c45e05a",
+   "sha256": "dce3586b988a3ec8c732cdd5e12b76259c44638a922e75c08b2919496bdd7747",
+   "bytes": 1975
+  },
+  {
+   "path": "tasks/manage-daemon/rollback-daemon-set.md",
+   "upstream_path": "content/ko/docs/tasks/manage-daemon/rollback-daemon-set.md",
+   "blob_sha1": "faecc6658b251a96855b25b45ab6dc177a5cab40",
+   "sha256": "7e6902100dbd88ce3490dd800b9b3b6379e7b42aa26348102e313a6dcdf6feaa",
+   "bytes": 3958
+  },
+  {
+   "path": "tasks/manage-daemon/update-daemon-set.md",
+   "upstream_path": "content/ko/docs/tasks/manage-daemon/update-daemon-set.md",
+   "blob_sha1": "b1d818ed42699bd084c7462a0e05d9140463f401",
+   "sha256": "6b163d2504286bc25af87123602a9a17b813dbb027189684fdd3a8ad331f5a31",
+   "bytes": 6744
+  },
+  {
+   "path": "tasks/manage-gpus/scheduling-gpus.md",
+   "upstream_path": "content/ko/docs/tasks/manage-gpus/scheduling-gpus.md",
+   "blob_sha1": "c6804709e894070caa32dce9e7d70f751bd48b54",
+   "sha256": "d56b2a00227ac7f8e7a5d160e988e5b4be494cc03e65c1acb84e072566a44ed8",
+   "bytes": 5165
+  },
+  {
+   "path": "tasks/manage-hugepages/scheduling-hugepages.md",
+   "upstream_path": "content/ko/docs/tasks/manage-hugepages/scheduling-hugepages.md",
+   "blob_sha1": "778140a6fd7af5f24662bf47e0176aa519220da8",
+   "sha256": "7754c39dbdf85b7fb06c94c7877a0038d5249d01425e28c96fa879d63c0be2f7",
+   "bytes": 3424
+  },
+  {
+   "path": "tasks/manage-kubernetes-objects/declarative-config.md",
+   "upstream_path": "content/ko/docs/tasks/manage-kubernetes-objects/declarative-config.md",
+   "blob_sha1": "f7dcbab677e4c28ada9931ac8d1583e7765aa47e",
+   "sha256": "3d17cfcb5f15648814276a99fd04a132def4b40388941e8db870a14813e443fd",
+   "bytes": 36569
+  },
+  {
+   "path": "tasks/manage-kubernetes-objects/imperative-command.md",
+   "upstream_path": "content/ko/docs/tasks/manage-kubernetes-objects/imperative-command.md",
+   "blob_sha1": "86f5dd27454acd75b0b2b0f66eb14dacd00f8a28",
+   "sha256": "5502fb06eed6d924179c2f7961937b7cdd1d7fb65d9f46b1375bb608cc12fefe",
+   "bytes": 7795
+  },
+  {
+   "path": "tasks/manage-kubernetes-objects/imperative-config.md",
+   "upstream_path": "content/ko/docs/tasks/manage-kubernetes-objects/imperative-config.md",
+   "blob_sha1": "b186432d858c9dd87e1914d2e448ba979e803a0b",
+   "sha256": "3d8e11c613e43b53112355109743da2daca4d03532c007e5db12f59b5c4ff169",
+   "bytes": 5803
+  },
+  {
+   "path": "tasks/manage-kubernetes-objects/kustomization.md",
+   "upstream_path": "content/ko/docs/tasks/manage-kubernetes-objects/kustomization.md",
+   "blob_sha1": "7e8694e3668d338392feee1c01922edcab8f35d5",
+   "sha256": "8c5892ecf1b1e79de043dd4bf9c13dfe2a90b40dcf938be42641e3b8b01dd41f",
+   "bytes": 27901
+  },
+  {
+   "path": "tasks/network/customize-hosts-file-for-pods.md",
+   "upstream_path": "content/ko/docs/tasks/network/customize-hosts-file-for-pods.md",
+   "blob_sha1": "fa1db35e4e8a7aeb8eaf57108fd976f9b6530b9c",
+   "sha256": "67520eeb3743937d67c3cbdd2433f211704b2a8e17c5abbb094049bfde2a7c67",
+   "bytes": 3762
+  },
+  {
+   "path": "tasks/network/extend-service-ip-ranges.md",
+   "upstream_path": "content/ko/docs/tasks/network/extend-service-ip-ranges.md",
+   "blob_sha1": "537802968ad55edc4cc6be78ad5523ff0c2237f9",
+   "sha256": "1b7e1e2806fa056db827579b2a1b7b428e1841b6a1235e2556fedd68f9f96900",
+   "bytes": 9195
+  },
+  {
+   "path": "tasks/network/reconfigure-default-service-ip-ranges.md",
+   "upstream_path": "content/ko/docs/tasks/network/reconfigure-default-service-ip-ranges.md",
+   "blob_sha1": "1d51bd95cfb41e1940218bd9cc63c40f12129ddc",
+   "sha256": "fcda120378db98f18998677ba6d6ad8f974c589af21a5e52cd715e764c6a7dac",
+   "bytes": 7020
+  },
+  {
+   "path": "tasks/network/validate-dual-stack.md",
+   "upstream_path": "content/ko/docs/tasks/network/validate-dual-stack.md",
+   "blob_sha1": "9246f79ecb971ddfe71921e3df8e7793ac1790c3",
+   "sha256": "975c4d4fb7dab3b0a0b96be961c0302ce210825ddf09f649f36e3eb3b05c30d7",
+   "bytes": 7959
+  },
+  {
+   "path": "tasks/run-application/access-api-from-pod.md",
+   "upstream_path": "content/ko/docs/tasks/run-application/access-api-from-pod.md",
+   "blob_sha1": "b9a0a8c55ee0852256e8e40c5a4c9e0bd00a1d04",
+   "sha256": "1dbbe949cc371e9994d231751520e10564ed3ea196a72fd696a9873766a76e63",
+   "bytes": 4647
+  },
+  {
+   "path": "tasks/run-application/delete-stateful-set.md",
+   "upstream_path": "content/ko/docs/tasks/run-application/delete-stateful-set.md",
+   "blob_sha1": "69b0ae2cf7e277b171120bcb1793979bb8ab4d34",
+   "sha256": "3add2a08e8e287006b1b51cc22d60638e06f93fdd889edc4aae12da786b85668",
+   "bytes": 3254
+  },
+  {
+   "path": "tasks/run-application/force-delete-stateful-set-pod.md",
+   "upstream_path": "content/ko/docs/tasks/run-application/force-delete-stateful-set-pod.md",
+   "blob_sha1": "1a6af4d8d1c6794232afb4c0e67beeae0d9ca776",
+   "sha256": "cb3f04eee0b766f9b12eb8f27e170e00deefc5152e2e3ba4fa787a92fe5ad8a5",
+   "bytes": 5690
+  },
+  {
+   "path": "tasks/run-application/horizontal-pod-autoscale-walkthrough.md",
+   "upstream_path": "content/ko/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough.md",
+   "blob_sha1": "c32e94e75f82b071bdc03d4ef842a305135b1c06",
+   "sha256": "d1e02f9fabce8fe3cc76a1c28120208c990aa73ce16daebfda96d4b1fe74568b",
+   "bytes": 20608
+  },
+  {
+   "path": "tasks/run-application/horizontal-pod-autoscale.md",
+   "upstream_path": "content/ko/docs/tasks/run-application/horizontal-pod-autoscale.md",
+   "blob_sha1": "0a5f845e210ff183c6404c61c79c6859d5ca6531",
+   "sha256": "a7a817772bb7017ea7255e699dfa000915588d4929ec40de8fb3c9fa57c1dd75",
+   "bytes": 31782
+  },
+  {
+   "path": "tasks/run-application/run-replicated-stateful-application.md",
+   "upstream_path": "content/ko/docs/tasks/run-application/run-replicated-stateful-application.md",
+   "blob_sha1": "6efc2b0fa4a127814b88ded96918fce0d495a8e3",
+   "sha256": "6e887a2767d05fe94e14c6a54f9b794dd7158b3dcd932f609131b20567902011",
+   "bytes": 21907
+  },
+  {
+   "path": "tasks/run-application/run-single-instance-stateful-application.md",
+   "upstream_path": "content/ko/docs/tasks/run-application/run-single-instance-stateful-application.md",
+   "blob_sha1": "b0cef5613526695b2e8fbf4c822b1bbbdd9601f3",
+   "sha256": "950689359950526e60285ef6605a214c31b16208f072f86b76e57b99ac66b272",
+   "bytes": 7618
+  },
+  {
+   "path": "tasks/run-application/run-stateless-application-deployment.md",
+   "upstream_path": "content/ko/docs/tasks/run-application/run-stateless-application-deployment.md",
+   "blob_sha1": "ea5bfd76af4430cefec42bdd2eda1b7b51287027",
+   "sha256": "0f1e1e83eafe52d2df0045b0b874d9561f8eee022794201e2e3bbca3d8df16de",
+   "bytes": 4911
+  },
+  {
+   "path": "tasks/run-application/scale-stateful-set.md",
+   "upstream_path": "content/ko/docs/tasks/run-application/scale-stateful-set.md",
+   "blob_sha1": "26da727f33db20ce1b6191352a6a069c7a4365d3",
+   "sha256": "3b0e01b0115c1ae8ddf760a2a22e7a637274006684515b310e151edd4149e4d7",
+   "bytes": 3555
+  },
+  {
+   "path": "tasks/tls/certificate-issue-client-csr.md",
+   "upstream_path": "content/ko/docs/tasks/tls/certificate-issue-client-csr.md",
+   "blob_sha1": "27efda251755da4b0978c63af06ced9936839c42",
+   "sha256": "f45b5842b6bf7efd337dc2bb48b5dddce9dbe3a81723899566f1311146d239b5",
+   "bytes": 7191
+  },
+  {
+   "path": "tasks/tls/certificate-rotation.md",
+   "upstream_path": "content/ko/docs/tasks/tls/certificate-rotation.md",
+   "blob_sha1": "ae00ab954b327fa48be19692bebc94a3c77cfd13",
+   "sha256": "a4c3c5c80acf61c0b9af3cf19f63586a02cc896f52d2b5aff3d02505295d3921",
+   "bytes": 3046
+  },
+  {
+   "path": "tasks/tls/managing-tls-in-a-cluster.md",
+   "upstream_path": "content/ko/docs/tasks/tls/managing-tls-in-a-cluster.md",
+   "blob_sha1": "e932a2c4dc3d4ebdea644305f6994098fbda36ef",
+   "sha256": "dbfe901b8a0bc95e4e9e4c42c5e651d75304ae93d7865d9e32db3ee9f230588f",
+   "bytes": 13295
+  },
+  {
+   "path": "tasks/tools/included/optional-kubectl-configs-bash-linux.md",
+   "upstream_path": "content/ko/docs/tasks/tools/included/optional-kubectl-configs-bash-linux.md",
+   "blob_sha1": "33ce4a7afa7e5db56ad368c1b0d5c01581b0cdd2",
+   "sha256": "a514d5cbd1505bc9686ad999c083d3fec7c324978adcfb8030acb45dd5174067",
+   "bytes": 2424
+  },
+  {
+   "path": "tasks/tools/included/optional-kubectl-configs-bash-mac.md",
+   "upstream_path": "content/ko/docs/tasks/tools/included/optional-kubectl-configs-bash-mac.md",
+   "blob_sha1": "7e06e3444580906049aef1eb0104e2fbcc327ceb",
+   "sha256": "d1e688f35597ace8b5ff1090671b47d1e153ff8b657af30e93a0d68113fbbe6f",
+   "bytes": 3846
+  },
+  {
+   "path": "tasks/tools/install-kubectl-linux.md",
+   "upstream_path": "content/ko/docs/tasks/tools/install-kubectl-linux.md",
+   "blob_sha1": "04736731212cc801da1ab7c5930de85451f83694",
+   "sha256": "4c552308ce3fc4094ac37ab2b48fb671001faefe13259a1cde960add9a4157b9",
+   "bytes": 7069
+  },
+  {
+   "path": "tasks/tools/install-kubectl-macos.md",
+   "upstream_path": "content/ko/docs/tasks/tools/install-kubectl-macos.md",
+   "blob_sha1": "cc018985b23be90ac286f5e5d58101e418848773",
+   "sha256": "6941855fc063400d98da86b757c64713feaca7a5679c26cd3d8b81dfc3af8f2c",
+   "bytes": 6259
+  },
+  {
+   "path": "tasks/tools/install-kubectl-windows.md",
+   "upstream_path": "content/ko/docs/tasks/tools/install-kubectl-windows.md",
+   "blob_sha1": "17a36185af8e20a3836fbde1ee4946a9bda74a89",
+   "sha256": "d5ce39d64a9dfeae66d7bc358c29f96bd0a5c62437039abd0e2df2514ad4783e",
+   "bytes": 5781
+  },
+  {
+   "path": "tutorials/configuration/configure-redis-using-configmap.md",
+   "upstream_path": "content/ko/docs/tutorials/configuration/configure-redis-using-configmap.md",
+   "blob_sha1": "5cb4c03b9f32a3b8f8d2610ada8481f8ebc801e6",
+   "sha256": "7ed0fec76fb77c35e346d8ea25b7baa261c04e95e37857645e4275c70fef8193",
+   "bytes": 5668
+  },
+  {
+   "path": "tutorials/configuration/pod-sidecar-containers.md",
+   "upstream_path": "content/ko/docs/tutorials/configuration/pod-sidecar-containers.md",
+   "blob_sha1": "16fc7f3310e32fc9e89b7f10e15d8573a05fb58c",
+   "sha256": "4eaecb018f4c190a28808d00de6e951ed6232fdafe6dea679ad2f2917158725f",
+   "bytes": 11237
+  },
+  {
+   "path": "tutorials/configuration/updating-configuration-via-a-configmap.md",
+   "upstream_path": "content/ko/docs/tutorials/configuration/updating-configuration-via-a-configmap.md",
+   "blob_sha1": "8d99799a6efddfa33b8b7d4f364d7801c767f801",
+   "sha256": "4ef7f7c4bee2e38d36dd7b233357c32ec30568c8049b83d43010c377b459bec3",
+   "bytes": 27337
+  },
+  {
+   "path": "tutorials/hello-minikube.md",
+   "upstream_path": "content/ko/docs/tutorials/hello-minikube.md",
+   "blob_sha1": "559bcd26a5cdecdbb843c668005ba1f3d80a2f1c",
+   "sha256": "d5dcb998b8e428592413cd696a30dbc580860e7864dd17290ddff4967a1baec3",
+   "bytes": 11981
+  },
+  {
+   "path": "tutorials/kubernetes-basics/create-cluster/cluster-intro.md",
+   "upstream_path": "content/ko/docs/tutorials/kubernetes-basics/create-cluster/cluster-intro.md",
+   "blob_sha1": "e0b92cda202dda80aefbf6eb6c8ca1cb01c5e700",
+   "sha256": "1302f3811ea2418ec55b5bf021f7b17f3e7a5871721ae2c59e7f517a93866ae3",
+   "bytes": 4864
+  },
+  {
+   "path": "tutorials/security/apparmor.md",
+   "upstream_path": "content/ko/docs/tutorials/security/apparmor.md",
+   "blob_sha1": "fb6b0622e4e9f6bdac7f6fa0f4c7789640c6d371",
+   "sha256": "4469ca4c663caf20bbccc9fe595088ccc9876af26650236e4e02e5257e529414",
+   "bytes": 17928
+  },
+  {
+   "path": "tutorials/security/cluster-level-pss.md",
+   "upstream_path": "content/ko/docs/tutorials/security/cluster-level-pss.md",
+   "blob_sha1": "b34f4a686246943a4bd4064fd09041b7f4d1ab60",
+   "sha256": "6551510c4fa15b7858b6ef3df73e507e15a542090192fea2b3eaede87a906804",
+   "bytes": 14197
+  },
+  {
+   "path": "tutorials/security/ns-level-pss.md",
+   "upstream_path": "content/ko/docs/tutorials/security/ns-level-pss.md",
+   "blob_sha1": "0100ddd5ddf9ef8bf4baf6454b47583dd1949a69",
+   "sha256": "3b864989f981d3daaa38c25875e47f4884c61674a7d6cab12f88c5647aeea24c",
+   "bytes": 5935
+  },
+  {
+   "path": "tutorials/services/connect-applications-service.md",
+   "upstream_path": "content/ko/docs/tutorials/services/connect-applications-service.md",
+   "blob_sha1": "c020e000fb1f1b5e8fde435c3160179e20795552",
+   "sha256": "39c2bb004c894cb8de57a12376cfb1a7315518510eeb9b6402476d8f45ab9f35",
+   "bytes": 18486
+  },
+  {
+   "path": "tutorials/services/pods-and-endpoint-termination-flow.md",
+   "upstream_path": "content/ko/docs/tutorials/services/pods-and-endpoint-termination-flow.md",
+   "blob_sha1": "a28d8dc4798a2887b429dd36cfda1873309d4036",
+   "sha256": "db7389ee2f816221d43acaa9ee66be8ac7740550e27856f9d6da6d11ba8f4077",
+   "bytes": 6152
+  },
+  {
+   "path": "tutorials/services/source-ip.md",
+   "upstream_path": "content/ko/docs/tutorials/services/source-ip.md",
+   "blob_sha1": "16edb25cfcae7fcfb5b422b61d61e3c8aa0064da",
+   "sha256": "ecee9002224e2db5a8766e26f4ba3f972592e350282c404c9c254d0c67700f61",
+   "bytes": 14152
+  },
+  {
+   "path": "tutorials/stateful-application/cassandra.md",
+   "upstream_path": "content/ko/docs/tutorials/stateful-application/cassandra.md",
+   "blob_sha1": "d4612950b0a5e26ff892b7ef2f0bcae5906a6504",
+   "sha256": "8b87335b0b0afa5635da230c01a37cc1d33c2e993d5e39317a996cc93b2fed76",
+   "bytes": 10425
+  },
+  {
+   "path": "tutorials/stateful-application/mysql-wordpress-persistent-volume.md",
+   "upstream_path": "content/ko/docs/tutorials/stateful-application/mysql-wordpress-persistent-volume.md",
+   "blob_sha1": "6b439560b42282b4f428a20baeb66ebdb81e9ddf",
+   "sha256": "7ea698273bfc3d598891014d8f7ea09a95617118aeede641c2cf6736079bb6bb",
+   "bytes": 9508
+  },
+  {
+   "path": "tutorials/stateless-application/expose-external-ip-address.md",
+   "upstream_path": "content/ko/docs/tutorials/stateless-application/expose-external-ip-address.md",
+   "blob_sha1": "8c7376a2f2b9b6c71e628e529e3cb3d82858357c",
+   "sha256": "75cf545e5a96867d3bf68d126baf2ec4ea0c42ebd9f92b0fa9d41ca34ab0dfc5",
+   "bytes": 5917
+  },
+  {
+   "path": "tutorials/stateless-application/guestbook.md",
+   "upstream_path": "content/ko/docs/tutorials/stateless-application/guestbook.md",
+   "blob_sha1": "8ef3b23d5b01dbb11179e69409caa3cac96c303b",
+   "sha256": "ca1ced9470e4e15a50e23328932bb9a12a447303ee02a42ac9b9f559059bc08d",
+   "bytes": 13481
+  }
+ ]
+}

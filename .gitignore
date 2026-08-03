@@ -16,3 +16,7 @@ __pycache__/
 # adept-web manual E2E: isolated data dir + dropped server key (never commit)
 .e2e-data/
 .superpowers/
+
+# Korean eval Pack B — a frozen export of a live tenant (internal documents; never commit).
+# SPEC-nexus-korean-retrieval-eval §4.1 defines it as local-only for exactly this reason.
+nexus/tests/eval/local/

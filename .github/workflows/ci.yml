@@ -169,15 +169,21 @@ jobs:
       - name: Build the app image (mecab-ko is compiled here)
         working-directory: nexus
         run: docker build -t nexus-app:ci .
-      - name: Run the recall suite inside the image
+      - name: Run the recall and Korean-eval suites inside the image
         working-directory: nexus
+        # Two independent rulers share this job because they share one requirement (mecab-ko in
+        # the image). test_search_recall guards the keyword leg against the AND regression on its
+        # own five-document fixture; test_ko_eval_run_db measures the 265-document Korean pack
+        # against floors pinned to a pack and label revision. Different corpora, different floors,
+        # no precedence between them (SPEC-nexus-korean-retrieval-eval §3).
         run: |
           docker run --rm --network host \
             -e NEXUS_TEST_DB_URL=postgresql://nexus:nexus@localhost:5432/nexus_test \
             -e DATABASE_URL=postgresql://nexus:nexus@localhost:5432/nexus_test \
             -e NEXUS_REQUIRE_MECAB=1 \
             -v "$PWD:/app" -w /app \
-            nexus-app:ci python -m pytest -q tests/test_search_recall.py tests/test_recall_suite_runs.py
+            nexus-app:ci python -m pytest -q \
+              tests/test_search_recall.py tests/test_recall_suite_runs.py tests/test_ko_eval_run_db.py
 
   observer:
     name: observer (vitest)
