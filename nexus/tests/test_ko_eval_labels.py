@@ -35,6 +35,13 @@ def test_committed_labels_pass_every_gate(labels):
     assert _check(labels) == []
 
 
+def test_adjudicated_records_are_marked_as_such(labels):
+    """풀 판정으로 gold 가 늘어난 질의는 provenance 가 바뀐다 — 어떤 라벨이 어디서 왔는지 남는다."""
+    adjudicated = [q for q in labels["queries"] if q["provenance"] == "adjudicated"]
+    assert adjudicated, "풀 판정 기록이 없다"
+    assert all(len(q["gold"]) >= 1 for q in adjudicated)
+
+
 def test_the_working_set_is_forty_not_forty_five(labels):
     """§4.3 의 분모. 답변불가 5건은 어떤 집계에도 들어가지 않는다."""
     assert len(labels["queries"]) == 45
@@ -47,7 +54,8 @@ def test_every_stratum_carries_exactly_eight(labels):
 
 
 def test_labels_declare_a_revision_and_a_pack(labels):
-    assert labels["revision"] == 1
+    """리비전은 바닥값이 어느 라벨판에 박혔는지를 말한다 — 풀 판정으로 gold 가 늘면 올라간다."""
+    assert labels["revision"] == 2          # rev1 → rev2: mecab·nori 풀 판정으로 gold 24건 추가
     assert labels["pack"] == "ko-k8s-2026-08-01"
 
 

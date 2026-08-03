@@ -9,7 +9,7 @@
 #
 # gold 는 팩 상대 경로의 집합이다. 첫 실행 뒤 풀 판정(top-10 합집합)에서 관련 문서가 더 나오면
 # provenance: adjudicated 로 추가되고 revision 이 올라간다 — 그때 바닥값도 같이 다시 박는다.
-revision: 1
+revision: 2
 pack: ko-k8s-2026-08-01
 
 queries:
@@ -18,9 +18,11 @@ queries:
     query: "수평 파드 오토스케일링은 레플리카 수를 무엇을 보고 정하나"
     stratum: loanword
     answerable: true
-    gold: [tasks/run-application/horizontal-pod-autoscale.md]
+    gold:
+      - tasks/run-application/horizontal-pod-autoscale.md
+      - concepts/workloads/autoscaling.md
     rationale: "HPA 가 메트릭으로 레플리카 수를 계산하는 알고리즘을 설명하는 문서. 제목은 라틴 표기, 질의는 음차."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -48,9 +50,11 @@ queries:
     query: "CronJob 의 스케줄 표기법은 어떻게 쓰나"
     stratum: loanword
     answerable: true
-    gold: [concepts/workloads/controllers/cron-jobs.md]
+    gold:
+      - concepts/workloads/controllers/cron-jobs.md
+      - tasks/job/automated-tasks-with-cron-jobs.md
     rationale: "크론 표현식 문법과 필드 의미를 설명하는 개념 문서. 문서 제목은 한글 음차, 질의는 라틴 표기."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -68,9 +72,12 @@ queries:
     query: "인증서 서명 요청을 만들어 클라이언트 인증서를 발급받으려면"
     stratum: loanword
     answerable: true
-    gold: [tasks/tls/certificate-issue-client-csr.md]
+    gold:
+      - tasks/tls/certificate-issue-client-csr.md
+      - tasks/administer-cluster/certificates.md
+      - tasks/tls/managing-tls-in-a-cluster.md
     rationale: "CertificateSigningRequest 로 클라이언트 인증서를 발급하는 절차. 질의는 그 개념의 한글 표현."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -109,8 +116,10 @@ queries:
     query: "스테이트풀셋 레플리카 개수를 늘리거나 줄이려면"
     stratum: compound
     answerable: true
-    gold: [tasks/run-application/scale-stateful-set.md]
-    rationale: "스테이트풀셋 스케일 명령과 주의점을 다루는 작업 문서."
+    gold:
+      - tasks/run-application/scale-stateful-set.md
+    rationale: "스테이트풀셋 스케일 명령과 주의점을 다루는 작업 문서. 풀 판정에서 개념 문서(제목 '스테이트풀셋')가
+      후보로 올라왔으나, 질의가 그 제목을 통째로 품고 있어 제목-재사용 게이트에 걸린다 — 규칙을 지켜 추가하지 않았다."
     provenance: authored_from_doc
     authored_by: agent
     reviewed_by: LivingLikeKrillin
@@ -119,9 +128,11 @@ queries:
     query: "데몬셋을 롤링 업데이트하려면 어떤 전략을 쓰나"
     stratum: compound
     answerable: true
-    gold: [tasks/manage-daemon/update-daemon-set.md]
+    gold:
+      - tasks/manage-daemon/update-daemon-set.md
+      - concepts/workloads/controllers/daemonset.md
     rationale: "데몬셋의 RollingUpdate 전략과 수행 절차."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -129,9 +140,11 @@ queries:
     query: "네트워크폴리시를 선언해서 파드 사이 트래픽을 막으려면"
     stratum: compound
     answerable: true
-    gold: [tasks/administer-cluster/declare-network-policy.md]
+    gold:
+      - tasks/administer-cluster/declare-network-policy.md
+      - concepts/services-networking/network-policies.md
     rationale: "네트워크 폴리시를 선언해 파드 간 통신을 제한하는 실습 문서."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -139,9 +152,11 @@ queries:
     query: "파드시큐리티어드미션은 어떤 모드로 강제하나"
     stratum: compound
     answerable: true
-    gold: [concepts/security/pod-security-admission.md]
+    gold:
+      - concepts/security/pod-security-admission.md
+      - setup/best-practices/enforcing-pod-security-standards.md
     rationale: "enforce/audit/warn 모드와 레이블 기반 적용을 설명하는 개념 문서."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -159,9 +174,11 @@ queries:
     query: "노드어피니티로 특정 노드에만 파드를 올리려면"
     stratum: compound
     answerable: true
-    gold: [tasks/configure-pod-container/assign-pods-nodes-using-node-affinity.md]
+    gold:
+      - tasks/configure-pod-container/assign-pods-nodes-using-node-affinity.md
+      - concepts/scheduling-eviction/assign-pod-node.md
     rationale: "노드 어피니티로 배치를 강제하는 실습 문서."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -180,9 +197,11 @@ queries:
     query: "노드에 자원이 모자랄 때 어떤 파드부터 쫓겨나나"
     stratum: particle
     answerable: true
-    gold: [concepts/scheduling-eviction/node-pressure-eviction.md]
+    gold:
+      - concepts/scheduling-eviction/node-pressure-eviction.md
+      - concepts/workloads/pods/pod-qos.md
     rationale: "kubelet 이 자원 압박에서 축출 대상을 고르는 기준과 순서."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -190,9 +209,11 @@ queries:
     query: "네임스페이스마다 메모리 요청량 기본값을 정해두려면"
     stratum: particle
     answerable: true
-    gold: [tasks/administer-cluster/manage-resources/memory-default-namespace.md]
+    gold:
+      - tasks/administer-cluster/manage-resources/memory-default-namespace.md
+      - concepts/policy/limit-range.md
     rationale: "LimitRange 로 기본 메모리 요청·상한을 설정하는 절차."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -200,9 +221,12 @@ queries:
     query: "컨테이너에게 환경 변수를 넘겨주려면"
     stratum: particle
     answerable: true
-    gold: [tasks/inject-data-application/define-environment-variable-container.md]
+    gold:
+      - tasks/inject-data-application/define-environment-variable-container.md
+      - concepts/containers/container-environment.md
+      - tasks/inject-data-application/define-interdependent-environment-variables.md
     rationale: "파드 스펙의 env 로 컨테이너에 환경 변수를 정의하는 문서."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -210,9 +234,13 @@ queries:
     query: "잡에서 병렬 처리 개수를 늘리려면"
     stratum: particle
     answerable: true
-    gold: [tasks/job/parallel-processing-expansion.md]
+    gold:
+      - tasks/job/parallel-processing-expansion.md
+      - tasks/job/coarse-parallel-processing-work-queue.md
+      - tasks/job/fine-parallel-processing-work-queue.md
+      - tasks/job/indexed-parallel-processing-static.md
     rationale: "템플릿 확장으로 잡의 병렬도를 키우는 방법."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -230,9 +258,11 @@ queries:
     query: "여러 팀이 클러스터를 나눠 쓰도록 가르려면"
     stratum: particle
     answerable: true
-    gold: [tasks/administer-cluster/namespaces.md]
+    gold:
+      - tasks/administer-cluster/namespaces.md
+      - concepts/security/multi-tenancy.md
     rationale: "네임스페이스로 클러스터를 분할해 공유하는 운영 문서."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -240,9 +270,11 @@ queries:
     query: "컨트롤 플레인 컴포넌트의 로그는 어디에 쌓이나"
     stratum: particle
     answerable: true
-    gold: [concepts/cluster-administration/system-logs.md]
+    gold:
+      - concepts/cluster-administration/system-logs.md
+      - concepts/cluster-administration/logging.md
     rationale: "시스템 컴포넌트 로그의 위치와 로깅 수준을 설명하는 문서."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -281,9 +313,11 @@ queries:
     query: "kubeadm 클러스터를 어떤 순서로 업그레이드하나"
     stratum: mixed
     answerable: true
-    gold: [tasks/administer-cluster/kubeadm/kubeadm-upgrade.md]
+    gold:
+      - tasks/administer-cluster/kubeadm/kubeadm-upgrade.md
+      - tasks/administer-cluster/cluster-upgrade.md
     rationale: "컨트롤 플레인 → 워커 순의 업그레이드 절차."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -291,9 +325,11 @@ queries:
     query: "HPA 가 CPU 사용률을 보고 스케일하는 실습 예제"
     stratum: mixed
     answerable: true
-    gold: [tasks/run-application/horizontal-pod-autoscale-walkthrough.md]
+    gold:
+      - tasks/run-application/horizontal-pod-autoscale-walkthrough.md
+      - tasks/run-application/horizontal-pod-autoscale.md
     rationale: "부하를 걸어 HPA 동작을 확인하는 연습 문서."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -301,9 +337,11 @@ queries:
     query: "CoreDNS 로 서비스 디스커버리를 붙이려면"
     stratum: mixed
     answerable: true
-    gold: [tasks/administer-cluster/coredns.md]
+    gold:
+      - tasks/administer-cluster/coredns.md
+      - tasks/administer-cluster/dns-custom-nameservers.md
     rationale: "CoreDNS 설치·전환으로 서비스 디스커버리를 구성하는 문서."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -321,9 +359,11 @@ queries:
     query: "PV 반환 정책을 Retain 으로 바꾸려면"
     stratum: mixed
     answerable: true
-    gold: [tasks/administer-cluster/change-pv-reclaim-policy.md]
+    gold:
+      - tasks/administer-cluster/change-pv-reclaim-policy.md
+      - concepts/storage/storage-classes.md
     rationale: "persistentVolumeReclaimPolicy 를 Retain 으로 변경하는 절차."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -342,9 +382,11 @@ queries:
     query: "스테이트풀 셋 파드가 안 지워질 때 강제로 지우려면"
     stratum: spacing
     answerable: true
-    gold: [tasks/run-application/force-delete-stateful-set-pod.md]
+    gold:
+      - tasks/run-application/force-delete-stateful-set-pod.md
+      - tasks/run-application/delete-stateful-set.md
     rationale: "종료되지 않는 스테이트풀셋 파드의 강제 삭제 절차와 위험."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -362,9 +404,11 @@ queries:
     query: "컨피그 맵을 바꾸면 설정 파일을 어떻게 갱신하나"
     stratum: spacing
     answerable: true
-    gold: [tutorials/configuration/updating-configuration-via-a-configmap.md]
+    gold:
+      - tutorials/configuration/updating-configuration-via-a-configmap.md
+      - concepts/configuration/configmap.md
     rationale: "컨피그맵 변경이 마운트된 설정 파일에 반영되는 과정을 다루는 튜토리얼."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 
@@ -395,8 +439,9 @@ queries:
     gold:
       - tutorials/configuration/pod-sidecar-containers.md
       - concepts/workloads/pods/sidecar-containers.md
+      - concepts/workloads/pods/init-containers.md
     rationale: "사이드카(초기화 컨테이너 restartPolicy: Always)를 파드에 추가하는 방법 — 튜토리얼과 개념 문서 둘 다 답이 된다."
-    provenance: authored_from_doc
+    provenance: adjudicated
     authored_by: agent
     reviewed_by: LivingLikeKrillin
 

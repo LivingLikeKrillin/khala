@@ -82,9 +82,12 @@ async def _run(args) -> int:
 
     pool = await db.get_pool()
     try:
-        mecab_leg, mecab_tops = await run_arm(mecab, labels, pool, "ko_eval_mecab")
+        # **두 팔은 같은 테넌트를 순서대로 쓴다.** rid 가 테넌트를 품고 있어서, 테넌트가 다르면
+        # 동점 정렬 키(rid)도 달라진다 — 토크나이저와 무관한 차이가 승패에 섞인다.
+        arm_tenant = "ko_eval_arm"
+        mecab_leg, mecab_tops = await run_arm(mecab, labels, pool, arm_tenant)
         print(f"mecab: Recall@10 {mecab_leg.recall:.3f} · MRR {mecab_leg.mrr:.3f} · 미스 {mecab_leg.misses}")
-        nori_leg, nori_tops = await run_arm(nori, labels, pool, "ko_eval_nori")
+        nori_leg, nori_tops = await run_arm(nori, labels, pool, arm_tenant)
         print(f"nori : Recall@10 {nori_leg.recall:.3f} · MRR {nori_leg.mrr:.3f} · 미스 {nori_leg.misses}")
 
         wins, losses, ties = outcomes(nori_leg.scores, mecab_leg.scores)
@@ -133,9 +136,8 @@ async def _run(args) -> int:
 
         if not args.keep:
             async with pool.acquire() as con:
-                for t in ("ko_eval_mecab", "ko_eval_nori"):
-                    await con.execute("DELETE FROM chunks WHERE tenant=$1", t)
-                    await con.execute("DELETE FROM documents WHERE tenant=$1", t)
+                await con.execute("DELETE FROM chunks WHERE tenant=$1", arm_tenant)
+                await con.execute("DELETE FROM documents WHERE tenant=$1", arm_tenant)
         return 0
     finally:
         await db.close_pool()

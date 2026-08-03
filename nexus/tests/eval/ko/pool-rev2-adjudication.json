@@ -1,0 +1,1749 @@
+[
+ {
+  "id": "q001",
+  "query": "수평 파드 오토스케일링은 레플리카 수를 무엇을 보고 정하나",
+  "stratum": "loanword",
+  "gold": [
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ],
+  "mecab_top": [
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/cluster-administration/node-shutdown.md"
+  ],
+  "nori_top": [
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/workloads/autoscaling.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/autoscaling.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ]
+ },
+ {
+  "id": "q002",
+  "query": "앱아머로 컨테이너가 건드릴 수 있는 자원을 제한하려면",
+  "stratum": "loanword",
+  "gold": [
+   "tutorials/security/apparmor.md"
+  ],
+  "mecab_top": [
+   "concepts/workloads/pods/init-containers.md",
+   "tasks/debug/debug-application/debug-running-pod.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/cluster-administration/logging.md",
+   "concepts/containers/container-lifecycle-hooks.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/sidecar-containers.md"
+  ],
+  "nori_top": [
+   "concepts/workloads/pods/init-containers.md",
+   "tasks/debug/debug-application/debug-running-pod.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/cluster-administration/logging.md",
+   "concepts/containers/container-lifecycle-hooks.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/sidecar-containers.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/logging.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/containers/container-lifecycle-hooks.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/workloads/pods/init-containers.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/sidecar-containers.md",
+   "tasks/debug/debug-application/debug-running-pod.md",
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ]
+ },
+ {
+  "id": "q003",
+  "query": "코넥티비티 서비스는 어떻게 설정하나",
+  "stratum": "loanword",
+  "gold": [
+   "tasks/extend-kubernetes/setup-konnectivity.md"
+  ],
+  "mecab_top": [
+   "concepts/services-networking/dual-stack.md",
+   "tasks/network/reconfigure-default-service-ip-ranges.md",
+   "concepts/security/service-accounts.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "tutorials/services/connect-applications-service.md",
+   "tasks/network/validate-dual-stack.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/debug/debug-application/debug-service.md",
+   "tutorials/stateless-application/guestbook.md",
+   "concepts/configuration/overview.md"
+  ],
+  "nori_top": [
+   "concepts/services-networking/dual-stack.md",
+   "tasks/network/reconfigure-default-service-ip-ranges.md",
+   "concepts/security/service-accounts.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "tutorials/services/connect-applications-service.md",
+   "tasks/network/validate-dual-stack.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/debug/debug-application/debug-service.md",
+   "tutorials/stateless-application/guestbook.md",
+   "concepts/configuration/overview.md"
+  ],
+  "candidates": [
+   "concepts/configuration/overview.md",
+   "concepts/security/service-accounts.md",
+   "concepts/services-networking/dual-stack.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/debug/debug-application/debug-service.md",
+   "tasks/network/reconfigure-default-service-ip-ranges.md",
+   "tasks/network/validate-dual-stack.md",
+   "tutorials/services/connect-applications-service.md",
+   "tutorials/stateless-application/guestbook.md"
+  ]
+ },
+ {
+  "id": "q004",
+  "query": "CronJob 의 스케줄 표기법은 어떻게 쓰나",
+  "stratum": "loanword",
+  "gold": [
+   "concepts/workloads/controllers/cron-jobs.md"
+  ],
+  "mecab_top": [
+   "tasks/extend-kubernetes/configure-multiple-schedulers.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "tasks/job/automated-tasks-with-cron-jobs.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/scheduler-perf-tuning.md",
+   "concepts/cluster-administration/system-metrics.md",
+   "concepts/workloads/controllers/cron-jobs.md",
+   "concepts/architecture/nodes.md"
+  ],
+  "nori_top": [
+   "tasks/extend-kubernetes/configure-multiple-schedulers.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/scheduling-eviction/scheduler-perf-tuning.md",
+   "tasks/job/automated-tasks-with-cron-jobs.md",
+   "concepts/scheduling-eviction/pod-scheduling-readiness.md",
+   "concepts/cluster-administration/node-autoscaling.md"
+  ],
+  "candidates": [
+   "concepts/architecture/nodes.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/cluster-administration/system-metrics.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/pod-scheduling-readiness.md",
+   "concepts/scheduling-eviction/scheduler-perf-tuning.md",
+   "concepts/workloads/controllers/cron-jobs.md",
+   "tasks/extend-kubernetes/configure-multiple-schedulers.md",
+   "tasks/job/automated-tasks-with-cron-jobs.md"
+  ]
+ },
+ {
+  "id": "q005",
+  "query": "EndpointSlice 는 엔드포인트를 어떻게 나눠서 들고 있나",
+  "stratum": "loanword",
+  "gold": [
+   "concepts/services-networking/endpoint-slices.md"
+  ],
+  "mecab_top": [
+   "concepts/services-networking/endpoint-slices.md",
+   "concepts/services-networking/topology-aware-hints.md",
+   "concepts/services-networking/gateway.md",
+   "concepts/services-networking/service-topology.md",
+   "tutorials/services/pods-and-endpoint-termination-flow.md",
+   "concepts/extend-kubernetes/compute-storage-net/device-plugins.md",
+   "tasks/debug/debug-cluster/audit.md",
+   "tutorials/services/source-ip.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tutorials/services/connect-applications-service.md"
+  ],
+  "nori_top": [
+   "concepts/services-networking/endpoint-slices.md",
+   "concepts/services-networking/gateway.md",
+   "concepts/services-networking/topology-aware-hints.md",
+   "concepts/services-networking/service-topology.md",
+   "tutorials/services/pods-and-endpoint-termination-flow.md",
+   "concepts/extend-kubernetes/compute-storage-net/device-plugins.md",
+   "tasks/debug/debug-cluster/audit.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tutorials/services/source-ip.md",
+   "concepts/services-networking/dns-pod-service.md"
+  ],
+  "candidates": [
+   "concepts/extend-kubernetes/compute-storage-net/device-plugins.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/services-networking/endpoint-slices.md",
+   "concepts/services-networking/gateway.md",
+   "concepts/services-networking/service-topology.md",
+   "concepts/services-networking/topology-aware-hints.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/debug/debug-cluster/audit.md",
+   "tutorials/services/connect-applications-service.md",
+   "tutorials/services/pods-and-endpoint-termination-flow.md",
+   "tutorials/services/source-ip.md"
+  ]
+ },
+ {
+  "id": "q006",
+  "query": "인증서 서명 요청을 만들어 클라이언트 인증서를 발급받으려면",
+  "stratum": "loanword",
+  "gold": [
+   "tasks/tls/certificate-issue-client-csr.md"
+  ],
+  "mecab_top": [
+   "tasks/tls/certificate-rotation.md",
+   "tasks/tls/managing-tls-in-a-cluster.md",
+   "tasks/administer-cluster/kubeadm/kubeadm-certs.md",
+   "setup/best-practices/certificates.md",
+   "tasks/administer-cluster/certificates.md",
+   "tasks/administer-cluster/access-cluster-api.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/tls/certificate-issue-client-csr.md",
+   "tasks/access-application-cluster/access-cluster.md",
+   "concepts/security/controlling-access.md"
+  ],
+  "nori_top": [
+   "tasks/tls/managing-tls-in-a-cluster.md",
+   "tasks/tls/certificate-rotation.md",
+   "tasks/administer-cluster/kubeadm/kubeadm-certs.md",
+   "tasks/administer-cluster/certificates.md",
+   "setup/best-practices/certificates.md",
+   "tasks/access-application-cluster/access-cluster.md",
+   "tasks/administer-cluster/access-cluster-api.md",
+   "tasks/extend-kubernetes/setup-extension-api-server.md",
+   "tasks/tls/certificate-issue-client-csr.md",
+   "tasks/run-application/access-api-from-pod.md"
+  ],
+  "candidates": [
+   "concepts/security/controlling-access.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "setup/best-practices/certificates.md",
+   "tasks/access-application-cluster/access-cluster.md",
+   "tasks/administer-cluster/access-cluster-api.md",
+   "tasks/administer-cluster/certificates.md",
+   "tasks/administer-cluster/kubeadm/kubeadm-certs.md",
+   "tasks/extend-kubernetes/setup-extension-api-server.md",
+   "tasks/run-application/access-api-from-pod.md",
+   "tasks/tls/certificate-issue-client-csr.md",
+   "tasks/tls/certificate-rotation.md",
+   "tasks/tls/managing-tls-in-a-cluster.md"
+  ]
+ },
+ {
+  "id": "q007",
+  "query": "미니큐브에서 엔진엑스 인그레스 컨트롤러를 켜려면",
+  "stratum": "loanword",
+  "gold": [
+   "tasks/access-application-cluster/ingress-minikube.md"
+  ],
+  "mecab_top": [
+   "concepts/services-networking/ingress-controllers.md",
+   "concepts/services-networking/ingress.md",
+   "concepts/architecture/controller.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "concepts/architecture/cloud-controller.md",
+   "concepts/architecture/nodes.md",
+   "tasks/access-application-cluster/ingress-minikube.md"
+  ],
+  "nori_top": [
+   "concepts/services-networking/ingress-controllers.md",
+   "concepts/services-networking/ingress.md",
+   "concepts/architecture/controller.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "concepts/architecture/cloud-controller.md",
+   "concepts/architecture/nodes.md",
+   "tasks/access-application-cluster/ingress-minikube.md"
+  ],
+  "candidates": [
+   "concepts/architecture/cloud-controller.md",
+   "concepts/architecture/controller.md",
+   "concepts/architecture/nodes.md",
+   "concepts/services-networking/ingress-controllers.md",
+   "concepts/services-networking/ingress.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "tasks/access-application-cluster/ingress-minikube.md"
+  ]
+ },
+ {
+  "id": "q008",
+  "query": "워드프레스와 마이에스큐엘을 퍼시스턴트 볼륨 위에 올리는 예제",
+  "stratum": "loanword",
+  "gold": [
+   "tutorials/stateful-application/mysql-wordpress-persistent-volume.md"
+  ],
+  "mecab_top": [
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "concepts/storage/ephemeral-volumes.md",
+   "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/storage/volume-snapshots.md",
+   "tutorials/stateful-application/mysql-wordpress-persistent-volume.md",
+   "concepts/storage/windows-storage.md",
+   "concepts/policy/resource-quotas.md",
+   "concepts/workloads/controllers/statefulset.md"
+  ],
+  "nori_top": [
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "concepts/storage/ephemeral-volumes.md",
+   "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/storage/volume-snapshots.md",
+   "tutorials/stateful-application/mysql-wordpress-persistent-volume.md",
+   "concepts/storage/windows-storage.md",
+   "concepts/policy/resource-quotas.md",
+   "concepts/workloads/controllers/statefulset.md"
+  ],
+  "candidates": [
+   "concepts/policy/resource-quotas.md",
+   "concepts/storage/ephemeral-volumes.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/storage/volume-snapshots.md",
+   "concepts/storage/windows-storage.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tutorials/stateful-application/mysql-wordpress-persistent-volume.md"
+  ]
+ },
+ {
+  "id": "q009",
+  "query": "퍼시스턴트볼륨클레임을 만들어 파드에 저장소를 붙이는 절차",
+  "stratum": "compound",
+  "gold": [
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md"
+  ],
+  "mecab_top": [
+   "concepts/storage/ephemeral-volumes.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/storage/volume-snapshots.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ],
+  "nori_top": [
+   "concepts/storage/ephemeral-volumes.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/storage/volume-snapshots.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ],
+  "candidates": [
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/storage/ephemeral-volumes.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/storage/volume-snapshots.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ]
+ },
+ {
+  "id": "q010",
+  "query": "스테이트풀셋 레플리카 개수를 늘리거나 줄이려면",
+  "stratum": "compound",
+  "gold": [
+   "tasks/run-application/scale-stateful-set.md"
+  ],
+  "mecab_top": [
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/run-application/delete-stateful-set.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "concepts/containers/images.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "tasks/run-application/scale-stateful-set.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md",
+   "tutorials/stateful-application/cassandra.md"
+  ],
+  "nori_top": [
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/run-application/delete-stateful-set.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "concepts/containers/images.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "tasks/run-application/scale-stateful-set.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md",
+   "tutorials/stateful-application/cassandra.md"
+  ],
+  "candidates": [
+   "concepts/containers/images.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/run-application/delete-stateful-set.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "tasks/run-application/scale-stateful-set.md",
+   "tutorials/stateful-application/cassandra.md"
+  ]
+ },
+ {
+  "id": "q011",
+  "query": "데몬셋을 롤링 업데이트하려면 어떤 전략을 쓰나",
+  "stratum": "compound",
+  "gold": [
+   "tasks/manage-daemon/update-daemon-set.md"
+  ],
+  "mecab_top": [
+   "tasks/manage-daemon/update-daemon-set.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "concepts/cluster-administration/manage-deployment.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "tasks/manage-kubernetes-objects/imperative-command.md",
+   "tasks/run-application/run-single-instance-stateful-application.md",
+   "concepts/configuration/configmap.md",
+   "tutorials/configuration/updating-configuration-via-a-configmap.md",
+   "concepts/extend-kubernetes/api-extension/custom-resources.md"
+  ],
+  "nori_top": [
+   "tasks/manage-daemon/update-daemon-set.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/manage-daemon/create-daemon-set.md",
+   "tasks/manage-daemon/rollback-daemon-set.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "tasks/manage-daemon/pods-some-nodes.md",
+   "concepts/configuration/manage-resources-containers.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/manage-deployment.md",
+   "concepts/configuration/configmap.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/extend-kubernetes/api-extension/custom-resources.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/manage-daemon/create-daemon-set.md",
+   "tasks/manage-daemon/pods-some-nodes.md",
+   "tasks/manage-daemon/rollback-daemon-set.md",
+   "tasks/manage-daemon/update-daemon-set.md",
+   "tasks/manage-kubernetes-objects/imperative-command.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "tasks/run-application/run-single-instance-stateful-application.md",
+   "tutorials/configuration/updating-configuration-via-a-configmap.md"
+  ]
+ },
+ {
+  "id": "q012",
+  "query": "네트워크폴리시를 선언해서 파드 사이 트래픽을 막으려면",
+  "stratum": "compound",
+  "gold": [
+   "tasks/administer-cluster/declare-network-policy.md"
+  ],
+  "mecab_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/cluster-administration/addons.md"
+  ],
+  "nori_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/cluster-administration/addons.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/addons.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ]
+ },
+ {
+  "id": "q013",
+  "query": "파드시큐리티어드미션은 어떤 모드로 강제하나",
+  "stratum": "compound",
+  "gold": [
+   "concepts/security/pod-security-admission.md"
+  ],
+  "mecab_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "setup/best-practices/enforcing-pod-security-standards.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/workloads/controllers/statefulset.md"
+  ],
+  "nori_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "setup/best-practices/enforcing-pod-security-standards.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/workloads/controllers/statefulset.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "setup/best-practices/enforcing-pod-security-standards.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md"
+  ]
+ },
+ {
+  "id": "q014",
+  "query": "리소스쿼터로 네임스페이스별 사용량을 제한하려면",
+  "stratum": "compound",
+  "gold": [
+   "concepts/policy/resource-quotas.md"
+  ],
+  "mecab_top": [
+   "concepts/policy/resource-quotas.md",
+   "concepts/policy/limit-range.md",
+   "concepts/security/multi-tenancy.md",
+   "tasks/administer-cluster/namespaces.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/workloads/pods/user-namespaces.md",
+   "concepts/overview/working-with-objects/namespaces.md",
+   "concepts/services-networking/dns-pod-service.md"
+  ],
+  "nori_top": [
+   "concepts/policy/resource-quotas.md",
+   "concepts/policy/limit-range.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/workloads/pods/user-namespaces.md",
+   "tasks/administer-cluster/namespaces.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/overview/working-with-objects/namespaces.md"
+  ],
+  "candidates": [
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/overview/working-with-objects/namespaces.md",
+   "concepts/policy/limit-range.md",
+   "concepts/policy/resource-quotas.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/user-namespaces.md",
+   "tasks/administer-cluster/namespaces.md",
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ]
+ },
+ {
+  "id": "q015",
+  "query": "노드어피니티로 특정 노드에만 파드를 올리려면",
+  "stratum": "compound",
+  "gold": [
+   "tasks/configure-pod-container/assign-pods-nodes-using-node-affinity.md"
+  ],
+  "mecab_top": [
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/architecture/nodes.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md"
+  ],
+  "nori_top": [
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/architecture/nodes.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md"
+  ],
+  "candidates": [
+   "concepts/architecture/nodes.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md"
+  ]
+ },
+ {
+  "id": "q016",
+  "query": "컨피그맵을 붙여서 레디스 설정을 바꾸려면",
+  "stratum": "compound",
+  "gold": [
+   "tutorials/configuration/configure-redis-using-configmap.md"
+  ],
+  "mecab_top": [
+   "concepts/configuration/configmap.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "tutorials/configuration/updating-configuration-via-a-configmap.md",
+   "tasks/manage-kubernetes-objects/kustomization.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "tasks/administer-cluster/dns-custom-nameservers.md"
+  ],
+  "nori_top": [
+   "concepts/configuration/configmap.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "tutorials/configuration/updating-configuration-via-a-configmap.md",
+   "tasks/manage-kubernetes-objects/kustomization.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "tasks/administer-cluster/dns-custom-nameservers.md"
+  ],
+  "candidates": [
+   "concepts/configuration/configmap.md",
+   "tasks/administer-cluster/dns-custom-nameservers.md",
+   "tasks/manage-kubernetes-objects/kustomization.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "tutorials/configuration/updating-configuration-via-a-configmap.md"
+  ]
+ },
+ {
+  "id": "q017",
+  "query": "노드에 자원이 모자랄 때 어떤 파드부터 쫓겨나나",
+  "stratum": "particle",
+  "gold": [
+   "concepts/scheduling-eviction/node-pressure-eviction.md"
+  ],
+  "mecab_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/architecture/nodes.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/scheduling-eviction/kube-scheduler.md"
+  ],
+  "nori_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/architecture/nodes.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/scheduling-eviction/kube-scheduler.md"
+  ],
+  "candidates": [
+   "concepts/architecture/nodes.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ]
+ },
+ {
+  "id": "q018",
+  "query": "네임스페이스마다 메모리 요청량 기본값을 정해두려면",
+  "stratum": "particle",
+  "gold": [
+   "tasks/administer-cluster/manage-resources/memory-default-namespace.md"
+  ],
+  "mecab_top": [
+   "tasks/administer-cluster/namespaces.md",
+   "concepts/policy/limit-range.md",
+   "tasks/administer-cluster/manage-resources/memory-default-namespace.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/workloads/pods/user-namespaces.md",
+   "concepts/policy/resource-quotas.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/overview/working-with-objects/namespaces.md",
+   "concepts/services-networking/network-policies.md"
+  ],
+  "nori_top": [
+   "tasks/administer-cluster/namespaces.md",
+   "concepts/policy/limit-range.md",
+   "concepts/security/multi-tenancy.md",
+   "tasks/administer-cluster/manage-resources/memory-default-namespace.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/workloads/pods/user-namespaces.md",
+   "concepts/policy/resource-quotas.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/overview/working-with-objects/namespaces.md",
+   "tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md"
+  ],
+  "candidates": [
+   "concepts/overview/working-with-objects/namespaces.md",
+   "concepts/policy/limit-range.md",
+   "concepts/policy/resource-quotas.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/workloads/pods/user-namespaces.md",
+   "tasks/administer-cluster/manage-resources/memory-default-namespace.md",
+   "tasks/administer-cluster/namespaces.md",
+   "tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md"
+  ]
+ },
+ {
+  "id": "q019",
+  "query": "컨테이너에게 환경 변수를 넘겨주려면",
+  "stratum": "particle",
+  "gold": [
+   "tasks/inject-data-application/define-environment-variable-container.md"
+  ],
+  "mecab_top": [
+   "concepts/workloads/pods/init-containers.md",
+   "tasks/inject-data-application/define-interdependent-environment-variables.md",
+   "concepts/containers/container-environment.md",
+   "tasks/inject-data-application/define-environment-variable-container.md",
+   "concepts/containers/container-lifecycle-hooks.md",
+   "tasks/inject-data-application/distribute-credentials-secure.md",
+   "concepts/workloads/pods/sidecar-containers.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "tasks/inject-data-application/environment-variable-expose-pod-information.md",
+   "concepts/cluster-administration/logging.md"
+  ],
+  "nori_top": [
+   "concepts/workloads/pods/init-containers.md",
+   "tasks/inject-data-application/define-interdependent-environment-variables.md",
+   "concepts/containers/container-environment.md",
+   "tasks/inject-data-application/define-environment-variable-container.md",
+   "concepts/containers/container-lifecycle-hooks.md",
+   "tasks/inject-data-application/distribute-credentials-secure.md",
+   "concepts/workloads/pods/sidecar-containers.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/downward-api.md",
+   "tasks/inject-data-application/environment-variable-expose-pod-information.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/logging.md",
+   "concepts/containers/container-environment.md",
+   "concepts/containers/container-lifecycle-hooks.md",
+   "concepts/workloads/pods/downward-api.md",
+   "concepts/workloads/pods/init-containers.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/sidecar-containers.md",
+   "tasks/inject-data-application/define-environment-variable-container.md",
+   "tasks/inject-data-application/define-interdependent-environment-variables.md",
+   "tasks/inject-data-application/distribute-credentials-secure.md",
+   "tasks/inject-data-application/environment-variable-expose-pod-information.md"
+  ]
+ },
+ {
+  "id": "q020",
+  "query": "잡에서 병렬 처리 개수를 늘리려면",
+  "stratum": "particle",
+  "gold": [
+   "tasks/job/parallel-processing-expansion.md"
+  ],
+  "mecab_top": [
+   "concepts/workloads/controllers/cron-jobs.md",
+   "tasks/job/automated-tasks-with-cron-jobs.md",
+   "concepts/containers/images.md",
+   "concepts/workloads/controllers/ttlafterfinished.md",
+   "tasks/job/fine-parallel-processing-work-queue.md",
+   "tasks/job/parallel-processing-expansion.md",
+   "tasks/job/coarse-parallel-processing-work-queue.md",
+   "tasks/job/indexed-parallel-processing-static.md",
+   "tasks/job/job-with-pod-to-pod-communication.md",
+   "concepts/architecture/controller.md"
+  ],
+  "nori_top": [
+   "concepts/workloads/controllers/cron-jobs.md",
+   "tasks/job/automated-tasks-with-cron-jobs.md",
+   "concepts/containers/images.md",
+   "tasks/job/fine-parallel-processing-work-queue.md",
+   "tasks/job/parallel-processing-expansion.md",
+   "tasks/job/coarse-parallel-processing-work-queue.md",
+   "tasks/job/indexed-parallel-processing-static.md",
+   "concepts/workloads/controllers/ttlafterfinished.md",
+   "tasks/job/job-with-pod-to-pod-communication.md",
+   "concepts/services-networking/ingress.md"
+  ],
+  "candidates": [
+   "concepts/architecture/controller.md",
+   "concepts/containers/images.md",
+   "concepts/services-networking/ingress.md",
+   "concepts/workloads/controllers/cron-jobs.md",
+   "concepts/workloads/controllers/ttlafterfinished.md",
+   "tasks/job/automated-tasks-with-cron-jobs.md",
+   "tasks/job/coarse-parallel-processing-work-queue.md",
+   "tasks/job/fine-parallel-processing-work-queue.md",
+   "tasks/job/indexed-parallel-processing-static.md",
+   "tasks/job/job-with-pod-to-pod-communication.md",
+   "tasks/job/parallel-processing-expansion.md"
+  ]
+ },
+ {
+  "id": "q021",
+  "query": "파드 안에서 API 서버로 요청을 보내려면",
+  "stratum": "particle",
+  "gold": [
+   "tasks/run-application/access-api-from-pod.md"
+  ],
+  "mecab_top": [
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "tasks/run-application/access-api-from-pod.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "tasks/extend-kubernetes/setup-extension-api-server.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/architecture/control-plane-node-communication.md",
+   "concepts/cluster-administration/node-shutdown.md"
+  ],
+  "nori_top": [
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "tasks/run-application/access-api-from-pod.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "tasks/extend-kubernetes/setup-extension-api-server.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/architecture/control-plane-node-communication.md",
+   "concepts/cluster-administration/node-shutdown.md"
+  ],
+  "candidates": [
+   "concepts/architecture/control-plane-node-communication.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/extend-kubernetes/setup-extension-api-server.md",
+   "tasks/run-application/access-api-from-pod.md"
+  ]
+ },
+ {
+  "id": "q022",
+  "query": "여러 팀이 클러스터를 나눠 쓰도록 가르려면",
+  "stratum": "particle",
+  "gold": [
+   "tasks/administer-cluster/namespaces.md"
+  ],
+  "mecab_top": [
+   "tutorials/kubernetes-basics/create-cluster/cluster-intro.md",
+   "concepts/security/multi-tenancy.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "setup/best-practices/cluster-large.md",
+   "tasks/administer-cluster/namespaces.md",
+   "tasks/access-application-cluster/configure-access-multiple-clusters.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/workloads/pods/disruptions.md",
+   "concepts/services-networking/dual-stack.md",
+   "concepts/security/cloud-native-security.md"
+  ],
+  "nori_top": [
+   "tutorials/kubernetes-basics/create-cluster/cluster-intro.md",
+   "concepts/security/multi-tenancy.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "setup/best-practices/cluster-large.md",
+   "tasks/administer-cluster/namespaces.md",
+   "tasks/access-application-cluster/configure-access-multiple-clusters.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/workloads/pods/disruptions.md",
+   "concepts/services-networking/dual-stack.md",
+   "concepts/security/cloud-native-security.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/security/cloud-native-security.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/services-networking/dual-stack.md",
+   "concepts/workloads/pods/disruptions.md",
+   "setup/best-practices/cluster-large.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "tasks/access-application-cluster/configure-access-multiple-clusters.md",
+   "tasks/administer-cluster/namespaces.md",
+   "tutorials/kubernetes-basics/create-cluster/cluster-intro.md"
+  ]
+ },
+ {
+  "id": "q023",
+  "query": "컨트롤 플레인 컴포넌트의 로그는 어디에 쌓이나",
+  "stratum": "particle",
+  "gold": [
+   "concepts/cluster-administration/system-logs.md"
+  ],
+  "mecab_top": [
+   "concepts/security/multi-tenancy.md",
+   "concepts/cluster-administration/logging.md",
+   "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "tutorials/kubernetes-basics/create-cluster/cluster-intro.md",
+   "concepts/architecture/control-plane-node-communication.md",
+   "setup/best-practices/cluster-large.md",
+   "setup/best-practices/multiple-zones.md",
+   "setup/production-environment/tools/kubeadm/ha-topology.md",
+   "setup/production-environment/tools/kubeadm/control-plane-flags.md",
+   "tasks/administer-cluster/kubeadm/kubeadm-upgrade.md"
+  ],
+  "nori_top": [
+   "concepts/cluster-administration/logging.md",
+   "concepts/security/multi-tenancy.md",
+   "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "tutorials/kubernetes-basics/create-cluster/cluster-intro.md",
+   "concepts/architecture/control-plane-node-communication.md",
+   "setup/best-practices/cluster-large.md",
+   "setup/best-practices/multiple-zones.md",
+   "setup/production-environment/tools/kubeadm/ha-topology.md",
+   "concepts/cluster-administration/system-logs.md",
+   "setup/production-environment/tools/kubeadm/control-plane-flags.md"
+  ],
+  "candidates": [
+   "concepts/architecture/control-plane-node-communication.md",
+   "concepts/cluster-administration/logging.md",
+   "concepts/security/multi-tenancy.md",
+   "setup/best-practices/cluster-large.md",
+   "setup/best-practices/multiple-zones.md",
+   "setup/production-environment/tools/kubeadm/control-plane-flags.md",
+   "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "setup/production-environment/tools/kubeadm/ha-topology.md",
+   "tasks/administer-cluster/kubeadm/kubeadm-upgrade.md",
+   "tutorials/kubernetes-basics/create-cluster/cluster-intro.md"
+  ]
+ },
+ {
+  "id": "q024",
+  "query": "볼륨으로부터 스냅샷을 떠두려면",
+  "stratum": "particle",
+  "gold": [
+   "concepts/storage/volume-snapshots.md"
+  ],
+  "mecab_top": [
+   "concepts/storage/volume-snapshots.md",
+   "concepts/storage/ephemeral-volumes.md",
+   "concepts/storage/volume-snapshot-classes.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/storage/windows-storage.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "concepts/storage/storage-limits.md",
+   "concepts/storage/volume-health-monitoring.md"
+  ],
+  "nori_top": [
+   "concepts/storage/volume-snapshots.md",
+   "concepts/storage/ephemeral-volumes.md",
+   "concepts/storage/volume-snapshot-classes.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/storage/windows-storage.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "concepts/storage/storage-limits.md",
+   "concepts/storage/volume-health-monitoring.md"
+  ],
+  "candidates": [
+   "concepts/storage/ephemeral-volumes.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/storage/storage-limits.md",
+   "concepts/storage/volume-health-monitoring.md",
+   "concepts/storage/volume-snapshot-classes.md",
+   "concepts/storage/volume-snapshots.md",
+   "concepts/storage/windows-storage.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md"
+  ]
+ },
+ {
+  "id": "q025",
+  "query": "노드에 taint 를 걸면 파드가 어떻게 되나",
+  "stratum": "mixed",
+  "gold": [
+   "concepts/scheduling-eviction/taint-and-toleration.md"
+  ],
+  "mecab_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/architecture/nodes.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md"
+  ],
+  "nori_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/architecture/nodes.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/scheduling-eviction/taint-and-toleration.md"
+  ],
+  "candidates": [
+   "concepts/architecture/nodes.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ]
+ },
+ {
+  "id": "q026",
+  "query": "kubectl 로 시크릿을 만들고 값을 확인하려면",
+  "stratum": "mixed",
+  "gold": [
+   "tasks/configmap-secret/managing-secret-using-kubectl.md"
+  ],
+  "mecab_top": [
+   "tasks/tools/install-kubectl-macos.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "tasks/configmap-secret/managing-secret-using-config-file.md",
+   "tasks/extend-kubectl/kubectl-plugins.md",
+   "tasks/configmap-secret/managing-secret-using-kubectl.md",
+   "tasks/tools/install-kubectl-windows.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/workloads/management.md",
+   "tasks/tools/included/optional-kubectl-configs-bash-mac.md",
+   "tasks/tools/install-kubectl-linux.md"
+  ],
+  "nori_top": [
+   "tasks/tools/install-kubectl-macos.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "tasks/configmap-secret/managing-secret-using-config-file.md",
+   "tasks/extend-kubectl/kubectl-plugins.md",
+   "tasks/configmap-secret/managing-secret-using-kubectl.md",
+   "tasks/tools/install-kubectl-windows.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/workloads/management.md",
+   "tasks/tools/included/optional-kubectl-configs-bash-mac.md",
+   "tasks/tools/install-kubectl-linux.md"
+  ],
+  "candidates": [
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/workloads/management.md",
+   "tasks/configmap-secret/managing-secret-using-config-file.md",
+   "tasks/configmap-secret/managing-secret-using-kubectl.md",
+   "tasks/extend-kubectl/kubectl-plugins.md",
+   "tasks/tools/included/optional-kubectl-configs-bash-mac.md",
+   "tasks/tools/install-kubectl-linux.md",
+   "tasks/tools/install-kubectl-macos.md",
+   "tasks/tools/install-kubectl-windows.md",
+   "tutorials/configuration/configure-redis-using-configmap.md"
+  ]
+ },
+ {
+  "id": "q027",
+  "query": "kubeadm 클러스터를 어떤 순서로 업그레이드하나",
+  "stratum": "mixed",
+  "gold": [
+   "tasks/administer-cluster/kubeadm/kubeadm-upgrade.md"
+  ],
+  "mecab_top": [
+   "tasks/administer-cluster/kubeadm/kubeadm-upgrade.md",
+   "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "tutorials/kubernetes-basics/create-cluster/cluster-intro.md",
+   "tasks/administer-cluster/cluster-upgrade.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "setup/production-environment/tools/kubeadm/troubleshooting-kubeadm.md",
+   "setup/production-environment/tools/kubeadm/install-kubeadm.md",
+   "tasks/administer-cluster/kubeadm/kubeadm-certs.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/workloads/pods/disruptions.md"
+  ],
+  "nori_top": [
+   "tasks/administer-cluster/kubeadm/kubeadm-upgrade.md",
+   "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "tutorials/kubernetes-basics/create-cluster/cluster-intro.md",
+   "tasks/administer-cluster/cluster-upgrade.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "setup/production-environment/tools/kubeadm/troubleshooting-kubeadm.md",
+   "setup/production-environment/tools/kubeadm/install-kubeadm.md",
+   "tasks/administer-cluster/kubeadm/kubeadm-certs.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/workloads/pods/disruptions.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/workloads/pods/disruptions.md",
+   "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "setup/production-environment/tools/kubeadm/install-kubeadm.md",
+   "setup/production-environment/tools/kubeadm/troubleshooting-kubeadm.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "tasks/administer-cluster/cluster-upgrade.md",
+   "tasks/administer-cluster/kubeadm/kubeadm-certs.md",
+   "tasks/administer-cluster/kubeadm/kubeadm-upgrade.md",
+   "tutorials/kubernetes-basics/create-cluster/cluster-intro.md"
+  ]
+ },
+ {
+  "id": "q028",
+  "query": "HPA 가 CPU 사용률을 보고 스케일하는 실습 예제",
+  "stratum": "mixed",
+  "gold": [
+   "tasks/run-application/horizontal-pod-autoscale-walkthrough.md"
+  ],
+  "mecab_top": [
+   "tasks/configure-pod-container/assign-cpu-resource.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "tasks/administer-cluster/manage-resources/cpu-constraint-namespace.md",
+   "concepts/scheduling-eviction/pod-overhead.md",
+   "concepts/configuration/organize-cluster-access-kubeconfig.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/administer-cluster/manage-resources/cpu-default-namespace.md",
+   "setup/production-environment/container-runtimes.md",
+   "concepts/policy/resource-quotas.md",
+   "concepts/configuration/manage-resources-containers.md"
+  ],
+  "nori_top": [
+   "tasks/configure-pod-container/assign-cpu-resource.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "tasks/administer-cluster/manage-resources/cpu-constraint-namespace.md",
+   "concepts/workloads/pods/user-namespaces.md",
+   "concepts/configuration/organize-cluster-access-kubeconfig.md",
+   "concepts/scheduling-eviction/pod-overhead.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/administer-cluster/manage-resources/cpu-default-namespace.md",
+   "setup/production-environment/container-runtimes.md",
+   "concepts/configuration/manage-resources-containers.md"
+  ],
+  "candidates": [
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/configuration/organize-cluster-access-kubeconfig.md",
+   "concepts/policy/resource-quotas.md",
+   "concepts/scheduling-eviction/pod-overhead.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/pods/user-namespaces.md",
+   "setup/production-environment/container-runtimes.md",
+   "tasks/administer-cluster/manage-resources/cpu-constraint-namespace.md",
+   "tasks/administer-cluster/manage-resources/cpu-default-namespace.md",
+   "tasks/configure-pod-container/assign-cpu-resource.md",
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ]
+ },
+ {
+  "id": "q029",
+  "query": "CoreDNS 로 서비스 디스커버리를 붙이려면",
+  "stratum": "mixed",
+  "gold": [
+   "tasks/administer-cluster/coredns.md"
+  ],
+  "mecab_top": [
+   "tasks/administer-cluster/dns-custom-nameservers.md",
+   "concepts/services-networking/dual-stack.md",
+   "tasks/network/reconfigure-default-service-ip-ranges.md",
+   "concepts/security/service-accounts.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "tutorials/services/connect-applications-service.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/security/multi-tenancy.md",
+   "tasks/network/validate-dual-stack.md",
+   "concepts/configuration/overview.md"
+  ],
+  "nori_top": [
+   "tasks/administer-cluster/dns-custom-nameservers.md",
+   "concepts/services-networking/dual-stack.md",
+   "tasks/network/reconfigure-default-service-ip-ranges.md",
+   "concepts/security/service-accounts.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "tutorials/services/connect-applications-service.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/security/multi-tenancy.md",
+   "tasks/network/validate-dual-stack.md",
+   "concepts/configuration/overview.md"
+  ],
+  "candidates": [
+   "concepts/configuration/overview.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/security/service-accounts.md",
+   "concepts/services-networking/dual-stack.md",
+   "tasks/access-application-cluster/access-cluster-services.md",
+   "tasks/administer-cluster/dns-custom-nameservers.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/network/reconfigure-default-service-ip-ranges.md",
+   "tasks/network/validate-dual-stack.md",
+   "tutorials/services/connect-applications-service.md"
+  ]
+ },
+ {
+  "id": "q030",
+  "query": "livenessProbe 와 readinessProbe 를 어떻게 나눠 설정하나",
+  "stratum": "mixed",
+  "gold": [
+   "tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md"
+  ],
+  "mecab_top": [
+   "tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "concepts/workloads/controllers/cron-jobs.md",
+   "setup/production-environment/container-runtimes.md",
+   "concepts/containers/images.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "tasks/network/validate-dual-stack.md",
+   "tasks/administer-cluster/sysctl-cluster.md"
+  ],
+  "nori_top": [
+   "tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "concepts/workloads/controllers/cron-jobs.md",
+   "setup/production-environment/container-runtimes.md",
+   "concepts/containers/images.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "tasks/network/validate-dual-stack.md",
+   "tasks/administer-cluster/sysctl-cluster.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/containers/images.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/cron-jobs.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "setup/production-environment/container-runtimes.md",
+   "tasks/administer-cluster/sysctl-cluster.md",
+   "tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md",
+   "tasks/network/validate-dual-stack.md",
+   "tutorials/configuration/configure-redis-using-configmap.md"
+  ]
+ },
+ {
+  "id": "q031",
+  "query": "PV 반환 정책을 Retain 으로 바꾸려면",
+  "stratum": "mixed",
+  "gold": [
+   "tasks/administer-cluster/change-pv-reclaim-policy.md"
+  ],
+  "mecab_top": [
+   "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/storage/storage-classes.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tasks/debug/debug-cluster/audit.md",
+   "concepts/security/pod-security-standards.md",
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ],
+  "nori_top": [
+   "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/security/multi-tenancy.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/storage/storage-classes.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tasks/debug/debug-cluster/audit.md",
+   "concepts/security/pod-security-standards.md",
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ],
+  "candidates": [
+   "concepts/security/multi-tenancy.md",
+   "concepts/security/pod-security-standards.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tasks/debug/debug-cluster/audit.md",
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ]
+ },
+ {
+  "id": "q032",
+  "query": "sysctl 값을 파드 단위로 조정하려면",
+  "stratum": "mixed",
+  "gold": [
+   "tasks/administer-cluster/sysctl-cluster.md"
+  ],
+  "mecab_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ],
+  "nori_top": [
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ]
+ },
+ {
+  "id": "q033",
+  "query": "스테이트풀 셋 파드가 안 지워질 때 강제로 지우려면",
+  "stratum": "spacing",
+  "gold": [
+   "tasks/run-application/force-delete-stateful-set-pod.md"
+  ],
+  "mecab_top": [
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/run-application/delete-stateful-set.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md"
+  ],
+  "nori_top": [
+   "concepts/workloads/controllers/statefulset.md",
+   "tasks/run-application/delete-stateful-set.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md"
+  ],
+  "candidates": [
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/run-application/delete-stateful-set.md",
+   "tasks/run-application/force-delete-stateful-set-pod.md",
+   "tasks/run-application/run-replicated-stateful-application.md"
+  ]
+ },
+ {
+  "id": "q034",
+  "query": "데몬 셋을 이전 리비전으로 되돌리려면",
+  "stratum": "spacing",
+  "gold": [
+   "tasks/manage-daemon/rollback-daemon-set.md"
+  ],
+  "mecab_top": [
+   "tasks/manage-daemon/rollback-daemon-set.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/scheduling-eviction/topology-spread-constraints.md",
+   "concepts/workloads/pods/init-containers.md",
+   "setup/production-environment/tools/kubeadm/install-kubeadm.md",
+   "concepts/extend-kubernetes/compute-storage-net/device-plugins.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "tasks/manage-kubernetes-objects/imperative-command.md",
+   "tasks/run-application/horizontal-pod-autoscale.md"
+  ],
+  "nori_top": [
+   "concepts/workloads/controllers/daemonset.md",
+   "tasks/manage-daemon/update-daemon-set.md",
+   "tasks/manage-daemon/rollback-daemon-set.md",
+   "tasks/manage-daemon/create-daemon-set.md",
+   "tasks/manage-daemon/pods-some-nodes.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/scheduling-eviction/taint-and-toleration.md"
+  ],
+  "candidates": [
+   "concepts/extend-kubernetes/compute-storage-net/device-plugins.md",
+   "concepts/scheduling-eviction/taint-and-toleration.md",
+   "concepts/scheduling-eviction/topology-spread-constraints.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/workloads/pods/init-containers.md",
+   "setup/production-environment/tools/kubeadm/install-kubeadm.md",
+   "tasks/manage-daemon/create-daemon-set.md",
+   "tasks/manage-daemon/pods-some-nodes.md",
+   "tasks/manage-daemon/rollback-daemon-set.md",
+   "tasks/manage-daemon/update-daemon-set.md",
+   "tasks/manage-kubernetes-objects/imperative-command.md",
+   "tasks/run-application/horizontal-pod-autoscale.md",
+   "tasks/run-application/run-replicated-stateful-application.md"
+  ]
+ },
+ {
+  "id": "q035",
+  "query": "컨피그 맵을 바꾸면 설정 파일을 어떻게 갱신하나",
+  "stratum": "spacing",
+  "gold": [
+   "tutorials/configuration/updating-configuration-via-a-configmap.md"
+  ],
+  "mecab_top": [
+   "concepts/configuration/configmap.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "tasks/manage-kubernetes-objects/kustomization.md",
+   "tutorials/configuration/updating-configuration-via-a-configmap.md",
+   "concepts/configuration/organize-cluster-access-kubeconfig.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "concepts/extend-kubernetes/api-extension/custom-resources.md",
+   "tasks/administer-cluster/dns-custom-nameservers.md",
+   "concepts/configuration/manage-resources-containers.md"
+  ],
+  "nori_top": [
+   "concepts/configuration/configmap.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "tasks/manage-kubernetes-objects/kustomization.md",
+   "tutorials/configuration/updating-configuration-via-a-configmap.md",
+   "concepts/configuration/organize-cluster-access-kubeconfig.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "concepts/extend-kubernetes/api-extension/custom-resources.md",
+   "tasks/administer-cluster/dns-custom-nameservers.md",
+   "tutorials/security/apparmor.md"
+  ],
+  "candidates": [
+   "concepts/configuration/configmap.md",
+   "concepts/configuration/manage-resources-containers.md",
+   "concepts/configuration/organize-cluster-access-kubeconfig.md",
+   "concepts/extend-kubernetes/api-extension/custom-resources.md",
+   "tasks/administer-cluster/dns-custom-nameservers.md",
+   "tasks/manage-kubernetes-objects/kustomization.md",
+   "tasks/run-application/run-replicated-stateful-application.md",
+   "tutorials/configuration/configure-redis-using-configmap.md",
+   "tutorials/configuration/updating-configuration-via-a-configmap.md",
+   "tutorials/security/apparmor.md"
+  ]
+ },
+ {
+  "id": "q036",
+  "query": "퍼시스턴트 볼륨 접근 모드를 한 파드 전용으로 바꾸려면",
+  "stratum": "spacing",
+  "gold": [
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md"
+  ],
+  "mecab_top": [
+   "concepts/storage/ephemeral-volumes.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/cluster-administration/node-shutdown.md"
+  ],
+  "nori_top": [
+   "concepts/storage/ephemeral-volumes.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "concepts/storage/storage-classes.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/cluster-administration/node-shutdown.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/storage/ephemeral-volumes.md",
+   "concepts/storage/storage-classes.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ]
+ },
+ {
+  "id": "q037",
+  "query": "레플리카 셋은 파드 개수를 어떻게 유지하나",
+  "stratum": "spacing",
+  "gold": [
+   "concepts/workloads/controllers/replicaset.md"
+  ],
+  "mecab_top": [
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "tasks/run-application/run-replicated-stateful-application.md"
+  ],
+  "nori_top": [
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "tasks/run-application/run-replicated-stateful-application.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/workloads/controllers/statefulset.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/run-application/run-replicated-stateful-application.md"
+  ]
+ },
+ {
+  "id": "q038",
+  "query": "사이드 카 컨테이너를 파드에 넣는 방법",
+  "stratum": "spacing",
+  "gold": [
+   "tutorials/configuration/pod-sidecar-containers.md",
+   "concepts/workloads/pods/sidecar-containers.md"
+  ],
+  "mecab_top": [
+   "concepts/workloads/pods/init-containers.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/debug/debug-application/debug-running-pod.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/workloads/controllers/replicaset.md"
+  ],
+  "nori_top": [
+   "concepts/workloads/pods/init-containers.md",
+   "tutorials/configuration/pod-sidecar-containers.md",
+   "concepts/workloads/pods/sidecar-containers.md",
+   "concepts/cluster-administration/logging.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "tasks/debug/debug-application/debug-pods.md"
+  ],
+  "candidates": [
+   "concepts/cluster-administration/logging.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "concepts/services-networking/dns-pod-service.md",
+   "concepts/workloads/controllers/replicaset.md",
+   "concepts/workloads/pods/init-containers.md",
+   "concepts/workloads/pods/pod-lifecycle.md",
+   "concepts/workloads/pods/pod-qos.md",
+   "tasks/debug/debug-application/debug-pods.md",
+   "tasks/debug/debug-application/debug-running-pod.md"
+  ]
+ },
+ {
+  "id": "q039",
+  "query": "인그레스컨트롤러는 어떤 기준으로 고르나",
+  "stratum": "spacing",
+  "gold": [
+   "concepts/services-networking/ingress-controllers.md"
+  ],
+  "mecab_top": [
+   "concepts/services-networking/ingress-controllers.md",
+   "concepts/services-networking/ingress.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/architecture/controller.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "concepts/architecture/cloud-controller.md",
+   "concepts/architecture/nodes.md",
+   "concepts/overview/working-with-objects/labels.md",
+   "tasks/access-application-cluster/ingress-minikube.md"
+  ],
+  "nori_top": [
+   "concepts/services-networking/ingress-controllers.md",
+   "concepts/services-networking/ingress.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/architecture/controller.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "concepts/architecture/cloud-controller.md",
+   "tasks/extend-kubectl/kubectl-plugins.md",
+   "concepts/extend-kubernetes/compute-storage-net/network-plugins.md",
+   "concepts/architecture/nodes.md",
+   "concepts/overview/working-with-objects/labels.md"
+  ],
+  "candidates": [
+   "concepts/architecture/cloud-controller.md",
+   "concepts/architecture/controller.md",
+   "concepts/architecture/nodes.md",
+   "concepts/extend-kubernetes/compute-storage-net/network-plugins.md",
+   "concepts/overview/working-with-objects/labels.md",
+   "concepts/services-networking/ingress-controllers.md",
+   "concepts/services-networking/ingress.md",
+   "concepts/services-networking/network-policies.md",
+   "concepts/workloads/controllers/replicationcontroller.md",
+   "tasks/access-application-cluster/ingress-minikube.md",
+   "tasks/extend-kubectl/kubectl-plugins.md"
+  ]
+ },
+ {
+  "id": "q040",
+  "query": "노드 오토 스케일링은 무엇을 보고 노드를 늘리나",
+  "stratum": "spacing",
+  "gold": [
+   "concepts/cluster-administration/node-autoscaling.md"
+  ],
+  "mecab_top": [
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/architecture/nodes.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/workloads/autoscaling.md",
+   "concepts/scheduling-eviction/scheduler-perf-tuning.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "concepts/scheduling-eviction/kube-scheduler.md"
+  ],
+  "nori_top": [
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/architecture/nodes.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/workloads/autoscaling.md",
+   "concepts/scheduling-eviction/scheduler-perf-tuning.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "concepts/scheduling-eviction/kube-scheduler.md"
+  ],
+  "candidates": [
+   "concepts/architecture/nodes.md",
+   "concepts/cluster-administration/node-autoscaling.md",
+   "concepts/cluster-administration/node-shutdown.md",
+   "concepts/scheduling-eviction/assign-pod-node.md",
+   "concepts/scheduling-eviction/kube-scheduler.md",
+   "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "concepts/scheduling-eviction/scheduler-perf-tuning.md",
+   "concepts/workloads/autoscaling.md",
+   "concepts/workloads/controllers/daemonset.md",
+   "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md"
+  ]
+ }
+]

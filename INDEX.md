@@ -9,7 +9,7 @@
 ## 🟡 검토중 (0)
 
 
-## 🟢 승인 (33)
+## 🟢 승인 (34)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
@@ -21,6 +21,7 @@
 | SPEC-nexus-answer-staleness-warning | Deterministic staleness warning on answer evidence (Unit 1, backend) | LivingLikeKrillin |  |  |
 | SPEC-nexus-citation-validation | Verify the LLM's citations against the evidence — the code checks, it doesn't trust | LivingLikeKrillin |  | ADR-0004, ADR-0006 |
 | SPEC-nexus-claude-code-llm-dev-backend | A dev LLM backend that routes narration through the running Claude Code — no paid key | LivingLikeKrillin |  | ADR-0004 |
+| SPEC-nexus-deterministic-retrieval-order | Deterministic ordering in the retrieval legs — the same query must not depend on physical row order | LivingLikeKrillin | 2026-08-03T10:08:58Z | ADR-0006 |
 | SPEC-nexus-document-lifecycle | Document lifecycle — origin, search, hide, and the inverse of every destructive act | LivingLikeKrillin | 2026-07-10 | ADR-0006 |
 | SPEC-nexus-embed-generation-drift | Detect mixed embedding generations (partial re-embed guardrail) | LivingLikeKrillin |  |  |
 | SPEC-nexus-graph-scope-filter | The graph channel must obey base_filter — stop cross-tenant / over-clearance / quarantined leakage | LivingLikeKrillin |  | ADR-0004, ADR-0006 |

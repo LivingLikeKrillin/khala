@@ -77,7 +77,10 @@ async def _bm25_search(
           AND c.status = 'active'
           AND EXISTS (SELECT 1 FROM documents d
                       WHERE d.rid = c.doc_rid AND d.status = 'active')
-        ORDER BY rank_score DESC
+        -- `c.rid` 는 장식이 아니라 **전순서**를 만드는 키다. ts_rank_cd 동점이 빽빽해서
+        -- (상위 25행에 13~16종 점수) 동점 안 순서가 물리적 행 순서를 따라가고, 그게 LIMIT
+        -- 경계를 흔들어 같은 질의가 적재본마다 다른 답을 냈다 (SPEC-nexus-deterministic-retrieval-order §1).
+        ORDER BY rank_score DESC, c.rid ASC
         LIMIT $4
         """,
         tsquery, tenant, clearance, top_k,
@@ -113,7 +116,9 @@ async def _vector_search(
           AND c.status = 'active'
           AND EXISTS (SELECT 1 FROM documents d
                       WHERE d.rid = c.doc_rid AND d.status = 'active')
-        ORDER BY distance ASC
+        -- 키워드 다리와 같은 이유의 전순서 키. 다만 이 다리는 ivfflat(ANN)이라 **후보 집합
+        -- 자체**가 흔들릴 수 있고, 정렬 키는 그걸 고치지 못한다 (같은 SPEC §4.3 — 측정해서 기록한다).
+        ORDER BY distance ASC, c.rid ASC
         LIMIT $4
         """,
         vec_str, tenant, clearance, top_k,
@@ -164,7 +169,10 @@ def _rrf_fusion(
         scores[rid]["score"] += 1.0 / (k + rank + 1)
         scores[rid]["vector_rank"] = rank
 
-    return sorted(scores.values(), key=lambda x: x["score"], reverse=True)
+    # 동점 키를 **명시**한다. 안정 정렬에 기대면 융합 순서가 이 함수의 입력 구성 순서에
+    # 좌우되고, 나중에 heapq.nlargest 나 병렬 병합으로 바꾸는 순간 비결정성이 조용히 돌아온다.
+    # RRF 점수는 순위에서 나오므로 동점이 특히 빽빽하다.
+    return sorted(scores.values(), key=lambda x: (-x["score"], x["rid"]))
 
 
 def _diversify(hits: list, top_k: int, per_doc_cap: int) -> list:
