@@ -2,10 +2,12 @@
 
 **바닥값이 '첫 실행이 낸 값' 이면 그건 표준이 아니다.** 그래서 두 가지가 함께 있다:
 
-- **절대 하한** — Recall@10 ≥ 0.50, 미스 ≤ 10/40. 첫 실행이 이보다 낮으면 그건 바닥값이 아니라
-  고장 신고다(색인·팩·라벨 중 하나가 틀렸다는 뜻).
-- **음성 대조군** — `tokens_to_tsquery` 를 역사적 결함(`AND`)으로 되돌리면 바닥값이 **깨져야**
-  한다. 사보타주를 견디는 바닥값은 아무것도 재지 않는다.
+- **절대 하한** — Recall@10 ≥ 0.50, 미스 ≤ 10/40. 실행이 이보다 낮으면 그건 바닥값이 아니라
+  고장 신고다(색인·팩·라벨 중 하나가 틀렸다는 뜻). **그 하한이 실제로 울렸고**, 조사 결과
+  키워드 다리의 동점 정렬이 비결정적이라는 사실이 나왔다 — 그래서 바닥값은 지금 **보류**다
+  (`FLOORS_PENDING`).
+- **음성 대조군** — 질의 조립을 역사적 결함(`AND`)으로 되돌리면 재현율이 무너져야 한다. 바닥값
+  상수가 아니라 **같은 실행의 기준선**과 비교하므로, 바닥값이 보류인 지금도 이빨은 살아 있다.
 
 이 스위트는 mecab-ko 가 있어야 의미가 있다(프로덕션 토크나이저). 없으면 공백 분리로 내려앉고,
 다른 자로 잰 숫자는 바닥값이 아니다 — CI 는 이미지 안에서 돌린다.
@@ -32,18 +34,25 @@ pytestmark = [
 
 _TENANT = "ko_eval"
 
-#: 2026-08-03 측정. pack=ko-k8s-2026-08-01 · labels revision=1 · mecab-ko · 키워드 다리.
-#: **실측: Recall@10 0.750 · MRR@10 0.383 · 미스 10/40.** 바닥값은 부동소수 흔들림만큼만 아래로
-#: 둔다. 올리면 진보이고, 내리면 같은 커밋에서 이유를 말해야 한다.
+#: **바닥값은 아직 기록하지 않는다 — 자가 흔들리기 때문이다.**
 #:
-#: 미스 10건은 고장이 아니라 **재려던 실패 유형 그 자체**다 — 문서가 `AppArmor`·`Konnectivity`
-#: 라 쓴 것을 질의가 음차로 부르면 겹치는 어휘가 없고, `네트워크폴리시`·`노드어피니티` 처럼 붙여
-#: 쓴 복합명사는 문서의 띄어 쓴 형태와 만나지 못한다. 층별로도 그렇게 갈렸다(particle 1.000 vs
-#: loanword/compound/mixed 0.625). 자가 무디면 이런 분리가 안 나온다.
+#: 2026-08-03 실측(pack=ko-k8s-2026-08-01 · labels revision=1 · mecab-ko · 키워드 다리):
+#: 같은 팩·같은 라벨·같은 tsvector(집계 md5 동일)인데 적재본마다 Recall@10 0.700~0.775,
+#: 미스 9~12 로 갈렸다. 원인은 `_bm25_search` 의 `ORDER BY rank_score DESC` 에 **결정적 2차
+#: 정렬 키가 없다**는 것이다 — `ts_rank_cd` 동점 묶음이 빽빽해서(상위 25행에 13~16종 점수),
+#: 동점 안 순서가 물리적 행 순서를 따라 바뀌고, 그 순서가 LIMIT 20 경계와 문서 접기(top-10)를
+#: 흔든다. 같은 질의에 같은 코퍼스인데 결과가 달라진다는 뜻이므로 평가만의 문제가 아니다.
+#:
+#: SPEC §4.5 는 이 상황을 위해 절대 하한을 뒀다: **하한 아래 실행은 바닥값으로 기록하지 않고
+#: 조사한다.** 조사는 끝났고 원인은 위와 같다. 결정성 수정이 들어온 뒤 이 자리에 바닥값을 박고
+#: 아래 두 테스트의 skip 을 걷는다.
 FLOORS_PACK = "ko-k8s-2026-08-01"
 FLOORS_LABEL_REVISION = 1
-FLOORS_MEASURED = "2026-08-03"
-KEYWORD_RECALL10_MIN = 0.74
+FLOORS_PENDING = (
+    "바닥값 보류 — 키워드 다리의 동점 정렬이 비결정적이라 같은 코퍼스에서 실행마다 "
+    "Recall@10 0.700~0.775 로 흔들린다(2026-08-03 실측). 결정적 2차 정렬 키가 들어온 뒤 기록한다."
+)
+KEYWORD_RECALL10_MIN = 0.74     # 관측 중앙값 근처. 아직 **미기록** — FLOORS_PENDING 참조.
 KEYWORD_MRR10_MIN = 0.37
 KEYWORD_MISSES_MAX = 10
 
@@ -96,8 +105,12 @@ def test_the_floors_cite_the_label_revision_they_were_measured_on(labels):
     assert labels["pack"] == FLOORS_PACK
 
 
-def test_the_recorded_floors_sit_above_the_sanity_bound():
-    """'첫 실행이 낸 값' 이 곧 표준이 되는 것을 막는 독립 하한 (§4.5)."""
+def test_the_pending_floors_would_still_sit_above_the_sanity_bound():
+    """'첫 실행이 낸 값' 이 곧 표준이 되는 것을 막는 독립 하한 (§4.5).
+
+    바닥값은 아직 기록 전이지만(FLOORS_PENDING), 후보값이 하한 아래로 내려가는 순간
+    그건 바닥값이 아니라 고장 신고다 — 그 규칙은 지금도 지킨다.
+    """
     assert KEYWORD_RECALL10_MIN >= SANITY_RECALL_MIN
     assert KEYWORD_MISSES_MAX <= SANITY_MISSES_MAX
 
@@ -123,29 +136,44 @@ async def test_the_corpus_is_far_larger_than_the_window(corpus):
 # ── 키워드 다리 ──────────────────────────────────────────────────────────────
 
 
+async def test_the_keyword_leg_runs_over_the_whole_answerable_set(corpus, labels):
+    """바닥값과 무관하게 항상 도는 부분 — 분모와 실행 자체."""
+    leg = await run_keyword_leg(labels, _TENANT, corpus)
+    assert leg.n == 40, "분모는 답변가능 40건이다 (답변불가 5건은 어떤 집계에도 안 들어간다)"
+    assert 0.0 <= leg.recall <= 1.0
+
+
+@pytest.mark.skip(reason=FLOORS_PENDING)
 async def test_the_keyword_leg_holds_its_floors(corpus, labels):
     leg = await run_keyword_leg(labels, _TENANT, corpus)
 
-    assert leg.n == 40, "분모는 답변가능 40건이다 (답변불가 5건은 어떤 집계에도 안 들어간다)"
     assert leg.recall >= KEYWORD_RECALL10_MIN, f"Recall@10 {leg.recall:.3f} < {KEYWORD_RECALL10_MIN}"
     assert leg.mrr >= KEYWORD_MRR10_MIN, f"MRR@10 {leg.mrr:.3f} < {KEYWORD_MRR10_MIN}"
     assert leg.misses <= KEYWORD_MISSES_MAX, f"미스 {leg.misses} > {KEYWORD_MISSES_MAX}"
 
 
-async def test_and_semantics_would_break_these_floors(corpus, labels):
-    """음성 대조군 — 사보타주를 견디는 바닥값은 아무것도 지키지 않는다."""
+async def test_and_semantics_collapses_recall_against_the_same_run(corpus, labels):
+    """음성 대조군 — **같은 실행 안에서** OR 과 AND 를 비교한다.
+
+    바닥값 상수에 기대면 지금은 잴 수 없다(위 skip). 하지만 이빨은 지금도 확인할 수 있다:
+    같은 코퍼스·같은 적재본에서 질의 조립만 역사적 결함(`AND`)으로 되돌리면 재현율이 무너져야
+    한다. 이 비교는 동점 정렬 잡음(±0.04)보다 훨씬 큰 차이를 요구하므로 흔들림에 안 걸린다.
+    """
     from nexus.search import hybrid
+
+    baseline = await run_keyword_leg(labels, _TENANT, corpus)
 
     original = hybrid.tokens_to_tsquery
     hybrid.tokens_to_tsquery = lambda ts: " & ".join(f"'{t}'" for t in ts if t.strip())
     try:
-        leg = await run_keyword_leg(labels, _TENANT, corpus)
+        sabotaged = await run_keyword_leg(labels, _TENANT, corpus)
     finally:
         hybrid.tokens_to_tsquery = original
 
-    assert (leg.recall < KEYWORD_RECALL10_MIN or leg.misses > KEYWORD_MISSES_MAX), (
-        f"AND 로 되돌려도 바닥값을 넘는다(Recall {leg.recall:.3f}, 미스 {leg.misses}) — "
+    assert sabotaged.recall < baseline.recall * 0.6, (
+        f"AND 로 되돌려도 재현율이 {sabotaged.recall:.3f} (기준 {baseline.recall:.3f}) — "
         "이 스위트는 이빨이 없다")
+    assert sabotaged.misses > baseline.misses
 
 
 async def test_the_verdict_rule_runs_end_to_end_on_a_real_leg(corpus, labels):

@@ -13,7 +13,7 @@ from datetime import datetime
 import structlog
 
 from nexus import db
-from nexus.index.bm25 import tokenize_korean, tokens_to_tsquery
+from nexus.index.bm25 import active_tokenizer, tokens_to_tsquery
 from nexus.providers.embedding import EmbeddingService
 from nexus.repositories.graph import (
     EdgeResult,
@@ -60,7 +60,7 @@ async def _bm25_search(
     top_k: int = 20,
 ) -> list[tuple[str, int]]:
     """BM25 검색. (chunk_rid, rank) 반환."""
-    tokens = tokenize_korean(query)
+    tokens = active_tokenizer().tokenize(query)
     tsquery = tokens_to_tsquery(tokens)
 
     if not tsquery:

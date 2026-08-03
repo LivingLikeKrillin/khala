@@ -6,6 +6,9 @@ PostgreSQL tsvector에 저장한다. chunk_text를 직접 사용하지 않는다
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from typing import Protocol
+
 import structlog
 
 from nexus import db
@@ -95,6 +98,57 @@ def tokens_to_tsquery(tokens: list[str]) -> str:
     return " | ".join(f"'{t}'" for t in safe)
 
 
+class Tokenizer(Protocol):
+    """색인·질의 양쪽이 쓰는 토크나이저 (SPEC-nexus-korean-retrieval-eval §4.4).
+
+    `policy` 는 **실제로 적용된 필터 정책**을 사람이 읽을 수 있게 적은 문자열이다. 이게 없으면
+    한쪽만 품사 필터가 걸린 채로 비교하고서 그 차이를 "분해 차이" 라고 부르게 된다 — 평가셋이
+    제거하려던 바로 그 교란이다.
+    """
+
+    id: str
+    policy: str
+
+    def tokenize(self, text: str) -> list[str]: ...
+
+
+class MecabTokenizer:
+    """프로덕션 기본값. `tokenize_korean` 을 그대로 부른다 — 동작은 한 글자도 안 바뀐다."""
+
+    id = "mecab-ko"
+
+    def __init__(self) -> None:
+        self.policy = f"mecab-ko POS allow-list {sorted(_INCLUDE_POS)}"
+
+    def tokenize(self, text: str) -> list[str]:
+        return tokenize_korean(text)
+
+
+_DEFAULT_TOKENIZER = MecabTokenizer()
+_active_tokenizer: Tokenizer | None = None
+
+
+def active_tokenizer() -> Tokenizer:
+    """지금 쓸 토크나이저. 주입이 없으면 언제나 mecab 이다."""
+    return _active_tokenizer or _DEFAULT_TOKENIZER
+
+
+@contextmanager
+def use_tokenizer(tokenizer: Tokenizer | None):
+    """토크나이저를 한 실행 동안 갈아끼운다 — **평가 하니스 전용**.
+
+    색인과 질의가 같은 객체를 쓰도록 한 곳에서만 갈아끼운다. 색인은 mecab 으로, 질의는 nori 로
+    돈 실행은 그럴듯한 숫자를 내지만 아무 의미가 없다 (SPEC §4.4).
+    """
+    global _active_tokenizer
+    previous = _active_tokenizer
+    _active_tokenizer = tokenizer
+    try:
+        yield active_tokenizer()
+    finally:
+        _active_tokenizer = previous
+
+
 async def index_chunk_bm25(chunk_rid: str, chunk) -> bool:
     """단일 청크의 tsvector를 생성하여 DB에 저장.
 
@@ -107,7 +161,7 @@ async def index_chunk_bm25(chunk_rid: str, chunk) -> bool:
     """
     try:
         search_text = get_search_text(chunk)
-        tokens = tokenize_korean(search_text)
+        tokens = active_tokenizer().tokenize(search_text)
 
         if not tokens:
             logger.warning("no_tokens_extracted", chunk_rid=chunk_rid)

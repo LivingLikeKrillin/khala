@@ -175,26 +175,31 @@ async def load_pack(pack_dir: Path, tenant: str, con, config: dict | None = None
     """
     from nexus.index.bm25 import index_chunk_bm25
     from nexus.ingest.chunker import chunk_document
+    from nexus.rid import chunk_rid, doc_rid
 
     docs_dir = pack_dir / "docs"
     chunk_doc: dict[str, str] = {}
     to_index: list[tuple[str, object]] = []
 
+    # rid 는 **테넌트를 포함한 uri 에서** 결정적으로 만든다. 두 토크나이저 팔은 서로 다른 테넌트에
+    # 같은 문서를 적재하는데, `documents.rid` 는 테넌트가 아니라 전역 기본키다 — 경로만으로 만든
+    # rid 는 두 번째 팔에서 충돌한다.
     for f in sorted(docs_dir.rglob("*.md")):
         rel = f.relative_to(docs_dir).as_posix()
         text = f.read_text(encoding="utf-8")
-        doc_rid = "doc_" + str(abs(hash(rel)) % (10 ** 12))
+        uri = f"{tenant}:{rel}"
+        drid = doc_rid(uri)
         await con.execute(
             "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, title, status) "
             "VALUES ($1,$2,$3,'h','h',$4,'active')",
-            doc_rid, tenant, f"{tenant}:{rel}", rel)
+            drid, tenant, uri, rel)
 
         for cd in chunk_document(text, language="ko", config=config):
-            crid = f"{doc_rid}_c{cd.chunk_index}"
+            crid = chunk_rid(drid, cd.section_path or "root", cd.chunk_index)
             await con.execute(
                 "INSERT INTO chunks (rid, tenant, source_uri, doc_rid, chunk_text, section_path, "
                 "chunk_index, status, hash) VALUES ($1,$2,$3,$4,$5,$6,$7,'active','h')",
-                crid, tenant, f"{tenant}:{rel}", doc_rid, cd.chunk_text,
+                crid, tenant, uri, drid, cd.chunk_text,
                 cd.section_path or "root", cd.chunk_index)
             chunk_doc[crid] = rel
             to_index.append((crid, cd))
