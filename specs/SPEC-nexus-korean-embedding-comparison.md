@@ -13,8 +13,8 @@ tags:
 - embedding
 - measurement
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-04T00:36:18Z'
-content_hash: sha256:e5392d6672b7b478567fc8724d3f9a20a4c60c2d144d2edd19d35ced36f1d1f6
+reviewed_at: '2026-08-04T03:19:49Z'
+content_hash: sha256:677ae7ad85ada6d92891210896c220291888fd567dd3a920db4bfa94c691a2ec
 ---
 
 ## 1. Goal
@@ -99,8 +99,18 @@ CREATE TABLE IF NOT EXISTS ko_eval_embeddings (
     input_sha256   TEXT NOT NULL,        -- hash of get_search_text(chunk): the SHARED input
     payload_sha256 TEXT NOT NULL,        -- hash of what this arm actually sent (prefix applied)
     embedding      vector,               -- NULL exactly when status='refused'
-    PRIMARY KEY (model, tenant, pack, chunk_rid)
+    PRIMARY KEY (model, tenant, pack, chunk_rid),
+    CHECK ((status = 'embedded' AND embedding IS NOT NULL AND refusal_reason IS NULL)
+        OR (status = 'refused'  AND embedding IS NULL     AND refusal_reason IS NOT NULL))
 );
+```
+
+The CHECK is not decoration (I-012): prose said "NULL exactly when refused" and "every refusal
+carries the backend's message", and a row-count guard catches neither a refused row without a
+reason nor an embedded row without a vector. The dimension stays unconstrained in the column —
+768 and 1024 must coexist — so the registry guard in §4.4 is the only place that can check it,
+and it aborts rather than storing.
+```sql
 ```
 
 Three corrections the first draft needed (I-002, I-003, I-007):
@@ -200,52 +210,65 @@ arm silently between runs. The report records revision sha, library and torch ve
 `normalize_embeddings`, `max_seq_length`, and observed dimension; the registry aborts on a dimension
 mismatch.
 
-### 4.5 Re-pooling comes first, as its own landing
+### 4.5 Adjudication is deferred, and the numbers are labelled as bounds
 
-**Order matters, and §2's one-variable rule is preserved by sequencing** (I-017). The re-pool and
-the tokenizer re-issue land **before** the embedding arms are scored:
+The first draft required re-pooling to land before scoring. The run changed what that buys.
 
-1. **Pool over every leg of every configuration**: keyword/mecab, **keyword/nori** (I-001 — omitting
-   it would enrich the gold set with documents the other arms found and then re-run the tokenizer
-   comparison against it, biasing exactly the verdict §4.6 exists to keep valid), vector/nomic,
-   vector/KURE, and both fused legs. Depth 10, the metric depth.
-2. **The judging procedure, stated** (I-008). The judge is the director or an agent under the
-   recorded review the labels already require (`authored_by` / `reviewed_by`). The criterion is
-   the one the labels were built on: *would reading this document answer the query*. **Only
-   newly-pooled documents are judged**; revision-2 judgements stand. That does make revision 3 a
-   mixture of two rounds, which is disclosed here rather than smoothed over — both rounds used
-   the same criterion, and the second is the stricter of the two because it is blind.
-3. **Judge blind, with an artifact** (I-014): the dump is stripped of arm membership and shuffled by
-   a **recorded seed**; the anonymised dump is committed *before* judgements are attached, so a
-   reviewer can check that the judgements were written against it.
-4. Stamp **label revision 3**; keyword floors re-recorded in the same commit (the existing test
-   enforces the citation).
+**When each thing was fixed** (I-011). The verdict rule, the decisive leg, and the
+comparable-subset restriction were written into this SPEC and **approved on 2026-08-03, before
+either arm had embedded a single chunk** — they were added in the second gate round in response
+to I-004, which anticipated exactly the coverage confounder. The numbers below arrived on
+08-04. What *is* post-hoc is the paragraph you are reading: the decision to defer adjudication
+was made after seeing the result, and it is a decision about **labour**, not about analysis —
+it changes no metric, no subset rule, and no α. If a reader wants the analysis plan without the
+outcome beside it, the approved 08-03 revision in git history is that document.
 
-**What revision 3 is valid for, recorded beside the labels** (I-007). A pooled gold set is only
-unbiased for the configurations in its pool. Revision 3 covers exactly the six legs above; a
-seventh configuration — a third model, a reranker, a chunking change — is penalised against it
-until it re-pools. The label file carries that list in a `pooled_over` field so a later author
-cannot inherit the numbers without inheriting the condition, and §2's phrase about a swap SPEC
-inheriting these numbers means exactly this, no more.
+**What the run showed** (label revision 2, pre-adjudication): vector-leg `Recall@10` of **0.402** for
+nomic against **0.975** for KURE-v1, p ≈ 0 on the comparable subset. The pool holds **821** candidate
+documents no gold set has judged yet.
 
-### 4.6 What the re-issued tokenizer report does and does not mean
+**Why adjudicating them now is not worth its price.**
 
-The committed mecab-vs-nori report was computed on revision 2; revision 3 changes per-query recall,
-so it is re-run and re-issued citing the new revision, and a test asserts each comparison's newest
-report cites the current revision.
+- **Direction cannot move.** Unjudged documents count as non-relevant, and the arm that surfaces
+  more new documents absorbs more of that penalty — here that is KURE, the winner. The reported gap
+  is therefore *conservative against the conclusion*. Judging would widen it, not reverse it.
+- **The cost is not the judging, it is the review.** The label gate requires `reviewed_by` on every
+  agent-authored record. 821 new judgements means 821 records a person must actually read, or the
+  gate becomes theatre and the labels lose the property that makes them trustworthy.
+- **The same labour closes something else entirely.** Spent on Pack B — a frozen export of khala's
+  own corpus — it would move ADR-0008 §5(b), which no amount of Pack A precision can.
 
-Two limits, stated (I-005, I-011):
+**So:**
 
-- **It does not move ADR-0008 §5(b).** (b) requires khala's real corpus; Pack A is public
-  documentation. (b) is unmet before this work and unmet after it.
-- **If it reverses, that is a finding, not a decision.** Should the revision-3 re-run favour nori,
-  the recorded outcome is that the tokenizer question is *reopened on Pack A* — the retention
-  decision, the keyword floors and any citation of it are then re-derived under
-  `SPEC-nexus-korean-retrieval-eval`, which owns them. This SPEC does not silently overturn a
-  merged decision, and it does not preserve one either.
-- **It is not an independent confirmation.** It re-tests a hypothesis already tested (p = 0.180) on
-  a label set enlarged partly by documents the embedding arms surfaced. Its p-value is reported as
-  **descriptive**, and the report says so in the same sentence as the number.
+1. The blind pool (arm membership stripped, order shuffled by a recorded seed) is **committed as an
+   artifact** — `tests/eval/ko/pool-blind.json` — so whoever resumes starts from the same
+   anonymised material rather than re-deriving it.
+2. **Labels stay at revision 2.** Nothing about them changes, which means the committed
+   mecab-vs-nori report stays valid and needs no re-issue (§4.6), and the CI keyword floors stay
+   where they were measured.
+3. **Every number this SPEC reports is a lower bound**, and the report says so in that word: "KURE-v1
+   ≥ 0.975, nomic-embed-text ≥ 0.402, 821 pooled documents unjudged". A bound licenses a direction,
+   not a decimal.
+4. Deferred adjudication carries an owner — **LivingLikeKrillin** — and a trigger that the suite
+   enforces rather than a person remembering it (I-015): **a test fails if the label revision
+   moves past 2 while `pool-blind.json` still sits unjudged.** Growing the gold set is exactly
+   the act that must not happen without judging what is already pooled, so the tripwire sits
+   there. In words, the human-readable version is "the first time a claim needs the absolute
+   level rather than the direction" — but the check does not depend on anyone recognising that
+   moment.
+
+**What is given up, stated plainly.** The gold set does not grow, so the 821 documents remain
+non-relevant for every future configuration that inherits revision 2 — including the KURE arm, which
+they under-credit. Any later work that re-pools must judge them then, and it will be judging a pool
+assembled by configurations that existed in 2026-08.
+
+### 4.6 The tokenizer report is untouched
+
+Because labels stay at revision 2 (§4.5), the committed mecab-vs-nori report describes the gold set
+that still exists. It is neither re-run nor re-issued here, and its p = 0.180 remains what it was.
+
+The limit it always had is unchanged: **it does not move ADR-0008 §5(b)**, which asks for khala's
+real corpus. Pack A is public documentation. (b) was unmet before this work and is unmet after it.
 
 ### 4.7 The verdict, and how coverage is kept out of it
 
@@ -259,23 +282,35 @@ not a constant — so a KURE win over all queries could be measuring context-win
 than embedding quality — the very failure the truncation rule exists to prevent. So two
 analyses are computed and reported side by side:
 
-- **Confirmatory — the comparable subset.** Queries whose gold documents' chunks are *all* within
-  nomic's window, so both arms could return every gold document. The sign test on this subset is the
+- **Confirmatory — the comparable subset.** Of the **40 answerable queries** (label revision 2),
+  those whose gold documents' chunks are *all* within nomic's window, so both arms could return
+  every gold document. Every reported metric carries its N. The sign test on this subset is the
   **model** claim, and it is the only test in this change whose α is spent on a confirmatory
   question. The report prints the subset size; if it falls below the six-discordant-pair
   precondition, the answer is "underpowered", not a borrowed verdict from the full set.
 - **Descriptive — all answerable queries.** What a user gets today, coverage gap included. Reported
   with coverage beside it and never quoted alone as a model result.
 
-**Multiplicity** (I-011): one confirmatory test (vector leg, comparable subset). The fused leg, the
-all-query vector analysis and the re-issued tokenizer comparison are descriptive; no correction is
-applied because no error rate is claimed for them, and the report labels each.
+**Multiplicity**: one confirmatory test (vector leg, comparable subset). The fused leg and the
+all-query vector analysis are descriptive; no correction is applied because no error rate is
+claimed for them, and the report labels each. The tokenizer comparison is not re-run at all
+(§4.6), so it spends nothing.
 
 - **Decisive leg: vector** — the leg the model changes. **Fused** is reported as the user-facing
   consequence; if vector reaches significance and fused does not, the recorded conclusion carries
   both sentences ("favours KURE on the leg it changes; not demonstrated at the surface the user
   sees"). Fused significant while vector is not is recorded as *not a model result*.
-- **Incumbency**: inconclusive or underpowered leaves `nomic-embed-text`.
+- **Incumbency**: inconclusive or underpowered leaves `nomic-embed-text` **in place, but not
+  unexamined** (I-013). §1's contradiction — a Korean-first system running an English-centric
+  model against `nexus/CLAUDE.md` rule 9 — does not resolve itself by a null result. On that
+  branch the disposition is explicit: **the contradiction is escalated as a decision**, either
+  amending rule 9 to say what it actually permits, or recording the config as a knowing
+  exception with its reason. Neither is done inside this SPEC (§2), but the null branch names
+  the follow-up instead of leaving the violation standing with no owner.
+- **Necessary, not sufficient** (I-014). The decisive leg is an *exact* scan; production's is
+  ivfflat, and a swap also moves the dimension 768 → 1024, which changes list sizing and probe
+  recall for both arms in ways nothing here measures. So a KURE win licenses **writing the swap
+  SPEC**, not the swap: that SPEC owes an ANN-side measurement of its own.
 - **Pack A is not khala's corpus**, on every statement of what the evidence favours.
 
 ## 5. Error handling
@@ -308,9 +343,10 @@ Unit, no DB:
 - Report-revision test: each of the two existing comparisons' newest report cites the current
   label revision (I-011 — scoped to the comparisons that exist, not a standing invariant for all
   future ones).
-- **Harness-only isolation** (I-010): no module under `nexus/nexus/` imports
-  `sentence_transformers`, `torch`, or the harness arm modules, and neither appears in the app
-  image's dependency set. Asserted, because §4.4 and §7 both promise it and nothing else checks.
+- **Harness-only isolation**: no module under `nexus/nexus/` imports `sentence_transformers`,
+  `torch`, or `scripts.ko_eval_embed`, **and none of them is importable in the app image** —
+  the second half is what catches a transitive dependency, which is the realistic way production
+  would acquire torch (I-017). A name-based source scan alone would miss it.
 
 Against Postgres (fixture vectors — **no model server required**, so this runs wherever the DB does):
 
@@ -327,7 +363,8 @@ Exploratory (documented, not in CI):
 
 - The comparison, with a committed report carrying coverage first, then both analyses, checkpoint
   provenance, prefix pairs, measured character boundary, pool membership, seed, unjudged count,
-  discordant counts and p-values — plus the re-issued tokenizer report on revision 3.
+  discordant counts and p-values, every figure marked as a lower bound. The tokenizer report is
+  not re-run (§4.6).
 
 ## 7. Acceptance
 
@@ -337,12 +374,13 @@ Exploratory (documented, not in CI):
 - Both arms embedded byte-identical *inputs* (pre-prefix) for documents and queries, each under its
   own documented instruction format, with **zero silently truncated payloads** — detected by
   tokenising, not inferred.
-- Labels reach revision 3 through blind re-pooling **over every leg including keyword/nori**, with
-  the anonymised dump and its seed committed; keyword floors re-recorded; the tokenizer report
-  re-issued and labelled descriptive.
+- **Labels stay at revision 2**; the anonymised pool dump and its seed are committed for whoever
+  resumes adjudication; keyword floors and the tokenizer report are untouched, because nothing
+  they cite has changed.
 - A committed report gives the **confirmatory comparable-subset verdict** and the **descriptive
-  all-query view** separately, states which model the evidence favours — or that it favours neither
-  — and carries the Pack A sentence.
+  all-query view** separately, states every metric as a **lower bound** with the unjudged count
+  beside it, says which model the evidence favours — or that it favours neither — and carries the
+  Pack A sentence.
 - Production unchanged: no model change, no `chunks` schema change, no edit to
   `nexus/providers/embedding.py`, no new production dependency.
 
@@ -352,11 +390,12 @@ Exploratory (documented, not in CI):
 2. **Fused leg** — production `_rrf_fusion` reused. *(landed 2026-08-03)*
 3. **Arms + refusal accounting** — nomic via Ollama with refusal rows; KURE via the pinned
    harness-only provider with a tokeniser-based truncation guard; two hashes; coverage.
-4. **Re-pool and tokenizer re-issue** — blind pooling over all six legs to revision 3, floors
-   re-recorded, tokenizer report re-issued as descriptive. **Lands before Unit 5.**
-   *Authority note* (I-011): the labels, the floors and the tokenizer report belong to
-   `SPEC-nexus-korean-retrieval-eval`. This unit executes there under that SPEC's rules — its
-   §4.2 already mandates re-pooling for a new configuration — and is sequenced here only because
-   this change is what creates the new configurations. Nothing in it is decided by this SPEC.
+4. **Blind pool, committed unjudged** — pooling over all six legs, arm membership stripped and
+   order shuffled by a recorded seed, dumped to `tests/eval/ko/pool-blind.json`.
+   Adjudication deferred with the owner and trigger of §4.5; labels stay at revision 2.
+   *Authority note* (I-016): because nothing in the parent SPEC's artifacts changes — labels,
+   floors and the tokenizer report are all untouched — this unit produces only a new artifact
+   this SPEC owns outright. The obligation it hands to `SPEC-nexus-korean-retrieval-eval` is a
+   condition, not an edit: whoever next re-pools must judge this dump first.
 5. **Comparison and verdict** — comparable-subset confirmatory analysis, all-query descriptive
-   analysis, report committed.
+   analysis, every figure reported as a lower bound, report committed.

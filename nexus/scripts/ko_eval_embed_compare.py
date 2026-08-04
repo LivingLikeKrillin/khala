@@ -7,7 +7,8 @@
     python -m scripts.ko_eval_embed_compare load                      # nexus 이미지 (mecab)
     python -m scripts.ko_eval_embed_compare embed --model nomic-embed-text   # nexus 이미지 + ollama
     python -m scripts.ko_eval_embed_compare embed --model KURE-v1     # kure 이미지 (torch)
-    python -m scripts.ko_eval_embed_compare run --dump-pool p.json    # nexus 이미지
+    python -m scripts.ko_eval_embed_compare embed-queries --model ...  # 팔이 있는 이미지에서
+    python -m scripts.ko_eval_embed_compare run --dump-pool p.json    # nexus 이미지 (모델 불필요)
     python -m scripts.ko_eval_embed_compare run --report --adjudicated
 
 `load` 가 만든 청크 위에서만 임베딩이 유효하다 — 다시 적재하면 팔도 다시 만들어야 하고,
@@ -37,15 +38,19 @@ from scripts.ko_eval_pack import DEFAULT_PACK_DIR
 from scripts.ko_eval_pack import verify as verify_pack
 from scripts.ko_eval_vector import (
     MODELS,
+    arms_saw_the_same_inputs,
+    coverage,
     ensure_table,
-    input_hash,
+    refused_chunks,
     replace_arm,
+    sha256,
     vector_search,
     verify_arm,
 )
 
 TENANT = "ko_eval_embed"
 REPORTS_DIR = Path(__file__).resolve().parents[1] / "tests" / "eval" / "reports"
+QUERY_VECTORS = Path(__file__).resolve().parents[1] / "tests" / "eval" / "query-vectors"
 
 
 async def _chunk_inputs(con, tenant: str) -> dict[str, str]:
@@ -110,9 +115,10 @@ async def cmd_embed(args) -> int:
                 return 1
             print(f"{args.model}: 청크 {len(inputs)}건 임베딩 중…")
             rows = await embed_pack(arm, inputs)
-            await replace_arm(con, args.model, TENANT, labels["pack"], rows)
-            problems = await verify_arm(con, args.model, TENANT,
-                                        {rid: h for rid, h, _ in rows})
+            cov = await replace_arm(con, args.model, TENANT, labels["pack"], rows)
+            problems = await verify_arm(
+                con, args.model, TENANT, labels["pack"],
+                {r.chunk_rid: (r.input_sha256, r.payload_sha256) for r in rows})
         if problems:
             print("✗ arm 검증 실패:", *[str(p) for p in problems], sep="\n  ")
             return 1
@@ -120,11 +126,53 @@ async def cmd_embed(args) -> int:
         (REPORTS_DIR / "arms").mkdir(parents=True, exist_ok=True)
         (REPORTS_DIR / "arms" / f"{args.model}.json").write_text(
             json.dumps(prov, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
-        print(f"✓ {args.model}: {len(rows)}행 · 차원 {prov.get('observed_dim')} · "
-              f"최장 입력 {prov.get('max_input_tokens', '?')} 토큰")
+        print(f"✓ {args.model}: 커버리지 {cov} · 차원 {prov.get('observed_dim')}")
+        if cov.refused:
+            example = next(r.refusal_reason for r in rows if r.refusal_reason)
+            print(f"  거부 {cov.refused}건 — 백엔드 메시지: {example}")
         return 0
     finally:
         await db.close_pool()
+
+
+async def cmd_embed_queries(args) -> int:
+    """질의를 이 팔로 임베딩해 파일로 남긴다 — 채점기가 모델 없이 돌 수 있게."""
+    labels = load(DEFAULT_LABELS)
+    arm = _make_arm(args.model)
+    payload = {}
+    for q in labels["queries"]:
+        if not q.get("answerable"):
+            continue
+        prefixed = arm.prefixed(q["query"], "query")
+        payload[q["id"]] = {
+            "query": q["query"],                       # 프리픽스 이전 — 팔 간 동일해야 한다
+            "payload_sha256": sha256(prefixed),        # 이 팔이 실제 보낸 것
+            "vector": await arm.embed_query(q["query"]),
+        }
+    QUERY_VECTORS.mkdir(parents=True, exist_ok=True)
+    out = QUERY_VECTORS / f"{args.model}.json"
+    out.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8", newline="\n")
+    print(f"✓ {args.model}: 질의 {len(payload)}건 → {out}")
+    return 0
+
+
+def _load_query_vectors(model: str) -> dict:
+    f = QUERY_VECTORS / f"{model}.json"
+    if not f.exists():
+        raise SystemExit(f"✗ 질의 벡터가 없다: {f} — 먼저 `embed-queries --model {model}` 를 돌려라")
+    return json.loads(f.read_text(encoding="utf-8"))
+
+
+def _queries_match_across_arms(per_model: dict) -> list[str]:
+    """두 팔이 **같은 질의 텍스트**를 봤는지 (§4.3). 프리픽스는 달라도 원문은 같아야 한다."""
+    models = sorted(per_model)
+    problems = []
+    for other in models[1:]:
+        a = {qid: v["query"] for qid, v in per_model[models[0]].items()}
+        b = {qid: v["query"] for qid, v in per_model[other].items()}
+        if a != b:
+            problems.append(f"{models[0]} 과 {other} 가 다른 질의를 임베딩했다")
+    return problems
 
 
 async def cmd_run(args) -> int:
@@ -145,18 +193,33 @@ async def cmd_run(args) -> int:
             for r in rows:
                 chunk_doc[r["rid"]] = r["source_uri"].split(":", 1)[1]
 
-            expected = {rid: input_hash(text) for rid, text in inputs.items()}
-            arms = {}
+            pack = labels["pack"]
+            if diffs := await arms_saw_the_same_inputs(con, TENANT, pack):
+                print("✗ 두 팔이 다른 입력을 봤다 — 모델 비교가 아니다:")
+                for d in diffs:
+                    print(f"  {d}")
+                return 1
+
+            arms, query_vectors = {}, {}
             for model in ("nomic-embed-text", "KURE-v1"):
-                problems = await verify_arm(con, model, TENANT, expected)
+                expected = {rid: (sha256(text),
+                                  sha256(MODELS[model]["document_prefix"] + text))
+                            for rid, text in inputs.items()}
+                cov = await coverage(con, model, TENANT, pack)
+                print(f"커버리지 — {cov}")
+                problems = await verify_arm(con, model, TENANT, pack, expected)
                 if problems:
                     print(f"✗ {model} arm 을 채점할 수 없다:", *[str(p) for p in problems], sep="\n  ")
                     return 1
-                arm = _make_arm(model)
+                qvecs = _load_query_vectors(model)
+                query_vectors[model] = qvecs
+                by_text = {v["query"]: v["vector"] for v in qvecs.values()}
 
-                async def _search(query: str, _model=model, _arm=arm):
-                    vec = await _arm.embed_query(query)
-                    return await vector_search(con, _model, TENANT, vec, top_k=20)
+                async def _search(query: str, _model=model, _pack=pack, _by_text=by_text):
+                    if query not in _by_text:
+                        raise SystemExit(f"✗ 질의 벡터 없음({_model}): {query!r} — 라벨이 바뀌었으면 "
+                                         "`embed-queries` 를 다시 돌려라")
+                    return await vector_search(con, _model, TENANT, _pack, _by_text[query], top_k=20)
 
                 arms[model] = {"legs": await run_legs(labels, TENANT, chunk_doc, _search),
                                "tops": await leg_top_documents(labels, TENANT, chunk_doc, _search)}
@@ -164,24 +227,57 @@ async def cmd_run(args) -> int:
                 print(f"{model}: vector Recall@10 {legs['vector'].recall:.3f} · "
                       f"fused {legs['fused'].recall:.3f} · keyword {legs['keyword'].recall:.3f}")
 
+            # 비교가능 부분집합 (§4.7) — nomic 이 못 먹은 청크를 가진 gold 문서가 하나라도
+            # 걸린 질의는 빼고 본다. 그러지 않으면 창 크기를 모델 품질이라고 부르게 된다.
+            narrowed = await _narrowed_documents(con, TENANT, pack, chunk_doc)
+            comparable = [q["id"] for q in labels["queries"]
+                          if q.get("answerable") and not (set(q["gold"]) & narrowed)]
+            print(f"비교가능 부분집합: {len(comparable)}/{arms['KURE-v1']['legs']['vector'].n} 질의 "
+                  f"(창에 걸린 gold 문서 {len(narrowed)}건 제외)")
+
+            if diffs := _queries_match_across_arms(query_vectors):
+                print("✗ 팔들이 다른 질의를 봤다:")
+                for d in diffs:
+                    print(f"  {d}")
+                return 1
+
             a, b = arms["KURE-v1"]["legs"], arms["nomic-embed-text"]["legs"]
+
+            def _subset(scores):
+                return [s for s in scores if s.qid in comparable]
+
+            v_conf = verdict(*outcomes(_subset(a["vector"].scores), _subset(b["vector"].scores)),
+                             name_a="KURE-v1", name_b="nomic-embed-text")
             v_vec = verdict(*outcomes(a["vector"].scores, b["vector"].scores),
                             name_a="KURE-v1", name_b="nomic-embed-text")
             v_fused = verdict(*outcomes(a["fused"].scores, b["fused"].scores),
                               name_a="KURE-v1", name_b="nomic-embed-text")
-            print(f"벡터 판정: {v_vec.decision}")
-            print(f"융합 판정: {v_fused.decision}")
+            print(f"확증(비교가능 부분집합·벡터): {v_conf.decision}")
+            print(f"기술(전체 질의·벡터): {v_vec.decision}")
+            print(f"기술(전체 질의·융합): {v_fused.decision}")
 
             if args.dump_pool:
                 _dump_blind_pool(labels, arms, Path(args.dump_pool))
 
             if args.report:
-                _write_report(labels, arms, v_vec, v_fused, args)
+                _write_report(labels, arms, v_conf, v_vec, v_fused, comparable, args,
+                              covs={m: await coverage(con, m, TENANT, pack) for m in arms})
             return 0
         finally:
             await pool.release(con)
     finally:
         await db.close_pool()
+
+
+async def _narrowed_documents(con, tenant: str, pack: str,
+                              chunk_doc: dict[str, str]) -> set[str]:
+    """어느 한 팔이라도 거부한 청크를 가진 문서들 — 이 문서가 gold 인 질의는 비교가능하지 않다."""
+    narrowed: set[str] = set()
+    for model in MODELS:
+        for rid in await refused_chunks(con, model, tenant, pack):
+            if rid in chunk_doc:
+                narrowed.add(chunk_doc[rid])
+    return narrowed
 
 
 def _dump_blind_pool(labels: dict, arms: dict, out: Path) -> None:
@@ -211,7 +307,8 @@ def _dump_blind_pool(labels: dict, arms: dict, out: Path) -> None:
     print(f"풀 후보 {sum(len(p['candidates']) for p in payload)}건 → {out} (팔 정보 제거·셔플)")
 
 
-def _write_report(labels: dict, arms: dict, v_vec, v_fused, args) -> None:
+def _write_report(labels: dict, arms: dict, v_conf, v_vec, v_fused, comparable, args,
+                  covs: dict) -> None:
     strata = {q["id"]: q["stratum"] for q in labels["queries"]}
     provs = {}
     for model in arms:
@@ -219,6 +316,7 @@ def _write_report(labels: dict, arms: dict, v_vec, v_fused, args) -> None:
         provs[model] = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
 
     meta = {
+        "커버리지 (판정보다 먼저 읽는다)": " · ".join(str(c) for c in covs.values()),
         "실행 시각": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "팩": labels["pack"],
         "라벨 리비전": labels["revision"],
@@ -227,8 +325,10 @@ def _write_report(labels: dict, arms: dict, v_vec, v_fused, args) -> None:
         "융합": "프로덕션 `_rrf_fusion` 그대로 (k=60)",
         "nomic 팔": provs.get("nomic-embed-text", {}),
         "KURE 팔": provs.get("KURE-v1", {}),
-        "풀 구성원": "keyword · vector×2 · fused×2 (모든 다리 top-10)",
-        "판정(융합)": v_fused.decision,
+        "풀 구성원": "keyword/mecab · keyword/nori · vector×2 · fused×2 (모든 다리 top-10)",
+        "확증 분석": f"비교가능 부분집합 {len(comparable)}/{arms['KURE-v1']['legs']['vector'].n}질의 (벡터 다리)",
+        "수치의 성격": "**전부 하한(lower bound)** — 풀 판정 보류, 미판정 문서는 비관련으로 세어진다",
+        "기술 분석": "전체 답변가능 질의 (벡터·융합)",
     }
     legs = [arms["nomic-embed-text"]["legs"]["vector"], arms["KURE-v1"]["legs"]["vector"],
             arms["nomic-embed-text"]["legs"]["fused"], arms["KURE-v1"]["legs"]["fused"]]
@@ -236,13 +336,25 @@ def _write_report(labels: dict, arms: dict, v_vec, v_fused, args) -> None:
                          strict=True):
         leg.leg = name
 
-    report = render_report(meta, legs, strata, v_vec)
-    report += (
-        "\n> 판정의 결정 다리는 **벡터**다(모델이 바꾸는 다리). 융합은 사용자가 겪는 결과로 함께 적는다.\n"
-        "> 벡터에서 유의하고 융합에서 아니면, 결론은 '모델이 바꾸는 다리에서는 우세, 사용자가 보는\n"
-        "> 표면에서는 미입증' 두 문장 모두다 (SPEC §4.7).\n"
-        "> 이 실행의 벡터 다리는 정확 스캔이라 프로덕션(ivfflat)보다 후하게 나온다 — 절대값이 아니라\n"
-        "> 두 모델의 차이를 읽는 자다.\n")
+    report = render_report(meta, legs, strata, v_conf)
+    tail = [
+        "",
+        "## 기술 분석 (α 를 쓰지 않는다)",
+        "",
+        f"- 전체 질의·벡터: {v_vec.decision}",
+        f"- 전체 질의·융합: {v_fused.decision}",
+        "",
+        "> 위 '판정' 은 **비교가능 부분집합**의 확증 결과다(벡터 다리). 전체 질의 분석은",
+        "> 커버리지 격차를 포함한 사용자 관점의 기술이며, 모델 품질 주장으로 인용해서는 안 된다.",
+        "> 벡터 다리는 정확 스캔이라 프로덕션(ivfflat)보다 후하게 나온다 — 절대값이 아니라 두",
+        "> 모델의 차이를 읽는 자다. 그리고 Pack A 는 khala 자신의 코퍼스가 아니다 (SPEC §4.7).",
+        "> **모든 수치는 하한이다** — 풀 판정을 보류했으므로 미판정 문서가 비관련으로 세어진다.",
+        "> 그 페널티는 새 문서를 더 많이 건져 올린 팔이 더 많이 받는다: 결론 방향에 보수적이다.",
+        "> 이 실행의 결과는 **교체를 허가하지 않는다** — 정확 스캔이라 프로덕션(ivfflat)을 예측하지",
+        "> 못하고, 차원 변경(768→1024)이 ANN 거동을 또 바꾼다. 교체 SPEC 이 자기 측정을 져야 한다.",
+        "",
+    ]
+    report += "\n".join(tail) + "\n"
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     out = args.out or REPORTS_DIR / f"{datetime.now(timezone.utc):%Y-%m-%d}-nomic-vs-kure.md"
     Path(out).write_text(report, encoding="utf-8", newline="\n")
@@ -261,6 +373,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("load")
     e = sub.add_parser("embed")
     e.add_argument("--model", required=True, choices=sorted(MODELS))
+    eq = sub.add_parser("embed-queries")
+    eq.add_argument("--model", required=True, choices=sorted(MODELS))
     r = sub.add_parser("run")
     r.add_argument("--dump-pool", type=Path, default=None)
     r.add_argument("--report", action="store_true")
@@ -271,7 +385,9 @@ def main(argv: list[str] | None = None) -> int:
     if not os.getenv("DATABASE_URL"):
         print("✗ DATABASE_URL 이 없다")
         return 1
-    return asyncio.run({"load": cmd_load, "embed": cmd_embed, "run": cmd_run}[args.cmd](args))
+    handlers = {"load": cmd_load, "embed": cmd_embed,
+                "embed-queries": cmd_embed_queries, "run": cmd_run}
+    return asyncio.run(handlers[args.cmd](args))
 
 
 if __name__ == "__main__":

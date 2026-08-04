@@ -1,0 +1,11 @@
+{
+ "model": "nomic-embed-text",
+ "backend": "ollama (창은 모델 빌드가 고정)",
+ "device": "cpu",
+ "observed_dim": 768,
+ "refused": 10,
+ "prefixes": {
+  "document": "search_document: ",
+  "query": "search_query: "
+ }
+}

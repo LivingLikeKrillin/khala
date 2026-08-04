@@ -9,9 +9,10 @@
 KURE-v1 카드에는 지시문이 없다. 한쪽 형식을 다른 쪽에 씌우면 "그 모델을 잘못 쓴 결과" 를 재게
 된다 — 토크나이저 비교에서 품사 필터가 그랬던 것과 같은 종류의 교란이다.
 
-**절단은 재서 막는다.** KURE 는 8192 토큰까지 받지만, nomic 팔은 Ollama 가 모델 창보다 작은
-컨텍스트 기본값을 씌우는 쪽이라 오히려 위험하다. 그래서 컨텍스트를 명시로 올리고, 어느 팔이든
-잘릴 입력이 하나라도 있으면 **중단**한다. 잘린 팔과 온전한 팔을 비교하면 창 크기를 재게 된다.
+**절단과 거부는 다르게 다룬다.** sentence-transformers 는 `max_seq_length` 에서 **조용히 자르므로**
+인코딩 전에 자기 토크나이저로 세어 넘치면 중단한다 — 잘린 팔과 온전한 팔을 비교하면 창 크기를
+재게 된다. Ollama 는 반대로 **거부**한다(HTTP 500 + `exceeds the context length`), 그래서 자르지
+않았음이 관측으로 확인되고, 거부된 청크는 프로덕션이 그러듯 없는 것으로 두고 커버리지로 센다.
 """
 
 from __future__ import annotations
@@ -21,11 +22,7 @@ from dataclasses import dataclass, field
 
 import httpx
 
-from scripts.ko_eval_vector import MODELS, input_hash
-
-#: nomic-embed-text 의 학습 컨텍스트. Ollama 기본값(2048)보다 크므로 명시로 올린다.
-NOMIC_NUM_CTX = 8192
-
+from scripts.ko_eval_vector import MODELS, EmbedRow, sha256
 
 class TruncationRisk(RuntimeError):
     """잘릴 입력이 있다. 부분적으로 잘린 팔은 결과가 아니다 (§5)."""
@@ -43,6 +40,7 @@ class ArmProvenance:
     max_seq_length: int | None = None
     observed_dim: int | None = None
     max_input_tokens: int = 0
+    refused: int = 0
     extra: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
@@ -55,48 +53,43 @@ class ArmProvenance:
 
 
 class OllamaArm:
-    """nomic-embed-text — 프로덕션과 같은 백엔드, 다만 컨텍스트를 명시로 준다."""
+    """nomic-embed-text — 프로덕션과 같은 백엔드.
+
+    **창은 올릴 수 없다.** `PARAMETER num_ctx 8192` 로 파생 모델을 만들어도 Ollama 의
+    nomic-embed-text 는 여전히 ~2,042 한글 문자에서 거부한다(2026-08-04 이분탐색). 그리고 거부는
+    조용한 절단이 아니라 HTTP 500 + `the input length exceeds the context length` 다 — 그래서
+    **자르지 않았다는 것이 관측으로 확인된다.** 거부된 청크는 프로덕션에서처럼 없는 것으로 둔다.
+    """
 
     model = "nomic-embed-text"
+    REFUSAL_MARK = "exceeds the context length"
 
-    def __init__(self, base_url: str | None = None, num_ctx: int = NOMIC_NUM_CTX) -> None:
+    def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or os.getenv("OLLAMA_URL", "http://localhost:11434")).rstrip("/")
-        self.num_ctx = num_ctx
-        self.prov = ArmProvenance(model=self.model, backend=f"ollama num_ctx={num_ctx}")
+        self.prov = ArmProvenance(model=self.model, backend="ollama (창은 모델 빌드가 고정)")
+        self.max_payload_chars = 0
 
-    def _prefixed(self, text: str, kind: str) -> str:
+    def prefixed(self, text: str, kind: str) -> str:
         return MODELS[self.model][f"{kind}_prefix"] + text
 
-    async def _embed(self, text: str) -> list[float]:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(f"{self.base_url}/api/embeddings", json={
-                "model": self.model, "prompt": text, "options": {"num_ctx": self.num_ctx}})
-            resp.raise_for_status()
-            payload = resp.json()
-
-        # Ollama 는 잘려도 조용히 성공한다. 토큰 수를 직접 세어 창을 넘는 입력을 잡는다.
-        n = await self._count_tokens(text)
-        self.prov.max_input_tokens = max(self.prov.max_input_tokens, n)
-        if n > self.num_ctx:
-            raise TruncationRisk(
-                f"{self.model}: 입력 {n} 토큰 > 컨텍스트 {self.num_ctx} — 잘린 팔은 채점하지 않는다")
-        return payload["embedding"]
-
-    async def _count_tokens(self, text: str) -> int:
-        """Ollama 는 토크나이저를 직접 노출하지 않는다. `/api/generate` 의 프롬프트 평가 수를 쓴다."""
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(f"{self.base_url}/api/generate", json={
-                "model": self.model, "prompt": text, "stream": False,
-                "options": {"num_ctx": self.num_ctx, "num_predict": 0}})
-            if resp.status_code != 200:
-                return 0                      # 셀 수 없으면 0 — 아래 embed_documents 가 경고로 남긴다
-            return int(resp.json().get("prompt_eval_count") or 0)
-
-    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [await self._embed(self._prefixed(t, "document")) for t in texts]
+    async def embed_one(self, payload: str) -> tuple[list[float] | None, str | None]:
+        """(벡터, 거부사유). 거부는 예외가 아니라 값으로 돌려준다 — 회계 대상이기 때문이다."""
+        self.max_payload_chars = max(self.max_payload_chars, len(payload))
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            resp = await client.post(f"{self.base_url}/api/embeddings",
+                                     json={"model": self.model, "prompt": payload})
+        if resp.status_code == 200:
+            return resp.json()["embedding"], None
+        reason = resp.text.strip()[:300]
+        if self.REFUSAL_MARK in reason:
+            return None, reason
+        raise RuntimeError(f"{self.model}: 예상 못한 실패 {resp.status_code} — {reason}")
 
     async def embed_query(self, text: str) -> list[float]:
-        return await self._embed(self._prefixed(text, "query"))
+        vec, reason = await self.embed_one(self.prefixed(text, "query"))
+        if vec is None:
+            raise RuntimeError(f"{self.model}: 질의가 거부됐다 — {reason}")
+        return vec
 
 
 class SentenceTransformerArm:
@@ -114,7 +107,7 @@ class SentenceTransformerArm:
             library=_st_version(), revision=_hf_revision(self.st),
         )
 
-    def _prefixed(self, text: str, kind: str) -> str:
+    def prefixed(self, text: str, kind: str) -> str:
         return MODELS[self.model][f"{kind}_prefix"] + text
 
     def _check_length(self, text: str) -> None:
@@ -125,19 +118,17 @@ class SentenceTransformerArm:
                 f"{self.model}: 입력 {n} 토큰 > max_seq_length {self.st.max_seq_length} — "
                 "잘린 팔은 채점하지 않는다")
 
-    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        prefixed = [self._prefixed(t, "document") for t in texts]
-        for t in prefixed:
-            self._check_length(t)
-        vecs = self.st.encode(prefixed, normalize_embeddings=True, show_progress_bar=False)
-        self.prov.observed_dim = int(vecs.shape[1])
-        return [v.tolist() for v in vecs]
+    async def embed_one(self, payload: str) -> tuple[list[float] | None, str | None]:
+        """sentence-transformers 는 **조용히 자른다.** 그래서 인코딩 전에 자기 토크나이저로 센다."""
+        self._check_length(payload)
+        vec = self.st.encode([payload], normalize_embeddings=True,
+                             show_progress_bar=False)[0]
+        self.prov.observed_dim = int(len(vec))
+        return vec.tolist(), None
 
     async def embed_query(self, text: str) -> list[float]:
-        t = self._prefixed(text, "query")
-        self._check_length(t)
-        return self.st.encode([t], normalize_embeddings=True,
-                              show_progress_bar=False)[0].tolist()
+        vec, _ = await self.embed_one(self.prefixed(text, "query"))
+        return vec
 
 
 def _st_version() -> str:
@@ -157,15 +148,22 @@ def _hf_revision(st_model) -> str:
         return ""
 
 
-async def embed_pack(arm, chunk_inputs: dict[str, str]) -> list[tuple[str, str, list[float]]]:
-    """`{chunk_rid: 임베딩할 문자열}` → `ko_eval_vector.replace_arm` 이 받는 행들.
+async def embed_pack(arm, chunk_inputs: dict[str, str]) -> list[EmbedRow]:
+    """`{chunk_rid: 공용 입력}` → 팔의 결과 행들 (임베딩 또는 거부).
 
-    입력 문자열은 호출자가 `get_search_text` 로 만들어 넘긴다 — 양 팔이 **같은 문자열**을 보도록
-    한 곳에서만 만든다.
+    공용 입력은 호출자가 `get_search_text` 로 **한 곳에서** 만들어 넘긴다. 프리픽스는 여기서
+    팔마다 붙이고, 그 결과를 `payload_sha256` 으로 따로 남긴다 — 두 팔의 공용 입력은 같아야
+    하지만 실제 보낸 문자열은 같을 수 없다.
     """
-    rids = list(chunk_inputs)
-    vectors = await arm.embed_documents([chunk_inputs[r] for r in rids])
-    if vectors:
-        arm.prov.observed_dim = arm.prov.observed_dim or len(vectors[0])
-    return [(rid, input_hash(chunk_inputs[rid]), vec)
-            for rid, vec in zip(rids, vectors, strict=True)]
+    rows: list[EmbedRow] = []
+    for rid, text in chunk_inputs.items():
+        payload = arm.prefixed(text, "document")
+        vec, reason = await arm.embed_one(payload)
+        rows.append(EmbedRow(chunk_rid=rid, input_sha256=sha256(text),
+                             payload_sha256=sha256(payload),
+                             embedding=vec, refusal_reason=reason))
+    embedded = [r for r in rows if r.embedding is not None]
+    if embedded:
+        arm.prov.observed_dim = arm.prov.observed_dim or len(embedded[0].embedding)
+    arm.prov.refused = sum(1 for r in rows if r.embedding is None)
+    return rows

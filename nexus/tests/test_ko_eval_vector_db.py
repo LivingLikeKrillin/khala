@@ -22,6 +22,7 @@ import pytest
 from scripts.ko_eval_harness import collapse_to_documents, score_query
 from scripts.ko_eval_vector import (
     MODELS,
+    EmbedRow,
     ensure_table,
     input_hash,
     replace_arm,
@@ -80,8 +81,9 @@ async def arm(db_pool):
                 "chunk_index, status, hash) VALUES ($1,$2,$3,$4,$5,'root',0,'active','h')",
                 crid, _TENANT, uri, drid, text)
             rid_of[name] = crid
-            inputs[crid] = input_hash(text)
-            rows.append((crid, input_hash(text), _vec(text)))
+            inputs[crid] = (input_hash(text), input_hash(text))
+            rows.append(EmbedRow(chunk_rid=crid, input_sha256=input_hash(text),
+                                 payload_sha256=input_hash(text), embedding=_vec(text)))
 
         await replace_arm(con, _MODEL, _TENANT, _PACK, rows)
 
@@ -100,7 +102,7 @@ async def arm(db_pool):
 async def test_the_exact_scan_finds_the_document_its_own_vector_came_from(db_pool, arm):
     async with db_pool.acquire() as con:
         for name, text in _DOCS.items():
-            hits = await vector_search(con, _MODEL, _TENANT, _vec(text), top_k=20)
+            hits = await vector_search(con, _MODEL, _TENANT, _PACK, _vec(text), top_k=20)
             docs = collapse_to_documents(hits, arm["chunk_doc"])
             assert docs[0] == name, f"'{name}' 의 벡터로 질의했는데 1위가 {docs[0]}"
 
@@ -108,7 +110,7 @@ async def test_the_exact_scan_finds_the_document_its_own_vector_came_from(db_poo
 async def test_the_scan_is_stable_across_repeated_queries(db_pool, arm):
     async with db_pool.acquire() as con:
         q = _vec(_DOCS["pod.md"])
-        runs = [await vector_search(con, _MODEL, _TENANT, q, top_k=20) for _ in range(3)]
+        runs = [await vector_search(con, _MODEL, _TENANT, _PACK, q, top_k=20) for _ in range(3)]
     assert runs[0] == runs[1] == runs[2]
 
 
@@ -126,14 +128,14 @@ async def test_the_arm_is_isolated_from_the_production_column(db_pool, arm):
 
 async def test_a_fresh_arm_verifies(db_pool, arm):
     async with db_pool.acquire() as con:
-        assert await verify_arm(con, _MODEL, _TENANT, arm["inputs"]) == []
+        assert await verify_arm(con, _MODEL, _TENANT, _PACK, arm["inputs"]) == []
 
 
 async def test_an_arm_pointing_at_dead_chunks_fails(db_pool, arm):
     """청크를 지웠다 다시 넣으면 rid 는 같지만, 다른 테넌트/적재본의 잔재는 이렇게 잡힌다."""
     async with db_pool.acquire() as con:
         await con.execute("DELETE FROM chunks WHERE tenant=$1", _TENANT)
-        problems = await verify_arm(con, _MODEL, _TENANT, arm["inputs"])
+        problems = await verify_arm(con, _MODEL, _TENANT, _PACK, arm["inputs"])
     assert any("살아 있는 청크가 없는" in p.reason for p in problems)
 
 
@@ -142,17 +144,17 @@ async def test_an_arm_missing_a_chunk_fails(db_pool, arm):
         await con.execute(
             "DELETE FROM ko_eval_embeddings WHERE model=$1 AND tenant=$2 AND chunk_rid=$3",
             _MODEL, _TENANT, arm["rid_of"]["pod.md"])
-        problems = await verify_arm(con, _MODEL, _TENANT, arm["inputs"])
-    assert any("임베딩이 없는 청크" in p.reason for p in problems)
+        problems = await verify_arm(con, _MODEL, _TENANT, _PACK, arm["inputs"])
+    assert any("임베딩도 거부도 없는 청크" in p.reason for p in problems)
     assert any("≠ 팩의 현재 청크" in p.reason for p in problems)
 
 
 async def test_an_arm_embedded_from_different_text_fails(db_pool, arm):
     """청크 텍스트가 바뀌었는데 임베딩이 그대로면, 개수는 맞고 내용은 거짓말이다."""
     changed = dict(arm["inputs"])
-    changed[arm["rid_of"]["pod.md"]] = input_hash("완전히 다른 본문")
+    changed[arm["rid_of"]["pod.md"]] = (input_hash("완전히 다른 본문"), input_hash("완전히 다른 본문"))
     async with db_pool.acquire() as con:
-        problems = await verify_arm(con, _MODEL, _TENANT, changed)
+        problems = await verify_arm(con, _MODEL, _TENANT, _PACK, changed)
     assert any("지금 만들 문자열과 다르다" in p.reason for p in problems)
 
 
@@ -160,15 +162,18 @@ async def test_a_dimension_mismatch_is_refused_rather_than_padded(db_pool, arm):
     async with db_pool.acquire() as con:
         with pytest.raises(ValueError, match="차원"):
             await replace_arm(con, _MODEL, _TENANT, _PACK,
-                              [(arm["rid_of"]["pod.md"], "h", [0.1] * (_DIM - 1))])
+                              [EmbedRow(chunk_rid=arm["rid_of"]["pod.md"], input_sha256="h",
+                                        payload_sha256="h", embedding=[0.1] * (_DIM - 1))])
 
 
 async def test_replacing_an_arm_does_not_merge_generations(db_pool, arm):
     """세대 혼재는 병합에서 온다. 통째 교체면 원리적으로 못 생긴다."""
     async with db_pool.acquire() as con:
         await replace_arm(con, _MODEL, _TENANT, _PACK,
-                          [(arm["rid_of"]["pod.md"], input_hash(_DOCS["pod.md"]),
-                            _vec(_DOCS["pod.md"]))])
+                          [EmbedRow(chunk_rid=arm["rid_of"]["pod.md"],
+                                    input_sha256=input_hash(_DOCS["pod.md"]),
+                                    payload_sha256=input_hash(_DOCS["pod.md"]),
+                                    embedding=_vec(_DOCS["pod.md"]))])
         n = await con.fetchval(
             "SELECT count(*) FROM ko_eval_embeddings WHERE model=$1 AND tenant=$2", _MODEL, _TENANT)
     assert n == 1, "이전 세대 행이 남았다"
@@ -191,18 +196,20 @@ async def test_shuffled_vectors_collapse_the_vector_leg(db_pool, arm):
     async with db_pool.acquire() as con:
         intact = []
         for name, text in _DOCS.items():
-            hits = await vector_search(con, _MODEL, _TENANT, _vec(text), top_k=20)
+            hits = await vector_search(con, _MODEL, _TENANT, _PACK, _vec(text), top_k=20)
             intact.append(score_query(name, collapse_to_documents(hits, arm["chunk_doc"]), gold[name]))
 
         # 벡터를 한 칸씩 밀어 청크-벡터 대응을 깨뜨린다 (텍스트·해시·개수는 그대로)
         rotated = names[1:] + names[:1]
         await replace_arm(con, _MODEL, _TENANT, _PACK,
-                          [(arm["rid_of"][n], input_hash(_DOCS[n]), _vec(_DOCS[other]))
+                          [EmbedRow(chunk_rid=arm["rid_of"][n], input_sha256=input_hash(_DOCS[n]),
+                                    payload_sha256=input_hash(_DOCS[n]),
+                                    embedding=_vec(_DOCS[other]))
                            for n, other in zip(names, rotated, strict=True)])
 
         shuffled = []
         for name, text in _DOCS.items():
-            hits = await vector_search(con, _MODEL, _TENANT, _vec(text), top_k=20)
+            hits = await vector_search(con, _MODEL, _TENANT, _PACK, _vec(text), top_k=20)
             shuffled.append(score_query(name, collapse_to_documents(hits, arm["chunk_doc"]), gold[name]))
 
     intact_recall = sum(s.recall for s in intact) / len(intact)
