@@ -41,10 +41,11 @@ embedding:
   # (SPEC-nexus-embedding-cutover-seam §4.2)
   model: "nomic-embed-text"
   backend: "ollama"                     # ollama | sidecar — 모델이 어디서 서빙되는가
-  # dimensions 는 여기 없다. 모델의 사실이라 MODEL_DIMENSIONS 가 갖는다 — 같은 숫자를 두 곳에
-  # 적으면 언젠가 갈라지고, 갈라진 쪽이 조용히 이긴다.
-  document_prefix: "search_document: "  # nomic 모델 규칙
-  query_prefix: "search_query: "        # nomic 모델 규칙
+  # dimensions 도, 지시문(document_prefix/query_prefix)도 여기 없다. 둘 다 **모델의 사실**이라
+  # MODEL_DIMENSIONS / MODEL_PREFIXES 가 갖는다. 여기 적으면 모델을 바꿀 때 함께 안 바뀌고,
+  # 그러면 그 모델을 잘못 쓴 결과를 재게 된다 — 실제로 컷오버 당일 이 두 줄(nomic 형식)이 남아
+  # 있어서 KURE 로 전환한 앱이 부팅을 거부했다(2026-08-05, 가드가 의도대로 막았다).
+  # 특수한 배포가 굳이 덮어써야 하면 여기에 키를 넣을 수 있고, 모델 카드와 모순되면 기동이 막힌다.
   batch_size: 10
   max_retries: 3
 
