@@ -310,15 +310,24 @@ Pack A 는 같은 종류의 공개 대역이다. 리포트 머리말이 그 문�
 네 조건(§4.5)이 측정 테넌트에서 모두 섰지만 **리포지토리 기본값은 `embedding` 그대로 둔다.**
 기본값을 바꾸면 아직 재임베딩하지 않은 설치가 빈 컬럼을 읽어 벡터 다리가 죽는다. 배포마다:
 
+**절차의 정본은 `docs/TEAM_DOGFOOD_DEPLOY.md` §6.1 이다.** 여기 처음 적었던
+"config.yaml 의 `search.embedding_column` 한 줄" 은 **틀렸다**: 그 값만 바꾸면 질의 벡터는
+nomic 768 차원 그대로라 `different vector dimensions` 로 검색이 죽고, 그것도 재임베딩이 끝나 행이
+차는 순간에 죽는다. 세대는 **모델·컬럼·백엔드 셋**이고, 배포는 그 셋을 `.env` 에서 함께 움직인다
+(`SPEC-nexus-embedding-cutover-seam`).
+
 ```bash
-docker compose --profile embed up -d nexus-embed          # 사이드카 (준비까지 ~40초)
-nexus reembed run --tenant <tenant> --model KURE-v1       # 큐는 NULL 컬럼 — 중단해도 이어서
-nexus reembed create-index --column embedding_1024        # 재임베딩 뒤 행 수를 세어 lists 산정
-nexus reembed status --column embedding_1024 --tenant <tenant>   # 네 조건 확인
-# 통과하면 config.yaml 의 search.embedding_column 을 embedding_1024 로
+docker compose --profile embed up -d nexus-embed                 # 사이드카 (리비전은 커밋으로 핀)
+nexus reembed run --column embedding_1024 --model KURE-v1 --backend sidecar --all-tenants
+nexus reembed create-index --column embedding_1024               # 다 채운 뒤 행 수로 lists 산정
+nexus reembed run --column embedding_1024 --model KURE-v1 --backend sidecar --all-tenants  # 2차: 0이어야
+nexus reembed status --column embedding_1024 --all-tenants       # 조건은 테넌트마다 선다
+# 통과하면 배포 .env 의 NEXUS_EMBEDDING_MODEL / _COLUMN / _BACKEND 를 함께 전환 후 재기동
 ```
 
-롤백은 그 설정 한 줄을 되돌리는 것이다 — 옛 컬럼과 인덱스는 손대지 않는다.
+롤백은 그 세 줄을 되돌리는 것이다 — 옛 컬럼과 인덱스는 손대지 않는다. 다만 **flip 이후 적재된
+청크는 옛 컬럼이 비어 있다**(이중 쓰기를 하지 않기로 한 대가). 그 수는
+`nexus reembed status --column embedding --all-tenants` 가 보고하고, 같은 도구를 반대로 겨눠 메운다.
 
 ---
 

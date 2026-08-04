@@ -92,6 +92,17 @@ async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
     return [(r["rid"], r["chunk_text"], r["section_path"]) for r in rows]
 
 
+async def tenants_with_chunks() -> list[str]:
+    """청크를 가진 테넌트들. **컷오버 조건은 테넌트마다 서야 한다** — 하나를 빠뜨리고 flip 하면
+    그 테넌트의 벡터 다리만 조용히 비고, 그걸 손으로 세는 절차는 언젠가 하나를 빠뜨린다
+    (SPEC-nexus-embedding-cutover-seam §4.3, §4.6).
+    """
+    rows = await db.fetch_all(
+        "SELECT DISTINCT tenant FROM chunks "
+        "WHERE status = 'active' AND is_quarantined = false ORDER BY tenant")
+    return [r["tenant"] for r in rows]
+
+
 async def counts(column: str, tenant: str | None = None) -> dict:
     """컷오버 판정과 진행 보고가 함께 쓰는 숫자. 범위는 재임베딩과 **같아야** 한다."""
     col = resolve_column(column)
