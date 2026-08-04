@@ -860,23 +860,40 @@ def reembed_create_index(column: str = typer.Option("embedding_1024", "--column"
 
 @reembed_app.command("status")
 def reembed_status(column: str = typer.Option("embedding_1024", "--column"),
-                   tenant: str = typer.Option(None, "--tenant")) -> None:
-    """컷오버 전제 조건 (§4.5). 막는 것이 있으면 **무엇이 막는지** 말한다."""
-    from nexus.index.reembed import counts, cutover_blockers, waived_rows
+                   tenant: str = typer.Option(None, "--tenant"),
+                   all_tenants: bool = typer.Option(
+                       False, "--all-tenants",
+                       help="청크를 가진 테넌트를 모두 본다 — 조건은 테넌트마다 선다")) -> None:
+    """컷오버 전제 조건 (§4.5). 막는 것이 있으면 **무엇이 막는지** 말한다.
+
+    조건은 테넌트마다 서야 한다. 하나를 빠뜨린 채 flip 하면 그 테넌트의 벡터 다리만 조용히 비고,
+    범위를 손으로 세는 절차는 언젠가 하나를 빠뜨린다 (SPEC-nexus-embedding-cutover-seam §4.6).
+    """
+    from nexus.index.reembed import counts, cutover_blockers, tenants_with_chunks, waived_rows
+
+    if all_tenants and tenant:
+        typer.echo("--tenant 와 --all-tenants 는 함께 쓸 수 없다 — 범위는 하나여야 한다", err=True)
+        raise typer.Exit(2)
 
     async def _go():
-        c = await counts(column, tenant)
-        typer.echo(f"[{column}] 활성 {c['active']} · 임베딩됨 {c['embedded']} · "
-                   f"waived {c['waived']} · 남은 {c['pending']}")
+        scopes = await tenants_with_chunks() if all_tenants else [tenant]
+        blocked = 0
+        for scope in scopes:
+            label = f"[{scope}] " if all_tenants else ""
+            c = await counts(column, scope)
+            typer.echo(f"{label}[{column}] 활성 {c['active']} · 임베딩됨 {c['embedded']} · "
+                       f"waived {c['waived']} · 남은 {c['pending']}")
+            blockers = await cutover_blockers(column, tenant=scope)
+            if blockers:
+                blocked += 1
+                typer.echo(f"{label}컷오버 불가:")
+                for b in blockers:
+                    typer.echo(f"  ✗ {b}")
         for w in await waived_rows():
             typer.echo(f"  waived {w['chunk_rid']} ({w['waived_by']}): {w['reason'][:80]}")
-        blockers = await cutover_blockers(column, tenant=tenant)
-        if blockers:
-            typer.echo("\n컷오버 불가:")
-            for b in blockers:
-                typer.echo(f"  ✗ {b}")
+        if blocked:
             return 1
-        typer.echo("\n✓ 컷오버 조건 충족 — ANN 측정(§4.6) 후 config 의 search.embedding_column 전환")
+        typer.echo("\n✓ 컷오버 조건 충족 — 배포 env 의 세대 셋(모델·컬럼·백엔드)을 함께 전환")
         return 0
 
     raise typer.Exit(_run(_go()))
