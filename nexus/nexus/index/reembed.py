@@ -12,6 +12,10 @@ NULL 인 것을 채운다. 그 방식은 "언젠가 채워진다" 는 말과 같
 - 실패는 사유와 함께 요약에 남는다. 조용한 NULL 은 없다.
 - 영구 실패는 사람이 `waive` 로 서명해 뺀다 — 이 모듈은 후보만 보고한다 (§4.5).
 - 컷오버는 네 조건이 **모두** 설 때만 허용된다. 하나라도 안 서면 무엇이 안 섰는지 말한다.
+- **범위는 선언한다.** `tenant=None` 은 "전 테넌트" 라는 명시적 선택이고, 기본값이 아니다.
+  처음엔 필터 자체가 없었고, 그래서 DB 테스트가 자기 테넌트를 재임베딩하면서 **같은 DB 의 평가
+  코퍼스 1,906건을 상수 벡터로 덮어썼다.** 그 위에서 돌린 ANN 측정이 인덱스를 탓하는 결론을
+  냈다(2026-08-04, 정정됨). 파괴 범위가 선언되지 않으면 언젠가 넘친다.
 """
 
 from __future__ import annotations
@@ -63,8 +67,8 @@ class ReembedSummary:
 
 # ── 조회 (부분 술어는 인덱스와 같은 모양) ────────────────────────────────────
 
-async def pending_rids(column: str, limit: int,
-                       exclude: set[str] | None = None) -> list[tuple[str, str, str]]:
+async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
+                       tenant: str | None = None) -> list[tuple[str, str, str]]:
     """아직 이 세대의 벡터가 없는 활성 청크. waiver 로 빠진 것은 큐에서 제외한다.
 
     `exclude` 는 **이번 실행에서 이미 실패한 rid** 다. 실패해도 컬럼은 NULL 로 남으므로 다음
@@ -81,14 +85,15 @@ async def pending_rids(column: str, limit: int,
         WHERE c.status = 'active' AND c.is_quarantined = false
           AND c.{col} IS NULL AND w.chunk_rid IS NULL
           AND NOT (c.rid = ANY($2::text[]))
+          AND ($3::text IS NULL OR c.tenant = $3)
         ORDER BY c.rid
         LIMIT $1
-        """, limit, list(exclude or ()))
+        """, limit, list(exclude or ()), tenant)
     return [(r["rid"], r["chunk_text"], r["section_path"]) for r in rows]
 
 
-async def counts(column: str) -> dict:
-    """컷오버 판정과 진행 보고가 함께 쓰는 숫자."""
+async def counts(column: str, tenant: str | None = None) -> dict:
+    """컷오버 판정과 진행 보고가 함께 쓰는 숫자. 범위는 재임베딩과 **같아야** 한다."""
     col = resolve_column(column)
     row = await db.fetch_one(
         f"""
@@ -101,15 +106,20 @@ async def counts(column: str) -> dict:
           count(*) FILTER (WHERE c.status='active' AND c.is_quarantined=false
                              AND c.{col} IS NULL AND w.chunk_rid IS NULL) AS pending
         FROM chunks c LEFT JOIN embed_waivers w ON w.chunk_rid = c.rid
-        """)
+        WHERE ($1::text IS NULL OR c.tenant = $1)
+        """, tenant)
     return dict(row)
 
 
 # ── 실행 ─────────────────────────────────────────────────────────────────────
 
 async def reembed(embedding_svc, column: str, batch_size: int = 16,
-                  progress=None) -> ReembedSummary:
-    """NULL 인 것을 채운다. 실패해도 계속 가되, **세어서 남긴다.**"""
+                  progress=None, tenant: str | None = None) -> ReembedSummary:
+    """NULL 인 것을 채운다. 실패해도 계속 가되, **세어서 남긴다.**
+
+    `tenant=None` 은 전 테넌트다 — 마이그레이션의 정상 사용이지만, **범위를 좁히고 싶을 때
+    좁힐 수 있어야** 한다. 그 수단이 없어서 테스트가 평가 코퍼스를 덮어쓴 적이 있다.
+    """
     from nexus.utils import get_search_text
 
     col = resolve_column(column)
@@ -123,7 +133,7 @@ async def reembed(embedding_svc, column: str, batch_size: int = 16,
 
     failed_rids: set[str] = set()
     while True:
-        batch = await pending_rids(col, batch_size, exclude=failed_rids)
+        batch = await pending_rids(col, batch_size, exclude=failed_rids, tenant=tenant)
         if not batch:
             break
         texts = [get_search_text(_C(text, section)) for _, text, section in batch]
@@ -158,7 +168,7 @@ async def reembed(embedding_svc, column: str, batch_size: int = 16,
         if progress:
             progress(summary)
 
-    summary.remaining = (await counts(col))["pending"]
+    summary.remaining = (await counts(col, tenant))["pending"]
     return summary
 
 
@@ -199,14 +209,15 @@ async def index_exists(column: str) -> bool:
 
 # ── 컷오버 전제 조건 (§4.5) ──────────────────────────────────────────────────
 
-async def cutover_blockers(column: str, summary_failures: int = 0) -> list[str]:
+async def cutover_blockers(column: str, summary_failures: int = 0,
+                           tenant: str | None = None) -> list[str]:
     """컷오버를 막는 이유들. 비면 가도 된다.
 
     조건을 **하나라도 말없이 통과시키지 않는다** — 부분 스왑은 코퍼스가 조용히 작아진 상태다.
     """
     col = resolve_column(column)
     blockers: list[str] = []
-    c = await counts(col)
+    c = await counts(col, tenant)
 
     if c["pending"]:
         blockers.append(
