@@ -9,7 +9,7 @@
 ## 🟡 검토중 (0)
 
 
-## 🟢 승인 (36)
+## 🟢 승인 (37)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
@@ -24,6 +24,7 @@
 | SPEC-nexus-deterministic-retrieval-order | Deterministic ordering in the retrieval legs — the same query must not depend on physical row order | LivingLikeKrillin | 2026-08-03T10:08:58Z | ADR-0006 |
 | SPEC-nexus-document-lifecycle | Document lifecycle — origin, search, hide, and the inverse of every destructive act | LivingLikeKrillin | 2026-07-10 | ADR-0006 |
 | SPEC-nexus-embed-generation-drift | Detect mixed embedding generations (partial re-embed guardrail) | LivingLikeKrillin |  |  |
+| SPEC-nexus-embedding-cutover-seam | The embedding cutover seam is half-built - the query path, the write path, and the wiring still hardcode the old generation | LivingLikeKrillin | 2026-08-04T13:28:28Z | ADR-0008 |
 | SPEC-nexus-graph-scope-filter | The graph channel must obey base_filter — stop cross-tenant / over-clearance / quarantined leakage | LivingLikeKrillin |  | ADR-0004, ADR-0006 |
 | SPEC-nexus-korean-embedding-comparison | Korean embedding comparison — nomic-embed-text vs KURE-v1 on the pinned pack | LivingLikeKrillin | 2026-08-03T12:27:40Z | ADR-0008 |
 | SPEC-nexus-korean-retrieval-eval | Korean retrieval evaluation set — a tokenizer-neutral ruler on a pinned public corpus | LivingLikeKrillin | 2026-08-02T09:52:01Z | ADR-0008 |

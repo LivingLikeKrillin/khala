@@ -35,8 +35,14 @@ chunking:
 
 # Embedding
 embedding:
+  # 세대는 셋이 함께 움직인다: model · search.embedding_column · backend.
+  # 배포는 이 파일이 아니라 env 로 움직인다(NEXUS_EMBEDDING_MODEL / NEXUS_EMBEDDING_COLUMN /
+  # NEXUS_EMBEDDING_BACKEND) — 이 파일은 워킹트리에서 읽히므로 여기서 flip 하면 git 이 되돌린다.
+  # (SPEC-nexus-embedding-cutover-seam §4.2)
   model: "nomic-embed-text"
-  dimensions: 768
+  backend: "ollama"                     # ollama | sidecar — 모델이 어디서 서빙되는가
+  # dimensions 는 여기 없다. 모델의 사실이라 MODEL_DIMENSIONS 가 갖는다 — 같은 숫자를 두 곳에
+  # 적으면 언젠가 갈라지고, 갈라진 쪽이 조용히 이긴다.
   document_prefix: "search_document: "  # nomic 모델 규칙
   query_prefix: "search_query: "        # nomic 모델 규칙
   batch_size: 10

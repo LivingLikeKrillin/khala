@@ -280,7 +280,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
         find_entities_in_text,
     )
     from nexus.llm.answer import generate_answer
-    from nexus.providers.embedding import EmbeddingService
+    from nexus.providers.embedding import embedding_service_from_config
     from nexus.providers.llm import LLMService
     from nexus.repositories.graph import PostgresGraphRepository
     from nexus.rid import entity_rid
@@ -300,7 +300,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
 
     _t0 = time.time()
     config = _load_config()
-    embedding_svc = EmbeddingService()
+    embedding_svc = embedding_service_from_config(config)
     llm_svc = LLMService()
     pool = await db.get_pool()
     graph_repo = PostgresGraphRepository(pool)

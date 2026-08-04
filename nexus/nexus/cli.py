@@ -208,7 +208,7 @@ def query(
             _build_entity_patterns, _load_gazetteer, find_entities_in_text,
         )
         from nexus.llm.answer import generate_answer
-        from nexus.providers.embedding import EmbeddingService
+        from nexus.providers.embedding import embedding_service_from_config
         from nexus.providers.llm import LLMService
         from nexus.repositories.graph import PostgresGraphRepository
         from nexus.rid import entity_rid
@@ -218,7 +218,7 @@ def query(
 
         _t0 = time.time()
         config = _load_config()
-        embedding_svc = EmbeddingService()
+        embedding_svc = embedding_service_from_config(config)
         pool = await db.get_pool()
         graph_repo = PostgresGraphRepository(pool)
 
