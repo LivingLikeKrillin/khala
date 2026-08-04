@@ -32,8 +32,9 @@ services:
       EMBED_MODEL: KURE-v1
       EMBED_CHECKPOINT: nlpai-lab/KURE-v1
       # 리비전을 비워 두면 main 이 가리키는 무엇이든 받는다 — 같은 차원의 다른 체크포인트가
-      # 경고 없이 섞인다. 컷오버 전에 반드시 채운다 (§4.4).
-      EMBED_REVISION: ${EMBED_REVISION:-}
+      # 경고 없이 섞인다. **핀은 컷오버 전에 박는다** (SPEC-nexus-embedding-cutover-seam §4.5):
+      # 아래 값은 2026-08-04 에 이 배포가 실제로 받아 측정에 쓴 스냅샷의 커밋이다.
+      EMBED_REVISION: ${EMBED_REVISION:-d14c8a9423946e268a0c9952fecf3a7aabd73bd9}
       EMBED_DEVICE: cpu
     volumes:
       - nexus-hf-cache:/hf
@@ -129,6 +130,17 @@ services:
       NEXUS_LLM_PROVIDER: ${NEXUS_LLM_PROVIDER:-}
       NEXUS_LLM_BRIDGE_URL: ${NEXUS_LLM_BRIDGE_URL:-}
       NEXUS_LLM_BRIDGE_TOKEN: ${NEXUS_LLM_BRIDGE_TOKEN:-}
+      # ── 임베딩 세대 (SPEC-nexus-embedding-cutover-seam §4.2) ──
+      # 컷오버는 이 셋을 **함께** 움직이는 일이고, 배포는 `.env` 에서 움직인다.
+      # 반드시 `${VAR:-default}` 보간이어야 한다 — 리터럴을 적으면 compose 값이 `.env` 를 이겨서
+      # flip 이 "성공했다" 고 보고하면서 아무것도 안 바꾼다. 정합성 검사는 셋 다 옛 값이라 통과한다.
+      NEXUS_EMBEDDING_MODEL: ${NEXUS_EMBEDDING_MODEL:-nomic-embed-text}
+      NEXUS_EMBEDDING_COLUMN: ${NEXUS_EMBEDDING_COLUMN:-embedding}
+      NEXUS_EMBEDDING_BACKEND: ${NEXUS_EMBEDDING_BACKEND:-ollama}
+      # 사이드카는 프로파일 뒤에 있어 안 떠 있을 수 있다. depends_on 을 걸면 프로파일을 안 켠
+      # 배포가 `depends on undefined service` 로 아예 죽는다(실측) — 없는 사이드카는 벡터 다리의
+      # degrade 경로가 맡는다 (§4.4).
+      EMBED_URL: ${EMBED_URL:-http://nexus-embed:8080}
     volumes:
       - .:/app                    # 개발 중 코드 변경 반영 (hot reload)
       - ./docs:/app/docs:ro       # 인덱싱할 문서 폴더

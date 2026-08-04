@@ -166,6 +166,48 @@ task ingest:notion ROOTS="<pageId1>,<pageId2>" FLAGS="--reconcile"
 - [ ] 첫 `--reconcile`을 `--since` 없이 1회 실행(=`prov_inputs` 백필) → 이후 cron 에 `--reconcile` 상시 부착 가능
 - [ ] Notion 에서 시험용 페이지 1개를 지우고 `--reconcile --dry-run` → `pruned=1` 로 잡히는지 확인
 - [ ] (CORS 이슈 시) `config.yaml`의 `auth.allowed_origins`에 `https://nexus.<도메인>` 추가 — 웹UI와 API가 같은 오리진이면 대개 불필요
+- [ ] `/status` 의 `embedding_*` 필드가 이 배포가 의도한 세대를 말하는지 (§6.1) — 컷오버를 안 했다면 `nomic-embed-text` · `embedding` · `ollama`
+
+## 6.1 임베딩 세대 전환 (한국어 검색을 KURE-v1 로)
+
+배포는 **자기 세대를 스스로 고른다.** 리포 기본값은 현행(`nomic-embed-text` · `embedding` ·
+`ollama`)이고, 재임베딩을 마치지 않은 설치가 빈 컬럼을 읽는 일이 없도록 그대로 둔다. 전환은 이
+배포의 `.env` 에서만 일어난다 — 추적 파일을 고치면 `git checkout` 이 프로덕션 설정을 되돌린다.
+
+측정 근거: 한국어 팩(공개 대역)에서 벡터 다리 `Recall@10` 0.402 → 0.975, ivfflat 을 통과한
+융합 0.777 → 0.988 (`docs/KOREAN_SEARCH_QUALITY.md` §3.4~3.5).
+
+```bash
+# 0) 적재를 잠시 멈춘다(수동/크론 둘 다). 창 안에 적재된 청크는 새 컬럼이 비어 있게 된다.
+# 1) 사이드카 (2~3GB 이미지, 모델 적재 ~9초). 리비전은 compose 에 커밋으로 박혀 있다.
+docker compose --profile embed up -d nexus-embed
+curl -s localhost:8080/health          # ready:true · revision 이 40자 커밋인지 확인
+
+# 2) 재임베딩 — `--column` 은 **명시**한다. 설정을 따라가면 아직 옛 컬럼을 겨눈다.
+docker compose exec -T nexus-app nexus reembed run     --column embedding_1024 --model KURE-v1 --backend sidecar --all-tenants
+
+# 3) 인덱스는 **다 채운 뒤**에 만든다 (lists 는 그때의 행 수로 정해진다)
+docker compose exec -T nexus-app nexus reembed create-index --column embedding_1024
+
+# 4) 두 번째 패스 — 0 이어야 한다. 0 이 아니면 창 안에 적재된 것이 있었다는 뜻이고, 이 패스가 채운다.
+docker compose exec -T nexus-app nexus reembed run     --column embedding_1024 --model KURE-v1 --backend sidecar --all-tenants
+
+# 5) 컷오버 조건 — 테넌트마다 서야 한다
+docker compose exec -T nexus-app nexus reembed status --column embedding_1024 --all-tenants
+
+# 6) flip: `.env` 의 세 줄을 **함께** 바꾸고 재기동한다. 하나만 바꾸면 앱이 부팅을 거부한다.
+#      NEXUS_EMBEDDING_MODEL=KURE-v1
+#      NEXUS_EMBEDDING_COLUMN=embedding_1024
+#      NEXUS_EMBEDDING_BACKEND=sidecar
+docker compose up -d nexus-app
+curl -s localhost:8000/status | jq '{embedding_model, embedding_column, embedding_backend,
+                                    embedding_backend_connected, embedding_coverage}'
+```
+
+**롤백**은 그 세 줄을 지우고 재기동하는 것이다. 옛 컬럼과 인덱스는 손대지 않았으므로 랭킹이 그대로
+돌아온다 — 단, **flip 이후 적재된 청크는 옛 컬럼이 비어 있다.** 그 수는
+`nexus reembed status --column embedding --all-tenants` 가 `남은` 으로 보고하고, 되메우려면 같은
+도구를 반대로 겨눈다(`--column embedding --model nomic-embed-text --backend ollama --all-tenants`).
 
 ## 7. 이 배포를 위한 코드 하드닝 (구현됨)
 

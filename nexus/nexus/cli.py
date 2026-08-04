@@ -783,22 +783,46 @@ def reembed_run(
     backend: str = typer.Option("sidecar", "--backend"),
     batch_size: int = typer.Option(16, "--batch-size"),
     tenant: str = typer.Option(None, "--tenant", help="비우면 전 테넌트 — 범위는 명시적 선택이다"),
+    all_tenants: bool = typer.Option(False, "--all-tenants",
+                                     help="청크를 가진 테넌트를 모두 돈다 (범위를 손으로 세지 않는다)"),
 ) -> None:
-    """NULL 인 것을 채운다. 중단해도 이어서 돈다 — 큐가 NULL 컬럼이기 때문이다."""
-    from nexus.index.reembed import counts, reembed
+    """NULL 인 것을 채운다. 중단해도 이어서 돈다 — 큐가 NULL 컬럼이기 때문이다.
+
+    **`--column` 은 설정을 따라가지 않는다.** 컷오버 시점의 설정은 아직 옛 컬럼을 가리키므로,
+    설정을 따라가는 마이그레이션은 보존해야 할 컬럼을 겨눈다 (SPEC-nexus-embedding-cutover-seam §4.3).
+    """
+    from nexus.index.reembed import counts, reembed, tenants_with_chunks
     from nexus.index.vector_index import dimensions_of
-    from nexus.providers.embedding import EmbeddingService
+    from nexus.providers.embedding import MODEL_DIMENSIONS, EmbeddingService
+
+    if all_tenants and tenant:
+        typer.echo("--tenant 와 --all-tenants 는 함께 쓸 수 없다 — 범위는 하나여야 한다", err=True)
+        raise typer.Exit(2)
+
+    # 차원이 안 맞으면 **첫 행을 읽기 전에** 막는다. KURE 벡터를 768 컬럼에 겨누는 실행은
+    # 절반쯤 돌다 실패하는 대신 시작하지 않아야 한다 (§4.3 불변식 2).
+    if model in MODEL_DIMENSIONS and MODEL_DIMENSIONS[model] != dimensions_of(column):
+        typer.echo(f"--model {model} ({MODEL_DIMENSIONS[model]}d) 와 --column {column} "
+                   f"({dimensions_of(column)}d) 의 차원이 다르다", err=True)
+        raise typer.Exit(2)
 
     async def _go():
         svc = EmbeddingService(model=model, backend=backend, dimensions=dimensions_of(column))
-        before = await counts(column, tenant)
-        typer.echo(f"대상 {before['pending']}건 (활성 {before['active']} · 이미 {before['embedded']} "
-                   f"· waived {before['waived']})")
-        summary = await reembed(
-            svc, column, batch_size=batch_size, tenant=tenant,
-            progress=lambda s: typer.echo(f"  … {s.embedded}건", err=True))
-        typer.echo(summary.render())
-        return 0 if summary.ok else 1
+        scopes = await tenants_with_chunks() if all_tenants else [tenant]
+        if all_tenants:
+            typer.echo(f"대상 테넌트 {len(scopes)}개: {', '.join(scopes) or '(없음)'}")
+        failed = 0
+        for scope in scopes:
+            label = f"[{scope}] " if all_tenants else ""
+            before = await counts(column, scope)
+            typer.echo(f"{label}대상 {before['pending']}건 (활성 {before['active']} · "
+                       f"이미 {before['embedded']} · waived {before['waived']})")
+            summary = await reembed(
+                svc, column, batch_size=batch_size, tenant=scope,
+                progress=lambda s: typer.echo(f"  … {s.embedded}건", err=True))
+            typer.echo(label + summary.render())
+            failed += 0 if summary.ok else 1
+        return 1 if failed else 0
 
     raise typer.Exit(_run(_go()))
 

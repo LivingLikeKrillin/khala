@@ -83,6 +83,12 @@ jobs:
       # Unit tests only. The DB-backed tests run in `nexus-postgres` below.
       - name: Run unit tests
         working-directory: nexus
+        # NEXUS_REQUIRE_COMPOSE=1 turns the compose-wiring suite's "docker not here" skip into a
+        # failure. That suite guards the trap where a literal `environment:` value beats the
+        # deployment's `.env` — a cutover that reports success and changes nothing. A check that
+        # quietly does not run would leave exactly that hole open (same rule as REQUIRE_MECAB).
+        env:
+          NEXUS_REQUIRE_COMPOSE: "1"
         run: python -m pytest -q -m "not integration"
 
   nexus-postgres:
