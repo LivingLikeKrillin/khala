@@ -50,6 +50,9 @@ search:
   final_top_k: 10              # 최종 반환 수
   diversity_per_doc_cap: 3     # top-k 내 한 문서 최대 청크 수(문서 도배 방지, SPEC-nexus-ranking-precision)
   snippet_max_chars: 300       # 근거 스니펫 최대 길이(문장 경계에서 컷, SPEC-nexus-snippet-boundary-truncation)
+  # 어느 임베딩 세대를 읽을지 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버도 롤백도 이 값 하나다.
+  # embedding=nomic-embed-text(768) · embedding_1024=KURE-v1(1024). 화이트리스트 밖이면 기동 실패.
+  embedding_column: embedding
 
 # LLM 단가 — 비용 추적(SPEC-nexus-llm-usage-capture). USD per 1M tokens, 운영자 관리.
 # 키는 NEXUS_LLM_MODEL 값과 일치해야 함(없거나 불완전하면 cost=None, 지어내지 않음).

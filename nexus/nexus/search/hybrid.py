@@ -14,6 +14,7 @@ import structlog
 
 from nexus import db
 from nexus.index.bm25 import active_tokenizer, tokens_to_tsquery
+from nexus.index.vector_index import resolve_column
 from nexus.providers.embedding import EmbeddingService
 from nexus.repositories.graph import (
     EdgeResult,
@@ -95,8 +96,14 @@ async def _vector_search(
     tenant: str,
     clearance: str,
     top_k: int = 20,
+    column: str | None = None,
 ) -> list[tuple[str, int]]:
-    """Vector 검색. (chunk_rid, rank) 반환."""
+    """Vector 검색. (chunk_rid, rank) 반환.
+
+    `column` 은 어느 임베딩 세대를 읽을지다 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버와
+    롤백이 이 값 하나로 이뤄지므로, **화이트리스트를 통과한 이름만** SQL 에 닿는다.
+    """
+    col = resolve_column(column)
     try:
         query_embedding = await embedding_svc.embed_query(query)
     except Exception as e:
@@ -106,10 +113,10 @@ async def _vector_search(
     vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
     rows = await db.fetch_all(
-        """
-        SELECT c.rid, c.embedding <=> $1::vector as distance
+        f"""
+        SELECT c.rid, c.{col} <=> $1::vector as distance
         FROM chunks c
-        WHERE c.embedding IS NOT NULL
+        WHERE c.{col} IS NOT NULL
           AND c.tenant = $2
           AND c.classification <= $3::classification_level
           AND c.is_quarantined = false
@@ -368,7 +375,8 @@ async def hybrid_search(
     # route_used='vector_only' 라 보고하지는 않는다 — 빈 결과가 정직하다.
     if use_vector and embedding_svc:
         tasks["vector"] = asyncio.create_task(
-            _vector_search(query, embedding_svc, tenant, clearance, vector_top_k))
+            _vector_search(query, embedding_svc, tenant, clearance, vector_top_k,
+                           column=search_cfg.get("embedding_column")))
 
     if tasks:
         done = dict(zip(tasks, await asyncio.gather(*tasks.values())))

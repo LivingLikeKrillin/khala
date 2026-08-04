@@ -28,14 +28,27 @@ def embed_generation_report(rows: list[tuple[str, int]]) -> dict:
     }
 
 
-async def fetch_embed_generations() -> list[tuple[str, int]]:
-    """인덱스에 실재하는 벡터의 embed_model 분포. WHERE 는 idx_chunk_vector 부분술어와 동일."""
+async def fetch_embed_generations(column: str | None = None) -> list[tuple[str, int]]:
+    """인덱스에 실재하는 벡터의 embed_model 분포. WHERE 는 해당 컬럼의 인덱스 부분술어와 동일.
+
+    `column` 은 어느 세대를 보느냐다 (SPEC-nexus-kure-embedding-swap §4.5). 마이그레이션 중에는
+    컬럼이 둘이고, 새 컬럼의 세대를 물었는데 **교체 대상인 옛 컬럼을 보고하면** 컷오버 조건이
+    엉뚱한 것을 통과시킨다.
+    """
+    from nexus.index.vector_index import resolve_column
+
+    col = resolve_column(column)
     rows = await db.fetch_all(
-        """
+        f"""
         SELECT embed_model, count(*) AS n
         FROM chunks
-        WHERE status = 'active' AND is_quarantined = false AND embedding IS NOT NULL
+        WHERE status = 'active' AND is_quarantined = false AND {col} IS NOT NULL
         GROUP BY embed_model
         """
     )
     return [(r["embed_model"], r["n"]) for r in rows]
+
+
+async def fetch_waived_count() -> int:
+    """임베딩을 포기한 청크 수 — 검색에서 빠진 내용의 양이다 (§4.5)."""
+    return int(await db.fetch_val("SELECT count(*) FROM embed_waivers") or 0)
