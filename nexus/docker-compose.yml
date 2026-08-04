@@ -19,6 +19,31 @@ services:
       retries: 5
 
   # ── Ollama (embedding model) ──
+  # 임베딩 사이드카 (SPEC-nexus-kure-embedding-swap §4.1). **기본으로 뜨지 않는다** —
+  # `--profile embed` 를 줘야 뜬다. 유닛이 순서대로 들어오는 동안 각 조각은 다음 것이 오기 전까지
+  # 비활성이어야 하고(§2), 2~3GB 이미지를 아무 이유 없이 모든 설치가 받게 할 이유도 없다.
+  nexus-embed:
+    build: ./embed_service
+    container_name: nexus-embed
+    profiles: ["embed"]
+    ports:
+      - "8080:8080"
+    environment:
+      EMBED_MODEL: KURE-v1
+      EMBED_CHECKPOINT: nlpai-lab/KURE-v1
+      # 리비전을 비워 두면 main 이 가리키는 무엇이든 받는다 — 같은 차원의 다른 체크포인트가
+      # 경고 없이 섞인다. 컷오버 전에 반드시 채운다 (§4.4).
+      EMBED_REVISION: ${EMBED_REVISION:-}
+      EMBED_DEVICE: cpu
+    volumes:
+      - nexus-hf-cache:/hf
+    healthcheck:
+      # 적재에 ~9초. ready:false 를 healthy 로 보면 앱이 준비 안 된 서비스에 요청을 던진다.
+      test: ["CMD-SHELL", "python -c \"import json,urllib.request,sys; sys.exit(0 if json.load(urllib.request.urlopen('http://localhost:8080/health'))['ready'] else 1)\""]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
   nexus-ollama:
     image: ollama/ollama
     container_name: nexus-ollama
@@ -138,6 +163,7 @@ services:
 
 volumes:
   nexus-db-data:
+  nexus-hf-cache:
   nexus-ollama-data:
   nexus-tempo-data:
   nexus-grafana-data:
