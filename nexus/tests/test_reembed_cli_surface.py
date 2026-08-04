@@ -18,12 +18,32 @@ from nexus.cli import app
 runner = CliRunner()
 
 
+def _options_of(command: str) -> set[str]:
+    """명령이 **실제로 받는** 옵션들. 렌더링된 `--help` 를 읽지 않는 이유는 실측이다: 터미널이
+    좁은 CI 에서 rich 가 `--all-tenants` 를 줄바꿈해 문자열 검사가 깨졌다. 계약은 파서에 있다.
+    """
+    import click
+    import typer.main
+
+    group = typer.main.get_command(app)
+    reembed = group.commands["reembed"]                      # type: ignore[attr-defined]
+    cmd = reembed.commands[command]                          # type: ignore[attr-defined]
+    return {opt for p in cmd.params if isinstance(p, click.Option) for opt in p.opts}
+
+
 @pytest.mark.parametrize("command", ["run", "status"])
 def test_both_commands_take_all_tenants(command):
     """범위를 손으로 세지 않는다는 약속은 두 명령 모두에 있어야 한다 — 절차가 둘 다 부른다."""
-    result = runner.invoke(app, ["reembed", command, "--help"])
-    assert result.exit_code == 0
-    assert "--all-tenants" in result.stdout
+    assert "--all-tenants" in _options_of(command)
+
+
+@pytest.mark.parametrize("command,expected", [
+    ("run", {"--column", "--model", "--backend", "--tenant", "--all-tenants"}),
+    ("status", {"--column", "--tenant", "--all-tenants"}),
+])
+def test_the_runbook_command_lines_parse(command, expected):
+    """런북과 SPEC 이 타이핑하는 옵션들 — 하나라도 없으면 컷오버 당일에 멈춘다."""
+    assert expected <= _options_of(command)
 
 
 @pytest.mark.parametrize("command", ["run", "status"])
