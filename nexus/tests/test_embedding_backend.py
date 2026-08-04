@@ -120,7 +120,12 @@ async def test_the_sidecar_path_sends_prefixed_text_and_returns_vectors(monkeypa
     assert len(out[0]) == 1024
     assert seen["url"].endswith("/embed")
     assert seen["texts"] == ["파드 개요"], "KURE 에는 지시문이 붙지 않아야 한다"
-    assert seen["timeout"] == svc.timeout
+    assert seen["timeout"] == svc.batch_timeout, (
+        "문서 임베딩은 배치 예산을 써야 한다 — 질의용 10초에 묶었더니 16건 배치가 전부 "
+        "ReadTimeout 났다 (2026-08-04)")
+
+    await svc.embed_query("질의")
+    assert seen["timeout"] == svc.timeout, "질의는 검색 지연을 지키는 짧은 예산을 써야 한다"
 
 
 @pytest.mark.asyncio

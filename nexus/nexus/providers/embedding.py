@@ -86,15 +86,20 @@ class EmbeddingService:
         # 지시문은 모델 정책이다 — 여기서 결정하고, 모순이면 기동을 막는다 (§4.3).
         self.document_prefix, self.query_prefix = resolve_prefixes(
             model, document_prefix, query_prefix)
-        # 타임아웃이 있어야 "느려짐" 이 "멈춤" 이 되지 않는다. 사이드카는 콜드스타트가 ~9초라
-        # 준비 전에는 503 을 주는데, 그걸 기다리며 검색을 붙잡고 있으면 안 된다 (§4.1, §5).
+        # **질의와 문서 배치는 다른 예산을 쓴다.** 질의 타임아웃은 검색 지연을 지키는 장치라
+        # 짧아야 하고, 문서 배치는 오프라인이라 길어야 한다. 하나로 묶었더니 16건 배치(≈35초)가
+        # 질의용 10초에 걸려 전부 ReadTimeout 났다 (2026-08-04 실측).
         self.timeout = timeout if timeout is not None else float(
             os.getenv("EMBEDDING_TIMEOUT", "10" if self.backend == "sidecar" else "60"))
+        self.batch_timeout = float(os.getenv("EMBEDDING_BATCH_TIMEOUT", "600"))
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """문서/chunk용 임베딩 생성. document_prefix 자동 적용."""
+        """문서/chunk용 임베딩 생성. document_prefix 자동 적용.
+
+        **배치 예산을 쓴다** — 문서 임베딩은 요청 경로가 아니라 적재/마이그레이션 경로다.
+        """
         prefixed = [f"{self.document_prefix}{t}" for t in texts]
-        return await self._embed_batch(prefixed)
+        return await self._embed_batch(prefixed, timeout=self.batch_timeout)
 
     async def embed_query(self, query: str) -> list[float]:
         """검색 쿼리용 임베딩 생성. query_prefix 자동 적용."""
@@ -102,24 +107,26 @@ class EmbeddingService:
         results = await self._embed_batch([prefixed])
         return results[0]
 
-    async def _embed_batch(self, texts: list[str]) -> list[list[float]]:
+    async def _embed_batch(self, texts: list[str], timeout: float | None = None) -> list[list[float]]:
         if self.backend == "sidecar":
-            return await self._embed_batch_sidecar(texts)
-        return await self._embed_batch_ollama(texts)
+            return await self._embed_batch_sidecar(texts, timeout)
+        return await self._embed_batch_ollama(texts, timeout)
 
-    async def _embed_batch_sidecar(self, texts: list[str]) -> list[list[float]]:
+    async def _embed_batch_sidecar(self, texts: list[str],
+                                   timeout: float | None = None) -> list[list[float]]:
         """사이드카 한 번 호출로 배치. 프리픽스는 이미 붙어서 들어온다."""
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=timeout or self.timeout) as client:
             resp = await client.post(f"{self.base_url}/embed", json={"texts": texts})
         if resp.status_code == 503:
             raise RuntimeError(f"임베딩 사이드카가 아직 준비되지 않았다: {resp.text[:200]}")
         resp.raise_for_status()
         return resp.json()["embeddings"]
 
-    async def _embed_batch_ollama(self, texts: list[str]) -> list[list[float]]:
+    async def _embed_batch_ollama(self, texts: list[str],
+                                  timeout: float | None = None) -> list[list[float]]:
         """Ollama API 배치 호출. retry 3회."""
         results = []
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=timeout or self.timeout) as client:
             for text in texts:
                 for attempt in range(3):
                     try:

@@ -442,6 +442,16 @@ def status() -> None:
                     models = ", ".join(g["model"] for g in eg["generations"])
                     typer.echo(f"⚠ 혼합 임베딩 세대 {eg['distinct']}종({models}) — 부분 재임베딩일 수 있음")
 
+            # 임베딩을 포기한 청크 — 벡터 검색에서 빠진 내용의 양이다
+            # (SPEC-nexus-kure-embedding-swap §4.5). 0 이 아니면 조용히 넘어가지 않는다.
+            from nexus.index.embed_health import fetch_waived_count
+            try:
+                waived = await fetch_waived_count()
+            except Exception:      # noqa: BLE001 — 마이그레이션 전이면 테이블이 없다
+                waived = 0
+            if waived:
+                typer.echo(f"⚠ 임베딩 포기(waived) 청크 {waived}건 — 벡터 검색에서 빠져 있음")
+
         try:
             row = await db.fetch_one(
                 """
@@ -750,6 +760,100 @@ def ingest_notion(
             raise typer.Exit(code=2)
         if dry_run:
             typer.echo("dry-run — DB 는 변경되지 않았습니다")
+
+
+def _asyncio_run(coro_fn):
+    """CLI 명령이 코루틴을 돌리는 공통 경로. Windows 는 Proactor 루프에서 asyncpg 가 안 돈다."""
+    import asyncio
+    import sys
+
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    return asyncio.run(coro_fn())
+
+
+reembed_app = typer.Typer(help="임베딩 세대 이전 (SPEC-nexus-kure-embedding-swap §4.4)")
+app.add_typer(reembed_app, name="reembed")
+
+
+@reembed_app.command("run")
+def reembed_run(
+    column: str = typer.Option("embedding_1024", "--column"),
+    model: str = typer.Option("KURE-v1", "--model"),
+    backend: str = typer.Option("sidecar", "--backend"),
+    batch_size: int = typer.Option(16, "--batch-size"),
+) -> None:
+    """NULL 인 것을 채운다. 중단해도 이어서 돈다 — 큐가 NULL 컬럼이기 때문이다."""
+    from nexus.index.reembed import counts, reembed
+    from nexus.index.vector_index import dimensions_of
+    from nexus.providers.embedding import EmbeddingService
+
+    async def _go():
+        svc = EmbeddingService(model=model, backend=backend, dimensions=dimensions_of(column))
+        before = await counts(column)
+        typer.echo(f"대상 {before['pending']}건 (활성 {before['active']} · 이미 {before['embedded']} "
+                   f"· waived {before['waived']})")
+        summary = await reembed(
+            svc, column, batch_size=batch_size,
+            progress=lambda s: typer.echo(f"  … {s.embedded}건", err=True))
+        typer.echo(summary.render())
+        return 0 if summary.ok else 1
+
+    raise typer.Exit(_run(_go()))
+
+
+@reembed_app.command("waive")
+def reembed_waive(
+    chunk_rid: str = typer.Argument(...),
+    reason: str = typer.Option(..., "--reason"),
+    by: str = typer.Option(..., "--by", help="서명 — 이 내용이 검색에서 빠지는 것을 인정하는 사람"),
+    model: str = typer.Option("KURE-v1", "--model"),
+) -> None:
+    """영구 실패 청크를 **사람이 서명해** 뺀다. 재임베딩 경로는 이걸 자동으로 만들지 않는다."""
+    from nexus.index.reembed import waive
+
+    async def _go():
+        await waive(chunk_rid, model, reason, by)
+        typer.echo(f"waived: {chunk_rid} (by {by}) — 이 청크는 벡터 검색에서 빠진다")
+        return 0
+
+    raise typer.Exit(_run(_go()))
+
+
+@reembed_app.command("create-index")
+def reembed_create_index(column: str = typer.Option("embedding_1024", "--column")) -> None:
+    """재임베딩이 **끝난 뒤** 행 수를 세어 ivfflat 인덱스를 만든다 (§4.2)."""
+    from nexus.index.reembed import create_index
+
+    async def _go():
+        rows, lists = await create_index(column)
+        typer.echo(f"인덱스 생성: {column} · 행 {rows} → lists={lists}")
+        return 0
+
+    raise typer.Exit(_run(_go()))
+
+
+@reembed_app.command("status")
+def reembed_status(column: str = typer.Option("embedding_1024", "--column")) -> None:
+    """컷오버 전제 조건 (§4.5). 막는 것이 있으면 **무엇이 막는지** 말한다."""
+    from nexus.index.reembed import counts, cutover_blockers, waived_rows
+
+    async def _go():
+        c = await counts(column)
+        typer.echo(f"[{column}] 활성 {c['active']} · 임베딩됨 {c['embedded']} · "
+                   f"waived {c['waived']} · 남은 {c['pending']}")
+        for w in await waived_rows():
+            typer.echo(f"  waived {w['chunk_rid']} ({w['waived_by']}): {w['reason'][:80]}")
+        blockers = await cutover_blockers(column)
+        if blockers:
+            typer.echo("\n컷오버 불가:")
+            for b in blockers:
+                typer.echo(f"  ✗ {b}")
+            return 1
+        typer.echo("\n✓ 컷오버 조건 충족 — ANN 측정(§4.6) 후 config 의 search.embedding_column 전환")
+        return 0
+
+    raise typer.Exit(_run(_go()))
 
 
 if __name__ == "__main__":
