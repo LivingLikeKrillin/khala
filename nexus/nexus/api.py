@@ -30,6 +30,7 @@ from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from nexus.otel.aggregator import run_otel_aggregation
 from nexus.otel.diff_engine import run_diff
+from nexus.index.vector_index import configured_column
 from nexus.providers.embedding import embedding_service_from_config
 from nexus.providers.llm import LLMService
 from nexus.repositories.graph import PostgresGraphRepository
@@ -80,11 +81,26 @@ async def lifespan(app: FastAPI):
     # 실패하는 대신 아예 뜨지 않아야 한다 (SPEC-nexus-embedding-cutover-seam §4.2).
     embedding_service_from_config(_load_config())
     await db.get_pool()
+    await _log_embedding_coverage()
     await _bootstrap_gazetteer()
     await db.ensure_search_log()   # ← 추가: 멱등, 기존 DB도 적재 시작
     await _sweep_orphaned_syncs()
     yield
     await db.close_pool()
+
+
+async def _log_embedding_coverage() -> None:
+    """설정된 세대의 커버리지를 기동 로그에 남긴다 — 빈 컬럼은 error, 부분은 warning.
+
+    거부하지 않는 이유는 `embed_health.log_embedding_coverage` 에 적혀 있다: NULL 벡터는 평범한
+    과도상태이고, 그걸 부팅 거부로 만들면 적재 사고가 배포 장애가 된다.
+    """
+    try:
+        from nexus.index.embed_health import log_embedding_coverage
+
+        await log_embedding_coverage(configured_column(_load_config()))
+    except Exception:  # noqa: BLE001 — 마이그레이션 전 DB 등. 부팅을 막지 않는다
+        pass
 
 
 async def _sweep_orphaned_syncs() -> None:
@@ -355,6 +371,9 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 "graph_findings": graph_findings,
                 "route_used": result.route_used,
                 "timing_ms": result.timing_ms,
+                # 죽은 다리는 호출자에게도 보여야 한다 — 로그에만 있으면 "건강해 보이는" 상태가
+                # 그대로다 (SPEC-nexus-embedding-cutover-seam §4.5).
+                "degraded": result.degraded,
             },
         )
     except UnknownRoute as e:
@@ -439,6 +458,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 "unverified_numbers": answer_result.unverified_numbers,
                 "usage": answer_result.usage,
                 "n_stale": answer_result.n_stale,
+                "degraded": search_result.degraded,
             },
         )
     except UnknownRoute as e:
@@ -828,6 +848,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     for p in packet.provenance
                 ],
                 "route_used": route,
+                # 근거와 같은 이벤트에 실린다 — 근거가 왜 이것뿐인지를 설명하는 사실이라
+                # 답변보다 먼저 도착해야 한다.
+                "degraded": search_result.degraded,
             }
             yield f"event: evidence\ndata: {json.dumps(evidence_data, ensure_ascii=False)}\n\n"
 
@@ -1027,12 +1050,36 @@ async def grade_authority_endpoint(
     )
 
 
+async def _embed_backend_health(svc) -> tuple[bool, str | None]:
+    """(붙는가, 리비전). **2초에 끊는다** — `/status` 는 사이드카가 뜨는 중일 때 읽는 화면이고,
+    그때 멈추면 진단 도구가 장애의 일부가 된다 (SPEC-nexus-embedding-cutover-seam §4.5).
+
+    리비전은 사이드카에만 있다. Ollama 경로에서는 `null` 이고, 그게 그 필드의 계약이다 —
+    은퇴하는 세대의 provenance 를 여기서 만들지 않는다.
+    """
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            if svc.backend == "sidecar":
+                resp = await client.get(f"{svc.base_url}/health")
+                if resp.status_code != 200:
+                    return False, None
+                body = resp.json()
+                return bool(body.get("ready")), body.get("revision")
+            resp = await client.get(f"{svc.base_url}/api/tags")
+            return resp.status_code == 200, None
+    except Exception:       # noqa: BLE001 — 못 붙는 것도 상태다
+        return False, None
+
+
 @app.get("/status", response_model=NexusResponse)
 async def status() -> NexusResponse:
     """시스템 상태 확인."""
     import httpx
     import os
 
+    config = _load_config()
     data: dict[str, Any] = {}
 
     # Auth posture — only the mode + anonymous flag (never origins/principals/hashes).
@@ -1054,6 +1101,20 @@ async def status() -> NexusResponse:
     except Exception:
         data["ollama_connected"] = False
 
+    # 임베딩 세대 — 지금 이 프로세스가 무엇으로·어디에 붙어 돌고 있는가
+    # (SPEC-nexus-embedding-cutover-seam §4.5). `ollama_connected` 는 뜻이 바뀌지 않는다:
+    # Ollama 의 접속 가능성이고, 그게 임베딩 백엔드인지와 무관하게 보고된다. **지금 쓰는 백엔드**가
+    # 살아 있는지는 아래 필드가 답한다 — 컷오버 뒤에도 옛 의존성만 보고하던 것이 §1.8 의 결함이다.
+    try:
+        _svc = embedding_service_from_config(config)
+        data["embedding_model"] = _svc.model
+        data["embedding_backend"] = _svc.backend
+        data["embedding_column"] = configured_column(config)
+        data["embedding_backend_connected"], data["embedding_revision"] = (
+            await _embed_backend_health(_svc))
+    except Exception as e:      # noqa: BLE001 — 상태 조회가 세대 불일치로 죽으면 진단이 안 된다
+        data["embedding_generation_error"] = str(e)
+
     # Tempo
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1066,6 +1127,14 @@ async def status() -> NexusResponse:
 
     # 통계
     if data["db_connected"]:
+        try:
+            # 세대 커버리지 — 집계 하나 + waiver 하나, 그 이상은 늘리지 않는다 (§2 의 경계).
+            from nexus.index.embed_health import fetch_coverage_by_tenant, fetch_waived_count
+
+            data["embedding_coverage"] = await fetch_coverage_by_tenant()
+            data["embedding_waived"] = await fetch_waived_count()
+        except Exception:  # noqa: BLE001 — 마이그레이션 전 DB 면 이 필드만 빠진다
+            pass
         try:
             data["documents_count"] = await db.fetch_val(
                 "SELECT COUNT(*) FROM documents WHERE status = 'active'"

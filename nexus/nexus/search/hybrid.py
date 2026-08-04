@@ -14,8 +14,12 @@ import structlog
 
 from nexus import db
 from nexus.index.bm25 import active_tokenizer, tokens_to_tsquery
-from nexus.index.vector_index import configured_column, resolve_column
-from nexus.providers.embedding import EmbeddingService
+from nexus.index.vector_index import (
+    UnknownVectorColumn,
+    configured_column,
+    resolve_column,
+)
+from nexus.providers.embedding import EmbeddingService, WrongVectorDimensions
 from nexus.repositories.graph import (
     EdgeResult,
     GraphRepository,
@@ -52,6 +56,10 @@ class SearchResult:
     graph: SubGraph | None = None
     route_used: str = ""
     timing_ms: dict = field(default_factory=dict)
+    #: 실패해서 결과에 기여하지 못한 다리들 (`LEGS` 의 부분집합).
+    #: **"아무것도 못 찾았다" 와 "죽었다" 는 다른 사실**이고, 그 둘이 구별되지 않는 것이
+    #: 이 코드베이스가 반복해서 찾아낸 결함이다. 호출자에게도 그대로 나간다.
+    degraded: list[str] = field(default_factory=list)
 
 
 async def _bm25_search(
@@ -104,11 +112,7 @@ async def _vector_search(
     롤백이 이 값 하나로 이뤄지므로, **화이트리스트를 통과한 이름만** SQL 에 닿는다.
     """
     col = resolve_column(column)
-    try:
-        query_embedding = await embedding_svc.embed_query(query)
-    except Exception as e:
-        logger.error("vector_search_embedding_failed", error=str(e))
-        return []
+    query_embedding = await embedding_svc.embed_query(query)
 
     vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
@@ -132,6 +136,64 @@ async def _vector_search(
     )
 
     return [(r["rid"], i + 1) for i, r in enumerate(rows)]
+
+
+#: 검색이 가진 다리들. `SearchResult.degraded` 에 들어갈 수 있는 값은 여기가 정본이다.
+LEGS = ("bm25", "vector", "graph")
+
+
+def degrades_the_leg(exc: BaseException) -> bool:
+    """이 실패는 **이 다리만** 죽이는가, 아니면 배포가 아픈가 (SPEC-nexus-embedding-cutover-seam §4.4).
+
+    `nexus/CLAUDE.md` 가 금지하는 것은 **죽은 DB 를 우회해 답하는 것**이지 한 다리의 degrade 가
+    아니다. 그 둘의 차이는 무엇이 없어졌느냐다: **DB 는 두 다리가 함께 서 있는 기반**이고,
+    임베딩 백엔드는 한 다리의 서버다. 기반이 없으면 어떤 답도 신뢰할 수 없으니 크게 실패해야 하고,
+    한 다리의 서버가 없으면 다른 다리의 답은 여전히 근거 위에 있다 — 더 나쁘지만, 나쁘다고 표시된다.
+
+    그래서 분류는 **좁게** 하고, 애매하면 503 으로 보낸다: 잘못된 503 은 보이는 장애지만 잘못된
+    degrade 는 조용히 나빠진 답이고, 이 코드베이스는 후자를 이미 두 번 치렀다(재적재마다 흔들리던
+    검색 순서, 상수 벡터를 읽은 ANN 측정).
+
+    degrade: `DataError` — 차원 불일치(SQLSTATE 22000)가 이 부류다. **이 질의의 벡터**의 성질이라
+    재시도로 낫지 않는다. 이 부류가 그 결함 하나보다 넓다는 것은 알고 있고(벡터 다리의 질의 조립
+    버그도 여기로 온다), 그래서 error 레벨로 SQLSTATE 와 함께 남긴다 — 조립 버그는 테스트와 로그가
+    잡고, 살아 있는 500 은 사용자가 잡는다.
+    """
+    import asyncpg
+
+    return isinstance(exc, asyncpg.exceptions.DataError)
+
+
+async def _vector_leg(
+    query: str,
+    embedding_svc: EmbeddingService,
+    tenant: str,
+    clearance: str,
+    top_k: int,
+    column: str | None,
+) -> tuple[list[tuple[str, int]], bool]:
+    """(결과, degraded). **빈 결과와 죽은 다리를 구분해서 돌려준다.**
+
+    예전엔 임베딩 실패를 조용히 삼켜 빈 리스트를 냈고 SQL 실패는 500 으로 나갔다 — 둘 다 틀렸다.
+    """
+    try:
+        return await _vector_search(query, embedding_svc, tenant, clearance, top_k, column), False
+    except Exception as e:                      # noqa: BLE001 — 분류가 이 함수의 일이다
+        if isinstance(e, (UnknownVectorColumn,)):
+            raise                               # 설정 오타는 우리 잘못이고, 조용히 degrade 할 수 없다
+        if _is_embedding_failure(e) or degrades_the_leg(e):
+            logger.error("vector_leg_degraded", column=resolve_column(column),
+                         error_type=type(e).__name__,
+                         sqlstate=getattr(e, "sqlstate", None), error=str(e)[:200])
+            return [], True
+        raise
+
+
+def _is_embedding_failure(exc: BaseException) -> bool:
+    """임베딩 백엔드 쪽 실패인가 — 사이드카가 안 떠 있거나(503), 준비 중이거나, 못 붙거나."""
+    import httpx
+
+    return isinstance(exc, (httpx.HTTPError, RuntimeError, WrongVectorDimensions))
 
 
 class UnknownRoute(ValueError):
@@ -375,13 +437,15 @@ async def hybrid_search(
     # route_used='vector_only' 라 보고하지는 않는다 — 빈 결과가 정직하다.
     if use_vector and embedding_svc:
         tasks["vector"] = asyncio.create_task(
-            _vector_search(query, embedding_svc, tenant, clearance, vector_top_k,
-                           column=configured_column(cfg)))
+            _vector_leg(query, embedding_svc, tenant, clearance, vector_top_k,
+                        column=configured_column(cfg)))
 
     if tasks:
         done = dict(zip(tasks, await asyncio.gather(*tasks.values())))
         bm25_results = done.get("bm25", [])
-        vector_results = done.get("vector", [])
+        vector_results, vector_degraded = done.get("vector", ([], False))
+        if vector_degraded:
+            result.degraded.append("vector")
 
     bm25_ms = int((time.time() - start) * 1000)
 

@@ -218,14 +218,18 @@ async def _run_vector_indexing(tenant: str, config: dict | None = None) -> int:
     다른 세대를 쓰게 된다 (SPEC-nexus-embedding-cutover-seam §4.1).
     """
     from nexus.index.embed import index_chunks_embedding
+    from nexus.index.vector_index import configured_column
     from nexus.models.chunk import Chunk
     from nexus.providers.embedding import embedding_service_from_config
 
+    # 큐도 **설정된 세대의 컬럼**이어야 한다. 옛 컬럼의 NULL 을 세면 컷오버 뒤에는 채워야 할
+    # 청크를 하나도 못 찾는다 (§4.3).
+    col = configured_column(config)
     rows = await db.fetch_all(
-        """
+        f"""
         SELECT rid, section_path, chunk_text, context_prefix
         FROM chunks
-        WHERE status = 'active' AND tenant = $1 AND embedding IS NULL
+        WHERE status = 'active' AND tenant = $1 AND {col} IS NULL
         """,
         tenant,
     )
@@ -245,7 +249,7 @@ async def _run_vector_indexing(tenant: str, config: dict | None = None) -> int:
 
     try:
         svc = embedding_service_from_config(config)
-        return await index_chunks_embedding(chunks, svc)
+        return await index_chunks_embedding(chunks, svc, column=col)
     except Exception as e:
         logger.error("vector_indexing_failed", error=str(e))
         return 0
