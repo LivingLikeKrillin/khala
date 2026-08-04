@@ -782,6 +782,7 @@ def reembed_run(
     model: str = typer.Option("KURE-v1", "--model"),
     backend: str = typer.Option("sidecar", "--backend"),
     batch_size: int = typer.Option(16, "--batch-size"),
+    tenant: str = typer.Option(None, "--tenant", help="비우면 전 테넌트 — 범위는 명시적 선택이다"),
 ) -> None:
     """NULL 인 것을 채운다. 중단해도 이어서 돈다 — 큐가 NULL 컬럼이기 때문이다."""
     from nexus.index.reembed import counts, reembed
@@ -790,11 +791,11 @@ def reembed_run(
 
     async def _go():
         svc = EmbeddingService(model=model, backend=backend, dimensions=dimensions_of(column))
-        before = await counts(column)
+        before = await counts(column, tenant)
         typer.echo(f"대상 {before['pending']}건 (활성 {before['active']} · 이미 {before['embedded']} "
                    f"· waived {before['waived']})")
         summary = await reembed(
-            svc, column, batch_size=batch_size,
+            svc, column, batch_size=batch_size, tenant=tenant,
             progress=lambda s: typer.echo(f"  … {s.embedded}건", err=True))
         typer.echo(summary.render())
         return 0 if summary.ok else 1
@@ -834,17 +835,18 @@ def reembed_create_index(column: str = typer.Option("embedding_1024", "--column"
 
 
 @reembed_app.command("status")
-def reembed_status(column: str = typer.Option("embedding_1024", "--column")) -> None:
+def reembed_status(column: str = typer.Option("embedding_1024", "--column"),
+                   tenant: str = typer.Option(None, "--tenant")) -> None:
     """컷오버 전제 조건 (§4.5). 막는 것이 있으면 **무엇이 막는지** 말한다."""
     from nexus.index.reembed import counts, cutover_blockers, waived_rows
 
     async def _go():
-        c = await counts(column)
+        c = await counts(column, tenant)
         typer.echo(f"[{column}] 활성 {c['active']} · 임베딩됨 {c['embedded']} · "
                    f"waived {c['waived']} · 남은 {c['pending']}")
         for w in await waived_rows():
             typer.echo(f"  waived {w['chunk_rid']} ({w['waived_by']}): {w['reason'][:80]}")
-        blockers = await cutover_blockers(column)
+        blockers = await cutover_blockers(column, tenant=tenant)
         if blockers:
             typer.echo("\n컷오버 불가:")
             for b in blockers:

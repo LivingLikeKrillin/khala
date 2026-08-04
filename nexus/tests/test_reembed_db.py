@@ -35,16 +35,40 @@ pytestmark = [
     pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"), reason="NEXUS_TEST_DB_URL 필요"),
 ]
 
+
+async def reembed_here(*args, **kwargs):
+    """**항상 이 테스트의 테넌트로만** 재임베딩한다.
+
+    범위 없이 부르면 같은 DB 의 다른 테넌트까지 상수 벡터로 덮어쓴다 — 실제로 그렇게 평가 코퍼스
+    1,906건이 날아갔고, 그 위에서 돌린 ANN 측정이 잘못된 결론을 냈다(2026-08-04).
+    """
+    kwargs.setdefault("tenant", _TENANT)
+    return await reembed(*args, **kwargs)
+
 _TENANT = "reembed_test"
 _COLUMN = "embedding_1024"
 _DIM = 1024
 
 
-class _Svc:
-    """실패를 주문할 수 있는 가짜 임베딩 서비스."""
+def _vec_for(text: str, dim: int = _DIM) -> list[float]:
+    """텍스트마다 **다른** 벡터. 상수 벡터를 돌려주는 가짜는 정렬 어긋남을 원리적으로 못 잡는다 —
+    실제로 못 잡아서 뒤섞인 벡터가 프로덕션 컬럼에 들어갔다(2026-08-04)."""
+    import hashlib
+    import math
+    import random
 
-    def __init__(self, fail_on: set[str] | None = None, dim: int = _DIM):
+    rng = random.Random(hashlib.sha256(text.encode("utf-8")).digest())
+    v = [rng.gauss(0, 1) for _ in range(dim)]
+    norm = math.sqrt(sum(x * x for x in v)) or 1.0
+    return [x / norm for x in v]
+
+
+class _Svc:
+    """실패를 주문할 수 있는 가짜 임베딩 서비스. **벡터는 텍스트에서 결정된다.**"""
+
+    def __init__(self, fail_on: set[str] | None = None, dim: int = _DIM, shuffle: bool = False):
         self.fail_on, self.dim, self.calls = fail_on or set(), dim, 0
+        self.shuffle = shuffle          # 정렬 어긋남을 일부러 만들어 테스트가 잡는지 본다
 
     def get_model_name(self) -> str:
         return "KURE-v1"
@@ -55,7 +79,9 @@ class _Svc:
         for text in texts:
             if any(mark in text for mark in self.fail_on):
                 raise RuntimeError(f"임베딩 거부: {text[:20]}")
-            out.append([0.01] * self.dim)
+            out.append(_vec_for(text, self.dim))
+        if self.shuffle and len(out) > 1:
+            out = out[1:] + out[:1]
         return out
 
 
@@ -103,7 +129,7 @@ async def corpus(db_pool):
 async def test_it_fills_the_null_column_and_records_the_generation(corpus):
     from nexus import db
 
-    summary = await reembed(_Svc(), _COLUMN, batch_size=2)
+    summary = await reembed_here(_Svc(), _COLUMN, batch_size=2)
     assert summary.embedded == 5 and summary.ok
 
     n = await db.fetch_val(
@@ -114,9 +140,55 @@ async def test_it_fills_the_null_column_and_records_the_generation(corpus):
     assert models == 1, "세대가 섞이면 컷오버 조건이 잡는다"
 
 
+async def test_each_chunk_gets_the_vector_of_its_own_text(corpus):
+    """**정렬이 어긋나면 검색은 조용히 무의미해진다.** 상수 벡터를 돌려주는 가짜로는 못 잡는다 —
+    실제로 못 잡아서 뒤섞인 벡터가 컬럼에 들어갔고, ANN 측정이 그 뒤섞임을 인덱스 탓으로 읽었다.
+    """
+    from nexus import db
+    from nexus.utils import get_search_text
+
+    await reembed_here(_Svc(), _COLUMN, batch_size=3)
+
+    class _C:
+        def __init__(self, text, section):
+            self.chunk_text, self.section_path, self.context_prefix = text, section, None
+
+    rows = await db.fetch_all(
+        f"SELECT rid, chunk_text, section_path, {_COLUMN}::text AS vec "
+        "FROM chunks WHERE tenant=$1", _TENANT)
+    for r in rows:
+        expected = _vec_for(get_search_text(_C(r["chunk_text"], r["section_path"])))
+        stored = [float(x) for x in r["vec"].strip("[]").split(",")]
+        assert max(abs(a - b) for a, b in zip(expected, stored, strict=True)) < 1e-6, (
+            f"{r['rid']} 에 다른 텍스트의 벡터가 들어갔다")
+
+
+async def test_the_alignment_check_can_fail(corpus):
+    """위 단언이 실제로 무는지 — 백엔드가 순서를 한 칸 밀면 잡혀야 한다."""
+    from nexus import db
+    from nexus.utils import get_search_text
+
+    await reembed_here(_Svc(shuffle=True), _COLUMN, batch_size=5)
+
+    class _C:
+        def __init__(self, text, section):
+            self.chunk_text, self.section_path, self.context_prefix = text, section, None
+
+    rows = await db.fetch_all(
+        f"SELECT rid, chunk_text, section_path, {_COLUMN}::text AS vec "
+        "FROM chunks WHERE tenant=$1", _TENANT)
+    mismatches = 0
+    for r in rows:
+        expected = _vec_for(get_search_text(_C(r["chunk_text"], r["section_path"])))
+        stored = [float(x) for x in r["vec"].strip("[]").split(",")]
+        if max(abs(a - b) for a, b in zip(expected, stored, strict=True)) >= 1e-6:
+            mismatches += 1
+    assert mismatches > 0, "정렬 어긋남을 만들었는데 검사가 통과한다면 그 검사는 이빨이 없다"
+
+
 async def test_a_failure_is_counted_and_named_not_left_as_a_silent_null(corpus):
     """이 작업이 찾아낸 결함의 형태 그대로 — 실패가 NULL 로만 남으면 아무도 모른다."""
-    summary = await reembed(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
+    summary = await reembed_here(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
 
     assert summary.embedded == 4
     assert len(summary.failed) == 1
@@ -128,23 +200,86 @@ async def test_a_failure_is_counted_and_named_not_left_as_a_silent_null(corpus):
 
 async def test_one_bad_chunk_does_not_block_the_rest_of_its_batch(corpus):
     """배치가 통째로 실패하면 개별로 다시 시도한다 — 한 청크가 나머지를 막으면 안 된다."""
-    summary = await reembed(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
+    summary = await reembed_here(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
     assert summary.embedded == 4, "같은 배치의 나머지 4건이 저장돼야 한다"
 
 
 async def test_it_resumes_where_it_stopped(corpus):
     """큐가 NULL 컬럼이라 재개 상태를 따로 들지 않는다."""
-    first = await reembed(_Svc(), _COLUMN, batch_size=2)
+    first = await reembed_here(_Svc(), _COLUMN, batch_size=2)
     assert first.embedded == 5
 
-    again = await reembed(_Svc(), _COLUMN, batch_size=2)
+    again = await reembed_here(_Svc(), _COLUMN, batch_size=2)
     assert again.embedded == 0, "이미 채워진 것을 다시 임베딩하면 재개가 아니라 낭비다"
 
 
 async def test_a_wrong_dimension_is_refused_rather_than_stored(corpus):
-    summary = await reembed(_Svc(dim=768), _COLUMN, batch_size=5)
+    summary = await reembed_here(_Svc(dim=768), _COLUMN, batch_size=5)
     assert summary.embedded == 0
     assert all("차원" in f.reason for f in summary.failed)
+
+
+async def test_a_scoped_run_never_touches_another_tenant(corpus, db_pool):
+    """**이 테스트가 없어서 평가 코퍼스가 날아갔다.**
+
+    범위 없는 재임베딩이 같은 DB 의 다른 테넌트를 상수 벡터로 덮어썼고, 그 위에서 돌린 ANN 측정이
+    인덱스를 탓하는 잘못된 결론을 냈다(2026-08-04). 파괴 범위가 선언되지 않으면 언젠가 넘친다 —
+    `_disposable_test_db` 가 지키는 것과 같은 종류의 경계다.
+    """
+    from nexus import db
+    from nexus.rid import chunk_rid, doc_rid
+
+    other = "reembed_bystander"
+    async with db_pool.acquire() as con:
+        await con.execute("DELETE FROM chunks WHERE tenant=$1", other)
+        await con.execute("DELETE FROM documents WHERE tenant=$1", other)
+        uri = f"{other}:x.md"
+        drid = doc_rid(uri)
+        await con.execute(
+            "INSERT INTO documents (rid,tenant,source_uri,hash,content_hash,title,status) "
+            "VALUES ($1,$2,$3,'h','h','x','active')", drid, other, uri)
+        await con.execute(
+            "INSERT INTO chunks (rid,tenant,source_uri,doc_rid,chunk_text,section_path,"
+            "chunk_index,status,hash) VALUES ($1,$2,$3,$4,'남의 테넌트 본문','root',0,'active','h')",
+            chunk_rid(drid, "root", 0), other, uri, drid)
+
+    await reembed_here(_Svc(), _COLUMN, batch_size=5)          # 이 테스트의 테넌트로만
+
+    n = await db.fetch_val(
+        f"SELECT count(*) FROM chunks WHERE tenant=$1 AND {_COLUMN} IS NOT NULL", other)
+    async with db_pool.acquire() as con:
+        await con.execute("DELETE FROM chunks WHERE tenant=$1", other)
+        await con.execute("DELETE FROM documents WHERE tenant=$1", other)
+    assert n == 0, "범위를 준 실행이 다른 테넌트의 벡터를 건드렸다"
+
+
+async def test_an_unscoped_run_reaches_every_tenant_and_that_is_a_choice(corpus, db_pool):
+    """전 테넌트 실행은 **마이그레이션의 정상 사용**이다. 다만 그것이 선택임을 여기서 못박는다."""
+    from nexus import db
+    from nexus.rid import chunk_rid, doc_rid
+
+    other = "reembed_bystander2"
+    async with db_pool.acquire() as con:
+        await con.execute("DELETE FROM chunks WHERE tenant=$1", other)
+        await con.execute("DELETE FROM documents WHERE tenant=$1", other)
+        uri = f"{other}:x.md"
+        drid = doc_rid(uri)
+        await con.execute(
+            "INSERT INTO documents (rid,tenant,source_uri,hash,content_hash,title,status) "
+            "VALUES ($1,$2,$3,'h','h','x','active')", drid, other, uri)
+        await con.execute(
+            "INSERT INTO chunks (rid,tenant,source_uri,doc_rid,chunk_text,section_path,"
+            "chunk_index,status,hash) VALUES ($1,$2,$3,$4,'남의 테넌트 본문','root',0,'active','h')",
+            chunk_rid(drid, "root", 0), other, uri, drid)
+
+    await reembed(_Svc(), _COLUMN, batch_size=5, tenant=other)   # 명시적으로 그 테넌트
+
+    n = await db.fetch_val(
+        f"SELECT count(*) FROM chunks WHERE tenant=$1 AND {_COLUMN} IS NOT NULL", other)
+    async with db_pool.acquire() as con:
+        await con.execute("DELETE FROM chunks WHERE tenant=$1", other)
+        await con.execute("DELETE FROM documents WHERE tenant=$1", other)
+    assert n == 1
 
 
 # ── waiver ───────────────────────────────────────────────────────────────────
@@ -152,7 +287,7 @@ async def test_a_wrong_dimension_is_refused_rather_than_stored(corpus):
 
 async def test_the_reembed_path_never_creates_a_waiver(corpus):
     """자동으로 빼면 그건 '조용히 사라짐' 이다. 사람이 서명해야 생긴다 (§4.5)."""
-    await reembed(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
+    await reembed_here(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
     assert await waived_rows() == []
 
 
@@ -164,11 +299,11 @@ async def test_a_waiver_needs_a_reason_and_a_signature(corpus):
 
 
 async def test_a_waived_chunk_leaves_the_queue_but_stays_on_the_record(corpus):
-    await reembed(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
+    await reembed_here(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
     await waive(corpus["bad"], "KURE-v1", "8k 토큰 초과, 분할 불가", "LivingLikeKrillin")
 
-    assert corpus["bad"] not in [r for r, _, _ in await pending_rids(_COLUMN, 100)]
-    c = await counts(_COLUMN)
+    assert corpus["bad"] not in [r for r, _, _ in await pending_rids(_COLUMN, 100, tenant=_TENANT)]
+    c = await counts(_COLUMN, _TENANT)
     assert c["waived"] == 1 and c["pending"] == 0
     row = (await waived_rows())[0]
     assert row["waived_by"] == "LivingLikeKrillin" and "8k" in row["reason"]
@@ -178,25 +313,25 @@ async def test_a_waived_chunk_leaves_the_queue_but_stays_on_the_record(corpus):
 
 
 async def test_pending_chunks_block_the_cutover(corpus):
-    blockers = await cutover_blockers(_COLUMN)
+    blockers = await cutover_blockers(_COLUMN, tenant=_TENANT)
     assert any("임베딩도 waiver 도 없는" in b for b in blockers)
 
 
 async def test_a_missing_index_blocks_the_cutover(corpus):
-    await reembed(_Svc(), _COLUMN, batch_size=5)
-    blockers = await cutover_blockers(_COLUMN)
+    await reembed_here(_Svc(), _COLUMN, batch_size=5)
+    blockers = await cutover_blockers(_COLUMN, tenant=_TENANT)
     assert any("인덱스가 없다" in b for b in blockers)
 
 
 async def test_unwaived_failures_block_the_cutover(corpus):
-    await reembed(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
-    blockers = await cutover_blockers(_COLUMN, summary_failures=1)
+    await reembed_here(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
+    blockers = await cutover_blockers(_COLUMN, summary_failures=1, tenant=_TENANT)
     assert any("waive 되지 않은 실패" in b for b in blockers)
 
 
 async def test_the_index_is_sized_from_the_row_count_at_creation_time(corpus, db_pool):
     """반쯤 찬 컬럼으로 사이징하면 존재한 적 없는 코퍼스에 맞춰진다 (§4.2)."""
-    await reembed(_Svc(), _COLUMN, batch_size=5)
+    await reembed_here(_Svc(), _COLUMN, batch_size=5)
     rows, lists = await create_index(_COLUMN)
     assert rows >= 5
     assert lists == max(1, min(rows // 1000, 2000))
