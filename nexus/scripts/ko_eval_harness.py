@@ -233,6 +233,73 @@ async def run_keyword_leg(labels: dict, tenant: str, chunk_doc: dict[str, str],
     return result
 
 
+RRF_K = 60      # config.yaml `search.rrf_k` 기본값. 융합은 프로덕션 함수를 그대로 부른다.
+
+
+async def run_legs(labels: dict, tenant: str, chunk_doc: dict[str, str],
+                   vector_search=None, top_k: int = 20) -> dict[str, LegResult]:
+    """키워드·벡터·융합 다리를 한 번에 돌린다 (SPEC-nexus-korean-embedding-comparison §8 Unit 2).
+
+    **융합은 프로덕션 `_rrf_fusion` 을 그대로 부른다.** 평가용으로 다시 구현하면 fused 숫자가
+    사용자가 겪는 것과 다른 뜻이 되고, 그건 "사용자가 보는 결과" 를 재겠다는 이 다리의 존재
+    이유를 지운다.
+
+    `vector_search` 는 `(query_text) -> list[(chunk_rid, rank)]` 코루틴. 없으면 키워드만 돈다.
+    """
+    from nexus.search import hybrid
+
+    legs = {"keyword": LegResult(leg="keyword")}
+    if vector_search is not None:
+        legs["vector"] = LegResult(leg="vector")
+        legs["fused"] = LegResult(leg="fused")
+
+    for q in labels["queries"]:
+        if not q.get("answerable"):
+            continue
+        kw = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", top_k)
+        legs["keyword"].scores.append(
+            score_query(q["id"], collapse_to_documents(kw, chunk_doc), q["gold"]))
+
+        if vector_search is None:
+            continue
+        vec = await vector_search(q["query"])
+        legs["vector"].scores.append(
+            score_query(q["id"], collapse_to_documents(vec, chunk_doc), q["gold"]))
+
+        fused_rows = hybrid._rrf_fusion(kw, vec, k=RRF_K)
+        fused = [(row["rid"], i + 1) for i, row in enumerate(fused_rows)]
+        legs["fused"].scores.append(
+            score_query(q["id"], collapse_to_documents(fused, chunk_doc), q["gold"]))
+
+    return legs
+
+
+async def leg_top_documents(labels: dict, tenant: str, chunk_doc: dict[str, str],
+                            vector_search=None, top_k: int = 20,
+                            depth: int = METRIC_K) -> dict[str, dict[str, list[str]]]:
+    """풀 판정용 — **다리별** 질의별 상위 문서. 융합도 다리다 (§4.5): RRF 가 11~20위를 top-10 으로
+    끌어올릴 수 있어서, 융합을 빼고 판정하면 그 문서는 무판정으로 비관련 처리된다."""
+    from nexus.search import hybrid
+
+    out: dict[str, dict[str, list[str]]] = {"keyword": {}}
+    if vector_search is not None:
+        out["vector"], out["fused"] = {}, {}
+
+    for q in labels["queries"]:
+        if not q.get("answerable"):
+            continue
+        kw = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", top_k)
+        out["keyword"][q["id"]] = collapse_to_documents(kw, chunk_doc, limit=depth)
+        if vector_search is None:
+            continue
+        vec = await vector_search(q["query"])
+        out["vector"][q["id"]] = collapse_to_documents(vec, chunk_doc, limit=depth)
+        fused_rows = hybrid._rrf_fusion(kw, vec, k=RRF_K)
+        out["fused"][q["id"]] = collapse_to_documents(
+            [(r["rid"], i + 1) for i, r in enumerate(fused_rows)], chunk_doc, limit=depth)
+    return out
+
+
 async def top_documents(query: str, tenant: str, chunk_doc: dict[str, str],
                         top_k: int = 20, depth: int = METRIC_K) -> list[str]:
     """풀 판정용 — 한 질의의 상위 문서 목록 (§4.2 의 풀 깊이는 지표 깊이와 같다)."""
