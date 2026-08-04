@@ -211,11 +211,15 @@ async def _run_bm25_indexing(tenant: str) -> int:
     return count
 
 
-async def _run_vector_indexing(tenant: str) -> int:
-    """저장된 청크에 Vector 임베딩 생성."""
+async def _run_vector_indexing(tenant: str, config: dict | None = None) -> int:
+    """저장된 청크에 Vector 임베딩 생성.
+
+    세대(모델·백엔드·컬럼)는 팩토리가 정한다 — 여기서 `EmbeddingService()` 를 직접 만들면 적재만
+    다른 세대를 쓰게 된다 (SPEC-nexus-embedding-cutover-seam §4.1).
+    """
     from nexus.index.embed import index_chunks_embedding
     from nexus.models.chunk import Chunk
-    from nexus.providers.embedding import EmbeddingService
+    from nexus.providers.embedding import embedding_service_from_config
 
     rows = await db.fetch_all(
         """
@@ -240,7 +244,7 @@ async def _run_vector_indexing(tenant: str) -> int:
         chunks.append((r["rid"], chunk))
 
     try:
-        svc = EmbeddingService()
+        svc = embedding_service_from_config(config)
         return await index_chunks_embedding(chunks, svc)
     except Exception as e:
         logger.error("vector_indexing_failed", error=str(e))
@@ -358,7 +362,7 @@ async def run_ingest(
             logger.error("bm25_indexing_failed", error=str(e))
 
         try:
-            result.vector_indexed = await _run_vector_indexing(tenant)
+            result.vector_indexed = await _run_vector_indexing(tenant, config)
             logger.info("vector_indexing_complete", count=result.vector_indexed)
         except Exception as e:
             result.errors.append({"file_path": "*", "error": str(e), "stage": "embed"})

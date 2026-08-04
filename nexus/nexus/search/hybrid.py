@@ -14,7 +14,7 @@ import structlog
 
 from nexus import db
 from nexus.index.bm25 import active_tokenizer, tokens_to_tsquery
-from nexus.index.vector_index import resolve_column
+from nexus.index.vector_index import configured_column, resolve_column
 from nexus.providers.embedding import EmbeddingService
 from nexus.repositories.graph import (
     EdgeResult,
@@ -376,7 +376,7 @@ async def hybrid_search(
     if use_vector and embedding_svc:
         tasks["vector"] = asyncio.create_task(
             _vector_search(query, embedding_svc, tenant, clearance, vector_top_k,
-                           column=search_cfg.get("embedding_column")))
+                           column=configured_column(cfg)))
 
     if tasks:
         done = dict(zip(tasks, await asyncio.gather(*tasks.values())))

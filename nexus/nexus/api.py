@@ -30,7 +30,7 @@ from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from nexus.otel.aggregator import run_otel_aggregation
 from nexus.otel.diff_engine import run_diff
-from nexus.providers.embedding import EmbeddingService
+from nexus.providers.embedding import embedding_service_from_config
 from nexus.providers.llm import LLMService
 from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
@@ -76,6 +76,9 @@ async def _bootstrap_gazetteer() -> None:
 async def lifespan(app: FastAPI):
     # Fail fast: refuse to boot enforced with placeholder credentials.
     AuthConfig.from_dict(_load_config()).validate_startup()
+    # 같은 이유로 임베딩 세대도 여기서 한 번 세운다: 모델·컬럼·백엔드가 어긋난 배포는 **요청마다**
+    # 실패하는 대신 아예 뜨지 않아야 한다 (SPEC-nexus-embedding-cutover-seam §4.2).
+    embedding_service_from_config(_load_config())
     await db.get_pool()
     await _bootstrap_gazetteer()
     await db.ensure_search_log()   # ← 추가: 멱등, 기존 DB도 적재 시작
@@ -282,7 +285,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
     try:
         _t0 = time.time()
         config = _load_config()
-        embedding_svc = EmbeddingService()
+        embedding_svc = embedding_service_from_config(config)
         pool = await db.get_pool()
         graph_repo = PostgresGraphRepository(pool)
 
@@ -375,7 +378,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
     try:
         _t0 = time.time()
         config = _load_config()
-        embedding_svc = EmbeddingService()
+        embedding_svc = embedding_service_from_config(config)
         llm_svc = LLMService()
         pool = await db.get_pool()
         graph_repo = PostgresGraphRepository(pool)
@@ -767,7 +770,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
 
         try:
             config = _load_config()
-            embedding_svc = EmbeddingService()
+            embedding_svc = embedding_service_from_config(config)
             llm_svc = LLMService()
             pool = await db.get_pool()
             graph_repo = PostgresGraphRepository(pool)
