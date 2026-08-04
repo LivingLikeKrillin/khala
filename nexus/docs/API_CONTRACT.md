@@ -80,6 +80,9 @@ class SearchResponse(BaseModel):
     graph_findings: GraphFinding | None  # include_graph=true일 때
     route_used: str                     # 실제 사용된 route
     timing_ms: float                    # 전체 소요 시간
+    degraded: list[str]                 # 실패해서 기여하지 못한 다리 ("bm25"|"vector"|"graph")
+                                        # 빈 결과와 죽은 다리는 다른 사실이다
+                                        # (SPEC-nexus-embedding-cutover-seam §4.4)
 ```
 
 ### 에러 케이스
@@ -111,6 +114,7 @@ class AnswerResponse(BaseModel):
     provenance: list[ProvenanceRef]     # 사용자가 검증할 수 있는 출처
     route_used: str
     timing_ms: float
+    degraded: list[str]                 # 검색 단계에서 죽은 다리 (SearchResponse 와 같은 뜻)
 
 class EvidenceSnippet(BaseModel):
     chunk_rid: str
@@ -312,8 +316,16 @@ class OtelAggregateResponse(BaseModel):
 ```python
 class StatusResponse(BaseModel):
     db_connected: bool
-    ollama_connected: bool
+    ollama_connected: bool              # Ollama 의 접속 가능성. 임베딩 백엔드인지와 무관하다
     tempo_connected: bool
+    # 임베딩 세대 — 이 프로세스가 무엇으로·어디에 붙어 도는가 (SPEC-nexus-embedding-cutover-seam §4.5)
+    embedding_model: str                # 예: nomic-embed-text | KURE-v1
+    embedding_backend: str              # ollama | sidecar
+    embedding_column: str               # embedding | embedding_1024
+    embedding_backend_connected: bool   # **지금 쓰는** 백엔드가 사는가 (2초 타임아웃)
+    embedding_revision: str | None      # 사이드카의 핀. Ollama 경로에서는 null
+    embedding_coverage: list[dict]      # 테넌트별 {tenant, active, embedding, embedding_1024}
+    embedding_waived: int               # 사람이 서명해 벡터 검색에서 뺀 청크 수
     documents_count: int
     chunks_count: int
     entities_count: int
@@ -343,7 +355,7 @@ SearchRequest와 동일한 AnswerRequest 사용.
 
 | Event | Payload | 전송 시점 |
 |-------|---------|-----------|
-| `evidence` | `{evidence_snippets, provenance, route_used}` | 검색 완료 직후 |
+| `evidence` | `{evidence_snippets, provenance, route_used, degraded}` | 검색 완료 직후 |
 | `graph` | `{center, designed_edges, observed_edges}` | 그래프 조회 완료 시 |
 | `answer_delta` | `{text}` | LLM 스트리밍 중 (incremental) |
 | `done` | `{timing_ms}` | 완료 |
