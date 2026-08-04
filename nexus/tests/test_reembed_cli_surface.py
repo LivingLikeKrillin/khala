@@ -18,32 +18,35 @@ from nexus.cli import app
 runner = CliRunner()
 
 
-def _options_of(command: str) -> set[str]:
-    """명령이 **실제로 받는** 옵션들. 렌더링된 `--help` 를 읽지 않는 이유는 실측이다: 터미널이
-    좁은 CI 에서 rich 가 `--all-tenants` 를 줄바꿈해 문자열 검사가 깨졌다. 계약은 파서에 있다.
-    """
-    import click
-    import typer.main
+def _rejects(command: str, argv: list[str]) -> str:
+    """명령을 실제로 파싱시켜 본다. 도움말 렌더링을 읽지 않는 이유는 실측이다: 좁은 CI 터미널에서
+    rich 가 옵션 목록을 잘라 문자열 검사가 깨졌고, 파서 내부 구조는 click/typer 버전에 따라 달랐다.
 
-    group = typer.main.get_command(app)
-    reembed = group.commands["reembed"]                      # type: ignore[attr-defined]
-    cmd = reembed.commands[command]                          # type: ignore[attr-defined]
-    return {opt for p in cmd.params if isinstance(p, click.Option) for opt in p.opts}
+    **행동은 둘 다에 안 흔들린다**: 옵션이 없으면 click 이 `No such option` 으로 죽고, 있으면
+    우리 자신의 거부 메시지가 나온다. 둘의 차이가 곧 "그 옵션이 존재하는가" 다.
+    """
+    result = runner.invoke(app, ["reembed", command, *argv])
+    return result.stdout + str(result.stderr or "")
 
 
 @pytest.mark.parametrize("command", ["run", "status"])
 def test_both_commands_take_all_tenants(command):
-    """범위를 손으로 세지 않는다는 약속은 두 명령 모두에 있어야 한다 — 절차가 둘 다 부른다."""
-    assert "--all-tenants" in _options_of(command)
+    """범위를 손으로 세지 않는다는 약속은 두 명령 모두에 있어야 한다 — 런북이 둘 다 부른다."""
+    output = _rejects(command, ["--tenant", "t", "--all-tenants"])
+    assert "No such option" not in output, f"{command} 이 --all-tenants 를 모른다"
+    assert "함께 쓸 수 없다" in output, "옵션은 있는데 범위 충돌을 안 막는다"
 
 
-@pytest.mark.parametrize("command,expected", [
-    ("run", {"--column", "--model", "--backend", "--tenant", "--all-tenants"}),
-    ("status", {"--column", "--tenant", "--all-tenants"}),
+@pytest.mark.parametrize("command,option", [
+    ("run", "--column"), ("run", "--model"), ("run", "--backend"), ("run", "--tenant"),
+    ("status", "--column"), ("status", "--tenant"),
 ])
-def test_the_runbook_command_lines_parse(command, expected):
-    """런북과 SPEC 이 타이핑하는 옵션들 — 하나라도 없으면 컷오버 당일에 멈춘다."""
-    assert expected <= _options_of(command)
+def test_the_runbook_command_lines_parse(command, option):
+    """런북과 SPEC 이 타이핑하는 옵션들 — 하나라도 없으면 컷오버 당일에 멈춘다.
+
+    값을 안 주고 부르면 파서가 "값이 필요하다" 고 하고, 옵션 자체가 없으면 "No such option" 이다.
+    """
+    assert "No such option" not in _rejects(command, [option])
 
 
 @pytest.mark.parametrize("command", ["run", "status"])
