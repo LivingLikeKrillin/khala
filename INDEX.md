@@ -9,7 +9,7 @@
 ## 🟡 검토중 (0)
 
 
-## 🟢 승인 (38)
+## 🟢 승인 (39)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
@@ -51,3 +51,4 @@
 | ADR-0006 | Nexus entropy spine | LivingLikeKrillin | 2026-07-01T05:12:39Z | ADR-0002, ADR-0004 |
 | ADR-0007 | Component rename migration landed — ADR-0005's deferred code/directory rename is complete | LivingLikeKrillin | 2026-07-11 | ADR-0004, ADR-0005 |
 | ADR-0008 | Keep Nexus's own substrate; defer the Onyx adoption question with named resume conditions | LivingLikeKrillin | 2026-08-01T09:24:00Z | ADR-0002, ADR-0004, ADR-0006, ADR-0007 |
+| ADR-0009 | The embedding-model block of ADR-0008 is lifted - what the director declared, and what stays open | LivingLikeKrillin | 2026-08-05T04:26:52Z | ADR-0008, ADR-0007 |
