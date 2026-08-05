@@ -444,6 +444,7 @@ python -m scripts.ko_eval_embed_compare run --report
 | **답변불가 라벨 5건** — 잴 기권 기제가 없어 아직 아무것도 재지 않음 | — | 멀티턴/기권 작업 착수 시 |
 | **풀 판정(≈821쌍)** — 이 방향을 "측정됐다"고 인용할 수 있게 만드는 유일한 작업. 최악값과 기저율은 §3.4 에 있고, 둘 다 안전을 증명하지 않는다 | LivingLikeKrillin | `linked_adrs` — `SPEC-nexus-korean-embedding-comparison` 이나 ADR-0009 를 링크하는 다음 SPEC/ADR 이 이 방향에 의존하는지 밝혀야 한다 |
 | **평가 저장소 소실** (2026-08-05) — `ko_eval_embeddings` 두 팔이 지워졌고 **nomic 팔만 재생성**됐다(1896+거부10, 기록과 일치). KURE **평가 팔**은 미복구 — 프로덕션 세대(KURE-v1, 167/167)와 무관하다. 재생성 비용: torch 하니스 이미지 빌드 + CPU 시간, 그리고 기록된 프로비넌스(`st 3.4.1/torch 2.13.0`)와 다른 라이브러리로 만들게 되므로 **같은 팔이 아니다** | LivingLikeKrillin | 저장소 의존 검증(§7 회귀의 절반)이 실제로 필요해질 때 |
+| **거버넌스 열린 항목** — 얼어붙은 기록(ADR)이 진 항목은 `governance/open-items.yaml` 로 옮겼고 `scripts/ledger_integrity.py` 가 매 푸시에 형태를 검사한다: 항목은 **관측 가능한 트리거를 가진 open** 이거나 **어떻게 닫혔는지 적은 closed** 여야 한다 | LivingLikeKrillin | CI |
 | **승인본과의 이탈 하나** — `SPEC-nexus-ko-eval-pool-sensitivity` §5.3 은 `clean_db` 가 평가 저장소를 **지우도록** 명시하는데, 구현은 **보존을 기본**으로 하고 파괴를 `NEXUS_TRUNCATE_KO_EVAL_STORE=1` 로 뺐다. 근거는 §6.2. 승인본은 스탬프된 불변 기록이라 고칠 수 없으므로 **후속 레코드가 빚으로 남는다** | LivingLikeKrillin | 이 이탈을 인용해 무언가를 결정할 때, 또는 다음 ko-eval SPEC |
 
 ### 6.2 승인본 §5.3 의 기본값을 왜 뒤집었나 (2026-08-05)

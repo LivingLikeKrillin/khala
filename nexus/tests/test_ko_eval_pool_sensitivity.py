@@ -249,3 +249,47 @@ def test_score_matches_the_harness_definition():
     assert score(["a.md", "g.md"], {"g.md"}) == (1.0, 0.5)
     assert score(["x.md"], {"g.md"}) == (0.0, 0.0)
     assert score(["g1.md", "g2.md"], {"g1.md", "g2.md"}) == (1.0, 1.0)
+
+
+# ── separating costing from judging (debt I-010) ─────────────────────────────
+
+_COST_FIELDS = ("flip", "tie", "removal", "cost", "m_star", "decisive", "concentration",
+                "outcome", "win", "loss")
+
+
+def test_the_judging_input_carries_no_cost_information():
+    """I-010: on the 2026-08-05 sample the same actor computed the move costs and proposed the
+    judgements, with no held-out artifact between them. That cannot be undone for a sample already
+    taken; it can be made unrepeatable.
+
+    The judging input is the blind pool. It must carry the query, its candidates and nothing that
+    reveals which candidates buy a move - otherwise a judge learns which pairs matter while judging
+    them, which is the correlation that biases a base-rate estimate in either direction.
+    """
+    pool = json.loads((EVAL_KO / "pool-blind.json").read_text(encoding="utf-8"))
+    for q in pool:
+        assert set(q) <= {"id", "query", "stratum", "gold", "candidates"}, q["id"]
+        for field_name in _COST_FIELDS:
+            assert field_name not in q, f"{q['id']} leaks {field_name} into the judging input"
+
+
+def test_the_sample_artifact_records_who_proposed_and_who_reviewed_separately():
+    """The record has to make the correlation visible even where it could not be removed."""
+    artifact = json.loads((EVAL_KO / "pool-sensitivity-sample.json").read_text(encoding="utf-8"))
+    for j in artifact["judgements"]:
+        assert "proposed_by" in j and "reviewed_by" in j
+        for field_name in _COST_FIELDS:
+            assert field_name not in j, f"pair {j['n']} carries {field_name} beside its judgement"
+
+
+def test_a_future_sample_cannot_be_drawn_from_a_cost_ranked_population():
+    """The draw is over the population in labels/pool file order, never in cost order - the ordering
+    §4.3 forbids, and the one an earlier protocol draft mandated in the same document."""
+    labels = yaml.safe_load((EVAL_KO / "labels.yaml").read_text(encoding="utf-8"))
+    pool = json.loads((EVAL_KO / "pool-blind.json").read_text(encoding="utf-8"))
+    pairs = population(labels, pool, load_refused_docs())
+
+    order = [qid for qid, _ in pairs]
+    expected = [q["id"] for q in labels["queries"]
+                if q.get("answerable") and not (set(q["gold"]) & load_refused_docs())]
+    assert [k for i, k in enumerate(order) if i == 0 or order[i - 1] != k] == expected

@@ -159,3 +159,104 @@ def test_the_cli_exits_nonzero_on_a_mismatch(repo: Path):
         capture_output=True, text=True, encoding="utf-8")
     assert r.returncode == 1
     assert "MISMATCH" in r.stdout
+
+
+# ── open items carried by frozen records (debt I-006) ────────────────────────
+
+
+def _items(tmp_path: Path, body: str) -> Path:
+    p = tmp_path / "open-items.yaml"
+    p.write_text(body, encoding="utf-8")
+    return p
+
+
+_GOOD = """
+- id: x
+  source: ADR-0009 row 1
+  owner: someone
+  state: open
+  what: a thing
+  trigger: any SPEC whose linked_adrs contains ADR-0008 must say whether it addresses this
+  checked_by: scripts/ledger_integrity.py
+"""
+
+
+def test_the_real_open_items_file_is_well_formed():
+    assert li.check_open_items(ROOT) == []
+
+
+def test_a_missing_file_is_a_failure_not_a_pass(tmp_path: Path):
+    """The point of the file is that frozen records have somewhere observable to keep an item.
+    Absence must not read as 'nothing open'."""
+    problems = li.check_open_items(ROOT, tmp_path / "absent.yaml")
+    assert problems and "missing" in problems[0]
+
+
+def test_an_item_missing_owner_or_trigger_fails(tmp_path: Path):
+    p = _items(tmp_path, "- id: x\n  source: s\n  state: open\n  what: w\n")
+    assert li.check_open_items(ROOT, p)
+
+
+def test_an_item_claiming_a_mechanical_check_must_have_a_mechanical_trigger(tmp_path: Path):
+    """The failure ADR-0009 named: a trigger nothing can observe. An item may not claim this script
+    checks it while carrying 'when it matters'."""
+    bad = _GOOD.replace(
+        "trigger: any SPEC whose linked_adrs contains ADR-0008 must say whether it addresses this",
+        "trigger: when someone needs it")
+    assert li.check_open_items(ROOT, _items(tmp_path, bad))
+    assert li.check_open_items(ROOT, _items(tmp_path, _GOOD)) == []
+
+
+def test_closing_an_item_requires_saying_how(tmp_path: Path):
+    closed = _GOOD.replace("state: open", "state: closed")
+    assert li.check_open_items(ROOT, _items(tmp_path, closed))
+    assert li.check_open_items(ROOT, _items(tmp_path, closed + "  closed_by: PR #163\n")) == []
+
+
+def test_duplicate_ids_are_caught(tmp_path: Path):
+    assert li.check_open_items(ROOT, _items(tmp_path, _GOOD + _GOOD))
+
+
+# ── the normaliser's boundary, enumerated (debt I-012) ───────────────────────
+
+
+@pytest.mark.parametrize("transform, semantic", [
+    (lambda b: b + "\n\n", False),
+    (lambda b: b + "   ", False),
+    (lambda b: b.replace("\n", "   \n", 1), True),
+])
+def test_the_whitespace_gap_is_bounded_not_just_pinned(transform, semantic):
+    """I-012: pinning "whitespace-only does not fail" freezes the blind spot without measuring it.
+
+    `_normalize` rstrips each line and strips leading/trailing newlines, so trailing whitespace is
+    invisible to the stamp - **including where Markdown gives it meaning.** Two trailing spaces are
+    a hard line break, so an edit that changes how an approved artifact renders passes by design.
+
+    This enumerates the boundary rather than asserting one green case: each transform is recorded
+    with whether it can change rendering. A future `_normalize` that folds *more* than this makes
+    the substantive set (above) go green, and a future one that folds less makes these fail - either
+    way the change is visible instead of silent.
+    """
+    from khala.arbiter.hashing import content_hash
+
+    assert content_hash(transform(BODY)) == content_hash(BODY)
+    if semantic:
+        # documented, not fixed: fixing it means changing the hash, which invalidates every stamp
+        pytest.xfail("trailing double space is a Markdown hard break and the stamp cannot see it")
+
+
+def test_the_stamp_sees_every_non_whitespace_change_in_the_boundary_set():
+    """The other half of the bound: anything that is not purely trailing/edge whitespace must move
+    the hash. Without this the gap has no ceiling."""
+    from khala.arbiter.hashing import content_hash
+
+    base = content_hash(BODY)
+    mutations = {
+        "a digit": BODY.replace("0.402", "0.403"),
+        "a letter's case": BODY.replace("A stamped", "A Stamped"),
+        "an added sentence": BODY + "one more sentence.\n",
+        "an internal double space": BODY.replace("two  spaces", "two spaces"),
+    }
+    for label, changed in mutations.items():
+        assert changed != BODY, f"{label}: the mutation is a no-op — a control that cannot fail"
+        assert content_hash(changed) != base, f"{label} slipped past the stamp"

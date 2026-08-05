@@ -83,3 +83,50 @@ def test_restore_chunks_verifies_content_not_only_rids():
         "팩 드리프트를 못 잡는다")
     assert "DELETE FROM ko_eval_embeddings" not in body, (
         "복구 명령이 임베딩을 지운다 — 그건 load 의 동작이고, 이 명령의 존재 이유를 없앤다")
+
+
+# ── 게이트 프로비넌스 (I-001) ────────────────────────────────────────────────
+
+
+def test_a_report_says_whether_it_was_produced_under_an_armed_gate(tmp_path, monkeypatch):
+    """ADR-0009 §3(ii) 와 SPEC §0 이 같은 결함을 기록했다: 측정이 승인보다 먼저 이뤄지고 SPEC 이
+    나중에 그 숫자를 인용한다. 게이트는 편집을 막지 측정을 막지 않으므로 **예방은 못 한다.**
+    대신 리포트가 자기 출처를 달고 나오게 해 **인용하는 순간 보이게** 한다.
+    """
+    from scripts.ko_eval_harness import gate_provenance
+
+    monkeypatch.delenv("ARBITER_ACTIVE_SPEC", raising=False)
+
+    # 마커 디렉터리 자체가 없다 — '게이트 밖' 이 아니라 '확인 불가'
+    assert gate_provenance(tmp_path)["active_spec"] == "unknown"
+
+    # 디렉터리는 있는데 활성 spec 이 없다 — 게이트 밖
+    (tmp_path / ".arbiter").mkdir()
+    assert gate_provenance(tmp_path)["active_spec"] == "none"
+
+    # 무장된 게이트 — 유일한 양성 신호
+    (tmp_path / ".arbiter" / "active.json").write_text(
+        '{"spec_id": "SPEC-x", "set_at": "t", "set_by": "agent"}', encoding="utf-8")
+    assert gate_provenance(tmp_path)["active_spec"] == "SPEC-x"
+
+    # 읽을 수 없는 마커는 '없음' 이 아니다
+    (tmp_path / ".arbiter" / "active.json").write_text("{ broken", encoding="utf-8")
+    assert gate_provenance(tmp_path)["active_spec"] == "unknown"
+
+
+def test_the_declared_override_wins_and_is_labelled_as_declared(monkeypatch):
+    """컨테이너에서 도는 실행은 리포를 못 보므로 선언값을 받는다 — 다만 **선언값이라고 적힌다.**"""
+    from scripts.ko_eval_harness import gate_provenance
+
+    monkeypatch.setenv("ARBITER_ACTIVE_SPEC", "SPEC-declared")
+    got = gate_provenance()
+    assert got["active_spec"] == "SPEC-declared"
+    assert "선언" in got["source"]
+
+
+def test_every_rendered_report_carries_the_gate_line():
+    """빠뜨릴 수 없게 `render_report` 안에서 붙인다 — 호출자가 meta 에 넣기를 기대하지 않는다."""
+    from scripts.ko_eval_harness import LegResult, render_report
+
+    body = render_report({"팩": "ko-k8s"}, [LegResult(leg="keyword")], {})
+    assert "**게이트**:" in body
