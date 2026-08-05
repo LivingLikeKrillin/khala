@@ -138,6 +138,22 @@ async def clean_db(request):
             TRUNCATE evidence, edges, observed_edges, chunks, documents, entities, claims, search_log
             CASCADE
         """)
+        # `ko_eval_embeddings` rows reference chunks that the TRUNCATE above just removed.
+        # Leaving them behind produces an *orphaned* store: the rows survive, the chunks they
+        # point at do not, and anything that folds chunks into documents silently reads nothing.
+        # That happened on 2026-08-05 (SPEC-nexus-ko-eval-pool-sensitivity §5). Truncating the
+        # store with the chunks keeps the two consistent, which is what this suite's
+        # disposable-database discipline already assumes.
+        # The table is created by the eval harness (`ko_eval_vector.ensure_table`), not by a
+        # migration, so it is absent on a fresh database and TRUNCATE has no IF EXISTS.
+        if os.getenv("NEXUS_PRESERVE_KO_EVAL_STORE") != "1":
+            await conn.execute("""
+                DO $$ BEGIN
+                    IF to_regclass('public.ko_eval_embeddings') IS NOT NULL THEN
+                        EXECUTE 'TRUNCATE ko_eval_embeddings';
+                    END IF;
+                END $$;
+            """)
     await pool.close()
 
     yield
