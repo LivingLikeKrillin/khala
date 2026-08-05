@@ -7,8 +7,14 @@ FROM python:3.11-slim
 
 # CPU 휠을 쓴다. GPU 는 처리량 문제이지 실현 가능성 문제가 아니다 (질의 101ms/CPU 실측).
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
+# transformers·tokenizers 도 못박는다. 길이검사 사본(SPEC-nexus-embed-tokenizer-race §3)의
+# 안전성은 `copy.deepcopy` 가 **별개의 Rust 토크나이저**를 만든다는 성질에 기대고, 그 성질은
+# 이 두 라이브러리의 것이다 — 안 박으면 이미지 재빌드가 수정의 전제를 조용히 갈아치운다.
+# 측정에 쓴 조합: tokenizers 0.22.2 · transformers 4.57.6 · sentence-transformers 3.3.1.
 RUN pip install --no-cache-dir \
     "sentence-transformers==3.3.1" \
+    "transformers==4.57.6" \
+    "tokenizers==0.22.2" \
     "fastapi==0.115.6" \
     "uvicorn[standard]==0.34.0" \
     "pydantic==2.10.4"
