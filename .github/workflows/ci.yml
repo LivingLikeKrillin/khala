@@ -228,6 +228,32 @@ jobs:
         working-directory: arbiter
         run: python -m pytest -q
 
+  ecosystem-e2e:
+    name: ecosystem (a2a e2e, arbiter + nexus)
+    runs-on: ubuntu-latest
+    # The only tests that wire two tools together over A2A live in the repo root, and until now
+    # nothing ran them: every job installs one package, both suites start with `importorskip`, so
+    # they skipped silently in every environment that existed. A suite that never runs is not a
+    # suite — the same lesson as NEXUS_REQUIRE_MECAB, here enforced by KHALA_REQUIRE_E2E.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      # nexus WITHOUT the [mcp] extra on purpose: arbiter needs mcp>=2 and nexus's mcp surface
+      # pins mcp<2, so the two cannot share an environment. The e2e path touches nexus core,
+      # which does not import mcp, so this pairing is the one that can coexist.
+      - name: Install nexus (a2a extra, no mcp extra)
+        working-directory: nexus
+        run: pip install -e ".[dev,a2a]" -c constraints.txt
+      - name: Install arbiter
+        working-directory: arbiter
+        run: pip install -e ".[dev]" -c constraints.txt
+      - name: Run the cross-tool E2E
+        env:
+          KHALA_REQUIRE_E2E: "1"
+        run: python -m pytest -q tests/
+
   probe:
     name: probe (pytest)
     runs-on: ubuntu-latest
