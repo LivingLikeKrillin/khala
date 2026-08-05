@@ -83,6 +83,57 @@ def test_the_query_set_is_committed_and_non_trivial():
     assert len(set(queries)) == len(queries), "중복 질의는 캐시를 재는 것에 가깝다"
 
 
+# ── 계측기 자체 — 동시성을 정말 유지하는가 ──────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_the_driver_keeps_the_load_up_instead_of_running_in_batches():
+    """배치로 `gather` 하면 각 배치의 꼬리가 다음 배치를 막아 **실제보다 낮은 동시성**을 잰다.
+
+    그래서 실제로 몇 개가 동시에 떠 있었는지를 센다 — 부하 측정에서 이게 틀리면 나머지 숫자는
+    전부 다른 질문의 답이다.
+    """
+    import asyncio
+
+    from scripts.latency_probe import _drive
+
+    inflight, peak = 0, 0
+
+    async def worker(index: int) -> bool:
+        nonlocal inflight, peak
+        inflight += 1
+        peak = max(peak, inflight)
+        await asyncio.sleep(0.01)
+        inflight -= 1
+        return True
+
+    samples, errors, rps = await _drive(worker, total=20, concurrency=4, warmups=4)
+
+    assert peak == 4, f"동시에 떠 있던 최대 요청이 4가 아니라 {peak}"
+    assert len(samples) == 20, "워밍업은 창에서 빠지고 나머지는 전부 세야 한다"
+    assert errors == 0 and rps > 0
+
+
+@pytest.mark.asyncio
+async def test_the_driver_counts_failures_without_putting_them_in_the_latency():
+    """실패한 요청의 지연을 표본에 넣으면 '빨리 실패하는' 배포가 빨라 보인다."""
+    from scripts.latency_probe import _drive
+
+    async def worker(index: int) -> bool:
+        return index % 2 == 0
+
+    samples, errors, _ = await _drive(worker, total=10, concurrency=2, warmups=0)
+    assert errors == 5 and len(samples) == 5
+
+
+def test_the_concurrency_budget_is_the_same_number_the_cutover_registered():
+    """상황마다 예산을 새로 정하면 그건 예산이 아니라 결론이다."""
+    from scripts.latency_probe import CONCURRENCY_P95_MAX_MS, CONCURRENCY_TARGET
+
+    assert CONCURRENCY_TARGET == 4
+    assert CONCURRENCY_P95_MAX_MS == P95_ABSOLUTE_MAX_MS
+
+
 @pytest.mark.parametrize("shape", ["조사", "복합", "혼용"])
 def test_the_set_covers_the_shapes_it_claims_to(shape):
     """세트의 목적은 정답률이 아니라 **경로의 모양**이다 — 한 모양만 있으면 그 주장이 거짓이 된다."""
