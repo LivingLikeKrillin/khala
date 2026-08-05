@@ -67,6 +67,13 @@ class Percentiles:
                    p95_ms=round(ordered[idx], 2), max_ms=round(ordered[-1], 2))
 
 
+#: 동시성 판정 (§4.7 이 "재측정 트리거는 동시성" 이라고 남긴 자리). 팀 배포의 현실적 동시 검색자
+#: 수를 4로 잡고, 그 지점의 절대 예산은 컷오버 때 사전등록한 것과 **같은 값**을 쓴다 — 예산을
+#: 상황마다 새로 정하면 그건 예산이 아니다.
+CONCURRENCY_TARGET = 4
+CONCURRENCY_P95_MAX_MS = P95_ABSOLUTE_MAX_MS
+
+
 @dataclass
 class Measurement:
     kind: str                       # "embed" | "search"
@@ -80,6 +87,9 @@ class Measurement:
     active_chunks: int | None = None
     latency: Percentiles = field(default_factory=Percentiles)
     errors: int = 0
+    concurrency: int = 1            # 동시에 떠 있는 요청 수
+    throughput_rps: float = 0.0     # 완료/초 — 지연만 보면 포화와 정체를 구분 못 한다
+    route: str = ""                 # search 전용: hybrid_only | keyword_only(임베딩 없는 대조군)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False, indent=2)
@@ -146,6 +156,109 @@ async def measure_search(label: str, n: int, warmups: int, top_k: int) -> Measur
         column=status.get("embedding_column", ""), revision=status.get("embedding_revision"),
         queries=len(queries), warmups=warmups, active_chunks=active or None,
         latency=Percentiles.of(samples), errors=errors)
+
+
+async def _drive(worker, total: int, concurrency: int, warmups: int) -> tuple[list[float], int, float]:
+    """동시성 `concurrency` 를 **유지하며** `total` 건을 흘린다. (표본, 오류, 초당완료).
+
+    배치로 나눠 `gather` 하면 각 배치의 꼬리가 다음 배치를 기다리게 되어 **실제보다 낮은 동시성**을
+    재게 된다. 그래서 워커를 상주시키고 공용 카운터에서 일감을 꺼낸다 — 하나가 끝나면 곧바로 다음이
+    들어가므로 관측 창 내내 부하가 유지된다.
+    """
+    counter = {"i": 0}
+    samples: list[float] = []
+    errors = 0
+    lock = asyncio.Lock()
+    started = None
+
+    async def _run_one(index: int) -> None:
+        nonlocal errors
+        t0 = asyncio.get_event_loop().time()
+        ok = await worker(index)
+        elapsed = (asyncio.get_event_loop().time() - t0) * 1000
+        if not ok:
+            errors += 1
+            return
+        if index >= warmups:            # 워밍업은 창에서 뺀다 — 모델·풀·JIT 의 첫 비용은 예산이 아니다
+            samples.append(elapsed)
+
+    async def _worker() -> None:
+        while True:
+            async with lock:
+                index = counter["i"]
+                counter["i"] += 1
+            if index >= total + warmups:
+                return
+            await _run_one(index)
+
+    started = asyncio.get_event_loop().time()
+    await asyncio.gather(*[_worker() for _ in range(concurrency)])
+    window = asyncio.get_event_loop().time() - started
+    return samples, errors, (len(samples) / window if window else 0.0)
+
+
+async def measure_search_concurrent(label: str, concurrency: int, total: int, warmups: int,
+                                    top_k: int, route: str) -> Measurement:
+    """부하 아래의 `/search`. `route=keyword_only` 는 **임베딩을 안 타는 대조군**이다 —
+    느려지는 것이 사이드카인지 앱·DB인지는 그 대조군 없이는 말할 수 없다.
+    """
+    ctx = await _generation()
+    token, status = ctx["token"], ctx["status"]
+    queries = load_queries()
+
+    async with httpx.AsyncClient(
+            timeout=120.0, limits=httpx.Limits(max_connections=concurrency + 4)) as client:
+        async def _one(index: int) -> bool:
+            resp = await client.post(
+                "http://localhost:8000/search",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"query": queries[index % len(queries)], "top_k": top_k, "route": route})
+            return resp.status_code == 200
+
+        samples, errors, rps = await _drive(_one, total, concurrency, warmups)
+
+    active = sum(row["active"] for row in status.get("embedding_coverage", []) or [])
+    return Measurement(
+        kind="search", label=label, model=status.get("embedding_model", ""),
+        backend=status.get("embedding_backend", ""), column=status.get("embedding_column", ""),
+        revision=status.get("embedding_revision"), queries=len(queries), warmups=warmups,
+        active_chunks=active or None, latency=Percentiles.of(samples), errors=errors,
+        concurrency=concurrency, throughput_rps=round(rps, 2), route=route)
+
+
+async def measure_embed_concurrent(label: str, concurrency: int, total: int, warmups: int,
+                                   url: str) -> Measurement:
+    """사이드카 `/embed` 를 직접 때린다 — 앱·DB 를 경로에서 빼고 임베딩 단계만 본다."""
+    queries = load_queries()
+
+    async with httpx.AsyncClient(
+            timeout=120.0, limits=httpx.Limits(max_connections=concurrency + 4)) as client:
+        async def _one(index: int) -> bool:
+            resp = await client.post(f"{url}/embed",
+                                     json={"texts": [queries[index % len(queries)]]})
+            return resp.status_code == 200
+
+        samples, errors, rps = await _drive(_one, total, concurrency, warmups)
+
+    return Measurement(kind="embed", label=label, model="KURE-v1", backend="sidecar",
+                       queries=len(queries), warmups=warmups, latency=Percentiles.of(samples),
+                       errors=errors, concurrency=concurrency, throughput_rps=round(rps, 2))
+
+
+def concurrency_verdict(sweep: list[Measurement]) -> tuple[bool, str]:
+    """사전등록: 동시 검색자 `CONCURRENCY_TARGET` 에서 p95 가 절대 예산 안에 있는가.
+
+    지연만 보지 않는다 — **처리량이 꺾이는지**도 함께 읽는다. 스레드 오버섭스크립션은 지연을
+    늘리면서 처리량을 *떨어뜨리는* 모양으로 나타나고, 그건 "느리다" 와 다른 병이다.
+    """
+    at_target = next((m for m in sweep if m.concurrency == CONCURRENCY_TARGET), None)
+    if at_target is None:
+        return False, f"동시성 {CONCURRENCY_TARGET} 측정이 없다 — 판정 불가"
+    ok = at_target.latency.p95_ms <= CONCURRENCY_P95_MAX_MS
+    peak = max(sweep, key=lambda m: m.throughput_rps)
+    return ok, (f"C={CONCURRENCY_TARGET} 에서 p95 {at_target.latency.p95_ms} ms "
+                f"(예산 {CONCURRENCY_P95_MAX_MS:.0f} ms) · 처리량 정점 "
+                f"{peak.throughput_rps} rps @ C={peak.concurrency}")
 
 
 def verdict(before: Measurement, after: Measurement) -> tuple[bool, str]:
@@ -235,6 +348,17 @@ def main() -> int:
     p_search.add_argument("--top-k", type=int, default=10)
     p_search.add_argument("--out", type=Path)
 
+    p_conc = sub.add_parser("concurrent")
+    p_conc.add_argument("--target", required=True, choices=["search", "embed"])
+    p_conc.add_argument("--c", type=int, nargs="+", required=True, help="동시성 스윕 (예: 1 2 4 8)")
+    p_conc.add_argument("--n", type=int, default=60, help="동시성마다 셀 요청 수")
+    p_conc.add_argument("--warmups", type=int, default=10)
+    p_conc.add_argument("--top-k", type=int, default=10)
+    p_conc.add_argument("--route", default="hybrid_only",
+                        choices=["hybrid_only", "keyword_only", "vector_only"])
+    p_conc.add_argument("--url", default="http://nexus-embed:8080")
+    p_conc.add_argument("--out", type=Path)
+
     p_report = sub.add_parser("report")
     p_report.add_argument("--before", type=Path, required=True)
     p_report.add_argument("--after", type=Path, required=True)
@@ -258,6 +382,25 @@ def main() -> int:
         print(args.out)
         ok, reason = verdict(before, after)
         print(("통과: " if ok else "위반: ") + reason)
+        return 0 if ok else 1
+
+    if args.cmd == "concurrent":
+        sweep: list[Measurement] = []
+        for c in args.c:
+            if args.target == "search":
+                m = _run(measure_search_concurrent(f"C={c}", c, args.n, args.warmups,
+                                                   args.top_k, args.route))
+            else:
+                m = _run(measure_embed_concurrent(f"C={c}", c, args.n, args.warmups, args.url))
+            sweep.append(m)
+            print(f"C={c:<3} n={m.latency.n:<4} p50={m.latency.p50_ms:>8.1f} "
+                  f"p95={m.latency.p95_ms:>8.1f} max={m.latency.max_ms:>8.1f} "
+                  f"rps={m.throughput_rps:>6.2f} err={m.errors}", flush=True)
+        ok, reason = concurrency_verdict(sweep)
+        print(("통과: " if ok else "위반: ") + reason)
+        if args.out:
+            args.out.write_text(json.dumps([asdict(m) for m in sweep], ensure_ascii=False,
+                                           indent=2), encoding="utf-8")
         return 0 if ok else 1
 
     if args.cmd == "embed":

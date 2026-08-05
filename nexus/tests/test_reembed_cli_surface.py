@@ -19,11 +19,18 @@ runner = CliRunner()
 
 
 def _rejects(command: str, argv: list[str]) -> str:
-    """명령을 실제로 파싱시켜 본다. 도움말 렌더링을 읽지 않는 이유는 실측이다: 좁은 CI 터미널에서
-    rich 가 옵션 목록을 잘라 문자열 검사가 깨졌고, 파서 내부 구조는 click/typer 버전에 따라 달랐다.
+    """명령을 실제로 파싱시켜 본다. **표현이 아니라 행동을 재는 이유는 두 번 데였기 때문이다.**
 
-    **행동은 둘 다에 안 흔들린다**: 옵션이 없으면 click 이 `No such option` 으로 죽고, 있으면
-    우리 자신의 거부 메시지가 나온다. 둘의 차이가 곧 "그 옵션이 존재하는가" 다.
+    1. `--help` 출력에서 `"--all-tenants"` 를 찾는 검사는 CI 에서 깨졌다. 원인은 폭이 아니라
+       **색**이다: CI 는 색을 켜고, typer 의 rich 하이라이터는 옵션 이름을 style 세그먼트로
+       쪼갠다 — 원문에는 `\\x1b[1;36m-\\x1b[0m\\x1b[1;36m-all\\x1b[0m\\x1b[1;36m-tenants\\x1b[0m`
+       가 들어 있어 `"--all-tenants"` 라는 연속 문자열이 **존재하지 않는다**(FORCE_COLOR=1 로 재현).
+    2. 그 다음에 쓴 파서 내부 순회(`isinstance(p, click.Option)`)도 깨졌다. typer 0.26+ 는
+       **click 을 벤더링**해서(`typer._click`) 설치된 click 으로 한 isinstance 가 전부 빗나가고,
+       조용히 빈 집합이 된다. 로컬은 typer 0.24 라 통과했다.
+
+    남는 것은 행동이다: 옵션이 없으면 click 이 `No such option` 으로 죽고, 있으면 우리 자신의
+    거부 메시지가 나온다. 그 차이는 색에도 버전에도 흔들리지 않는다.
     """
     result = runner.invoke(app, ["reembed", command, *argv])
     return result.stdout + str(result.stderr or "")
@@ -63,6 +70,18 @@ def test_a_run_whose_model_and_column_disagree_stops_before_reading_a_row():
                                  "--model", "KURE-v1", "--tenant", "t"])
     assert result.exit_code == 2
     assert "차원이 다르다" in (result.stdout + str(result.stderr))
+
+
+@pytest.mark.parametrize("command", ["run", "status"])
+def test_the_check_survives_the_thing_that_broke_it(command, monkeypatch):
+    """색이 켜진 상태 — CI 가 실제로 도는 조건이다. 이 계열의 결함이 되돌아오면 여기서 걸린다.
+
+    `FORCE_COLOR` 는 rich 가 렌더 시점에 읽으므로, 테스트가 켜면 CI 의 그 조건이 된다.
+    """
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    output = _rejects(command, ["--tenant", "t", "--all-tenants"])
+    assert "No such option" not in output
+    assert "함께 쓸 수 없다" in output
 
 
 def test_the_agreeing_pair_is_not_rejected_by_that_guard():
