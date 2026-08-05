@@ -41,6 +41,29 @@ jobs:
       - name: Verify every declared dependency is pinned and bounded
         run: python scripts/lock_deps.py --check
 
+  governance:
+    name: governance (ledger integrity)
+    runs-on: ubuntu-latest
+    # Arbiter already recomputes the stamped body hash (`ledger.status()`), but nothing ran it
+    # unattended, so it only fired when a person happened to type `arbiter status`. And for
+    # SPECs that path *rewrites the file* — resetting `status` to `in_review` and saving — so
+    # detection there edits the evidence. This job recomputes the hash itself, read-only.
+    #
+    # What it detects is an edit that did not update the stamp. It does not authenticate
+    # approvals: `status`, `approved_by` and `content_hash` all live in frontmatter, which the
+    # body hash does not cover. The tests pin the boundary from both sides — substantive edits
+    # must be flagged, whitespace-only edits must not — so a widened normaliser shows up.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install pyyaml pytest
+      - name: Every stamped artifact still matches its body
+        run: python scripts/ledger_integrity.py
+      - name: The check has teeth (negative control + read-only + manifest)
+        run: python -m pytest tests/test_ledger_integrity.py -q
+
   lint:
     name: lint (ruff)
     runs-on: ubuntu-latest
