@@ -138,15 +138,23 @@ async def clean_db(request):
             TRUNCATE evidence, edges, observed_edges, chunks, documents, entities, claims, search_log
             CASCADE
         """)
-        # `ko_eval_embeddings` rows reference chunks that the TRUNCATE above just removed.
-        # Leaving them behind produces an *orphaned* store: the rows survive, the chunks they
-        # point at do not, and anything that folds chunks into documents silently reads nothing.
-        # That happened on 2026-08-05 (SPEC-nexus-ko-eval-pool-sensitivity §5). Truncating the
-        # store with the chunks keeps the two consistent, which is what this suite's
-        # disposable-database discipline already assumes.
-        # The table is created by the eval harness (`ko_eval_vector.ensure_table`), not by a
-        # migration, so it is absent on a fresh database and TRUNCATE has no IF EXISTS.
-        if os.getenv("NEXUS_PRESERVE_KO_EVAL_STORE") != "1":
+        # `ko_eval_embeddings` rows reference the chunks the TRUNCATE above just removed, so
+        # after this fixture the store is *orphaned*. It is left alone anyway, and the default
+        # is deliberately the opposite of what SPEC-nexus-ko-eval-pool-sensitivity §5.3
+        # specifies. Two facts, both learned after that SPEC was stamped, invert the trade:
+        #
+        #   1. the orphan is already caught where it matters - `ko_eval_vector.verify_arm`
+        #      refuses rows whose chunks no longer exist, and `cmd_run` stops there; the
+        #      remaining exposure was code that folds chunks without that check, which
+        #      `ko_eval_harness` now guards directly;
+        #   2. truncating costs hours. The store holds two arms over 1906 chunks, and KURE-v1
+        #      is a CPU sentence-transformers pass. On 2026-08-05 it was destroyed exactly this
+        #      way while verifying this fixture.
+        #
+        # So destruction is opt-in. `restore-chunks` repairs an orphaned store without
+        # rebuilding it. The table is created by the harness rather than by a migration, so it
+        # is absent on a fresh database and TRUNCATE has no IF EXISTS.
+        if os.getenv("NEXUS_TRUNCATE_KO_EVAL_STORE") == "1":
             await conn.execute("""
                 DO $$ BEGIN
                     IF to_regclass('public.ko_eval_embeddings') IS NOT NULL THEN

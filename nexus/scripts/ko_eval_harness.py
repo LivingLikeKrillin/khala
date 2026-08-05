@@ -31,12 +31,34 @@ MIN_DISCORDANT = 6          # 양측 정확 이항검정이 α=0.05 에 도달�
 
 # ── 순수 채점 ────────────────────────────────────────────────────────────────
 
+class OrphanedStoreError(RuntimeError):
+    """청크→문서 매핑이 비었거나 순위에 매핑 없는 rid 가 섞였다 — 채점하면 안 되는 상태."""
+
+
 def collapse_to_documents(
     ranked_chunks: list[tuple[str, int]],
     chunk_doc: dict[str, str],
     limit: int = METRIC_K,
 ) -> list[str]:
-    """(청크 rid, 순위) 목록 → 문서 목록. 같은 문서는 최선 순위 한 번만, 상위 `limit` 개."""
+    """(청크 rid, 순위) 목록 → 문서 목록. 같은 문서는 최선 순위 한 번만, 상위 `limit` 개.
+
+    **빈 매핑은 0점이 아니라 중단이다.** `clean_db` 가 `chunks` 를 TRUNCATE 하면 평가 저장소는
+    살아남고 참조만 끊긴다. 그 상태로 접으면 모든 다리가 빈 목록을 돌려주고 두 팔이 나란히
+    `Recall@10 = 0.000` 을 낸다 — 2026-08-05 에 실제로 나온, 기제상 불가능한 숫자다. 공식 경로는
+    `verify_arm` 이 막지만 그 검사를 우회하는 코드가 여기까지 온다. 여기서 멈춘다.
+    """
+    if ranked_chunks and not chunk_doc:
+        raise OrphanedStoreError(
+            "청크→문서 매핑이 비었는데 순위 결과가 있다 — 평가 저장소가 고아 상태다. "
+            "`ko_eval_embed_compare restore-chunks` 로 팩을 다시 적재해라 "
+            "(임베딩은 보존된다).")
+    if ranked_chunks:
+        unmapped = [rid for rid, _ in ranked_chunks if rid not in chunk_doc]
+        if len(unmapped) == len(ranked_chunks):
+            raise OrphanedStoreError(
+                f"순위에 오른 {len(unmapped)}건이 모두 매핑에 없다 — 저장소가 다른 적재본의 것이다. "
+                "`restore-chunks` 가 rid 와 입력 해시를 함께 대조한다.")
+
     seen: dict[str, int] = {}
     for rid, rank in sorted(ranked_chunks, key=lambda x: x[1]):
         doc = chunk_doc.get(rid)
