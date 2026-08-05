@@ -1,0 +1,24 @@
+{
+ "kind": "derived",
+ "what": "Pack A documents holding at least one chunk an arm refused to embed.",
+ "why_committed": "The comparable subset (SPEC-nexus-korean-embedding-comparison §4.7) is defined by these documents, so the sensitivity population cannot be reconstructed from committed files without them. Deriving them needs the eval store, which is local and losable.",
+ "derived_from": {
+  "pack": "ko-k8s-2026-08-01",
+  "tenant": "ko_eval_embed",
+  "query": "ko_eval_embeddings.status='refused' joined to chunks",
+  "arm": "nomic-embed-text",
+  "refused_chunks": 10,
+  "date": "2026-08-05"
+ },
+ "documents": [
+  "concepts/cluster-administration/node-autoscaling.md",
+  "concepts/cluster-administration/system-logs.md",
+  "concepts/security/pod-security-standards.md",
+  "concepts/services-networking/ingress-controllers.md",
+  "concepts/services-networking/windows-networking.md",
+  "concepts/workloads/controllers/cron-jobs.md",
+  "setup/production-environment/container-runtimes.md",
+  "tasks/administer-cluster/access-cluster-api.md",
+  "tasks/debug/debug-cluster/crictl.md"
+ ]
+}

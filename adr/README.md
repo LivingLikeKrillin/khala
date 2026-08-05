@@ -34,6 +34,34 @@ human disposition → `approve`).
 > third of the block, and two procedural defects in how the swap was gated. ADR-0008 is immutable and
 > cannot forward-link, so this index is the pointer. Read ADR-0008 §6 and §2.6 together with ADR-0009.
 
+> **Note on ADR-0009's open items** (director's rulings, 2026-08-05, after
+> `SPEC-nexus-ko-eval-pool-sensitivity` and `SPEC-nexus-retrieval-backstop-detector` were approved).
+> ADR-0009 is immutable and cannot forward-link, so this index carries the current state:
+>
+> - **A mechanism that detects backstop events — still OPEN.** Two designs were attempted and both
+>   failed on the substrate, not on details (see `SPEC-nexus-retrieval-backstop-detector` §2): a CI
+>   diff check cannot identify the governing SPEC because this repo approves before implementing, and
+>   an Arbiter gate rule hangs from anchors that are all author-controlled. **A disposition of
+>   impossibility does NOT discharge the item** — ADR-0009's other acceptable outcome, "a declaration
+>   made after the fact", is cooperative by construction and remains available. The item's trigger
+>   (`linked_adrs`) is spent; nothing guarantees another ADR-0008-linked SPEC.
+> - **A usable predicate for "materially expand" — still OPEN, and deliberately not built.** ADR-0009
+>   §4 makes the trigger a case-by-case director judgement; codifying it invites the boilerplate
+>   equilibrium the detector SPEC identified. The practice that replaces it is a `## Backstop record`
+>   in the body of any SPEC touching the retrieval stack.
+> - **The rollback guard for the post-flip NULL gap — trigger did NOT fire** for
+>   `SPEC-nexus-ko-eval-pool-sensitivity`. It touches `ko_eval_embeddings`, an evaluation store in a
+>   disposable test database, not the production `embedding` / `embedding_1024` columns (verified
+>   2026-08-05: 167/167 on both). The item itself stays open.
+> - **Pack B's trigger is superseded.** ADR-0009's table carries "unchanged from ADR-0008 §5(b)";
+>   `nexus/docs/KOREAN_SEARCH_QUALITY.md` §6.1 replaces the build trigger with a counted one —
+>   **100 active documents** — because at today's 20, with a 10-document window, the random-ranker
+>   `Recall@10` floor is 0.500 and any comparison returns "underpowered", which by ADR-0009's own
+>   wording does not discharge the obligation. **ADR-0008 §5(b) itself is unchanged.**
+> - **One implementation deviates from an approved SPEC.** `SPEC-nexus-ko-eval-pool-sensitivity` §5.3
+>   specifies that `clean_db` truncate the eval store; the implementation preserves it by default and
+>   makes destruction opt-in. Reasons in `KOREAN_SEARCH_QUALITY.md` §6.2. A successor record is owed.
+
 ## Statuses
 
 - **proposed** — under discussion / awaiting review

@@ -1,0 +1,107 @@
+# Open items carried by accepted, immutable records.
+#
+# ADR-0009 put two items on the trigger "the next SPEC that links ADR-0008", chosen because
+# `linked_adrs` is detectable. Both SPECs of 2026-08-05 link it, so **the trigger is spent** and the
+# items are open with no remaining event to surface them. A prose table inside a frozen record cannot
+# be re-triggered; this file can, and `scripts/ledger_integrity.py` checks it on every push.
+#
+# The rule this encodes: an item is either OPEN with a trigger something can observe, or CLOSED with
+# a record saying how. "Open, owner: someone, trigger: when it matters" is the shape ADR-0009 itself
+# rejected, and the checker refuses it.
+
+- id: adr-0008-backstop-detector
+  source: ADR-0009 open-items table, row 1
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    A mechanism that detects an ADR-0008 §5 backstop event, or a declaration made after the fact.
+  why_still_open: >
+    Two designs failed on the substrate (SPEC-nexus-retrieval-backstop-detector §2). A disposition of
+    impossibility does not discharge it, and the second acceptable outcome - a declaration made after
+    the fact - is cooperative by construction and was never a detection problem.
+  original_trigger: the next SPEC that links ADR-0008
+  original_trigger_spent: '2026-08-05'
+  trigger: >
+    Any approved SPEC or accepted ADR whose linked_adrs contains ADR-0008 must state whether it
+    addresses this item. Checked over the ledger, not left to anyone noticing.
+  checked_by: scripts/ledger_integrity.py
+
+- id: adr-0008-materially-expand-predicate
+  source: ADR-0009 open-items table, row 2
+  owner: LivingLikeKrillin
+  state: open
+  what: A usable predicate for "materially expand", ADR-0008 §5's trigger.
+  why_still_open: >
+    Deliberately not built. ADR-0009 §4 makes the judgement the director's, case by case, and
+    codifying it invites the boilerplate equilibrium the detector SPEC identified. What replaces it
+    is the practice - a `## Backstop record` in the body of any SPEC touching the retrieval stack.
+  original_trigger: the next SPEC that links ADR-0008
+  original_trigger_spent: '2026-08-05'
+  trigger: >
+    Same observable event as adr-0008-backstop-detector: any approved SPEC or accepted ADR whose
+    linked_adrs contains ADR-0008 must state whether it addresses this item.
+  checked_by: scripts/ledger_integrity.py
+
+- id: adr-0009-rollback-null-gap-guard
+  source: ADR-0009 open-items table, row 3
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    A guard for the post-flip NULL gap - after the cutover, rows ingested into the old embedding
+    column are left NULL and a rollback would silently drop their vector leg.
+  why_still_open: Not taken up. `nexus reembed status --column embedding` reports the count and no gate consumes it.
+  trigger: >
+    Before any rollback, or the next SPEC touching the production embedding columns. Ruled NOT fired
+    for SPEC-nexus-ko-eval-pool-sensitivity on 2026-08-05, which touches an eval store in a
+    disposable test database.
+  checked_by: human
+
+- id: ko-eval-pool-adjudication
+  source: KOREAN_SEARCH_QUALITY.md §6
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    Adjudicating the pool (about 821 pairs, reviewed) - the only work that lets the KURE direction be
+    cited as measured rather than bounded.
+  trigger: >
+    Any approved SPEC or accepted ADR whose linked_adrs contains ADR-0009 must state whether it
+    relies on that direction. (The comparison SPEC is reached through ADR-0009, which is what
+    linked_adrs can actually carry.)
+  checked_by: scripts/ledger_integrity.py
+
+- id: ko-eval-store-loss
+  source: KOREAN_SEARCH_QUALITY.md §6
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    The eval embedding store was destroyed on 2026-08-05; the nomic arm was rebuilt and matches the
+    record, the KURE eval arm was not. Unrelated to the production generation, which is KURE-v1.
+  why_still_open: >
+    Rebuilding needs a torch harness image and CPU hours, and the available libraries differ from the
+    recorded provenance - so the result would not be the same arm.
+  trigger: When the store-dependent half of the pool-sensitivity regression is actually needed.
+  checked_by: human
+
+- id: arbiter-frontmatter-outside-content-hash
+  source: SPEC-nexus-retrieval-backstop-detector §3
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    `Artifact.recompute_hash()` covers the body only, so `status`, `approved_by` and `content_hash`
+    itself are post-approval editable with nothing to detect it.
+  why_still_open: >
+    Named, not disposed of. ADR-0009 refused to settle a cross-cutting gap "in passing, in a record
+    about something else", and the same restraint applies. Candidate fixes: hash the frontmatter;
+    move approval facts into the hashed region and re-stamp; or accept it and record that.
+  trigger: The next change to Arbiter's hashing or approval path.
+  checked_by: human
+
+- id: clean-db-eval-store-deviation
+  source: KOREAN_SEARCH_QUALITY.md §6.2
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    The implementation preserves the eval store by default while approved
+    SPEC-nexus-ko-eval-pool-sensitivity §5.3 specifies truncating it. A successor record is owed.
+  trigger: The next ko-eval SPEC, or any citation of the deviation.
+  checked_by: human

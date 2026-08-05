@@ -98,6 +98,62 @@ async def cmd_load(_args) -> int:
         await db.close_pool()
 
 
+async def cmd_restore_chunks(_args) -> int:
+    """청크/문서만 다시 적재한다 — **임베딩 저장소는 보존**한다.
+
+    `clean_db` 가 `chunks`/`documents` 를 TRUNCATE 하면 `ko_eval_embeddings` 는 살아남되 참조가
+    끊긴 고아가 된다. `load` 는 이 상황의 도구가 아니다 — 저장소부터 지우기 때문에, 조인 테이블을
+    복구하려다 몇 시간짜리 임베딩을 버리게 된다.
+
+    복구가 옳았는지는 rid 집합이 아니라 **내용**이 정한다: 팩이 다른 커밋으로 드리프트하면 파일
+    동일성이 유지되는 한 rid 는 그대로이고 본문만 달라진다. 그래서 `verify_arm` 을 그대로 불러
+    `input_sha256` / `payload_sha256` 까지 대조하고, 어긋나면 되돌리지 않고 거부한다.
+    """
+    from nexus import db
+
+    if problems := verify_pack(DEFAULT_PACK_DIR):
+        print("✗ 팩 검증 실패:", *problems[:3], sep="\n  ")
+        return 1
+
+    pool = await db.get_pool()
+    try:
+        async with pool.acquire() as con:
+            store = {r["chunk_rid"] for r in await con.fetch(
+                "SELECT DISTINCT chunk_rid FROM ko_eval_embeddings WHERE tenant=$1", TENANT)}
+            if not store:
+                print("✗ 보존할 임베딩이 없다 — 복구가 아니라 최초 적재다. `load` 를 써라.")
+                return 1
+            print(f"보존 대상 임베딩 청크: {len(store)}건")
+
+            await con.execute("DELETE FROM chunks WHERE tenant=$1", TENANT)
+            await con.execute("DELETE FROM documents WHERE tenant=$1", TENANT)
+            chunk_doc = await load_pack(DEFAULT_PACK_DIR, TENANT, con)
+            print(f"재적재: 문서 {len(set(chunk_doc.values()))} · 청크 {len(chunk_doc)}")
+
+            missing, extra = store - set(chunk_doc), set(chunk_doc) - store
+            if missing or extra:
+                print(f"✗ rid 집합 불일치 — 저장소에만 {len(missing)}건, 재적재본에만 {len(extra)}건. "
+                      "이 저장소는 이 팩의 것이 아니다.")
+                return 1
+
+            labels = load(DEFAULT_LABELS)
+            inputs = await _chunk_inputs(con, TENANT)
+            failed = False
+            for model in MODELS:
+                expected = {rid: (sha256(text), sha256(MODELS[model]["document_prefix"] + text))
+                            for rid, text in inputs.items()}
+                if problems := await verify_arm(con, model, TENANT, labels["pack"], expected):
+                    failed = True
+                    print(f"✗ {model}:", *[str(p) for p in problems], sep="\n  ")
+            if failed:
+                print("✗ rid 는 맞지만 내용이 어긋난다 — 팩이 드리프트했다. 저장소를 신뢰하지 마라.")
+                return 1
+            print("✓ rid 집합과 입력 해시가 모두 일치한다 — 저장소는 이 적재본의 것이다.")
+        return 0
+    finally:
+        await db.close_pool()
+
+
 async def cmd_embed(args) -> int:
     from scripts.ko_eval_embed import embed_pack
 
@@ -371,6 +427,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="임베딩 비교 (nomic vs KURE-v1)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("load")
+    sub.add_parser("restore-chunks")
     e = sub.add_parser("embed")
     e.add_argument("--model", required=True, choices=sorted(MODELS))
     eq = sub.add_parser("embed-queries")
@@ -385,7 +442,7 @@ def main(argv: list[str] | None = None) -> int:
     if not os.getenv("DATABASE_URL"):
         print("✗ DATABASE_URL 이 없다")
         return 1
-    handlers = {"load": cmd_load, "embed": cmd_embed,
+    handlers = {"load": cmd_load, "restore-chunks": cmd_restore_chunks, "embed": cmd_embed,
                 "embed-queries": cmd_embed_queries, "run": cmd_run}
     return asyncio.run(handlers[args.cmd](args))
 

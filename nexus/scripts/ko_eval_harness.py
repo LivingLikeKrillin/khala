@@ -20,7 +20,9 @@
 
 from __future__ import annotations
 
+import json
 import math
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -31,12 +33,34 @@ MIN_DISCORDANT = 6          # 양측 정확 이항검정이 α=0.05 에 도달�
 
 # ── 순수 채점 ────────────────────────────────────────────────────────────────
 
+class OrphanedStoreError(RuntimeError):
+    """청크→문서 매핑이 비었거나 순위에 매핑 없는 rid 가 섞였다 — 채점하면 안 되는 상태."""
+
+
 def collapse_to_documents(
     ranked_chunks: list[tuple[str, int]],
     chunk_doc: dict[str, str],
     limit: int = METRIC_K,
 ) -> list[str]:
-    """(청크 rid, 순위) 목록 → 문서 목록. 같은 문서는 최선 순위 한 번만, 상위 `limit` 개."""
+    """(청크 rid, 순위) 목록 → 문서 목록. 같은 문서는 최선 순위 한 번만, 상위 `limit` 개.
+
+    **빈 매핑은 0점이 아니라 중단이다.** `clean_db` 가 `chunks` 를 TRUNCATE 하면 평가 저장소는
+    살아남고 참조만 끊긴다. 그 상태로 접으면 모든 다리가 빈 목록을 돌려주고 두 팔이 나란히
+    `Recall@10 = 0.000` 을 낸다 — 2026-08-05 에 실제로 나온, 기제상 불가능한 숫자다. 공식 경로는
+    `verify_arm` 이 막지만 그 검사를 우회하는 코드가 여기까지 온다. 여기서 멈춘다.
+    """
+    if ranked_chunks and not chunk_doc:
+        raise OrphanedStoreError(
+            "청크→문서 매핑이 비었는데 순위 결과가 있다 — 평가 저장소가 고아 상태다. "
+            "`ko_eval_embed_compare restore-chunks` 로 팩을 다시 적재해라 "
+            "(임베딩은 보존된다).")
+    if ranked_chunks:
+        unmapped = [rid for rid, _ in ranked_chunks if rid not in chunk_doc]
+        if len(unmapped) == len(ranked_chunks):
+            raise OrphanedStoreError(
+                f"순위에 오른 {len(unmapped)}건이 모두 매핑에 없다 — 저장소가 다른 적재본의 것이다. "
+                "`restore-chunks` 가 rid 와 입력 해시를 함께 대조한다.")
+
     seen: dict[str, int] = {}
     for rid, rank in sorted(ranked_chunks, key=lambda x: x[1]):
         doc = chunk_doc.get(rid)
@@ -311,10 +335,44 @@ async def top_documents(query: str, tenant: str, chunk_doc: dict[str, str],
 
 # ── 리포트 ───────────────────────────────────────────────────────────────────
 
+def gate_provenance(root: Path | None = None) -> dict[str, str]:
+    """이 숫자가 **게이트 안에서** 만들어졌는지를 리포트가 스스로 말하게 한다.
+
+    ADR-0009 §3(ii) 와 `SPEC-nexus-ko-eval-pool-sensitivity` §0 이 기록한 결함은 같은 모양이다 —
+    측정이 승인보다 먼저 이뤄지고, SPEC 이 나중에 그 숫자를 인용한다. Arbiter 게이트는 **편집**을
+    막지 **측정**을 막지 않으므로 예방은 못 한다. 대신 **보이게** 한다: 리포트 머리말이 활성 spec 을
+    달고 나오면, 게이트 밖 숫자를 인용하는 SPEC 은 인용하는 순간 그 사실이 함께 읽힌다.
+
+    세 상태를 구분한다. **의미가 있는 것은 양성 신호뿐이다** — spec id 가 찍힌 리포트는 무장된
+    게이트 아래에서 나왔다는 뜻이다. `none`(마커 디렉터리는 있는데 활성 spec 이 없다)과
+    `unknown`(마커 디렉터리 자체가 없다 — 게이트를 여기서 한 번도 무장한 적이 없거나, 컨테이너에
+    리포가 안 마운트됐다)은 **둘 다 "게이트 안이었음이 확인되지 않음"** 이지만 이유가 다르므로
+    뭉치지 않는다. `.arbiter/` 는 `begin_implementation` 이 처음 만들기 때문에 `unknown` 은 로컬
+    에서도 흔한 상태다 — 그래서 이 필드는 **부재를 고발하는 장치가 아니라 존재를 증명하는 장치**다.
+    """
+    env = os.getenv("ARBITER_ACTIVE_SPEC")
+    if env:
+        return {"active_spec": env, "source": "ARBITER_ACTIVE_SPEC (선언값)"}
+    base = root or Path(__file__).resolve().parents[2]
+    marker_dir = base / ".arbiter"
+    if not marker_dir.exists():
+        return {"active_spec": "unknown", "source": f"{marker_dir} 없음 — 게이트 무장 이력이 없거나 리포가 안 보인다"}
+    marker = marker_dir / "active.json"
+    if not marker.exists():
+        return {"active_spec": "none", "source": "활성 spec 없음 — 게이트 밖에서 만든 숫자다"}
+    try:
+        return {"active_spec": json.loads(marker.read_text(encoding="utf-8"))["spec_id"],
+                "source": ".arbiter/active.json"}
+    except Exception as e:  # noqa: BLE001 — 읽을 수 없는 마커는 '없음' 이 아니다
+        return {"active_spec": "unknown", "source": f"마커를 읽을 수 없다: {e}"}
+
+
 def render_report(meta: dict, legs: list[LegResult], strata: dict[str, str],
                   verdict_obj: Verdict | None = None) -> str:
     """커밋되는 산출물. **팩이 khala 자신의 코퍼스가 아니라는 사실을 머리말에 적는다** (§4.1)."""
     out = ["# 한국어 검색 평가 실행 보고", ""]
+    gate = gate_provenance()
+    meta = {**meta, "게이트": f"{gate['active_spec']} ({gate['source']})"}
     for k, v in meta.items():
         out.append(f"- **{k}**: {v}")
     out += ["", "> Pack A 는 khala 자신의 코퍼스가 아니라 같은 종류의 공개 대역 코퍼스다.",
