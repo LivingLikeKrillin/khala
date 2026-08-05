@@ -2,7 +2,7 @@
  "model": "KURE-v1",
  "backend": "sentence-transformers (nlpai-lab/KURE-v1)",
  "revision": "d14c8a9423946e268a0c9952fecf3a7aabd73bd9",
- "library": "sentence-transformers 3.3.1, torch 2.5.1+cpu",
+ "library": "sentence-transformers 3.4.1, torch 2.13.0",
  "device": "cpu",
  "normalized": true,
  "max_seq_length": 8192,

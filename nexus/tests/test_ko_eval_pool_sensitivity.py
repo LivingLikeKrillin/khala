@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections import Counter
 
 
 import pytest
@@ -217,31 +218,97 @@ def test_the_refused_document_list_covers_the_recorded_count():
 _STORE_URL = os.getenv("NEXUS_TEST_DB_URL")
 
 
-@pytest.mark.integration
+COSTS = EVAL_KO / "pool-sensitivity-costs.json"
+
+
+def test_the_headline_recomputes_from_the_committed_costs():
+    """The CI half: the DP's arithmetic over a committed fixture. It pins the minimum and the state
+    it lands in, and it cannot verify the costs themselves - those come from the store."""
+    fixture = json.loads(COSTS.read_text(encoding="utf-8"))
+    moves = [QueryMoves(qid=q["qid"], outcome=q["outcome"], flip=q["flip"], tie=q["tie"],
+                        removal=q["removal"], candidates=q["candidates"])
+             for q in fixture["queries"]]
+    assert len(moves) == 36
+    assert minimum_cost(moves) == (fixture["minimum"]["cost"], fixture["minimum"]["W"],
+                                   fixture["minimum"]["L"]) == (10, 22, 10)
+
+
+def test_the_committed_costs_carry_the_shape_the_spec_reports():
+    """The published tie column was derived by subtraction rather than measured, and was wrong in two
+    buckets (12/11/4 against a measured 13/10/4). The fixture is the authority; this pins it so the
+    next reader compares against a number something produced."""
+    fixture = json.loads(COSTS.read_text(encoding="utf-8"))
+    rows = fixture["queries"]
+    outcomes = Counter(r["outcome"] for r in rows)
+    assert outcomes == {"win": 27, "tie": 8, "loss": 1}
+    assert Counter(r["flip"] for r in rows) == {1: 13, 2: 17, 3: 3, 4: 3}
+    assert Counter(r["tie"] for r in rows if r["outcome"] == "win") == {1: 13, 2: 10, 3: 4}
+    assert sum(1 for r in rows if r["removal"]) == 20
+
+
 @pytest.mark.skipif(not _STORE_URL, reason="no database: the store-dependent half did not run")
 @pytest.mark.asyncio
-async def test_costs_recompute_from_the_store_when_both_arms_are_present(db_url):
-    """Recompute the move costs from `ko_eval_embeddings` and check them against the committed
-    per-query record. Skipped — and reported as skipped — while the store lacks an arm, which is its
-    state since 2026-08-05 (KOREAN_SEARCH_QUALITY.md §6, eval store loss)."""
+async def test_costs_recompute_from_the_store(db_url):
+    """The half the fixture cannot cover: regenerate the costs from `ko_eval_embeddings` and assert
+    they still match what is committed. Skipped - with the reason printed - while the store lacks an
+    arm, which was its state from 2026-08-05 until the KURE arm was rebuilt.
+
+    **Deliberately not marked `integration`.** That marker means "truncate the database before me",
+    and `clean_db` would remove the eval tenant's chunks - leaving the store orphaned and this test
+    skipping on its own guard, which is exactly what happened the first time it was written. Its
+    precondition is the opposite of a clean database: an intact eval tenant.
+    """
     import asyncpg
+    import yaml as _yaml
+
+    from scripts.ko_eval_harness import collapse_to_documents
+    from scripts.ko_eval_pool_sensitivity import cost_moves
+    from scripts.ko_eval_vector import vector_search
 
     conn = await asyncpg.connect(db_url)
     try:
-        rows = await conn.fetch(
-            "SELECT model, count(*) FROM ko_eval_embeddings WHERE tenant='ko_eval_embed' "
-            "GROUP BY model")
-    except asyncpg.UndefinedTableError:
-        pytest.skip("eval store table absent: the store-dependent half did not run")
+        try:
+            rows = await conn.fetch(
+                "SELECT model, count(*) FROM ko_eval_embeddings WHERE tenant='ko_eval_embed' "
+                "GROUP BY model")
+        except asyncpg.UndefinedTableError:
+            pytest.skip("eval store table absent: the store-dependent half did not run")
+        arms = {r["model"] for r in rows}
+        if {"nomic-embed-text", "KURE-v1"} - arms:
+            pytest.skip(f"eval store holds only {sorted(arms) or 'no'} arm(s): "
+                        "the store-dependent half did not run")
+
+        labels = _yaml.safe_load((EVAL_KO / "labels.yaml").read_text(encoding="utf-8"))
+        pool = {q["id"]: q["candidates"]
+                for q in json.loads((EVAL_KO / "pool-blind.json").read_text(encoding="utf-8"))}
+        refused = load_refused_docs()
+        chunk_doc = {r["rid"]: r["source_uri"].split(":", 1)[1] for r in await conn.fetch(
+            "SELECT rid, source_uri FROM chunks WHERE tenant='ko_eval_embed'")}
+        if not chunk_doc:
+            pytest.skip("eval tenant has no chunks: run `ko_eval_embed_compare restore-chunks`")
+
+        tops = {}
+        for model in ("nomic-embed-text", "KURE-v1"):
+            qv = json.loads((EVAL_KO.parent / "query-vectors" / f"{model}.json")
+                            .read_text(encoding="utf-8"))
+            by_text = {v["query"]: v["vector"] for v in qv.values()}
+            tops[model] = {
+                q["id"]: collapse_to_documents(
+                    await vector_search(conn, model, "ko_eval_embed", labels["pack"],
+                                        by_text[q["query"]], top_k=20), chunk_doc, limit=10)
+                for q in labels["queries"] if q.get("answerable")}
     finally:
         await conn.close()
 
-    arms = {r["model"] for r in rows}
-    if {"nomic-embed-text", "KURE-v1"} - arms:
-        pytest.skip(f"eval store holds only {sorted(arms) or 'no'} arm(s): "
-                    "the store-dependent half did not run")
-
-    pytest.fail("both arms are present - wire the recompute in and pin it against the record")
+    committed = {q["qid"]: q for q in json.loads(COSTS.read_text(encoding="utf-8"))["queries"]}
+    for q in labels["queries"]:
+        if not q.get("answerable") or (set(q["gold"]) & refused):
+            continue
+        m = cost_moves(q["id"], set(q["gold"]), tops["KURE-v1"][q["id"]],
+                       tops["nomic-embed-text"][q["id"]], pool[q["id"]], refused)
+        rec = committed[q["id"]]
+        assert (m.outcome, m.flip, m.tie, m.removal) == (
+            rec["outcome"], rec["flip"], rec["tie"], rec["removal"]), q["id"]
 
 
 def test_score_matches_the_harness_definition():

@@ -140,12 +140,27 @@ def _st_version() -> str:
 
 
 def _hf_revision(st_model) -> str:
-    """체크포인트 커밋 sha. 같은 이름의 다른 리비전은 다른 설정이다."""
+    """체크포인트 커밋 sha. 같은 이름의 다른 리비전은 다른 설정이다.
+
+    **로드된 스냅샷에서 읽는다.** 예전에는 `model_info()` 로 허브에 물었는데, 그건 두 가지가
+    틀렸다 — 네트워크가 없으면 예외를 삼키고 **빈 문자열**을 내서, 어떤 가중치를 썼는지 식별하는
+    필드가 확인이 가장 어려운 상황에서 조용히 사라진다. 그리고 물어본 것은 "허브의 main 이 **지금**
+    무엇인가" 이지 "이 팔이 **무엇을 로드했는가**" 가 아니다. 캐시 스냅샷 디렉터리 이름이 곧
+    커밋 sha 이므로 그쪽이 더 진실하다.
+    """
+    from pathlib import Path as _Path
+
+    cfg = getattr(getattr(st_model[0], "auto_model", None), "config", None)
+    repo_id = getattr(cfg, "_name_or_path", None) or "nlpai-lab/KURE-v1"
     try:
-        from huggingface_hub import model_info
-        return model_info(st_model.model_card_data.base_model or "nlpai-lab/KURE-v1").sha or ""
-    except Exception:      # noqa: BLE001
-        return ""
+        from huggingface_hub import snapshot_download
+        return _Path(snapshot_download(repo_id, local_files_only=True)).name
+    except Exception:      # noqa: BLE001 — 캐시에 없으면 허브에 묻는다
+        try:
+            from huggingface_hub import model_info
+            return model_info(repo_id).sha or ""
+        except Exception:  # noqa: BLE001
+            return ""
 
 
 async def embed_pack(arm, chunk_inputs: dict[str, str]) -> list[EmbedRow]:
