@@ -16,10 +16,10 @@
  "criterion": "binary; relevant iff the document contains the information the query asks for and could stand alone as the answer source. Topical adjacency is not relevance.",
  "read_depth": "headings and query-matching passages, not full readings - an unquantified error term on top of sampling error, in either direction",
  "result": {
-  "relevant_actual": 1,
-  "relevant_safety": 2,
+  "relevant_actual": 0,
+  "relevant_safety": 1,
   "disputed": 1,
-  "note": "disputed counted non-relevant in the actual reading and relevant in the safety reading, per §4.1. Both leave the 95% CI across the 10-pair threshold, so the pre-registered answer is 'unresolved at n=30' either way."
+  "note": "disputed counted non-relevant in the actual reading and relevant in the safety reading, per §4.1. Actual k=0: point estimate 0.0 pairs, 95% CI [0.0, 86.3]. Safety k=1: point estimate 24.9, CI [0.6, 128.4]. Both intervals span the 10-pair threshold, so the pre-registered answer is 'unresolved at n=30' either way - unchanged by the correction."
  },
  "judgements": [
   {
@@ -65,10 +65,11 @@
    "document": "concepts/configuration/liveness-readiness-startup-probes.md",
    "proposed_by": "agent",
    "reviewed_by": "LivingLikeKrillin",
-   "basis": "the document's sections are the answer: liveness / readiness / startup probes",
+   "basis": "proposed relevant on the document's sections (liveness / readiness / startup). CORRECTED to non-relevant by the §4.1 calibration: this query's rev-2 gold is tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md, the task document. The query asks how to CONFIGURE them; the concepts page explains what they are - 41 lines with one configuration-shaped match against 46 in the gold. Accepting it while rejecting #15 for being mechanism rather than procedure would apply two standards.",
    "disputed": false,
    "proposed": true,
-   "relevant": true
+   "relevant": false,
+   "corrected_on_calibration": true
   },
   {
    "n": 5,
@@ -382,5 +383,14 @@
    "proposed": false,
    "relevant": false
   }
- ]
+ ],
+ "calibration": {
+  "ran": "2026-08-06",
+  "why": "§4.1 requires each presented list to carry the query's known gold as a control, and that control was NOT run when the sample was judged. It was run afterwards, against the rev-2 gold, and it changed a judgement.",
+  "finding": "The original adjudication never recorded a relevance criterion in words - SPEC-nexus-korean-retrieval-eval states only the procedure ('each pooled document is judged by reading it'). So reconciliation is behavioural, not textual: does the criterion stated here accept the documents already in gold, and reject what they rejected? Checked on the queries where a judgement call was made.",
+  "result": "The rev-2 gold prefers the TASK document over the CONCEPTS document for how-to queries (q021 -> access-api-from-pod.md, q030 -> configure-liveness-readiness-startup-probes.md). That validates rejecting #15 and invalidates accepting #4.",
+  "changed": [
+   4
+  ]
+ }
 }
