@@ -113,6 +113,12 @@ services:
     container_name: nexus-app
     ports:
       - "8000:8000"
+    # `.env` 를 통째로 주입한다. 아래 `environment:` 가 명시하는 키는 그대로 우선하고, 여기에는
+    # **명시되지 않은 키**(예: 워크스페이스별 `NOTION_TOKEN_*`)가 실려 들어온다. 파일이 없으면
+    # compose 가 죽으므로 필수 표시(`required: false`)를 붙여 새 체크아웃에서도 뜬다.
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql://nexus:nexus@nexus-db:5432/nexus
       OLLAMA_URL: http://nexus-ollama:11434
@@ -125,6 +131,11 @@ services:
       # 기본값 빈 문자열: 토큰 없이도 부팅하고, 그 기능만 못 쓴다.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       NOTION_TOKEN: ${NOTION_TOKEN:-}
+      # 워크스페이스가 늘 때마다 여기 한 줄씩 박지 않는다 — 루트마다 다른 integration 토큰을
+      # 쓰게 되면서(`notion_sources.token_env`) 그 목록이 계속 자란다. 아래 `env_file` 이
+      # `.env` 를 통째로 주입하므로, 새 토큰은 `.env` 에 한 줄 더하고 재기동하면 끝이다.
+      # 오타는 조용히 넘어가지 않는다: 루트가 가리키는 변수가 비어 있으면 preview/sync 가
+      # 기본 토큰으로 떨어지는 대신 그 이름을 대고 거부한다.
       # LLM 백엔드 선택(dev). 미설정이면 anthropic 기본 — 프로덕션 무영향.
       # claude-code = 호스트에서 도는 Claude Code 를 브리지 경유로 써서 키 없이 서술(`task llm-bridge`).
       NEXUS_LLM_PROVIDER: ${NEXUS_LLM_PROVIDER:-}
