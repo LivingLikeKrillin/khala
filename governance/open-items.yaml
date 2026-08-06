@@ -72,13 +72,17 @@
 - id: ko-eval-store-loss
   source: KOREAN_SEARCH_QUALITY.md §6
   owner: LivingLikeKrillin
-  state: open
+  state: closed
+  closed_by: >
+    Both arms rebuilt 2026-08-06. The KURE eval arm was re-embedded from the cached snapshot with
+    HF_HUB_OFFLINE, so the checkpoint is the recorded revision d14c8a94 and only the libraries differ
+    (sentence-transformers 3.4.1/torch 2.13.0 -> 3.3.1/torch 2.5.1+cpu). Every pre-registered figure
+    reproduced exactly - coverage 1906/1906 and 1896/1906, vector 0.975/0.402, fused 0.988/0.777,
+    keyword 0.771 both, comparable subset 36/40, confirmatory 27W/1L/8T - as did max_input_tokens
+    3426, which shows the tokenizer behaved identically. The store-dependent half of the regression
+    ran for the first time and matched the committed costs on all 36 queries.
   what: >
-    The eval embedding store was destroyed on 2026-08-05; the nomic arm was rebuilt and matches the
-    record, the KURE eval arm was not. Unrelated to the production generation, which is KURE-v1.
-  why_still_open: >
-    Rebuilding needs a torch harness image and CPU hours, and the available libraries differ from the
-    recorded provenance - so the result would not be the same arm.
+    The eval embedding store was destroyed on 2026-08-05 while verifying the fixture that guards it.
   trigger: When the store-dependent half of the pool-sensitivity regression is actually needed.
   checked_by: human
 

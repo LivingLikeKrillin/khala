@@ -1,0 +1,348 @@
+{
+ "kind": "derived",
+ "what": "Per-query move costs for the pool-sensitivity DP, derived from the eval store.",
+ "why_committed": "The store is local and was destroyed once. Committing the costs makes the headline recomputable in CI; the store-dependent half of the suite regenerates them and asserts they still match.",
+ "derived_from": {
+  "pack": "ko-k8s-2026-08-01",
+  "labels_revision": 2,
+  "tenant": "ko_eval_embed",
+  "arms": [
+   "nomic-embed-text",
+   "KURE-v1"
+  ],
+  "date": "2026-08-06",
+  "champion": "KURE-v1",
+  "challenger": "nomic-embed-text"
+ },
+ "minimum": {
+  "cost": 10,
+  "W": 22,
+  "L": 10
+ },
+ "queries": [
+  {
+   "qid": "q001",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 2,
+   "removal": 1,
+   "candidates": 21,
+   "unreachable": []
+  },
+  {
+   "qid": "q002",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 2,
+   "removal": null,
+   "candidates": 26,
+   "unreachable": []
+  },
+  {
+   "qid": "q003",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": 1,
+   "candidates": 24,
+   "unreachable": []
+  },
+  {
+   "qid": "q005",
+   "outcome": "tie",
+   "flip": 1,
+   "tie": null,
+   "removal": null,
+   "candidates": 20,
+   "unreachable": []
+  },
+  {
+   "qid": "q006",
+   "outcome": "win",
+   "flip": 4,
+   "tie": 3,
+   "removal": 1,
+   "candidates": 17,
+   "unreachable": []
+  },
+  {
+   "qid": "q007",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": 1,
+   "candidates": 21,
+   "unreachable": []
+  },
+  {
+   "qid": "q008",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": null,
+   "candidates": 23,
+   "unreachable": []
+  },
+  {
+   "qid": "q009",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": null,
+   "candidates": 26,
+   "unreachable": []
+  },
+  {
+   "qid": "q010",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": 1,
+   "candidates": 19,
+   "unreachable": []
+  },
+  {
+   "qid": "q011",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": 1,
+   "candidates": 20,
+   "unreachable": []
+  },
+  {
+   "qid": "q012",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": 1,
+   "candidates": 25,
+   "unreachable": []
+  },
+  {
+   "qid": "q013",
+   "outcome": "win",
+   "flip": 3,
+   "tie": 2,
+   "removal": 1,
+   "candidates": 22,
+   "unreachable": []
+  },
+  {
+   "qid": "q014",
+   "outcome": "loss",
+   "flip": 1,
+   "tie": null,
+   "removal": null,
+   "candidates": 19,
+   "unreachable": []
+  },
+  {
+   "qid": "q015",
+   "outcome": "tie",
+   "flip": 1,
+   "tie": null,
+   "removal": 1,
+   "candidates": 19,
+   "unreachable": []
+  },
+  {
+   "qid": "q016",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 2,
+   "removal": null,
+   "candidates": 17,
+   "unreachable": []
+  },
+  {
+   "qid": "q017",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": 1,
+   "candidates": 23,
+   "unreachable": []
+  },
+  {
+   "qid": "q018",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": null,
+   "candidates": 19,
+   "unreachable": []
+  },
+  {
+   "qid": "q019",
+   "outcome": "win",
+   "flip": 4,
+   "tie": 3,
+   "removal": null,
+   "candidates": 22,
+   "unreachable": []
+  },
+  {
+   "qid": "q020",
+   "outcome": "win",
+   "flip": 4,
+   "tie": 3,
+   "removal": 1,
+   "candidates": 14,
+   "unreachable": []
+  },
+  {
+   "qid": "q021",
+   "outcome": "win",
+   "flip": 1,
+   "tie": 2,
+   "removal": null,
+   "candidates": 24,
+   "unreachable": []
+  },
+  {
+   "qid": "q022",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 2,
+   "removal": 1,
+   "candidates": 23,
+   "unreachable": []
+  },
+  {
+   "qid": "q024",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": 1,
+   "candidates": 23,
+   "unreachable": []
+  },
+  {
+   "qid": "q025",
+   "outcome": "tie",
+   "flip": 1,
+   "tie": null,
+   "removal": 1,
+   "candidates": 21,
+   "unreachable": []
+  },
+  {
+   "qid": "q026",
+   "outcome": "win",
+   "flip": 1,
+   "tie": 2,
+   "removal": null,
+   "candidates": 21,
+   "unreachable": []
+  },
+  {
+   "qid": "q027",
+   "outcome": "win",
+   "flip": 1,
+   "tie": 2,
+   "removal": 1,
+   "candidates": 12,
+   "unreachable": []
+  },
+  {
+   "qid": "q028",
+   "outcome": "tie",
+   "flip": 1,
+   "tie": null,
+   "removal": 1,
+   "candidates": 15,
+   "unreachable": []
+  },
+  {
+   "qid": "q029",
+   "outcome": "tie",
+   "flip": 1,
+   "tie": null,
+   "removal": null,
+   "candidates": 17,
+   "unreachable": []
+  },
+  {
+   "qid": "q030",
+   "outcome": "win",
+   "flip": 1,
+   "tie": 1,
+   "removal": 1,
+   "candidates": 14,
+   "unreachable": []
+  },
+  {
+   "qid": "q031",
+   "outcome": "tie",
+   "flip": 1,
+   "tie": null,
+   "removal": 1,
+   "candidates": 22,
+   "unreachable": []
+  },
+  {
+   "qid": "q032",
+   "outcome": "tie",
+   "flip": 1,
+   "tie": null,
+   "removal": 1,
+   "candidates": 25,
+   "unreachable": []
+  },
+  {
+   "qid": "q033",
+   "outcome": "win",
+   "flip": 3,
+   "tie": 3,
+   "removal": 1,
+   "candidates": 20,
+   "unreachable": []
+  },
+  {
+   "qid": "q034",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 2,
+   "removal": null,
+   "candidates": 24,
+   "unreachable": []
+  },
+  {
+   "qid": "q035",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": null,
+   "candidates": 16,
+   "unreachable": []
+  },
+  {
+   "qid": "q036",
+   "outcome": "win",
+   "flip": 2,
+   "tie": 1,
+   "removal": null,
+   "candidates": 25,
+   "unreachable": []
+  },
+  {
+   "qid": "q037",
+   "outcome": "tie",
+   "flip": 1,
+   "tie": null,
+   "removal": null,
+   "candidates": 23,
+   "unreachable": []
+  },
+  {
+   "qid": "q038",
+   "outcome": "win",
+   "flip": 3,
+   "tie": 2,
+   "removal": null,
+   "candidates": 24,
+   "unreachable": []
+  }
+ ]
+}
