@@ -59,10 +59,19 @@ def blocks_to_markdown(blocks: list[dict]) -> tuple[str, int]:
         elif bt == "image":
             image_count += 1
             src = data.get("external", {}).get("url") or data.get("file", {}).get("url", "")
-            lines.append(f"![image]({src})")  # 의미 미캡처 (후속 비전 강화)
+            # **캡션은 본문이다.** 정책 문서의 그림 캡션은 "그림 3. 환불 승인 흐름" 처럼 그 문서가
+            # 쓰는 어휘 그대로다. 예전엔 alt 를 `image` 로 고정해 캡션을 통째로 버렸고, 그러면
+            # 표를 스크린샷으로 붙인 페이지가 **검색 텍스트 0** 인 얇은 문서가 된다.
+            # 그림의 *내용* 은 여전히 못 잡는다(후속 비전 강화) — 잡는 것은 그 그림에 대해
+            # 사람이 쓴 말이다.
+            alt = _rich_to_md(data.get("caption", [])) or "image"
+            lines.append(f"![{alt}]({src})")
         else:
-            # 미지원 블록: 텍스트가 있으면 살리고, 없으면 무시 (무손실)
-            if rich:
-                lines.append(_rich_to_md(rich))
+            # 미지원 블록: 텍스트가 있으면 살리고, 없으면 무시 (무손실).
+            # `file`/`video`/`pdf`/`embed`/`bookmark` 는 `rich_text` 가 없고 `caption` 에 글이
+            # 담긴다 — 그래서 rich_text 만 보면 조용히 사라진다.
+            salvaged = _rich_to_md(rich) or _rich_to_md(data.get("caption", []))
+            if salvaged:
+                lines.append(salvaged)
         lines.append("")
     return "\n".join(lines).strip() + "\n", image_count
