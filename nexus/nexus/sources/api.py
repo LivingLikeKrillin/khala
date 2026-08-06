@@ -48,6 +48,11 @@ class AddRootRequest(BaseModel):
     label: str = ""
 
 
+class PreviewRequest(BaseModel):
+    """아직 등록하지 않은 루트를 재본다. 등록·적재 어느 쪽도 하지 않는다."""
+    url_or_ids: list[str]
+
+
 class SyncRequest(BaseModel):
     reconcile: bool = False
     dry_run: bool = False
@@ -168,6 +173,53 @@ def _validate_sync(req: SyncRequest) -> None:
             status_code=400,
             detail=f"confirm_plan cannot be combined with: {', '.join(conflicting)}",
         )
+
+
+@router.get("/corpus", response_model=_Envelope)
+async def corpus(principal: Principal = Depends(dep)) -> _Envelope:
+    """활성 코퍼스의 구성, 안 보이는 문서, Pack B 트리거까지 남은 거리.
+
+    셋 다 지금은 psql 을 쳐야 알 수 있어서 아무도 안 본다. 코퍼스를 키울지 판단하는 사람이
+    처음 여는 화면이 이것이다.
+    """
+    _require(principal, MANAGE_SOURCES)
+    from nexus import db
+    from nexus.sources.corpus import corpus_status
+
+    pool = await db.get_pool()
+    async with pool.acquire() as con:
+        return _Envelope(data=await corpus_status(con, _tenant(principal)))
+
+
+@router.post("/preview", response_model=_Envelope)
+async def preview(req: PreviewRequest, principal: Principal = Depends(dep)) -> _Envelope:
+    """"이 루트를 넣으면 무엇이 들어오나" — 넣기 **전에** 답한다.
+
+    `POST /sync {dry_run: true}` 는 등록된 루트만 걷는다. 코퍼스를 키우려는 사람의 첫 질문은
+    등록 전에 나오므로 그 경로로는 답할 수 없다. 읽기 전용이라 run 행도 만들지 않는다.
+    """
+    _require(principal, MANAGE_SOURCES)
+    if not _notion_configured():
+        raise HTTPException(status_code=503, detail="notion_not_configured")
+    if not req.url_or_ids:
+        raise HTTPException(status_code=400, detail="no roots given")
+    if len(req.url_or_ids) > 10:
+        raise HTTPException(status_code=400, detail="too many roots: preview walks each one")
+
+    from nexus.ingest.sources.notion import NotionSource
+    from nexus.ingest.sources.notion_ids import canonical_page_id
+    from nexus.sources.preview import preview_roots
+
+    tenant = _tenant(principal)
+    try:
+        roots = [canonical_page_id(r) for r in req.url_or_ids]
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"bad root: {e}") from None
+
+    import anyio
+    result = await anyio.to_thread.run_sync(
+        lambda: preview_roots(lambda rs: NotionSource(roots=rs, tenant=tenant), roots))
+    return _Envelope(data=result)
 
 
 @router.post("/sync", response_model=_Envelope, status_code=202)
