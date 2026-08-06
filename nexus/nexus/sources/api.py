@@ -20,6 +20,7 @@ from nexus.auth import Principal, effective_scope
 from nexus.sources import roots_store, runs_store
 from nexus.sources.errors import DuplicateRoot
 from nexus.sources.notion_health import ConnectionHealth, RootState, probe_connection
+from nexus.sources.preview import MissingToken, require_token
 
 MANAGE_SOURCES = "manage_sources"
 
@@ -46,14 +47,22 @@ class _Envelope(BaseModel):
 class AddRootRequest(BaseModel):
     url_or_id: str
     label: str = ""
+    token_env: str = "NOTION_TOKEN"
 
 
 class PreviewRequest(BaseModel):
-    """아직 등록하지 않은 루트를 재본다. 등록·적재 어느 쪽도 하지 않는다."""
+    """아직 등록하지 않은 루트를 재본다. 등록·적재 어느 쪽도 하지 않는다.
+
+    `token_env` 는 이 루트를 읽을 토큰이 담긴 환경변수 이름 — 다른 워크스페이스의 문서를 넣기
+    전에 재보려면 그쪽 토큰으로 걸어야 하므로, 등록보다 **먼저** 지정할 수 있어야 한다.
+    """
     url_or_ids: list[str]
+    token_env: str = "NOTION_TOKEN"
 
 
 class SyncRequest(BaseModel):
+    #: 어느 워크스페이스를 동기화할지. 등록된 루트가 한 토큰만 쓰면 생략해도 된다.
+    token_env: str | None = None
     reconcile: bool = False
     dry_run: bool = False
     force: bool = False
@@ -110,9 +119,19 @@ async def health(principal: Principal = Depends(dep)) -> _Envelope:
     """
     _require(principal, MANAGE_SOURCES)
     tenant = _tenant(principal)
-    roots = [r["root_id"] for r in await roots_store.list_roots(tenant)]
-    h = await probe_connection(os.getenv("NOTION_TOKEN", ""), roots)
-    return _Envelope(data=_health_dict(h))
+    registered = await roots_store.list_roots(tenant)
+    # 토큰별로 나눠 묻는다 — 한 토큰으로 남의 워크스페이스 루트를 물으면 '없는 페이지' 로
+    # 답이 와서, 공유가 안 된 것인지 토큰이 다른 것인지 구분되지 않는다.
+    merged: ConnectionHealth | None = None
+    for token_env, ids in roots_store.group_by_token(registered).items():
+        h = await probe_connection(os.getenv(token_env, ""), ids)
+        if merged is None:
+            merged = h
+        else:
+            merged.roots.extend(h.roots)
+    if merged is None:
+        merged = await probe_connection(os.getenv("NOTION_TOKEN", ""), [])
+    return _Envelope(data=_health_dict(merged))
 
 
 @router.post("/roots", response_model=_Envelope, status_code=201)
@@ -125,13 +144,14 @@ async def add_root(req: AddRootRequest, principal: Principal = Depends(dep)) -> 
     """
     _require(principal, MANAGE_SOURCES)
     try:
-        root_id = await roots_store.add_root(_tenant(principal), req.url_or_id, req.label)
+        root_id = await roots_store.add_root(
+            _tenant(principal), req.url_or_id, req.label, req.token_env)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except DuplicateRoot as e:
         raise HTTPException(status_code=409, detail=f"root already registered: {e}") from e
 
-    probed = (await probe_connection(os.getenv("NOTION_TOKEN", ""), [root_id])).roots[0]
+    probed = (await probe_connection(os.getenv(req.token_env, ""), [root_id])).roots[0]
     return _Envelope(
         data={"root_id": root_id, "state": probed.state.value,
               "title": probed.title, "remedy": probed.remedy},
@@ -156,6 +176,40 @@ async def remove_root(root_id: str, principal: Principal = Depends(dep)) -> _Env
 
 
 # ── sync ──────────────────────────────────────────────────────────────────────
+
+def _one_workspace(by_token: dict[str, list[str]], asked: str | None) -> str:
+    """한 실행은 **한 워크스페이스만** 걷는다.
+
+    두 토큰을 한 걸음에 섞으면 그 토큰이 못 보는 루트가 **빈 걸음**으로 나오고, 빈 걸음은
+    `--reconcile` 에서 '사라진 문서' 와 구분되지 않는다. 조용히 절반을 지우느니 여기서 멈춘다.
+    """
+    if asked:
+        if asked not in by_token:
+            raise HTTPException(
+                status_code=400,
+                detail=f"no roots registered under {asked} (have: {sorted(by_token)})")
+        return asked
+    if len(by_token) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail=("roots span multiple workspaces "
+                    f"({sorted(by_token)}) - pass token_env to pick one; syncing them together "
+                    "would walk one of them empty and reconcile would read that as deletions"))
+    return next(iter(by_token))
+
+
+def _token_for(roots: list[str], by_token: dict[str, list[str]], asked: str | None) -> str:
+    """확정 실행이 재생할 계획의 루트들이 어느 토큰에 속하는지 되찾는다."""
+    if asked:
+        return asked
+    owners = {te for te, ids in by_token.items() if set(roots) & set(ids)}
+    if len(owners) == 1:
+        return next(iter(owners))
+    raise HTTPException(
+        status_code=400,
+        detail=("cannot tell which workspace this plan belongs to "
+                f"(matched: {sorted(owners)}) - pass token_env"))
+
 
 def _validate_sync(req: SyncRequest) -> None:
     if req.confirm_plan is None:
@@ -199,8 +253,6 @@ async def preview(req: PreviewRequest, principal: Principal = Depends(dep)) -> _
     등록 전에 나오므로 그 경로로는 답할 수 없다. 읽기 전용이라 run 행도 만들지 않는다.
     """
     _require(principal, MANAGE_SOURCES)
-    if not _notion_configured():
-        raise HTTPException(status_code=503, detail="notion_not_configured")
     if not req.url_or_ids:
         raise HTTPException(status_code=400, detail="no roots given")
     if len(req.url_or_ids) > 10:
@@ -208,7 +260,7 @@ async def preview(req: PreviewRequest, principal: Principal = Depends(dep)) -> _
 
     from nexus.ingest.sources.notion import NotionSource
     from nexus.ingest.sources.notion_ids import canonical_page_id
-    from nexus.sources.preview import preview_roots
+    from nexus.sources.preview import MissingToken, preview_roots, require_token
 
     tenant = _tenant(principal)
     try:
@@ -216,9 +268,16 @@ async def preview(req: PreviewRequest, principal: Principal = Depends(dep)) -> _
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"bad root: {e}") from None
 
+    try:
+        require_token(req.token_env)
+    except MissingToken as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
+
     import anyio
     result = await anyio.to_thread.run_sync(
-        lambda: preview_roots(lambda rs: NotionSource(roots=rs, tenant=tenant), roots))
+        lambda: preview_roots(
+            lambda rs: NotionSource(roots=rs, tenant=tenant, token_env=req.token_env), roots))
+    result["token_env"] = req.token_env
     return _Envelope(data=result)
 
 
@@ -231,6 +290,9 @@ async def start_sync(req: SyncRequest, principal: Principal = Depends(dep)) -> _
     if not _notion_configured():
         raise HTTPException(status_code=503, detail="notion_not_configured")
 
+    registered = await roots_store.list_roots(tenant)
+    by_token = roots_store.group_by_token(registered)
+
     if req.confirm_plan is not None:
         prior = await runs_store.get_run(req.confirm_plan)
         if prior is None or prior["tenant"] != tenant:
@@ -239,11 +301,18 @@ async def start_sync(req: SyncRequest, principal: Principal = Depends(dep)) -> _
             raise HTTPException(status_code=400, detail="confirm_plan must reference a completed dry run")
         roots = list(prior["walked_roots"])
         params = dict(reconcile=True, dry_run=False, force=prior["force"], since=prior["since"])
+        token_env = _token_for(roots, by_token, req.token_env)
     else:
-        roots = [r["root_id"] for r in await roots_store.list_roots(tenant)]
-        if not roots:
+        if not registered:
             raise HTTPException(status_code=400, detail="no roots registered")
+        token_env = _one_workspace(by_token, req.token_env)
+        roots = by_token[token_env]
         params = dict(reconcile=req.reconcile, dry_run=req.dry_run, force=req.force, since=req.since)
+
+    try:
+        require_token(token_env)
+    except MissingToken as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
     if (running := await runs_store.running_run_id(tenant)) is not None:
         raise HTTPException(status_code=409, detail=f"sync_in_progress: {running}")
@@ -254,11 +323,14 @@ async def start_sync(req: SyncRequest, principal: Principal = Depends(dep)) -> _
         running = await runs_store.running_run_id(tenant)
         raise HTTPException(status_code=409, detail=f"sync_in_progress: {running}") from e
 
+    from nexus.ingest.sources.notion import NotionSource
     from nexus.sources.sync_job import spawn_sync
 
     spawn_sync(
         run_id=run_id, tenant=tenant, roots=roots, threshold=req.threshold,
-        confirm_run=req.confirm_plan, **params,
+        confirm_run=req.confirm_plan,
+        source_factory=lambda rs, tn: NotionSource(roots=rs, tenant=tn, token_env=token_env),
+        **params,
     )
     return _Envelope(data={"run_id": run_id, "status": "running"})
 
