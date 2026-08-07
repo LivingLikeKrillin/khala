@@ -126,3 +126,20 @@
   trigger: >
     The count in the corpus view rising on any later ingest, or the first change to the chunker.
   checked_by: human
+
+- id: packb-snapshot-form-deviation
+  source: SPEC-nexus-korean-retrieval-eval §4.1
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    §4.1 defines Pack B as a local export carrying "document rid, title, text and content hash on
+    disk". The implementation freezes a tenant snapshot instead - same rows, new rids, its own
+    manifest - because Nexus keeps no original document text (principle 5: an index, not a store),
+    so a disk export would have to be reconstructed from chunks and then re-chunked by load_pack,
+    which changes what is being measured.
+  why_still_open: >
+    The reason §4.1 disqualified the live tenant was that it moves; a manifested snapshot answers
+    that reason exactly. But the letter of an approved SPEC differs from the implementation, and a
+    successor record is owed - the same shape as the clean-db deviation.
+  trigger: The next ko-eval SPEC, or the first citation of Pack B's result.
+  checked_by: human
