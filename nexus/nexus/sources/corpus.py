@@ -22,6 +22,41 @@ PACK_B_MIN_DOCUMENTS = 100
 THIN_DOC_MAX_CHARS = 200
 
 
+async def _unembedded(con, tenant: str) -> dict:
+    """벡터가 없는 활성 청크 — **검색에서 안 보이는데 어디에도 안 세어지던 것.**
+
+    `index/embed.py` 는 임베딩 실패를 삼키고 `False` 를 돌려주며, `embed_health` 는
+    `IS NOT NULL` 만 세므로 거부된 청크는 두 곳 어디에도 안 잡힌다. `KOREAN_SEARCH_QUALITY.md`
+    §3.2 가 "아무 데도 집계되지 않는다" 로 기록하고 유예해 둔 상태다.
+
+    2026-08-07 실물에서 발생했다: 정책 문서의 18,751자 청크를 사이드카가
+    `413 max_seq_length(8192)` 로 거부했고, 그 청크는 벡터 다리에서 영구히 안 보인다. 지금은
+    289분의 1이지만 **큰지 작은지 보이지 않는 것이 결함의 본질**이라, 판정보다 위에 적는다.
+
+    컬럼은 `configured_column` 으로 정한다 — 검색 다리가 읽는 그 컬럼이어야 한다. 다른 컬럼을
+    세면 세대가 바뀐 뒤 "다 임베딩됐다" 는 거짓을 보고하게 된다.
+    """
+    from nexus.index.vector_index import configured_column
+
+    column = configured_column()
+    rows = await con.fetch(
+        f"SELECT c.rid, d.title, length(c.chunk_text) AS chars "          # noqa: S608
+        f"FROM chunks c JOIN documents d ON d.rid = c.doc_rid AND d.tenant = c.tenant "
+        f"WHERE c.tenant = $1 AND c.status = 'active' AND c.{column} IS NULL "
+        f"ORDER BY chars DESC LIMIT 20", tenant)
+    total = await con.fetchval(
+        f"SELECT count(*) FROM chunks "                                    # noqa: S608
+        f"WHERE tenant = $1 AND status = 'active' AND {column} IS NULL", tenant) or 0
+    return {
+        "column": column,
+        "count": total,
+        "sample": [dict(r) for r in rows],
+        "note": ("벡터가 없는 청크는 **벡터 다리에서 영구히 안 보인다**. 임베딩 실패는 삼켜지고 "
+                 "embed_health 도 세지 않으므로, 여기 말고는 드러나는 곳이 없다. "
+                 "가장 흔한 원인은 max_seq_length 를 넘는 긴 청크다."),
+    }
+
+
 async def corpus_status(con, tenant: str = "default") -> dict:
     """활성 코퍼스의 구성과, 잴 수 있을 만큼 큰지."""
     docs = await con.fetchval(
@@ -47,10 +82,13 @@ async def corpus_status(con, tenant: str = "default") -> dict:
         "GROUP BY d.source_uri, d.title HAVING coalesce(sum(length(c.chunk_text)), 0) <= $2 "
         "ORDER BY 3 ASC LIMIT 20", tenant, THIN_DOC_MAX_CHARS)]
 
+    unembedded = await _unembedded(con, tenant)
+
     return {
         "tenant": tenant,
         "documents": docs,
         "chunks": chunks,
+        "unembedded_chunks": unembedded,
         "by_doc_type": by_type,
         "by_origin": by_origin,
         "thin_documents": {
