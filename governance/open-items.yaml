@@ -61,8 +61,26 @@
   owner: LivingLikeKrillin
   state: open
   what: >
-    Adjudicating the pool (about 821 pairs, reviewed) - the only work that lets the KURE direction be
-    cited as measured rather than bounded.
+    Adjudicating the pool - the only work that lets the KURE direction be cited as measured rather
+    than bounded. Now priced (2026-08-07, tests/eval/reports/2026-08-07-pool-adjudication-price.md):
+    the population is 746 pairs, the threshold is 10 (fewer than that and the verdict cannot be
+    defeated, since cost is counted in pairs), and 30 pairs have been judged with 0 relevant. That
+    leaves a 95% upper bound of 69 - seven times the threshold. Buying the conclusion costs 192
+    judged pairs if the observed rate holds, so 162 more; 263 more if one relevant pair turns up.
+  why_still_open: >
+    The price is high because the threshold is low: 10 in 746 is 1.3%, and ruling a rate below 1.3%
+    by sampling takes a quarter of the population. That is the price of the question, not a defect
+    in the instrument.
+
+    This also pays a debt the SPEC recorded against itself - "the sample size was chosen without a
+    power calculation, that was an error" - and it uses the exact hypergeometric rather than the
+    binomial the SPEC used and flagged as an approximation. The owner declined to buy resolution on
+    2026-08-05 without knowing the price; that decision can now be retaken informed.
+
+    A cheaper route is sketched in the report and not built: adjudicating the witness documents that
+    realise each query's cheap moves would raise the minimum cost above 10, which raises the
+    threshold and makes the sample cheaper. It is blocked on cost_moves() recording witnesses rather
+    than costs alone.
   trigger: >
     Any approved SPEC or accepted ADR whose linked_adrs contains ADR-0009 must state whether it
     relies on that direction. (The comparison SPEC is reached through ADR-0009, which is what
