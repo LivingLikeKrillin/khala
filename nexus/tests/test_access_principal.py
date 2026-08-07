@@ -18,7 +18,7 @@ from fastapi import HTTPException
 from nexus.auth.config import AuthConfig
 from nexus.auth.deps import resolve_request_principal
 
-_ISS = "https://pfplay.cloudflareaccess.com"
+_ISS = "https://example-team.cloudflareaccess.com"
 _AUD = "nexus-app-tag"
 
 
@@ -40,7 +40,7 @@ class FakeEdge:
         return {"keys": [{"kty": "RSA", "kid": self.kid, "alg": "RS256",
                           "n": _int_b64(n.n), "e": _int_b64(n.e)}]}
 
-    def mint(self, email="eisen@pfplay.com", aud=_AUD, iss=_ISS):
+    def mint(self, email="alice@example.com", aud=_AUD, iss=_ISS):
         h = {"alg": "RS256", "kid": self.kid, "typ": "JWT"}
         p = {"iss": iss, "aud": aud, "email": email, "exp": int(time.time()) + 600}
         si = f"{_b64(json.dumps(h).encode())}.{_b64(json.dumps(p).encode())}"
@@ -73,24 +73,24 @@ def _resolve(edge, cfg, token=None, bearer=None):
 
 def test_a_mapped_email_becomes_its_principal(edge):
     cfg = _cfg(edge, identities={
-        "eisen@pfplay.com": {"capabilities": ["manage_sources", "manage_documents"],
+        "alice@example.com": {"capabilities": ["manage_sources", "manage_documents"],
                              "clearance": "INTERNAL"}})
     p = _resolve(edge, cfg, token=edge.mint())
-    assert p.name == "eisen@pfplay.com"
+    assert p.name == "alice@example.com"
     assert p.has("manage_documents")
 
 
 def test_an_unmapped_email_gets_the_default_identity_with_zero_capabilities(edge):
     cfg = _cfg(edge, identities={}, default_clearance="PUBLIC")
-    p = _resolve(edge, cfg, token=edge.mint(email="stranger@pfplay.com"))
-    assert p.name == "stranger@pfplay.com"
+    p = _resolve(edge, cfg, token=edge.mint(email="stranger@example.com"))
+    assert p.name == "stranger@example.com"
     assert p.capabilities == ()               # 파괴적 행위 불가
     assert p.clearance == "PUBLIC"            # INTERNAL 하드코딩 아님
 
 
 def test_the_default_clearance_is_the_operators_choice(edge):
     cfg = _cfg(edge, default_clearance="INTERNAL")
-    p = _resolve(edge, cfg, token=edge.mint(email="stranger@pfplay.com"))
+    p = _resolve(edge, cfg, token=edge.mint(email="stranger@example.com"))
     assert p.clearance == "INTERNAL" and p.capabilities == ()
 
 

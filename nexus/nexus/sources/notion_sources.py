@@ -4,7 +4,7 @@ SPEC-nexus-notion-source-console §4.1.
 
 브라우저 주소창에서 복사한 URL 은 슬러그 뒤에 대시 없는 32자리 hex 가 붙는다:
 
-    https://www.notion.so/My-Team-Page-2740c71bb9dc80efb43aea3676e632c8?pvs=4
+    https://www.notion.so/My-Team-Page-1a2b3c4d5e6f4a7b8c9d0e1f2a3b4c5d?pvs=4
 
 반면 API 는 대시 포함 소문자 UUID 를 준다. 둘을 같은 페이지로 취급하지 않으면 같은 문서가
 서로 다른 doc_rid 로 중복 적재되고, 재조정의 containment 술어가 조용히 빗나간다.

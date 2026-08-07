@@ -232,8 +232,8 @@ async def test_import_notion_without_reconcile_fn_changes_nothing():
 class _HexTreeClient:
     """API 는 대시 포함 소문자 id 를 준다. 사용자는 Notion URL 에서 대시 없는 id 를 복사한다."""
 
-    ROOT_DASHED = "2740c71b-b9dc-80ef-b43a-ea3676e632c8"
-    CHILD_DASHED = "29f0c71b-b9dc-8094-84ca-fc0c416a90e2"
+    ROOT_DASHED = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+    CHILD_DASHED = "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e"
 
     def __init__(self):
         self.blocks = type("B", (), {"children": self})()

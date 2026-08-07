@@ -150,7 +150,7 @@ auth:
   #   default_identity:            # Access 는 통과했으나 매핑에 없는 email 의 기본 신원.
   #     clearance: "PUBLIC"        # capabilities 는 항상 비어 있다(파괴적 행위 불가).
   #   identities:
-  #     "eisen@pfplay.com":
+  #     "alice@example.com":
   #       clearance: "INTERNAL"
   #       capabilities: ["manage_sources", "manage_documents"]
 
