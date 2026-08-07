@@ -19,6 +19,13 @@ sys.path.insert(0, str(ROOT / "scripts"))       # 리포 관례 — tests/test_l
 from fingerprint_scan import scan, tracked_files  # noqa: E402
 
 
+# 탐침 문자열은 **런타임에 조립한다.** 이 파일도 추적되므로, 지문을 문자 그대로 담으면 검사가
+# 자기 대조군을 잡아 영원히 붉다(실제로 그렇게 됐고 CI 가 잡았다). SKIP 에 이 파일을 넣는 쪽이
+# 쉬웠지만 그러면 진짜 지문이 숨을 자리가 하나 생긴다 — 검사를 무디게 하는 대신 탐침을 접는다.
+_ORG = "PF" + "Play"
+_UID = "9f8e7d6c-5b4a-4392-8170-6d5c4b3a2918"      # 합성. 어느 워크스페이스도 안 가리킨다
+
+
 def _with(tmp_line: str, rel: str, monkeypatch):
     """추적 파일 목록에 임시 파일 하나를 얹어 scan() 을 돌린다 — 작업 트리를 안 건드린다."""
     import fingerprint_scan as fs
@@ -39,29 +46,26 @@ def test_the_tree_is_clean_right_now():
 
 
 def test_the_partner_organisation_name_fires(monkeypatch):
-    found = _with("# PFPlay note", "nexus/tests/_fp_probe.py", monkeypatch)
-    assert any("pfplay" in p for p in found)
+    found = _with(f"# {_ORG} note", "nexus/tests/_fp_probe.py", monkeypatch)
+    assert any(_ORG.lower() in p for p in found)
 
 
 def test_a_real_page_id_in_notion_context_fires(monkeypatch):
     """맥락은 같은 줄에서 온다."""
-    found = _with('P = "notion page_id d6c68901-4ec5-4385-b1ef-2d783738da6c"',
-                  "nexus/tests/_fp_probe.py", monkeypatch)
-    assert any("d6c68901" in p for p in found)
+    found = _with(f'P = "notion page_id {_UID}"', "nexus/tests/_fp_probe.py", monkeypatch)
+    assert any(_UID in p for p in found)
 
 
 def test_a_page_id_fires_on_path_context_alone(monkeypatch):
     """파일 이름이 Notion 이면 그 안의 32자 ID 는 전부 의심한다 — 변수명이 무엇이든."""
-    found = _with('ROOT = "d6c68901-4ec5-4385-b1ef-2d783738da6c"',
-                  "nexus/tests/test_notion_fp_probe.py", monkeypatch)
-    assert any("d6c68901" in p for p in found)
+    found = _with(f'ROOT = "{_UID}"', "nexus/tests/test_notion_fp_probe.py", monkeypatch)
+    assert any(_UID in p for p in found)
 
 
 def test_a_uuid_without_notion_context_does_not_fire(monkeypatch):
     """**발화하면 안 되는 쪽.** k8s 코퍼스의 UID 와 콘텐츠 해시가 여기 걸리면 123건이 나오고,
     그 소음 아래에서는 진짜 지문이 안 보인다."""
-    found = _with('X = "d6c68901-4ec5-4385-b1ef-2d783738da6c"  # a pod uid',
-                  "nexus/tests/_fp_probe.py", monkeypatch)
+    found = _with(f'X = "{_UID}"  # a pod uid', "nexus/tests/_fp_probe.py", monkeypatch)
     assert found == [], f"맥락 없는 UUID 를 잡았다 — 검사가 소음이 된다: {found}"
 
 
