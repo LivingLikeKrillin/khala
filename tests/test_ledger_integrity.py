@@ -207,10 +207,36 @@ def test_an_item_claiming_a_mechanical_check_must_have_a_mechanical_trigger(tmp_
     assert li.check_open_items(ROOT, _items(tmp_path, _GOOD)) == []
 
 
+def _closed(extra: str = "") -> str:
+    """Closing an item drops its trigger — there is nothing left to watch for."""
+    body = "\n".join(ln for ln in _GOOD.splitlines() if not ln.startswith("  trigger:"))
+    return body.replace("state: open", "state: closed") + "\n" + extra
+
+
 def test_closing_an_item_requires_saying_how(tmp_path: Path):
-    closed = _GOOD.replace("state: open", "state: closed")
-    assert li.check_open_items(ROOT, _items(tmp_path, closed))
-    assert li.check_open_items(ROOT, _items(tmp_path, closed + "  closed_by: PR #163\n")) == []
+    assert li.check_open_items(ROOT, _items(tmp_path, _closed()))
+    assert li.check_open_items(ROOT, _items(tmp_path, _closed("  closed_by: PR #163\n"))) == []
+
+
+def test_a_closed_item_may_not_keep_a_trigger_or_a_reason_it_is_open(tmp_path: Path):
+    """A closed row that still says what to watch for, or why it is open, reads as open — and this
+    ledger is read by skimming.
+
+    Found on two real rows (`ko-eval-store-loss`, `packb-corpus-substance`), both closed with the
+    fields left behind and neither noticed. Fixing it exposed a contradiction in the checker
+    itself: `trigger` was required of *every* item, so a closed row was obliged to keep one.
+    """
+    good = _closed("  closed_by: measured, and the measurement went against it\n")
+    assert li.check_open_items(ROOT, _items(tmp_path, good)) == []
+    for stale in ("  trigger: watch for the next SPEC\n", "  why_still_open: not taken up\n"):
+        assert li.check_open_items(ROOT, _items(tmp_path, good + stale)), \
+            f"닫힌 항목이 {stale.split(':')[0].strip()} 를 들고 있는데 통과했다"
+
+
+def test_an_open_item_still_must_carry_a_trigger(tmp_path: Path):
+    """반대 방향. 닫힌 쪽을 풀어주면서 열린 쪽까지 느슨해지면 ADR-0009 가 거부한 형태가 돌아온다."""
+    no_trigger = "\n".join(ln for ln in _GOOD.splitlines() if not ln.startswith("  trigger:"))
+    assert li.check_open_items(ROOT, _items(tmp_path, no_trigger))
 
 
 def test_duplicate_ids_are_caught(tmp_path: Path):

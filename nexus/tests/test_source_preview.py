@@ -146,39 +146,41 @@ class _Con:
 
 
 def test_the_pack_b_distance_is_computed_not_remembered():
-    """트리거가 두 조건인데 그 거리를 보려면 psql 을 쳐야 했다."""
+    """트리거까지의 거리를 보려면 psql 을 쳐야 했다."""
     import asyncio
 
-    from nexus.sources.corpus import (PACK_B_MIN_DOCUMENTS, PACK_B_MIN_SUBSTANTIVE,
-                                      corpus_status)
+    from nexus.sources.corpus import PACK_B_MIN_DOCUMENTS, corpus_status
 
     assert PACK_B_MIN_DOCUMENTS == 100
-    assert PACK_B_MIN_SUBSTANTIVE == 60
 
     got = asyncio.run(corpus_status(_Con(20)))["pack_b"]
     assert (got["documents"], got["short_by"], got["ready"]) == (20, 80, False)
 
     ready = asyncio.run(corpus_status(_Con(140)))["pack_b"]
-    assert ready["ready"] and ready["short_by"] == 0 and ready["substantive_short_by"] == 0
+    assert ready["ready"] and ready["short_by"] == 0
 
 
-def test_a_corpus_of_stubs_is_not_ready_however_many_stubs():
-    """**두 조건은 다른 것을 잰다.** 짧은 문서도 창 경쟁에는 참가하므로 바닥값은 통과시키지만,
-    본문이 없는 문서는 gold 가 못 된다.
+def test_the_corpus_view_reports_substance_without_gating_on_it():
+    """**한때 여기가 게이트였고, 그 문턱은 재보지 않은 어림수였다.**
 
-    실물: 문서 116(바닥값 0.086, 통과)에 본문 800자 이상은 19건이었다. 답변가능 40건을 19개
-    문서에 걸면 층별 8건을 서로 다른 문서에서 뽑을 수 없고, 무승부가 쌓여 '검정력 부족' 이
-    나온다 — ADR-0008 §5(b) 를 갚지 못하는 유일한 결과다 (KOREAN_SEARCH_QUALITY.md §6.2).
+    2026-08-07 오전: 문서 116(바닥값 0.086, 통과)인데 본문 800자 이상이 19건인 것을 보고
+    "실질 문서 ≥ 60" 을 게이트로 박았다. 근거는 "gold 가 19건뿐이면 두 팔이 같은 소수 문서를
+    두고 겨뤄 무승부가 쌓인다" 였는데, 같은 날 오후에 **라벨 없이 재보니 반증됐다**: 상위10에
+    뜬 서로 다른 문서 48건, 순위표가 갈리는 질의 12/30, 그중 8건이 2~3위에서 갈렸다
+    (KOREAN_SEARCH_QUALITY.md §6.3).
+
+    검정력을 예고하는 것은 문서 수가 아니라 순위가 갈리는 자리다. 그래서 이 수는 **보고만** 한다.
     """
     import asyncio
 
     from nexus.sources.corpus import corpus_status
 
     got = asyncio.run(corpus_status(_Con(116, substantive=19)))["pack_b"]
-    assert got["short_by"] == 0, "문서 수 조건은 이미 찼다 — 그래서 이것만 세면 통과한다"
-    assert got["substantive_documents"] == 19
-    assert got["substantive_short_by"] == 41
-    assert got["ready"] is False, "실질 문서가 모자란데 준비됐다고 하면 라벨 노동만 태운다"
+    assert got["substantive_documents"] == 19, "코퍼스 구성은 여전히 보여야 한다"
+    assert got["ready"] is True, "문서 수 조건은 찼다 — 실질 문서 수로 막지 않는다"
+    assert "substantive_short_by" not in got, "재보지 않은 문턱이 되살아났다"
+    assert "ko_eval_packb_disagreement" in got["second_gate"], \
+        "진짜 두 번째 조건이 어디 있는지 가리켜야 한다"
 
 
 # ── 루트별 토큰: 워크스페이스가 하나라는 가정을 푼다 ─────────────────────────

@@ -83,7 +83,6 @@
     ran for the first time and matched the committed costs on all 36 queries.
   what: >
     The eval embedding store was destroyed on 2026-08-05 while verifying the fixture that guards it.
-  trigger: When the store-dependent half of the pool-sensitivity regression is actually needed.
   checked_by: human
 
 - id: arbiter-frontmatter-outside-content-hash
@@ -147,7 +146,28 @@
 - id: packb-corpus-substance
   source: KOREAN_SEARCH_QUALITY.md §6.2
   owner: LivingLikeKrillin
-  state: open
+  state: closed
+  closed_by: >
+    Measured the same day, and the measurement went against the item. The threshold it records
+    (>= 60 documents of >= 800 characters) rested on an inference that was never tested: that with
+    19 gold candidates the two arms would meet over the same few documents and ties would pile up.
+    That inference needed no labels to check - a discordant pair requires the two arms to return
+    different rankings, and whether they do is measurable on its own.
+
+    With nori swapped in as a tokenizer only (same engine, scorer and part-of-speech policy) over
+    30 probe queries: 48 of 116 documents surface in some top ten, orderings diverge on 12 of 30
+    queries, and 8 of those diverge at rank 2 or 3 - shallow enough that a gold sitting there
+    moves MRR, or falls out of the window and moves Recall. The claim about "the same few
+    documents" is false.
+
+    The gate moved to the measured quantity: >= 6 queries diverging within the top three, the same
+    number as the verdict rule's MIN_DISCORDANT, since this is a necessary condition for a
+    discordant pair. Currently 8. The substantive-document count is still reported, but it no
+    longer gates anything. See §6.3 and scripts/ko_eval_packb_disagreement.py.
+
+    This does not promise power: if both arms find the gold, the position does not matter and the
+    pair is a tie. "Underpowered" can still come back, and ADR-0009 keeps the obligation open when
+    it does. What the gate buys is a reason to believe the label effort is worth spending.
   what: >
     Pack B's trigger counted documents but not whether a document could carry a query. The §6.1
     trigger (>= 100 active documents) was met on 2026-08-07 - the corpus reached 116 and the
@@ -156,12 +176,4 @@
     rows whose length is mostly URLs. Forty answerable queries cannot be hung on nineteen documents
     without reusing golds across strata, which manufactures ties, and ties below six discordant
     pairs return "underpowered" - the one result ADR-0009 says does not discharge ADR-0008 §5(b).
-  why_still_open: >
-    The trigger now carries a second condition (>= 60 documents of >= 800 characters) and the corpus
-    fails it by 41. Labels are not blocked by label effort; they are blocked by substance. Nothing
-    external blocks it either: one block in the policy tree was never shared with the integration
-    and further roots can be attached.
-  trigger: >
-    scripts/ko_eval_packb.py status exits 0, and tests/test_ko_eval_packb.py
-    ::test_enough_documents_can_actually_carry_a_query stops failing.
   checked_by: human

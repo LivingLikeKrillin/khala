@@ -87,21 +87,47 @@ def test_the_manifest_records_what_each_document_weighs():
 
 
 @pytest.mark.skipif(not MANIFEST.exists(), reason="Pack B 가 아직 얼려지지 않았다(로컬 전용)")
-def test_enough_documents_can_actually_carry_a_query():
-    """**바닥값과 다른 조건이다.** 짧은 문서도 창 경쟁에는 참가하므로 바닥값은 통과시키지만,
-    본문이 없는 문서는 gold 가 못 된다.
+def test_the_manifest_still_records_body_size():
+    """본문 길이는 게이트가 아니지만 **코퍼스 구성**을 아는 유일한 길이다.
 
-    2026-08-07 에 이 구분이 없어서 걸렸다: 116문서 · 바닥값 0.086(통과)인데 본문 800자 이상은
-    19건이었다. 40개 질의를 19개 문서에 걸면 층별 8건을 서로 다른 문서에서 뽑을 수 없고, 두
-    토크나이저가 같은 소수 문서를 두고 겨뤄 무승부만 쌓인다 — 결과는 '검정력 부족' 이고 그것은
-    ADR-0008 §5(b) 를 갚지 못한다.
+    2026-08-07 오전에 이것이 게이트였다("실질 문서 ≥ 60"). 그 60 은 재보지 않고 만든 어림수였고,
+    근거였던 "gold 가 19건뿐이면 무승부만 쌓인다" 는 같은 날 오후에 **라벨 없이 재서 반증됐다**
+    (§6.3). 게이트는 순위가 갈리는 자리로 옮겼다. 수치는 남긴다 — 116문서 중 19건만 본문이 있다는
+    사실은 게이트와 무관하게 알아야 한다.
     """
-    from nexus.sources.corpus import PACK_B_MIN_SUBSTANTIVE, PACK_B_SUBSTANTIVE_CHARS
+    from nexus.sources.corpus import PACK_B_SUBSTANTIVE_CHARS
 
     m = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    if "body_chars" not in m["docs"][0]:
-        pytest.skip("매니페스트가 body_chars 이전 형식이다 — 다시 얼려라")
+    assert "body_chars" in m["docs"][0], "본문 길이가 없으면 코퍼스 구성을 못 본다"
     substantive = [d for d in m["docs"] if d["body_chars"] >= PACK_B_SUBSTANTIVE_CHARS]
-    assert len(substantive) >= PACK_B_MIN_SUBSTANTIVE, (
-        f"gold 가 될 수 있는 문서 {len(substantive)}건 (본문 {PACK_B_SUBSTANTIVE_CHARS}자 이상) — "
-        f"{PACK_B_MIN_SUBSTANTIVE}건이 필요하다. 라벨을 쓰기 전에 코퍼스를 키워라")
+    assert 0 <= len(substantive) <= m["documents"]
+
+
+def test_the_gate_is_the_measured_disagreement_not_a_document_count():
+    """게이트가 무엇을 재는지 못박는다.
+
+    검정력을 예고하는 것은 문서 수가 아니라 **두 팔의 순위가 갈리는 자리**다. 문서 수는 구하기
+    쉬운 양이었고, 갈리는 자리는 한 번 더 물어야 나오는 양이었다 — §6.2 가 지적한 실수를 그
+    처방에서 그대로 반복했다.
+    """
+    from scripts.ko_eval_packb import SHALLOW_MIN
+
+    # 판정 규칙의 MIN_DISCORDANT 와 같은 수여야 한다. 필요조건이 최소 요구치보다 느슨하면
+    # 게이트를 통과하고도 확실히 검정력 부족인 구간이 생긴다.
+    from scripts.ko_eval_harness import MIN_DISCORDANT
+    assert SHALLOW_MIN == MIN_DISCORDANT
+
+    import nexus.sources.corpus as corpus
+    assert not hasattr(corpus, "PACK_B_MIN_SUBSTANTIVE"), \
+        "재보지 않은 문서 수 문턱이 되살아났다 — §6.3 을 읽어라"
+
+
+@pytest.mark.skipif(not (LOCAL_DIR / "packb-disagreement.json").exists(),
+                    reason="탐침을 아직 안 돌렸다(로컬 전용)")
+def test_the_recorded_probe_clears_the_bar():
+    from scripts.ko_eval_packb import SHALLOW_MIN, _load_probe
+
+    p = _load_probe()
+    assert p["shallow"] >= SHALLOW_MIN, (
+        f"상위 3위 안에서 갈리는 질의 {p['shallow']}건 — {SHALLOW_MIN}건이 필요하다. "
+        "이 아래면 불일치쌍의 필요조건이 이미 안 선다")

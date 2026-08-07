@@ -30,9 +30,15 @@ PACK_B_MIN_DOCUMENTS = 100
 # 행이었고 길이의 대부분이 URL 이었다.
 PACK_B_SUBSTANTIVE_CHARS = 800
 
-# 답변가능 40건을 **서로 다른 gold** 에 걸려면 최소 40건이 필요하고, 층을 억지로 채우지 않으려면
-# 여유가 있어야 한다. 50% 여유 = 60. Pack A 는 265문서에 40라벨(6.6:1)이었다.
-PACK_B_MIN_SUBSTANTIVE = 60
+# **이 수는 보고용이지 게이트가 아니다.** 한때 게이트였고(2026-08-07 오전, "≥ 60"), 그 60 은
+# 재보지 않고 만든 어림수였다. 근거로 든 것은 "gold 후보가 19건뿐이면 두 팔이 같은 소수 문서를
+# 두고 겨뤄 무승부가 쌓인다" 였는데, 같은 날 오후에 라벨 없이 그것을 재보니 반대가 나왔다:
+# 상위10에 뜬 서로 다른 문서가 48건, 순위표가 갈리는 질의 12/30, 그중 8건이 2~3위에서 갈렸다.
+#
+# 검정력을 예고하는 양은 **문서 수가 아니라 순위가 갈리는 자리**다. 게이트는 그쪽으로 옮겼다
+# (scripts/ko_eval_packb_disagreement.py, KOREAN_SEARCH_QUALITY.md §6.3). 문서 수는 계속
+# 보여준다 — 코퍼스가 무엇으로 차 있는지는 여전히 알아야 하니까.
+PACK_B_REPORT_SUBSTANTIVE = True
 
 # 이 길이 이하의 본문은 '거의 비어 있다' 로 센다. 청크 하나도 제대로 못 채우는 크기다.
 THIN_DOC_MAX_CHARS = 200
@@ -132,15 +138,15 @@ async def corpus_status(con, tenant: str = "default") -> dict:
             "min_documents": PACK_B_MIN_DOCUMENTS,
             "documents": docs,
             "short_by": max(0, PACK_B_MIN_DOCUMENTS - docs),
-            "min_substantive": PACK_B_MIN_SUBSTANTIVE,
             "substantive_chars": PACK_B_SUBSTANTIVE_CHARS,
             "substantive_documents": substantive,
-            "substantive_short_by": max(0, PACK_B_MIN_SUBSTANTIVE - substantive),
-            # **둘 다** 넘어야 한다. 하나만 세면 통과하고도 못 잰다.
-            "ready": docs >= PACK_B_MIN_DOCUMENTS and substantive >= PACK_B_MIN_SUBSTANTIVE,
-            "why": ("두 조건이다. (1) 창이 상위 10문서라, 코퍼스가 그보다 크지 않으면 두 팔이 거의 "
-                    "무승부가 되고 판정 규칙이 '검정력 부족' 을 돌려준다. (2) 본문이 없는 문서는 "
-                    "gold 가 못 된다 — 답변가능 40건을 서로 다른 문서에 걸 수 없으면 층을 억지로 "
-                    "채우게 되고, 결과는 같은 '검정력 부족' 이다 (KOREAN_SEARCH_QUALITY.md §6.1)."),
+            "ready": docs >= PACK_B_MIN_DOCUMENTS,
+            "why": ("창이 상위 10문서라, 코퍼스가 그보다 크지 않으면 두 팔이 거의 무승부가 되고 "
+                    "판정 규칙이 '검정력 부족' 을 돌려준다 (KOREAN_SEARCH_QUALITY.md §6.1)."),
+            "second_gate": ("코퍼스 크기만으로는 잴 수 있는지 알 수 없다. 두 토크나이저가 이 "
+                            "코퍼스에서 실제로 다른 순위를 내는지는 라벨 없이 잴 수 있고, 그것이 "
+                            "검정력을 예고한다 — scripts/ko_eval_packb_disagreement.py (§6.3). "
+                            f"실질 문서({PACK_B_SUBSTANTIVE_CHARS}자 이상) {substantive}건은 "
+                            "참고 수치이지 문턱이 아니다."),
         },
     }

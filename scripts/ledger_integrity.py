@@ -84,7 +84,11 @@ def check(root: Path, manifest_path: Path) -> tuple[int, list[str], list[str], l
 
 
 OPEN_ITEMS = ROOT / "governance" / "open-items.yaml"
-_REQUIRED = {"id", "source", "owner", "state", "what", "trigger", "checked_by"}
+# `trigger` is required of an OPEN item and forbidden on a closed one: an item is either open with
+# something observable to watch for, or closed with a record of how. Requiring it of both was the
+# original shape, and it forced a contradiction - a closed row had to keep saying what to watch.
+_REQUIRED = {"id", "source", "owner", "state", "what", "checked_by"}
+_REQUIRED_WHEN_OPEN = {"trigger"}
 
 
 def check_open_items(root: Path, path: Path | None = None) -> list[str]:
@@ -117,7 +121,8 @@ def check_open_items(root: Path, path: Path | None = None) -> list[str]:
         if not isinstance(item, dict):
             problems.append(f"open-items[{i}]: not a mapping")
             continue
-        missing = _REQUIRED - set(item)
+        required = _REQUIRED | (_REQUIRED_WHEN_OPEN if item.get("state") == "open" else set())
+        missing = required - set(item)
         if missing:
             problems.append(f"open-items[{item.get('id', i)}]: missing {sorted(missing)}")
             continue
@@ -128,8 +133,20 @@ def check_open_items(root: Path, path: Path | None = None) -> list[str]:
             problems.append(f"open-items[{item['id']}]: state must be open or closed")
         if item["state"] == "closed" and not str(item.get("closed_by", "")).strip():
             problems.append(f"open-items[{item['id']}]: closed without a record naming how")
-        mechanical = item["checked_by"] == "scripts/ledger_integrity.py"
-        if mechanical and "linked_adrs" not in item["trigger"]:
+        # A closed item that still says why it is open, or still carries a trigger to watch for,
+        # reads as open to anyone skimming - and the ledger is read by skimming. Caught on
+        # packb-corpus-substance, which was closed with both fields left behind.
+        if item["state"] == "closed":
+            stale = [k for k in ("why_still_open", "trigger") if item.get(k)]
+            if stale:
+                problems.append(
+                    f"open-items[{item['id']}]: closed but still carries {sorted(stale)} - "
+                    "delete them, or the row contradicts itself")
+        # Only an OPEN item has a trigger to be mechanical about. Applying this to a closed row
+        # asks it for the very field the rule above forbids it to keep.
+        mechanical = (item["state"] == "open"
+                      and item["checked_by"] == "scripts/ledger_integrity.py")
+        if mechanical and "linked_adrs" not in item.get("trigger", ""):
             problems.append(
                 f"open-items[{item['id']}]: claims this script checks it, but its trigger is not "
                 "expressed over `linked_adrs` - nothing here can observe it")
