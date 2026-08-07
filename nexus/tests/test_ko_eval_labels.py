@@ -153,3 +153,52 @@ def test_a_missing_revision_fails(labels):
     bad = copy.deepcopy(labels)
     del bad["revision"]
     assert any("revision 없음" in p for p in _check(bad))
+
+
+# ── 코퍼스가 디스크에 없을 때 (Pack B) ───────────────────────────────────────
+#
+# Pack B 는 테넌트 스냅샷이라 `docs/` 디렉터리가 없다. 게이트가 gold 를 파일 존재로만 검사하면
+# Pack B 라벨은 **검사 자체가 불가능**해진다 — 규칙이 없는 것과 같다. 출처만 바꾸고 규칙은 같게.
+
+
+def _manifest(tmp_path, docs):
+    import json
+    p = tmp_path / "m.json"
+    p.write_text(json.dumps({"docs": docs}, ensure_ascii=False), encoding="utf-8")
+    return p
+
+
+def test_a_manifest_pack_answers_the_same_two_questions(tmp_path):
+    from scripts.ko_eval_labels import ManifestPack
+
+    c = ManifestPack(_manifest(tmp_path, [{"key": "a.md", "title": "어떤 문서"}]))
+    assert c.has("a.md") and not c.has("b.md")
+    assert c.title("a.md") == "어떤 문서"
+    assert c.title("b.md") is None
+
+
+def test_a_gold_outside_the_manifest_is_rejected(tmp_path, labels):
+    """디스크 팩에서 '팩에 없는 gold' 를 막던 규칙이 매니페스트에서도 살아 있어야 한다."""
+    import copy
+
+    from scripts.ko_eval_labels import ManifestPack, check
+
+    bad = copy.deepcopy(labels)
+    q = _first_answerable(bad)
+    q["gold"] = ["not-in-the-manifest.md"]
+    corpus = ManifestPack(_manifest(tmp_path, [{"key": "a.md", "title": "t"}]))
+    assert any("팩에 없는 gold" in p for p in check(bad, corpus))
+
+
+def test_the_title_copying_ban_still_applies_through_a_manifest(tmp_path, labels):
+    """제목 베끼기 금지가 코퍼스 종류에 따라 갈리면, 한쪽 팩만 조여진다."""
+    import copy
+
+    from scripts.ko_eval_labels import ManifestPack, check
+
+    bad = copy.deepcopy(labels)
+    q = _first_answerable(bad)
+    q["gold"] = ["a.md"]
+    q["query"] = "긴 제목을 그대로 품은 질의"
+    corpus = ManifestPack(_manifest(tmp_path, [{"key": "a.md", "title": "긴 제목을 그대로 품은"}]))
+    assert any("제목을 그대로 품고" in p for p in check(bad, corpus))

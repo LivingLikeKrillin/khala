@@ -20,6 +20,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from pathlib import Path
@@ -77,8 +78,49 @@ def doc_title(pack_dir: Path, rel: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
-def check(labels: dict, pack_dir: Path) -> list[str]:
-    """라벨 파일의 자 검사. 문제 목록을 돌려준다(빈 목록 = 통과)."""
+class DiskPack:
+    """디스크에 풀린 팩 (Pack A). gold 는 `docs/` 아래의 실제 파일이다."""
+
+    def __init__(self, pack_dir: Path) -> None:
+        self.pack_dir = Path(pack_dir)
+
+    def has(self, rel: str) -> bool:
+        return (self.pack_dir / "docs" / rel).exists()
+
+    def title(self, rel: str) -> str | None:
+        return doc_title(self.pack_dir, rel)
+
+
+class ManifestPack:
+    """매니페스트로만 존재하는 팩 (Pack B).
+
+    Pack B 는 테넌트 스냅샷이라 `docs/` 디렉터리가 없다(그 이유는 `ko_eval_packb.py` 참고 —
+    Nexus 는 원문을 갖고 있지 않아 디스크로 내보내면 다시 청킹된다). 그래서 gold 의 존재와 제목을
+    **매니페스트**에서 읽는다. 규칙은 디스크 팩과 **같다** — 갈라지면 한쪽만 조여진다.
+    """
+
+    def __init__(self, manifest_path: Path) -> None:
+        data = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+        self._titles = {d["key"]: d.get("title") for d in data["docs"]}
+
+    def has(self, rel: str) -> bool:
+        return rel in self._titles
+
+    def title(self, rel: str) -> str | None:
+        return self._titles.get(rel)
+
+
+def _as_corpus(source):
+    """`Path` 면 디스크 팩. 이미 코퍼스면 그대로 — 옛 호출부가 그대로 돈다."""
+    return DiskPack(source) if isinstance(source, (str, Path)) else source
+
+
+def check(labels: dict, pack_dir) -> list[str]:
+    """라벨 파일의 자 검사. 문제 목록을 돌려준다(빈 목록 = 통과).
+
+    `pack_dir` 는 디스크 팩 경로이거나 `ManifestPack` 같은 코퍼스다.
+    """
+    corpus = _as_corpus(pack_dir)
     problems: list[str] = []
 
     if not labels.get("revision"):
@@ -130,10 +172,10 @@ def check(labels: dict, pack_dir: Path) -> list[str]:
             if not isinstance(rel, str) or not rel.endswith(".md"):
                 problems.append(f"{qid}: gold 는 팩 상대 경로여야 한다 — {rel!r}")
                 continue
-            if not (pack_dir / "docs" / rel).exists():
+            if not corpus.has(rel):
                 problems.append(f"{qid}: 팩에 없는 gold — {rel}")
                 continue
-            title = doc_title(pack_dir, rel)
+            title = corpus.title(rel)
             if title and len(_norm(title)) >= TITLE_MIN_CHARS and _norm(title) in query_text:
                 problems.append(f"{qid}: 질의가 정답 문서의 제목을 그대로 품고 있다 — {title!r}")
 
