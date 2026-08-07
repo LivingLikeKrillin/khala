@@ -135,11 +135,16 @@
     An embedding refusal is swallowed - index/embed.py returns False and embed_health counts only
     IS NOT NULL - so a chunk that the vector leg can never see is recorded nowhere.
   why_still_open: >
-    Two of three are done. It is counted (GET /sources/notion/corpus reports unembedded_chunks
-    against the column the search leg reads) and the refusal is now stored as a row with the
-    backend's message verbatim (embed_refusals, cleared when a retry succeeds, kept separate from
-    embed_waivers because a machine's fact is not a person's decision). What remains: nothing bounds
-    chunk length, which is what produced an 18,751-character chunk in the first place.
+    All three are now done. It is counted (GET /sources/notion/corpus reports unembedded_chunks
+    against the column the search leg reads), the refusal is stored as a row with the backend's
+    message verbatim (embed_refusals, cleared when a retry succeeds, kept separate from
+    embed_waivers because a machine's fact is not a person's decision), and chunk length is bounded
+    as of 2026-08-07 - the escape hatch that let an oversized single paragraph through whole is
+    closed and _split_oversize splits it, repeating a markdown table's header on every piece.
+
+    What keeps this open is the chunks already in the database. The bound applies at ingest, so the
+    18,751-character chunk and the four between 8k and 16k are still there and still invisible to
+    the vector leg. They go away on re-ingest, which nothing has scheduled.
   trigger: >
     The count in the corpus view rising on any later ingest, or the first change to the chunker.
   checked_by: human
@@ -245,4 +250,27 @@
   trigger: >
     The first change to the answer path's evidence handling, or any approved SPEC or accepted ADR
     whose linked_adrs contains ADR-0002 (grounded answers only).
+  checked_by: human
+
+- id: chunk-bound-is-estimator-tokens
+  source: KOREAN_SEARCH_QUALITY.md §3.2
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    Chunk length is now bounded, but bounded in *estimator* tokens, and the estimator is words times
+    a coefficient. It scores twenty thousand characters without a space as two tokens. The limit
+    that actually bit - the embedding model's max_seq_length - is counted by a different tokenizer,
+    so text without spaces can still exceed it and disappear from the vector leg exactly as before.
+  why_still_open: >
+    Closing it means either counting with the embedding model's own tokenizer at ingest, which
+    couples the chunker to the embedding backend, or adding a character ceiling - and a character
+    ceiling is a number nobody has measured. This repo set three unmeasured thresholds in a single
+    day and removed all three, so it is named rather than guessed.
+
+    It is not hypothetical, but it is not currently firing either: embed_refusals is the place a
+    real occurrence would show up, and a test states the blindness so it fails loudly if the
+    estimator changes.
+  trigger: >
+    A new row in embed_refusals whose reason names a sequence-length limit, or the first change to
+    _estimate_tokens.
   checked_by: human
