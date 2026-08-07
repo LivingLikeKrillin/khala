@@ -143,3 +143,25 @@
     successor record is owed - the same shape as the clean-db deviation.
   trigger: The next ko-eval SPEC, or the first citation of Pack B's result.
   checked_by: human
+
+- id: packb-corpus-substance
+  source: KOREAN_SEARCH_QUALITY.md §6.2
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    Pack B's trigger counted documents but not whether a document could carry a query. The §6.1
+    trigger (>= 100 active documents) was met on 2026-08-07 - the corpus reached 116 and the
+    random-ranker floor fell to 10/116 = 0.086 - and the pack was frozen. Surveying it to author
+    labels showed 19 documents with a body of 800 characters or more; the other 97 are revision-log
+    rows whose length is mostly URLs. Forty answerable queries cannot be hung on nineteen documents
+    without reusing golds across strata, which manufactures ties, and ties below six discordant
+    pairs return "underpowered" - the one result ADR-0009 says does not discharge ADR-0008 §5(b).
+  why_still_open: >
+    The trigger now carries a second condition (>= 60 documents of >= 800 characters) and the corpus
+    fails it by 41. Labels are not blocked by label effort; they are blocked by substance. Nothing
+    external blocks it either: one block in the policy tree was never shared with the integration
+    (74f75750...) and further roots can be attached.
+  trigger: >
+    scripts/ko_eval_packb.py status exits 0, and tests/test_ko_eval_packb.py
+    ::test_enough_documents_can_actually_carry_a_query stops failing.
+  checked_by: human

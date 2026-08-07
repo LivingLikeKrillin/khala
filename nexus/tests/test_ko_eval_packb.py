@@ -38,12 +38,24 @@ def test_chunk_order_is_part_of_the_frozen_identity():
 
 
 def test_pack_b_lives_only_in_the_gitignored_local_directory():
-    """내부 문서다. 다른 조직의 정책 문서이기까지 하다 — 리포는 public 이다."""
+    """내부 문서다. 다른 조직의 정책 문서이기까지 하다 — 리포는 public 이다.
+
+    `.gitignore` 는 **위로 걸어 찾는다.** 고정 깊이(`parents[3]`)로 짚으면 리포를 다른 깊이에
+    마운트했을 때(컨테이너는 nexus/ 를 /app 에 건다) 검사가 무너진다 — 유출을 막는 검사가
+    환경 때문에 못 도는 것은 없는 검사와 같다.
+    """
     assert LOCAL_DIR.name == "local"
     assert MANIFEST.parent == LOCAL_DIR
-    gitignore = (LOCAL_DIR.parents[3] / ".gitignore").read_text(encoding="utf-8")
-    assert "nexus/tests/eval/local/" in gitignore, \
-        "Pack B 가 커밋될 수 있는 상태다 — 내부 문서가 public 리포로 나간다"
+
+    for parent in LOCAL_DIR.parents:
+        gi = parent / ".gitignore"
+        if gi.exists() and "nexus/tests/eval/local/" in gi.read_text(encoding="utf-8"):
+            return
+        if (parent / ".git").exists():
+            pytest.fail("Pack B 가 커밋될 수 있는 상태다 — 내부 문서가 public 리포로 나간다")
+    # 체크아웃이 아니다(리포를 부분 마운트한 컨테이너 등). **규칙이 없는 것과 다르다** — 위에서
+    # 리포 루트를 만났는데 규칙이 없으면 이미 실패했다.
+    pytest.skip("체크아웃이 아니라 무시 규칙을 확인할 수 없다")
 
 
 @pytest.mark.skipif(not MANIFEST.exists(), reason="Pack B 가 아직 얼려지지 않았다(로컬 전용)")
@@ -63,3 +75,33 @@ def test_the_corpus_is_large_enough_for_the_window():
     m = json.loads(MANIFEST.read_text(encoding="utf-8"))
     floor = 10 / m["documents"]
     assert floor <= 0.10, f"바닥값 {floor:.3f} — 이 코퍼스로는 토크나이저를 가릴 수 없다"
+
+
+def test_the_manifest_records_what_each_document_weighs():
+    """실질 판정을 매니페스트만으로 할 수 있어야 한다 — DB 없이도 재현되는 사실이어야 한다."""
+    from scripts.ko_eval_packb import _manifest_doc
+
+    doc = {"title": "t", "chunks": [("root", 0, "가" * 500), ("root", 1, "나" * 400)]}
+    rec = _manifest_doc("k.md", doc)
+    assert rec["body_chars"] == 900, "본문 길이가 없으면 실질 문서를 셀 수 없다"
+
+
+@pytest.mark.skipif(not MANIFEST.exists(), reason="Pack B 가 아직 얼려지지 않았다(로컬 전용)")
+def test_enough_documents_can_actually_carry_a_query():
+    """**바닥값과 다른 조건이다.** 짧은 문서도 창 경쟁에는 참가하므로 바닥값은 통과시키지만,
+    본문이 없는 문서는 gold 가 못 된다.
+
+    2026-08-07 에 이 구분이 없어서 걸렸다: 116문서 · 바닥값 0.086(통과)인데 본문 800자 이상은
+    19건이었다. 40개 질의를 19개 문서에 걸면 층별 8건을 서로 다른 문서에서 뽑을 수 없고, 두
+    토크나이저가 같은 소수 문서를 두고 겨뤄 무승부만 쌓인다 — 결과는 '검정력 부족' 이고 그것은
+    ADR-0008 §5(b) 를 갚지 못한다.
+    """
+    from nexus.sources.corpus import PACK_B_MIN_SUBSTANTIVE, PACK_B_SUBSTANTIVE_CHARS
+
+    m = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    if "body_chars" not in m["docs"][0]:
+        pytest.skip("매니페스트가 body_chars 이전 형식이다 — 다시 얼려라")
+    substantive = [d for d in m["docs"] if d["body_chars"] >= PACK_B_SUBSTANTIVE_CHARS]
+    assert len(substantive) >= PACK_B_MIN_SUBSTANTIVE, (
+        f"gold 가 될 수 있는 문서 {len(substantive)}건 (본문 {PACK_B_SUBSTANTIVE_CHARS}자 이상) — "
+        f"{PACK_B_MIN_SUBSTANTIVE}건이 필요하다. 라벨을 쓰기 전에 코퍼스를 키워라")
