@@ -177,3 +177,31 @@
     without reusing golds across strata, which manufactures ties, and ties below six discordant
     pairs return "underpowered" - the one result ADR-0009 says does not discharge ADR-0008 §5(b).
   checked_by: human
+
+- id: packb-result-disposition
+  source: KOREAN_SEARCH_QUALITY.md §6.4
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    Whether ADR-0008 §5(b) has fired. The condition reads "a Korean evaluation set exists that can
+    compare tokenizers on Khala's real corpus, and its result does not favour mecab-ko". Pack B now
+    exists, is verified against its manifest, passes the label gate, and was run on 2026-08-07:
+    nori 4 wins, 2 losses, 34 ties over 40 answerable queries - six discordant pairs, exactly
+    MIN_DISCORDANT, so the test returned p = 0.688 rather than "underpowered". Recall@10 was 0.975
+    on both arms. Pack A's conclusion reproduced independently (p = 0.180 there).
+  why_still_open: >
+    The result does not favour nori, and mecab-ko survives by rule 5 of the verdict procedure -
+    "when the test cannot conclude, keep the incumbent" - not by a measured advantage. Whether "no
+    measurable difference" counts as "does not favour mecab-ko" is the judgement the condition
+    turns on, and it belongs to the owner. The agent's recommendation, recorded as a proposal and
+    not a ruling: it does NOT fire, because the condition asks for a result that fails to favour
+    mecab-ko, and what came back was an absence of difference, which is not grounds to unseat an
+    incumbent.
+
+    Read the limitation with it. Labels authored from the document side make queries easy: 34 of 40
+    were ties and the discordant count cleared its floor by nothing. One tie more and there would
+    have been no p-value at all.
+  trigger: >
+    Any approved SPEC or accepted ADR whose linked_adrs contains ADR-0008 must state whether §5(b)
+    fired given this result. Checked over the ledger, not left to anyone remembering.
+  checked_by: scripts/ledger_integrity.py
