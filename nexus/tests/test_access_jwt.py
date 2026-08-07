@@ -25,7 +25,7 @@ from nexus.auth.access_jwt import (
     verify_access_jwt,
 )
 
-_ISS = "https://pfplay.cloudflareaccess.com"
+_ISS = "https://example-team.cloudflareaccess.com"
 _AUD = "nexus-app-tag-7f3c9e2b"
 
 
@@ -49,7 +49,7 @@ class FakeEdge:
         return {"keys": [{"kty": "RSA", "kid": self.kid, "alg": "RS256", "use": "sig",
                           "n": _int_b64(n.n), "e": _int_b64(n.e)}]}
 
-    def mint(self, *, alg="RS256", kid=None, iss=_ISS, aud=_AUD, email="eisen@pfplay.com",
+    def mint(self, *, alg="RS256", kid=None, iss=_ISS, aud=_AUD, email="alice@example.com",
              exp=None, extra_header=None, sign_key=None) -> str:
         header = {"alg": alg, "kid": kid or self.kid, "typ": "JWT", **(extra_header or {})}
         payload = {"iss": iss, "aud": aud, "exp": exp if exp is not None else int(time.time()) + 600}
@@ -86,7 +86,7 @@ def _verify(token, edge, **over):
 def test_a_valid_token_yields_the_identity(edge):
     ident = _verify(edge.mint(), edge)
     assert isinstance(ident, VerifiedIdentity)
-    assert ident.email == "eisen@pfplay.com"
+    assert ident.email == "alice@example.com"
 
 
 # ── 위조: 이 설계가 막으려는 바로 그 공격. 첫 테스트. ─────────────────────────
@@ -126,7 +126,7 @@ def test_an_expired_token_is_rejected(edge):
 def test_a_token_within_the_clock_skew_leeway_still_passes(edge):
     """방금 만료된 토큰은 시계 오차일 수 있다 — leeway 안이면 받는다."""
     ident = _verify(edge.mint(exp=int(time.time()) - 5), edge)
-    assert ident.email == "eisen@pfplay.com"
+    assert ident.email == "alice@example.com"
 
 
 def test_wrong_issuer_is_rejected(edge):
@@ -165,7 +165,7 @@ def test_malformed_tokens_are_rejected(edge, bad):
 def test_a_tampered_payload_breaks_verification(edge):
     tok = edge.mint()
     h, p, s = tok.split(".")
-    bad_payload = _b64(json.dumps({"iss": _ISS, "aud": _AUD, "email": "attacker@pfplay.com",
+    bad_payload = _b64(json.dumps({"iss": _ISS, "aud": _AUD, "email": "attacker@example.com",
                                    "exp": int(time.time()) + 600}).encode())
     with pytest.raises(AccessJwtError):
         _verify(f"{h}.{bad_payload}.{s}", edge)
