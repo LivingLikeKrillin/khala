@@ -202,3 +202,35 @@ def test_the_title_copying_ban_still_applies_through_a_manifest(tmp_path, labels
     q["query"] = "긴 제목을 그대로 품은 질의"
     corpus = ManifestPack(_manifest(tmp_path, [{"key": "a.md", "title": "긴 제목을 그대로 품은"}]))
     assert any("제목을 그대로 품고" in p for p in check(bad, corpus))
+
+
+# ── 서명은 리비전에 묶인다 ───────────────────────────────────────────────────
+#
+# 예전 게이트는 `reviewed_by` 가 있으면 통과시켰다. 검토가 끝난 **뒤** 판단 재료가 한 줄 더 붙어도
+# 아무것도 안 막았다. 2026-08-08 에 실제로 그럴 뻔했다 — 서명 뒤에 `must_contain`(이 답에 이 사실이
+# 있어야 한다)을 40건에 추가했다.
+
+
+def test_a_review_signed_at_an_older_revision_no_longer_counts(labels):
+    import copy
+    bad = copy.deepcopy(labels)
+    bad["revision"] = (bad["revision"] or 1) + 1        # 판단 재료가 바뀌었다는 뜻
+    problems = _check(bad)
+    assert any("검토 리비전" in p for p in problems), "서명 이후 변경이 그대로 통과했다"
+
+
+def test_a_review_at_the_current_revision_passes(labels):
+    """반대 방향 — 리비전이 맞으면 막으면 안 된다. 아니면 아무도 이 게이트를 못 넘는다."""
+    assert not any("검토 리비전" in p for p in _check(labels))
+
+
+def test_the_revision_check_only_applies_to_agent_authored_labels(labels):
+    """사람이 직접 쓴 라벨에는 검토자가 따로 필요 없고, 리비전 묶기도 해당 없다."""
+    import copy
+    human = copy.deepcopy(labels)
+    human["revision"] = (human["revision"] or 1) + 1
+    for q in human["queries"]:
+        q["authored_by"] = "LivingLikeKrillin"
+        q.pop("reviewed_by", None)
+        q.pop("reviewed_revision", None)
+    assert not any("검토 리비전" in p or "reviewed_by 가 없다" in p for p in _check(human))

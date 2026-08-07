@@ -164,8 +164,17 @@ def check(labels: dict, pack_dir) -> list[str]:
             if stratum != UNANSWERABLE:
                 problems.append(f"{qid}: answerable=false 인데 층이 {stratum}")
 
-        if q.get("authored_by") == "agent" and not (q.get("reviewed_by") or "").strip():
-            problems.append(f"{qid}: 에이전트가 쓴 라벨에 reviewed_by 가 없다 — 사람의 검토 기록이 곧 게이트다")
+        if q.get("authored_by") == "agent":
+            if not (q.get("reviewed_by") or "").strip():
+                problems.append(
+                    f"{qid}: 에이전트가 쓴 라벨에 reviewed_by 가 없다 — 사람의 검토 기록이 곧 게이트다")
+            # **서명은 리비전에 묶인다.** 검토가 끝난 뒤 판단 재료가 한 줄 더 붙어도 예전 게이트는
+            # 통과시켰다 — `reviewed_by` 만 보니까. 2026-08-08 에 실제로 그럴 뻔했다: 서명 뒤에
+            # `must_contain` 을 40건에 추가했고, 그건 "이 답에 이 사실이 있어야 한다" 는 새 판단이다.
+            elif q.get("reviewed_revision") != labels.get("revision"):
+                problems.append(
+                    f"{qid}: 검토 리비전 {q.get('reviewed_revision')!r} ≠ 라벨 리비전 "
+                    f"{labels.get('revision')!r} — 서명 이후 판단 재료가 바뀌었다. 다시 검토받아라")
 
         query_text = _norm(q.get("query", ""))
         for rel in gold:

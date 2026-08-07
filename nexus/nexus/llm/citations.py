@@ -29,9 +29,35 @@ class CitationReport:
     unverified_count: int
 
 
+#: 활자 문장부호 → ASCII. 문서 제목은 Notion·에디터를 거치며 ‘ ’ “ ” — 를 달고 오는데, LLM 은
+#: 그것을 ' ' " " - 로 옮겨 적는다. 접지 않으면 **따옴표 한 글자 때문에 '출처 미검증' 이 뜬다** —
+#: 2026-08-08 측정에서 미검증 23건 중 대부분이 이것이었고, 지어낸 출처는 하나도 없었다.
+_PUNCT = str.maketrans({
+    "‘": "'", "’": "'",        # ‘ ’
+    "“": '"', "”": '"',        # “ ”
+    "–": "-", "—": "-",        # – —
+    " ": " ",                       # nbsp
+})
+
+
 def _norm(s: str) -> str:
-    """공백 축약 + trim + 소문자 — 표면 차이로 인한 오탐 방지."""
-    return re.sub(r"\s+", " ", s.strip()).lower()
+    """공백 축약 + trim + 소문자 + 활자 문장부호 접기 — 표면 차이로 인한 오탐 방지."""
+    return re.sub(r"\s+", " ", s.translate(_PUNCT).strip()).lower()
+
+
+def _unique_prefix(cited: str, known: dict[str, str]) -> str | None:
+    """제목 뒤를 잘라 인용한 경우. **모호하면 받지 않는다.**
+
+    LLM 은 `Nexus 팀 도그푸딩 배포 런북 (로컬 + Cloudflare Tunnel)` 을 괄호 없이 적는다. 그것은
+    지어낸 출처가 아니라 같은 문서의 짧은 이름이다.
+
+    다만 접두라고 다 받으면 `동시성` 하나로 세 문서가 다 맞아 검사가 무너진다. 그래서 **단 하나의
+    제목에만** 걸려야 하고, 잘린 자리가 **낱말 경계**여야 한다(`…런북` + `" ("`). 이러면 짧은
+    접두는 모호해져 저절로 걸러지고, 지어낸 제목은 애초에 어떤 제목의 접두도 아니다.
+    """
+    hits = [full for norm, full in known.items()
+            if norm != cited and norm.startswith(cited + " ")]
+    return hits[0] if len(hits) == 1 else None
 
 
 def _classify(inner: str, known: dict[str, str]) -> Citation:
@@ -51,6 +77,13 @@ def _classify(inner: str, known: dict[str, str]) -> Citation:
         tnorm = _norm(title_part)
         if tnorm in known:
             return Citation(title=known[tnorm], section=section_part, verified=True)
+    # 정확 일치가 없을 때만 접두를 본다 — 정확 일치를 접두가 가로채면 안 된다.
+    if (full := _unique_prefix(innorm, known)):
+        return Citation(title=full, section="", verified=True)
+    for i in range(len(parts) - 1, 0, -1):
+        title_part = ",".join(parts[:i]).strip()
+        if (full := _unique_prefix(_norm(title_part), known)):
+            return Citation(title=full, section=",".join(parts[i:]).strip(), verified=True)
     return Citation(title=inner, section="", verified=False)   # packet 에 없는 출처
 
 
