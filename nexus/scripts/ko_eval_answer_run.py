@@ -105,7 +105,18 @@ async def _run(args) -> int:
          "tag": args.tag, "llm_model": getattr(llm, "model", None), "summary": a,
          "queries": rows},
         ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(f"\n기록: {REPORT}  (답변 본문을 담는다 — 커밋하지 않는다)")
+
+    # **덮어쓰지 않고 쌓는다.** REPORT 는 매 실행이 덮으므로 회차 간 변동을 담을 수 없고, 변동을
+    # 모르면 두 모델의 차이가 잡음인지 실력인지 못 가린다. 질의별 `ok` 까지 남겨야 다수결이 된다.
+    with RUNS.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(json.dumps({
+            "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "tag": args.tag, "model": getattr(llm, "model", None), "summary": a,
+            "ok": {s.qid: s.ok for s in scores},
+        }, ensure_ascii=False) + "\n")
+
+    print(f"\n기록: {REPORT}  (답변 본문 — 커밋하지 않는다)")
+    print(f"      {RUNS}  (실행별 누적 — 잡음 폭은 이것으로만 나온다)")
     return 0
 
 
