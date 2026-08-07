@@ -106,3 +106,27 @@ def test_the_aggregate_separates_the_three_failures():
     assert a["facts_present"] == 3          # d 만 사실 실패
     assert a["all_three"] == 1
     assert a["failed"] == ["b", "c", "d"]
+
+
+# ── LLM 이 실패한 실행은 결과가 아니다 ───────────────────────────────────────
+#
+# 실패하면 `generate_answer` 는 답변 자리에 **근거 원문 덤프**를 넣는다. 요구한 사실은 그 문서에서
+# 뽑은 것이라 덤프 안에 당연히 있다 — 즉 실패할수록 사실 검사가 잘 통과한다.
+# 2026-08-08 에 실제로 3건 중 2건이 그렇게 '통과' 했고, 원인은 API 크레딧 부족이었다.
+
+
+def test_a_failed_llm_call_never_counts_as_facts_present():
+    s = score_answer("q", "답변을 생성할 수 없습니다. 아래 근거를 직접 확인해주세요. …최대 100 곡…",
+                     [], GOLD, [["100"]], llm_failed=True)
+    assert s.has_facts is False, "근거 덤프에 사실이 있다고 답을 맞힌 것이 아니다"
+    assert s.ok is False
+
+
+def test_a_failed_call_is_not_hidden_in_the_aggregate():
+    good = score_answer("a", "100 곡 [출처: 플레이리스트 정책]", [_cite("플레이리스트 정책")],
+                        GOLD, [["100"]])
+    dead = score_answer("b", "…근거 덤프에 100 이 들어 있다…", [], GOLD, [["100"]], llm_failed=True)
+    a = aggregate([good, dead])
+    assert a["llm_failed"] == 1, "실패 건수가 안 보이면 0% 를 '품질' 로 읽게 된다"
+    assert a["facts_measurable"] == 1, "실패한 건은 잰 것이 아니다"
+    assert a["facts_present"] == 1 and a["all_three"] == 1

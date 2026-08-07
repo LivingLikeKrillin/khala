@@ -44,22 +44,29 @@ class AnswerScore:
     cites_gold: bool = False
     facts: list[bool] = field(default_factory=list)
     abstained: bool = False
+    llm_failed: bool = False
     n_citations: int = 0
     unverified: int = 0
 
     @property
     def has_facts(self) -> bool:
-        """`must_contain` 이 비어 있으면 참이 아니라 **잴 것이 없다** — 그 구분은 집계가 한다."""
-        return bool(self.facts) and all(self.facts)
+        """`must_contain` 이 비어 있으면 참이 아니라 **잴 것이 없다** — 그 구분은 집계가 한다.
+
+        **LLM 이 실패했으면 무조건 거짓이다.** 실패 시 답변 자리에 들어가는 것은 근거 원문 덤프라,
+        요구한 사실이 거기 **당연히** 있다 — 그 문서에서 뽑은 사실이니까. 2026-08-08 에 실제로
+        3건 중 2건이 그렇게 '통과' 했고, 원인은 API 크레딧 부족이었다. 답을 못 낸 것이 사실을
+        맞힌 것으로 세어지면 이 자는 거꾸로 읽힌다.
+        """
+        return not self.llm_failed and bool(self.facts) and all(self.facts)
 
     @property
     def ok(self) -> bool:
-        return self.grounded and self.cites_gold and self.has_facts
+        return not self.llm_failed and self.grounded and self.cites_gold and self.has_facts
 
 
 def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
                  gold_titles: set[str], must_contain: list[list[str]],
-                 abstained: bool = False) -> AnswerScore:
+                 abstained: bool = False, llm_failed: bool = False) -> AnswerScore:
     """한 질의의 답변을 채점한다. 순수 함수 — DB 도 네트워크도 안 탄다."""
     def _get(c, k):
         return c.get(k) if isinstance(c, dict) else getattr(c, k, None)
@@ -68,7 +75,7 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
     unverified = len(citations) - len(verified)
     gold_norm = {_norm(t) for t in gold_titles}
 
-    s = AnswerScore(qid=qid, abstained=abstained,
+    s = AnswerScore(qid=qid, abstained=abstained, llm_failed=llm_failed,
                     n_citations=len(citations), unverified=unverified)
     # 인용 0개는 grounded 가 아니다 — 아무것도 인용 안 하는 것이 가장 쉬운 만점이 되면 안 된다.
     s.grounded = len(citations) > 0 and unverified == 0
@@ -82,9 +89,13 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
 def aggregate(scores: list[AnswerScore]) -> dict:
     """집계. **잴 수 없었던 것과 실패한 것을 섞지 않는다.**"""
     n = len(scores)
-    measurable = [s for s in scores if s.facts]
+    measurable = [s for s in scores if s.facts and not s.llm_failed]
+    failed_llm = [s for s in scores if s.llm_failed]
     return {
         "queries": n,
+        # **LLM 이 실패한 실행은 결과가 아니다.** 실패 시 답변 자리에 근거 덤프가 들어가므로
+        # 사실 검사가 거저 통과한다 — 그 상태의 집계를 '답변 품질' 로 읽으면 거꾸로 읽힌다.
+        "llm_failed": len(failed_llm),
         "grounded": sum(1 for s in scores if s.grounded),
         "cites_gold": sum(1 for s in scores if s.cites_gold),
         "abstained": sum(1 for s in scores if s.abstained),

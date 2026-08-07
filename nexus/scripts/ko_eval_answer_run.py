@@ -64,9 +64,16 @@ async def _run(args) -> int:
                 return 1
             packet = assemble_packet(result.hits, result.graph)
             ans = await generate_answer(q["query"], packet, llm_svc=llm)
+            # **첫 실패에서 멈춘다.** 계속 돌면 실패한 실행의 집계가 리포트로 남고, 그것을 나중에
+            # '답변 품질' 로 읽게 된다 — 실제로 3건 중 2건이 근거 덤프 덕에 '사실 통과' 로 찍혔다.
+            if ans.llm_failed:
+                print(f"✗ {q['id']}: LLM 호출이 실패했다 — 이 상태의 숫자는 결과가 아니다.")
+                print("  답변 자리에는 근거 원문이 들어가므로 사실 검사가 거저 통과한다.")
+                print(f"  받은 것: {ans.answer[:80]}…")
+                return 1
             s = score_answer(q["id"], ans.answer, ans.citations,
                              {titles[g] for g in q["gold"]}, q.get("must_contain") or [],
-                             abstained=ans.abstained)
+                             abstained=ans.abstained, llm_failed=ans.llm_failed)
             scores.append(s)
             rows.append({"qid": q["id"], "grounded": s.grounded, "cites_gold": s.cites_gold,
                          "facts": s.facts, "answer": ans.answer})
