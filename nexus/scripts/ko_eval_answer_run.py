@@ -32,6 +32,10 @@ from scripts.ko_eval_packb import MANIFEST  # noqa: E402
 LOCAL_DIR = Path(__file__).resolve().parents[1] / "tests" / "eval" / "local"
 LABELS = LOCAL_DIR / "packb-labels.yaml"
 REPORT = LOCAL_DIR / "packb-answer-quality.json"
+#: 반복 실행은 덮어쓰지 않고 쌓는다. **같은 입력에 같은 답이 안 나오기 때문이다** — 두 실행이
+#: grounded 에서 1, 인용 0개에서 2 흔들렸다(2026-08-08). 그 폭을 모르면 모델 간 차이를 잡음과
+#: 구별할 수 없고, 구별 못 하는 비교는 비교가 아니다.
+RUNS = LOCAL_DIR / "packb-answer-runs.jsonl"
 TENANT = "default"
 
 
@@ -53,6 +57,8 @@ async def _run(args) -> int:
     print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 질의 {len(queries)}건\n")
 
     svc, llm = embedding_service_from_config(), LLMService()
+    if args.model:
+        llm.model = args.model            # 브리지가 payload 의 model 을 그대로 넘긴다
     await db.get_pool()
     scores, rows = [], []
     try:
@@ -96,7 +102,8 @@ async def _run(args) -> int:
     REPORT.write_text(json.dumps(
         {"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
          "labels_revision": labels["revision"], "tenant": TENANT,
-         "llm_model": getattr(llm, "model", None), "summary": a, "queries": rows},
+         "tag": args.tag, "llm_model": getattr(llm, "model", None), "summary": a,
+         "queries": rows},
         ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"\n기록: {REPORT}  (답변 본문을 담는다 — 커밋하지 않는다)")
     return 0
@@ -110,6 +117,8 @@ def main(argv: list[str] | None = None) -> int:
             pass
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--limit", type=int, default=40, help="LLM 을 부르는 횟수 — 돈이 든다")
+    ap.add_argument("--tag", default="", help="이 실행의 이름(모델 팔·반복 회차 구분용)")
+    ap.add_argument("--model", default="", help="브리지에 넘길 모델. 비우면 백엔드 기본값")
     args = ap.parse_args(argv)
     if not os.getenv("DATABASE_URL"):
         print("✗ DATABASE_URL 이 없다")
