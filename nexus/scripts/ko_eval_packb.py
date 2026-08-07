@@ -226,8 +226,9 @@ async def cmd_status(_args) -> int:
     print(f"  [1] 무작위 랭커 바닥값 = 창({window}) / 문서({docs}) = {floor:.3f}"
           f"  → {'통과' if ok_floor else '검정력 부족이 예상된다'}")
     print("      Pack A 는 0.038. 0.10 을 넘으면 두 팔이 바닥 위에 붙어 무승부만 쌓인다.")
+    verdict_sub = "통과" if ok_sub else f"{PACK_B_MIN_SUBSTANTIVE - substantive}건 부족"
     print(f"  [2] 실질 문서(본문 {PACK_B_SUBSTANTIVE_CHARS}자 이상) = {substantive}"
-          f" / 최소 {PACK_B_MIN_SUBSTANTIVE}  → {'통과' if ok_sub else f'{PACK_B_MIN_SUBSTANTIVE - substantive}건 부족'}")
+          f" / 최소 {PACK_B_MIN_SUBSTANTIVE}  → {verdict_sub}")
     print("      gold 가 될 수 있는 문서. 답변가능 40건을 서로 다른 문서에 걸어야 한다.")
     print("  → " + ("잴 수 있다" if ok_floor and ok_sub else "아직 못 잰다 — 라벨을 쓰기 전에 코퍼스를 키워라"))
     return 0 if (ok_floor and ok_sub) else 1
