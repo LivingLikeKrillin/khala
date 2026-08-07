@@ -86,3 +86,70 @@ def test_the_allow_list_carries_a_reason():
 def test_tracked_files_skips_the_scanner_itself():
     """패턴 문자열을 담은 파일이 스스로를 잡으면 검사는 영원히 붉다."""
     assert "scripts/fingerprint_scan.py" not in tracked_files()
+
+
+# ── 공개될 텍스트: 커밋 메시지 · PR 제목/본문 ────────────────────────────────
+#
+# 파일은 절반이었다. 2026-08-07 에 같은 이름이 커밋 메시지 2건과 PR 본문 2건으로 나갔고,
+# force-push 로 되돌려지지 않았다 — GitHub 은 PR 이 고정한 커밋을 그 뒤에도 SHA 로 열어준다.
+# 그래서 이쪽은 **머지 전에** 막아야 하고, 막히는지 여기서 잰다.
+
+
+def test_a_commit_message_carrying_the_organisation_is_rejected(tmp_path):
+    import fingerprint_scan as fs
+
+    f = tmp_path / "commit-messages.txt"
+    f.write_text(f"fix(x): something\n\n{_ORG} 정책 적재로 코퍼스가 늘었다\n", encoding="utf-8")
+    assert fs.main(["--text", str(f)]) == 1
+
+
+def test_a_pr_body_carrying_a_page_id_is_rejected(tmp_path):
+    import fingerprint_scan as fs
+
+    f = tmp_path / "pr-title-and-body.txt"
+    f.write_text(f"title\n\nthe notion root_id {_UID} was never shared\n", encoding="utf-8")
+    assert fs.main(["--text", str(f)]) == 1
+
+
+def test_an_ordinary_commit_message_passes(tmp_path):
+    """**발화하면 안 되는 쪽.** 커밋 메시지에 맥락 없는 UUID(파드 uid·콘텐츠 해시)를 붙이는 일은
+    흔하다. 그걸 다 잡으면 아무도 이 검사를 안 켠다."""
+    import fingerprint_scan as fs
+
+    f = tmp_path / "commit-messages.txt"
+    f.write_text(f"fix(embed): stop swallowing a refusal\n\nthe chunk uid was {_UID}\n",
+                 encoding="utf-8")
+    assert fs.main(["--text", str(f)]) == 0
+
+
+def test_the_text_mode_does_not_silently_scan_nothing(tmp_path):
+    """빈 범위를 통과로 읽으면 검사가 있는 척만 한다 — 얕은 클론에서 실제로 그렇게 된다."""
+    import fingerprint_scan as fs
+
+    f = tmp_path / "commit-messages.txt"
+    f.write_text("", encoding="utf-8")
+    assert fs.scan_streams([str(f)]) == []          # 빈 것은 빈 것이다
+    # 그래서 CI 는 fetch-depth: 0 을 쓴다. 그 배선이 사라지면 이 주석이 근거다.
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "fetch-depth: 0" in ci, "얕은 클론이면 커밋 범위가 비고, 검사는 조용히 통과한다"
+
+
+def test_the_pr_body_is_read_live_not_from_the_frozen_event():
+    """`github.event.pull_request.body` 는 이벤트 시점에 얼어 있다.
+
+    그것을 쓰면 재실행이 옛 본문을 재생해서, 본문을 고친 사람이 커밋을 하나 더 밀지 않고는 검사를
+    통과할 수 없다. 이 PR 에서 실제로 그렇게 됐다. API 로 실행 시점에 읽어야 한다.
+    """
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    step = ci.split("No fingerprint in this PR's commit messages", 1)[1].split("- name:", 1)[0]
+    assert "gh pr view" in step, "본문을 API 로 읽지 않으면 얼어붙은 페이로드를 보게 된다"
+    assert "github.event.pull_request.body" not in step
+    assert "github.event.pull_request.title" not in step
+
+
+def test_the_commit_msg_hook_calls_the_scanner():
+    hook = ROOT / "scripts" / "hooks" / "commit-msg"
+    assert hook.exists(), "훅이 없으면 task hooks 는 아무것도 설치하지 않는다"
+    body = hook.read_text(encoding="utf-8")
+    assert "fingerprint_scan.py --text" in body
+    assert '"$1"' in body, "훅은 메시지 파일 경로를 받는다 — 인자를 안 쓰면 아무것도 안 본다"

@@ -1,0 +1,18 @@
+#!/bin/sh
+# 커밋 메시지에 파트너 조직 지문이 있으면 커밋을 막는다.
+#
+# CI 가 머지 전에 잡아 주지만, 그때는 이미 메시지가 원격 브랜치에 올라가 있다. 2026-08-07 에
+# 배운 것이 정확히 이것이다 — 커밋 메시지는 force-push 로 되돌려지지 않는다. GitHub 은 PR 이
+# 고정한 커밋을 그 뒤에도 SHA 로 계속 열어준다. 그러니 **쓰이기 전에** 막는 층이 하나 필요하다.
+#
+# 설치: task hooks   (또는 git config core.hooksPath scripts/hooks)
+#
+# 우회는 `git commit --no-verify`. 막지 않는다 — 훅은 실수를 막는 것이지 사람을 막는 것이 아니고,
+# 강제하는 층은 CI 다.
+
+python scripts/fingerprint_scan.py --text "$1" || {
+    echo ""
+    echo "커밋을 멈춘다. 이 리포는 public 이고, 커밋 메시지는 되돌릴 수 없다."
+    echo "메시지를 고쳐 다시 커밋해라."
+    exit 1
+}
