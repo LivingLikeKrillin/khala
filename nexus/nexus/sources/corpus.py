@@ -2,9 +2,9 @@
 
 세 가지를 한 곳에서 답한다. 지금은 셋 다 psql 을 쳐야 알 수 있고, 그래서 아무도 안 본다.
 
-* **얼마나 있나.** 활성 문서 수. 한국어 검색 평가의 Pack B 트리거가 **활성 문서 100건** 인데
-  (창이 상위 10문서라 코퍼스가 20건이면 매 질의가 절반을 돌려줘 아무것도 못 가린다), 그 거리를
-  보려면 지금은 손으로 세어야 한다.
+* **얼마나 있나.** 활성 문서 수, 그리고 **그중 실질 문서 수**. 한국어 검색 평가의 Pack B 트리거가
+  이 둘 다이고 (창이 상위 10문서라 코퍼스가 20건이면 매 질의가 절반을 돌려줘 아무것도 못 가리고,
+  본문 없는 문서는 gold 가 못 된다), 그 거리를 보려면 지금은 손으로 세어야 한다.
 * **어디서 왔나.** 출처별 분포. "팀 지식 12건 + 리포 문서 8건" 같은 구성이 보여야 코퍼스를 키울
   때 무엇을 늘릴지 판단할 수 있다.
 * **무엇이 안 보이나.** 본문이 거의 없는 문서. 정책 표를 스크린샷으로 붙이면 검색 텍스트가 사실상
@@ -14,9 +14,25 @@
 
 from __future__ import annotations
 
-# Pack B 가 성립하는 최소 코퍼스. 창(상위 10문서) 대비 무작위 랭커 바닥값을 0.10 이하로
-# 유지하는 값 — 근거는 nexus/docs/KOREAN_SEARCH_QUALITY.md §6.1.
+# Pack B 트리거는 **두 조건**이다. 하나만 세면 통과하고도 못 잰다.
+#
+#  · 문서 수 — 창(상위 10문서) 대비 무작위 랭커 바닥값을 0.10 이하로. 116문서면 0.086.
+#    이것은 **창 경쟁**의 조건이다: 짧은 문서도 top-10 자리를 두고 겨루므로 다 센다.
+#  · 실질 문서 수 — gold 가 될 수 있는 문서. 이것은 **라벨 가능성**의 조건이고, 위와 다르다.
+#
+# 2026-08-07 에 첫 조건만 세다 걸렸다: 116문서를 채우고 보니 본문 800자 이상이 **19건**이었고,
+# 나머지 97건은 개정 이력 행(속성 몇 줄 + URL)이었다. 40개 질의를 19개 문서에 걸면 층별 8건을
+# 서로 다른 문서에서 뽑을 수 없고, 두 토크나이저가 같은 소수 문서를 두고 겨뤄 무승부만 쌓인다 —
+# 불일치쌍 6 미만, 즉 "검정력 부족". 그 결과는 ADR-0008 §5(b) 를 **갚지 못한다**.
 PACK_B_MIN_DOCUMENTS = 100
+
+# 이 길이 아래는 검색 대상으로서 내용이 없다. 실측으로 정했다: 200~800자 구간은 전부 개정 이력
+# 행이었고 길이의 대부분이 URL 이었다.
+PACK_B_SUBSTANTIVE_CHARS = 800
+
+# 답변가능 40건을 **서로 다른 gold** 에 걸려면 최소 40건이 필요하고, 층을 억지로 채우지 않으려면
+# 여유가 있어야 한다. 50% 여유 = 60. Pack A 는 265문서에 40라벨(6.6:1)이었다.
+PACK_B_MIN_SUBSTANTIVE = 60
 
 # 이 길이 이하의 본문은 '거의 비어 있다' 로 센다. 청크 하나도 제대로 못 채우는 크기다.
 THIN_DOC_MAX_CHARS = 200
@@ -87,6 +103,15 @@ async def corpus_status(con, tenant: str = "default") -> dict:
         "GROUP BY d.source_uri, d.title HAVING coalesce(sum(length(c.chunk_text)), 0) <= $2 "
         "ORDER BY 3 ASC LIMIT 20", tenant, THIN_DOC_MAX_CHARS)]
 
+    # gold 가 될 수 있는 문서. 문서 수와 **따로** 센다 — 116건 중 19건이었던 적이 있다.
+    substantive = await con.fetchval(
+        "SELECT count(*) FROM ("
+        "  SELECT d.rid FROM documents d LEFT JOIN chunks c "
+        "    ON c.doc_rid = d.rid AND c.tenant = d.tenant AND c.status='active' "
+        "  WHERE d.tenant=$1 AND d.status='active' "
+        "  GROUP BY d.rid HAVING coalesce(sum(length(c.chunk_text)), 0) >= $2) t",
+        tenant, PACK_B_SUBSTANTIVE_CHARS) or 0
+
     unembedded = await _unembedded(con, tenant)
 
     return {
@@ -107,8 +132,15 @@ async def corpus_status(con, tenant: str = "default") -> dict:
             "min_documents": PACK_B_MIN_DOCUMENTS,
             "documents": docs,
             "short_by": max(0, PACK_B_MIN_DOCUMENTS - docs),
-            "ready": docs >= PACK_B_MIN_DOCUMENTS,
-            "why": ("창이 상위 10문서라, 코퍼스가 그보다 크지 않으면 두 팔이 거의 무승부가 되고 "
-                    "판정 규칙이 '검정력 부족' 을 돌려준다 (KOREAN_SEARCH_QUALITY.md §6.1)."),
+            "min_substantive": PACK_B_MIN_SUBSTANTIVE,
+            "substantive_chars": PACK_B_SUBSTANTIVE_CHARS,
+            "substantive_documents": substantive,
+            "substantive_short_by": max(0, PACK_B_MIN_SUBSTANTIVE - substantive),
+            # **둘 다** 넘어야 한다. 하나만 세면 통과하고도 못 잰다.
+            "ready": docs >= PACK_B_MIN_DOCUMENTS and substantive >= PACK_B_MIN_SUBSTANTIVE,
+            "why": ("두 조건이다. (1) 창이 상위 10문서라, 코퍼스가 그보다 크지 않으면 두 팔이 거의 "
+                    "무승부가 되고 판정 규칙이 '검정력 부족' 을 돌려준다. (2) 본문이 없는 문서는 "
+                    "gold 가 못 된다 — 답변가능 40건을 서로 다른 문서에 걸 수 없으면 층을 억지로 "
+                    "채우게 되고, 결과는 같은 '검정력 부족' 이다 (KOREAN_SEARCH_QUALITY.md §6.1)."),
         },
     }
