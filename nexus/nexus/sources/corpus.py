@@ -39,11 +39,16 @@ async def _unembedded(con, tenant: str) -> dict:
     from nexus.index.vector_index import configured_column
 
     column = configured_column()
+    # 거부 사유를 함께 낸다 — 개수만으로는 처방을 못 고른다. `413 max_seq_length` 는 청킹을
+    # 고치라는 말이고, 인코딩 오류나 백엔드 다운은 각각 다른 처방이다. 기록이 없으면(옛 청크,
+    # 또는 표가 생기기 전에 실패한 것) 사유는 빈 채로 나온다 — 없는 것을 지어내지 않는다.
     rows = await con.fetch(
-        f"SELECT c.rid, d.title, length(c.chunk_text) AS chars "          # noqa: S608
+        f"SELECT c.rid, d.title, length(c.chunk_text) AS chars, "          # noqa: S608
+        f"       coalesce(r.reason, '') AS reason, r.refused_at "
         f"FROM chunks c JOIN documents d ON d.rid = c.doc_rid AND d.tenant = c.tenant "
+        f"LEFT JOIN embed_refusals r ON r.chunk_rid = c.rid AND r.column_name = $2 "
         f"WHERE c.tenant = $1 AND c.status = 'active' AND c.{column} IS NULL "
-        f"ORDER BY chars DESC LIMIT 20", tenant)
+        f"ORDER BY chars DESC LIMIT 20", tenant, column)
     total = await con.fetchval(
         f"SELECT count(*) FROM chunks "                                    # noqa: S608
         f"WHERE tenant = $1 AND status = 'active' AND {column} IS NULL", tenant) or 0
