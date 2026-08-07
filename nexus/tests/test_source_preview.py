@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pytest
+
 from nexus.sources.preview import IMAGE_ONLY_MAX_CHARS, preview_root, preview_roots
 
 
@@ -15,6 +17,7 @@ from nexus.sources.preview import IMAGE_ONLY_MAX_CHARS, preview_root, preview_ro
 class _Conv:
     markdown: str
     image_count: int = 0
+    frontmatter: dict | None = None
 
 
 @dataclass
@@ -112,6 +115,13 @@ def test_titles_are_sampled_only_from_real_documents():
     assert got.titles == ["제목 a"]
 
 
+def test_the_preview_shows_the_title_that_will_actually_be_stored():
+    """제목 속성이 빈 DB 행은 적재 시 다른 이름을 얻는다(select 값 등). 미리보기가 Notion 원본
+    제목을 보여주면 실제 저장과 어긋나고, 그러면 미리보기가 미리보기가 아니다."""
+    src = _FakeSource({"row": _Conv("본문 " * 40, frontmatter={"title": "파티룸 Entity / 입장"})})
+    assert preview_root(src, "root-1").titles == ["파티룸 Entity / 입장"]
+
+
 # ── 코퍼스 현황 ──────────────────────────────────────────────────────────────
 
 
@@ -142,3 +152,63 @@ def test_the_pack_b_distance_is_computed_not_remembered():
 
     ready = asyncio.run(corpus_status(_Con(140)))
     assert ready["pack_b"]["ready"] and ready["pack_b"]["short_by"] == 0
+
+
+# ── 루트별 토큰: 워크스페이스가 하나라는 가정을 푼다 ─────────────────────────
+
+
+def test_roots_are_grouped_by_the_token_that_can_read_them():
+    from nexus.sources.roots_store import group_by_token
+
+    got = group_by_token([
+        {"root_id": "a", "token_env": "NOTION_TOKEN"},
+        {"root_id": "b", "token_env": "NOTION_TOKEN_PFPLAY"},
+        {"root_id": "c"},                                  # 옛 행 — 기본값으로 읽는다
+    ])
+    assert got == {"NOTION_TOKEN": ["a", "c"], "NOTION_TOKEN_PFPLAY": ["b"]}
+
+
+def test_a_missing_token_stops_loudly_instead_of_falling_back(monkeypatch):
+    """조용히 기본 토큰으로 떨어지면 다른 워크스페이스를 읽거나 **빈 걸음**이 된다.
+    그리고 빈 걸음은 reconcile 에서 '사라진 문서' 와 구분되지 않는다 — 오독이 삭제가 된다."""
+    from nexus.sources.preview import MissingToken, require_token
+
+    monkeypatch.setenv("NOTION_TOKEN", "real-token")
+    monkeypatch.delenv("NOTION_TOKEN_PFPLAY", raising=False)
+
+    assert require_token("NOTION_TOKEN") == "real-token"
+    with pytest.raises(MissingToken) as e:
+        require_token("NOTION_TOKEN_PFPLAY")
+    assert "NOTION_TOKEN_PFPLAY" in str(e.value)
+
+
+def test_a_sync_spanning_two_workspaces_is_refused_not_merged():
+    """한 걸음에 두 토큰을 섞으면 못 보는 쪽이 통째로 지워질 수 있다."""
+    from fastapi import HTTPException
+
+    from nexus.sources.api import _one_workspace
+
+    two = {"NOTION_TOKEN": ["a"], "NOTION_TOKEN_PFPLAY": ["b"]}
+    with pytest.raises(HTTPException) as e:
+        _one_workspace(two, None)
+    assert e.value.status_code == 400
+    assert "multiple workspaces" in e.value.detail
+
+    assert _one_workspace(two, "NOTION_TOKEN_PFPLAY") == "NOTION_TOKEN_PFPLAY"
+    assert _one_workspace({"NOTION_TOKEN": ["a"]}, None) == "NOTION_TOKEN", "하나뿐이면 생략 가능"
+
+    with pytest.raises(HTTPException) as e:
+        _one_workspace(two, "NOTION_TOKEN_TYPO")
+    assert "no roots registered under" in e.value.detail
+
+
+def test_confirming_a_plan_recovers_the_workspace_it_belonged_to():
+    from fastapi import HTTPException
+
+    from nexus.sources.api import _token_for
+
+    by_token = {"NOTION_TOKEN": ["a", "c"], "NOTION_TOKEN_PFPLAY": ["b"]}
+    assert _token_for(["b"], by_token, None) == "NOTION_TOKEN_PFPLAY"
+    assert _token_for(["a", "c"], by_token, None) == "NOTION_TOKEN"
+    with pytest.raises(HTTPException):
+        _token_for(["a", "b"], by_token, None)      # 두 워크스페이스에 걸친 계획은 확정 불가

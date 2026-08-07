@@ -90,3 +90,71 @@ def test_rich_text_wins_over_caption_when_both_exist():
     md, _ = _md([{"type": "callout", "callout": {
         "rich_text": _rich("본문"), "caption": _rich("캡션")}}])
     assert "본문" in md and "캡션" not in md
+
+
+# ── 정책 문서의 본문은 표·속성에도 있다 ─────────────────────────────────────
+
+
+def test_a_table_becomes_a_markdown_table():
+    """정책 문서는 표가 본문이다. 못 읽으면 규칙이 통째로 사라지는데 문서는 얇아 보일 뿐이다."""
+    from nexus.ingest.sources.notion_convert import blocks_to_markdown
+
+    children = {"t1": [
+        {"type": "table_row", "table_row": {"cells": [_rich("구분"), _rich("허용")]}},
+        {"type": "table_row", "table_row": {"cells": [_rich("비로그인"), _rich("입장 불가")]}},
+    ]}
+    md, _ = blocks_to_markdown([{"type": "table", "id": "t1", "table": {}}],
+                               lambda bid: children[bid])
+    assert "| 구분 | 허용 |" in md
+    assert "| 비로그인 | 입장 불가 |" in md
+    assert "| --- | --- |" in md.replace(" ---  |", " --- |")
+
+
+def test_a_table_is_skipped_when_children_cannot_be_fetched():
+    """호출자가 API 를 안 들고 있으면 얕게 훑는다 — 죽지는 않는다."""
+    from nexus.ingest.sources.notion_convert import blocks_to_markdown
+
+    md, _ = blocks_to_markdown([{"type": "table", "id": "t1", "table": {}}])
+    assert md.strip() == ""
+
+
+def test_a_toggle_keeps_what_is_folded_inside_it():
+    from nexus.ingest.sources.notion_convert import blocks_to_markdown
+
+    children = {"g1": [{"type": "paragraph", "paragraph": {"rich_text": _rich("접힌 규칙")}}]}
+    md, _ = blocks_to_markdown(
+        [{"type": "toggle", "id": "g1", "toggle": {"rich_text": _rich("자세히")}}],
+        lambda bid: children[bid])
+    assert "자세히" in md and "접힌 규칙" in md
+
+
+def test_database_row_properties_become_the_body():
+    """DB 행은 블록이 0개인 경우가 흔하다 — 내용이 전부 속성에 있다."""
+    from nexus.ingest.sources.notion_convert import properties_to_markdown
+
+    md = properties_to_markdown({
+        "개정 내용": {"type": "title", "title": _rich("영화관 모드 추가")},
+        "날짜": {"type": "date", "date": {"start": "2025-01-23"}},
+        "Epic": {"type": "multi_select", "multi_select": [{"name": "[파티룸] 전광판"}]},
+        "바로가기": {"type": "rich_text", "rich_text": _rich("4-7. 영화관/전체 모드")},
+        "담당자": {"type": "people", "people": []},
+    })
+    assert "**날짜**: 2025-01-23" in md
+    assert "**Epic**: [파티룸] 전광판" in md
+    assert "4-7. 영화관/전체 모드" in md
+    assert "영화관 모드 추가" not in md, "제목은 문서 제목으로 쓰이므로 본문에 중복시키지 않는다"
+    assert "담당자" not in md, "빈 값은 줄을 만들지 않는다"
+
+
+def test_checkbox_and_select_properties_are_readable_words():
+    """정책 값이 ☑️/체크박스로 들어간다 — '예/아니오' 로 적어야 검색에 걸린다."""
+    from nexus.ingest.sources.notion_convert import properties_to_markdown
+
+    md = properties_to_markdown({
+        "비로그인": {"type": "checkbox", "checkbox": False},
+        "상태": {"type": "status", "status": {"name": "적용중"}},
+        "정책": {"type": "select", "select": {"name": "파티룸 Entity"}},
+    })
+    assert "**비로그인**: 아니오" in md
+    assert "**상태**: 적용중" in md
+    assert "**정책**: 파티룸 Entity" in md

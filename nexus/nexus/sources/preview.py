@@ -19,11 +19,30 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass, field
 
 # 본문이 이보다 짧으면서 이미지가 있으면 '그림뿐' 으로 센다. 캡션까지 살린 뒤의 길이라,
 # 캡션이 제대로 붙은 문서는 여기 걸리지 않는다.
 IMAGE_ONLY_MAX_CHARS = 120
+
+
+class MissingToken(RuntimeError):
+    """루트가 가리키는 환경변수에 토큰이 없다.
+
+    **기본 토큰으로 떨어지면 안 된다.** 다른 워크스페이스의 토큰으로 걸으면 그 루트는 빈 걸음이
+    되고, 빈 걸음은 `--reconcile` 에서 '사라진 문서' 와 구분되지 않는다 — 즉 조용한 오독이
+    삭제로 이어진다. 여기서 시끄럽게 멈춘다.
+    """
+
+
+def require_token(token_env: str) -> str:
+    token = os.getenv(token_env, "")
+    if not token:
+        raise MissingToken(
+            f"{token_env} 가 비어 있다 — 이 루트를 읽을 integration 토큰이 배포 env 에 없다. "
+            "기본 토큰으로 대신 걷지 않는다(다른 워크스페이스를 읽거나 빈 걸음이 된다).")
+    return token
 
 
 @dataclass
@@ -67,7 +86,12 @@ def preview_root(source, root_id: str, sample_titles: int = 10) -> RootPreview:
         if getattr(conv, "image_count", 0) and len(body) <= IMAGE_ONLY_MAX_CHARS:
             out.image_only += 1
         if len(out.titles) < sample_titles:
-            out.titles.append(getattr(ref, "title", "") or pid)
+            # **적재될 제목을 그대로 보여준다.** `ref.title` 은 Notion 의 제목 속성 원본이라,
+            # 그것이 빈 DB 행에서는 미리보기와 실제 저장이 어긋난다 — 미리보기가 미리보기가
+            # 아니게 된다. 변환 결과의 frontmatter 가 곧 저장될 이름이다.
+            out.titles.append(
+                (getattr(conv, "frontmatter", {}) or {}).get("title")
+                or getattr(ref, "title", "") or pid)
     return out
 
 
