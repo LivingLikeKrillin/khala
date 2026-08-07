@@ -37,6 +37,27 @@ MANIFEST = LOCAL_DIR / "packb-manifest.json"
 SNAPSHOT_TENANT = "ko_eval_packb"
 
 
+#: 탐침 결과 파일 — 라벨 없이 잰 "두 팔이 다른 순위를 내는가".
+PROBE = LOCAL_DIR / "packb-disagreement.json"
+
+#: 상위 3위 안에서 갈리는 질의의 최소 건수. 판정 규칙의 `MIN_DISCORDANT = 6` 과 같은 수를 쓴다 —
+#: 이것은 불일치쌍의 **필요조건**이므로, 필요조건이 이미 최소 요구치에 못 미치면 판정은 확실히
+#: 검정력 부족이다. 반대 방향의 보장은 없다(순위가 갈려도 둘 다 gold 를 잡으면 무승부다).
+SHALLOW_MIN = 6
+
+
+def _load_probe() -> dict | None:
+    if not PROBE.exists():
+        return None
+    d = json.loads(PROBE.read_text(encoding="utf-8"))
+    return {
+        "shallow": d.get("first_difference_rank_histogram", {}).get("1-3", 0),
+        "order_differs": d.get("order_differs", 0),
+        "queries": d.get("queries", 0),
+        "surfaced": d.get("distinct_documents_surfaced", 0),
+    }
+
+
 def _doc_key(source_uri: str) -> str:
     """gold 가 참조할 문서 키 — `tenant:` 접두를 뗀 경로. 테넌트가 바뀌어도 같아야 한다."""
     return source_uri.split(":", 1)[1] if ":" in source_uri else source_uri
@@ -197,7 +218,7 @@ async def cmd_status(_args) -> int:
     나머지는 개정 이력 행이었다. 바닥값은 통과인데 gold 로 쓸 문서가 없어서 못 잰다.
     """
     from nexus import db
-    from nexus.sources.corpus import PACK_B_MIN_SUBSTANTIVE, PACK_B_SUBSTANTIVE_CHARS
+    from nexus.sources.corpus import PACK_B_SUBSTANTIVE_CHARS
 
     pool = await db.get_pool()
     try:
@@ -221,17 +242,33 @@ async def cmd_status(_args) -> int:
     window = 10
     floor = window / docs if docs else 1.0
     ok_floor = floor <= 0.10
-    ok_sub = substantive >= PACK_B_MIN_SUBSTANTIVE
     print(f"스냅샷 테넌트 {SNAPSHOT_TENANT}: 문서 {docs} · 청크 {chunks}")
     print(f"  [1] 무작위 랭커 바닥값 = 창({window}) / 문서({docs}) = {floor:.3f}"
           f"  → {'통과' if ok_floor else '검정력 부족이 예상된다'}")
     print("      Pack A 는 0.038. 0.10 을 넘으면 두 팔이 바닥 위에 붙어 무승부만 쌓인다.")
-    verdict_sub = "통과" if ok_sub else f"{PACK_B_MIN_SUBSTANTIVE - substantive}건 부족"
-    print(f"  [2] 실질 문서(본문 {PACK_B_SUBSTANTIVE_CHARS}자 이상) = {substantive}"
-          f" / 최소 {PACK_B_MIN_SUBSTANTIVE}  → {verdict_sub}")
-    print("      gold 가 될 수 있는 문서. 답변가능 40건을 서로 다른 문서에 걸어야 한다.")
-    print("  → " + ("잴 수 있다" if ok_floor and ok_sub else "아직 못 잰다 — 라벨을 쓰기 전에 코퍼스를 키워라"))
-    return 0 if (ok_floor and ok_sub) else 1
+
+    # [2] 는 **측정한 문턱**이다. 한때 여기 "실질 문서 ≥ 60" 이 있었는데 그 60 은 재보지 않고
+    # 만든 어림수였고, 같은 날 라벨 없이 재보니 그 근거가 반증됐다(§6.3). 검정력을 예고하는 양은
+    # 문서 수가 아니라 **두 팔의 순위가 갈리는 자리**다.
+    probe = _load_probe()
+    print(f"  [2] 탐침: 상위 3위 안에서 갈리는 질의 = "
+          f"{probe['shallow'] if probe else '미측정'}"
+          + (f" / 최소 {SHALLOW_MIN}" if probe else ""))
+    if probe:
+        print(f"      순위표가 갈리는 질의 {probe['order_differs']}/{probe['queries']} · "
+              f"상위10에 뜬 문서 {probe['surfaced']}")
+        print("      gold 가 갈리는 자리 이후에 있어야 승패가 생긴다. 얕게 갈릴수록 여지가 크다.")
+    else:
+        print("      아직 안 돌렸다: scripts/ko_eval_packb_disagreement.py")
+    print(f"  참고: 실질 문서(본문 {PACK_B_SUBSTANTIVE_CHARS}자 이상) {substantive} — "
+          "문턱이 아니라 코퍼스 구성 정보다")
+
+    ok_probe = bool(probe) and probe["shallow"] >= SHALLOW_MIN
+    print("  → " + ("잴 수 있다" if ok_floor and ok_probe else
+                    "아직 아니다 — 탐침을 돌려 승패가 생길 자리가 있는지부터 보라"))
+    print("     (필요조건이다. 순위가 갈려도 둘 다 gold 를 잡으면 무승부이고, '검정력 부족' 은 "
+          "여전히 나올 수 있다 — 그때 의무는 ADR-0009 대로 열린 채 남는다.)")
+    return 0 if (ok_floor and ok_probe) else 1
 
 
 def main(argv: list[str] | None = None) -> int:
