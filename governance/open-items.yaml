@@ -118,10 +118,11 @@
     An embedding refusal is swallowed - index/embed.py returns False and embed_health counts only
     IS NOT NULL - so a chunk that the vector leg can never see is recorded nowhere.
   why_still_open: >
-    Counting it is done (GET /sources/notion/corpus reports unembedded_chunks against the column the
-    search leg reads). Two things are not: the refusal is still not stored as a row with the backend's
-    message, the way the eval store keeps status='refused'; and nothing bounds chunk length, which is
-    what produced an 18,751-character chunk in the first place.
+    Two of three are done. It is counted (GET /sources/notion/corpus reports unembedded_chunks
+    against the column the search leg reads) and the refusal is now stored as a row with the
+    backend's message verbatim (embed_refusals, cleared when a retry succeeds, kept separate from
+    embed_waivers because a machine's fact is not a person's decision). What remains: nothing bounds
+    chunk length, which is what produced an 18,751-character chunk in the first place.
   trigger: >
     The count in the corpus view rising on any later ingest, or the first change to the chunker.
   checked_by: human
