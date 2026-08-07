@@ -108,3 +108,58 @@ async def test_generate_answer_attaches_citation_report():
     assert res.unverified_citations == 1
     assert any(c["verified"] for c in res.citations)
     assert any(not c["verified"] for c in res.citations)
+
+
+# ── 표면 차이는 지어낸 출처가 아니다 (2026-08-08) ────────────────────────────
+#
+# 답변 품질을 처음 재던 날, 미검증 인용 23건이 나왔다. 열어보니 **지어낸 출처는 하나도 없었다** —
+# 전부 활자 따옴표(‘락’ vs '락')이거나 제목 뒤 괄호를 뗀 것이었다. `unverified_citations` 는 API
+# 응답에 실려 웹에서 신뢰 배지가 되므로, 따옴표 한 글자 때문에 경고가 뜨고 있었다.
+
+
+def _p(*titles):
+    return _Packet(snippets=[_Snip(doc_title=t) for t in titles])
+
+
+def test_typographic_quotes_are_not_a_different_document():
+    r = validate_citations("…이다 [출처: 동시성 #1 - '락' 개념 정리, 2절]",
+                           _p("동시성 #1 - ‘락’ 개념 정리"))
+    assert r.unverified_count == 0
+    assert r.citations[0].title == "동시성 #1 - ‘락’ 개념 정리"
+    assert r.citations[0].section == "2절"
+
+
+def test_an_em_dash_written_as_a_hyphen_still_matches():
+    r = validate_citations("…[출처: Nexus 2.0 - UI 연동 규격]", _p("Nexus 2.0 — UI 연동 규격"))
+    assert r.unverified_count == 0
+
+
+def test_a_title_cited_without_its_parenthetical_matches():
+    r = validate_citations("…[출처: Nexus 팀 도그푸딩 배포 런북, §4]",
+                           _p("Nexus 팀 도그푸딩 배포 런북 (로컬 + Cloudflare Tunnel)"))
+    assert r.unverified_count == 0
+    assert r.citations[0].section == "§4"
+
+
+def test_an_ambiguous_prefix_is_refused():
+    """**받으면 안 되는 쪽.** `동시성` 하나로 세 문서가 다 맞으면 검사가 무너진다."""
+    r = validate_citations("…[출처: 동시성]",
+                           _p("동시성 #1 - 락", "동시성 #2 - 핫스팟", "동시성 #3 - 제어"))
+    assert r.unverified_count == 1
+
+
+def test_a_fabricated_title_is_still_refused():
+    """지어낸 제목은 어떤 실제 제목의 접두도 아니다 — 느슨해진 규칙이 이것까지 통과시키면 안 된다."""
+    assert validate_citations("…[출처: 존재하지 않는 사내 규정집]",
+                              _p("플레이리스트 정책")).unverified_count == 1
+
+
+def test_a_prefix_that_stops_mid_word_is_refused():
+    """낱말 경계에서 잘린 것만 받는다 — `플레이리` 는 짧은 이름이 아니라 오타다."""
+    assert validate_citations("…[출처: 플레이리]", _p("플레이리스트 정책")).unverified_count == 1
+
+
+def test_an_exact_match_is_never_overridden_by_a_prefix():
+    """정확히 일치하는 제목이 있으면 그것이 이긴다."""
+    r = validate_citations("…[출처: 로그인 정책]", _p("로그인 정책", "로그인 정책 부록 A"))
+    assert r.unverified_count == 0 and r.citations[0].title == "로그인 정책"
