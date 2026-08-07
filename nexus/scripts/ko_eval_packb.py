@@ -50,6 +50,20 @@ def _body_hash(texts: list[str]) -> str:
     return h.hexdigest()
 
 
+def _manifest_doc(key: str, doc: dict) -> dict:
+    """매니페스트 한 줄. **본문 길이를 함께 남긴다** — 실질 문서 판정을 DB 없이 할 수 있어야 한다.
+
+    제목은 남기지만 본문은 남기지 않는다: 다른 조직의 정책 문서이고 리포는 public 이라, 이 파일은
+    gitignore 된 `tests/eval/local/` 밖으로 나가지 않는다.
+    """
+    texts = [t for _, _, t in doc["chunks"]]
+    return {
+        "key": key, "title": doc["title"], "chunks": len(doc["chunks"]),
+        "body_chars": sum(len(t) for t in texts),
+        "body_sha256": _body_hash(texts),
+    }
+
+
 async def _collect(con, tenant: str) -> dict[str, dict]:
     """`{문서키: {title, chunks:[(section_path, chunk_index, text)]}}` — 활성만."""
     rows = await con.fetch(
@@ -108,10 +122,7 @@ async def cmd_freeze(args) -> int:
                         crid, SNAPSHOT_TENANT, uri, drid, text, section or "root", idx)
                     await index_chunk_bm25(crid, _Indexable(text, section or "root"))
                     n_chunks += 1
-                manifest_docs.append({
-                    "key": key, "title": doc["title"], "chunks": len(doc["chunks"]),
-                    "body_sha256": _body_hash([t for _, _, t in doc["chunks"]]),
-                })
+                manifest_docs.append(_manifest_doc(key, doc))
 
         manifest = {
             "pack": args.name,
@@ -129,6 +140,12 @@ async def cmd_freeze(args) -> int:
                             encoding="utf-8", newline="\n")
         print(f"✓ 얼렸다: 문서 {len(manifest_docs)} · 청크 {n_chunks} → 테넌트 {SNAPSHOT_TENANT}")
         print(f"  매니페스트: {MANIFEST}")
+        # 얼린 직후에 두 조건을 알려준다 — "얼렸다" 를 "잴 수 있다" 로 읽는 것을 막는다.
+        from nexus.sources.corpus import PACK_B_MIN_SUBSTANTIVE, PACK_B_SUBSTANTIVE_CHARS
+        n_sub = sum(1 for d in manifest_docs if d["body_chars"] >= PACK_B_SUBSTANTIVE_CHARS)
+        print(f"  실질 문서(본문 {PACK_B_SUBSTANTIVE_CHARS}자 이상) {n_sub} / 최소 "
+              f"{PACK_B_MIN_SUBSTANTIVE}"
+              + ("" if n_sub >= PACK_B_MIN_SUBSTANTIVE else "  ← 부족하다. status 를 보라"))
         return 0
     finally:
         await db.close_pool()
@@ -174,8 +191,13 @@ async def cmd_verify(_args) -> int:
 
 
 async def cmd_status(_args) -> int:
-    """얼린 코퍼스가 자로서 작동할 수 있는 크기인지."""
+    """얼린 코퍼스가 자로서 작동할 수 있는지 — **두 조건**을 잰다.
+
+    문서 수만 세다 걸린 적이 있다(2026-08-07): 116문서를 채웠는데 본문 800자 이상이 19건이었고,
+    나머지는 개정 이력 행이었다. 바닥값은 통과인데 gold 로 쓸 문서가 없어서 못 잰다.
+    """
     from nexus import db
+    from nexus.sources.corpus import PACK_B_MIN_SUBSTANTIVE, PACK_B_SUBSTANTIVE_CHARS
 
     pool = await db.get_pool()
     try:
@@ -186,16 +208,30 @@ async def cmd_status(_args) -> int:
             chunks = await con.fetchval(
                 "SELECT count(*) FROM chunks WHERE tenant=$1 AND status='active'",
                 SNAPSHOT_TENANT) or 0
+            substantive = await con.fetchval(
+                "SELECT count(*) FROM ("
+                "  SELECT d.rid FROM documents d JOIN chunks c "
+                "    ON c.doc_rid = d.rid AND c.tenant = d.tenant AND c.status='active' "
+                "  WHERE d.tenant=$1 AND d.status='active' "
+                "  GROUP BY d.rid HAVING sum(length(c.chunk_text)) >= $2) t",
+                SNAPSHOT_TENANT, PACK_B_SUBSTANTIVE_CHARS) or 0
     finally:
         await db.close_pool()
 
     window = 10
     floor = window / docs if docs else 1.0
+    ok_floor = floor <= 0.10
+    ok_sub = substantive >= PACK_B_MIN_SUBSTANTIVE
     print(f"스냅샷 테넌트 {SNAPSHOT_TENANT}: 문서 {docs} · 청크 {chunks}")
-    print(f"  무작위 랭커 바닥값 = 창({window}) / 문서({docs}) = {floor:.3f}")
-    print("  Pack A 는 0.038. 0.10 을 넘으면 두 팔이 바닥 위에 붙어 무승부만 쌓인다.")
-    print("  → " + ("잴 수 있다" if floor <= 0.10 else "검정력 부족이 예상된다"))
-    return 0
+    print(f"  [1] 무작위 랭커 바닥값 = 창({window}) / 문서({docs}) = {floor:.3f}"
+          f"  → {'통과' if ok_floor else '검정력 부족이 예상된다'}")
+    print("      Pack A 는 0.038. 0.10 을 넘으면 두 팔이 바닥 위에 붙어 무승부만 쌓인다.")
+    verdict_sub = "통과" if ok_sub else f"{PACK_B_MIN_SUBSTANTIVE - substantive}건 부족"
+    print(f"  [2] 실질 문서(본문 {PACK_B_SUBSTANTIVE_CHARS}자 이상) = {substantive}"
+          f" / 최소 {PACK_B_MIN_SUBSTANTIVE}  → {verdict_sub}")
+    print("      gold 가 될 수 있는 문서. 답변가능 40건을 서로 다른 문서에 걸어야 한다.")
+    print("  → " + ("잴 수 있다" if ok_floor and ok_sub else "아직 못 잰다 — 라벨을 쓰기 전에 코퍼스를 키워라"))
+    return 0 if (ok_floor and ok_sub) else 1
 
 
 def main(argv: list[str] | None = None) -> int:
