@@ -458,6 +458,9 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 "unverified_numbers": answer_result.unverified_numbers,
                 "usage": answer_result.usage,
                 "n_stale": answer_result.n_stale,
+                # 기권은 코드가 내린 판단이다. 답변 문장을 문자열 대조해서 알아내지 않는다.
+                "abstained": answer_result.abstained,
+                "abstain_reason": answer_result.abstain_reason,
                 "degraded": search_result.degraded,
             },
         )

@@ -222,3 +222,27 @@
     there would have been no p-value at all. And nothing detects a future firing of any §5
     backstop; that gap is carried separately by adr-0008-backstop-detector, which stays open.
   checked_by: human
+
+- id: abstention-never-fires
+  source: KOREAN_SEARCH_QUALITY.md §2.3
+  owner: LivingLikeKrillin
+  state: open
+  what: >
+    Abstention is now machine-readable (`abstained` / `abstain_reason` on the answer, exposed by the
+    API) and the unanswerable labels can be scored for the first time. Measured on Pack B on
+    2026-08-07: 0 of 5. The only condition that abstains is "no evidence at all", and BM25 returned
+    a full window of ten for every unanswerable query, so the condition never fires.
+  why_still_open: >
+    The flag was the missing half; the policy is the other half and was deliberately not written.
+    Making it fire needs a rule about when evidence is too weak to answer on - a threshold - and
+    this repo set three unmeasured thresholds in a single day and had to remove all three. The
+    number to build against now exists (0 of 5), which is what was missing before.
+
+    Note what the measurement is not. It says the system answers when it should decline; it does not
+    say the answers are wrong, since the LLM is separately instructed to say it cannot find the
+    information. That instruction is narration and nothing checks it - which is the same shape as
+    the defect just fixed.
+  trigger: >
+    The first change to the answer path's evidence handling, or any approved SPEC or accepted ADR
+    whose linked_adrs contains ADR-0002 (grounded answers only).
+  checked_by: human

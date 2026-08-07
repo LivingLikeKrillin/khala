@@ -58,6 +58,18 @@ class AnswerResult:
     usage: dict | None = None
     # 근거 신선도(SPEC-nexus-answer-staleness-warning): TTL 초과 근거 개수. 스니펫별 staleness 는 evidence_snippets 에.
     n_stale: int = 0
+    # 기권 — **코드가 내리는 판단**이지 답변 문장에서 읽어내는 것이 아니다.
+    #
+    # 기권은 이미 있었다: 근거가 하나도 없으면 LLM 을 부르지 않고 정해진 문장을 돌려준다. 그런데
+    # 그 사실이 **문장 안에만** 있어서 기계가 읽을 수 없었다 — 한국어 문자열 대조 말고는. 그래서
+    # 평가 라벨의 '답변불가' 5건이 어느 집계에도 안 들어갔다(KOREAN_SEARCH_QUALITY.md §2.3:
+    # "Nexus 에 기권 기제가 없어 잴 것이 없다").
+    #
+    # **여기서 새 문턱을 만들지 않는다.** "점수가 낮으면 기권" 같은 규칙은 재보지 않은 숫자를
+    # 게이트로 굳히는 짓이고, 이 리포는 그 실수를 오늘 세 번 했다. 드러내는 것은 이미 코드가
+    # 내리고 있던 판단 하나뿐이다.
+    abstained: bool = False
+    abstain_reason: str = ""        # "" | "no_evidence"
 
 
 async def generate_answer(
@@ -137,6 +149,7 @@ async def generate_answer(
     # LLM 호출
     if not packet.snippets:
         result.answer = "제공된 문서에서 해당 정보를 찾을 수 없습니다."
+        result.abstained, result.abstain_reason = True, "no_evidence"
         return result
 
     evidence_text = format_for_llm(packet)
