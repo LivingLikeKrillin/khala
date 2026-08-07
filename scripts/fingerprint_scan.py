@@ -24,6 +24,7 @@ Notion 페이지 ID 를 테스트 픽스처와 설정 주석에 넣었고, 소�
 
 from __future__ import annotations
 
+import argparse
 import re
 import subprocess
 import sys
@@ -79,6 +80,30 @@ def tracked_files() -> list[str]:
     return [p for p in out.splitlines() if not any(p.startswith(s) for s in SKIP)]
 
 
+def scan_text(label: str, text: str, *, notion_context: bool = False,
+              allowed_prefixes: tuple[str, ...] = ()) -> list[str]:
+    """텍스트 한 덩이. 파일이든 커밋 메시지든 PR 본문이든 **같은 규칙**을 쓴다.
+
+    규칙이 갈라지면 한쪽만 조여지고, 이 리포는 정확히 그렇게 새었다 — 파일은 스크럽했는데
+    커밋 메시지는 아무도 안 봤다.
+    """
+    problems: list[str] = []
+    for n, line in enumerate(text.splitlines(), 1):
+        low = line.lower()
+        for org in ORG_NAMES:
+            if org in low:
+                problems.append(f"{label}:{n}: 파트너 조직명 '{org}' — 이것은 공개된다")
+        if not (notion_context or any(m in low for m in NOTION_MARKERS)):
+            continue        # 맥락이 없으면 그냥 UUID 다 — k8s UID·콘텐츠 해시가 여기 걸린다
+        for match in HEX_ID.findall(line):
+            if match in ALLOWED_IDS or match in allowed_prefixes:
+                continue
+            problems.append(
+                f"{label}:{n}: Notion 맥락의 32자 ID '{match}' — 실제 워크스페이스를 가리킬 수 "
+                f"있다. 합성으로 바꾸거나 근거와 함께 ALLOWED_IDS 에 넣어라")
+    return problems
+
+
 def scan() -> list[str]:
     problems: list[str] = []
     for rel in tracked_files():
@@ -87,33 +112,53 @@ def scan() -> list[str]:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue        # 바이너리·읽을 수 없는 것은 지문의 대상이 아니다
-        allowed_prefixes = ALLOWED_PREFIXES.get(rel, ())
-        path_is_notion = any(m in rel.lower() for m in NOTION_MARKERS)
-        for n, line in enumerate(text.splitlines(), 1):
-            low = line.lower()
-            for org in ORG_NAMES:
-                if org in low:
-                    problems.append(f"{rel}:{n}: 파트너 조직명 '{org}' — 이 리포는 public 이다")
-            if not (path_is_notion or any(m in low for m in NOTION_MARKERS)):
-                continue        # 맥락이 없으면 그냥 UUID 다 — k8s UID·콘텐츠 해시가 여기 걸린다
-            for match in HEX_ID.findall(line):
-                if match in ALLOWED_IDS or match in allowed_prefixes:
-                    continue
-                problems.append(
-                    f"{rel}:{n}: Notion 맥락의 32자 ID '{match}' — 실제 워크스페이스를 가리킬 수 "
-                    f"있다. 합성으로 바꾸거나 근거와 함께 ALLOWED_IDS 에 넣어라")
+        problems += scan_text(
+            rel, text,
+            notion_context=any(m in rel.lower() for m in NOTION_MARKERS),
+            allowed_prefixes=ALLOWED_PREFIXES.get(rel, ()))
     return problems
 
 
-def main() -> int:
-    problems = scan()
+def scan_streams(paths: list[str]) -> list[str]:
+    """파일에 담긴 **공개될 텍스트** — 커밋 메시지 묶음, PR 제목+본문.
+
+    내용을 인자로 받지 않고 파일 경로로 받는다. PR 제목·본문은 남이 쓴 문자열이라, 셸 인자로
+    끼워 넣으면 그 자체가 주입 경로가 된다. CI 는 그것을 환경변수로 파일에 쓴 뒤 경로만 넘긴다.
+    """
+    problems: list[str] = []
+    for p in paths:
+        text = Path(p).read_text(encoding="utf-8", errors="replace")
+        # Notion 맥락 규칙은 여기서도 같다. 커밋 메시지에 맥락 없는 UUID(파드 uid, 콘텐츠 해시)를
+        # 붙이는 일은 흔하고, 그걸 다 잡으면 검사가 소음이 된다.
+        problems += scan_text(Path(p).name, text)
+    return problems
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="추적 파일 · 커밋 메시지 · PR 본문의 조직 지문")
+    ap.add_argument("--text", action="append", default=[], metavar="FILE",
+                    help="공개될 텍스트가 담긴 파일(커밋 메시지·PR 본문). 반복 가능. "
+                         "주면 파일 스캔 대신 이것만 본다")
+    args = ap.parse_args(argv)
+
+    if args.text:
+        problems = scan_streams(args.text)
+        what, clean = "공개될 텍스트", f"✓ {len(args.text)}개 텍스트에 조직 지문 없음"
+    else:
+        problems = scan()
+        what, clean = "추적되는 파일", f"✓ 추적 파일 {len(tracked_files())}개에 조직 지문 없음"
+
     if problems:
-        print(f"✗ 지문 {len(problems)}건 — 추적되는 파일에 남의 조직이 남아 있다:")
+        print(f"✗ 지문 {len(problems)}건 — {what}에 남의 조직이 남아 있다:")
         for p in problems:
             print(f"  {p}")
-        print("\n커밋 메시지와 PR 본문도 공개된다. 거기까지는 이 검사가 못 본다.")
+        if not args.text:
+            print("\n커밋 메시지와 PR 본문은 --text 로 따로 본다.")
+        else:
+            print("\n커밋 메시지는 rebase 로, PR 본문은 편집으로 고쳐라. **머지되면 늦다** — "
+                  "GitHub 은 PR 에 고정된 커밋을 force-push 뒤에도 SHA 로 계속 열어준다.")
         return 1
-    print(f"✓ 추적 파일 {len(tracked_files())}개에 조직 지문 없음")
+    print(clean)
     return 0
 
 

@@ -132,6 +132,15 @@ tasks:
     cmds:
       - task: lint:ruff
 
+  # Opt-in, because git will not install hooks for you. CI enforces the same rule on every pull
+  # request; this only moves the catch earlier - to before the message is written, which for a
+  # commit message is the only moment that is actually reversible.
+  hooks:
+    desc: "Install the local git hooks (blocks a commit message carrying a partner fingerprint)"
+    cmds:
+      - git config core.hooksPath scripts/hooks
+      - 'echo "core.hooksPath = scripts/hooks. Undo with: git config --unset core.hooksPath"'
+
   # ---- dependency constraints --------------------------------------------
   # Every install below passes `-c constraints.txt`. pyproject.toml stays the source of
   # truth for what is required; constraints.txt records which versions we actually tested.

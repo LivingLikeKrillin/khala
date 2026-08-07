@@ -55,6 +55,11 @@ jobs:
     # must be flagged, whitespace-only edits must not — so a widened normaliser shows up.
     steps:
       - uses: actions/checkout@v6
+        with:
+          # The fingerprint step reads this PR's commit messages, so the range
+          # `origin/<base>..HEAD` has to exist. A shallow clone has no merge base and the range
+          # silently comes back empty - a check that reads nothing and passes.
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -69,7 +74,26 @@ jobs:
       # count it on every push instead.
       - name: No partner-organisation fingerprint in tracked files
         run: python scripts/fingerprint_scan.py
-      - name: That scan has teeth (four controls, including one that must NOT fire)
+      # Files were the smaller half. On 2026-08-07 the same name went out in two commit messages
+      # and two pull-request bodies, and force-pushing did not take it back: GitHub keeps the
+      # commits a pull request pins reachable by sha afterwards. So this has to block BEFORE the
+      # merge, not clean up after it.
+      #
+      # The title and body are somebody else's text. They go through the environment into files;
+      # they are never interpolated into the shell.
+      - name: No fingerprint in this PR's commit messages, title or body
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch --quiet origin "$BASE"
+          git log --format='%H%n%B' "origin/$BASE..HEAD" > /tmp/commit-messages.txt
+          printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" > /tmp/pr-title-and-body.txt
+          python scripts/fingerprint_scan.py \
+            --text /tmp/commit-messages.txt --text /tmp/pr-title-and-body.txt
+      - name: That scan has teeth (controls, including ones that must NOT fire)
         run: python -m pytest tests/test_fingerprint_scan.py -q
 
   lint:
