@@ -13,8 +13,8 @@ from nexus.sources.plan_hash import compute_plan_hash
 
 # ── §4.1 URL / id 정규화 ──────────────────────────────────────────────────────
 
-_DASHED = "2740c71b-b9dc-80ef-b43a-ea3676e632c8"
-_BARE = "2740c71bb9dc80efb43aea3676e632c8"
+_DASHED = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+_BARE = "1a2b3c4d5e6f4a7b8c9d0e1f2a3b4c5d"
 
 
 @pytest.mark.parametrize(

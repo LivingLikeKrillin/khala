@@ -63,6 +63,14 @@ jobs:
         run: python scripts/ledger_integrity.py
       - name: The check has teeth (negative control + read-only + manifest)
         run: python -m pytest tests/test_ledger_integrity.py -q
+      # This repo is public. A partner organisation's name, work email, Access tenant hostname and
+      # real Notion page ids were scrubbed once on 2026-07-01 and came back within a month, in
+      # test fixtures, a config comment, docs and two commit messages. Memory failed at this twice;
+      # count it on every push instead.
+      - name: No partner-organisation fingerprint in tracked files
+        run: python scripts/fingerprint_scan.py
+      - name: That scan has teeth (four controls, including one that must NOT fire)
+        run: python -m pytest tests/test_fingerprint_scan.py -q
 
   lint:
     name: lint (ruff)

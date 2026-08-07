@@ -19,7 +19,7 @@ DB_URL = os.getenv("NEXUS_TEST_DB_URL")
 pytestmark = pytest.mark.skipif(not DB_URL, reason="NEXUS_TEST_DB_URL 필요")
 
 _TENANT = "acme"
-_ROOT = "2740c71b-b9dc-80ef-b43a-ea3676e632c8"
+_ROOT = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
 
 
 def _run(coro_fn):

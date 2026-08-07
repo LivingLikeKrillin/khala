@@ -24,8 +24,8 @@ _TENANT = "acme"
 @pytest.mark.parametrize(
     ("source_uri", "origin", "url"),
     [
-        (f"{_TENANT}:ext-notion-2740c71b-b9dc-80ef-b43a-ea3676e632c8.md",
-         "notion", "https://www.notion.so/2740c71bb9dc80efb43aea3676e632c8"),
+        (f"{_TENANT}:ext-notion-1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d.md",
+         "notion", "https://www.notion.so/1a2b3c4d5e6f4a7b8c9d0e1f2a3b4c5d"),
         (f"{_TENANT}:uploads/note.md", "upload", None),
         (f"{_TENANT}:docs/design/api.md", "file", None),
         # 접미사가 canonical page id 가 아니면 URL 을 **추측하지 않는다**
@@ -78,7 +78,7 @@ def _client(capabilities=("manage_documents",)):
                 "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, title, status) "
                 "VALUES ('doc_a', $1, $2, 'h', 'h', '결제 정책', 'active'), "
                 "       ('doc_b', $1, $3, 'h2', 'h2', '배포 런북', 'active')",
-                _TENANT, f"{_TENANT}:ext-notion-2740c71b-b9dc-80ef-b43a-ea3676e632c8.md",
+                _TENANT, f"{_TENANT}:ext-notion-1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d.md",
                 f"{_TENANT}:uploads/runbook.md",
             )
         try:
@@ -99,7 +99,7 @@ def test_list_returns_origin_and_link():
         rows = c.get("/documents", params={"tenant": _TENANT}).json()["data"]["documents"]
         by_rid = {r["rid"]: r for r in rows}
         assert by_rid["doc_a"]["origin"] == "notion"
-        assert by_rid["doc_a"]["origin_url"].endswith("2740c71bb9dc80efb43aea3676e632c8")
+        assert by_rid["doc_a"]["origin_url"].endswith("1a2b3c4d5e6f4a7b8c9d0e1f2a3b4c5d")
         assert by_rid["doc_b"]["origin"] == "upload" and by_rid["doc_b"]["origin_url"] is None
 
 

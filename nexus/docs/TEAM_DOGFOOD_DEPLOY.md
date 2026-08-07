@@ -1,6 +1,6 @@
 # Nexus 팀 도그푸딩 배포 런북 (로컬 + Cloudflare Tunnel)
 
-> 목적: **내 로컬 머신에서 Nexus를 띄우고 Cloudflare Tunnel로 팀원(예: PFPlay)에게 열어** 지식검색을 도그푸딩한다. 클라우드 VM·k8s·리버스프록시 없이. TLS와 "누가 들어오나" 게이트는 Cloudflare가 대신한다.
+> 목적: **내 로컬 머신에서 Nexus를 띄우고 Cloudflare Tunnel로 팀원에게 열어** 지식검색을 도그푸딩한다. 클라우드 VM·k8s·리버스프록시 없이. TLS와 "누가 들어오나" 게이트는 Cloudflare가 대신한다.
 >
 > ⚠️ **이 문서의 단 하나의 절대 규칙: Cloudflare Access(엣지 인증) 없이는 터널을 팀에 열지 말 것.** 이유는 §0.
 

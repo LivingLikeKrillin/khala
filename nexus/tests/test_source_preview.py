@@ -189,10 +189,10 @@ def test_roots_are_grouped_by_the_token_that_can_read_them():
 
     got = group_by_token([
         {"root_id": "a", "token_env": "NOTION_TOKEN"},
-        {"root_id": "b", "token_env": "NOTION_TOKEN_PFPLAY"},
+        {"root_id": "b", "token_env": "NOTION_TOKEN_TEAM_B"},
         {"root_id": "c"},                                  # 옛 행 — 기본값으로 읽는다
     ])
-    assert got == {"NOTION_TOKEN": ["a", "c"], "NOTION_TOKEN_PFPLAY": ["b"]}
+    assert got == {"NOTION_TOKEN": ["a", "c"], "NOTION_TOKEN_TEAM_B": ["b"]}
 
 
 def test_a_missing_token_stops_loudly_instead_of_falling_back(monkeypatch):
@@ -201,12 +201,12 @@ def test_a_missing_token_stops_loudly_instead_of_falling_back(monkeypatch):
     from nexus.sources.preview import MissingToken, require_token
 
     monkeypatch.setenv("NOTION_TOKEN", "real-token")
-    monkeypatch.delenv("NOTION_TOKEN_PFPLAY", raising=False)
+    monkeypatch.delenv("NOTION_TOKEN_TEAM_B", raising=False)
 
     assert require_token("NOTION_TOKEN") == "real-token"
     with pytest.raises(MissingToken) as e:
-        require_token("NOTION_TOKEN_PFPLAY")
-    assert "NOTION_TOKEN_PFPLAY" in str(e.value)
+        require_token("NOTION_TOKEN_TEAM_B")
+    assert "NOTION_TOKEN_TEAM_B" in str(e.value)
 
 
 def test_a_sync_spanning_two_workspaces_is_refused_not_merged():
@@ -215,13 +215,13 @@ def test_a_sync_spanning_two_workspaces_is_refused_not_merged():
 
     from nexus.sources.api import _one_workspace
 
-    two = {"NOTION_TOKEN": ["a"], "NOTION_TOKEN_PFPLAY": ["b"]}
+    two = {"NOTION_TOKEN": ["a"], "NOTION_TOKEN_TEAM_B": ["b"]}
     with pytest.raises(HTTPException) as e:
         _one_workspace(two, None)
     assert e.value.status_code == 400
     assert "multiple workspaces" in e.value.detail
 
-    assert _one_workspace(two, "NOTION_TOKEN_PFPLAY") == "NOTION_TOKEN_PFPLAY"
+    assert _one_workspace(two, "NOTION_TOKEN_TEAM_B") == "NOTION_TOKEN_TEAM_B"
     assert _one_workspace({"NOTION_TOKEN": ["a"]}, None) == "NOTION_TOKEN", "하나뿐이면 생략 가능"
 
     with pytest.raises(HTTPException) as e:
@@ -234,8 +234,8 @@ def test_confirming_a_plan_recovers_the_workspace_it_belonged_to():
 
     from nexus.sources.api import _token_for
 
-    by_token = {"NOTION_TOKEN": ["a", "c"], "NOTION_TOKEN_PFPLAY": ["b"]}
-    assert _token_for(["b"], by_token, None) == "NOTION_TOKEN_PFPLAY"
+    by_token = {"NOTION_TOKEN": ["a", "c"], "NOTION_TOKEN_TEAM_B": ["b"]}
+    assert _token_for(["b"], by_token, None) == "NOTION_TOKEN_TEAM_B"
     assert _token_for(["a", "c"], by_token, None) == "NOTION_TOKEN"
     with pytest.raises(HTTPException):
         _token_for(["a", "b"], by_token, None)      # 두 워크스페이스에 걸친 계획은 확정 불가
