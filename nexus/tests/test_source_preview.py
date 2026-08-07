@@ -125,33 +125,60 @@ def test_the_preview_shows_the_title_that_will_actually_be_stored():
 # ── 코퍼스 현황 ──────────────────────────────────────────────────────────────
 
 
+class _Con:
+    """문서 수와 **실질 문서 수**를 따로 돌려주는 가짜.
+
+    둘을 같은 값으로 돌려주는 가짜는 2026-08-07 에 실제로 일어난 상황(문서 116 · 실질 19)을
+    **표현할 수 없다**. 가짜가 실물보다 쉬우면 테스트는 통과하고 프로덕션은 죽는다.
+    """
+
+    def __init__(self, docs, substantive=None):
+        self.docs = docs
+        self.substantive = docs if substantive is None else substantive
+
+    async def fetchval(self, sql, *a):
+        if "HAVING coalesce(sum(length(c.chunk_text)), 0) >=" in sql:
+            return self.substantive
+        return self.docs if "FROM documents" in sql else 0
+
+    async def fetch(self, sql, *a):
+        return []
+
+
 def test_the_pack_b_distance_is_computed_not_remembered():
-    """트리거가 '활성 문서 100건' 인데 그 거리를 보려면 psql 을 쳐야 했다."""
-    from nexus.sources.corpus import PACK_B_MIN_DOCUMENTS
+    """트리거가 두 조건인데 그 거리를 보려면 psql 을 쳐야 했다."""
+    import asyncio
+
+    from nexus.sources.corpus import (PACK_B_MIN_DOCUMENTS, PACK_B_MIN_SUBSTANTIVE,
+                                      corpus_status)
 
     assert PACK_B_MIN_DOCUMENTS == 100
+    assert PACK_B_MIN_SUBSTANTIVE == 60
 
-    class _Con:
-        def __init__(self, docs):
-            self.docs = docs
+    got = asyncio.run(corpus_status(_Con(20)))["pack_b"]
+    assert (got["documents"], got["short_by"], got["ready"]) == (20, 80, False)
 
-        async def fetchval(self, sql, *a):
-            return self.docs if "documents" in sql else 0
+    ready = asyncio.run(corpus_status(_Con(140)))["pack_b"]
+    assert ready["ready"] and ready["short_by"] == 0 and ready["substantive_short_by"] == 0
 
-        async def fetch(self, sql, *a):
-            return []
 
+def test_a_corpus_of_stubs_is_not_ready_however_many_stubs():
+    """**두 조건은 다른 것을 잰다.** 짧은 문서도 창 경쟁에는 참가하므로 바닥값은 통과시키지만,
+    본문이 없는 문서는 gold 가 못 된다.
+
+    실물: 문서 116(바닥값 0.086, 통과)에 본문 800자 이상은 19건이었다. 답변가능 40건을 19개
+    문서에 걸면 층별 8건을 서로 다른 문서에서 뽑을 수 없고, 무승부가 쌓여 '검정력 부족' 이
+    나온다 — ADR-0008 §5(b) 를 갚지 못하는 유일한 결과다 (KOREAN_SEARCH_QUALITY.md §6.2).
+    """
     import asyncio
 
     from nexus.sources.corpus import corpus_status
 
-    got = asyncio.run(corpus_status(_Con(20)))
-    assert got["pack_b"] == {
-        "min_documents": 100, "documents": 20, "short_by": 80, "ready": False,
-        "why": got["pack_b"]["why"]}
-
-    ready = asyncio.run(corpus_status(_Con(140)))
-    assert ready["pack_b"]["ready"] and ready["pack_b"]["short_by"] == 0
+    got = asyncio.run(corpus_status(_Con(116, substantive=19)))["pack_b"]
+    assert got["short_by"] == 0, "문서 수 조건은 이미 찼다 — 그래서 이것만 세면 통과한다"
+    assert got["substantive_documents"] == 19
+    assert got["substantive_short_by"] == 41
+    assert got["ready"] is False, "실질 문서가 모자란데 준비됐다고 하면 라벨 노동만 태운다"
 
 
 # ── 루트별 토큰: 워크스페이스가 하나라는 가정을 푼다 ─────────────────────────
