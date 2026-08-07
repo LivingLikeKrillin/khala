@@ -79,18 +79,24 @@ jobs:
       # commits a pull request pins reachable by sha afterwards. So this has to block BEFORE the
       # merge, not clean up after it.
       #
-      # The title and body are somebody else's text. They go through the environment into files;
-      # they are never interpolated into the shell.
+      # The title and body come from the API at run time, NOT from
+      # github.event.pull_request.* - the event payload is frozen at the moment the event fired,
+      # so a re-run replays the old body and an author who fixes the text cannot clear the check
+      # without pushing a commit. (Observed on this very pull request.) Reading it live also
+      # means the next run sees later edits.
+      #
+      # They are still somebody else's text: they go through a file, never into the shell.
       - name: No fingerprint in this PR's commit messages, title or body
         if: github.event_name == 'pull_request'
         env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
           BASE: ${{ github.event.pull_request.base.ref }}
         run: |
           git fetch --quiet origin "$BASE"
           git log --format='%H%n%B' "origin/$BASE..HEAD" > /tmp/commit-messages.txt
-          printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" > /tmp/pr-title-and-body.txt
+          gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body \
+            --jq '.title + "\n\n" + .body' > /tmp/pr-title-and-body.txt
           python scripts/fingerprint_scan.py \
             --text /tmp/commit-messages.txt --text /tmp/pr-title-and-body.txt
       - name: That scan has teeth (controls, including ones that must NOT fire)

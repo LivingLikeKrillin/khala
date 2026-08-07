@@ -134,6 +134,19 @@ def test_the_text_mode_does_not_silently_scan_nothing(tmp_path):
     assert "fetch-depth: 0" in ci, "얕은 클론이면 커밋 범위가 비고, 검사는 조용히 통과한다"
 
 
+def test_the_pr_body_is_read_live_not_from_the_frozen_event():
+    """`github.event.pull_request.body` 는 이벤트 시점에 얼어 있다.
+
+    그것을 쓰면 재실행이 옛 본문을 재생해서, 본문을 고친 사람이 커밋을 하나 더 밀지 않고는 검사를
+    통과할 수 없다. 이 PR 에서 실제로 그렇게 됐다. API 로 실행 시점에 읽어야 한다.
+    """
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    step = ci.split("No fingerprint in this PR's commit messages", 1)[1].split("- name:", 1)[0]
+    assert "gh pr view" in step, "본문을 API 로 읽지 않으면 얼어붙은 페이로드를 보게 된다"
+    assert "github.event.pull_request.body" not in step
+    assert "github.event.pull_request.title" not in step
+
+
 def test_the_commit_msg_hook_calls_the_scanner():
     hook = ROOT / "scripts" / "hooks" / "commit-msg"
     assert hook.exists(), "훅이 없으면 task hooks 는 아무것도 설치하지 않는다"
