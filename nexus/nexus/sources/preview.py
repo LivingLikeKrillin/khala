@@ -86,7 +86,12 @@ def preview_root(source, root_id: str, sample_titles: int = 10) -> RootPreview:
         if getattr(conv, "image_count", 0) and len(body) <= IMAGE_ONLY_MAX_CHARS:
             out.image_only += 1
         if len(out.titles) < sample_titles:
-            out.titles.append(getattr(ref, "title", "") or pid)
+            # **적재될 제목을 그대로 보여준다.** `ref.title` 은 Notion 의 제목 속성 원본이라,
+            # 그것이 빈 DB 행에서는 미리보기와 실제 저장이 어긋난다 — 미리보기가 미리보기가
+            # 아니게 된다. 변환 결과의 frontmatter 가 곧 저장될 이름이다.
+            out.titles.append(
+                (getattr(conv, "frontmatter", {}) or {}).get("title")
+                or getattr(ref, "title", "") or pid)
     return out
 
 

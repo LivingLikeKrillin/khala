@@ -17,6 +17,7 @@ from nexus.sources.preview import IMAGE_ONLY_MAX_CHARS, preview_root, preview_ro
 class _Conv:
     markdown: str
     image_count: int = 0
+    frontmatter: dict | None = None
 
 
 @dataclass
@@ -112,6 +113,13 @@ def test_titles_are_sampled_only_from_real_documents():
     src = _FakeSource({"a": _Conv("본문 " * 40), "b": _Conv("")})
     got = preview_root(src, "root-1")
     assert got.titles == ["제목 a"]
+
+
+def test_the_preview_shows_the_title_that_will_actually_be_stored():
+    """제목 속성이 빈 DB 행은 적재 시 다른 이름을 얻는다(select 값 등). 미리보기가 Notion 원본
+    제목을 보여주면 실제 저장과 어긋나고, 그러면 미리보기가 미리보기가 아니다."""
+    src = _FakeSource({"row": _Conv("본문 " * 40, frontmatter={"title": "파티룸 Entity / 입장"})})
+    assert preview_root(src, "root-1").titles == ["파티룸 Entity / 입장"]
 
 
 # ── 코퍼스 현황 ──────────────────────────────────────────────────────────────
