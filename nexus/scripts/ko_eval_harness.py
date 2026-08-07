@@ -37,6 +37,41 @@ class OrphanedStoreError(RuntimeError):
     """청크→문서 매핑이 비었거나 순위에 매핑 없는 rid 가 섞였다 — 채점하면 안 되는 상태."""
 
 
+@dataclass
+class AbstentionResult:
+    """답변불가 라벨에 대한 채점 — **분모 40 과 섞지 않는다.**
+
+    §4.3 의 분모는 답변가능 40 이고 그건 그대로다. 답변불가 5건은 다른 것을 재기 때문에 따로
+    센다: 검색 품질이 아니라 **모르는 것을 모른다고 하는가** 이다.
+
+    지금까지 이 5건은 어느 집계에도 안 들어갔다 — 기권이 답변 문장 안에만 있어서 기계가 읽을 수
+    없었기 때문이다(§2.3). `abstained` 플래그가 생겨서 이제 셀 수 있다.
+    """
+    total: int = 0
+    abstained: int = 0
+    answered: list[str] = field(default_factory=list)   # 기권했어야 하는데 답한 질의
+
+    @property
+    def rate(self) -> float:
+        return self.abstained / self.total if self.total else 0.0
+
+
+def score_abstention(results: dict[str, bool], unanswerable: list[dict]) -> AbstentionResult:
+    """`{질의id: abstained}` → 집계.
+
+    **답을 지어내는 것이 기권 실패다.** 근거가 하나도 없을 때만 기권하는 현재 구현에서는 이 값이
+    0 에 가깝게 나올 것이다 — BM25 는 거의 언제나 무언가를 돌려주니까. 그것은 이 채점기의 실패가
+    아니라 **측정된 사실**이고, 0 이라는 숫자가 있어야 고칠지 말지를 정할 수 있다.
+    """
+    r = AbstentionResult(total=len(unanswerable))
+    for q in unanswerable:
+        if results.get(q["id"]):
+            r.abstained += 1
+        else:
+            r.answered.append(q["id"])
+    return r
+
+
 def collapse_to_documents(
     ranked_chunks: list[tuple[str, int]],
     chunk_doc: dict[str, str],
