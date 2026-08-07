@@ -212,3 +212,76 @@ def test_confirming_a_plan_recovers_the_workspace_it_belonged_to():
     assert _token_for(["a", "c"], by_token, None) == "NOTION_TOKEN"
     with pytest.raises(HTTPException):
         _token_for(["a", "b"], by_token, None)      # 두 워크스페이스에 걸친 계획은 확정 불가
+
+
+# ── 임베딩 안 된 청크: 안 보이던 것을 판정보다 위에 (§3.2) ───────────────────
+
+
+class _FakeCon:
+    def __init__(self, docs=0, unembedded=0, rows=None):
+        self.docs, self.unembedded, self.rows = docs, unembedded, rows or []
+        self.sql: list[str] = []
+
+    async def fetchval(self, sql, *a):
+        self.sql.append(sql)
+        if "IS NULL" in sql:
+            return self.unembedded
+        return self.docs if "documents" in sql else 0
+
+    async def fetch(self, sql, *a):
+        self.sql.append(sql)
+        return self.rows if "IS NULL" in sql else []
+
+    async def fetchrow(self, sql, *a):
+        return None
+
+
+def test_unembedded_chunks_are_reported_because_nothing_else_counts_them():
+    """`index/embed.py` 는 실패를 삼키고, `embed_health` 는 IS NOT NULL 만 센다. 거부된 청크는
+    벡터 다리에서 영구히 안 보이는데 두 곳 어디에도 안 잡힌다 (§3.2).
+
+    2026-08-07 실물: 18,751자 청크를 사이드카가 413 으로 거부했다.
+    """
+    import asyncio
+
+    from nexus.sources.corpus import corpus_status
+
+    con = _FakeCon(docs=116, unembedded=1,
+                   rows=[{"rid": "chunk_x", "title": "[파티룸] 디제잉 정책", "chars": 18751}])
+    got = asyncio.run(corpus_status(con))
+    u = got["unembedded_chunks"]
+    assert u["count"] == 1
+    assert u["sample"][0]["chars"] == 18751
+    assert "벡터 다리" in u["note"]
+
+
+def test_it_counts_the_column_the_search_leg_actually_reads(monkeypatch):
+    """세대가 바뀐 뒤 다른 컬럼을 세면 '다 임베딩됐다' 는 거짓을 보고하게 된다."""
+    import asyncio
+
+    from nexus.sources.corpus import corpus_status
+
+    monkeypatch.setenv("NEXUS_EMBEDDING_COLUMN", "embedding_1024")
+    con = _FakeCon(docs=1, unembedded=0)
+    got = asyncio.run(corpus_status(con))
+    assert got["unembedded_chunks"]["column"] == "embedding_1024"
+    assert any("embedding_1024 IS NULL" in s for s in con.sql), \
+        "검색 다리가 읽는 컬럼으로 세야 한다"
+
+    monkeypatch.setenv("NEXUS_EMBEDDING_COLUMN", "embedding")
+    con2 = _FakeCon(docs=1, unembedded=0)
+    got2 = asyncio.run(corpus_status(con2))
+    assert got2["unembedded_chunks"]["column"] == "embedding"
+
+
+def test_the_biggest_chunks_come_first_because_length_is_the_usual_cause():
+    import asyncio
+
+    from nexus.sources.corpus import corpus_status
+
+    con = _FakeCon(docs=1, unembedded=2, rows=[
+        {"rid": "a", "title": "긴 정책", "chars": 18751},
+        {"rid": "b", "title": "짧은 것", "chars": 900},
+    ])
+    got = asyncio.run(corpus_status(con))
+    assert [s["chars"] for s in got["unembedded_chunks"]["sample"]] == [18751, 900]
