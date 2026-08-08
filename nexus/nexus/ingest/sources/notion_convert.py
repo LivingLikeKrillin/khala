@@ -123,14 +123,22 @@ def blocks_to_markdown(blocks: list[dict], children_of=None) -> tuple[str, int]:
             lines.append("---")
         elif bt == "image":
             image_count += 1
-            src = data.get("external", {}).get("url") or data.get("file", {}).get("url", "")
-            # **캡션은 본문이다.** 정책 문서의 그림 캡션은 "그림 3. 환불 승인 흐름" 처럼 그 문서가
-            # 쓰는 어휘 그대로다. 예전엔 alt 를 `image` 로 고정해 캡션을 통째로 버렸고, 그러면
-            # 표를 스크린샷으로 붙인 페이지가 **검색 텍스트 0** 인 얇은 문서가 된다.
-            # 그림의 *내용* 은 여전히 못 잡는다(후속 비전 강화) — 잡는 것은 그 그림에 대해
-            # 사람이 쓴 말이다.
-            alt = _rich_to_md(data.get("caption", [])) or "image"
-            lines.append(f"![{alt}]({src})")
+            # **캡션은 남기고 URL 은 버린다.**
+            #
+            # 캡션이 본문인 이유는 그대로다: 정책 문서의 그림 캡션은 "그림 3. 환불 승인 흐름" 처럼
+            # 그 문서가 쓰는 어휘다. 예전엔 alt 를 `image` 로 고정해 캡션을 통째로 버렸고, 그러면
+            # 표를 스크린샷으로 붙인 페이지가 검색 텍스트 0 인 얇은 문서가 됐다.
+            #
+            # URL 은 반대다. Notion 이 주는 것은 **1시간 뒤 만료되는 S3 서명 링크**
+            # (`X-Amz-Expires=3600`) 라 저장해도 죽은 값이고, 그러면서 본문을 망가뜨린다.
+            # 2026-08-08 실측: 가장 큰 청크 18,839자 중 **18,623자(99%)** 가 공백 없는 이미지
+            # URL 11개였다. 공백이 없으니 토큰 추정기가 그 덩어리를 144토큰으로 세어 청킹 상한
+            # (1100)이 걸리지 않았고, 그 결과 정책 표가 잘린 채 근거로 나가 세 질의가 계속
+            # 실패했다. 임베딩 사이드카도 같은 청크를 `413` 로 거부했다.
+            #
+            # 원문 이미지는 Notion 에 있다 — 원칙 5(인덱스이지 저장소가 아님) 그대로다.
+            alt = _rich_to_md(data.get("caption", [])).strip()
+            lines.append(f"![{alt}]()" if alt else "![]()")
         elif bt == "table" and children_of is not None:
             lines.extend(_table_rows_to_md(children_of(b["id"])))
         elif bt in ("toggle", "synced_block", "column_list", "column") and children_of is not None:

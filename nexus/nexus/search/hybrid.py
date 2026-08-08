@@ -39,7 +39,13 @@ class SearchHit:
     section_path: str = ""
     source_uri: str = ""
     source_version: str = ""
+    #: 사람이 보는 미리보기 — 경계에서 자른 짧은 조각. 웹·Slack·API 가 그대로 쓴다.
     snippet: str = ""
+    #: **LLM 근거용 청크 전문.** 사람 미리보기와 갈라 둔다: 300자는 화면엔 알맞지만 프롬프트엔
+    #: 답을 잘라먹는 값이다. 2026-08-08 에 846자짜리 권한 표가 앞 300자만 넘어가, 모델이
+    #: "표가 중간에 잘려 있다" 고 정확히 말하고 답을 못 했다. 검색은 그 청크를 1위로 뽑았고
+    #: 문서 단위 Recall@10 은 1.000 이었다 — 검색만 재는 자에는 안 보이던 구간이다.
+    chunk_text: str = ""
     score: float = 0.0
     bm25_rank: int | None = None
     vector_rank: int | None = None
@@ -370,6 +376,7 @@ async def _enrich_hits(
             source_uri=r["source_uri"],
             source_version=r["source_version"] or "",
             snippet=snippet,
+            chunk_text=r["chunk_text"],
             score=f["score"],
             bm25_rank=f["bm25_rank"],
             vector_rank=f["vector_rank"],

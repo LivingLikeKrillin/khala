@@ -25,11 +25,14 @@ class EvidenceSnippet:
     doc_title: str
     section_path: str
     source_uri: str
+    #: 사람 표면이 읽는 짧은 조각(API 응답의 evidence_snippets[].text 그대로).
     text: str
     score: float
     classification: str
     doc_type: str = ""
     updated_at: datetime | None = None  # 신선도 판정용(SPEC-nexus-answer-staleness-warning)
+    #: LLM 프롬프트에 들어가는 전문. 비면 `text` 로 떨어진다(옛 호출부 호환).
+    full_text: str = ""
 
 
 @dataclass
@@ -74,6 +77,7 @@ def assemble_packet(
             section_path=hit.section_path,
             source_uri=hit.source_uri,
             text=hit.snippet,
+            full_text=getattr(hit, "chunk_text", "") or hit.snippet,
             score=hit.score,
             classification=hit.classification,
             doc_type=hit.doc_type,
@@ -106,7 +110,12 @@ def format_for_llm(packet: EvidencePacket) -> str:
         parts.append(f"분류: {s.classification}")
         if s.doc_type:
             parts.append(f"타입: {s.doc_type}")
-        parts.append(f"\n{s.text}")
+        # **프롬프트에는 전문**, 화면에는 `text`(짧은 미리보기). 둘을 한 값으로 묶어 뒀더니
+        # 846자 표가 앞 300자만 넘어가 모델이 답을 못 했다 (2026-08-08).
+        #
+        # `getattr` 인 이유: packet 을 손으로 만드는 호출부(테스트 픽스처, 다른 조립 경로)가
+        # 이 필드를 모를 수 있다. 없으면 짧은 쪽으로 떨어진다 — 프롬프트가 비는 것보다 낫다.
+        parts.append(f"\n{getattr(s, 'full_text', '') or s.text}")
 
     # Graph findings
     if packet.graph:
