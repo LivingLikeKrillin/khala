@@ -249,7 +249,10 @@
     the defect just fixed.
   trigger: >
     The first change to the answer path's evidence handling, or any approved SPEC or accepted ADR
-    whose linked_adrs contains ADR-0002 (grounded answers only).
+    whose linked_adrs contains ADR-0002 (grounded answers only). Note that the answer path's
+    evidence handling did change on 2026-08-08 - the prompt now receives whole chunks rather than
+    300-character previews - and abstention still never fires, because the condition is still
+    "no evidence at all" and retrieval always returns something.
   checked_by: human
 
 - id: chunk-bound-is-estimator-tokens
@@ -267,9 +270,18 @@
     ceiling is a number nobody has measured. This repo set three unmeasured thresholds in a single
     day and removed all three, so it is named rather than guessed.
 
-    It is not hypothetical, but it is not currently firing either: embed_refusals is the place a
-    real occurrence would show up, and a test states the blindness so it fails loudly if the
-    estimator changes.
+    It was firing when that sentence was written. On 2026-08-08 the largest chunk in the live
+    corpus was 18,839 characters of which 18,623 (99%) were presigned S3 image URLs - no spaces, so
+    the estimator scored the whole thing at 144 tokens against a 1100 bound, and the policy table
+    inside it went to the prompt truncated. Three queries failed on it in every run.
+
+    The cause was removed rather than the bound tightened: the Notion converter now keeps an
+    image's caption and drops its URL, since Notion's links expire in an hour and are dead weight
+    that also breaks chunking. Largest chunk 18,839 -> 3,794, chunks over 4k 6 -> 0, embedding
+    coverage 288/289 -> 289/289.
+
+    The blindness itself remains, and remains unmeasured: a different corpus with long space-free
+    text would hit it again. What changed is that the one known producer of such text is gone.
   trigger: >
     A new row in embed_refusals whose reason names a sequence-length limit, or the first change to
     _estimate_tokens.
