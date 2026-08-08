@@ -163,3 +163,36 @@ def test_an_exact_match_is_never_overridden_by_a_prefix():
     """정확히 일치하는 제목이 있으면 그것이 이긴다."""
     r = validate_citations("…[출처: 로그인 정책]", _p("로그인 정책", "로그인 정책 부록 A"))
     assert r.unverified_count == 0 and r.citations[0].title == "로그인 정책"
+
+
+# ── 제목에 대괄호가 들어간다 (2026-08-08) ─────────────────────────────────────
+#
+# Notion 문서 제목이 `[파티룸] 디제잉 정책` 이다. 옛 추출기는 `[^\]]+?` 로 첫 `]` 에서 끊어서
+# `[출처: [파티룸` 까지만 잡았고, **정답을 정확히 인용한 답변이 '출처 없음' 으로 찍혔다.**
+
+
+def test_a_title_containing_brackets_is_extracted_whole():
+    r = validate_citations("Admin 만 가능합니다 [출처: [파티룸] 디제잉 정책, 역할(Role) 권한 테이블]",
+                           _pkt("[파티룸] 디제잉 정책"))
+    assert r.unverified_count == 0
+    assert r.citations[0].title == "[파티룸] 디제잉 정책"
+    assert r.citations[0].section == "역할(Role) 권한 테이블"
+
+
+def test_two_bracketed_citations_in_one_answer_are_both_found():
+    r = validate_citations("가 [출처: [파티룸] 디제잉 정책] 나 [출처: 로그인 정책]",
+                           _pkt("[파티룸] 디제잉 정책", "로그인 정책"))
+    assert len(r.citations) == 2 and r.unverified_count == 0
+
+
+def test_an_unclosed_citation_is_ignored_rather_than_crashing():
+    r = validate_citations("정상 [출처: 로그인 정책] 그리고 깨진 [출처: 로그인 정책",
+                           _pkt("로그인 정책"))
+    assert len(r.citations) == 1 and r.unverified_count == 0
+
+
+def test_text_after_a_bracketed_title_still_scans():
+    """깊이 세기가 위치를 잘못 잡으면 그 뒤 인용을 통째로 놓친다."""
+    r = validate_citations("[출처: [파티룸] 디제잉 정책] 중간 문장 [출처: 플레이리스트 정책] 끝",
+                           _pkt("[파티룸] 디제잉 정책", "플레이리스트 정책"))
+    assert [c.title for c in r.citations] == ["[파티룸] 디제잉 정책", "플레이리스트 정책"]

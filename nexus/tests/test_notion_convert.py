@@ -32,7 +32,8 @@ def test_image_is_counted_and_placeholdered():
         {"type": "image", "image": {"type": "external", "external": {"url": "http://x/y.png"}}}
     ]
     md, imgs = blocks_to_markdown(blocks)
-    assert imgs == 1 and "y.png" in md
+    # URL 은 더 이상 본문에 안 들어간다 — 1시간 만료 링크이고 청킹을 망가뜨렸다.
+    assert imgs == 1 and "y.png" not in md and "![" in md
 
 
 def test_code_block():
@@ -64,13 +65,15 @@ def test_an_image_caption_becomes_searchable_text():
         "caption": _rich("그림 3. 환불 승인 흐름")}}])
     assert images == 1
     assert "그림 3. 환불 승인 흐름" in md
-    assert "https://x/y.png" in md, "URL(출처)은 유지한다"
+    assert "https://x/y.png" not in md, (
+        "URL 은 버린다 — Notion 이 주는 것은 1시간 만료 서명 링크라 저장해도 죽은 값이고, "
+        "공백이 없어 청킹 상한을 통째로 무력화했다(2026-08-08 실측: 한 청크의 99%)")
 
 
 def test_an_image_without_a_caption_still_renders_and_counts():
     md, images = _md([{"type": "image", "image": {"file": {"url": "https://x/z.png"}}}])
     assert images == 1
-    assert md.strip() == "![image](https://x/z.png)"
+    assert md.strip() == "![]()"          # 캡션 없음 + URL 제거
 
 
 def test_a_file_or_pdf_block_keeps_its_caption():
@@ -158,3 +161,46 @@ def test_checkbox_and_select_properties_are_readable_words():
     assert "**비로그인**: 아니오" in md
     assert "**상태**: 적용중" in md
     assert "**정책**: 파티룸 Entity" in md
+
+
+# ── 이미지 URL 은 본문이 아니다 (2026-08-08) ─────────────────────────────────
+#
+# Notion 이 주는 이미지 URL 은 1시간 뒤 만료되는 S3 서명 링크다. 저장해도 죽은 값이면서, 공백이
+# 없어서 청킹을 망가뜨린다. 실측: 가장 큰 청크 18,839자 중 18,623자(99%)가 이미지 URL 11개였고,
+# 토큰 추정기가 그것을 144토큰으로 세어 상한(1100)이 안 걸렸다.
+
+_LONG_URL = ("https://prod-files-secure.s3.us-west-2.amazonaws.com/525a6ac1/"
+             + "X-Amz-Signature=" + "a" * 1600)
+
+
+def _image(caption=None, url=_LONG_URL):
+    b = {"type": "image", "image": {"file": {"url": url}}}
+    if caption is not None:
+        b["image"]["caption"] = [{"type": "text", "text": {"content": caption},
+                                  "plain_text": caption, "annotations": {}}]
+    return b
+
+
+def test_the_image_url_never_reaches_the_body():
+    md, n = blocks_to_markdown([_image("그림 3. 환불 승인 흐름")])
+    assert n == 1
+    assert "amazonaws" not in md and "X-Amz" not in md
+    assert len(md) < 200, f"URL 이 남아 있다: {len(md)}자"
+
+
+def test_the_caption_is_still_kept():
+    md, _ = blocks_to_markdown([_image("그림 3. 환불 승인 흐름")])
+    assert "그림 3. 환불 승인 흐름" in md
+
+
+def test_an_image_without_a_caption_still_leaves_a_mark():
+    """캡션이 없어도 그림이 있었다는 사실은 남는다 — 얇은 문서 판정이 그것을 본다."""
+    md, n = blocks_to_markdown([_image(None)])
+    assert n == 1 and "![" in md
+
+
+def test_a_page_of_screenshots_becomes_short_rather_than_huge():
+    """이것이 청킹을 망가뜨리던 모양이다 — URL 열한 개짜리 페이지."""
+    md, n = blocks_to_markdown([_image(f"캡션 {i}") for i in range(11)])
+    assert n == 11
+    assert len(md) < 500, f"{len(md)}자 — URL 이 아직 본문에 있다"

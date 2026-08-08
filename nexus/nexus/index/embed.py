@@ -153,6 +153,11 @@ async def index_chunks_embedding(
                     """,
                     vec_str, embedding_svc.get_model_name(), rid,
                 )
+                # **배치 경로도 거부 기록을 지운다.** 단건 경로만 지우고 있었고, 적재는 배치를
+                # 탄다 — 그래서 고쳐진 청크가 계속 병들어 보였다. 2026-08-08 에 실물에서 그랬다:
+                # 18,854자 청크를 잘라 임베딩까지 성공했는데 `embed_refusals` 행이 그대로 남아
+                # 코퍼스 뷰가 없는 문제를 보고했다.
+                await clear_refusal(rid, col)
                 success += 1
 
         except Exception as e:

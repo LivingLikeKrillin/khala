@@ -80,3 +80,22 @@ def test_only_queries_both_arms_ran_are_compared():
     champ = _arm("a", {"q1": [True] * 3, "q2": [True] * 3})
     chal = _arm("b", {"q1": [True] * 3})
     assert compare(champ, chal)["queries"] == 1
+
+
+# ── 러너 배선 (2026-08-08) ───────────────────────────────────────────────────
+#
+# 누적 파일을 쓰는 코드가 **편집 실패로 빠진 채** 3회 실행이 다 돌았다. `--tag` 는 먹었으므로
+# 새 버전이 도는 것처럼 보였고, 한 시간을 쓴 뒤에야 파일이 없다는 걸 알았다. 배선은 눈으로 확인할
+# 게 아니라 검사로 박는 것이다.
+
+
+def test_the_runner_actually_appends_to_the_accumulating_file():
+    src = (ROOT / "scripts" / "ko_eval_answer_run.py").read_text(encoding="utf-8")
+    assert "RUNS.open(" in src, "누적 파일을 여는 코드가 없다 — 잡음 폭을 낼 수 없다"
+    assert '"a"' in src.split("RUNS.open(")[1][:40], "append 가 아니면 회차가 서로를 지운다"
+    assert '"ok":' in src, "질의별 ok 가 없으면 다수결을 못 낸다"
+
+
+def test_the_runner_takes_a_tag_and_a_model():
+    src = (ROOT / "scripts" / "ko_eval_answer_run.py").read_text(encoding="utf-8")
+    assert '"--tag"' in src and '"--model"' in src
