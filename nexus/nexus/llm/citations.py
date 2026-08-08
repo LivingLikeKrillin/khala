@@ -12,8 +12,35 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-# [출처: ... ] — 닫는 대괄호까지. 안 닫히면 매치 안 됨(무시 → 크래시 금지).
-_CITE = re.compile(r"\[출처:\s*([^\]]+?)\s*\]")
+_OPEN = "[출처:"
+
+
+def _inner_citations(text: str) -> list[str]:
+    """`[출처: …]` 안쪽 문자열들. **제목에 대괄호가 들어갈 수 있다.**
+
+    옛 정규식은 `[^\\]]+?` 로 첫 `]` 에서 끊었다. 그런데 Notion 문서 제목이
+    `[파티룸] 디제잉 정책` 이면 `[출처: [파티룸] 디제잉 정책, 역할 표]` 에서 `[출처: [파티룸`
+    까지만 잡히고, **정답을 정확히 인용한 답변이 '출처 없음' 으로 찍힌다.** 2026-08-08 측정에서
+    실제로 그랬다.
+
+    그래서 여는 대괄호의 깊이를 세어 **짝이 맞는 자리**에서 닫는다. 안 닫히면 그 인용은 무시한다
+    (옛 동작과 같다 — 깨진 인용에 크래시하지 않는다).
+    """
+    out: list[str] = []
+    i = 0
+    while (start := text.find(_OPEN, i)) != -1:
+        depth, j = 1, start + len(_OPEN)
+        while j < len(text) and depth:
+            if text[j] == "[":
+                depth += 1
+            elif text[j] == "]":
+                depth -= 1
+            j += 1
+        if depth:                      # 닫히지 않았다 — 무시하고 다음으로
+            break
+        out.append(text[start + len(_OPEN):j - 1].strip())
+        i = j
+    return out
 
 
 @dataclass(frozen=True)
@@ -91,6 +118,6 @@ def validate_citations(answer_text: str, packet) -> CitationReport:
     """답변의 모든 [출처: …] 를 packet.snippets 제목과 대조. 순수·무예외."""
     known = {_norm(s.doc_title): s.doc_title
              for s in getattr(packet, "snippets", []) if getattr(s, "doc_title", "")}
-    citations = [_classify(m.group(1), known) for m in _CITE.finditer(answer_text or "")]
+    citations = [_classify(inner, known) for inner in _inner_citations(answer_text or "")]
     unverified = sum(1 for c in citations if not c.verified)
     return CitationReport(citations=citations, unverified_count=unverified)
