@@ -57,6 +57,10 @@ class SearchSignals:
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     cost_usd: float | None = None
+    #: 근거가 나온 문서 중 그림을 가진 것의 수 (migration 011). ADR-0002 가 요구하는 게이트
+    #: 형식 — "관측된 기록된 비율이 설정 임계를 롤링 윈도에서 넘을 때" — 의 관측 쪽이다.
+    #: **기능이 아니라 세는 일이다.** 이 값으로 무엇을 짓지 않는다.
+    n_image_bearing_docs: int = 0
 
 
 def extract_signals(
@@ -112,6 +116,9 @@ def extract_signals(
         graph_requested=route in _GRAPH_ROUTES,
         n_graph_edges=n_graph_edges,
         no_answer=len(hits) == 0,
+        # 근거가 그림 있는 문서에서 왔는가 — 게이트 신호원(migration 011). 문서 단위로 센다:
+        # 같은 문서에서 스니펫이 셋 와도 "그림 있는 문서 하나" 다.
+        n_image_bearing_docs=len({h.doc_rid for h in hits if getattr(h, "doc_n_images", 0) > 0}),
         llm_failed=failed,
         latency_ms=latency_ms,
         n_citations=n_cit,
@@ -131,14 +138,15 @@ async def _persist(sig: SearchSignals) -> None:
                 path, tenant, clearance, route, query_sha256, query_len,
                 n_snippets, top_score, n_entities, graph_requested, n_graph_edges,
                 no_answer, llm_failed, latency_ms, n_citations, unverified_citations,
-                prompt_tokens, completion_tokens, cost_usd
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+                prompt_tokens, completion_tokens, cost_usd, n_image_bearing_docs
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
             """,
             sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
             sig.n_snippets, sig.top_score, sig.n_entities, sig.graph_requested,
             sig.n_graph_edges, sig.no_answer, sig.llm_failed, sig.latency_ms,
             sig.n_citations, sig.unverified_citations,
             sig.prompt_tokens, sig.completion_tokens, sig.cost_usd,
+            sig.n_image_bearing_docs,
         )
     except Exception as exc:  # noqa: BLE001 - signal persistence must never break the request
         log.warning("search.signal.persist_failed", error=str(exc))
