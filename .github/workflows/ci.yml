@@ -230,6 +230,20 @@ jobs:
       - name: Apply baseline schema
         working-directory: nexus
         run: psql "postgresql://nexus:nexus@localhost:5432/nexus_test" -f init.sql
+      # init.sql is the empty-DB baseline only. This job ran without migrations for as long as it
+      # has existed, which held until a migration added a column the search path reads: on
+      # 2026-08-09 `documents.n_images` made every query here fail with UndefinedColumnError while
+      # the sibling postgres job, which does migrate, passed. Two schemas, one repo.
+      # Applied with psql rather than `scripts.migrate`, because this job has no Python
+      # environment - it does its work inside the built image. Every migration is idempotent by
+      # convention, so ordered replay over the baseline is equivalent here.
+      - name: Apply migrations
+        working-directory: nexus
+        run: |
+          for f in $(ls migrations/*.sql | sort); do
+            echo "-- $f"
+            psql "postgresql://nexus:nexus@localhost:5432/nexus_test" -v ON_ERROR_STOP=1 -f "$f"
+          done
       - name: Declare this database disposable
         working-directory: nexus
         run: psql "postgresql://nexus:nexus@localhost:5432/nexus_test" -f tests/disposable_db.sql

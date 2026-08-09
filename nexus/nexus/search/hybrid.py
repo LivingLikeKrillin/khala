@@ -46,6 +46,9 @@ class SearchHit:
     #: "표가 중간에 잘려 있다" 고 정확히 말하고 답을 못 했다. 검색은 그 청크를 1위로 뽑았고
     #: 문서 단위 Recall@10 은 1.000 이었다 — 검색만 재는 자에는 안 보이던 구간이다.
     chunk_text: str = ""
+    #: 이 청크가 속한 문서가 담은 이미지 수. 신호원이지 랭킹 입력이 아니다 — 그림에 갇힌
+    #: 내용 때문에 답을 못 내는 비율을 재려면 근거가 어디서 왔는지 알아야 한다 (migration 011).
+    doc_n_images: int = 0
     score: float = 0.0
     bm25_rank: int | None = None
     vector_rank: int | None = None
@@ -352,7 +355,8 @@ async def _enrich_hits(
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.source_uri,
                c.classification, c.source_version,
                d.title as doc_title, d.approved_hash as approved_hash,
-               d.doc_type as doc_type, d.updated_at as updated_at
+               d.doc_type as doc_type, d.updated_at as updated_at,
+               coalesce(d.n_images, 0) as n_images
         FROM chunks c
         LEFT JOIN documents d ON c.doc_rid = d.rid
         WHERE c.rid IN ({placeholders})
@@ -377,6 +381,7 @@ async def _enrich_hits(
             source_version=r["source_version"] or "",
             snippet=snippet,
             chunk_text=r["chunk_text"],
+            doc_n_images=r["n_images"] or 0,
             score=f["score"],
             bm25_rank=f["bm25_rank"],
             vector_rank=f["vector_rank"],

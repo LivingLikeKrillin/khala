@@ -74,13 +74,13 @@ async def _save_document(
             source_uri, source_kind, hash, content_hash,
             is_quarantined, quality_flags, status,
             created_at, updated_at,
-            title, doc_type, language, approved_hash
+            title, doc_type, language, approved_hash, n_images
         ) VALUES (
             $1, 'document', $2, $3::classification_level, 'indexer',
             $4, 'git', $5, $5,
             $6, $7, 'active',
             $8, $8,
-            $9, $10, $11, $12
+            $9, $10, $11, $12, $13
         )
         ON CONFLICT (rid) DO UPDATE SET
             hash = EXCLUDED.hash,
@@ -94,7 +94,10 @@ async def _save_document(
             title = EXCLUDED.title,
             doc_type = EXCLUDED.doc_type,
             language = EXCLUDED.language,
-            approved_hash = EXCLUDED.approved_hash
+            approved_hash = EXCLUDED.approved_hash,
+            -- 그림 수는 신호원이다 (ADR-0002 게이트 형식, migration 011). 컨버터가 이미 세고
+            -- 있었는데 frontmatter 에만 있어서 질의할 수 없었다.
+            n_images = EXCLUDED.n_images
         """,
         rid, tenant, classification.classification,
         collected.canonical_uri, collected.content_hash,
@@ -103,6 +106,9 @@ async def _save_document(
         now,
         derive_title(collected.frontmatter, collected.content, collected.relative_path),
         classification.doc_type, classification.language, approved_hash,
+        # 컨버터가 세어 frontmatter 에 넣어 둔 값. 없으면 0 — 파일 적재처럼 그림 개념이
+        # 없는 경로가 그렇고, 0 은 "그림 없음" 으로 참이다.
+        int(collected.frontmatter.get("image_count") or 0),
     )
 
     # content_hash가 바뀐 재수집(덮어쓰기)이면 이벤트 1건 기록 → v_entropy_signals 신호원.

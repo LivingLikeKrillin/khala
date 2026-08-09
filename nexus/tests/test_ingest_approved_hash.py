@@ -60,6 +60,20 @@ async def test_save_document_defaults_approved_hash_empty(monkeypatch):
     captured = {}
 
     async def fake_execute(query, *args):
+        # **위치가 아니라 이름으로 잡는다.** 예전엔 `args[-1]` 이 approved_hash 라고 단언했는데,
+        # 바인드 파라미터를 하나 늘리는 것만으로 깨졌다(2026-08-09, n_images 추가). 그건 이 검사가
+        # 지키려던 것과 무관한 실패다 — SQL 의 열 순서에서 위치를 읽어 온다.
+        import re as _re
+        head = query.split("INSERT INTO documents (", 1)[1]
+        cols = [c.strip() for c in head.split(")", 1)[0].split(",")]
+        vals = [v.strip() for v in
+                head.split("VALUES (", 1)[1].split(")", 1)[0].split(",")]
+        # VALUES 에는 리터럴('document', 'git', 'active')이 섞여 있어 열↔인자가 1:1 이 아니다.
+        # `$N` 인 자리만 골라 이름에 붙인다.
+        captured["by_name"] = {
+            c: args[int(_re.fullmatch(r"\$(\d+)(?:::\w+)?", v).group(1)) - 1]
+            for c, v in zip(cols, vals, strict=False)
+            if _re.fullmatch(r"\$(\d+)(?:::\w+)?", v)}
         captured["args"] = args
         return "INSERT 0 1"
 
@@ -67,5 +81,5 @@ async def test_save_document_defaults_approved_hash_empty(monkeypatch):
     monkeypatch.setattr(pipeline.db, "execute", fake_execute)
     await pipeline._save_document(_collected(), ClassificationResult(), tenant="acme")
 
-    # last bind param is approved_hash, defaulting to '' for non-governed ingests
-    assert captured["args"][-1] == ""
+    # approved_hash defaults to '' for non-governed ingests
+    assert captured["by_name"]["approved_hash"] == ""
