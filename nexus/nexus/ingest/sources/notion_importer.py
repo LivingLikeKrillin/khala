@@ -73,6 +73,33 @@ class ImportReport:
     revived: int = 0
     refused: bool = False
     reason: str = ""
+    #: 그림에서 읽어 본문에 넣은 장수 (SPEC-nexus-screenshot-text-extraction).
+    images_extracted: int = 0
+
+
+async def _fill_images(conv, tenant: str) -> tuple[str, int]:
+    """그림 자리 표식을 추출 블록으로 바꾼다. 꺼져 있으면 표식만 지운다.
+
+    **기본은 꺼짐.** 켜는 것은 원문 질의가 아니라 **문서 이미지**가 공급자로 나가는 것을
+    받아들이는 행위이고, 그 판단은 코퍼스를 가진 배포가 한다.
+    """
+    import os
+
+    from nexus.ingest import vision_store
+
+    if (os.getenv("NEXUS_VISION") or "off").strip().lower() != "on":
+        md = conv.markdown
+        for im in conv.images:
+            md = md.replace(f"<!-- khala:vision:slot:{im['block_id']} -->", "![]()")
+        return md, 0
+
+    from nexus.ingest.pipeline import _load_config
+    from nexus.providers.llm import LLMService
+
+    cfg = _load_config()
+    return await vision_store.apply(
+        conv.markdown, conv.images, tenant=tenant, llm_svc=LLMService(),
+        pii_patterns=(cfg.get("pii_patterns") or {}))
 
 
 # IngestFn: (csf, tenant, *, force) -> outcome(awaitable). 프로덕션은 _default_external_ingest_fn.
@@ -108,6 +135,7 @@ async def import_notion(
 
     report = ImportReport()
     max_seen = since or ""
+
     for page_id in sorted(index):
         try:
             ref = source.page_ref(page_id)
@@ -117,6 +145,14 @@ async def import_notion(
             if since and le <= since:
                 continue
             conv = source.fetch_markdown(ref)
+            # ── 2패스: 그림 자리를 추출 블록으로 채운다 ────────────────────────
+            # 순회(동기)와 추출(HTTP+LLM, 비동기)을 갈라 둔 이음매다. 꺼져 있으면 자리 표식만
+            # 지우고 예전 `![]()` 로 돌아간다 — 추출이 안 도는 배포에서 본문이 표식으로
+            # 오염되면 청커가 거기서 갈린다.
+            if conv.images:
+                conv.markdown, n_extracted = await _fill_images(conv, tenant)
+                conv.vision_extracted = n_extracted > 0
+                report.images_extracted += n_extracted
             # 빈 본문(블록 없는 컨테이너/DB행)은 인덱스 오염 — 적재 안 함(라이브 검증 신호).
             if not conv.markdown.strip():
                 report.empty += 1
