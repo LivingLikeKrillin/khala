@@ -44,7 +44,9 @@ def _authored_hit(title="정책 B", text="담당자에게 문의한다."):
 def test_hop1_chunking_assigns_the_tier():
     e = vision.Extraction("표 내용 1200", "m/abc12345", "s" * 64)
     doc = "# 정책\n\n앞 문단\n\n" + vision.build_block(e) + "\n\n뒤 문단\n"
-    chunks = chunk_document(doc, language="ko")
+    # 컨버터가 쓴 본문이므로 마커를 신뢰한다. 기본값은 **불신**이다 — 파일시스템 문서나 외부
+    # spec 이 마커를 담고 있어도 저자 산문이 machine_read 로 찍히면 안 되기 때문이다.
+    chunks = chunk_document(doc, language="ko", trust_vision_markers=True)
     tiers = {c.provenance_tier for c in chunks}
     assert tiers == {"authored", "machine_read"}
 
@@ -167,7 +169,9 @@ def test_the_tier_survives_from_chunk_to_citation():
     """hop 1→4 를 실제 값으로 통과시킨다. 파일 grep 이 아니라 값이 흐르는지를 본다."""
     e = vision.Extraction("| 아바타 | 해금 |\n|---|---|\n| A | 1200 |", "m/abc12345", "s" * 64)
     doc = "# 정책 A\n\n앞 문단\n\n" + vision.build_block(e) + "\n"
-    chunks = chunk_document(doc, language="ko")
+    # 컨버터가 쓴 본문이므로 마커를 신뢰한다. 기본값은 **불신**이다 — 파일시스템 문서나 외부
+    # spec 이 마커를 담고 있어도 저자 산문이 machine_read 로 찍히면 안 되기 때문이다.
+    chunks = chunk_document(doc, language="ko", trust_vision_markers=True)
     machine = [c for c in chunks if c.provenance_tier == "machine_read"]
     assert machine, "hop 1 에서 이미 끊겼다"
 

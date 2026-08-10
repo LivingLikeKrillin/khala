@@ -15,8 +15,8 @@ tags:
 - vision
 - grounding
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-10T05:52:47Z'
-content_hash: sha256:173429db2a4510118e952a280f2bbda737d1fe9702fe93b7fddfa8f606b1c76d
+reviewed_at: '2026-08-10T09:10:36Z'
+content_hash: sha256:34640f59e0619dda77cf8b70edf0a0101a0903caaee1ac7178514951a19e66ff
 ---
 
 ## 1. What prompted it
@@ -74,7 +74,10 @@ text becomes document body, and a fabrication would later be cited.
 | `granite3.2-vision:2b` | — | — | — | **cannot run**: 16k context, the image is 59k tokens |
 | **`claude` CLI (subscription)** | **5/5 pass** | **19 s** | **~14 m** | no API credit |
 
-Neither local model invented anything, which is the result that matters most. Both lost the small
+**This table selected a vendor; it is not a fidelity measurement.** It was scored by the
+implementing agent against its own reading of one screenshot, which §7.1c disqualifies as an
+independent reference. Neither local model invented anything *in that one image*, which is the
+result that matters most and is n=1. Both lost the small
 grey header strip carrying the screen id and version. The CLI read it.
 
 The machine this was measured on has no discrete GPU (Intel Arc integrated, no CUDA, and the
@@ -117,13 +120,32 @@ argued; it is absent.
 
 ### 3.1 What this costs, and what it does not decide
 
-**Bounded, because an unbounded reader is an unbounded bill.** Three limits, all enforced rather
-than advised: `max_tokens` per image (**2048** — a dense spec table transcribes well inside it),
-a cap on stored extracted characters per image (**8000**, beyond which the extraction is truncated
-and the chunk marked as truncated rather than silently shortened), and a per-ingest ceiling on
-images extracted (`NEXUS_VISION_MAX_PER_INGEST`, default **100**) so one malformed document cannot
-walk a corpus of images. The sufficiency signal shipped without a spend instrument and drew the
-same criticism; it is cheaper to state the numbers than to discover them.
+**Bounded, because an unbounded reader is an unbounded bill.** All limits enforced rather than
+advised:
+
+* **`max_tokens` = 4096** per image, and **the response's `stop_reason` is recorded**. An earlier
+  draft paired 2048 tokens with an 8000-character cap, which cannot both bind: 2048 tokens of
+  Korean does not reach 8000 characters, so the truncation that was marked could never happen and
+  the truncation that actually happens — the model running out of output budget mid-table — was
+  invisible. A half-transcribed spec table would have travelled all six hops looking complete.
+* **20,000 stored characters** per image, sized deliberately *above* what the token cap can emit,
+  so it is a safety net for pathological output rather than the normal path. Either truncation
+  marks the chunk; neither shortens it silently.
+* **A fetch failure gets a key it can be recorded under.** The store is keyed by image bytes, and
+  a failed fetch has none — which is the *most likely* failure, since §4.1 must download from a
+  presigned URL that expires within the hour. Without a row, a failed ingest leaves a bare
+  `![]()` and a later successful one adds the block, `content_hash` flips, and a document nobody
+  edited reads as edited. So the key is derived deterministically from the **block id**, prefixed
+  `unfetched:` so no reader mistakes it for a content hash.
+* **`NEXUS_VISION_MAX_PER_INGEST` = 100 per run of the ingest command** — not per document. Past
+  the ceiling, remaining images are left unextracted and recorded as failure rows, so the run is
+  repeatable and the skipped images are visible rather than silently absent.
+* **Token counts recorded per extraction** on the durable row. §3.1 criticised the sufficiency
+  signal for shipping without a spend instrument and an earlier draft of this SPEC then did the
+  same; this is the cheap version, and enough to answer *what did the first run cost*.
+
+A limit nothing enforces is worse than no limit, because it reads as a control — the per-ingest
+ceiling was defined and never wired.
 
 Paid API credit, per image, once. The 44 images are a **first-run** cost — §4.4's cache means a
 re-ingest of unchanged documents extracts nothing.
@@ -193,7 +215,15 @@ text can carry the markers too — a Notion page, an external spec, or a filesys
 authored prose as `machine_read`, which defames the author exactly as the mixed chunk laundered the
 machine. **The markers are stripped from authored body text at convert time as well.**
 
-The order is fixed and load-bearing, because the chunker splits at markers *unconditionally*:
+**Trust is declared by the caller, not assumed from the path.** The chunker distrusts markers by
+default and strips them; only a caller that wrote the block itself passes `trust_vision_markers=True`.
+An earlier design stripped authored markers in the Notion converter alone — but filesystem documents
+and `ingest_external_spec` payloads never pass through it, so a document of theirs containing the
+begin marker would have had its author's own prose tiered `machine_read`. Defaulting to distrust
+puts every current and future intake path on the safe side without anyone remembering to.
+
+Within a trusted caller the order is fixed and load-bearing, because the chunker splits at markers
+*unconditionally*:
 **(1)** strip markers from authored source text, **(2)** strip them from extracted text,
 **(3)** assemble the vision block, **(4)** chunk. By the time the chunker runs, the only markers in
 the body are the ones the converter wrote in step 3. §7.2.15 asserts the authored direction.
@@ -229,9 +259,24 @@ The invariant is on the stored text, not on the cache ([[ADR-0010]] §5): **an e
 once stored, is never replaced by a re-read of the same bytes under the same extractor identity.**
 Losing the cache must be a performance event, never a content event.
 
+**Deletion is a narrowing this SPEC makes**, not something [[ADR-0010]] §5 already allowed — the ADR
+fixes the invariant on stored text and names no exception. It is permitted here because deletion
+**removes rather than rewrites**: a later ingest re-extracts and passes the same gate, so nothing
+drifted is served under an unchanged identity. The alternative was quarantined PII sitting in a
+store the gate cannot reach.
+
 That requires the store to be **durable, not a cache** in the evictable sense: a table,
-`vision_extractions(tenant, image_sha256, extractor_identity, text, at)`, with the **triple** as
-its primary key and no eviction policy.
+`vision_extractions(tenant, image_sha256, extractor_identity, text, error, truncated, at)` with the
+first three as its primary key and no eviction policy. (`error` and `truncated` were missing from an
+earlier sketch of this schema; migration 013 carries them, and a schema without the failure columns
+cannot express §7.2's failure tests.)
+
+**Insert semantics: `ON CONFLICT DO NOTHING`.** Two concurrent ingests touching the same
+byte-identical image within a tenant otherwise race on the durable write. First result wins, which
+is precisely the invariant — a second read must never replace the first under the same identity.
+**The losing writer discards its own extraction and reads the stored row back**, so both ingests
+put the same text in their bodies; keeping its own would make `content_hash` depend on which
+process won a race.
 
 **`tenant` is in the key, and that is not an optimisation.** An earlier draft keyed on
 (bytes, identity) alone, making the store global while every other part of the index is
@@ -327,8 +372,11 @@ Written down now, because a threshold chosen after seeing output ratifies whatev
   `source_ref` alone** for at least one image per document, before extraction is committed. §8
   records why this is in doubt (`canonical_uri` is basename-only; Notion URLs expire in an hour).
   If it cannot be demonstrated, the tier's justification fails and extraction does not ship.
-* **Sample**: **8 of the 44 images**, drawn across all five documents, each read by a human and its
-  contents recorded **before** the machine reading is looked at.
+* **Sample**: **8 of the 44 images**, drawn across all five documents **from those the implementing
+  agent has never opened**, each read by the director and recorded **before** the machine reading is
+  looked at. No requirement about what the images contain — the sample measures transcription
+  fidelity, and an earlier draft's rule (draw images carrying the thresholds) became unexecutable
+  when step 0 established that none do.
 * **Invention**: **zero tolerance.** One non-trivial line of extracted text that does not appear in
   the image fails the sample outright and extraction is not committed. **"Non-trivial line"** is
   fixed here rather than after the reading: a line carrying at least one of a number, a proper
@@ -339,6 +387,19 @@ Written down now, because a threshold chosen after seeing output ratifies whatev
 * **Fidelity**: **≥ 6 of 8** at `pass` or `partial` on §2's pre-registered scale.
 * **The motivating question**: after extraction, `nexus query "각 아바타별 해금 포인트 수치"` returns
   the thresholds, with a citation carrying `machine_read`.
+
+  **Step 0 was run on 2026-08-10, and it failed.** Eleven images from the avatar-policy document
+  were fetched and five opened. They are UI screen specifications — a header strip carrying
+  screen path / ID / version, a rule box, and a 속성·형식·설명 table. Locks are drawn on avatar
+  slots as UI state, but **no unlock condition or point value appears in any of them**, and the
+  body text has none either: every `포인트` match in the corpus is `엔드포인트`. The motivating
+  question most likely returned "not found" because the organisation has not written that rule
+  down anywhere — not because it is trapped in an image.
+
+  **So this criterion is void, exactly as step 0 was written to detect, and it is replaced in
+  §7.1a.** Recording the failure rather than quietly swapping the question is the point: a
+  pre-registered criterion that is changed after the fact has to leave a trace, or pre-registration
+  means nothing.
 
   **The pass condition is a label, not a reading.** "Returns the thresholds" is scored by the
   existing Korean answer-quality harness: the values recorded in step 0's human survey become a
@@ -370,6 +431,80 @@ things make it survivable, and both are required rather than recommended:
   Re-extracting under the *same* identity would store different text for the same
   (bytes, identity) pair and break §4.4's invariant, which an earlier draft's wording would have
   done. Coarse, and cheap enough at 44 images that coarse is acceptable.
+
+### 7.1a-0 What step 0 does to ADR-0010's fired gate
+
+[[ADR-0010]] recorded the demand-pull gate as **fired**, on this: *"a real question was asked, the
+answer was unavailable, and the cause was counted (44 images, 100–171 characters of text beside
+each)."* Step 0 falsifies the middle link. The answer was unavailable, and the cause was **not** the
+images — the thresholds are in none of them, and none of the corpus text either. The most likely
+explanation is that the rule was never written down.
+
+**What survives, and it is not nothing.** The count stands: 44 images, 0 captions, 100–171
+characters beside each, and five images opened confirm they carry screen ids, versions, rule
+sentences and 속성 tables that appear **nowhere in the corpus text** — one of them a work email
+address visible only in pixels. Policy content *is* trapped in images. What is no longer supported
+is the specific causal claim that this question failed *because of* that.
+
+The gate stays fired on the surviving evidence, and this section is the correction rather than a
+quiet re-telling. **The ADR is accepted and hash-stamped, so it cannot be edited here**; a successor
+note against it is owed, and §8 records that debt.
+
+### 7.1a The replacement criterion, and why this one is answerable
+
+Chosen by the director on 2026-08-10 **from what the images were measured to contain**, not from
+what would be convenient:
+
+> **Q.** Ava_01 화면에서 NFT 크기/위치 조정 범위는 어디까지인가?
+> **A.** Body 크기의 1/2 범위 (조정 범위 마스킹 처리) — **UNVERIFIED**
+
+**The expected value is not yet binding**, and the reason is the rule this section had just
+written. §7.1c disqualifies the implementing agent's reading as an independent reference, and this
+value came from exactly that — the agent opened the image and read it. Proposing the criterion and
+supplying its answer is the judge-and-judged shape, one paragraph after forbidding it.
+
+So it is marked UNVERIFIED until **the director opens that image and confirms it**. One image, one
+value, and it must not be settled by the party that proposed it.
+
+The label matches on the **load-bearing tokens** — the fraction and the masking term — not the full
+sentence: an exact-string `must_contain` against a machine transcription is brittle to spacing and
+particle choice, which is how the Korean harness scores elsewhere.
+
+This value sits in the 속성 table and in a callout annotation of one image. **It is absent from the
+entire corpus text**: `크기/위치`, `마스킹`, `조정 범위`, and `1/2`/`½` each match **0 chunks**
+across every active document (measured 2026-08-10). So the question is unanswerable today and
+becomes answerable only if extraction works — which is what an acceptance criterion is for. The old
+one could have been failed by a corpus that never contained the answer; this one cannot.
+
+Scored as a label in the Korean eval set, with `must_contain` on the value, and the citation must
+carry `machine_read`.
+
+### 7.1b Step 0b passed, so the recourse is real
+
+[[ADR-0010]] §2 admits machine-read text *because* a reader can re-read the image at its source, and
+§3.1 says that without a re-resolvable reference the tier is a label with nothing behind it. Run on
+2026-08-10 over the same 11 images: each was re-fetched **from its stored block id alone** — the
+original presigned URL discarded — and the bytes were **identical in 11 of 11**.
+
+What that establishes is that the reference resolves *today*. It does not make the recourse durable:
+that depends on the source system keeping the block, which Nexus does not control (§8).
+
+### 7.1c The author cannot be both readers
+
+The sample compares a human reading against the machine's. **The agent doing the implementation has
+already opened five of these images** (nos. 6, 8, 9, 10, 11), so its reading of those cannot serve
+as the independent reference — that is the judge-and-judged failure this repo has been caught by
+before, and it would quietly turn the control into a machine-versus-itself comparison.
+
+Two consequences, both binding:
+
+* the 8-image sample is drawn **only from images the implementing agent has never opened** — six
+  remain in this document and 33 more across the other four
+* the expected contents are recorded by **the director**, not by the agent, before the machine
+  reading is run
+
+§7.1a's acceptance question is exempt from this: it is scored against a fixed expected value that
+the director can verify by opening one image, not against a transcription judgement.
 
 n=1 chose the reader; n=8 decides whether it ships.
 
@@ -455,5 +590,9 @@ which in this repo means they would not exist.
   its own literal is what stops an answer-model bump from invalidating every extraction — the cost
   is that nothing else moves it, and an unmaintained default is a quiet way to keep reading with a
   retired model.
+* **ADR-0010 owes a successor note.** §7.1a-0 falsified one link in the evidence its fired gate was
+  declared on. The gate stands on what survives, but an accepted record should not be left saying
+  something a later measurement contradicted — and it cannot be edited, so the correction belongs
+  in a record of its own.
 * **Small print.** Both local models lost the header strip; the API reader read it. If the local
   path is ever taken up, "small print is not reliably read" belongs in the tier, not in a comment.

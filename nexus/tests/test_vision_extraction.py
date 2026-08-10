@@ -33,10 +33,14 @@ class _Reader:
     def __init__(self, reply="포인트 표\n\n| 아바타 | 해금 |\n|---|---|\n| A | 1200 |"):
         self.reply, self.calls = reply, []
 
+    def __init_stop__(self, stop_reason=None):
+        self.stop_reason = stop_reason
+
     async def vision_extract(self, system, image_b64, media_type, max_tokens):
         self.calls.append({"system": system, "image_b64": image_b64,
                            "media_type": media_type, "max_tokens": max_tokens})
-        return self.reply
+        # 실제 백엔드는 (text, stop_reason) 을 준다 — 토큰 절단을 알 유일한 길이다.
+        return self.reply, getattr(self, "stop_reason", None)
 
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"fake bytes"
@@ -150,6 +154,48 @@ def test_the_vision_model_is_overridable_on_its_own(monkeypatch):
     assert vision.extractor_identity() != before
 
 
+# ── 절단: 두 종류를 모두 잡는가 ───────────────────────────────────────────────
+
+def test_a_response_cut_off_by_max_tokens_is_marked_truncated():
+    """**앞선 판이 놓친 것.** 문자 상한만 표시했는데, 한국어 2048 토큰은 8000자를 만들 수 없다 —
+    표시되는 절단은 도달 불가였고 실제로 걸리는 절단은 표시가 없었다. 조밀한 명세표가 절반만
+    담긴 채 "완전한 추출" 로 여섯 hop 을 통과한다는 뜻이다."""
+    r = _Reader("| 아바타 | 해금 |\n|---|---|\n| A | 1200")
+    r.stop_reason = "max_tokens"
+    e = asyncio.run(vision.read_image(PNG, "image/png", r))
+    assert e.truncated is True, "토큰에서 잘린 응답이 완결된 추출로 기록됐다"
+
+
+def test_a_complete_response_is_not_marked_truncated():
+    r = _Reader("짧은 표")
+    r.stop_reason = "end_turn"
+    assert asyncio.run(vision.read_image(PNG, "image/png", r)).truncated is False
+
+
+def test_the_two_caps_are_consistent():
+    """토큰 상한이 만들 수 있는 최대 문자수보다 문자 상한이 커야, 문자 절단이 이상 상황용
+    안전망이 되고 정상 절단은 stop_reason 이 잡는다. 한국어는 토큰당 대략 1~2자다."""
+    assert vision.MAX_EXTRACTED_CHARS > vision.MAX_OUTPUT_TOKENS * 2
+
+
+# ── 가져오지 못한 이미지 ──────────────────────────────────────────────────────
+
+def test_a_fetch_failure_has_a_constructible_key():
+    """바이트가 없으면 바이트 해시도 없는데, 실패를 기록해야 하는 가장 흔한 경우가 바로
+    그것이다(만료된 presigned URL). 키를 못 만들면 실패 행도 못 쓰고, 그러면 실패한 적재와
+    나중의 성공 적재가 다른 body 를 만들어 content_hash 가 왕복한다."""
+    e = vision.fetch_failure("block-abc", "ReadTimeout")
+    assert e.ok is False and e.fetched is False
+    assert e.sha.startswith("unfetched:") and len(e.sha) <= 64
+    assert vision.fetch_failure("block-abc", "다른 오류").sha == e.sha, "같은 블록은 같은 키"
+    assert vision.fetch_failure("block-xyz", "x").sha != e.sha
+
+
+def test_a_successful_extraction_is_marked_fetched():
+    e = asyncio.run(vision.read_image(PNG, "image/png", _Reader()))
+    assert e.fetched is True and not e.sha.startswith("unfetched:")
+
+
 # ── chunker 경계: 한 chunk 는 한 종류만 ───────────────────────────────────────
 
 def _doc_with_vision():
@@ -162,10 +208,20 @@ def _doc_with_vision():
     )
 
 
+def _chunk(doc, **kw):
+    """컨버터가 쓴 본문이라는 전제로 청킹한다 — 즉 마커를 신뢰한다.
+
+    기본값은 **불신**이므로(아래 위조 테스트가 그 이유다) 컨버터 산출물을 흉내 내는 테스트는
+    그 사실을 명시해야 한다.
+    """
+    kw.setdefault("language", "ko")
+    return chunk_document(doc, trust_vision_markers=True, **kw)
+
+
 def test_no_chunk_carries_both_kinds():
     """ADR-0010 §3 의 규칙이고, 초안의 인라인 배치가 조용히 깨뜨렸을 바로 그 불변식이다.
     혼합 chunk 는 정직한 값을 가질 수 없다."""
-    chunks = chunk_document(_doc_with_vision(), language="ko")
+    chunks = _chunk(_doc_with_vision())
     assert len(chunks) >= 2
     for c in chunks:
         has_vision = "(그림에서 읽은 내용)" in c.chunk_text
@@ -173,22 +229,21 @@ def test_no_chunk_carries_both_kinds():
 
 
 def test_the_authored_text_around_an_image_stays_authored():
-    chunks = chunk_document(_doc_with_vision(), language="ko")
-    authored = [c for c in chunks if c.provenance_tier == "authored"]
+    authored = [c for c in _chunk(_doc_with_vision()) if c.provenance_tier == "authored"]
     joined = " ".join(c.chunk_text for c in authored)
     assert "아바타 해금 기준은" in joined and "문의는 담당자에게" in joined
     assert "1200" not in joined, "기계가 읽은 표가 authored chunk 에 섞였다"
 
 
 def test_a_document_with_no_images_is_entirely_authored():
-    chunks = chunk_document("# 제목\n\n본문입니다.\n", language="ko")
+    chunks = _chunk("# 제목\n\n본문입니다.\n")
     assert chunks and all(c.provenance_tier == "authored" for c in chunks)
 
 
 def test_an_unbalanced_marker_does_not_tier_authored_prose_as_machine_read():
     """잘린 문서나 손으로 편집된 body 로 저자 산문이 기계 텍스트로 찍히면 안 된다."""
     doc = f"# 제목\n\n사람이 쓴 문단\n{vision.VISION_BEGIN}\n짝 없는 꼬리\n"
-    chunks = chunk_document(doc, language="ko")
+    chunks = _chunk(doc)
     assert chunks and all(c.provenance_tier == "authored" for c in chunks)
 
 
@@ -196,8 +251,27 @@ def test_a_large_vision_block_splits_into_machine_read_chunks_only():
     """큰 블록이 여러 chunk 로 갈려도 authored 이웃과 합쳐지지 않는다."""
     big = vision.Extraction("문장. " * 4000, "m/abc12345", "s" * 64)
     doc = "# 제목\n\n앞 문단\n\n" + vision.build_block(big) + "\n\n뒤 문단\n"
-    chunks = chunk_document(doc, language="ko", config={"chunking": {"korean_tokens": 200}})
+    chunks = _chunk(doc, config={"chunking": {"korean_tokens": 200}})
     vision_chunks = [c for c in chunks if c.provenance_tier == "machine_read"]
     assert len(vision_chunks) > 1, "큰 블록이 갈리지 않았다"
     for c in vision_chunks:
         assert "앞 문단" not in c.chunk_text and "뒤 문단" not in c.chunk_text
+
+
+# ── 마커 신뢰 경계 ────────────────────────────────────────────────────────────
+
+def test_markers_are_not_trusted_by_default():
+    """**파일시스템 문서와 외부 spec 은 Notion 컨버터를 거치지 않는다.** 컨버터에서만 정화하면
+    그 경로의 저자 산문이 machine_read 로 찍힌다 — 모함이 반대 방향으로 일어난다. 기본값이
+    불신이어야 현재도, 나중에 생길 적재 경로도 안전한 쪽에 떨어진다."""
+    forged = (f"# 남의 문서\n\n{vision.VISION_BEGIN}\n"
+              f"내가 쓴 문장이다\n{vision.VISION_END}\n")
+    chunks = chunk_document(forged, language="ko")          # 기본값 = 불신
+    assert chunks and all(c.provenance_tier == "authored" for c in chunks)
+    assert any("내가 쓴 문장이다" in c.chunk_text for c in chunks)
+
+
+def test_markers_are_honoured_when_the_caller_wrote_them():
+    e = vision.Extraction("표 1200", "m/abc12345", "s" * 64)
+    doc = "# 제목\n\n앞\n\n" + vision.build_block(e) + "\n"
+    assert any(c.provenance_tier == "machine_read" for c in _chunk(doc))

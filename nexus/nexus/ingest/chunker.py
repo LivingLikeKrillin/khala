@@ -259,6 +259,8 @@ def chunk_document(
     content: str,
     language: str = "ko",
     config: dict | None = None,
+    *,
+    trust_vision_markers: bool = False,
 ) -> list[ChunkData]:
     """문서를 청크로 분할.
 
@@ -266,12 +268,26 @@ def chunk_document(
         content: 문서 본문 (frontmatter 제거 후)
         language: ko | en | mixed
         config: config.yaml의 chunking 설정
+        trust_vision_markers: 이 본문의 비전 마커를 **우리가 썼는가**. 기본 False.
 
     Returns:
         ChunkData 리스트
+
+    **마커는 기본적으로 못 믿는다.** 이 함수는 마커에서 무조건 자르고 그 안쪽을 machine_read
+    로 찍는데, 마커는 그냥 문자열이라 저자 문서에도 들어 있을 수 있다. 파일시스템 문서와
+    `ingest_external_spec` 페이로드는 Notion 컨버터를 거치지 않으므로, 컨버터에서만 정화하면
+    그 경로의 저자 산문이 `machine_read` 로 찍힌다 — §4.3 이 막으려던 모함이 반대 방향으로
+    일어난다.
+
+    그래서 **신뢰는 호출자가 명시**한다. 비전 블록을 직접 써 넣은 경로만 True 를 넘기고,
+    나머지 전부(현재·미래)는 기본값으로 안전한 쪽에 떨어진다.
     """
     if not content.strip():
         return []
+
+    if not trust_vision_markers:
+        from nexus.ingest.vision import strip_markers
+        content = strip_markers(content)
 
     cfg = config or {}
     chunking_cfg = cfg.get("chunking", {})

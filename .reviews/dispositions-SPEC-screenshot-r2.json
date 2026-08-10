@@ -1,0 +1,52 @@
+[
+  {"issue_id": "I-001", "disposition": "accepted",
+   "reason": "Fixed in code. A failed fetch has no bytes and so no image_sha256 — the key was unconstructible for the failure mode §4.1 says is most likely. fetch_failure() now derives a deterministic key from the block id, prefixed 'unfetched:' so no reader mistakes it for a content hash, and the same block always maps to the same row."},
+
+  {"issue_id": "I-002", "disposition": "accepted",
+   "reason": "Fixed in code, and it was the sharper half of the marker problem. Only the Notion converter stripped authored markers while the chunker splits at them unconditionally, so filesystem docs and ingest_external_spec payloads could have their author's prose tiered machine_read. chunk_document now defaults to distrusting markers and strips them; only a caller that wrote the block passes trust_vision_markers=True. Every future intake path falls on the safe side without anyone remembering to."},
+
+  {"issue_id": "I-003", "disposition": "accepted",
+   "reason": "Ordering is fixed as: extract -> scan/gate -> store -> body assembly -> content_hash. Quarantined text therefore never reaches the durable store on the normal path, and §4.4's deletion is the backstop for content quarantined later. Stated in the SPEC rather than left to the implementation."},
+
+  {"issue_id": "I-004", "disposition": "accepted",
+   "reason": "NEXUS_VISION_MAX_PER_INGEST was defined and never enforced, and 'per-ingest' was ambiguous between per-document and per-run. It is per run of the ingest command, and the constant is wired to the extraction loop at implementation; a limit nothing checks is worse than no limit, because it reads as a control."},
+
+  {"issue_id": "I-005", "disposition": "accepted",
+   "reason": "Fixed in code. The two caps contradicted each other — 2048 tokens of Korean cannot produce 8000 characters — so the marked truncation was unreachable and the reachable one unmarked. A table cut off mid-row would have travelled all six hops looking complete. The backend now returns stop_reason, both paths set truncated, and the character cap is sized above what the token cap can emit so it is a safety net rather than dead code."},
+
+  {"issue_id": "I-006", "disposition": "accepted",
+   "reason": "The tenant boundary is argued in prose and untested. A test asserting two tenants ingesting byte-identical images extract twice and never read each other's rows is added with the store's implementation, since that is where the boundary lives."},
+
+  {"issue_id": "I-007", "disposition": "accepted",
+   "reason": "ADR-0010 §5 fixes the invariant on stored text and names no exception; §4.4 introduces deletion as one. The SPEC states it as what it is — a narrowing this SPEC makes within its own scope, permitted because deletion removes rather than rewrites — rather than implying the ADR already allowed it."},
+
+  {"issue_id": "I-008", "disposition": "accepted",
+   "reason": "Migration 013 already carries error and truncated columns; the SPEC's schema sketch predates them and lists only (tenant, image_sha256, extractor_identity, text, at). The sketch is corrected to match what shipped."},
+
+  {"issue_id": "I-009", "disposition": "accepted",
+   "reason": "Concurrent ingests of the same image within a tenant race on the durable write. ON CONFLICT DO NOTHING is the correct semantics: the first stored result wins, which is exactly §4.4's invariant — a second read must never replace the first under the same identity."},
+
+  {"issue_id": "I-010", "disposition": "accepted",
+   "reason": "Correct, and it catches the author repeating the contamination he had just written a rule against: §7.1a's replacement value comes from the implementing agent's own reading of one image, which §7.1c disqualifies. The value is marked UNVERIFIED in the SPEC and requires the director to open that image and confirm it before the criterion is binding. Cheap to settle — one image, one value — and it must not be settled by the party that proposed it."},
+
+  {"issue_id": "I-011", "disposition": "accepted",
+   "reason": "§2's evidence table is a comparison the implementing agent scored against its own reading of one screenshot, which §7.1c disqualifies for fidelity judgements. It selected a vendor and is labelled as that, not as a fidelity measurement."},
+
+  {"issue_id": "I-012", "disposition": "deferred",
+   "reason": "Real and unresolved: rows survive the deletion of the documents that produced them, with no eviction policy. That is deliberate — the invariant depends on the stored result outliving a single ingest — but it means the store grows monotonically and holds text for documents that no longer exist. Bounding it needs a retention rule that does not break the invariant, and that is its own design question. Recorded rather than patched."},
+
+  {"issue_id": "I-013", "disposition": "accepted",
+   "reason": "Fair, and it lands on the author: §3.1 criticised the sufficiency signal for shipping without a spend instrument and then this SPEC did the same. Token counts per extraction are recorded on the durable row at implementation, which is the cheap version of the instrument and enough to answer 'what did the first run cost'."},
+
+  {"issue_id": "I-014", "disposition": "accepted",
+   "reason": "The sampling rule contradicts itself after step 0: it required drawing images that carry the thresholds, and step 0 established none do. The rule becomes: 8 images drawn across all five documents from those the implementing agent has never opened, with no requirement about content — the sample measures transcription fidelity, and tying it to a topic was a leftover from the voided criterion."},
+
+  {"issue_id": "I-015", "disposition": "accepted",
+   "reason": "An exact-string must_contain against a machine transcription is too brittle — spacing and particle choices vary. The label matches on the load-bearing tokens (the fraction and the word for masking) rather than the full sentence, which is what the existing Korean harness does elsewhere."},
+
+  {"issue_id": "I-016", "disposition": "accepted",
+   "reason": "Test numbering runs 1-13, 15, 16, 14 after edits, and four sections cross-reference by number. Renumbered in order at the same time as the schema correction, since a cross-reference to a misnumbered test is how a control quietly loses its referent."},
+
+  {"issue_id": "I-017", "disposition": "accepted",
+   "reason": "Both figures — the dropped URL as 99% of the largest chunk, and the per-image body character counts — come from measurements recorded in ADR-0010 and in earlier work on this corpus. The SPEC cites where each was measured instead of restating the number bare."}
+]

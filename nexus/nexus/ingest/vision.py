@@ -52,8 +52,14 @@ _MARKERS = re.compile(
 DEFAULT_VISION_MODEL = "claude-sonnet-4-6"
 
 #: 경계는 권고가 아니라 강제다 — 묶이지 않은 판독기는 묶이지 않은 청구서다.
-MAX_OUTPUT_TOKENS = 2048
-MAX_EXTRACTED_CHARS = 8000
+#:
+#: **두 상한은 서로 맞아야 한다.** 앞선 판은 2048 토큰 + 8000자였는데, 한국어 2048 토큰은
+#: 8000자를 만들 수 없다 — 표시되는 절단(문자)은 도달 불가였고 실제로 걸리는 절단(토큰)은
+#: 표시가 없었다. 조밀한 명세표가 절반만 담긴 채 "완전한 추출" 로 여섯 hop 을 통과한다는 뜻이다.
+#: 이제 문자 상한은 토큰 상한이 만들 수 있는 최대보다 **넉넉히 크게** 두어, 문자 절단은
+#: 이상 상황(모델이 반복을 뱉는 등)에서만 걸리고 정상 절단은 stop_reason 으로 잡는다.
+MAX_OUTPUT_TOKENS = 4096
+MAX_EXTRACTED_CHARS = 20000
 DEFAULT_MAX_PER_INGEST = 100
 
 SYSTEM = (
@@ -113,6 +119,21 @@ def image_sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def unfetched_key(block_id: str) -> str:
+    """가져오지도 못한 이미지의 저장 키.
+
+    **바이트가 없으면 바이트 해시도 없다.** 그런데 실패를 기록해야 하는 가장 흔한 경우가 바로
+    그것이다 — presigned URL 이 순회 중에 만료되는 것. 실패 행을 못 쓰면 실패한 적재는 맨
+    `![]()` 를, 나중의 성공 적재는 블록을 만들고, `content_hash` 가 왕복해 아무도 안 고친
+    문서가 수정된 것으로 읽힌다.
+
+    그래서 블록 id 에서 **결정적으로** 키를 만든다. 같은 블록은 몇 번을 실패해도 같은 행을
+    가리키고, 바이트를 실제로 받은 뒤엔 진짜 해시로 옮겨 간다. 접두사를 붙이는 이유는 이것이
+    이미지 내용의 해시가 **아니라는** 것을 읽는 사람이 알아야 하기 때문이다.
+    """
+    return "unfetched:" + hashlib.sha256(block_id.encode("utf-8")).hexdigest()[:54]
+
+
 def source_ref(source_uri: str, block_id: str, sha: str) -> str:
     """원본을 다시 읽기 위한 참조. ADR-0010 §2 의 recourse 가 이것에 걸려 있다 — 없으면 낮은
     등급은 뒤에 아무것도 없는 이름표다."""
@@ -130,6 +151,18 @@ class Extraction:
     @property
     def ok(self) -> bool:
         return not self.error
+
+    @property
+    def fetched(self) -> bool:
+        """바이트를 실제로 받았는가. `sha` 가 내용 해시인지 자리표시자인지 구분한다."""
+        return not self.sha.startswith("unfetched:")
+
+
+def fetch_failure(block_id: str, error: str) -> Extraction:
+    """이미지를 가져오지 못했다. 추출 실패와 **같은 방식으로** 기록된다 — 본문에 남는 결과가
+    같기 때문이다(블록이 없다). 다른 것은 키뿐이다."""
+    return Extraction("", extractor_identity(), unfetched_key(block_id),
+                      error=(error or "fetch failed")[:500])
 
 
 def build_block(extraction: Extraction) -> str:
@@ -166,9 +199,17 @@ async def read_image(data: bytes, media_type: str, llm_svc) -> Extraction:
         log.warning("vision.extract_failed", sha=sha[:12], error=str(exc))
         return Extraction("", extractor_identity(), sha, error=str(exc)[:500])
 
-    text = strip_markers(raw if isinstance(raw, str) else "")
-    truncated = len(text) > MAX_EXTRACTED_CHARS
-    if truncated:
-        # 조용히 짧아지지 않는다 — 잘렸다는 사실이 chunk 에 남아야 읽는 사람이 안다.
+    # 백엔드는 (text, stop_reason) 을 준다. 옛 계약(문자열)도 받아 준다 — 다만 그때는
+    # 토큰 절단을 알 길이 없으므로 그렇게 기록한다.
+    if isinstance(raw, tuple):
+        text, stop_reason = raw
+    else:
+        text, stop_reason = (raw if isinstance(raw, str) else ""), None
+
+    text = strip_markers(text or "")
+    # **두 종류의 절단을 모두 잡는다.** 토큰에서 잘린 것이 정상 경로이고, 문자 상한은
+    # 이상 상황용 안전망이다. 어느 쪽이든 조용히 짧아지지 않는다.
+    truncated = stop_reason == "max_tokens" or len(text) > MAX_EXTRACTED_CHARS
+    if len(text) > MAX_EXTRACTED_CHARS:
         text = text[:MAX_EXTRACTED_CHARS]
     return Extraction(text, extractor_identity(), sha, truncated=truncated)
