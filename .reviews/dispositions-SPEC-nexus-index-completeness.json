@@ -1,0 +1,19 @@
+[
+  { "issue_id": "I-001", "disposition": "accepted" },
+  { "issue_id": "I-002", "disposition": "accepted" },
+  { "issue_id": "I-003", "disposition": "accepted" },
+  { "issue_id": "I-004", "disposition": "accepted" },
+  { "issue_id": "I-005", "disposition": "accepted" },
+  { "issue_id": "I-006", "disposition": "accepted" },
+  { "issue_id": "I-007", "disposition": "accepted" },
+  { "issue_id": "I-008", "disposition": "accepted" },
+  { "issue_id": "I-009", "disposition": "rejected",
+    "reason": "전제가 사라졌다. I-002 를 받아 게이트(비영 종료코드) 자체를 없앴으므로 '이번 실행이 남긴 델타냐 테넌트의 누적 상태냐'가 거부 여부를 가르지 않는다. §3.2 는 테넌트의 현재 상태를 보고할 뿐이고 그것이 읽는 사람이 알아야 할 값이다 — 이번 실행 탓이 아닌 구멍도 여전히 벡터 다리가 못 보는 청크다. §3.4 의 적재 후 출력도 같은 값을 찍는다." },
+  { "issue_id": "I-010", "disposition": "accepted" },
+  { "issue_id": "I-011", "disposition": "accepted" },
+  { "issue_id": "I-012", "disposition": "accepted" },
+  { "issue_id": "I-013", "disposition": "accepted" },
+  { "issue_id": "I-014", "disposition": "accepted" },
+  { "issue_id": "I-015", "disposition": "accepted" },
+  { "issue_id": "I-016", "disposition": "accepted" }
+]

@@ -6,10 +6,14 @@
 |---|---|---|---|---|
 | SPEC-specledger-a2a-publish-phase3 | Phase 3 — specledger publish to Nexus as an A2A task |  | 2026-06-18 | ADR-0001 |
 
-## 🟡 검토중 (0)
+## 🟡 검토중 (2)
 
+| id | title | approved_by | date | linked_adrs |
+|---|---|---|---|---|
+| SPEC-nexus-screenshot-text-extraction | Read the policy that lives inside screenshots — khala absorbs the friction, the organisation does not retype its documents | LivingLikeKrillin |  | ADR-0002, ADR-0004, ADR-0006, ADR-0010 |
+| SPEC-nexus-sufficiency-signal | Record whether the evidence answered the question — a per-search verdict, off by default |  |  | ADR-0002, ADR-0006 |
 
-## 🟢 승인 (39)
+## 🟢 승인 (43)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
@@ -27,6 +31,8 @@
 | SPEC-nexus-embed-tokenizer-race | The over-length guard races the encoder - give it its own tokenizer | LivingLikeKrillin | 2026-08-05T01:28:06Z | ADR-0008 |
 | SPEC-nexus-embedding-cutover-seam | The embedding cutover seam is half-built - the query path, the write path, and the wiring still hardcode the old generation | LivingLikeKrillin | 2026-08-04T13:28:28Z | ADR-0008 |
 | SPEC-nexus-graph-scope-filter | The graph channel must obey base_filter — stop cross-tenant / over-clearance / quarantined leakage | LivingLikeKrillin |  | ADR-0004, ADR-0006 |
+| SPEC-nexus-index-completeness | Surface the coverage signal where someone reads it — the gap was measured, logged, and buried under an alarm that is always on | LivingLikeKrillin |  | ADR-0006, ADR-0008, ADR-0009 |
+| SPEC-nexus-ko-eval-pool-sensitivity | A record of measurements already taken — how far the deferred pool adjudication could move the KURE verdict | LivingLikeKrillin | 2026-08-05 | ADR-0009, ADR-0008 |
 | SPEC-nexus-korean-embedding-comparison | Korean embedding comparison — nomic-embed-text vs KURE-v1 on the pinned pack | LivingLikeKrillin | 2026-08-03T12:27:40Z | ADR-0008 |
 | SPEC-nexus-korean-retrieval-eval | Korean retrieval evaluation set — a tokenizer-neutral ruler on a pinned public corpus | LivingLikeKrillin | 2026-08-02T09:52:01Z | ADR-0008 |
 | SPEC-nexus-kure-embedding-swap | Swap the embedding model to KURE-v1 — dimension change, re-embed, and the ANN measurement the comparison could not make | LivingLikeKrillin | 2026-08-04T05:38:24Z | ADR-0008 |
@@ -36,6 +42,7 @@
 | SPEC-nexus-notion-reconciliation | Notion deletion reconciliation — soft_delete/revive primitives + root-scoped prune | LivingLikeKrillin | 2026-07-09 | ADR-0006 |
 | SPEC-nexus-notion-source-console | Notion source console — endpoint-first source management, background sync, previewed deletion | LivingLikeKrillin | 2026-07-10 | ADR-0006 |
 | SPEC-nexus-ranking-precision | Ranking precision — cover-density lexical scoring and per-document diversity | LivingLikeKrillin |  | ADR-0004 |
+| SPEC-nexus-retrieval-backstop-detector | Run the hash check unattended — one small job, and the findings from two detector designs that failed | LivingLikeKrillin | 2026-08-05 | ADR-0009, ADR-0008, ADR-0002 |
 | SPEC-nexus-search-recall | BM25 recall — the keyword leg answers nothing, and `route` answers nobody | LivingLikeKrillin | 2026-07-10 | ADR-0004 |
 | SPEC-nexus-search-signal-completeness | Search signals — record the streaming path, and measure citation fabrication | LivingLikeKrillin |  | ADR-0004, ADR-0006 |
 | SPEC-nexus-slack-bot | The Slack bot, revived — the lowest-friction on-ramp for a team that lives in Slack | LivingLikeKrillin | 2026-07-10 | ADR-0004 |
@@ -52,3 +59,4 @@
 | ADR-0007 | Component rename migration landed — ADR-0005's deferred code/directory rename is complete | LivingLikeKrillin | 2026-07-11 | ADR-0004, ADR-0005 |
 | ADR-0008 | Keep Nexus's own substrate; defer the Onyx adoption question with named resume conditions | LivingLikeKrillin | 2026-08-01T09:24:00Z | ADR-0002, ADR-0004, ADR-0006, ADR-0007 |
 | ADR-0009 | The embedding-model block of ADR-0008 is lifted - what the director declared, and what stays open | LivingLikeKrillin | 2026-08-05T04:26:52Z | ADR-0008, ADR-0007 |
+| ADR-0010 | Machine-read text from images is evidence, of a lower tier — and the tier must travel with it | LivingLikeKrillin | 2026-08-09 | ADR-0002, ADR-0004, ADR-0006 |

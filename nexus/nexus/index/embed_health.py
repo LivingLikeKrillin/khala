@@ -59,23 +59,47 @@ async def fetch_waived_count() -> int:
 
 
 async def fetch_coverage_by_tenant() -> list[dict]:
-    """테넌트별 · 컬럼별 커버리지 (SPEC-nexus-embedding-cutover-seam §4.2).
+    """테넌트별 · 다리별 커버리지 (SPEC-nexus-embedding-cutover-seam §4.2,
+    SPEC-nexus-index-completeness §3.1).
 
-    **집계 쿼리 하나**로 두 컬럼을 함께 센다 — `/status` 가 테넌트마다 쿼리를 날리기 시작하면
-    "필드 하나 더" 가 조용히 팬아웃이 된다. 여기서 지키는 경계다.
+    **집계 쿼리 하나**로 두 벡터 컬럼과 키워드 다리를 함께 센다 — `/status` 가 테넌트마다 쿼리를
+    날리기 시작하면 "필드 하나 더" 가 조용히 팬아웃이 된다. 여기서 지키는 경계다.
 
     커버리지가 보고돼야 하는 이유는 하나다: 컬럼이 비어 있으면 벡터 다리가 **예외 없이** 0행을
     내고, 그 배포는 키워드 전용으로 답하면서 건강해 보인다.
+
+    세 가지가 이 함수의 판정을 정한다 (index-completeness §3.1):
+
+    * **모집단은 다리가 실제로 읽는 것이다.** `status='active' AND NOT is_quarantined` 에
+      **부모 문서가 active** 라는 조건이 붙는다 (ADR-0006 containment, `search/hybrid.py`).
+      죽은 문서 아래 살아있는 청크는 어느 다리도 읽지 않으므로, 세면 절대 안 꺼지는 구멍이 된다.
+    * **키워드 다리의 어두운 상태는 NULL 만이 아니다.** 형태소 분석기가 품사 화이트리스트로
+      거르므로 토큰이 하나도 안 남으면 `''::tsvector` 가 저장된다 — NULL 이 아니면서 안 잡힌다.
+      (그 함수 이름은 여기 적지 않는다: `test_tokenizer_seam` 은 문자열로 검사하고, 주석에
+      적힌 이름과 우회하는 import 를 구별하지 못한다.)
+    * **웨이버는 빼지 않는다.** `embed_waivers` 는 `chunk_rid` 가 PK 라 컬럼이 둘인 동안 세대를
+      표현하지 못한다. 768 세대에서 받은 웨이버가 1024 의 진짜 구멍을 가리게 둘 수 없다.
+      개수는 `fetch_waived_count()` 로 **옆에** 보여 준다.
+
+    `gap_*` 는 `active - <다리>` 다. 빼기 한 번이지만 여기서 한다 — 읽는 쪽마다 다시 빼면
+    "무엇에서 뺐는가" 가 곧 갈린다.
     """
     rows = await db.fetch_all(
         """
+        WITH readable AS (
+            SELECT c.*
+            FROM chunks c
+            WHERE c.status = 'active' AND c.is_quarantined = false
+              AND EXISTS (SELECT 1 FROM documents d
+                          WHERE d.rid = c.doc_rid AND d.status = 'active')
+        )
         SELECT tenant,
-               count(*) FILTER (WHERE status = 'active' AND is_quarantined = false) AS active,
-               count(*) FILTER (WHERE status = 'active' AND is_quarantined = false
-                                  AND embedding IS NOT NULL) AS embedding,
-               count(*) FILTER (WHERE status = 'active' AND is_quarantined = false
-                                  AND embedding_1024 IS NOT NULL) AS embedding_1024
-        FROM chunks
+               count(*) AS active,
+               count(*) FILTER (WHERE embedding IS NOT NULL) AS embedding,
+               count(*) FILTER (WHERE embedding_1024 IS NOT NULL) AS embedding_1024,
+               count(*) FILTER (WHERE tsvector_ko IS NOT NULL
+                                  AND tsvector_ko <> ''::tsvector) AS bm25
+        FROM readable
         GROUP BY tenant
         ORDER BY tenant
         """
@@ -86,23 +110,47 @@ async def fetch_coverage_by_tenant() -> list[dict]:
             "active": r["active"],
             "embedding": r["embedding"],
             "embedding_1024": r["embedding_1024"],
+            "bm25": r["bm25"],
+            "gap_768": r["active"] - r["embedding"],
+            "gap_1024": r["active"] - r["embedding_1024"],
+            "gap_bm25": r["active"] - r["bm25"],
         }
         for r in rows
     ]
 
 
-async def log_embedding_coverage(column: str) -> list[dict]:
+def exempt_tenants(config: dict | None = None) -> set[str]:
+    """벡터를 **일부러** 안 만드는 테넌트 (SPEC-nexus-index-completeness §3.3).
+
+    고정된 비교 코퍼스(평가 팩)가 그렇다. 이들이 매 기동마다 `embedding_column_empty` 를
+    error 로 뱉는 동안, 진짜 신호 하나가 그 사이에 끼어 하루를 지나갔다.
+
+    **면제는 선언이지 추론이 아니다.** 이름 접두사나 "커버리지가 0이니 의도겠지" 같은 규칙을
+    두지 않는다 — 0 을 조용히 숨기는 규칙은 안 꺼지는 경보와 같은 종류의 실패다.
+    """
+    return set(((config or {}).get("index") or {}).get("coverage_exempt_tenants") or [])
+
+
+async def log_embedding_coverage(column: str, config: dict | None = None) -> list[dict]:
     """설정된 세대의 커버리지를 기동 시점에 한 번 남긴다. **거부하지 않는다.**
 
     빈 컬럼을 부팅 거부로 막는 설계는 검토에서 기각됐다: NULL 벡터는 평범한 과도상태(적재 직후,
     죽은 적재, 웨이버 대기 중인 413)이고, 새 테넌트의 첫 적재는 정상적으로 커버리지 0 이다.
     그걸 거부로 만들면 평범한 적재 사고가 **배포 전체 장애**가 된다. 강제는 컷오버 조건이 있는
     자리에서 한다 — 결정이 붙어 있는 검사만이 거부할 자격이 있다 (§4.2).
+
+    선언된 면제 테넌트는 `info` 로 한 줄 남기고 끝낸다 (index-completeness §3.3).
     """
     coverage = await fetch_coverage_by_tenant()
+    exempt = exempt_tenants(config)
     for row in coverage:
         active, embedded = row["active"], row[column]
         if not active:
+            continue
+        if row["tenant"] in exempt:
+            logger.info("embedding_coverage_exempt", tenant=row["tenant"], column=column,
+                        active=active, embedded=embedded,
+                        reason="config.index.coverage_exempt_tenants 에 선언된 테넌트")
             continue
         if embedded == 0:
             logger.error("embedding_column_empty", tenant=row["tenant"], column=column,

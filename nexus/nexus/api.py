@@ -98,7 +98,8 @@ async def _log_embedding_coverage() -> None:
     try:
         from nexus.index.embed_health import log_embedding_coverage
 
-        await log_embedding_coverage(configured_column(_load_config()))
+        config = _load_config()
+        await log_embedding_coverage(configured_column(config), config)
     except Exception:  # noqa: BLE001 — 마이그레이션 전 DB 등. 부팅을 막지 않는다
         pass
 

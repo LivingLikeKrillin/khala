@@ -35,6 +35,10 @@ class IngestResult:
     bm25_indexed: int = 0
     vector_indexed: int = 0
     edges_created: int = 0
+    #: 적재 뒤 이 테넌트의 커버리지 (SPEC-nexus-index-completeness §3.4). `None` 은 "못 쟀다".
+    #: **이것은 편의이지 보장이 아니다** — 프로세스가 죽으면 여기까지 오지 못한다. 보장은
+    #: `nexus status` 에 있다 (§2.5). 그래서 "0 건 남았다" 와 "안 쟀다" 를 구분해 둔다.
+    coverage: dict | None = None
 
 
 def _load_config(config_path: str = "config.yaml") -> dict:
@@ -388,6 +392,26 @@ async def run_ingest(
         except Exception as e:
             result.errors.append({"file_path": "*", "error": str(e), "stage": "embed"})
             logger.error("vector_indexing_failed", error=str(e))
+
+        # 3b. 이 적재가 무엇을 남겼는가 (SPEC-nexus-index-completeness §3.4).
+        # 인덱싱 단계가 **예외를 냈든 아니든** 잰다 — 삼켜진 실패의 흔적은 결과가 아니라 상태에
+        # 남기 때문이다. 여기서 거부하지는 않는다(§2.4).
+        try:
+            from nexus.index.embed_health import fetch_coverage_by_tenant
+            from nexus.index.vector_index import configured_column
+
+            col = configured_column(config)
+            row = next((c for c in await fetch_coverage_by_tenant()
+                        if c["tenant"] == tenant), None)
+            if row is not None:
+                result.coverage = row
+                gap = row["active"] - row[col]
+                if gap:
+                    logger.warning("ingest_left_chunks_unindexed", tenant=tenant, column=col,
+                                   active=row["active"], embedded=row[col], pending=gap,
+                                   recover=f"nexus reembed run --tenant {tenant}")
+        except Exception as e:      # noqa: BLE001 — 커버리지 조회 실패가 적재를 무르지 않는다
+            logger.warning("ingest_coverage_unavailable", error=str(e))
 
     # 4. Graph 추출
     if result.indexed > 0 and not skip_graph:
