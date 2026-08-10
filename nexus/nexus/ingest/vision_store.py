@@ -49,11 +49,59 @@ async def save(tenant: str, e: vision.Extraction) -> dict:
     return stored or {"text": e.text, "error": e.error, "truncated": e.truncated}
 
 
+class UnsafeImageURL(Exception):
+    """가져오면 안 되는 주소. 조용히 건너뛰지 않고 실패로 기록된다."""
+
+
+def check_url(url: str) -> None:
+    """가져오기 **전에** 주소를 검증한다. 통과 못 하면 raise.
+
+    **이 URL 은 신뢰할 수 없다.** Notion 이미지 블록은 `file`(S3 서명 링크)만이 아니라
+    `external` 도 되고, 그건 페이지를 편집할 수 있는 사람이 넣은 임의의 주소다. 그리고 이
+    경로에서 SSRF 는 요청 하나로 끝나지 않는다 — 가져온 바이트는 판독기로 가고, 판독기는
+    그것을 **문서 본문으로 옮겨 적는다.** `http://169.254.169.254/...` 를 이미지로 걸면
+    클라우드 자격증명이 검색 가능한 인용 텍스트가 된다.
+
+    [[ADR-0010]] §6 은 판독기를 묶었다(툴 없음·파일시스템 없음). 가져오는 쪽은 안 묶여 있었고,
+    그쪽이 더 이른 관문이다.
+    """
+    import ipaddress
+    import socket
+    from urllib.parse import urlparse
+
+    u = urlparse(url)
+    if u.scheme != "https":
+        raise UnsafeImageURL(f"https 만 허용한다 (scheme={u.scheme!r})")
+    if not u.hostname:
+        raise UnsafeImageURL("host 가 없다")
+
+    try:
+        infos = socket.getaddrinfo(u.hostname, u.port or 443, proto=socket.IPPROTO_TCP)
+    except OSError as exc:
+        raise UnsafeImageURL(f"DNS 실패: {exc}") from exc
+
+    # **해소된 모든 주소**를 본다. 하나만 봐도 되는 것 같지만, 여러 A 레코드 중 하나만
+    # 사설이어도 그쪽으로 붙을 수 있다.
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast
+                or ip.is_reserved or ip.is_unspecified):
+            raise UnsafeImageURL(f"내부 주소로 해소된다: {ip}")
+
+
 async def _fetch_bytes(url: str) -> tuple[bytes, str]:
+    """이미지 바이트. **리다이렉트를 따라가지 않는다.**
+
+    따라가면 검증을 통과한 첫 홉이 내부 주소로 넘겨 줄 수 있고, 그러면 검증이 무의미해진다.
+    S3 서명 링크는 리다이렉트가 필요 없다.
+    """
     import httpx
 
-    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as c:
+    check_url(url)
+    async with httpx.AsyncClient(timeout=60, follow_redirects=False) as c:
         r = await c.get(url)
+        if r.is_redirect:
+            raise UnsafeImageURL(f"리다이렉트는 따라가지 않는다 ({r.status_code})")
         r.raise_for_status()
         return r.content, (r.headers.get("content-type") or "image/png").split(";")[0]
 

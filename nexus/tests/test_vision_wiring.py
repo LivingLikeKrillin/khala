@@ -14,6 +14,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -208,3 +210,46 @@ async def _echo(e):
 async def _record(bucket, e):
     bucket.append(e)
     return {"text": e.text, "error": e.error, "truncated": e.truncated}
+
+
+# ── 가져오는 쪽도 묶여 있는가 (SSRF) ─────────────────────────────────────────
+
+def test_internal_addresses_are_refused():
+    """**이 URL 은 신뢰할 수 없다.** Notion 이미지 블록은 `external` 도 되고, 그건 페이지를
+    편집할 수 있는 사람이 넣은 임의의 주소다.
+
+    그리고 여기서 SSRF 는 요청 하나로 끝나지 않는다: 가져온 바이트가 판독기로 가고, 판독기는
+    그것을 **문서 본문으로 옮겨 적는다.** 메타데이터 엔드포인트를 이미지로 걸면 자격증명이
+    검색 가능한 인용 텍스트가 된다. ADR-0010 §6 은 판독기를 묶었는데 가져오는 쪽이 안 묶여
+    있었고, 그쪽이 더 이른 관문이다.
+    """
+    for url in ("https://localhost/x.png",
+                "https://127.0.0.1/x.png",
+                "https://169.254.169.254/latest/meta-data/",   # 클라우드 메타데이터
+                "https://10.0.0.5/x.png",
+                "https://192.168.1.1/x.png"):
+        with pytest.raises(vision_store.UnsafeImageURL):
+            vision_store.check_url(url)
+
+
+def test_non_https_schemes_are_refused():
+    """평문과 파일 스킴은 아예 받지 않는다 — `file://` 은 판독기에 닫아 둔 파일시스템을
+    가져오는 쪽으로 다시 여는 길이다."""
+    for url in ("http://example.com/x.png", "file:///etc/passwd", "gopher://x/1"):
+        with pytest.raises(vision_store.UnsafeImageURL):
+            vision_store.check_url(url)
+
+
+def test_a_public_https_url_passes():
+    vision_store.check_url("https://example.com/x.png")
+
+
+def test_a_refused_url_is_recorded_as_a_failure_not_silently_skipped(monkeypatch):
+    """거부도 실패 행으로 남아야 한다 — 안 그러면 다음 적재의 body 가 달라진다."""
+    saved = []
+    monkeypatch.setattr(vision_store, "save", lambda t, e: _record(saved, e))
+    out, n = asyncio.run(vision_store.apply(
+        image_slot("b1"), [{"block_id": "b1", "url": "https://127.0.0.1/x.png", "caption": ""}],
+        tenant="t", llm_svc=_Reader()))
+    assert n == 0 and "khala:vision:slot" not in out
+    assert saved and "UnsafeImageURL" in saved[0].error
