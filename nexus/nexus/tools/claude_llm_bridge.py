@@ -41,6 +41,55 @@ def build_argv(model: str | None) -> list[str]:
     return argv
 
 
+def build_vision_argv(model: str | None) -> list[str]:
+    """이미지를 읽는 호출 argv. **문은 그대로 다 닫혀 있다.**
+
+    이미지를 CLI 로 넘기는 통상 경로는 경로 + `Read` 툴인데, [[ADR-0010]] §6 이 그걸 금지한다 —
+    추출은 quarantine 게이트 **앞**에서 공격자가 넣을 수 있는 바이트에 대해 돌기 때문에, 적재
+    사용자가 읽을 수 있는 아무 경로나 여는 판독기는 유출 원시도구가 된다.
+
+    `--input-format stream-json` 은 그 문을 열지 않고 이미지를 넣는다: stdin 으로 받는 JSON
+    메시지의 content 블록에 base64 를 그대로 싣는다. 툴 정의가 없으니 부를 tool 도 없고,
+    경로를 준 적이 없으니 열 파일도 없다.
+    """
+    argv = ["claude", "-p",
+            "--input-format", "stream-json",
+            "--output-format", "stream-json", "--verbose",
+            *_DOORS_CLOSED]
+    if model:
+        argv += ["--model", model]
+    return argv
+
+
+def build_vision_stdin(system: str, image_b64: str, media_type: str) -> str:
+    """stream-json 입력 한 줄. **이미지 하나, 그 외 아무것도 없다.**"""
+    return json.dumps({"type": "user", "message": {"role": "user", "content": [
+        {"type": "image",
+         "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
+        {"type": "text", "text": system},
+    ]}}, ensure_ascii=False) + "\n"
+
+
+def parse_vision_stdout(out: str) -> str:
+    """stream-json 출력에서 assistant 텍스트만 모은다. 나머지 이벤트는 버린다."""
+    parts: list[str] = []
+    for line in (out or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if ev.get("type") == "assistant":
+            for b in (ev.get("message") or {}).get("content") or []:
+                if b.get("type") == "text":
+                    parts.append(b.get("text") or "")
+    return "".join(parts).strip()
+
+
+
+
 def _subprocess_runner(argv: list[str], prompt: str, timeout: float):
     """argv 를 실행하고 (returncode, stdout, stderr) 반환. 타임아웃은 예외로.
 
@@ -84,6 +133,37 @@ def handle_generate(
     return 200, {"text": out}
 
 
+def handle_vision(
+    payload: dict,
+    token_header: str | None,
+    *,
+    runner=_subprocess_runner,
+    token: str = "",
+    timeout: float = _DEFAULT_TIMEOUT,
+) -> tuple[int, dict]:
+    """POST /v1/vision 의 순수 로직. (status, body)."""
+    if token and token_header != token:
+        return 403, {"error": "forbidden: bad or missing X-Bridge-Token"}
+
+    image_b64 = payload.get("image_b64") or ""
+    if not image_b64:
+        return 400, {"error": "image_b64 가 필요하다"}
+    system = (payload.get("system") or "").strip()
+    media_type = payload.get("media_type") or "image/png"
+
+    argv = build_vision_argv(payload.get("model"))
+    stdin = build_vision_stdin(system, image_b64, media_type)
+    try:
+        rc, out, err = runner(argv, stdin, timeout)
+    except (subprocess.TimeoutExpired, TimeoutError):
+        return 504, {"error": "claude 응답이 시간 초과되었습니다"}
+    except OSError as e:
+        return 502, {"error": f"claude 실행 실패: {e}"}
+    if rc != 0:
+        return 502, {"error": (err or "claude non-zero exit")[:1000]}
+    return 200, {"text": parse_vision_stdout(out)}
+
+
 class _Handler(BaseHTTPRequestHandler):
     token = ""
 
@@ -96,7 +176,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self) -> None:  # noqa: N802 — http.server 규약
-        if self.path.rstrip("/") != "/v1/generate":
+        route = self.path.rstrip("/")
+        if route not in ("/v1/generate", "/v1/vision"):
             self._send(404, {"error": "not found"})
             return
         length = int(self.headers.get("Content-Length", 0))
@@ -106,8 +187,8 @@ class _Handler(BaseHTTPRequestHandler):
             # 손상/비-UTF-8 본문은 400 으로 — 핸들러가 크래시하지 않는다.
             self._send(400, {"error": "malformed or non-UTF-8 JSON body"})
             return
-        status, body = handle_generate(
-            payload, self.headers.get("X-Bridge-Token"), token=self.token)
+        fn = handle_vision if route == "/v1/vision" else handle_generate
+        status, body = fn(payload, self.headers.get("X-Bridge-Token"), token=self.token)
         self._send(status, body)
 
     def log_message(self, *args) -> None:  # 토큰·프롬프트가 접근 로그로 새지 않게 침묵

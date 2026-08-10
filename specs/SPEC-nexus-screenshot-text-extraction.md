@@ -3,7 +3,7 @@ id: SPEC-nexus-screenshot-text-extraction
 type: spec
 title: Read the policy that lives inside screenshots — khala absorbs the friction,
   the organisation does not retype its documents
-status: approved
+status: in_review
 linked_adrs:
 - ADR-0002
 - ADR-0004
@@ -87,8 +87,21 @@ measured**, and an earlier estimate in this work was wrong by 9x.
 
 ## 3. Decision
 
-**Extract at ingest, through the Anthropic API with the image inlined as base64 — no tools, no
-filesystem, no CLI.**
+**Extract at ingest with the image inlined as base64, through a reader that has no tools and no
+filesystem.** Two transports satisfy that, and the **`claude-code` bridge is the default** because
+it costs no API credit.
+
+**Correction (2026-08-10): an earlier revision of this section said "no CLI", and that was wrong.**
+It withdrew the CLI because the way to hand it an image was a path plus the `Read` tool, which
+[[ADR-0010]] §6 forbids. The objection was right about `Read` and wrong about the CLI: with
+`--input-format stream-json` the image goes in as a base64 content block on stdin, with
+`--allowed-tools ""` still set. No tool definitions, no path, one image. The constraint was on
+**tools**, not on the transport, and the CLI has a path that opens neither door — I had not read
+far enough into the CLI's own options.
+
+Verified end to end on 2026-08-10 against a real policy screenshot: the reader transcribed the
+full unlock-threshold table (12 tiers, three separate criteria) accurately through the bridge, with
+every door closed and no API key.
 
 **The extractor is named, because half of §4.3's identity and half of §4.4's cache key are made of
 it.** Model: `NEXUS_VISION_MODEL`, pinned to its own literal default (`claude-sonnet-4-6`) and
@@ -117,6 +130,21 @@ independently:
 
 With the image inlined in the request there is no tool surface at all. The blast radius is not
 argued; it is absent.
+
+### 3.0 Which transport, and what each costs
+
+| transport | key | tools | when |
+|---|---|---|---|
+| **`claude-code` bridge** (default) | none — host `claude` auth | none (`--allowed-tools ""`) | dev and the dogfood deployment |
+| Anthropic API | `ANTHROPIC_API_KEY` | none (no tool definitions in the request) | a deployment without a host `claude` |
+
+Both inline the image as base64 and neither is given a path. The bridge is **dev-only** by the same
+rule its docstring already carries — it needs an authenticated `claude` on the host, so it is not a
+server backend and does not go in team or production compose.
+
+One thing the bridge does not give: **`stop_reason`**. So a bridge-read extraction cannot tell
+whether the model ran out of output budget mid-table. `read_image` records that as unknown rather
+than assuming completion, and the API transport is what a deployment uses if that matters.
 
 ### 3.1 What this costs, and what it does not decide
 

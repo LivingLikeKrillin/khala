@@ -7,6 +7,7 @@ runner로 대체한다. 급소는 §5의 '문 닫기' 플래그 — argv가 그�
 from __future__ import annotations
 
 from nexus.tools.claude_llm_bridge import build_argv, handle_generate
+import json
 
 
 def _runner_ok(text="근거 기반 답변입니다"):
@@ -111,3 +112,68 @@ def test_claude_not_executable_is_502_not_crash():
                                    runner=run, token="secret")
     assert status == 502
     assert "claude" in body["error"]
+
+
+# ── 이미지 판독: 문은 그대로 닫혀 있는가 ─────────────────────────────────────
+
+def test_vision_argv_keeps_every_door_closed():
+    """이미지를 CLI 로 넘기는 통상 경로는 경로 + `Read` 툴인데 ADR-0010 §6 이 그걸 금지한다.
+    추출은 quarantine 게이트 **앞**에서 공격자가 넣을 수 있는 바이트에 대해 도는 탓이다.
+
+    `--input-format stream-json` 은 그 문을 안 열고 같은 일을 한다."""
+    from nexus.tools.claude_llm_bridge import _DOORS_CLOSED, build_vision_argv
+
+    argv = build_vision_argv(None)
+    for i in range(0, len(_DOORS_CLOSED)):
+        assert _DOORS_CLOSED[i] in argv
+    assert "--allowed-tools" in argv and argv[argv.index("--allowed-tools") + 1] == ""
+    assert "--input-format" in argv and "stream-json" in argv
+    assert not any(a in ("Read", "--add-dir") for a in argv), "파일시스템 문이 열렸다"
+
+
+def test_vision_stdin_carries_one_image_and_no_path():
+    from nexus.tools.claude_llm_bridge import build_vision_stdin
+
+    line = build_vision_stdin("옮겨 적어라", "QUJD", "image/png")
+    msg = json.loads(line)
+    content = msg["message"]["content"]
+    images = [b for b in content if b.get("type") == "image"]
+    assert len(images) == 1
+    assert images[0]["source"] == {"type": "base64", "media_type": "image/png", "data": "QUJD"}
+    assert "tools" not in msg and "path" not in line.lower().replace("input-format", "")
+
+
+def test_vision_stdout_keeps_only_assistant_text():
+    """stream-json 은 이벤트 스트림이다. 시스템·결과 이벤트를 본문으로 흘리면 추출물에
+    판독기가 안 쓴 문장이 섞인다."""
+    from nexus.tools.claude_llm_bridge import parse_vision_stdout
+
+    out = "\n".join([
+        json.dumps({"type": "system", "subtype": "init"}),
+        json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "| 점수 | 해금 |"}]}}),
+        json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "\n| 5 | 아바타2 |"}]}}),
+        json.dumps({"type": "result", "subtype": "success", "total_cost_usd": 0.1}),
+        "쓰레기 한 줄",
+    ])
+    assert parse_vision_stdout(out) == "| 점수 | 해금 |\n| 5 | 아바타2 |"
+
+
+def test_vision_requires_an_image():
+    from nexus.tools.claude_llm_bridge import handle_vision
+
+    status, body = handle_vision({"system": "x"}, None, runner=_never_called)
+    assert status == 400 and "image_b64" in body["error"]
+
+
+def test_vision_refuses_without_the_token_and_never_runs_claude():
+    from nexus.tools.claude_llm_bridge import handle_vision
+
+    status, body = handle_vision(
+        {"image_b64": "QUJD"}, "wrong", runner=_never_called, token="secret")
+    assert status == 403
+
+
+def _never_called(*a, **k):
+    raise AssertionError("claude 를 불렀다")
