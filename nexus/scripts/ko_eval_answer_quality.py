@@ -30,6 +30,39 @@ from dataclasses import dataclass, field
 
 _WS = re.compile(r"\s+")
 
+#: 답변자가 **질문 전체에 대해** 답을 거절하는 문구. 2026-08-10 에 실제 답변 40건에서 뽑았고,
+#: 지어내지 않았다.
+_REFUSAL = re.compile(
+    r"(확인(할 수 없|되지 않)|찾을 수 없|근거에 (없|포함되지)"
+    r"|제공된 (근거|문서)에서.{0,14}(없|않))")
+
+#: 거절은 **첫 문장**에서만 센다. 답을 하면서 하위 항목 하나만 "확인되지 않는다" 고 덧붙이는
+#: 경우가 흔하고(2026-08-10 실행 40건 중 2건), 그것은 기권이 아니라 답변이다. 진짜 기권은 첫
+#: 문장에서 거절한다.
+#:
+#: 앞선 판은 "앞 110자" 였다. 같은 40건에서 결과는 같았지만, 그건 그 답변들이 길었기 때문이지
+#: 규칙이 맞아서가 아니다 — 짧은 답변이 끝에서 거절하면 기권으로 잘못 세어진다. 위치가 아니라
+#: **문장 경계**가 뜻을 가진 단위다.
+_LEADING_MARKUP = re.compile(r"^[#\s*_>-]+")
+_SENTENCE_END = re.compile(r"(다\.|습니다\.|\?|!)")
+_NO_SENTENCE_END_CAP = 160
+
+
+def _first_sentence(text: str) -> str:
+    head = _LEADING_MARKUP.sub("", _norm(text))
+    m = _SENTENCE_END.search(head)
+    return head[: m.end()] if m else head[:_NO_SENTENCE_END_CAP]
+
+
+def is_abstention(answer_text: str) -> bool:
+    """답변자가 질문 자체를 거절했는가. **어휘 규칙이고, 한계는 여기 적어 둔다.**
+
+    LLM 심판을 안 쓰는 이 자의 방침을 따른다(그쪽 취향을 재게 되므로). 대신 어휘 규칙은
+    표현이 바뀌면 놓치고, 그때는 `_REFUSAL` 이 늘어야 한다 — 조용히 틀리지 않도록 테스트가
+    실제 답변 문구를 고정한다.
+    """
+    return bool(_REFUSAL.search(_first_sentence(answer_text)))
+
 
 def _norm(text: str) -> str:
     """공백 축약 + NFC. **소문자화는 안 한다** — 한국어에는 대소문자가 없고, 영문 식별자
@@ -63,6 +96,33 @@ class AnswerScore:
     def ok(self) -> bool:
         return not self.llm_failed and self.grounded and self.cites_gold and self.has_facts
 
+    @property
+    def outcome(self) -> str:
+        """`correct` | `incorrect` | `abstained` | `unmeasurable`.
+
+        **기권이 사실검사보다 먼저다.** 거절 문장은 질문의 어휘를 그대로 되풀이하므로
+        `must_contain` 이 거저 통과한다 — 2026-08-10 실측에서 `pb-part-07` 이 "태스크와 디제잉
+        포인트의 관계를 확인할 수 없습니다" 라고 거절하면서 `태스크`·`다른` 을 둘 다 담아
+        사실검사를 통과했다. 거절을 정답으로 세면 이 자는 거꾸로 읽힌다.
+        """
+        if self.llm_failed:
+            return "unmeasurable"
+        if self.abstained:
+            return "abstained"
+        return "correct" if (self.has_facts and self.cites_gold) else "incorrect"
+
+
+#: 근거 충분성 × 결과. 칸마다 **다른 곳을 고치라고 말한다** — 그것이 이 분류의 유일한 목적이다.
+#: (Google, *Sufficient Context*, arXiv:2411.06037 의 2×3 격자를 이 리포의 자에 맞춘 것)
+CELL_MEANING = {
+    ("sufficient", "correct"): "정상",
+    ("sufficient", "incorrect"): "생성 결함 — 근거가 왔는데 답이 틀렸다",
+    ("sufficient", "abstained"): "과잉 기권 — 답할 수 있었는데 안 했다",
+    ("insufficient", "correct"): "파라메트릭 — 근거 없이 맞혔다(운이거나 사전지식)",
+    ("insufficient", "incorrect"): "**환각** — 근거 없이 그럴듯한 답을 했다",
+    ("insufficient", "abstained"): "정직한 기권 — 검색을 고쳐라",
+}
+
 
 def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
                  gold_titles: set[str], must_contain: list[list[str]],
@@ -75,7 +135,11 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
     unverified = len(citations) - len(verified)
     gold_norm = {_norm(t) for t in gold_titles}
 
-    s = AnswerScore(qid=qid, abstained=abstained, llm_failed=llm_failed,
+    # `abstained` 인자는 코드가 세운 플래그(`AnswerResult.abstained`, 조건 = 근거 0건)다.
+    # 그 조건은 BM25 가 늘 무언가를 돌려주므로 **한 번도 안 터진다**(abstention-never-fires).
+    # 그래서 답변 텍스트에서 직접 본다 — 답변자가 질문을 거절했는가.
+    s = AnswerScore(qid=qid, abstained=bool(abstained) or is_abstention(answer_text),
+                    llm_failed=llm_failed,
                     n_citations=len(citations), unverified=unverified)
     # 인용 0개는 grounded 가 아니다 — 아무것도 인용 안 하는 것이 가장 쉬운 만점이 되면 안 된다.
     s.grounded = len(citations) > 0 and unverified == 0
@@ -105,4 +169,27 @@ def aggregate(scores: list[AnswerScore]) -> dict:
         "facts_present": sum(1 for s in measurable if s.has_facts),
         "all_three": sum(1 for s in scores if s.ok),
         "failed": [s.qid for s in scores if not s.ok],
+        # **오답과 기권을 한 칸에 뭉치지 않는다.** 정직한 기권(검색 결함)과 오답(생성 결함)은
+        # 정반대 사건인데, `all_three` 는 둘을 같은 0점으로 센다. 2026-08-10 에 그 뭉침 때문에
+        # "답변 품질이 내려갔다" 를 잘못 읽었다.
+        "outcomes": {k: sum(1 for s in scores if s.outcome == k)
+                     for k in ("correct", "incorrect", "abstained", "unmeasurable")},
+        "abstained_qids": [s.qid for s in scores if s.outcome == "abstained"],
+        "incorrect_qids": [s.qid for s in scores if s.outcome == "incorrect"],
     }
+
+
+def grid(scores: list[AnswerScore], sufficiency: dict[str, str]) -> dict:
+    """근거 충분성 × 결과. `sufficiency` 는 qid → 'sufficient'|'insufficient'.
+
+    충분성을 안 주면 격자를 만들지 않는다 — 절반만 아는 격자는 칸의 뜻을 잃는다.
+    """
+    cells: dict[str, list[str]] = {}
+    for s in scores:
+        suff = sufficiency.get(s.qid)
+        if suff not in ("sufficient", "insufficient") or s.outcome == "unmeasurable":
+            continue
+        cells.setdefault(f"{suff}/{s.outcome}", []).append(s.qid)
+    return {k: {"n": len(v), "qids": sorted(v),
+                "means": CELL_MEANING.get(tuple(k.split("/")), "")}
+            for k, v in sorted(cells.items())}

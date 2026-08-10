@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.ko_eval_answer_quality import aggregate, score_answer  # noqa: E402
+from scripts.ko_eval_answer_quality import aggregate, grid, score_answer  # noqa: E402
 from scripts.ko_eval_labels import ManifestPack, check, load  # noqa: E402
 from scripts.ko_eval_packb import MANIFEST  # noqa: E402
 
@@ -44,7 +44,7 @@ async def _run(args) -> int:
     from nexus.providers.embedding import embedding_service_from_config
     from nexus.providers.llm import LLMService
     from nexus.search import hybrid
-    from nexus.search.evidence_packet import assemble_packet
+    from nexus.search.evidence_packet import assemble_packet, format_for_llm
     from nexus.llm.answer import generate_answer
 
     labels = load(LABELS)
@@ -61,6 +61,7 @@ async def _run(args) -> int:
         llm.model = args.model            # 브리지가 payload 의 model 을 그대로 넘긴다
     await db.get_pool()
     scores, rows = [], []
+    sufficiency: dict[str, str] = {}
     try:
         for q in queries:
             result = await hybrid.hybrid_search(q["query"], tenant=TENANT, clearance="INTERNAL",
@@ -81,8 +82,19 @@ async def _run(args) -> int:
                              {titles[g] for g in q["gold"]}, q.get("must_contain") or [],
                              abstained=ans.abstained, llm_failed=ans.llm_failed)
             scores.append(s)
+
+            # ── 축 1: 근거가 충분했는가 ────────────────────────────────────
+            # 이것 없이는 기권이 **정직한 기권**(검색 결함)인지 **과잉 기권**(답할 수 있었는데
+            # 안 함)인지 못 가른다. 오답도 마찬가지로 생성 결함과 환각이 안 갈린다.
+            # 판정자는 답변을 보지 않는다 — 질의와 근거만 본다(nexus/llm/sufficiency.py).
+            if args.sufficiency:
+                from nexus.llm.sufficiency import judge
+                v = await judge(q["query"], format_for_llm(packet), llm)
+                sufficiency[q["id"]] = v.label.value
+
             rows.append({"qid": q["id"], "grounded": s.grounded, "cites_gold": s.cites_gold,
-                         "facts": s.facts, "answer": ans.answer})
+                         "facts": s.facts, "outcome": s.outcome,
+                         "sufficiency": sufficiency.get(q["id"]), "answer": ans.answer})
             mark = "OK " if s.ok else "   "
             print(f"{mark} {q['id']:12s} 근거{'✓' if s.grounded else '✗'} "
                   f"정답문서{'✓' if s.cites_gold else '✗'} 사실{'✓' if s.has_facts else '✗'}"
@@ -91,6 +103,19 @@ async def _run(args) -> int:
         await db.close_pool()
 
     a = aggregate(scores)
+    o = a["outcomes"]
+    print(f"\n  정답 {o['correct']}   오답 {o['incorrect']}   기권 {o['abstained']}"
+          f"   (잴 수 없음 {o['unmeasurable']})")
+    if o["abstained"]:
+        print(f"    기권: {', '.join(a['abstained_qids'])}")
+    if o["incorrect"]:
+        print(f"    오답: {', '.join(a['incorrect_qids'])}")
+    if sufficiency:
+        print("\n  근거 충분성 × 결과")
+        for cell, info in grid(scores, sufficiency).items():
+            print(f"    {cell:26s} {info['n']:2d}  {info['means']}")
+    else:
+        print("  (근거 충분성 미측정 — --sufficiency 를 주면 기권/오답의 원인이 갈린다)")
     print(f"\n  근거 있음      {a['grounded']}/{a['queries']}   (인용 0개: {a['no_citation_at_all']})")
     print(f"  정답 문서 인용  {a['cites_gold']}/{a['queries']}")
     print(f"  사실 포함      {a['facts_present']}/{a['facts_measurable']}")
@@ -130,6 +155,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--limit", type=int, default=40, help="LLM 을 부르는 횟수 — 돈이 든다")
     ap.add_argument("--tag", default="", help="이 실행의 이름(모델 팔·반복 회차 구분용)")
     ap.add_argument("--model", default="", help="브리지에 넘길 모델. 비우면 백엔드 기본값")
+    ap.add_argument("--sufficiency", action="store_true",
+                    help="근거 충분성도 판정한다(질의당 LLM 1회 추가). 이것 없이는 기권이 "
+                         "정직한 기권인지 과잉 기권인지, 오답이 생성 결함인지 환각인지 못 가른다")
     args = ap.parse_args(argv)
     if not os.getenv("DATABASE_URL"):
         print("✗ DATABASE_URL 이 없다")
