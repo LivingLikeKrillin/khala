@@ -275,3 +275,49 @@ def test_markers_are_honoured_when_the_caller_wrote_them():
     e = vision.Extraction("표 1200", "m/abc12345", "s" * 64)
     doc = "# 제목\n\n앞\n\n" + vision.build_block(e) + "\n"
     assert any(c.provenance_tier == "machine_read" for c in _chunk(doc))
+
+
+# ── 39 → 35 회귀를 만든 두 결함 ───────────────────────────────────────────────
+
+def test_the_image_marker_lives_inside_the_block():
+    """밖에 두면 청커가 그 한 줄을 저자 조각으로 보고 **내용 없는 61자 chunk** 로 잘라낸다.
+    2026-08-10 실측에서 문서마다 6~11개씩 생겼다."""
+    block = vision.build_block(vision.Extraction("표", "m/abc12345", "s" * 64))
+    lines = [ln for ln in block.split("\n") if ln.strip()]
+    assert lines[0] == vision.VISION_BEGIN, "블록이 마커로 시작하지 않는다"
+    assert "derived=vision" in block.split(vision.VISION_BEGIN, 1)[1].split(vision.VISION_END)[0]
+
+    chunks = _chunk(f"# 제목\n\n앞 문단\n\n{block}\n\n뒤 문단\n")
+    for c in chunks:
+        if c.provenance_tier == "authored":
+            assert "derived=vision" not in c.chunk_text, "빈 이미지 마커가 저자 chunk 가 됐다"
+
+
+def test_authored_prose_is_not_shredded_by_interleaved_images():
+    """**회귀의 나머지 절반.** 그림이 문단 사이에 있으면 앞뒤 저자 텍스트가 각각 다른 chunk 로
+    갈렸다. 정책 문장이 61~335자 파편이 되어, 검색이 찾아내도 답에 필요한 맥락이 그 안에 없다.
+
+    그림은 산문 사이에 끼어든 것이지 산문을 끊은 것이 아니다 — 이어 붙여도 혼합 chunk 는
+    생기지 않는다(ADR-0010 §3): 저자는 저자끼리, 기계는 기계끼리만 모인다.
+    """
+    e = vision.Extraction("표 내용", "m/abc12345", "s" * 64)
+    doc = ("# 정책\n\n첫 문단이다.\n\n" + vision.build_block(e)
+           + "\n\n둘째 문단이다.\n\n" + vision.build_block(e)
+           + "\n\n셋째 문단이다.\n")
+    chunks = _chunk(doc)
+    authored = [c for c in chunks if c.provenance_tier == "authored"]
+    joined = " ".join(c.chunk_text for c in authored)
+    assert len(authored) == 1, f"저자 산문이 {len(authored)}조각으로 갈렸다"
+    for s in ("첫 문단이다", "둘째 문단이다", "셋째 문단이다"):
+        assert s in joined, f"{s} 가 사라졌다"
+    assert "표 내용" not in joined, "기계 텍스트가 저자 chunk 에 섞였다"
+
+
+def test_each_image_still_gets_its_own_machine_chunk():
+    """이어 붙이는 것은 **저자 쪽만**이다. 그림끼리 합치면 서로 다른 그림이 한 chunk 가 된다."""
+    a = vision.Extraction("그림A 내용", "m/abc12345", "a" * 64)
+    b = vision.Extraction("그림B 내용", "m/abc12345", "b" * 64)
+    doc = "# 정책\n\n문단\n\n" + vision.build_block(a) + "\n\n" + vision.build_block(b) + "\n"
+    machine = [c for c in _chunk(doc) if c.provenance_tier == "machine_read"]
+    assert len(machine) == 2
+    assert "그림A 내용" in machine[0].chunk_text and "그림B 내용" in machine[1].chunk_text

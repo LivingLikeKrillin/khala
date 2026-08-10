@@ -175,9 +175,12 @@ def build_block(extraction: Extraction) -> str:
     """
     body = strip_markers(extraction.text).strip()
     quoted = "\n".join(f"> {ln}" if ln.strip() else ">" for ln in body.split("\n"))
+    # **이미지 마커는 블록 안에 둔다.** 밖에 두면 청커가 그 한 줄(61자)을 저자 조각으로 보고
+    # 독립 chunk 로 잘라낸다 — 내용이 하나도 없는 chunk 가 문서마다 6~11개씩 생긴다.
+    # 2026-08-10 실측에서 실제로 그랬고, 답변 품질이 39 → 35 로 내려간 원인의 절반이었다.
     return (
-        f"![](){{: derived=vision extractor={extraction.identity} }}\n"
         f"{VISION_BEGIN}\n"
+        f"![](){{: derived=vision extractor={extraction.identity} }}\n"
         "> (그림에서 읽은 내용)\n"
         f"{quoted}\n"
         f"{VISION_END}"
