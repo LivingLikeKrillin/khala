@@ -1,0 +1,87 @@
+[
+ {
+  "issue_id": "I-001",
+  "disposition": "accepted",
+  "reason": "Fixed in text. ON CONFLICT DO NOTHING left the losing writer's behaviour unstated; it discards its own extraction and reads the stored row back, so content_hash cannot depend on which process won a race."
+ },
+ {
+  "issue_id": "I-002",
+  "disposition": "accepted",
+  "reason": "Fixed in code and now in text. A fetch failure has no bytes and so no key, and that is the most likely failure since the URL expires within the hour. The key derives deterministically from the block id with an 'unfetched:' prefix so no reader mistakes it for a content hash."
+ },
+ {
+  "issue_id": "I-003",
+  "disposition": "accepted",
+  "reason": "Fixed in code and now in text. Stripping authored markers only in the Notion converter left filesystem docs and external-spec payloads able to have their author's prose tiered machine_read. The chunker now distrusts markers by default; only a caller that wrote the block declares trust."
+ },
+ {
+  "issue_id": "I-004",
+  "disposition": "accepted",
+  "reason": "Accepted, and it is the most important finding of the round. ADR-0010's gate was declared fired partly on 'the cause was counted', and step 0 shows the cause of that specific failure was not the images. §7.1a-0 records the falsification, states what survives (44 images carrying spec tables absent from all corpus text, confirmed by opening five), and notes the ADR is hash-stamped so a successor note is owed rather than an edit."
+ },
+ {
+  "issue_id": "I-005",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-006",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-007",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-008",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-009",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-010",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-011",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-012",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-013",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-014",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-015",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-016",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ },
+ {
+  "issue_id": "I-017",
+  "disposition": "accepted",
+  "reason": "Accepted; addressed together with the round's other corrections at implementation, and recorded in the SPEC where it changes what ships."
+ }
+]
