@@ -50,6 +50,12 @@ embedding:
   max_retries: 3
 
 # Search
+index:
+  # 벡터를 **일부러** 안 만드는 테넌트 (SPEC-nexus-index-completeness §3.3). 고정된 비교 코퍼스가
+  # 그렇다. 선언하지 않으면 이들이 매 기동마다 error 를 뱉고, 진짜 신호가 그 사이에 묻힌다 —
+  # 2026-08-10 에 51개 청크가 그렇게 하루를 지나갔다. 추론하지 않는 이유는 §3.3 에 있다.
+  coverage_exempt_tenants: [ko_eval_arm, ko_eval_packb]
+
 search:
   bm25_top_k: 20
   vector_top_k: 20

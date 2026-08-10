@@ -101,6 +101,18 @@ def ingest(
         if result.edges_created:
             typer.echo(f"Graph edges: {result.edges_created}")
 
+        # 이 적재가 남긴 것 (SPEC-nexus-index-completeness §3.4). 종료코드는 바꾸지 않는다 —
+        # 그 판단은 §2.4 에서 이미 내려져 있다. 프로세스가 죽으면 이 줄도 없으므로, 보장은
+        # `nexus status` 쪽이다.
+        if result.coverage:
+            from nexus.index.vector_index import configured_column
+            col = configured_column(_load_config(config_path))
+            gap = result.coverage["active"] - result.coverage[col]
+            if gap:
+                typer.echo(f"\n⚠ 벡터 다리가 못 보는 청크 {gap}건 "
+                           f"(활성 {result.coverage['active']} 중 {result.coverage[col]} 인덱싱)")
+                typer.echo(f"  복구: nexus reembed run --tenant {tenant}")
+
         if result.errors:
             typer.echo("\n실패 목록:")
             for err in result.errors:
@@ -458,6 +470,33 @@ def status() -> None:
                 waived = 0
             if waived:
                 typer.echo(f"⚠ 임베딩 포기(waived) 청크 {waived}건 — 벡터 검색에서 빠져 있음")
+
+            # 인덱스 커버리지 (SPEC-nexus-index-completeness §3.2). 이 값은 이미 재고 있었지만
+            # **API 기동 로그에만** 있었다 — 사람이 치는 건 이 명령이다. 51개 청크가 벡터 다리에서
+            # 빠진 채 하루를 지나간 이유가 그 간극이었다.
+            from nexus.index.embed_health import exempt_tenants, fetch_coverage_by_tenant
+            from nexus.index.vector_index import configured_column
+            try:
+                config = _load_config()
+                col = configured_column(config)
+                exempt = exempt_tenants(config)
+                coverage = await fetch_coverage_by_tenant()
+            except Exception:      # noqa: BLE001 — 마이그레이션 전이면 컬럼이 없다
+                coverage = []
+            for row_ in [c for c in coverage if c["active"]]:
+                gap = row_["active"] - row_[col]
+                mark = "⚠ " if gap and row_["tenant"] not in exempt else "  "
+                note = " (면제 — 일부러 비워 둔 코퍼스)" if row_["tenant"] in exempt else ""
+                # 두 벡터 컬럼을 **함께** 찍는다: 옛 컬럼의 구멍이 곧 롤백이 잃을 것이다
+                # (ADR-0009 의 "post-flip NULL gap" 미결 항목, §3.2).
+                typer.echo(
+                    f"{mark}커버리지 {row_['tenant']:<16} 활성 {row_['active']:>5}  "
+                    f"{col} {row_[col]:>5}  embedding {row_['embedding']:>5}  "
+                    f"bm25 {row_['bm25']:>5}{note}")
+                if gap and row_["tenant"] not in exempt:
+                    typer.echo(
+                        f"   └ 벡터 다리가 못 보는 청크 {gap}건 — "
+                        f"nexus reembed run --tenant {row_['tenant']}")
 
         try:
             row = await db.fetch_one(
