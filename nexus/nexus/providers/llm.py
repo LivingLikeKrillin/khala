@@ -123,7 +123,10 @@ class _AnthropicBackend:
                  "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
             ]}],
         )
-        return resp.content[0].text if resp.content else ""
+        text = resp.content[0].text if resp.content else ""
+        # **stop_reason 을 함께 돌려준다.** 이걸 버리면 max_tokens 에서 잘린 응답이 완결된 추출과
+        # 구별되지 않는다 — 조밀한 명세표가 절반만 담긴 채 "완전한 추출" 로 여섯 hop 을 통과한다.
+        return text, getattr(resp, "stop_reason", None)
 
     async def stream(
         self, system_prompt: str, user_message: str, max_tokens: int,

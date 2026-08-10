@@ -345,7 +345,12 @@ async def run_ingest(
                 continue
 
             # Chunk
-            chunks = chunk_document(collected.content, classification.language, config)
+            # 마커 신뢰는 **수집 경로가 선언**한다. 파일시스템 문서와 외부 spec 페이로드는
+            # Notion 컨버터를 거치지 않으므로, 컨버터에서만 정화하면 그 경로의 저자 산문이
+            # machine_read 로 찍힌다 — 모함이 반대 방향으로 일어난다.
+            chunks = chunk_document(
+                collected.content, classification.language, config,
+                trust_vision_markers=getattr(collected, "vision_extracted", False))
             if not chunks:
                 result.skipped += 1
                 continue

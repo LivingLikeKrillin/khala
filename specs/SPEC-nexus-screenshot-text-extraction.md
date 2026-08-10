@@ -3,7 +3,7 @@ id: SPEC-nexus-screenshot-text-extraction
 type: spec
 title: Read the policy that lives inside screenshots — khala absorbs the friction,
   the organisation does not retype its documents
-status: approved
+status: in_review
 linked_adrs:
 - ADR-0002
 - ADR-0004
@@ -340,6 +340,19 @@ Written down now, because a threshold chosen after seeing output ratifies whatev
 * **The motivating question**: after extraction, `nexus query "각 아바타별 해금 포인트 수치"` returns
   the thresholds, with a citation carrying `machine_read`.
 
+  **Step 0 was run on 2026-08-10, and it failed.** Eleven images from the avatar-policy document
+  were fetched and five opened. They are UI screen specifications — a header strip carrying
+  screen path / ID / version, a rule box, and a 속성·형식·설명 table. Locks are drawn on avatar
+  slots as UI state, but **no unlock condition or point value appears in any of them**, and the
+  body text has none either: every `포인트` match in the corpus is `엔드포인트`. The motivating
+  question most likely returned "not found" because the organisation has not written that rule
+  down anywhere — not because it is trapped in an image.
+
+  **So this criterion is void, exactly as step 0 was written to detect, and it is replaced in
+  §7.1a.** Recording the failure rather than quietly swapping the question is the point: a
+  pre-registered criterion that is changed after the fact has to leave a trace, or pre-registration
+  means nothing.
+
   **The pass condition is a label, not a reading.** "Returns the thresholds" is scored by the
   existing Korean answer-quality harness: the values recorded in step 0's human survey become a
   label with `must_contain` entries, and the motivating question is judged by the same deterministic
@@ -370,6 +383,50 @@ things make it survivable, and both are required rather than recommended:
   Re-extracting under the *same* identity would store different text for the same
   (bytes, identity) pair and break §4.4's invariant, which an earlier draft's wording would have
   done. Coarse, and cheap enough at 44 images that coarse is acceptable.
+
+### 7.1a The replacement criterion, and why this one is answerable
+
+Chosen by the director on 2026-08-10 **from what the images were measured to contain**, not from
+what would be convenient:
+
+> **Q.** Ava_01 화면에서 NFT 크기/위치 조정 범위는 어디까지인가?
+> **A.** Body 크기의 1/2 범위 (조정 범위 마스킹 처리)
+
+This value sits in the 속성 table and in a callout annotation of one image. **It is absent from the
+entire corpus text**: `크기/위치`, `마스킹`, `조정 범위`, and `1/2`/`½` each match **0 chunks**
+across every active document (measured 2026-08-10). So the question is unanswerable today and
+becomes answerable only if extraction works — which is what an acceptance criterion is for. The old
+one could have been failed by a corpus that never contained the answer; this one cannot.
+
+Scored as a label in the Korean eval set, with `must_contain` on the value, and the citation must
+carry `machine_read`.
+
+### 7.1b Step 0b passed, so the recourse is real
+
+[[ADR-0010]] §2 admits machine-read text *because* a reader can re-read the image at its source, and
+§3.1 says that without a re-resolvable reference the tier is a label with nothing behind it. Run on
+2026-08-10 over the same 11 images: each was re-fetched **from its stored block id alone** — the
+original presigned URL discarded — and the bytes were **identical in 11 of 11**.
+
+What that establishes is that the reference resolves *today*. It does not make the recourse durable:
+that depends on the source system keeping the block, which Nexus does not control (§8).
+
+### 7.1c The author cannot be both readers
+
+The sample compares a human reading against the machine's. **The agent doing the implementation has
+already opened five of these images** (nos. 6, 8, 9, 10, 11), so its reading of those cannot serve
+as the independent reference — that is the judge-and-judged failure this repo has been caught by
+before, and it would quietly turn the control into a machine-versus-itself comparison.
+
+Two consequences, both binding:
+
+* the 8-image sample is drawn **only from images the implementing agent has never opened** — six
+  remain in this document and 33 more across the other four
+* the expected contents are recorded by **the director**, not by the agent, before the machine
+  reading is run
+
+§7.1a's acceptance question is exempt from this: it is scored against a fixed expected value that
+the director can verify by opening one image, not against a transcription judgement.
 
 n=1 chose the reader; n=8 decides whether it ships.
 

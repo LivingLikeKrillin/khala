@@ -28,6 +28,11 @@ class CollectedFile:
     content_hash: str
     frontmatter: dict = field(default_factory=dict)
     canonical_uri: str = ""
+    #: 이 본문의 비전 마커를 **우리가 썼는가.** 기본 False — 마커는 그냥 문자열이고 저자
+    #: 문서에도 들어 있을 수 있다. 비전 블록을 직접 써 넣은 경로만 True 로 올린다.
+    #: 이것이 False 이면 청킹 직전에 마커가 제거되어, 남의 문서가 자기 산문을 machine_read 로
+    #: 찍게 만들 수 없다 (ADR-0010 §3, SPEC §4.3).
+    vision_extracted: bool = False
 
 
 async def collect_files(
