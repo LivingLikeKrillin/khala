@@ -96,6 +96,11 @@ async def collect_files(
             content_hash=content_hash,
             frontmatter=fm,
             canonical_uri=canonical_uri,
+            # 이 본문의 비전 마커를 우리가 썼는가. **마지막 칸이다** — 여기서 안 읽으면
+            # frontmatter 에 실어 보내도 청커까지 안 닿고, 추출 텍스트가 마커만 벗겨진 채
+            # 저자 텍스트로 세탁된다 (ADR-0010 §3·§4). 2026-08-10 라이브에서 실제로 그랬다.
+            # 없으면 False — 남의 문서가 마커를 흉내 내도 저자 산문이 machine_read 로 안 찍힌다.
+            vision_extracted=bool(fm.get("vision_extracted", False)),
         ))
 
     logger.info("files_collected", total=len(collected), path=str(base))
