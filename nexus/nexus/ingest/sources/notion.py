@@ -65,7 +65,11 @@ class NotionSource:
 
     def fetch_markdown(self, ref: PageRef) -> ConvertedDoc:
         # 자식 블록을 한 겹 더 펼칠 수 있게 넘긴다 — 표·토글·동기화 블록의 내용은 자식에 있다.
-        md, image_count = blocks_to_markdown(self._all_blocks(ref.id), self._all_blocks)
+        # 그림 참조를 순회 중에 챙긴다 — 서명 링크는 한 시간이면 죽으므로 여기서만 잡을 수
+        # 있다. 본문에는 자리 표식만 남고, 추출은 2패스가 동시에 한다.
+        images: list[dict] = []
+        md, image_count = blocks_to_markdown(
+            self._all_blocks(ref.id), self._all_blocks, image_sink=images)
 
         # **속성도 본문이다.** 데이터베이스 행은 블록이 0개이고 내용이 전부 속성에 있는 경우가
         # 흔하다(개정 이력의 한 행 = 개정 내용·날짜·Epic·바로가기). 블록만 읽으면 그런 행이
@@ -102,7 +106,8 @@ class NotionSource:
             "image_count": image_count,
         }
         return ConvertedDoc(
-            page_id=ref.id, markdown=md, frontmatter=fm, image_count=image_count
+            page_id=ref.id, markdown=md, frontmatter=fm, image_count=image_count,
+            images=images,
         )
 
     @staticmethod

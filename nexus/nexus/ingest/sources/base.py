@@ -25,6 +25,11 @@ class ConvertedDoc:
     markdown: str
     frontmatter: dict = field(default_factory=dict)
     image_count: int = 0
+    #: 순회 중에 잡은 그림 참조 `{block_id, url, caption}`. **URL 은 여기서만 유효하다** —
+    #: Notion 의 서명 링크는 한 시간이면 죽는다.
+    images: list = field(default_factory=list)
+    #: 이 본문의 비전 마커를 우리가 썼는가. 청커가 마커를 신뢰할지 결정한다 (ADR-0010 §3).
+    vision_extracted: bool = False
 
 
 @runtime_checkable

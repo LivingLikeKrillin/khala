@@ -87,11 +87,27 @@ def _table_rows_to_md(rows: list[dict]) -> list[str]:
     return out
 
 
-def blocks_to_markdown(blocks: list[dict], children_of=None) -> tuple[str, int]:
+def image_slot(block_id: str) -> str:
+    """그림 자리에 남기는 표식. 2패스의 이음매다.
+
+    순회는 동기(Notion API 를 순서대로 훑는다)이고 추출은 비동기(HTTP + LLM)라, 한 함수 안에서
+    둘을 섞으면 잘 검증된 컨버터를 비동기로 물들이고 44장을 직렬로 읽게 된다. 그래서 1패스는
+    자리만 비워 두고, 2패스가 그 자리를 채운다 — 동시에.
+    """
+    return f"<!-- khala:vision:slot:{block_id} -->"
+
+
+def blocks_to_markdown(blocks: list[dict], children_of=None,
+                       image_sink: list | None = None) -> tuple[str, int]:
     """Notion 블록 리스트 → (markdown, image_count).
 
     `children_of(block_id) -> list[dict]` 를 주면 자식이 있는 블록(표·토글·동기화 블록)을
     한 겹 더 펼친다. 안 주면 예전처럼 얕게 훑는다 — 호출자가 API 를 안 들고 있을 수 있어서다.
+
+    `image_sink` 를 주면 그림 블록마다 `{block_id, url, caption}` 을 담고 본문엔 `image_slot()`
+    표식을 남긴다. **URL 을 여기서만 잡을 수 있다** — Notion 이 주는 서명 링크는 한 시간이면
+    죽으므로, 순회 중에 안 챙기면 나중에 다시 물어야 한다. sink 를 안 주면 예전 그대로
+    `![]()` 를 쓴다(추출이 꺼진 배포·기존 테스트).
     """
     lines: list[str] = []
     image_count = 0
@@ -138,14 +154,20 @@ def blocks_to_markdown(blocks: list[dict], children_of=None) -> tuple[str, int]:
             #
             # 원문 이미지는 Notion 에 있다 — 원칙 5(인덱스이지 저장소가 아님) 그대로다.
             alt = _rich_to_md(data.get("caption", [])).strip()
-            lines.append(f"![{alt}]()" if alt else "![]()")
+            if image_sink is not None:
+                src = data.get("file") or data.get("external") or {}
+                image_sink.append({"block_id": b["id"], "url": src.get("url", ""),
+                                   "caption": alt})
+                lines.append(image_slot(b["id"]))
+            else:
+                lines.append(f"![{alt}]()" if alt else "![]()")
         elif bt == "table" and children_of is not None:
             lines.extend(_table_rows_to_md(children_of(b["id"])))
         elif bt in ("toggle", "synced_block", "column_list", "column") and children_of is not None:
             # 접힌 것도 본문이다. 토글 안에 규칙을 넣어 두는 문서가 흔하다.
             if rich:
                 lines.append(_rich_to_md(rich))
-            sub, sub_images = blocks_to_markdown(children_of(b["id"]), children_of)
+            sub, sub_images = blocks_to_markdown(children_of(b["id"]), children_of, image_sink)
             image_count += sub_images
             if sub.strip():
                 lines.append(sub.strip())
