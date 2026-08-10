@@ -1,0 +1,67 @@
+[
+  {"issue_id": "I-001", "disposition": "accepted",
+   "reason": "Fixed. 'Its output is data, never instruction' was false — hop 3 sends extracted text to the LLM prompt, which is the point of extracting it. Narrowed to what is true: no code branches on it; prompt injection through retrieved evidence is a property Nexus already has via every ingested document; what extraction changes is the channel (text a human reviewing the document would not see), which is what the tier labels."},
+
+  {"issue_id": "I-002", "disposition": "accepted",
+   "reason": "Fixed. 'Quarantine is unaffected' was false in both directions: the ordering widens coverage (pixel-only content becomes scannable) and widens exposure (a reader runs ahead of the default-deny gate). Both now stated, with the three reader constraints named as the price."},
+
+  {"issue_id": "I-003", "disposition": "accepted",
+   "reason": "Fixed, and it was a real safety hole. 'Until then §3–§7 bind nothing' suspended §7 — the prohibition on committing extraction before the tier exists — during exactly the window when someone is most likely to try it. §7 now binds immediately; only §3–§6 wait for approval."},
+
+  {"issue_id": "I-004", "disposition": "accepted",
+   "reason": "The human-read sample has no size and no invention-rate threshold. It belongs in the SPEC, which owns the extractor, and must be pre-registered before the sample is read — the discipline SPEC-nexus-sufficiency-signal reached after picking a threshold that sat inside its own error interval."},
+
+  {"issue_id": "I-005", "disposition": "accepted",
+   "reason": "Correct: the chain from the failed question (per-avatar unlock thresholds) to 'extraction fixes it' is not closed — one screenshot was opened, and the other four documents are inference. The ADR flags this as a generalisation limit; the SPEC must restate the original question as an acceptance test so the work is judged by whether it answers what prompted it."},
+
+  {"issue_id": "I-006", "disposition": "accepted",
+   "reason": "Invariant and resolution key now agree: stored text resolves by (byte hash, extractor identity), so the invariant holds per that pair rather than per bytes alone. Mechanism is the SPEC's; the ADR states only that a lost cache must be a performance event, never a content event."},
+
+  {"issue_id": "I-007", "disposition": "accepted",
+   "reason": "Right, and it removed a whole section. ADR-0006 actually reads 'doc_type tier derivation stays in Arbiter' — the qualifier was already there, so the sentence is already scoped to the governance tier and there was never a conflict. §0's amendment is deleted; this ADR now amends nothing."},
+
+  {"issue_id": "I-008", "disposition": "accepted",
+   "reason": "Dissolved by I-007's fix. With no amendment there is no edit to ADR-0006, so its approved content_hash is not invalidated and no forward-pointer edit to a hash-stamped record is required."},
+
+  {"issue_id": "I-009", "disposition": "accepted",
+   "reason": "Fixed. Making the A2A payload a conformance hop would have forced the one extension ADR-0004 forbids without a puller — and made this ADR the puller by fiat. A2A is off the list; the obligation attaches if and when a consumer pulls that surface."},
+
+  {"issue_id": "I-010", "disposition": "accepted",
+   "reason": "Fixed. Nexus cannot bind external consumers (ADR-0001's boundary, preserved by ADR-0002). The obligation is restated as: every surface Nexus controls carries the tier, so no consumer must guess. A consumer that receives it and discards it has made its own choice — the honest limit of what this decision can promise."},
+
+  {"issue_id": "I-011", "disposition": "accepted",
+   "reason": "Fixed, and the critique was right about the mechanism: content_hash is computed over the frontmatter-stripped body, not over derived chunk text. So drift reaches content_hash and signal ② only if extracted text enters the hashed body — true if extraction rewrites the placeholder in the converted markdown, false if extracted chunks attach after hashing. The re-embedding trigger is affected either way. Placement is the SPEC's choice; the ADR now says so instead of asserting the consequence unconditionally."},
+
+  {"issue_id": "I-012", "disposition": "deferred",
+   "reason": "Real tension: §5 freezes stored text for a given (bytes, extractor identity) while §3.1 justifies identity by the need to scope a recall, and recall implies replacement. Correcting a single chunk found to be invented therefore has no defined path short of changing the identity and re-extracting everything. The correction path is a SPEC-level mechanism and needs one; recorded so the SPEC cannot ship without answering it."},
+
+  {"issue_id": "I-013", "disposition": "accepted",
+   "reason": "The census counts placeholders surviving ingest and chunking, not images in the source. The defensible claim is '111 documents produced no placeholder', and a Notion block type the converter renders without a placeholder would be invisible to it. Recorded as a measurement limit rather than restated as a fact about the corpus."},
+
+  {"issue_id": "I-014", "disposition": "accepted",
+   "reason": "'authored is true of every chunk indexed before this decision' is asserted, not verified, across several intake paths — and §1 of the same ADR concedes existing transforms already surface text no author wrote. The backfill value stays (it is the only honest default available) but the claim is now flagged in Open items as unverified."},
+
+  {"issue_id": "I-015", "disposition": "deferred",
+   "reason": "The recourse reference must actually re-resolve, and ADR-0006 records canonical_uri as basename-only and explicitly too coarse, while Notion image URLs expire within the hour. Whether (source URI + block id + byte hash) is sufficient to re-fetch is a question about the Notion source adapter, not about this decision. The SPEC must demonstrate a working re-fetch before extraction is committed, or §2's recourse is a label with nothing behind it."},
+
+  {"issue_id": "I-016", "disposition": "accepted",
+   "reason": "The reversibility argument leaned on a cache the ADR declines to require. Reversibility rests on the tier field alone — machine-read chunks are identifiable and deletable by that column — which is true without any cache existing."},
+
+  {"issue_id": "I-017", "disposition": "deferred",
+   "reason": "Genuinely open and important: separate chunks keep the tier honest (a mixed chunk cannot carry one true value) but strip the 100–171 characters of authored context that say what the image depicts, which is exactly the context retrieval needs. The separation stays — laundering extracted text as authored is worse — but the retrieval consequence must be measured by the SPEC, and a context prefix carrying the authored heading is the obvious candidate."},
+
+  {"issue_id": "I-018", "disposition": "accepted",
+   "reason": "'Correct' is undefined for the prompt and citation hops, since both sit behind a non-deterministic narration step. The testable property is that the tier reaches the prompt text and the citation structure — not that the model's prose respects it. The SPEC states the assertion per hop; the ADR should not have implied more."},
+
+  {"issue_id": "I-019", "disposition": "accepted",
+   "reason": "ADR-0002 requires the fired gate be recorded in the direction's first SPEC. Recording it in the ADR and loosening the wording sidesteps the named artifact. The declaration is restated verbatim in SPEC-nexus-screenshot-text-extraction, which is that direction's first SPEC."},
+
+  {"issue_id": "I-020", "disposition": "accepted",
+   "reason": "'The extractor comparison' points at an artifact not in the document — extractor choice is deferred entirely. The Open item is reworded to name what it actually asks for: a human-read sample of extractor output, size and threshold pre-registered."},
+
+  {"issue_id": "I-021", "disposition": "accepted",
+   "reason": "A trigger defined as 'the first surface that reports corpus composition' cannot fire while unit, surface and threshold are undefined. Rewritten as a plain obligation on whoever builds such a surface, rather than a trigger nothing can observe."},
+
+  {"issue_id": "I-022", "disposition": "accepted",
+   "reason": "A mean over a document cannot establish the per-image distribution — one well-described image beside several bare ones averages the same. The number is restated as a per-document average, and 'that text is a heading or a bullet' is marked as what was seen in the one document read rather than a property of all 44 images."}
+]
