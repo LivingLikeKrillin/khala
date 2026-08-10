@@ -321,14 +321,16 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
         query=query, packet=packet, llm_svc=llm_svc,
         route_used=route, timing_ms=search_result.timing_ms,
     )
-    from nexus.search.signals import extract_signals, record_search
+    from nexus.search.signals import JudgeInput, extract_signals, record_search
     sig = extract_signals(
         search_result, answer_result, path="a2a",
         tenant=tenant, clearance=clearance, query=query,
         n_entities=len(entity_rids),
         latency_ms=int((time.time() - _t0) * 1000),
     )
-    await record_search(sig)   # fire-and-forget; a2a_audit(인가)와 별개로 품질 기록
+    from nexus.search.evidence_packet import format_for_llm
+    await record_search(sig, judge_input=JudgeInput(   # a2a_audit(인가)와 별개로 품질 기록
+        query=query, evidence=format_for_llm(packet), config=config, llm_svc=llm_svc))
     return answer_result
 
 

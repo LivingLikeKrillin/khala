@@ -40,7 +40,7 @@ from nexus.search.hybrid import hybrid_search
 from nexus.search.hybrid import ROUTES as hybrid_routes
 from nexus.search.hybrid import UnknownRoute
 from nexus.search.router import determine_route
-from nexus.search.signals import extract_signals, record_search
+from nexus.search.signals import JudgeInput, extract_signals, record_search
 
 
 # 로컬 dev 온램프: ANTHROPIC_API_KEY 미설정 시, 일시적 API 오류와 구분되는 *행동지침* 안내.
@@ -364,7 +364,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
             n_entities=len(entity_rids),
             latency_ms=int((time.time() - _t0) * 1000),
         )
-        await record_search(sig)   # fire-and-forget
+        await record_search(sig)   # fire-and-forget; 답변 경로가 아니다 → not_applicable
         return NexusResponse(
             data={
                 "results": [_search_hit_to_dict(h) for h in result.hits],
@@ -444,7 +444,9 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             n_entities=len(entity_rids),
             latency_ms=int((time.time() - _t0) * 1000),
         )
-        await record_search(sig)   # fire-and-forget
+        await record_search(sig, judge_input=JudgeInput(   # 답변이 받은 것과 같은 근거
+            query=req.query, evidence=format_for_llm(packet),
+            config=_load_config(), llm_svc=llm_svc))
         return NexusResponse(
             data={
                 "answer": answer_result.answer,
@@ -919,7 +921,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 completion_tokens=_u.output_tokens if _u else None,
                 cost_usd=_u.cost_usd if _u else None,
             )
-            await record_search(sig)
+            await record_search(sig, judge_input=JudgeInput(
+                query=req.query, evidence=evidence_text,
+                config=_load_config(), llm_svc=llm_svc) if has_answer else None)
 
             done_data = {
                 "timing_ms": search_result.timing_ms,

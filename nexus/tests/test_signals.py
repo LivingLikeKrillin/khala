@@ -125,7 +125,8 @@ async def test_record_search_swallows_persist_error(monkeypatch):
     async def _boom(*a, **k):
         raise RuntimeError("db down")
 
-    monkeypatch.setattr(db, "execute", _boom)
+    # INSERT 는 RETURNING id 때문에 fetch_val 로 간다(SPEC-nexus-sufficiency-signal §3.2).
+    monkeypatch.setattr(db, "fetch_val", _boom)
 
     sig = extract_signals(_Result(hits=[]), None, path="search",
                           tenant="t", clearance="INTERNAL", query="q")
@@ -142,10 +143,13 @@ async def test_record_search_fire_and_forget_persists(monkeypatch):
 
     executed: list[bool] = []
 
-    async def _stub_execute(*a, **k):
+    async def _stub_fetch_val(*a, **k):
+        # INSERT 는 RETURNING id 가 필요해 fetch_val 로 간다(SPEC-nexus-sufficiency-signal §3.2):
+        # 판정 UPDATE 는 기본키로만 겨눠야 하고, 이 테이블에 다른 유일키가 없다.
         executed.append(True)
+        return 1
 
-    monkeypatch.setattr(db, "execute", _stub_execute)
+    monkeypatch.setattr(db, "fetch_val", _stub_fetch_val)
 
     sig = extract_signals(_Result(hits=[_Hit(0.7)]), None, path="search",
                           tenant="t", clearance="INTERNAL", query="fire-and-forget test")
@@ -153,4 +157,4 @@ async def test_record_search_fire_and_forget_persists(monkeypatch):
     await record_search(sig)
     # 태스크가 아직 실행되지 않았을 수 있으므로 한 tick 양보
     await asyncio.sleep(0)
-    assert executed, "fire-and-forget task must have called db.execute"
+    assert executed, "fire-and-forget task must have performed the search_log insert"
