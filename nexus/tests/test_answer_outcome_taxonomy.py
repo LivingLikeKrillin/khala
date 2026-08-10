@@ -154,3 +154,22 @@ def test_a_tier_note_swallowed_into_a_citation_is_the_shape_that_misled_us():
 
     # 프롬프트 라벨이 인용 문법과 겹치지 않으면 이 흡수가 애초에 일어나지 않는다.
     assert "출처" not in PROMPT_NOTE
+
+
+def test_the_rule_catches_a_phrasing_the_first_version_missed():
+    """**목록은 바로 다음 실행에서 뚫렸다.** 첫 판은 관찰한 문구 3개를 나열했고, 다음 실행에서
+    네 번째 표현이 나왔다 — 그리고 기권이 오답으로, 다시 **환각으로** 세어졌다.
+
+    그래서 문구가 아니라 구조로 잡는다: 거절은 *근거를 지목하며* 부정한다.
+    """
+    assert is_abstention("제공된 근거로는 해당 질문에 답변하기 어렵습니다.")
+    assert is_abstention("검색된 자료에서는 해당 수치를 찾을 수 없습니다.")
+
+
+def test_an_answer_whose_content_is_negative_is_not_an_abstention():
+    """내용이 부정인 **답변**은 근거를 지목하지 않는다 — 그것이 구조 규칙의 근거다.
+    2026-08-10 실행에서 실제로 나온 문장들이다."""
+    for text in ("차감되지 않습니다. 해금 형태로 오픈됩니다.",
+                 "토큰 없이 호출하면 401로 실패합니다.",
+                 "단일 핫키는 일반 파티셔닝으로 해결되지 않습니다."):
+        assert not is_abstention(text), text
