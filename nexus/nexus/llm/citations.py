@@ -10,7 +10,7 @@ LLM 이 뱉은 `[출처: 문서 제목, 섹션]` 인용을, LLM 에게 실제로
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 _OPEN = "[출처:"
 
@@ -48,6 +48,10 @@ class Citation:
     title: str
     section: str
     verified: bool
+    #: 이 인용이 가리키는 텍스트가 어떻게 존재하게 됐는가 (ADR-0010 hop 4).
+    #: 'authored' | 'machine_read' | 'mixed'. 인용이 약속하는 것이 바뀐 지점이다:
+    #: 이전엔 "사람이 이걸 썼다", 이제는 "이것이 **어느 종류인지** 밝힌다".
+    provenance_tier: str = "authored"
 
 
 @dataclass(frozen=True)
@@ -114,10 +118,30 @@ def _classify(inner: str, known: dict[str, str]) -> Citation:
     return Citation(title=inner, section="", verified=False)   # packet 에 없는 출처
 
 
+def _tier_by_title(packet) -> dict[str, str]:
+    """제목 → 등급. 한 제목 아래 두 종류가 섞이면 `mixed`.
+
+    인용은 제목(+섹션)으로 해소되는데 한 문서는 저자 chunk 와 기계 chunk 를 함께 가질 수 있다.
+    그럴 때 하나를 고르면 거짓이 되므로 섞였다고 말한다 — **읽는 사람이 확인해야 한다**는 것이
+    이 등급이 하는 일의 전부이고, 애매함을 감추는 것은 그 일의 반대다.
+    """
+    seen: dict[str, set[str]] = {}
+    for sn in getattr(packet, "snippets", []):
+        title = getattr(sn, "doc_title", "")
+        if not title:
+            continue
+        seen.setdefault(title, set()).add(getattr(sn, "provenance_tier", "authored"))
+    return {t: (v.pop() if len(v) == 1 else "mixed") for t, v in seen.items()}
+
+
 def validate_citations(answer_text: str, packet) -> CitationReport:
     """답변의 모든 [출처: …] 를 packet.snippets 제목과 대조. 순수·무예외."""
     known = {_norm(s.doc_title): s.doc_title
              for s in getattr(packet, "snippets", []) if getattr(s, "doc_title", "")}
-    citations = [_classify(inner, known) for inner in _inner_citations(answer_text or "")]
+    tiers = _tier_by_title(packet)
+    citations = [
+        replace(c, provenance_tier=tiers.get(c.title, "authored"))
+        for c in (_classify(inner, known) for inner in _inner_citations(answer_text or ""))
+    ]
     unverified = sum(1 for c in citations if not c.verified)
     return CitationReport(citations=citations, unverified_count=unverified)
