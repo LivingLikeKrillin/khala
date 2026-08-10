@@ -190,7 +190,9 @@ async def apply(markdown: str, images: list[dict], *, tenant: str, llm_svc,
             markdown = markdown.replace(slot, "![]()")
             continue
         _, block = r
-        extracted += block.startswith("![](){: derived=vision")
+        # 성공 판정은 **블록 경계**로 한다. 앞선 판은 `![]()` 마커로 셌는데, 그 마커가
+        # 블록 안으로 들어가자(빈 chunk 를 없애려고) 판정이 조용히 0 이 됐다.
+        extracted += vision.VISION_BEGIN in block
         markdown = markdown.replace(slot, block)
 
     # 상한에 걸려 못 읽은 자리도 본문에서는 지워야 한다 — 표식이 남으면 청킹이 거기서 갈린다.

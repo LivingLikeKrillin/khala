@@ -596,6 +596,42 @@ which in this repo means they would not exist.
 14. **Re-extracting the same bytes produces no body change** — no timestamp rides in the block, so
     `content_hash` is stable across a second ingest of an untouched document.
 
+## 7.3 What happened when it was actually run (2026-08-10)
+
+**Extraction: 44/44, no failures, nothing quarantined.** One extractor identity across all rows,
+through the `claude-code` bridge with no API key. 45 `machine_read` chunks — 45 rather than 44
+because one oversized block split, and both halves stayed `machine_read`. Zero active mixed chunks.
+
+**§7.1a-0's step 0 verdict is withdrawn.** An earlier revision recorded that the unlock thresholds
+were in none of the images and that this falsified ADR-0010's fired gate. **That was wrong**: five
+of eleven images had been opened, a universal negative was written from them, and the table was in
+one of the six that were skipped. The director caught it. The original acceptance criterion stands
+and **it passes** — the question now returns the full table (12 DJ-point tiers, 4 referral, 4
+party-room, with the composition rule), cited as `machine_read`, and step 0b's re-fetch held at
+11/11 byte-identical.
+
+**Answer quality did not recover, and extraction is not why.** Runs before extraction: 33, 36, 39,
+40, 38, 39 out of 40. After: 34, 36, 35; after the chunking fix: 36, 34, 32. Measured rather than
+assumed, the cause is elsewhere:
+
+* only **1 of the top 20** hits for the failing queries is `machine_read` — extracted text is not
+  taking the slots
+* **12 of the top 20** are one-line Notion database rows (`- **디제잉 포인트**: 60`), present since
+  2026-08-07
+* the sentence those queries need is active and ranks **18th**
+* the chunk holding it was **11,969 characters** in the labelled snapshot and is **289** now — the
+  difference is eleven expired S3 image URLs that used to pad it
+
+So **39/40 was an artifact**: URL garbage inflated one chunk past the length-normalisation league
+of the one-line rows. Dropping those URLs was the correct fix and is what dissolved the number.
+There is nothing to restore, and reverting extraction would not restore it.
+
+**Four defects surfaced only by running it against the live corpus**, with every unit test passing:
+the trust flag never reached the chunker (extraction laundered as authored); re-ingest silently
+zeroed `documents.n_images`; the image marker outside the block produced 6–11 empty chunks per
+document; and authored prose was cut at every image boundary. A fifth — SSRF in the image fetcher —
+was found by review before it ran.
+
 ## 8. Open items
 
 * **Correcting a single invented chunk has no path.** ADR-0010 §5 freezes stored text for a given
@@ -609,7 +645,14 @@ which in this repo means they would not exist.
   the context retrieval needs. A context prefix carrying the authored heading is the obvious
   candidate and is unmeasured.
 * **The labels do not point here.** Labels authored against extracted content are owed, and must be
-  authored **after** extraction so their author reads what a user reads.
+  authored **after** extraction so their author reads what a user reads. Extraction has now
+  happened, so this is unblocked.
+* **The ranking defect is the real one, and it is not this SPEC's.** A one-line database row
+  outranks a policy document. It predates this work, it is what the 39/40 was hiding, and it needs
+  its own record.
+* **The eval set measures a corpus that no longer exists.** `ko_eval_packb` snapshots the corpus
+  while it still carried expired image URLs, so 40/40 and `Recall@10 = 1.000` taken on it guarantee
+  nothing about the corpus as it stands.
 * **Step 0b proves the reference resolves *today*.** ADR-0010 §2's recourse promises it resolves
   for the life of the chunk, and that depends on the source system keeping the block — which Nexus
   does not control. A demonstrated re-fetch falsifies the design early; it does not make the

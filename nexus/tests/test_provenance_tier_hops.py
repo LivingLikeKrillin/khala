@@ -83,14 +83,18 @@ def test_hop3_the_packet_carries_the_tier():
 
 def test_hop3_the_prompt_says_which_kind_it_is():
     """답을 쓰는 모델이 구별할 수 있어야 한다. 여기서 빠지면 인용이 그 구별을 약속할 수 없다."""
+    from nexus.search.provenance import PROMPT_NOTE
+
     prompt = format_for_llm(assemble_packet([_machine_hit(), _authored_hit()], None))
-    assert "그림에서 기계가 읽은 텍스트" in prompt
+    assert PROMPT_NOTE in prompt
 
 
 def test_hop3_authored_evidence_is_not_marked():
     """기본이 조용해야 표시가 뜻을 갖는다 — 전부에 붙으면 아무것도 구별하지 못한다."""
+    from nexus.search.provenance import PROMPT_NOTE
+
     prompt = format_for_llm(assemble_packet([_authored_hit()], None))
-    assert "그림에서 기계가 읽은 텍스트" not in prompt
+    assert PROMPT_NOTE not in prompt
 
 
 # ── hop 4: 인용 ───────────────────────────────────────────────────────────────
@@ -181,7 +185,32 @@ def test_the_tier_survives_from_chunk_to_citation():
                     classification="INTERNAL",
                     provenance_tier=machine[0].provenance_tier)
     packet = assemble_packet([hit], None)
-    assert packet.snippets[0].provenance_tier == "machine_read"          # hop 3
-    assert "그림에서 기계가 읽은 텍스트" in format_for_llm(packet)        # hop 3
+    from nexus.search.provenance import PROMPT_NOTE
+
+    assert packet.snippets[0].provenance_tier == "machine_read"   # hop 3
+    assert PROMPT_NOTE in format_for_llm(packet)                  # hop 3
     (c,) = validate_citations("답변 [출처: 정책 A]", packet).citations
     assert c.provenance_tier == "machine_read"                            # hop 4
+
+
+# ── 등급 표시가 인용 문법을 침범하지 않는가 ──────────────────────────────────
+
+def test_the_prompt_note_does_not_collide_with_the_citation_syntax():
+    """**실측에서 나온 결함.** 인용 형식은 `[출처: 제목, 섹션]` 이고, 앞선 판의 등급 표시는
+    `출처 종류: …` 로 시작했다. 모델이 그 라벨을 인용 문자열 안으로 흡수해
+    `[출처: 파티 목록/개설 정책 — Flow 2, 그림에서 기계가 읽은 텍스트]` 를 썼고, 인용 검증기가
+    제목을 못 찾아 **멀쩡한 답이 환각으로 분류**됐다(2026-08-10, 40건 중 2건).
+
+    등급을 알리는 일과 출처를 대는 일은 다른 문법을 써야 한다.
+    """
+    from nexus.search.provenance import PROMPT_NOTE
+
+    assert "출처" not in PROMPT_NOTE, "등급 표시가 인용 낱말을 쓰면 인용 안으로 빨려 들어간다"
+    assert "그림에서 기계가 읽" in PROMPT_NOTE, "무엇인지는 여전히 말해야 한다"
+
+
+def test_the_prompt_still_marks_machine_read_evidence():
+    """문법을 바꾸되 기능은 유지한다 — 답을 쓰는 모델이 둘을 구별할 수 있어야 한다."""
+    prompt = format_for_llm(assemble_packet([_machine_hit(), _authored_hit()], None))
+    assert "그림에서 기계가 읽" in prompt
+    assert "출처 종류" not in prompt

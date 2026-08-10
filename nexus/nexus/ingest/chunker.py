@@ -235,23 +235,35 @@ def _split_vision_blocks(text: str) -> list[tuple[str, str]]:
     if VISION_BEGIN not in text:
         return [(text, "authored")] if text.strip() else []
 
-    parts: list[tuple[str, str]] = []
+    authored: list[str] = []          # 그림을 사이에 둔 저자 조각들
+    machine: list[str] = []
     rest = text
     while VISION_BEGIN in rest:
         head, _, tail = rest.partition(VISION_BEGIN)
         if head.strip():
-            parts.append((head.strip(), "authored"))
+            authored.append(head.strip())
         if VISION_END not in tail:
             # 짝이 없다 — 마커만 지우고 authored 로 둔다.
             leftover = tail.replace(VISION_END, "").strip()
             if leftover:
-                parts.append((leftover, "authored"))
-            return parts
+                authored.append(leftover)
+            rest = ""
+            break
         block, _, rest = tail.partition(VISION_END)
         if block.strip():
-            parts.append((block.strip(), "machine_read"))
+            machine.append(block.strip())
     if rest.strip():
-        parts.append((rest.strip(), "authored"))
+        authored.append(rest.strip())
+
+    # **저자 조각은 다시 이어 붙인다.** 그림은 산문 사이에 끼어든 것이지 산문을 끊은 것이
+    # 아니다. 조각마다 chunk 를 만들면 정책 문장이 61~335자 파편이 되고, 검색이 찾아내도
+    # 답에 필요한 맥락이 그 안에 없다 — 2026-08-10 실측에서 답변 품질이 39 → 35 로 내려간
+    # 원인의 나머지 절반이다. 이어 붙여도 **혼합 chunk 는 생기지 않는다**(ADR-0010 §3):
+    # 저자는 저자끼리, 기계는 기계끼리만 모인다.
+    parts: list[tuple[str, str]] = []
+    if authored:
+        parts.append(("\n\n".join(authored), "authored"))
+    parts.extend((m, "machine_read") for m in machine)
     return parts
 
 
