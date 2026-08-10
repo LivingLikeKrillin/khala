@@ -263,14 +263,21 @@ def query(
             typer.echo(answer_result.answer)
             typer.echo(f"\n({answer_result.timing_ms.get('llm_ms', '?')}ms)")
 
-        from nexus.search.signals import extract_signals, record_search
+        from nexus.search.signals import JudgeInput, extract_signals, record_search
         sig = extract_signals(
             result, answer_result, path="cli",
             tenant=tenant, clearance="INTERNAL", query=q,
             n_entities=len(entity_rids),
             latency_ms=int((time.time() - _t0) * 1000),
         )
-        await record_search(sig, await_persist=True)   # close_pool 이전에 적재 완료
+        # await_persist=True: close_pool 이전에 적재 완료 — CLI 는 판정도 기다린다(설계).
+        # 답변을 만들지 않았으면 판정할 근거도 없다(packet/llm_svc 는 그 블록 안에서만 산다).
+        _ji = None
+        if answer_result is not None:
+            from nexus.search.evidence_packet import format_for_llm
+            _ji = JudgeInput(query=q, evidence=format_for_llm(packet),
+                             config=config, llm_svc=llm_svc)
+        await record_search(sig, await_persist=True, judge_input=_ji)
         await db.close_pool()
 
     _run(_query())

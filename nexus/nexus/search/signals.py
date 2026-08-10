@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -129,30 +130,211 @@ def extract_signals(
     )
 
 
-async def _persist(sig: SearchSignals) -> None:
-    """search_log에 1행 insert. 실패는 삼킴(신호 영속은 요청 경로를 깨지 않는다)."""
+#: 좌초(stranded) 문턱 — **고정 상수**다. `2 × NEXUS_SUFFICIENCY_TIMEOUT` 처럼 조정 가능한 값에서
+#: 유도하면 운영자가 timeout 을 바꾸는 순간 **과거 행이 전부 재분류된다**. UPDATE 의 가드도 같은
+#: 상수를 쓴다: 좌초로 선언된 행을 뒤늦게 도착한 판정이 되살리면 "재시도 없음" 은 문장일 뿐이다.
+STRANDED_SECONDS = 300
+
+#: 판정 호출이 이 상수의 절반을 넘으면 정상 완료가 좌초로 읽힐 수 있다. 그 설정을 만들 수 없게 막는다.
+_MAX_TIMEOUT_SECONDS = STRANDED_SECONDS // 2
+
+_inflight = 0
+
+
+@dataclass(frozen=True)
+class JudgeInput:
+    """판정자에게만 가는 호출 범위 값. **`SearchSignals` 에 절대 넣지 않는다.**
+
+    `search_log` 는 원문 질의를 담은 적이 없고(init.sql, 원칙 #3) 이 SPEC 도 담지 않는다. 신호
+    객체에 텍스트 필드를 하나라도 만들면 그 불변식은 관례가 되고, 관례는 다음 컬럼에서 깨진다.
+    그래서 질의·근거는 인자로만 흐르고 `_persist` 가 끝나면 닿을 수 없다.
+    """
+    query: str
+    evidence: str
+    config: dict | None = None
+    llm_svc: object | None = None
+
+
+def _enabled_for(tenant: str | None) -> bool:
+    """이 배포·이 tenant 에서 판정자가 켜져 있는가. **기본 off.**
+
+    켜는 것은 원문 질의와 근거 텍스트가 공급자로 나가는 것을 받아들이는 행위다. 그리고 그 결정은
+    배포 단위가 아니라 **코퍼스 단위**여야 한다 — 한 배포가 여러 tenant 를 담으므로 전역 플래그
+    하나면 한 사람이 모두를 대신 결정하게 된다. 목록에 없으면 꺼진 것이고 `*` 는 없다.
+    """
+    if (os.getenv("NEXUS_SUFFICIENCY") or "off").strip().lower() != "on":
+        return False
+    allow = {t.strip() for t in (os.getenv("NEXUS_SUFFICIENCY_TENANTS") or "").split(",") if t.strip()}
+    return bool(tenant) and tenant in allow
+
+
+def evidence_fingerprint(config: dict | None) -> str:
+    """검색 스택 설정의 sha256 앞 8자.
+
+    판정의 분리 가능성은 **검색 스택의 성질**이다. 임베딩 컷오버나 mecab→nori 교체를 사이에 둔
+    창은 서로 다른 두 측정을 한 이름으로 평균낸다. 임베딩 컬럼은 env 오버라이드가 있으므로
+    설정 파일 텍스트가 아니라 `configured_column()` 에서 읽는다 — 파일을 읽으면 컷오버한 배포에서
+    틀린 세대를 적는다.
+    """
+    from nexus.index.bm25 import active_tokenizer
+    from nexus.index.vector_index import configured_column
+
+    cfg = (config or {}).get("search") or {}
+    parts = [
+        configured_column(config),
+        str(((config or {}).get("embedding") or {}).get("model", "")),
+        type(active_tokenizer()).__name__,
+        str(cfg.get("bm25_top_k", 20)), str(cfg.get("vector_top_k", 20)),
+        str(cfg.get("rrf_k", 60)), str(cfg.get("snippet_max_chars", 300)),
+    ]
+    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()[:8]
+
+
+def _eligibility(sig: SearchSignals, ji: JudgeInput | None) -> tuple[str | None, str, str | None]:
+    """(종결값 | None, judge_id, fingerprint). None = 판정을 시도해도 된다.
+
+    **한 곳에서만 판단한다.** 진입점 5곳이 각자 정하면 같은 배포 상태가 경로마다 다른 값으로
+    저장되고, 그러면 시계열이 조용히 갈라진다.
+    """
+    if ji is None:                       # 답변을 시도하지 않은 검색 행 — 판정할 대상이 없다
+        return "not_applicable", "off", None
+    if not _enabled_for(sig.tenant):
+        return "disabled", "off", None
+    from nexus.llm.sufficiency import judge_identity
+    return None, judge_identity(ji.llm_svc), evidence_fingerprint(ji.config)
+
+
+def _try_take_slot() -> bool:
+    """상한 안이면 슬롯을 잡는다. **검사와 증가 사이에 `await` 가 없다** → 단일 이벤트 루프에서
+    race 가 성립하지 않는다.
+
+    `asyncio.Semaphore` 를 안 쓰는 이유는 비차단 acquire 가 없기 때문이다. `locked()` 로 보고
+    `await acquire()` 하는 것은 check-then-act 라, 상한 1 에서도 둘이 통과할 수 있다.
+    """
+    global _inflight
+    cap = max(1, int(os.getenv("NEXUS_SUFFICIENCY_CONCURRENCY") or 2))
+    if _inflight >= cap:
+        return False
+    _inflight += 1
+    return True
+
+
+def _release_slot() -> None:
+    global _inflight
+    _inflight = max(0, _inflight - 1)
+
+
+async def _judge_with_timeout(ji: JudgeInput) -> str:
+    """판정 1회 → 저장할 값. 예외를 값으로 바꾼다.
+
+    timeout 은 **답변 지연을 막으려는 것이 아니다**(판정은 이미 요청 경로 밖이다). 슬롯을
+    돌려받기 위한 것이다 — 안 그러면 멈춘 호출 하나가 슬롯을 영원히 물고, 기본 상한 2 에서 두
+    개면 이후 모든 요청이 `shed` 로 굳는다.
+    """
+    from nexus.llm.sufficiency import Sufficiency, judge_raw
+
+    timeout = float(os.getenv("NEXUS_SUFFICIENCY_TIMEOUT") or 30)
+    if timeout > _MAX_TIMEOUT_SECONDS:
+        # 판정이 좌초 문턱보다 오래 살면 정상 완료가 좌초로 읽히고 UPDATE 가드에 걸려 버려진다.
+        raise ValueError(
+            f"NEXUS_SUFFICIENCY_TIMEOUT={timeout}s 는 상한 {_MAX_TIMEOUT_SECONDS}s 를 넘는다 "
+            f"(좌초 문턱 {STRANDED_SECONDS}s 의 절반).")
     try:
-        await db.execute(
-            """
-            INSERT INTO search_log (
-                path, tenant, clearance, route, query_sha256, query_len,
-                n_snippets, top_score, n_entities, graph_requested, n_graph_edges,
-                no_answer, llm_failed, latency_ms, n_citations, unverified_citations,
-                prompt_tokens, completion_tokens, cost_usd, n_image_bearing_docs
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
-            """,
-            sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
-            sig.n_snippets, sig.top_score, sig.n_entities, sig.graph_requested,
-            sig.n_graph_edges, sig.no_answer, sig.llm_failed, sig.latency_ms,
-            sig.n_citations, sig.unverified_citations,
-            sig.prompt_tokens, sig.completion_tokens, sig.cost_usd,
-            sig.n_image_bearing_docs,
-        )
+        v = await asyncio.wait_for(judge_raw(ji.query, ji.evidence, ji.llm_svc), timeout)
+    except (TimeoutError, asyncio.TimeoutError):
+        return "timeout"
+    except Exception as exc:  # noqa: BLE001 — 부르지도 못한 것과 이상한 답을 낸 것은 다른 사실이다
+        log.warning("search.signal.judge_error", error=str(exc))
+        return "error"
+    return (v.label.value if v.label in (Sufficiency.SUFFICIENT, Sufficiency.INSUFFICIENT)
+            else "unparseable")
+
+
+async def _insert(sig: SearchSignals, sufficiency: str | None,
+                  judge: str | None, fingerprint: str | None) -> int | None:
+    """search_log에 1행 insert. **id 를 돌려준다** — 판정 UPDATE 가 기본키로만 겨눌 수 있게.
+
+    이 테이블에 다른 유일키는 없다. 비유일 튜플로 매칭해 판정을 찍으면 엉뚱한 행에 조용히
+    도장을 찍는다.
+    """
+    return await db.fetch_val(
+        """
+        INSERT INTO search_log (
+            path, tenant, clearance, route, query_sha256, query_len,
+            n_snippets, top_score, n_entities, graph_requested, n_graph_edges,
+            no_answer, llm_failed, latency_ms, n_citations, unverified_citations,
+            prompt_tokens, completion_tokens, cost_usd, n_image_bearing_docs,
+            sufficiency, sufficiency_at, sufficiency_judge, evidence_fingerprint
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+                  $21, now(), $22, $23)
+        RETURNING id
+        """,
+        sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
+        sig.n_snippets, sig.top_score, sig.n_entities, sig.graph_requested,
+        sig.n_graph_edges, sig.no_answer, sig.llm_failed, sig.latency_ms,
+        sig.n_citations, sig.unverified_citations,
+        sig.prompt_tokens, sig.completion_tokens, sig.cost_usd,
+        sig.n_image_bearing_docs,
+        sufficiency, judge, fingerprint,
+    )
+
+
+async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None) -> None:
+    """search_log에 1행 insert(+선택적 충분성 판정). 실패는 삼킴.
+
+    두 개의 지역 try/except 가 있고 **둘 다 필요하다**:
+
+    * **프롤로그** (적격성·지문 계산·슬롯) — 여기서 터지면 바깥 핸들러가 `_persist` 를 통째로
+      중단시켜 **search_log 행 자체가 사라진다**. v_search_health·v_image_gap_signal 이 같이
+      망가진다. 그래서 프롤로그 실패는 `uninstrumented` 로 적고 나머지 신호는 그대로 넣는다:
+      계측기가 고장 나면 아무것도 기록 안 할 뿐, 신호를 같이 끌고 내려가지 않는다.
+    * **판정 호출** — 여기서 터지면 UPDATE 를 건너뛰어 행이 영원히 `pending` 에 남는다.
+      `error`/`timeout` 이 도달 가능한 것은 이 핸들러 덕이다.
+    """
+    sufficiency, judge_id, fingerprint, took_slot = "uninstrumented", "off", None, False
+    try:
+        terminal, judge_id, fingerprint = _eligibility(sig, judge_input)
+        # 슬롯 획득은 **프롤로그의 마지막 문장**이다. 앞에 두면 지문 계산이 터졌을 때 슬롯이
+        # 샌다 — 기본 상한 2 에서 두 번 새면 이후 모든 검색이 조용히 `shed` 로 굳는다.
+        if terminal is not None:
+            sufficiency = terminal
+        elif _try_take_slot():
+            sufficiency, took_slot = "pending", True
+        else:
+            sufficiency = "shed"
+    except Exception as exc:  # noqa: BLE001 - 계측기 고장이 신호를 끌고 내려가면 안 된다
+        log.warning("search.signal.sufficiency_prologue_failed", error=str(exc))
+        sufficiency, judge_id, fingerprint = "uninstrumented", "off", None
+
+    row_id = None
+    try:
+        row_id = await _insert(sig, sufficiency, judge_id, fingerprint)
     except Exception as exc:  # noqa: BLE001 - signal persistence must never break the request
         log.warning("search.signal.persist_failed", error=str(exc))
 
+    if not took_slot:
+        return
+    try:
+        if row_id is None:                      # 행이 없으면 찍을 곳도 없다
+            return
+        assert judge_input is not None
+        verdict = await _judge_with_timeout(judge_input)
+        await db.execute(
+            """
+            UPDATE search_log SET sufficiency = $1
+             WHERE id = $2 AND sufficiency = 'pending'
+               AND sufficiency_at > now() - make_interval(secs => $3)
+            """,
+            verdict, row_id, float(STRANDED_SECONDS),
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("search.signal.sufficiency_failed", error=str(exc), row_id=row_id)
+    finally:
+        _release_slot()
 
-async def record_search(sig: SearchSignals, *, await_persist: bool = False) -> None:
+
+async def record_search(sig: SearchSignals, *, await_persist: bool = False,
+                        judge_input: JudgeInput | None = None) -> None:
     """structlog(항상, 동기) + best-effort DB 적재. 절대 raise 안 함.
 
     서버 경로(api/a2a)는 기본 fire-and-forget(create_task) — 응답 지연에 DB 쓰기 미가산.
@@ -172,9 +354,9 @@ async def record_search(sig: SearchSignals, *, await_persist: bool = False) -> N
     if not db.has_pool():
         return
     if await_persist:
-        await _persist(sig)
+        await _persist(sig, judge_input)
     else:
         # Retain a strong reference so the task isn't GC'd before completion (stdlib-recommended pattern).
-        task = asyncio.create_task(_persist(sig))
+        task = asyncio.create_task(_persist(sig, judge_input))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)

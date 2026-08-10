@@ -88,10 +88,42 @@ def parse(raw: str) -> SufficiencyVerdict:
     return SufficiencyVerdict(label, reason=(r.group(1).strip() if r else ""), raw=raw or "")
 
 
+async def judge_raw(query: str, evidence: str, llm_svc) -> SufficiencyVerdict:
+    """한 번의 판정. **예외를 삼키지 않는다.**
+
+    `judge()` 는 백엔드 장애를 `UNPARSEABLE` 로 접는데, 신호로 기록할 때는 그 접기가 거짓이 된다 —
+    "판정자가 이상한 걸 냈다" 와 "판정자를 부르지도 못했다" 는 다른 사실이고, 후자만 골라 세야
+    공급자 장애를 근거 부족으로 오독하지 않는다. 그래서 기록 경로는 이 쪽을 부르고 error/timeout 을
+    자기가 구분한다 (SPEC-nexus-sufficiency-signal §3.3).
+    """
+    raw = await llm_svc.generate(SYSTEM, build_prompt(query, evidence))
+    return parse(raw if isinstance(raw, str) else getattr(raw, "text", "") or "")
+
+
 async def judge(query: str, evidence: str, llm_svc) -> SufficiencyVerdict:
-    """한 번의 판정. 실패는 `UNPARSEABLE` 로 — 요청 경로를 깨지 않는다."""
+    """한 번의 판정. 실패는 `UNPARSEABLE` 로 — 요청 경로를 깨지 않는다.
+
+    평가 하니스용. 판정 실패와 호출 실패를 구분해야 하면 `judge_raw` 를 써라.
+    """
     try:
-        raw = await llm_svc.generate(SYSTEM, build_prompt(query, evidence))
+        return await judge_raw(query, evidence, llm_svc)
     except Exception:  # noqa: BLE001 — 판정자 장애가 답변 경로를 죽이면 안 된다
         return SufficiencyVerdict(Sufficiency.UNPARSEABLE)
-    return parse(raw if isinstance(raw, str) else getattr(raw, "text", "") or "")
+
+
+def judge_identity(llm_svc) -> str:
+    """`{backend}/{model}/{prompt_sha}` — 이 행을 만든 판정자.
+
+    셋 다 필요하다. **backend** 는 어느 클라이언트가 텍스트를 밖으로 날랐는지다(브리지는 키가 없을
+    뿐 로컬이 아니다 — 같은 공급자로 나간다). **prompt_sha** 는 실제로 보낸 프롬프트에서 유도한다:
+    손으로 관리하는 `v1` 은 누가 프롬프트를 고치고 잊는 순간 서로 다른 두 판정자를 한 이름 아래
+    조용히 섞는다. 시스템 프롬프트만이 아니라 사용자 템플릿 모양까지 넣는 이유도 같다.
+    """
+    import hashlib
+    import os
+
+    backend = (os.getenv("NEXUS_LLM_PROVIDER") or "anthropic").strip().lower()
+    model = getattr(llm_svc, "model", "unknown")
+    material = SYSTEM + "\x00" + build_prompt("\x01", "\x02")   # 템플릿 모양까지 포함
+    sha = hashlib.sha256(material.encode("utf-8")).hexdigest()[:8]
+    return f"{backend}/{model}/{sha}"[:128]
