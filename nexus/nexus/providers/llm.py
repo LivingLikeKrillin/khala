@@ -171,6 +171,29 @@ class _ClaudeCodeBackend:
         # 브리지는 오늘 text 만 준다 → usage 미상(None). 지어내지 않는다(Unit C 에서 브리지 확장).
         return LLMResult(text=resp.json()["text"], usage=Usage(None, None, None, self.model))
 
+    async def vision_extract(
+        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int
+    ) -> tuple[str, str | None]:
+        """이미지 1장 → 텍스트. **키 없이, 문은 다 닫힌 채로.**
+
+        브리지가 `--input-format stream-json` 으로 base64 를 stdin 에 실어 보낸다. 이미지를 CLI
+        로 넘기는 통상 경로는 경로 + `Read` 툴인데 [[ADR-0010]] §6 이 그걸 금지하고, 이 경로는
+        그 문을 열지 않고 같은 일을 한다 — 툴 정의가 없으니 부를 tool 이 없고, 경로를 준 적이
+        없으니 열 파일이 없다.
+
+        stop_reason 은 브리지가 오늘 주지 않는다. **지어내지 않고 None 을 돌려준다** — 토큰에서
+        잘렸는지 모른다는 사실이 그대로 기록되는 편이, 완결됐다고 단정하는 것보다 낫다.
+        """
+        async with httpx.AsyncClient(timeout=_BRIDGE_TIMEOUT, transport=_bridge_transport()) as c:
+            resp = await c.post(
+                f"{self.bridge_url}/v1/vision",
+                headers={"X-Bridge-Token": self._token},
+                json={"system": system_prompt, "image_b64": image_b64,
+                      "media_type": media_type, "model": self.model},
+            )
+        resp.raise_for_status()
+        return resp.json()["text"], None
+
     async def stream(
         self, system_prompt: str, user_message: str, max_tokens: int,
         usage_out: list | None = None,
@@ -233,8 +256,7 @@ class LLMService:
         fn = getattr(self._backend, "vision_extract", None)
         if fn is None:
             raise NotImplementedError(
-                f"{type(self._backend).__name__} 는 이미지를 받지 못한다. "
-                "NEXUS_LLM_PROVIDER=anthropic 이 필요하다 (claude-code 브리지는 텍스트 전용).")
+                f"{type(self._backend).__name__} 는 이미지를 받지 못한다.")
         return await fn(system_prompt, image_b64, media_type, max_tokens)
 
     async def stream(
