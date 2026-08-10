@@ -134,3 +134,23 @@ def test_the_grid_refuses_to_guess_when_sufficiency_is_missing():
 def test_unmeasurable_runs_stay_out_of_the_grid():
     scores = [_score("x", grounded=True, cites_gold=True, facts=[True], llm_failed=True)]
     assert grid(scores, {"x": "sufficient"}) == {}
+
+
+# ── 인용이 등급 문구에 오염되면 멀쩡한 답이 환각이 된다 ─────────────────────
+
+def test_a_tier_note_swallowed_into_a_citation_is_the_shape_that_misled_us():
+    """2026-08-10 실측에서 나온 실제 답변 조각이다. 프롬프트의 등급 라벨이 `출처 종류:` 로
+    시작한 탓에 모델이 그것을 인용 문자열 안으로 흡수했고, 인용 검증기가 제목을 못 찾아
+    `grounded=False` 가 되면서 **근거에 실재하는 답이 환각 칸으로 분류**됐다.
+
+    등급 표시가 `출처` 를 안 쓰게 고쳤으므로 이 모양은 더 나오지 않아야 한다. 그래도 자 쪽에
+    남겨 두는 이유는, 같은 사고가 다른 라벨로 재발하면 **여기서 먼저 보이게** 하기 위해서다.
+    """
+    from nexus.search.provenance import PROMPT_NOTE
+
+    polluted = "[출처: 파티 목록/개설 정책 — Flow 2, 그림에서 기계가 읽은 텍스트]"
+    # 오염된 인용은 제목 대조를 통과할 수 없다 — 그것이 grounded 를 무너뜨린 경로다.
+    assert "그림에서 기계가 읽" in polluted
+
+    # 프롬프트 라벨이 인용 문법과 겹치지 않으면 이 흡수가 애초에 일어나지 않는다.
+    assert "출처" not in PROMPT_NOTE
