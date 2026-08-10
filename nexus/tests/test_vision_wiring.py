@@ -253,3 +253,80 @@ def test_a_refused_url_is_recorded_as_a_failure_not_silently_skipped(monkeypatch
         tenant="t", llm_svc=_Reader()))
     assert n == 0 and "khala:vision:slot" not in out
     assert saved and "UnsafeImageURL" in saved[0].error
+
+
+# ── 플래그가 청커까지 닿는가 (라이브에서 실제로 끊겼던 곳) ────────────────────
+
+def test_the_trust_flag_survives_csf_and_frontmatter():
+    """**라이브에서 실제로 끊겼던 이음매.** 2026-08-10 첫 실적재에서 11장이 전부 추출돼
+    본문에 들어갔는데 `machine_read` chunk 는 0개였다 — 청커가 마커를 못 믿고 벗겨서 추출
+    텍스트가 **저자 텍스트로 세탁**됐다. ADR-0010 §4 가 "추출 안 하느니만 못하다" 고 한 상태다.
+
+    통로는 하나뿐이다: ConvertedDoc → CSF → 임시 파일 frontmatter → CollectedFile → 청커.
+    한 칸이라도 빠지면 같은 일이 조용히 다시 일어난다.
+    """
+    from nexus.a2a.server import _csf_to_markdown_file
+    from nexus.ingest.sources.base import ConvertedDoc
+    from nexus.ingest.sources.notion_importer import build_csf
+
+    conv = ConvertedDoc(page_id="p1", markdown="본문", frontmatter={"title": "정책"},
+                        image_count=1, vision_extracted=True)
+    csf = build_csf(conv, "p1")
+    assert csf["vision_extracted"] is True, "CSF 가 플래그를 안 나른다"
+
+    md = _csf_to_markdown_file(csf)
+    assert "vision_extracted: true" in md, "frontmatter 가 플래그를 안 싣는다"
+
+
+def test_a_document_without_extraction_does_not_claim_trust():
+    """추출을 안 한 문서가 신뢰를 주장하면, 남의 마커를 흉내 낸 본문이 machine_read 로 찍힌다."""
+    from nexus.a2a.server import _csf_to_markdown_file
+    from nexus.ingest.sources.base import ConvertedDoc
+    from nexus.ingest.sources.notion_importer import build_csf
+
+    csf = build_csf(ConvertedDoc(page_id="p2", markdown="본문", frontmatter={"title": "메모"}), "p2")
+    assert csf["vision_extracted"] is False
+    assert "vision_extracted" not in _csf_to_markdown_file(csf)
+
+
+def test_the_collector_reads_the_flag_from_frontmatter():
+    """collector 가 안 읽으면 frontmatter 에 실어도 소용없다 — 그게 마지막 칸이다."""
+    import inspect
+
+    from nexus.ingest import collector
+
+    src = inspect.getsource(collector)
+    assert 'fm.get("vision_extracted"' in src, "collector 가 frontmatter 에서 플래그를 안 읽는다"
+
+
+def test_the_pipeline_passes_the_flag_to_the_chunker():
+    import inspect
+
+    from nexus.ingest import pipeline
+
+    src = inspect.getsource(pipeline)
+    assert "trust_vision_markers=" in src and "vision_extracted" in src
+
+
+def test_the_image_count_survives_csf_so_reingest_does_not_zero_the_signal():
+    """`documents.n_images` 는 migration 011 의 신호원이다. 컨버터가 세어 놓고도 CSF 로 안
+    실리면 **재적재가 그 값을 0 으로 덮는다** — 신호가 조용히 죽는다. 2026-08-10 라이브에서
+    11 → 0 으로 떨어지는 것을 실제로 봤다."""
+    from nexus.a2a.server import _csf_to_markdown_file
+    from nexus.ingest.sources.base import ConvertedDoc
+    from nexus.ingest.sources.notion_importer import build_csf
+
+    conv = ConvertedDoc(page_id="p3", markdown="본문",
+                        frontmatter={"title": "정책", "image_count": 11}, image_count=11)
+    csf = build_csf(conv, "p3")
+    assert csf["image_count"] == 11
+    assert "image_count: 11" in _csf_to_markdown_file(csf)
+
+
+def test_a_document_without_images_writes_no_image_count():
+    from nexus.a2a.server import _csf_to_markdown_file
+    from nexus.ingest.sources.base import ConvertedDoc
+    from nexus.ingest.sources.notion_importer import build_csf
+
+    csf = build_csf(ConvertedDoc(page_id="p4", markdown="본문", frontmatter={"title": "메모"}), "p4")
+    assert "image_count" not in _csf_to_markdown_file(csf)

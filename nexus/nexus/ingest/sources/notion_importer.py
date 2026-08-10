@@ -57,6 +57,15 @@ def build_csf(
         "title": conv.frontmatter.get("title") or page_id,
         "body": body,
         "provenance": provenance,
+        # **이 본문의 비전 마커를 우리가 썼는가.** 청커는 기본적으로 마커를 못 믿는다(저자
+        # 문서에도 들어 있을 수 있으므로). 이 플래그가 여기서부터 청커까지 닿지 않으면 추출
+        # 텍스트가 마커만 벗겨진 채 **저자 텍스트로 세탁된다** — ADR-0010 §4 가 "추출 안
+        # 하느니만 못하다" 고 한 상태다.
+        "vision_extracted": bool(getattr(conv, "vision_extracted", False)),
+        # 그림 수는 신호원이다(migration 011, ADR-0002 게이트 형식). 컨버터가 세어
+        # `ConvertedDoc.frontmatter` 에 넣지만 CSF 로는 안 실려서, **재적재할 때마다
+        # `documents.n_images` 가 0 으로 덮였다** — 신호가 조용히 죽는다. 2026-08-10 실측.
+        "image_count": int(conv.frontmatter.get("image_count") or 0),
     }
 
 

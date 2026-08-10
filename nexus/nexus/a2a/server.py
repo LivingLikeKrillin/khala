@@ -403,10 +403,21 @@ def _csf_to_markdown_file(doc: dict) -> str:
 
     body = str(doc.get("body", ""))
     title = str(doc.get("title", "") or "").strip()
-    if not title:
+    meta: dict = {}
+    if title:
+        meta["title"] = title
+    # 비전 마커 신뢰는 **본문과 함께** 흘러야 한다. 이 임시 파일이 CSF 와 파이프라인 사이의
+    # 유일한 통로라, 여기서 빠지면 청커가 마커를 못 믿고 벗겨 버리고 추출 텍스트가 저자
+    # 텍스트로 세탁된다 — ADR-0010 §4 가 "추출 안 하느니만 못하다" 고 한 상태다.
+    if doc.get("vision_extracted"):
+        meta["vision_extracted"] = True
+    # 그림 수도 같은 통로로 간다. 파이프라인이 `documents.n_images` 를 여기서 읽는다.
+    if doc.get("image_count"):
+        meta["image_count"] = int(doc["image_count"])
+    if not meta:
         return body
     # yaml.safe_dump 로 인용한다 — `선두 컬럼: 제약 #1` 처럼 콜론·해시가 든 제목이 흔하다.
-    fm = yaml.safe_dump({"title": title}, allow_unicode=True, default_flow_style=False)
+    fm = yaml.safe_dump(meta, allow_unicode=True, default_flow_style=False)
     return f"---\n{fm}---\n\n{body}"
 
 
