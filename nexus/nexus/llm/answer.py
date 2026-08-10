@@ -106,6 +106,8 @@ async def generate_answer(
             "text": s.text,
             "score": s.score,
             "doc_type": s.doc_type,  # 축-A 타입(S3) — 웹 클라이언트 타입 배지용
+            # 등급은 응답까지 간다 (ADR-0010 hop 5) — 배지를 달 수 있어야 한다.
+            "provenance_tier": getattr(s, "provenance_tier", "authored"),
             "updated_at": s.updated_at,
         }
         for s in packet.snippets
@@ -167,7 +169,8 @@ async def generate_answer(
         # 인용 검증 — LLM 이 준 답을 packet 과 대조(코드가 판정, LLM 을 신뢰하지 않음).
         report = validate_citations(result.answer, packet)
         result.citations = [
-            {"title": c.title, "section": c.section, "verified": c.verified}
+            {"title": c.title, "section": c.section, "verified": c.verified,
+             "provenance_tier": getattr(c, "provenance_tier", "authored")}
             for c in report.citations
         ]
         result.unverified_citations = report.unverified_count

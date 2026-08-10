@@ -275,6 +275,8 @@ def _search_hit_to_dict(h) -> dict:
         "vector_rank": h.vector_rank,
         "classification": h.classification,
         "doc_type": h.doc_type,
+        # ADR-0010 hop 5. 벗겨지면 읽는 사람이 저자 텍스트와 기계 텍스트를 구별할 수 없다.
+        "provenance_tier": getattr(h, "provenance_tier", "authored"),
     }
 
 
@@ -837,6 +839,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     "text": s.text,
                     "score": s.score,
                     "doc_type": s.doc_type,
+                    "provenance_tier": getattr(s, "provenance_tier", "authored"),
                     "updated_at": s.updated_at,
                 }
                 for s in packet.snippets
@@ -928,7 +931,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             done_data = {
                 "timing_ms": search_result.timing_ms,
                 "citations": [
-                    {"title": c.title, "section": c.section, "verified": c.verified}
+                    {"title": c.title, "section": c.section, "verified": c.verified,
+                     "provenance_tier": getattr(c, "provenance_tier", "authored")}
                     for c in report.citations
                 ],
                 "unverified_citations": report.unverified_count,

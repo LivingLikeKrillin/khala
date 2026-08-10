@@ -1,0 +1,46 @@
+[
+  {"issue_id": "I-001", "disposition": "accepted",
+   "reason": "Right that deletion is not free. The invariant's purpose is that stored text is never silently replaced by drifted text under an unchanged identity; deletion removes the row rather than rewriting it, and the next ingest re-extracts and is re-quarantined by the same gate — so no drifted text can be served as if it were the original. Implementation states this as the single named exception, with the quarantine test asserting the row is absent afterwards. Leaving quarantined PII in an unreachable durable store was the worse option."},
+
+  {"issue_id": "I-002", "disposition": "accepted",
+   "reason": "Ordering must be explicit: authored markers are stripped at convert time, before the converter writes any vision block, and the chunker's unconditional split therefore only ever sees converter-written markers. Implementation fixes the order in one place and asserts it."},
+
+  {"issue_id": "I-003", "disposition": "accepted",
+   "reason": "Fetch failure and extraction failure are different and only the second was handled. Both record a failure row for (tenant, bytes, identity) — a presigned URL that expired mid-walk must not produce a body that silently differs from the next successful ingest. Implementation covers the fetch path with the same test."},
+
+  {"issue_id": "I-004", "disposition": "accepted",
+   "reason": "Correct and important: a stubbed reader cannot demonstrate no-invention — that test proves the pipeline transcribes what the reader returned, nothing more. No-invention is established only by §7.1's human-read sample against the shipped transport. The CI test's name and docstring must say what it does and does not prove, or it reads as a guarantee it cannot give."},
+
+  {"issue_id": "I-005", "disposition": "accepted",
+   "reason": "Mechanical inconsistency after adding tenant: the prose still calls the primary key a pair in one place. Key is (tenant, image_sha256, extractor_identity) throughout, and the cross-tenant boundary gets its own test — two tenants ingesting byte-identical images extract twice and never read each other's rows."},
+
+  {"issue_id": "I-006", "disposition": "accepted",
+   "reason": "'The tier is the containment' does rest on consumers honouring a label, which ADR-0010 concedes Nexus cannot force (ADR-0001's boundary). What Nexus owes is that all six hops carry it; what a consumer does with it is the consumer's. Restated as the honest limit rather than as containment."},
+
+  {"issue_id": "I-007", "disposition": "accepted",
+   "reason": "Ordering between the durable write and the quarantine gate is load-bearing and unstated. The gate runs first: text is scanned before it is stored, so quarantined content never reaches vision_extractions and I-001's deletion path is a backstop for content quarantined later, not the primary control."},
+
+  {"issue_id": "I-008", "disposition": "accepted",
+   "reason": "One re-fetch per document proves the reference resolves today, not that it resolves for the life of the chunk — which is what ADR-0010 §2's recourse actually promises. The gate stays (it is the cheapest way to falsify the design early) and the residual is recorded in Open items: durable recourse depends on the source system keeping the block, which Nexus does not control."},
+
+  {"issue_id": "I-009", "disposition": "accepted",
+   "reason": "The ships list understates the work: six hops touch the chunker, hybrid search, the evidence packet, citations, the API response and MCP. Implementation expands §6 to name every file it actually edits, since a ships list that omits half the change is how a hop gets dropped."},
+
+  {"issue_id": "I-010", "disposition": "accepted",
+   "reason": "'Non-trivial line' carries the zero-invention gate and is undefined. It must be fixed before the sample is read, per the same pre-registration rule the gate itself is written under."},
+
+  {"issue_id": "I-011", "disposition": "accepted",
+   "reason": "Sticky failure rows mean one transient fetch error leaves an image permanently unextracted until a human deletes the row. That is deliberate — the alternative is a body that changes whenever the network cooperates — but it needs to be visible rather than silent, so failure rows are counted and reported alongside the extraction count."},
+
+  {"issue_id": "I-012", "disposition": "deferred",
+   "reason": "Genuine and unresolved: vision_extractions makes Nexus the only holder of text that cannot be re-derived, against ADR-0004's 'index, not store'. The mitigations are partial — the source image remains at the source, and the extraction is reproducible only in the weak sense that a re-read may differ. Whether that crosses ADR-0004's line, or needs its own successor record, is a decision above this SPEC and is deferred to the director with the tension stated rather than argued away."},
+
+  {"issue_id": "I-013", "disposition": "accepted",
+   "reason": "No output bound and no cost bound. A max output token limit per image, a cap on extracted characters, and a per-ingest ceiling on images extracted are added at implementation — the sufficiency signal shipped without a spend instrument and that was the right criticism there too."},
+
+  {"issue_id": "I-014", "disposition": "accepted",
+   "reason": "'Returns the thresholds' has no pass condition. It becomes a label in the Korean eval set with the expected values recorded from the human survey in step 0, scored by the existing deterministic harness — so the motivating question is judged by the same ruler as everything else rather than by reading the answer and nodding."},
+
+  {"issue_id": "I-015", "disposition": "accepted",
+   "reason": "Pinning the vision model to its own literal decouples the lifecycles, and the cost is that its EOL is now a separate thing someone must remember. Recorded in Open items so the decoupling does not silently become an unmaintained default."}
+]

@@ -49,6 +49,11 @@ class SearchHit:
     #: 이 청크가 속한 문서가 담은 이미지 수. 신호원이지 랭킹 입력이 아니다 — 그림에 갇힌
     #: 내용 때문에 답을 못 내는 비율을 재려면 근거가 어디서 왔는지 알아야 한다 (migration 011).
     doc_n_images: int = 0
+    #: 이 텍스트가 어떻게 존재하게 됐는가 (ADR-0010). 'authored' | 'machine_read'.
+    #: **여섯 hop 전부를 통과해야 한다** — 어느 한 곳에서 벗겨지면 읽는 사람이 둘을 구별할 수
+    #: 없고, 그건 ADR-0010 §4 가 "추출 안 하느니만 못하다" 고 한 상태다: 알려진 공백이
+    #: 표시 없는 주장으로 바뀐다.
+    provenance_tier: str = "authored"
     score: float = 0.0
     bm25_rank: int | None = None
     vector_rank: int | None = None
@@ -356,7 +361,8 @@ async def _enrich_hits(
                c.classification, c.source_version,
                d.title as doc_title, d.approved_hash as approved_hash,
                d.doc_type as doc_type, d.updated_at as updated_at,
-               coalesce(d.n_images, 0) as n_images
+               coalesce(d.n_images, 0) as n_images,
+               c.provenance_tier as provenance_tier
         FROM chunks c
         LEFT JOIN documents d ON c.doc_rid = d.rid
         WHERE c.rid IN ({placeholders})
@@ -382,6 +388,7 @@ async def _enrich_hits(
             snippet=snippet,
             chunk_text=r["chunk_text"],
             doc_n_images=r["n_images"] or 0,
+            provenance_tier=r["provenance_tier"] or "authored",
             score=f["score"],
             bm25_rank=f["bm25_rank"],
             vector_rank=f["vector_rank"],

@@ -159,17 +159,22 @@ async def _save_chunks(
                 is_quarantined, status,
                 created_at, updated_at,
                 doc_rid, section_path, chunk_text,
-                chunk_index, prov_pipeline, prov_inputs
+                chunk_index, prov_pipeline, prov_inputs,
+                provenance_tier
             ) VALUES (
                 $1, 'chunk', $2, $3::classification_level, 'indexer',
                 $4, 'git', $5,
                 false, $12,
                 $6, $6,
                 $7, $8, $9,
-                $10, 'indexer-v1', $11
+                $10, 'indexer-v1', $11,
+                $13::provenance_tier
             )
             ON CONFLICT (rid) DO UPDATE SET
                 chunk_text = EXCLUDED.chunk_text,
+                -- 등급은 텍스트를 따라간다. 재적재로 저자 텍스트가 들어온 자리에 옛 등급이
+                -- 남으면 그 chunk 는 자기 내용에 대해 거짓말을 한다.
+                provenance_tier = EXCLUDED.provenance_tier,
                 classification = EXCLUDED.classification,
                 updated_at = EXCLUDED.updated_at,
                 status = $12,
@@ -183,6 +188,7 @@ async def _save_chunks(
             now,
             parent_rid, chunk.section_path, chunk.chunk_text,
             chunk.chunk_index, [parent_rid], chunk_status,
+            getattr(chunk, "provenance_tier", "authored"),
         )
         saved += 1
 

@@ -21,6 +21,9 @@ class ChunkData:
     section_path: str  # "H1 > H2"
     chunk_index: int
     token_count: int
+    #: 이 텍스트가 어떻게 존재하게 됐는가 (ADR-0010). 'authored' | 'machine_read'.
+    #: **한 chunk 는 한 종류만 담는다** — 섞이면 정직한 값이 없다.
+    provenance_tier: str = "authored"
 
 
 def _estimate_tokens(text: str, language: str) -> int:
@@ -215,6 +218,43 @@ def _split_text_with_overlap(
     return chunks
 
 
+def _split_vision_blocks(text: str) -> list[tuple[str, str]]:
+    """섹션 텍스트를 (텍스트, 등급) 조각으로 가른다. 경계는 비전 마커다.
+
+    **무조건 자른다.** 조각이 작아도 합치지 않는다 — 합치는 순간 혼합 chunk 가 되고, ADR-0010 §3
+    이 금지하는 것이 정확히 그것이다.
+
+    컨버터가 쓴 마커만 여기 도달한다: 저자 본문의 마커는 변환 시점에 이미 제거됐다
+    (`vision.strip_markers`, SPEC §4.3 의 4단계 순서). 그래도 짝이 안 맞는 마커를 만나면
+    **보수적으로 authored 로 남긴다** — 잘린 문서 하나가 저자 산문을 기계 텍스트로 찍는 것보다,
+    추출 텍스트가 한 번 저자로 잘못 표시되는 편이 낫다고 판단할 수는 없으므로, 짝이 없으면
+    비전 블록으로 취급하지 않고 마커만 지운다.
+    """
+    from nexus.ingest.vision import VISION_BEGIN, VISION_END
+
+    if VISION_BEGIN not in text:
+        return [(text, "authored")] if text.strip() else []
+
+    parts: list[tuple[str, str]] = []
+    rest = text
+    while VISION_BEGIN in rest:
+        head, _, tail = rest.partition(VISION_BEGIN)
+        if head.strip():
+            parts.append((head.strip(), "authored"))
+        if VISION_END not in tail:
+            # 짝이 없다 — 마커만 지우고 authored 로 둔다.
+            leftover = tail.replace(VISION_END, "").strip()
+            if leftover:
+                parts.append((leftover, "authored"))
+            return parts
+        block, _, rest = tail.partition(VISION_END)
+        if block.strip():
+            parts.append((block.strip(), "machine_read"))
+    if rest.strip():
+        parts.append((rest.strip(), "authored"))
+    return parts
+
+
 def chunk_document(
     content: str,
     language: str = "ko",
@@ -245,26 +285,33 @@ def chunk_document(
     global_index = 0
 
     for section_path, section_text in sections:
-        section_tokens = _estimate_tokens(section_text, language)
-
-        if section_tokens <= target_tokens:
-            chunks.append(ChunkData(
-                chunk_text=section_text,
-                section_path=section_path,
-                chunk_index=global_index,
-                token_count=section_tokens,
-            ))
-            global_index += 1
-        else:
-            sub_chunks = _split_text_with_overlap(section_text, target_tokens, overlap_tokens, language)
-            for sub in sub_chunks:
+        # 비전 블록은 **크기와 무관하게** 먼저 갈린다 (ADR-0010 §3). 크기 기반 분할에 맡기면
+        # 그림 옆의 제목·불릿과 한 chunk 에 들어가고, 그 chunk 는 정직한 등급을 가질 수 없다:
+        # authored 로 달면 기계 텍스트를 위로 세탁하고, machine_read 로 달면 저자를 모함한다.
+        for part_text, tier in _split_vision_blocks(section_text):
+            part_tokens = _estimate_tokens(part_text, language)
+            if part_tokens <= target_tokens:
                 chunks.append(ChunkData(
-                    chunk_text=sub,
+                    chunk_text=part_text,
                     section_path=section_path,
                     chunk_index=global_index,
-                    token_count=_estimate_tokens(sub, language),
+                    token_count=part_tokens,
+                    provenance_tier=tier,
                 ))
                 global_index += 1
+            else:
+                # 큰 비전 블록은 여러 chunk 로 갈리되 **전부 machine_read** 로 남는다.
+                sub_chunks = _split_text_with_overlap(
+                    part_text, target_tokens, overlap_tokens, language)
+                for sub in sub_chunks:
+                    chunks.append(ChunkData(
+                        chunk_text=sub,
+                        section_path=section_path,
+                        chunk_index=global_index,
+                        token_count=_estimate_tokens(sub, language),
+                        provenance_tier=tier,
+                    ))
+                    global_index += 1
 
     logger.info("document_chunked", chunks=len(chunks))
     return chunks

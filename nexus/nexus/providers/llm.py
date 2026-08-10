@@ -107,6 +107,24 @@ class _AnthropicBackend:
             usage=Usage(u.input_tokens, u.output_tokens, None, self.model),  # cost 는 service 가 채움
         )
 
+    async def vision_extract(
+        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int
+    ) -> str:
+        """이미지 1장 → 텍스트. **tool 정의 없음, 경로 없음, 이미지 1개** (ADR-0010 §6).
+
+        요청에 tools 를 넣지 않는 것이 이 경로의 통제다 — 부를 tool 이 없으면 tool 호출도 없다.
+        추출은 quarantine 게이트보다 **먼저** 돌기 때문에(그래야 스캐너가 픽셀 속 텍스트를 본다)
+        판독기가 무엇이든 할 수 있으면 그 순서가 위험해진다.
+        """
+        resp = await self._get_client().messages.create(
+            model=self.model, max_tokens=max_tokens, system=system_prompt,
+            messages=[{"role": "user", "content": [
+                {"type": "image",
+                 "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
+            ]}],
+        )
+        return resp.content[0].text if resp.content else ""
+
     async def stream(
         self, system_prompt: str, user_message: str, max_tokens: int,
         usage_out: list | None = None,
@@ -200,6 +218,21 @@ class LLMService:
     ) -> str:
         """근거 기반 답변 생성. -> str 계약 불변(usage 무시). 기존 호출부 무변경."""
         return (await self.generate_full(system_prompt, user_message, max_tokens)).text
+
+    async def vision_extract(
+        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int = 2048
+    ) -> str:
+        """그림에서 텍스트를 읽는다 (SPEC-nexus-screenshot-text-extraction §4.2).
+
+        백엔드가 이미지를 못 받으면 **조용히 텍스트로 되돌아가지 않는다** — 그러면 판독기가
+        아무것도 못 본 채 그럴듯한 것을 지어낼 자리가 생긴다. 못 하면 못 한다고 말한다.
+        """
+        fn = getattr(self._backend, "vision_extract", None)
+        if fn is None:
+            raise NotImplementedError(
+                f"{type(self._backend).__name__} 는 이미지를 받지 못한다. "
+                "NEXUS_LLM_PROVIDER=anthropic 이 필요하다 (claude-code 브리지는 텍스트 전용).")
+        return await fn(system_prompt, image_b64, media_type, max_tokens)
 
     async def stream(
         self, system_prompt: str, user_message: str, max_tokens: int = 4096,

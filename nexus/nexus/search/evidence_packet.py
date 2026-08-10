@@ -13,6 +13,7 @@ import structlog
 
 from nexus.repositories.graph import SubGraph
 from nexus.search.hybrid import SearchHit
+from nexus.search.provenance import PROMPT_NOTE, needs_note
 
 logger = structlog.get_logger(__name__)
 
@@ -33,6 +34,9 @@ class EvidenceSnippet:
     updated_at: datetime | None = None  # 신선도 판정용(SPEC-nexus-answer-staleness-warning)
     #: LLM 프롬프트에 들어가는 전문. 비면 `text` 로 떨어진다(옛 호출부 호환).
     full_text: str = ""
+    #: 이 근거가 어떻게 존재하게 됐는가 (ADR-0010). 프롬프트까지 따라간다 — 답을 쓰는 모델이
+    #: 저자가 쓴 문장과 기계가 그림에서 읽은 문장을 구별할 수 있어야 한다.
+    provenance_tier: str = "authored"
 
 
 @dataclass
@@ -82,6 +86,7 @@ def assemble_packet(
             classification=hit.classification,
             doc_type=hit.doc_type,
             updated_at=hit.updated_at,
+            provenance_tier=getattr(hit, "provenance_tier", "authored"),
         ))
 
         if hit.doc_rid not in seen_docs:
@@ -110,6 +115,10 @@ def format_for_llm(packet: EvidencePacket) -> str:
         parts.append(f"분류: {s.classification}")
         if s.doc_type:
             parts.append(f"타입: {s.doc_type}")
+        # 등급은 **프롬프트에 보인다**. 여기서 빠지면 답을 쓰는 모델이 기계가 읽은 표와 저자가
+        # 쓴 문장을 같은 것으로 다루고, 인용은 그 구별을 약속하지 못한다 (ADR-0010 hop 3).
+        if needs_note(getattr(s, "provenance_tier", "authored")):
+            parts.append(PROMPT_NOTE)
         # **프롬프트에는 전문**, 화면에는 `text`(짧은 미리보기). 둘을 한 값으로 묶어 뒀더니
         # 846자 표가 앞 300자만 넘어가 모델이 답을 못 했다 (2026-08-08).
         #

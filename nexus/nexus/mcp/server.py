@@ -18,6 +18,9 @@ import os
 import httpx
 from mcp.server import MCPServer
 
+# 등급 어휘는 한 곳에서 온다 — 표면마다 다른 문장을 지어내면 등급이 표면마다 다른 뜻이 된다.
+from nexus.search.provenance import mark as _tier_mark
+
 NEXUS_API_URL = os.getenv("NEXUS_API_URL", "http://localhost:8000")
 
 mcp = MCPServer(
@@ -92,8 +95,11 @@ async def nexus_search(
     data = result["data"]
     lines = []
     for i, r in enumerate(data.get("results", []), 1):
+        # ADR-0010 hop 6 — 에이전트 표면. 여기서 등급이 벗겨지면 에이전트는 그림에서 읽은 표를
+        # 저자가 쓴 문장과 같은 것으로 다루고, 그 답을 사람이 다시 검증할 길이 없다.
+        tier = _tier_mark(r.get("provenance_tier"))
         lines.append(
-            f"[{i}] {r['doc_title']} > {r['section_path']} (score: {r['score']:.2f})\n"
+            f"[{i}] {r['doc_title']} > {r['section_path']}{tier} (score: {r['score']:.2f})\n"
             f"    {r['snippet'][:200]}\n"
             f"    출처: {r['source_uri']}"
         )
@@ -152,7 +158,10 @@ async def nexus_answer(
     if snippets:
         lines.append("\n--- 근거 ---")
         for i, s in enumerate(snippets[:5], 1):
-            lines.append(f"[{i}] {s['doc_title']} > {s['section_path']} (score: {s.get('score', 0):.2f})")
+            tier = _tier_mark(s.get("provenance_tier"))
+            lines.append(
+                f"[{i}] {s['doc_title']} > {s['section_path']}{tier} "
+                f"(score: {s.get('score', 0):.2f})")
 
     # 출처
     provenance = data.get("provenance", [])
