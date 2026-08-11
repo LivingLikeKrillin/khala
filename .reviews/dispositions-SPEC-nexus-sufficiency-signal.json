@@ -1,87 +1,52 @@
 [
-  {
-    "issue_id": "I-001",
-    "disposition": "accepted",
-    "reason": "CHECK arity drift: §3.3 says ten non-NULL values, §3.5 and test 16 still say nine after `uninstrumented` was added. The value set is the ten in §3.3's table; the two stale mentions are corrected at implementation and test 10 is the authority."
-  },
-  {
-    "issue_id": "I-002",
-    "disposition": "accepted",
-    "reason": "The 300s stranded bound is evaluated by Postgres, so an injected Python clock cannot exercise it. Tests 6 and 9 back-date `sufficiency_at` on the row instead of moving a clock, which tests the predicate that actually runs."
-  },
-  {
-    "issue_id": "I-003",
-    "disposition": "accepted",
-    "reason": "The daily ceiling counts judge *attempts*, not judged terminal values. Spend is incurred on the outbound call, so `error`, `timeout` and `unparseable` must increment it — otherwise an erroring provider is unbounded, which is the opposite of what the ceiling is for."
-  },
-  {
-    "issue_id": "I-004",
-    "disposition": "accepted",
-    "reason": "The `finally` that releases the slot encloses the whole prologue, not just the judge call, so a raise after acquisition cannot leak it. Test 11c gains the prologue-failure path alongside INSERT failure, UPDATE failure and cancellation."
-  },
-  {
-    "issue_id": "I-005",
-    "disposition": "deferred",
-    "reason": "Real and not solvable inside this SPEC: the named switch-on deployment uses the claude-code bridge, which reports no tokens, so no dollar bound exists there — only a row bound. §2.2c forbids the aggregate that would surface spend. Recorded as a stated limit: a deployment needing a dollar ceiling must use a token-reporting backend and watch `judge_cost_usd` itself. Revisited when a consumer gate is designed."
-  },
-  {
-    "issue_id": "I-006",
-    "disposition": "deferred",
-    "reason": "ADR-0002's frontmatter (`accepted`) contradicts its body (`Proposed`). Resolving it changes how every consumer of ADR-0002 reads it, which is an ADR's job and not a SPEC's. Flagged in §2.1 and left open deliberately; this SPEC's argument does not depend on which reading wins."
-  },
-  {
-    "issue_id": "I-007",
-    "disposition": "accepted",
-    "reason": "Correct: `NEXUS_SUFFICIENCY_TENANTS` is a per-tenant scoping control, not a consent record — the same operator sets it. The claim in §2.3 is narrowed to what the mechanism does; recording consent is out of this SPEC's reach."
-  },
-  {
-    "issue_id": "I-008",
-    "disposition": "accepted",
-    "reason": "The harness rule is an unverifiable promise by the author, over gitignored artifacts. Stated as such rather than presented as a control; it constrains behaviour without being enforceable, and the SPEC says so."
-  },
-  {
-    "issue_id": "I-009",
-    "disposition": "accepted",
-    "reason": "Contradiction between 'fixed constant' and 'a deployment must raise it': a deployment cannot raise a module constant. Changing it is a code change, and the fail-fast at 150s is what prevents the configuration that would need it. The 'must raise it too' sentence is removed."
-  },
-  {
-    "issue_id": "I-010",
-    "disposition": "accepted",
-    "reason": "The fail-fast startup check gains a test asserting the rejection path, and an entry in §4. An unasserted fail-fast is prose with an extra line of code, as the issue says."
-  },
-  {
-    "issue_id": "I-011",
-    "disposition": "accepted",
-    "reason": "`sufficiency_at` IS stamped on an `uninstrumented` row — it is the INSERT time and costs nothing to write. 'Everything else NULL' is corrected to name `evidence_fingerprint` and the token columns specifically."
-  },
-  {
-    "issue_id": "I-012",
-    "disposition": "accepted",
-    "reason": "Accurate and already recorded in §6: the evidence is one destroyed-run set over a gitignored partner corpus, arm A on a post-hoc population, arm B at n=5. §2.1 states explicitly that the decision does not rest on it — it rests on the repo storing nothing at all and on RRF measuring proximity rather than answer-presence. §2.2 step 2 requires re-measurement with per-run artifacts before any gate."
-  },
-  {
-    "issue_id": "I-013",
-    "disposition": "accepted",
-    "reason": "A wall-clock test that reddens unrelated CI from a fixed date, escapable by one frontmatter line, is a bad mechanism. It becomes a non-blocking check that reports rather than fails, plus the dated entry in §6. The review date's force is the director's, not CI's."
-  },
-  {
-    "issue_id": "I-014",
-    "disposition": "accepted",
-    "reason": "The root cause of I-001 through I-005: every high is an interaction between mechanisms added to answer earlier critique rounds. Before implementation the surface is cut to what §0 scopes — the verdict, its identity, and the retrieval fingerprint. The three token/cost columns, the daily ceiling, and the startup validator are removed; they are NULL or inert on the one deployment named to switch it on, and each one generated findings out of proportion to what it bought."
-  },
-  {
-    "issue_id": "I-015",
-    "disposition": "accepted",
-    "reason": "Mechanical: the prologue-failure path's column list is stated once, in §3.1, and §3.3 refers to it rather than restating."
-  },
-  {
-    "issue_id": "I-016",
-    "disposition": "accepted",
-    "reason": "Mechanical: counts in §2.2g are recomputed against §5's final test list and §4's column list at implementation, and asserted by the migration test rather than maintained by hand."
-  },
-  {
-    "issue_id": "I-017",
-    "disposition": "accepted",
-    "reason": "Mechanical: §2.2e's test references are corrected to the tests that actually establish each half of the claim."
-  }
+  {"issue_id": "I-001", "disposition": "accepted",
+   "reason": "Settled by reading migration 012: the CHECK lists ten values including uninstrumented, so §3.3 was right and §3.5's 'nine' was the stray line. Recorded in §5.1's reconciliation table rather than left for the next reader to re-derive from SQL."},
+
+  {"issue_id": "I-002", "disposition": "accepted",
+   "reason": "Survives the implementation and is the sharpest of the round. Enforcement is now() inside the UPDATE — the Postgres clock — while §5's determinism argument is about an injectable Python clock, so the tests as described exercise a different predicate than the one protecting the invariant. §5.1 says so and §6 carries the fix: the DB test must back-date sufficiency_at."},
+
+  {"issue_id": "I-003", "disposition": "accepted",
+   "reason": "Answered in a way that makes it worse rather than better: the daily ceiling was never built. So the question of whether it counts attempts or judged terminals is moot, and the conclusion the objection was driving at now holds unconditionally — there is no volume bound at all. §5.1 and §6 state that plainly instead of the SPEC continuing to describe a control that does not exist."},
+
+  {"issue_id": "I-004", "disposition": "accepted",
+   "reason": "The objection was correct about the design as written and the implementation had already closed it: slot acquisition is the last statement of the prologue, so nothing between it and the end of the try can raise, and _release_slot() is in a finally covering every exit including the early return when the INSERT produced no row. Recorded in §5.1 — the failure mode described (two leaks pin the cap and every later search records shed forever) is unreachable."},
+
+  {"issue_id": "I-005", "disposition": "accepted",
+   "reason": "Correct, and the composition is worse than the objection knew: the ceiling did not ship and neither did the cost columns. What remains is off-by-default, a tenant allowlist, and two in-flight judgements — a bound on concurrency, not on dollars — while §2.2c forbids the aggregate that would surface a runaway and the named backend reports no tokens. Both halves are now open items rather than an argument buried in §3.4."},
+
+  {"issue_id": "I-006", "disposition": "deferred",
+   "reason": "The reviewer is right that §2.1's feature/signal distinction is this SPEC's reading of ADR-0002 rather than something ADR-0002 states, and that resolving it means resolving the ADR's own accepted-vs-Proposed contradiction. That is not this SPEC's to settle — an accepted ADR is amended by a successor ADR, and doing it inside a SPEC is the move the screenshot SPEC was just criticised for. Trigger: the next ADR touching ADR-0002's gate model."},
+
+  {"issue_id": "I-007", "disposition": "accepted",
+   "reason": "Correct and worth stating precisely: an environment variable set by whoever runs the server is a per-tenant scoping control, not consent. Nothing ties an entry to an act by the corpus owner and nothing records who added it. §6 keeps the mechanism and withdraws the claim §2.3's egress argument leaned on."},
+
+  {"issue_id": "I-008", "disposition": "deferred",
+   "reason": "True that the run-artifact consent record has no schema, no test and no ships entry, and that it is an unverifiable promise by the party it constrains. Deferred rather than accepted because inventing a schema for it here would be the same unenforceable promise with more structure; what would make it real is the eval harness writing the record and CI refusing an artifact without one. Trigger: the next evaluation run over a corpus that is not ours."},
+
+  {"issue_id": "I-009", "disposition": "accepted",
+   "reason": "The guidance describes an action the design forbids: 300 s is a module constant, and raising it retroactively reclassifies historical rows — which is exactly why it was made a constant. Recorded in §6 with the two ways out (version the threshold per row, or drop the guidance). Note the fail-fast that enforces the coupling turned out to live at the judge call rather than at startup (§5.1)."},
+
+  {"issue_id": "I-010", "disposition": "accepted",
+   "reason": "Partly overtaken: the check is not a startup fail-fast at all but a per-call refusal that raises before any request goes out, which is at least as strong and is what §5.1 now records. The objection's core stands — an unasserted guard is prose with an extra line — and the assertion belongs with the timeout tests."},
+
+  {"issue_id": "I-011", "disposition": "accepted",
+   "reason": "Settled by the code: the INSERT stamps now() into sufficiency_at unconditionally, so 'everything else NULL' never applied to it and no row is unplaceable in time. §5.1 records it, because the SPEC's two descriptions genuinely could not both hold and a reader deserves to know which one the tree implements."},
+
+  {"issue_id": "I-012", "disposition": "accepted",
+   "reason": "The individual limits were each disclosed and the compound consequence was not, which is the objection's real point: no reviewer or CI can audit any number in §1, and §2.2's successor inherits that harness as a precondition. Stated in §6. Not resolvable here — the corpus cannot be published — which is precisely why it should be written down rather than distributed across six caveats."},
+
+  {"issue_id": "I-013", "disposition": "accepted",
+   "reason": "Test 20 was never built, so nothing expires this instrument today — that is the fact that needed recording. The objection's substance also stands and is kept: a date-keyed test cannot distinguish a deliberate successor from a one-line stub added to unblock a red build, so rebuilding it as specified would buy a deadline, not a decision."},
+
+  {"issue_id": "I-014", "disposition": "accepted",
+   "reason": "The gap between §0's one-verdict framing and what was specified was real, and the tree lands closer to §0 than to the specification: 4 columns and 4 environment variables, no ceiling, no cost accounting. Recorded in §5.1. The reviewer's structural point is kept in §6 — nothing in this SPEC constrains how much surface a signal may be, only what it may do."},
+
+  {"issue_id": "I-015", "disposition": "accepted",
+   "reason": "Two unrelated assertions carried one number, and the §5 form cannot enforce what §2.2a claims — a grep distinguishes neither reads from branches nor the search_log column from the sufficiency module this SPEC ships changes to. The number is split and the claim narrowed to what a static check can actually establish."},
+
+  {"issue_id": "I-016", "disposition": "accepted",
+   "reason": "Settled by judge_identity(): three parts, {backend}/{model}/{prompt_sha}, with the backend read from NEXUS_LLM_PROVIDER and the sha derived from the prompt actually sent. §3.5's two-part description was wrong and is corrected in §5.1 — it matters because §2.2's successor groups on this column."},
+
+  {"issue_id": "I-017", "disposition": "accepted",
+   "reason": "A fault signal nobody can observe is not a signal: §2.2c forbids the view and the zero-row UPDATE logs benign and fault cases identically. Kept as an open item rather than fixed here, because the fix is either an exception to §2.2c or a distinguishable log, and choosing between them is the successor's call once there is a deployment producing stranded rows at all."}
 ]

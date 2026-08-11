@@ -3,7 +3,7 @@ id: SPEC-nexus-screenshot-text-extraction
 type: spec
 title: Read the policy that lives inside screenshots — khala absorbs the friction,
   the organisation does not retype its documents
-status: in_review
+status: approved
 linked_adrs:
 - ADR-0002
 - ADR-0004
@@ -15,8 +15,8 @@ tags:
 - vision
 - grounding
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-10T09:10:36Z'
-content_hash: sha256:34640f59e0619dda77cf8b70edf0a0101a0903caaee1ac7178514951a19e66ff
+reviewed_at: '2026-08-11T16:19:46Z'
+content_hash: sha256:cb457b7ac1a06972c17ec1c15cbb2bd393730441b0f60109bc83f67686a39181
 ---
 
 ## 1. What prompted it
@@ -204,6 +204,25 @@ Three properties, each a consequence of the transport rather than a rule someone
 This is [[ADR-0010]] §6's three constraints, satisfied structurally. An injected instruction inside
 an image can still make the *extracted text* say anything — that is §4.6 — but it cannot make the
 reader **do** anything.
+
+**"Structurally" holds for one transport and not the other, and this section overstated it.** On the
+API path the three properties really are consequences of the request: there is no tool field to
+populate. On the `claude-code` bridge there is a full agent runtime on the other end and the
+properties are **flags**, which is a weaker thing sitting ahead of the quarantine gate on
+attacker-controllable bytes. The bridge therefore carries an invariant of its own, and it is pinned
+by test rather than by intention (`tests/test_claude_llm_bridge.py` fixes the argv):
+
+```
+--allowed-tools ""        빈 allowlist = deny-all (print 모드에는 승인 절차가 없다)
+--strict-mcp-config       사용자 전역 MCP 서버 무시
+--setting-sources ""      프로젝트/유저 세팅·훅·스킬·CLAUDE.md 미로드
+--no-session-persistence  문서 내용을 트랜스크립트에 안 남김
+```
+
+Any change that lets the bridge load host configuration reinstates the file-exfiltration primitive
+§3 withdrew the `--allowed-tools Read` design for. The reader of record no longer uses this
+transport (below), so the bridge's exposure today is dev-only — but the flags are load-bearing
+wherever it runs.
 
 ### 4.3 What is stored — and extracted text never shares a chunk with authored text
 
@@ -507,15 +526,32 @@ one could have been failed by a corpus that never contained the answer; this one
 Scored as a label in the Korean eval set, with `must_contain` on the value, and the citation must
 carry `machine_read`.
 
-### 7.1b Step 0b passed, so the recourse is real
+### 7.1b Step 0b passed — but it measured something that had not shipped
 
 [[ADR-0010]] §2 admits machine-read text *because* a reader can re-read the image at its source, and
 §3.1 says that without a re-resolvable reference the tier is a label with nothing behind it. Run on
 2026-08-10 over the same 11 images: each was re-fetched **from its stored block id alone** — the
 original presigned URL discarded — and the bytes were **identical in 11 of 11**.
 
-What that establishes is that the reference resolves *today*. It does not make the recourse durable:
-that depends on the source system keeping the block, which Nexus does not control (§8).
+**"Stored" was wrong, and this section said it for a day.** That run held the block ids *in memory*
+and dropped them when it exited. Nothing persisted them: the marker carried no join key, the
+extraction row carried no block id, and `vision.source_ref()` had no callers anywhere in the tree.
+So the recourse this gate certified did not exist in the shipped system — a reader holding a
+citation could not reach the image, and neither could Nexus.
+
+[[SPEC-nexus-vision-source-ref]] is that gap, and it closed on 2026-08-11: the marker carries a
+16-hex handle, the row carries `block_id` and `source_uri`, and **3 of 3 citations resolved by hand
+against the live corpus** — chunk text → reference → block re-fetched → *fresh* signed URL → bytes
+hashing back to the stored `image_sha256`, with the ingest-time URL long expired. 44 of 44 rows for
+the reader of record carry a reference.
+
+The lesson is not that the number was wrong; 11/11 was true of what it measured. It is that a gate
+can pass against state the deployed system does not hold, and nothing in the run said so. What that
+gate should have asserted — and now does, one SPEC later — is a round trip that starts from **stored
+state only**.
+
+What either version establishes is that the reference resolves *today*. Neither makes the recourse
+durable: that depends on the source system keeping the block, which Nexus does not control (§8).
 
 ### 7.1c The author cannot be both readers
 
@@ -602,6 +638,14 @@ which in this repo means they would not exist.
 through the `claude-code` bridge with no API key. 45 `machine_read` chunks — 45 rather than 44
 because one oversized block split, and both halves stayed `machine_read`. Zero active mixed chunks.
 
+**The reader that produced those rows has since been withdrawn** ([[SPEC-nexus-vision-reproducibility]],
+[[SPEC-nexus-vision-reader-of-record]]). Asked to read the same image twice, it returned **84.7%
+different tokens**; the replacement returns 3.6%. Every count in this section was measured with a
+reader that could not repeat itself, which does not make the counts wrong — 44 images produced 44
+rows either way — but does mean this section describes the run, not the system as it stands. The
+corpus today holds 44 rows under the reader of record (4 of them empty) and **41** active
+`machine_read` chunks.
+
 **§7.1a-0's step 0 verdict is withdrawn.** An earlier revision recorded that the unlock thresholds
 were in none of the images and that this falsified ADR-0010's fired gate. **That was wrong**: five
 of eleven images had been opened, a universal negative was written from them, and the table was in
@@ -626,33 +670,174 @@ So **39/40 was an artifact**: URL garbage inflated one chunk past the length-nor
 of the one-line rows. Dropping those URLs was the correct fix and is what dissolved the number.
 There is nothing to restore, and reverting extraction would not restore it.
 
+**Measured after the NULL-vector repair (2026-08-11), which this section previously asserted without
+reporting**: retrieval `Recall@10` **40/40**, and three answer runs at **grounded 39/40** each —
+level with the best run this SPEC ever recorded, and with extraction in the corpus. The residual
+failure is a single query in **6 of 6** runs, where the document's prose and the screen specification
+inside its own image name different screens; that is the label debt in §8, not a quality loss.
+
+The ruler is disclaimed in the same breath, and that is not resolved here: §8 records that the eval
+set snapshots a corpus that no longer exists, and the 2026-08-11 run additionally found the scoring
+counts a correct answer wrong when it cites a document other than the single one a label names.
+
+**"The ranking defect is the real one" — withdrawn.** §8 recorded, and the paragraph above implied,
+that a one-line database row outranking a policy document was the standing defect behind the lost
+points. It was not. Every one of the 45 extraction chunks had `embedding_1024 = NULL`: the vector
+indexing had failed silently during ingest, so the extracted text was reachable by BM25 only.
+After repair, gold answers outside the top ten went from 3 to 0. The real defect was that the
+pipeline swallowed an indexing failure — which is what [[SPEC-nexus-index-completeness]] and
+[[SPEC-nexus-generation-of-record]] address — and it was diagnosed as a ranking problem for a day
+because nobody checked whether the vectors existed before reasoning about their order.
+
 **Four defects surfaced only by running it against the live corpus**, with every unit test passing:
 the trust flag never reached the chunker (extraction laundered as authored); re-ingest silently
 zeroed `documents.n_images`; the image marker outside the block produced 6–11 empty chunks per
 document; and authored prose was cut at every image boundary. A fifth — SSRF in the image fetcher —
 was found by review before it ran.
 
+## 7.4 What the 8-image sample became, and what that does and does not close
+
+§7.1 pre-registered a transcription sample: 8 images the implementing agent had never opened, the
+director records the expected contents first, then the machine reading is compared. **That is not
+what was run**, and pre-registration means the swap has to leave a trace.
+
+**Why it was replaced.** §7.1's design assumed the reader repeats itself, and it does not. Measured
+under [[SPEC-nexus-vision-reproducibility]], the reader of that era returned **84.7% different
+tokens** when handed the same image twice. Comparing a human transcription against one such reading
+scores a coin flip, and a `pass`/`partial` verdict would not have been about the reader at all. The
+reader was replaced (3.6%); the sample design still had the deeper problem that it asks a human to
+retype 8 screens — the exact cost this SPEC exists to remove from the organisation.
+
+**What was run instead — three rounds of targeted adjudication.** Two independent commercial readers
+each read every image **twice**; only tokens **stable across both of a reader's runs** were
+compared, so run-to-run noise could not enter the question set. Where the two readers disagreed, the
+disagreement became a single yes/no question — *does this string appear in this image?* — put to the
+director with the producing model **blinded** and with control items mixed in, drawn from tokens the
+two readers agreed on. Questions were grouped by image so one opening answers several.
+
+| round | items | controls | disagreement items answered "present" | "absent" |
+|---|---|---|---|---|
+| 1 | 20 | 9/10 | 5 of 10 | 5 |
+| 2 | 16 | **10/10** | **6 of 6** | 0 |
+| 3 | 18 | **10/10** | **8 of 8** | 0 |
+
+**Round 1's five absences, each accounted for.** Two were human misses the director reversed on a
+second look — one of them a control (`02`), and one a string in white on a small red circle. The
+remaining three (`r`, `dots`, `
+ightarrow`) were **markup names emitted for glyphs**, not
+invented content: the reader was naming a vertical-ellipsis icon rather than fabricating text. The
+system prompt gained a rule against that, which moved `prompt_sha` and therefore the extractor
+identity, and rounds 2 and 3 measured the corrected reader. A fourth was a repeat-count question
+(`txtxtxtxt` inside a longer run of the same characters), resolved by stating the containment rule
+in the sheet: a string visible as part of a longer string is **present**, because what is being
+measured is whether the reader put characters on the screen that are not there.
+
+**What this closes.** The zero-tolerance invention gate, on more evidence than the original design
+would have produced: 54 items across three rounds, every disagreement in the two post-fix rounds
+confirmed present, controls clean in both. It is targeted precisely where invention could hide —
+places where one reader produced something the other did not — rather than at 8 images chosen for
+being unread.
+
+**What it does not close, stated plainly:**
+
+* **The `≥ 6 of 8` fidelity score was never computed.** This method does not produce it, and
+  claiming the gate passed in full would be false. What is established is *no invention*, not
+  *faithful transcription*; a reader that omits half a screen scores clean here.
+* **§7.1c's ordering is not satisfied.** The questions are derived from the machine readings, so the
+  director's answers cannot precede them. Blinding and controls are what stand in for that, and they
+  are weaker: they stop the judgement from favouring a model, not from being shaped by what the
+  models happened to output.
+* **Omission is now measured and unresolved.** Rounds 2 and 3 turned up **14 items where each reader
+  saw what the other missed** — real content, in the image, recovered by exactly one reader. A union
+  of two readers would capture it and would double the standing extraction cost, which is a
+  different design; it is carried as an open item there rather than decided here.
+
+## 7.5 The reader of record, and which gates actually stand
+
+A reader of this document could not tell which model and prompt produced the 44 live rows — §3 pins a
+default, §7.3 says the reader was withdrawn, §7.4 says the prompt moved. Stated once, here, because
+[[ADR-0010]] §3.1 makes identity the thing a recall is scoped by:
+
+| | value |
+|---|---|
+| extractor identity of record | `gemini-3.6-flash/06e83390` |
+| rows under it | 44 (4 empty), 41 active `machine_read` chunks |
+| rows marked truncated | **0** |
+| transport | Gemini REST — it returns `finishReason`, so §3.1's truncation control is live on this path |
+
+§3's pinned `NEXUS_VISION_MODEL` default and this value must move together; they did on 2026-08-11
+under [[SPEC-nexus-vision-reader-of-record]], and the earlier identity's 44 rows remain as the
+migration record.
+
+**The truncation control was inert on the transport that produced the first run.** The
+`claude-code` bridge does not return a stop reason and `read_image` records it as unknown, so a
+table cut off at the token ceiling would have travelled all six hops looking complete. It is live
+now. What is still unstated is what an `unknown` stop reason should *do* — today the extraction is
+stored unmarked — and that belongs with the transport that has the gap (§8).
+
+### Which acceptance gates stand
+
+The document has said three different things about its own acceptance criterion. Resolved:
+
+| gate | state |
+|---|---|
+| **Motivating question** (§7.1) | **passes.** §7.1a's replacement is **dead** — it existed only because step 0 concluded the thresholds were in no image, and §7.3 withdrew that conclusion after finding the table in one of the six images step 0 never opened. The original question is the live one, scored as a label. |
+| **Invention: zero tolerance** (§7.1) | **passes**, by the substitute method of §7.4 rather than by the registered one. |
+| **Fidelity ≥ 6 of 8** (§7.1) | **not met, and not merely unmeasured.** §7.4's method cannot produce the score, and no replacement is registered. What the corpus has today is a guarantee against fabrication and none against omission — and §7.4 measured 14 real omissions. |
+| **Step 0b — recourse** (§7.1) | **partially met.** The registration asked for one image *per document*; both the original run (11 images, one document) and its 2026-08-11 replacement (3 citations) drew from documents already opened. The four documents §1 flags as inference rather than measurement are the ones not covered. |
+| **ADR-0010 successor note** (§8) | **still owed, but for a different reason.** §7.1a-0's falsification was itself withdrawn (§7.3); what an accepted record now needs is a note that a gate it declared fired was reported against state the system did not hold (§7.1b). |
+
+**Registering the replacement fidelity gate is deferred, not silently dropped** — §8 carries it with
+what would close it: a bound on omission, which is the axis §7.4 opened and cannot close alone.
+
+### The mistiering was a violated invariant, not a testing anecdote
+
+[[ADR-0010]] §7 makes it an invariant that no extraction is committed before the tier exists.
+§7.3's first defect — the trust flag never reaching the chunker — means machine-read text entered the
+live corpus tiered `authored`, which ADR-0010 §4 calls *worse than not extracting*. Calling that a
+discovery about testing understated it.
+
+Remediated by re-ingest, and now assertable rather than assumed: **0** active chunks are tiered
+`authored` while carrying a vision marker, measured 2026-08-11. The stale rows from the mistiered
+body are `superseded`, which is where the base filter leaves them.
+
 ## 8. Open items
 
 * **Correcting a single invented chunk has no path.** ADR-0010 §5 freezes stored text for a given
   (bytes, identity) while §3.1 justifies identity by the need to scope a recall — and recall implies
   replacement. Deferred at ADR approval as this SPEC's to answer, and it is not answered here.
-* **Re-resolving the source reference is unverified.** `canonical_uri` is basename-only and ADR-0006
-  calls it too coarse; Notion URLs expire. A working re-fetch must be demonstrated before extraction
-  is committed, or §4.3's recourse is a label with nothing behind it.
+* **~~Re-resolving the source reference is unverified.~~ Closed 2026-08-11.** It was worse than
+  unverified — §7.1b's demonstration ran on block ids held in memory, and nothing in the shipped
+  system stored them. [[SPEC-nexus-vision-source-ref]] persists the reference and resolves it from
+  stored state alone; 3 of 3 hand round trips against the live corpus returned bytes hashing to the
+  stored `image_sha256` from a freshly issued URL.
 * **Separate chunks lose their referent.** ADR-0010 §3 requires extracted text to form its own
   chunks, which strips the 100–171 characters of authored heading that say what the image depicts —
   the context retrieval needs. A context prefix carrying the authored heading is the obvious
   candidate and is unmeasured.
-* **The labels do not point here.** Labels authored against extracted content are owed, and must be
-  authored **after** extraction so their author reads what a user reads. Extraction has now
-  happened, so this is unblocked.
-* **The ranking defect is the real one, and it is not this SPEC's.** A one-line database row
-  outranks a policy document. It predates this work, it is what the 39/40 was hiding, and it needs
-  its own record.
+* **The labels do not point here — and this is now costing measurements, not just owed.** Labels
+  authored against extracted content are owed, and must be authored **after** extraction so their
+  author reads what a user reads. Extraction has now happened, so this is unblocked.
+
+  Measured 2026-08-11: query `pb-part-01` fails in **6 of 6** answer-quality runs across two
+  transports, and it is the only query that does. The document's authored prose says a
+  not-logged-in visitor lands on one screen; the screen specification **in an image in the same
+  document** names a different one. The system consistently answers from the image, and the label —
+  authored before extraction existed — scores that as wrong. Before extraction the same query
+  passed. So this open item is not hypothetical debt: it is subtracting from every quality number
+  taken since, and it may also be a genuine contradiction in the source document, which is a
+  question for its owners rather than for the harness.
+* **~~The ranking defect is the real one.~~ Withdrawn 2026-08-11 — see §7.3.** It was not a ranking
+  defect. All 45 extraction chunks had a NULL vector: indexing failed silently at ingest and the
+  extracted text was reachable by BM25 only. After repair, gold answers outside the top ten went
+  from 3 to 0. What needs its own record is a pipeline that swallows an indexing failure.
 * **The eval set measures a corpus that no longer exists.** `ko_eval_packb` snapshots the corpus
   while it still carried expired image URLs, so 40/40 and `Recall@10 = 1.000` taken on it guarantee
   nothing about the corpus as it stands.
+* **One reader misses what the other sees.** Rounds 2 and 3 of §7.4 found 14 items where each
+  reader recovered content the other did not — present in the image, absent from one reading. A
+  union of two readers would capture it at double the standing extraction cost. Deferred to its own
+  SPEC rather than decided in a §7 note.
 * **Step 0b proves the reference resolves *today*.** ADR-0010 §2's recourse promises it resolves
   for the life of the chunk, and that depends on the source system keeping the block — which Nexus
   does not control. A demonstrated re-fetch falsifies the design early; it does not make the
@@ -665,5 +850,28 @@ was found by review before it ran.
   declared on. The gate stands on what survives, but an accepted record should not be left saying
   something a later measurement contradicted — and it cannot be edited, so the correction belongs
   in a record of its own.
+* **A replacement fidelity gate is unregistered.** §7.5 records the `≥ 6 of 8` criterion as unmet
+  and §7.4 explains why the substitute cannot produce it. What would close it is a bound on
+  **omission** — the axis §7.4 opened by measuring 14 items one reader saw and the other did not.
+  Until such a gate is registered, this SPEC guarantees against fabrication and not against
+  incompleteness, and the tier says nothing about the difference.
+* **§4.4's deletion exception amends an accepted ADR.** ADR-0010 §5 names no exception and its own
+  Status paragraph says a SPEC may not add one. The exception is also not closed by the argument
+  given: after a deletion, a later ingest re-reads with a reader that diverges run to run, so
+  different text can end up under the same `(bytes, identity)` pair and flip `content_hash` with no
+  edit — the churn ADR-0006's spine is built to keep meaningful. Either a successor ADR carries it,
+  or the deleted row is tombstoned so re-extraction under the same identity is refused.
+* **The ceiling and sticky failure rows do not converge.** `NEXUS_VISION_MAX_PER_INGEST` records
+  overflow images as failure rows so the run is repeatable, and §7.2.9 makes failure rows suppress
+  retry until a human deletes them. A tenant with more images than the ceiling therefore never
+  finishes extracting by re-running ingest. The live corpus (44) is under the ceiling, so this is
+  latent — the first larger tenant meets it with only a count in the run summary.
+* **Neither remedy has an operator surface.** Retry means deleting a failure row and quarantine
+  remediation means deleting an extraction row, and both are hand-written SQL against a live table.
+  §6 ships no command, endpoint or tool for either, and §4.4's invariant depends on the deletion
+  being done correctly.
+* **Marker stripping now touches every intake path.** §4.3's default-distrust flag removes the two
+  marker literals from authored bodies on paths this SPEC does not otherwise touch, and body text
+  feeds `content_hash`. The behaviour is right for tiering and is not enumerated per path.
 * **Small print.** Both local models lost the header strip; the API reader read it. If the local
   path is ever taken up, "small print is not reliably read" belongs in the tier, not in a comment.
