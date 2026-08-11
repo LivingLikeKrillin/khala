@@ -85,6 +85,20 @@ def test_a_gold_path_that_is_not_in_the_pack_fails(labels):
     assert any("팩에 없는 gold" in p for p in _check(bad))
 
 
+def test_a_not_gold_outside_the_pack_fails(labels):
+    """판정의 음성 절반도 실재하는 문서를 가리켜야 한다 — 아니면 아무것도 판정하지 않은 것이다."""
+    bad = copy.deepcopy(labels)
+    _first_answerable(bad)["not_gold"] = ["concepts/does-not-exist.md"]
+    assert any("팩에 없는 not_gold" in p for p in _check(bad))
+
+
+def test_a_document_cannot_be_gold_and_not_gold_at_once(labels):
+    bad = copy.deepcopy(labels)
+    q = _first_answerable(bad)
+    q["not_gold"] = list(q["gold"])
+    assert any("gold 이자 not_gold" in p for p in _check(bad))
+
+
 def test_a_prefix_instead_of_a_path_fails(labels):
     """8자 접두사가 서로 다른 두 페이지에 걸려 정답을 '회귀' 로 적은 적이 있다."""
     bad = copy.deepcopy(labels)

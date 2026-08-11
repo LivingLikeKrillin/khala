@@ -39,6 +39,34 @@ RUNS = LOCAL_DIR / "packb-answer-runs.jsonl"
 TENANT = "default"
 
 
+def gate_reasons(summary: dict) -> list[str]:
+    """총점을 내면 안 되는 이유들. 비어 있어야 실행이 결과가 된다.
+
+    관문을 **뒤**에 두면 숫자를 보고 자를 고치게 되므로, 이 판단은 총점 출력 이전에 한다.
+    """
+    reasons = []
+    if qids := summary.get("unadjudicated_qids"):
+        reasons.append(f"미판정 {len(qids)}건: {', '.join(qids)}")
+    return reasons
+
+
+def _write_report(args, labels, llm, summary, rows, *, partial: bool) -> None:
+    """리포트는 막힌 실행에서도 쓴다 — **판정할 재료가 리포트 안에 있기 때문이다.**
+
+    막혔다는 사실은 파일 안에 `partial` 로 남는다. 사람의 기억이 아니라 파일이 그것을 말해야
+    한다(SPEC-nexus-answer-quality-ruler §3.2·§3.3). 총점만 없다.
+    """
+    LOCAL_DIR.mkdir(parents=True, exist_ok=True)
+    REPORT.write_text(json.dumps(
+        {"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+         "labels_revision": labels["revision"], "tenant": TENANT,
+         "tag": args.tag, "llm_model": getattr(llm, "model", None),
+         "partial": partial, "summary": summary, "queries": rows},
+        ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    if partial:
+        print(f"\n기록: {REPORT}  (partial — 총점 없음, 판정 재료만)")
+
+
 async def _run(args) -> int:
     from nexus import db
     from nexus.providers.embedding import embedding_service_from_config
@@ -59,7 +87,13 @@ async def _run(args) -> int:
     svc, llm = embedding_service_from_config(), LLMService()
     if args.model:
         llm.model = args.model            # 브리지가 payload 의 model 을 그대로 넘긴다
-    await db.get_pool()
+    pool = await db.get_pool()
+    # **팩이 아니라 테넌트의 제목이다.** 팩은 2026-08-07 에 얼린 116건이고 테넌트는 적재마다
+    # 자란다. 지난주 들어온 문서를 인용한 정답을 오답으로 세면 SPEC §1.2 가 새 문서에 되살아난다.
+    async with pool.acquire() as con:
+        known_titles = {r["title"] for r in await con.fetch(
+            "SELECT DISTINCT title FROM documents "
+            "WHERE tenant = $1 AND status = 'active' AND is_quarantined = false", TENANT)}
     scores, rows = [], []
     sufficiency: dict[str, str] = {}
     try:
@@ -80,7 +114,9 @@ async def _run(args) -> int:
                 return 1
             s = score_answer(q["id"], ans.answer, ans.citations,
                              {titles[g] for g in q["gold"]}, q.get("must_contain") or [],
-                             abstained=ans.abstained, llm_failed=ans.llm_failed)
+                             abstained=ans.abstained, llm_failed=ans.llm_failed,
+                             not_gold_titles={titles[g] for g in q.get("not_gold") or []},
+                             known_titles=known_titles)
             scores.append(s)
 
             # ── 축 1: 근거가 충분했는가 ────────────────────────────────────
@@ -104,6 +140,22 @@ async def _run(args) -> int:
 
     a = aggregate(scores)
     o = a["outcomes"]
+
+    # ── 판정할 거리는 총점보다 먼저 나온다 ────────────────────────────────────
+    # **미판정은 오답이 아니다.** 사실을 배달했고 인용이 해소되는데 라벨이 그 문서를 판정한 적이
+    # 없으면 이 자는 모른다 — 모르는 채로 총점을 찍으면 그 총점이 판정을 대신하게 된다.
+    if a["adjudication_candidates"]:
+        print("\n  판정 대기 — 라벨이 한 번도 읽지 않은 문서를 인용했다:")
+        for qid, cited in a["adjudication_candidates"].items():
+            flag = "‼" if qid in a["unadjudicated_qids"] else " "
+            print(f"   {flag} {qid:12s} {', '.join(cited)}")
+    if reasons := gate_reasons(a):
+        print(f"\n✗ **총점을 내지 않는다** — {' · '.join(reasons)}")
+        print("  사람이 그 문서를 읽고 라벨의 gold 또는 not_gold 로 보내야 닫힌다.")
+        print("  (판정 없이 나온 총점은 부풀려진 수다 — SPEC-nexus-answer-quality-ruler §3.2)")
+        _write_report(args, labels, llm, a, rows, partial=True)
+        return 1
+
     print(f"\n  정답 {o['correct']}   오답 {o['incorrect']}   기권 {o['abstained']}"
           f"   (잴 수 없음 {o['unmeasurable']})")
     if o["abstained"]:
@@ -123,13 +175,7 @@ async def _run(args) -> int:
     if a["failed"]:
         print(f"  실패: {', '.join(a['failed'])}")
 
-    LOCAL_DIR.mkdir(parents=True, exist_ok=True)
-    REPORT.write_text(json.dumps(
-        {"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-         "labels_revision": labels["revision"], "tenant": TENANT,
-         "tag": args.tag, "llm_model": getattr(llm, "model", None), "summary": a,
-         "queries": rows},
-        ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    _write_report(args, labels, llm, a, rows, partial=False)
 
     # **덮어쓰지 않고 쌓는다.** REPORT 는 매 실행이 덮으므로 회차 간 변동을 담을 수 없고, 변동을
     # 모르면 두 모델의 차이가 잡음인지 실력인지 못 가린다. 질의별 `ok` 까지 남겨야 다수결이 된다.

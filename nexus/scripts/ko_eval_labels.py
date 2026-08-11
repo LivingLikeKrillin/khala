@@ -176,6 +176,18 @@ def check(labels: dict, pack_dir) -> list[str]:
                     f"{qid}: 검토 리비전 {q.get('reviewed_revision')!r} ≠ 라벨 리비전 "
                     f"{labels.get('revision')!r} — 서명 이후 판단 재료가 바뀌었다. 다시 검토받아라")
 
+        # `not_gold` = 사람이 읽고 **답을 담지 않는다고 판정한** 문서. 판정의 음성 절반이 없으면
+        # 같은 인용이 매 실행 미판정으로 되살아나 게이트가 절대 안 닫힌다
+        # (SPEC-nexus-answer-quality-ruler §3.2).
+        not_gold = q.get("not_gold") or []
+        for rel in not_gold:
+            if not isinstance(rel, str) or not rel.endswith(".md"):
+                problems.append(f"{qid}: not_gold 는 팩 상대 경로여야 한다 — {rel!r}")
+            elif not corpus.has(rel):
+                problems.append(f"{qid}: 팩에 없는 not_gold — {rel}")
+        if overlap := sorted(set(not_gold) & set(gold)):
+            problems.append(f"{qid}: 같은 문서가 gold 이자 not_gold 다 — {', '.join(overlap)}")
+
         query_text = _norm(q.get("query", ""))
         for rel in gold:
             if not isinstance(rel, str) or not rel.endswith(".md"):
