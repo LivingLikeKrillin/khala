@@ -177,6 +177,10 @@ class Extraction:
     sha: str
     truncated: bool = False
     error: str = ""
+    #: 원본으로 돌아가는 참조 (SPEC-nexus-vision-source-ref). ADR-0010 §2 가 이 등급을 받아들인
+    #: 근거가 이것이고, 지금까지 어디에도 저장되지 않았다.
+    block_id: str = ""
+    source_uri: str = ""
 
     @property
     def ok(self) -> bool:
@@ -210,11 +214,34 @@ def build_block(extraction: Extraction) -> str:
     # 2026-08-10 실측에서 실제로 그랬고, 답변 품질이 39 → 35 로 내려간 원인의 절반이었다.
     return (
         f"{VISION_BEGIN}\n"
-        f"![](){{: derived=vision extractor={extraction.identity} }}\n"
+        f"![](){{: derived=vision extractor={extraction.identity} "
+        f"img={image_handle(extraction.sha)} }}\n"
         "> (그림에서 읽은 내용)\n"
         f"{quoted}\n"
         f"{VISION_END}"
     )
+
+
+#: 마커에 실리는 이미지 손잡이 — 내용 해시의 앞 16자 (SPEC-nexus-vision-source-ref §2.1).
+#:
+#: 본문은 해시되므로 여기 넣는 것은 **한 번 비용을 내고 안정적**이어야 한다. 같은 바이트면 영원히
+#: 같은 값이라 그 조건을 만족한다(타임스탬프가 거부된 이유와 대비된다). 블록 id 는 길고 인용에
+#: 그대로 노출되며, 행을 *찾는* 데는 필요 없다 — *해석*할 때만 필요하고 그건 행을 찾은 뒤다.
+HANDLE_CHARS = 16
+
+
+#: 본문에 실린 비전 마커 한 줄. 청커가 큰 블록을 쪼갤 때 **모든 조각에** 다시 실어야 한다.
+_MARKER_LINE = re.compile(r"^!\[\]\(\)\{:[^}\n]*derived=vision[^}\n]*\}$", re.MULTILINE)
+
+
+def marker_line(text: str) -> str:
+    """이 텍스트가 이고 있는 마커 한 줄. 없으면 빈 문자열."""
+    m = _MARKER_LINE.search(text or "")
+    return m.group(0) if m else ""
+
+
+def image_handle(sha: str) -> str:
+    return (sha or "")[:HANDLE_CHARS].lower()
 
 
 async def read_image(data: bytes, media_type: str, llm_svc) -> Extraction:

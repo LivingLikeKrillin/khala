@@ -165,3 +165,35 @@ async def clean_db(request):
     await pool.close()
 
     yield
+
+
+@pytest.fixture(autouse=True)
+def _no_accidental_dev_db(monkeypatch):
+    """주입 없이 **개발 DB** 에 붙는 것을 막는다.
+
+    `nexus.db.get_pool()` 의 DSN 기본값은 `localhost:5432/nexus` — 이 기계의 실제 코퍼스다.
+    DB 를 쓰는 시험은 전부 픽스처가 `db._pool` 을 주입하고 들어오므로, 주입 없이 풀을 열려는
+    것은 언제나 사고다: 단위 시험이 조용히 개발 DB 에 붙어 초록으로 끝난다(2026-08-11 에
+    실제로 그랬고, 그때 나간 것은 아무 행도 안 맞는 UPDATE 였지만 다음 번에도 그러리라는
+    보장은 없다 — 이 리포는 이미 스위트에 코퍼스를 한 번 날렸다).
+
+    `DATABASE_URL` 이 명시된 곳(CI, 그리고 자기 URL 을 직접 세우는 DB 시험)은 막지 않는다.
+    그쪽은 버려도 되는 DB 이고, 막으면 DB 를 실제로 쓰는 잡이 죽는다. 막는 것은 **기본값으로
+    흘러가는 경로** 하나다.
+
+    판정은 **부를 때** 한다. 픽스처 시점에 보면, 본문에서 `DATABASE_URL` 을 세우고 붙는 시험이
+    전부 막힌다 — 실제로 그렇게 6건이 죽었다.
+    """
+    from nexus import db
+
+    real = db.get_pool
+
+    async def _guarded():
+        if db._pool is None and not os.getenv("DATABASE_URL"):
+            raise RuntimeError(
+                "이 시험이 풀 주입 없이 DB 에 붙으려 했다. 기본 DSN 은 개발 DB 다 — "
+                "DB 가 필요하면 픽스처로 db._pool 을 주입하고, 아니면 그 경로를 스텁하라.")
+        return await real()
+
+    monkeypatch.setattr(db, "get_pool", _guarded)
+    yield

@@ -532,6 +532,31 @@ def status() -> None:
             except Exception:      # noqa: BLE001 — 마이그레이션 전이면 컬럼이 없다
                 pass
 
+            # 원본으로 돌아갈 수 없는 추출 (SPEC-nexus-vision-source-ref §5.9).
+            # **추출 행 기준**으로 센다 — 청크와 추출은 조인되지 않는 별개 모집단이고, 청크 쪽
+            # 술어로 억제하면 청크 없는 추출(빈 판독)의 미해석 상태가 0 으로 보고된다.
+            from nexus.ingest.vision_source import unresolvable_count
+            try:
+                for row_ in [c for c in coverage if c["active"]]:
+                    vs = await unresolvable_count(row_["tenant"])
+                    if not vs["rows"]:
+                        continue
+                    if vs["unresolvable"]:
+                        typer.echo(
+                            f"   └ ⚠ 원본 참조 없는 추출 {vs['unresolvable']}건 "
+                            f"/ {vs['current_rows']} ({row_['tenant']}) — 인용을 든 독자가 "
+                            f"그림으로 돌아갈 수 없다. ADR-0010 §2 가 이 등급을 받아들인 "
+                            f"근거가 그것이다")
+                    if vs["retired_unresolvable"]:
+                        # ⚠ 가 아니다. 은퇴한 신원의 행은 어떤 걷기도 다시 닿지 않고(§5 가
+                        # 저장을 신원으로 키잉한다), 활성 인용은 전부 현 신원의 마커를 이고
+                        # 있으므로 그것을 가리키는 인용이 없다. 안 꺼지는 경보로 만들지 않는다.
+                        typer.echo(
+                            f"     은퇴한 판독기의 추출 {vs['retired_unresolvable']}건은 참조가 "
+                            f"없다 — 기록으로만 남는다(가리키는 활성 인용 없음)")
+            except Exception:      # noqa: BLE001 — 마이그레이션 016 전이면 컬럼이 없다
+                pass
+
             # 면제 테넌트는 **묻지 않는다**: 벡터를 일부러 안 만드는 코퍼스에게 "어느 세대냐" 는
             # 물음은 성립하지 않는다. 여기를 빼먹었더니 ⚠ 가 3줄이 됐고, 그중 2줄이 영원히 안
             # 꺼지는 것이었다 — 이 작업이 통째로 그 실패에 관한 것이다.
@@ -814,27 +839,6 @@ def ingest_notion(
     # 009 가 예고한 "조용한 오독" 이 그것이고, `--reconcile` 과 만나면 남의 워크스페이스 문서를
     # 사라진 것으로 판정한다. HTTP 표면은 `group_by_token()` 으로 이미 갈라 걷고 있었고
     # (`sources/api.py`), CLI 만 `--token-env` 하나를 전부에 적용하고 있었다.
-    explicit = [r.strip() for r in roots.split(",") if r.strip()]
-    if explicit:
-        # 명시된 루트도 **등록돼 있으면 그 루트의 토큰**을 쓴다. `--token-env` 는 미등록 루트의
-        # 기본값일 뿐이다 — 등록 정보를 손 인자가 덮으면 009 의 컬럼이 다시 무의미해진다.
-        known = {r["root_id"]: r.get("token_env") or token_env
-                 for r in asyncio.run(roots_store.list_roots(tenant))}
-        groups: dict[str, list[str]] = {}
-        for rid in explicit:
-            groups.setdefault(known.get(rid, token_env), []).append(rid)
-    else:
-        # --roots 미지정 → DB 에 등록된 소스를 쓴다 (SPEC-nexus-notion-source-console §4.1).
-        # cron 명령에서 페이지 id 를 지우고, 오타로 코퍼스를 날릴 여지를 없앤다.
-        groups = roots_store.group_by_token(asyncio.run(roots_store.list_roots(tenant)))
-
-    root_list = [rid for ids in groups.values() for rid in ids]
-    if not root_list:
-        typer.echo(
-            "등록된 Notion 소스가 없습니다. 웹 UI 의 '소스' 탭에서 추가하거나 "
-            "--roots 'pageid1,pageid2' 를 주세요."
-        )
-        raise typer.Exit(code=1)
     if (dry_run or force) and not reconcile:
         typer.echo("--dry-run / --force 는 --reconcile 과 함께 써야 의미가 있습니다")
         raise typer.Exit(code=1)
@@ -845,29 +849,65 @@ def ingest_notion(
 
     totals = {"ingested": 0, "idempotent": 0, "empty": 0, "skipped": 0}
     watermarks: list[str] = []
-    for env, ids in sorted(groups.items()):
-        try:
-            source = NotionSource(token_env=env, roots=ids, tenant=tenant)
-        except KeyError:
-            typer.echo(f"환경변수 {env} 없음 — 이 토큰이 읽는 루트 {len(ids)}개를 건너뜁니다")
-            raise typer.Exit(code=1) from None
-        except ImportError:
-            typer.echo("notion-client 미설치 — `pip install nexus[notion]`")
-            raise typer.Exit(code=1) from None
+    report = None
 
-        if len(groups) > 1:
-            typer.echo(f"[{env}] 루트 {len(ids)}개")
-        report = asyncio.run(
+    # **루프는 하나다.** `asyncio.run()` 을 두 번 부르면 첫 루프에서 만들어진 asyncpg 풀의
+    # 연결이 두 번째에서 죽은 루프에 묶여 있고, 모든 페이지가 `Event loop is closed` 로
+    # 실패한다 — 2026-08-11 라이브 실행에서 112 페이지가 통째로 그렇게 skip 됐다. 루트 조회를
+    # 적재와 같은 루프 안으로 들여야 그 상태가 성립하지 않는다.
+    async def _walk() -> None:
+        nonlocal report
+
+        # **루트는 토큰별로 갈라 걷는다** (migration 009). Notion 의 integration 은 워크스페이스에
+        # 속하므로, 한 토큰으로 두 워크스페이스의 루트를 함께 걸으면 그 토큰이 못 보는 쪽이 통째로
+        # `ObjectNotFound` 로 돌아온다 — 그리고 그 코드는 *공유 안 됨* 과 *삭제됨* 을 구분하지
+        # 않는다. 009 가 예고한 "조용한 오독" 이 그것이고, `--reconcile` 과 만나면 남의
+        # 워크스페이스 문서를 사라진 것으로 판정한다.
+        explicit = [r.strip() for r in roots.split(",") if r.strip()]
+        if explicit:
+            # 명시된 루트도 **등록돼 있으면 그 루트의 토큰**을 쓴다. `--token-env` 는 미등록
+            # 루트의 기본값일 뿐이다 — 등록 정보를 손 인자가 덮으면 009 의 컬럼이 무의미해진다.
+            known = {r["root_id"]: r.get("token_env") or token_env
+                     for r in await roots_store.list_roots(tenant)}
+            groups: dict[str, list[str]] = {}
+            for rid in explicit:
+                groups.setdefault(known.get(rid, token_env), []).append(rid)
+        else:
+            # --roots 미지정 → DB 에 등록된 소스를 쓴다 (SPEC-nexus-notion-source-console §4.1).
+            # cron 명령에서 페이지 id 를 지우고, 오타로 코퍼스를 날릴 여지를 없앤다.
+            groups = roots_store.group_by_token(await roots_store.list_roots(tenant))
+
+        if not [rid for ids in groups.values() for rid in ids]:
+            typer.echo(
+                "등록된 Notion 소스가 없습니다. 웹 UI 의 '소스' 탭에서 추가하거나 "
+                "--roots 'pageid1,pageid2' 를 주세요."
+            )
+            raise typer.Exit(code=1)
+
+        for env, ids in sorted(groups.items()):
+            try:
+                source = NotionSource(token_env=env, roots=ids, tenant=tenant)
+            except KeyError:
+                typer.echo(f"환경변수 {env} 없음 — 이 토큰이 읽는 루트 {len(ids)}개를 건너뜁니다")
+                raise typer.Exit(code=1) from None
+            except ImportError:
+                typer.echo("notion-client 미설치 — `pip install nexus[notion]`")
+                raise typer.Exit(code=1) from None
+
+            if len(groups) > 1:
+                typer.echo(f"[{env}] 루트 {len(ids)}개")
             # force 는 재조정 planner 뿐 아니라 **적재**까지 닿아야 한다. 안 그러면 본문이 안
             # 바뀐 페이지는 --force 를 줘도 영원히 idempotent 다 (제목 같은 파생 메타데이터가
             # 안 고쳐진다).
-            import_notion(source, tenant, _default_external_ingest_fn,
-                          since=since or None, reconcile_fn=reconcile_fn, force=force)
-        )
-        for k in totals:
-            totals[k] += getattr(report, k, 0) or 0
-        if report.watermark:
-            watermarks.append(report.watermark)
+            report = await import_notion(
+                source, tenant, _default_external_ingest_fn,
+                since=since or None, reconcile_fn=reconcile_fn, force=force)
+            for k in totals:
+                totals[k] += getattr(report, k, 0) or 0
+            if report.watermark:
+                watermarks.append(report.watermark)
+
+    _asyncio_run(_walk)
 
     # **watermark 는 그룹들의 최소값이다.** 다음 증분 실행의 `--since` 로 쓰이므로, 최대값을
     # 내면 뒤처진 그룹의 변경분을 건너뛴다. 최소값은 이미 본 것을 다시 볼 뿐이고 그건 멱등이다.

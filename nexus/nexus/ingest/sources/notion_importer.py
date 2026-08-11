@@ -13,7 +13,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
 from nexus.ingest.sources.base import ConvertedDoc
-from nexus.ingest.sources.notion_reconcile import notion_doc_rid
+from nexus.ingest.sources.notion_reconcile import notion_doc_rid, notion_doc_uri
 
 # 제목 첫 토큰 → 축-A 타입(결정론적 휴리스틱; LLM 미사용 — nexus 규율). 미매치 NOTE.
 _KEYWORD_TO_TYPE = {
@@ -86,7 +86,7 @@ class ImportReport:
     images_extracted: int = 0
 
 
-async def _fill_images(conv, tenant: str) -> tuple[str, int]:
+async def _fill_images(conv, tenant: str, source_uri: str = "") -> tuple[str, int]:
     """그림 자리 표식을 추출 블록으로 바꾼다. 꺼져 있으면 표식만 지운다.
 
     **기본은 꺼짐.** 켜는 것은 원문 질의가 아니라 **문서 이미지**가 공급자로 나가는 것을
@@ -108,7 +108,7 @@ async def _fill_images(conv, tenant: str) -> tuple[str, int]:
     cfg = _load_config()
     return await vision_store.apply(
         conv.markdown, conv.images, tenant=tenant, llm_svc=vision_service(),
-        pii_patterns=(cfg.get("pii_patterns") or {}))
+        pii_patterns=(cfg.get("pii_patterns") or {}), source_uri=source_uri)
 
 
 # IngestFn: (csf, tenant, *, force) -> outcome(awaitable). 프로덕션은 _default_external_ingest_fn.
@@ -159,7 +159,10 @@ async def import_notion(
             # 지우고 예전 `![]()` 로 돌아간다 — 추출이 안 도는 배포에서 본문이 표식으로
             # 오염되면 청커가 거기서 갈린다.
             if conv.images:
-                conv.markdown, n_extracted = await _fill_images(conv, tenant)
+                # 참조는 **여기서** 실린다: 이 걷기만이 블록 id 와 문서 uri 를 동시에 들고
+                # 있다 (SPEC-nexus-vision-source-ref §2.1). 저장 시점에 없으면 영원히 없다.
+                conv.markdown, n_extracted = await _fill_images(
+                    conv, tenant, notion_doc_uri(tenant, page_id))
                 conv.vision_extracted = n_extracted > 0
                 report.images_extracted += n_extracted
             # 빈 본문(블록 없는 컨테이너/DB행)은 인덱스 오염 — 적재 안 함(라이브 검증 신호).

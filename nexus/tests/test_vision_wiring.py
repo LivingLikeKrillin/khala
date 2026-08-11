@@ -139,12 +139,19 @@ def test_a_stored_extraction_is_not_read_again(monkeypatch):
     monkeypatch.setattr(vision_store, "load",
                         lambda *a, **k: _value({"text": "저장된 표", "error": None,
                                                 "truncated": False}))
+    # 캐시 적중에서도 **참조는 채운다** (SPEC-nexus-vision-source-ref §2.4). 재추출이 아니므로
+    # 이 시험의 단언(판독기를 안 부른다)과 어긋나지 않는다 — 그래서 여기서 함께 확인한다.
+    filled = []
+    monkeypatch.setattr(vision_store, "fill_reference", lambda t, e: _record(filled, e))
+
     reader = _Reader()
     out, n = asyncio.run(vision_store.apply(
         f"{image_slot('b1')}", [{"block_id": "b1", "url": "u", "caption": ""}],
-        tenant="t", llm_svc=reader))
+        tenant="t", llm_svc=reader, source_uri="t:doc.md"))
     assert reader.calls == 0, "저장된 결과가 있는데 판독기를 다시 불렀다"
     assert "저장된 표" in out
+    assert filled and filled[0].block_id == "b1" and filled[0].source_uri == "t:doc.md", (
+        "캐시 적중이 참조를 안 채우면 옛 행 44개는 영원히 그림으로 돌아갈 수 없다")
 
 
 def test_quarantined_text_never_reaches_the_durable_store(monkeypatch):

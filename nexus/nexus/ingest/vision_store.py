@@ -18,6 +18,8 @@ import os
 
 import structlog
 
+from dataclasses import replace
+
 from nexus import db
 from nexus.ingest import vision
 
@@ -33,6 +35,24 @@ async def load(tenant: str, sha: str, identity: str) -> dict | None:
     return dict(row) if row else None
 
 
+async def fill_reference(tenant: str, e: vision.Extraction) -> None:
+    """저장된 행에 **참조만** 채운다 (SPEC-nexus-vision-source-ref §2.4).
+
+    ADR-0010 §5 는 "바뀌지 않은 바이트는 재추출하지 않는다" 이므로 캐시 적중에서는 저장 경로가
+    통째로 건너뛰어진다 — 그래서 재적재만으로는 옛 행 44개의 참조가 영원히 안 채워진다.
+
+    **이것은 재추출이 아니다.** `text` 를 건드리지 않는다: 판독을 대체하는 것과, 그 판독이 어디서
+    왔는지 적는 것은 다르다. §5 가 지키는 것은 앞의 것이다. 이미 참조가 있는 행은 덮지 않는다.
+    """
+    if not (e.block_id or "").strip():
+        return
+    await db.execute(
+        "UPDATE vision_extractions SET block_id = $4, source_uri = $5 "
+        "WHERE tenant = $1 AND image_sha256 = $2 AND extractor_identity = $3 "
+        "  AND coalesce(btrim(block_id), '') = ''",
+        tenant, e.sha, e.identity, e.block_id, e.source_uri or "")
+
+
 async def save(tenant: str, e: vision.Extraction) -> dict:
     """결과를 저장하고 **실제로 저장된 것**을 돌려준다.
 
@@ -40,11 +60,19 @@ async def save(tenant: str, e: vision.Extraction) -> dict:
     자기 것을 쓰면 같은 이미지에 대해 두 적재가 서로 다른 본문을 만들고, `content_hash` 가
     어느 프로세스가 경쟁에서 이겼는지에 따라 달라진다.
     """
+    # **참조 없는 행은 만들지 않는다** (SPEC §2.4). 걷기는 언제나 block_id 를 들고 있으므로
+    # 비어 있다면 상류의 결함이고, 조용히 저장하면 등급의 전제가 채워지지 않은 행이 쌓인다.
+    # 가져오기 실패 기록(`fetch_failure`)은 예외다 — 그건 추출이 아니라 실패의 기록이다.
+    if not (e.block_id or "").strip() and not e.error:
+        raise ValueError(
+            "참조(block_id) 없는 추출은 저장하지 않는다 — ADR-0010 §2 가 이 등급을 받아들인 "
+            "근거가 원본으로 돌아갈 수 있다는 것이고, 그것이 없으면 등급이 이름표뿐이다")
     await db.execute(
         "INSERT INTO vision_extractions (tenant, image_sha256, extractor_identity, "
-        "                                text, error, truncated) "
-        "VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING",
-        tenant, e.sha, e.identity, e.text or None, e.error or None, e.truncated)
+        "                                text, error, truncated, block_id, source_uri) "
+        "VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING",
+        tenant, e.sha, e.identity, e.text or None, e.error or None, e.truncated,
+        e.block_id or "", e.source_uri or "")
     stored = await load(tenant, e.sha, e.identity)
     return stored or {"text": e.text, "error": e.error, "truncated": e.truncated}
 
@@ -106,7 +134,8 @@ async def _fetch_bytes(url: str) -> tuple[bytes, str]:
         return r.content, (r.headers.get("content-type") or "image/png").split(";")[0]
 
 
-async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict) -> tuple[str, str]:
+async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict,
+               source_uri: str = "") -> tuple[str, str]:
     """이미지 하나 → (slot, 본문에 넣을 markdown)."""
     block_id, url = image["block_id"], image.get("url") or ""
     slot = f"<!-- khala:vision:slot:{block_id} -->"
@@ -121,6 +150,7 @@ async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict) -> tuple[s
         data, media_type = await _fetch_bytes(url)
     except Exception as exc:  # noqa: BLE001
         e = vision.fetch_failure(block_id, f"{type(exc).__name__}: {exc}")
+        e = replace(e, block_id=block_id, source_uri=source_uri)
         await save(tenant, e)
         log.warning("vision.fetch_failed", block=block_id[:8], error=str(exc)[:120])
         return slot, bare
@@ -131,12 +161,17 @@ async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict) -> tuple[s
     # ── 이미 읽은 바이트는 다시 읽지 않는다 ────────────────────────────────
     stored = await load(tenant, sha, identity)
     if stored is not None:
+        # 캐시 적중에서도 **참조는 채운다** (SPEC-nexus-vision-source-ref §2.4).
+        # 재추출이 아니라 '이 판독이 어디서 왔는지' 를 적는 것이다.
+        await fill_reference(tenant, vision.Extraction(
+            "", identity, sha, block_id=block_id, source_uri=source_uri))
         if stored.get("error"):
             return slot, bare
         return slot, vision.build_block(vision.Extraction(
             stored["text"] or "", identity, sha, truncated=bool(stored.get("truncated"))))
 
     e = await vision.read_image(data, media_type, llm_svc)
+    e = replace(e, block_id=block_id, source_uri=source_uri)
     if not e.ok:
         await save(tenant, e)
         return slot, bare
@@ -150,7 +185,8 @@ async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict) -> tuple[s
         if scan.has_pii:
             log.warning("vision.quarantined", block=block_id[:8], types=scan.pii_types)
             await save(tenant, vision.Extraction(
-                "", identity, sha, error=f"quarantined: {','.join(scan.pii_types)}"))
+                "", identity, sha, error=f"quarantined: {','.join(scan.pii_types)}",
+                block_id=block_id, source_uri=source_uri))
             return slot, bare
 
     stored = await save(tenant, e)
@@ -159,7 +195,8 @@ async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict) -> tuple[s
 
 
 async def apply(markdown: str, images: list[dict], *, tenant: str, llm_svc,
-                pii_patterns: dict | None = None) -> tuple[str, int]:
+                pii_patterns: dict | None = None,
+                source_uri: str = "") -> tuple[str, int]:
     """2패스의 두 번째. 자리 표식을 추출 블록으로 바꾼다. → (markdown, 추출된 장수)
 
     한 번에 몇 장씩 읽는지는 제한한다 — 44장을 동시에 던지면 공급자 rate limit 에 걸리고,
@@ -178,7 +215,7 @@ async def apply(markdown: str, images: list[dict], *, tenant: str, llm_svc,
 
     async def _guarded(im):
         async with sem:
-            return await _one(im, tenant, llm_svc, pii_patterns or {})
+            return await _one(im, tenant, llm_svc, pii_patterns or {}, source_uri)
 
     results = await asyncio.gather(*(_guarded(im) for im in todo), return_exceptions=True)
 

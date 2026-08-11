@@ -22,9 +22,18 @@ def notion_uri_pattern(tenant: str) -> str:
     return f"{tenant}:ext-notion-%"
 
 
+def notion_doc_uri(tenant: str, page_id: str) -> str:
+    """page_id → 적재된 문서의 canonical uri.
+
+    rid 를 만드는 것과 **같은 문자열**이다. 그림 추출 행이 이고 갈 `source_uri` 도 이것이어야
+    문서와 조인된다 (SPEC-nexus-vision-source-ref §2.1) — 두 곳에서 따로 조립하면 조용히 갈린다.
+    """
+    return _URI_TEMPLATE.format(tenant=tenant, page_id=page_id)
+
+
 def notion_doc_rid(tenant: str, page_id: str) -> str:
     """page_id → 적재된 문서의 rid. sink 의 매핑을 그대로 재현한다."""
-    return doc_rid(_URI_TEMPLATE.format(tenant=tenant, page_id=page_id))
+    return doc_rid(notion_doc_uri(tenant, page_id))
 
 
 @dataclass
