@@ -1,0 +1,21 @@
+[
+  { "issue_id": "I-001", "disposition": "accepted" },
+  { "issue_id": "I-002", "disposition": "accepted" },
+  { "issue_id": "I-003", "disposition": "accepted" },
+  { "issue_id": "I-004", "disposition": "accepted" },
+  { "issue_id": "I-005", "disposition": "rejected",
+    "reason": "사실이 다르다. 열거된 경로가 전부 run_ingest 로 모이는 것을 확인했다: cli.py:84(ingest) · a2a/server.py:370(governed-doc·external-spec) · api.py:487·545(HTTP) · ingest-notion 은 _default_external_ingest_fn 을 ingest_fn 으로 넘겨 같은 a2a/server.py:370 을 탄다. 검사를 run_ingest 한 곳에 두면 전부 덮인다. 다만 SPEC 이 그 수렴을 보이지 않고 주장만 한 것은 맞아서, §3.2 에 호출지점 표를 넣었다." },
+  { "issue_id": "I-006", "disposition": "accepted" },
+  { "issue_id": "I-007", "disposition": "accepted" },
+  { "issue_id": "I-008", "disposition": "accepted" },
+  { "issue_id": "I-009", "disposition": "rejected",
+    "reason": "두 행은 같은 팔이다. 재계산은 전부 컨테이너의 KURE 서비스로 `embedding_1024` 를 상대로 했다(check_stale_vectors.py 는 configured_column() 하나만 읽는다). `nomic-embed-text` 는 chunks.embed_model 이고 그것은 **다른 컬럼**의 마지막 writer 이름이라, 그 라벨을 단 청크의 1024 벡터도 KURE 가 쓴 것이다. 즉 대조군과 발견은 같은 모델·같은 컬럼이고, 호스트/컨테이너 모델 로딩 차이는 이 측정에 들어오지 않는다. 라벨이 두 모집단처럼 읽히게 표를 쓴 것은 맞아서 §1.1 에 그 문장을 넣었다." },
+  { "issue_id": "I-010", "disposition": "accepted" },
+  { "issue_id": "I-011", "disposition": "accepted" },
+  { "issue_id": "I-012", "disposition": "accepted" },
+  { "issue_id": "I-013", "disposition": "accepted" },
+  { "issue_id": "I-014", "disposition": "accepted" },
+  { "issue_id": "I-015", "disposition": "accepted" },
+  { "issue_id": "I-016", "disposition": "accepted" },
+  { "issue_id": "I-017", "disposition": "accepted" }
+]

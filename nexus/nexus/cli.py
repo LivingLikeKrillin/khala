@@ -81,14 +81,22 @@ def ingest(
         from nexus.ingest.pipeline import run_ingest
         from nexus import db
 
-        result = await run_ingest(
-            docs_path=path,
-            force=force,
-            tenant=tenant,
-            config_path=config_path,
-            skip_index=not index,
-            skip_graph=not extract_graph,
-        )
+        # 세대 불일치는 **거부**이지 크래시가 아니다 (SPEC-nexus-generation-of-record §3.2).
+        # 트레이스백으로 던지면 읽는 사람이 고치는 법 대신 스택을 본다.
+        from nexus.index.generation import GenerationMismatch
+        try:
+            result = await run_ingest(
+                docs_path=path,
+                force=force,
+                tenant=tenant,
+                config_path=config_path,
+                skip_index=not index,
+                skip_graph=not extract_graph,
+            )
+        except GenerationMismatch as e:
+            typer.echo(f"\n거부: {e}", err=True)
+            await db.close_pool()
+            raise typer.Exit(2) from None
 
         typer.echo(f"총 파일: {result.total_files}")
         typer.echo(f"인덱싱: {result.indexed}")
@@ -498,6 +506,20 @@ def status() -> None:
                         f"   └ 벡터 다리가 못 보는 청크 {gap}건 — "
                         f"nexus reembed run --tenant {row_['tenant']}")
 
+            # 선언되지 않은 테넌트 (SPEC-nexus-generation-of-record §3.5). 선언이 없으면 §3.2 의
+            # 가드가 통과시키므로, 고쳐 놓고도 노출된 상태다 — 그 상태를 여기서 지목한다.
+            # 면제 테넌트는 **묻지 않는다**: 벡터를 일부러 안 만드는 코퍼스에게 "어느 세대냐" 는
+            # 물음은 성립하지 않는다. 여기를 빼먹었더니 ⚠ 가 3줄이 됐고, 그중 2줄이 영원히 안
+            # 꺼지는 것이었다 — 이 작업이 통째로 그 실패에 관한 것이다.
+            from nexus.index.generation import current as _current_generation
+            for row_ in [c for c in coverage if c["active"] and c["tenant"] not in exempt]:
+                if await _current_generation(row_["tenant"]) is None:
+                    typer.echo(
+                        f"⚠ 세대 미선언 {row_['tenant']} — 이 코퍼스가 어느 세대인지 DB 에 없다. "
+                        f"다른 세대로 적재해도 아무도 못 막는다\n"
+                        f"   └ nexus generation declare --tenant {row_['tenant']} "
+                        f"--column {col} --model <model> --by <who>")
+
         try:
             row = await db.fetch_one(
                 """
@@ -831,12 +853,17 @@ def reembed_run(
     tenant: str = typer.Option(None, "--tenant", help="비우면 전 테넌트 — 범위는 명시적 선택이다"),
     all_tenants: bool = typer.Option(False, "--all-tenants",
                                      help="청크를 가진 테넌트를 모두 돈다 (범위를 손으로 세지 않는다)"),
+    change_generation: bool = typer.Option(
+        False, "--change-generation",
+        help="이 실행이 **컷오버**다 — 선언과 다른 세대를 채우고, 완료 시 새 선언을 남긴다"),
+    by: str = typer.Option("", "--by", help="--change-generation 의 서명 (누가 세대를 바꿨나)"),
 ) -> None:
     """NULL 인 것을 채운다. 중단해도 이어서 돈다 — 큐가 NULL 컬럼이기 때문이다.
 
     **`--column` 은 설정을 따라가지 않는다.** 컷오버 시점의 설정은 아직 옛 컬럼을 가리키므로,
     설정을 따라가는 마이그레이션은 보존해야 할 컬럼을 겨눈다 (SPEC-nexus-embedding-cutover-seam §4.3).
     """
+    from nexus.index.generation import GenerationMismatch, assert_writable, declare
     from nexus.index.reembed import counts, reembed, tenants_with_chunks
     from nexus.index.vector_index import dimensions_of
     from nexus.providers.embedding import MODEL_DIMENSIONS, EmbeddingService
@@ -857,6 +884,20 @@ def reembed_run(
         scopes = await tenants_with_chunks() if all_tenants else [tenant]
         if all_tenants:
             typer.echo(f"대상 테넌트 {len(scopes)}개: {', '.join(scopes) or '(없음)'}")
+
+        # 세대 가드 (SPEC-nexus-generation-of-record §3.3). 초안은 이 명령을 **면제**했고,
+        # 비평이 그 구멍으로 사고가 그대로 재현된다고 지적했다: `--column embedding --model
+        # nomic-embed-text` 는 차원이 맞으므로 옛 가드를 통과하고, 검색되지 않는 세대를 다시
+        # 채운다. 그래서 여기서도 선언을 본다 — 다만 이 명령만이 선언을 **바꿀** 수 있다.
+        if not change_generation:
+            for scope in scopes:
+                if scope:
+                    await assert_writable(scope, column, model, what="reembed")
+        elif not by.strip():
+            typer.echo("--change-generation 은 --by 가 필요하다 — 세대 변경은 서명이 있는 결정이다",
+                       err=True)
+            raise typer.Exit(2)
+
         failed = 0
         for scope in scopes:
             label = f"[{scope}] " if all_tenants else ""
@@ -868,7 +909,82 @@ def reembed_run(
                 progress=lambda s: typer.echo(f"  … {s.embedded}건", err=True))
             typer.echo(label + summary.render())
             failed += 0 if summary.ok else 1
+
+            # 컷오버가 **끝났을 때만** 선언을 남긴다 (§3.3). 사람에게 두 번째 명령을 기억시키는
+            # 설계는 잊히고, 절반 돌다 죽은 실행이 선언을 남기면 그 선언이 거짓이 된다.
+            if change_generation and summary.ok and scope:
+                await declare(scope, column, model, by,
+                              reason=f"reembed --change-generation ({summary.embedded}건)")
+                typer.echo(f"{label}세대 선언: {column} / {model} (by {by})")
         return 1 if failed else 0
+
+    try:
+        raise typer.Exit(_run(_go()))
+    except GenerationMismatch as e:
+        typer.echo(f"\n{e}", err=True)
+        raise typer.Exit(2) from None
+
+
+generation_app = typer.Typer(help="이 코퍼스가 어느 임베딩 세대에 있는가 "
+                                  "(SPEC-nexus-generation-of-record)")
+app.add_typer(generation_app, name="generation")
+
+
+@generation_app.command("declare")
+def generation_declare(
+    column: str = typer.Option(..., "--column", help="이 코퍼스를 서빙하는 벡터 컬럼"),
+    model: str = typer.Option(..., "--model"),
+    by: str = typer.Option(..., "--by", help="누가 선언하는가 (감사 필드 — 권한이 아니다)"),
+    tenant: str = typer.Option("default", "--tenant", "-t"),
+    reason: str = typer.Option("", "--reason"),
+) -> None:
+    """세대를 선언한다. append 이고, 이전 선언은 이력으로 남는다."""
+    from nexus.index.generation import InvalidDeclaration, declare
+
+    async def _go() -> int:
+        try:
+            g = await declare(tenant, column, model, by, reason)
+        except InvalidDeclaration as e:
+            typer.echo(f"거부: {e}", err=True)
+            return 2
+        typer.echo(f"선언됨 [{tenant}] {g.render()} (by {g.declared_by})")
+        return 0
+
+    raise typer.Exit(_run(_go()))
+
+
+@generation_app.command("show")
+def generation_show(
+    tenant: str = typer.Option("", "--tenant", "-t", help="비우면 전체"),
+    show_history: bool = typer.Option(False, "--history", help="이력 전체"),
+) -> None:
+    """현재 세대(또는 이력)를 출력한다."""
+    from nexus.index.generation import current, history
+
+    async def _go() -> int:
+        if show_history:
+            rows = await history(tenant or None)
+            if not rows:
+                typer.echo("선언 없음")
+                return 0
+            for g in rows:
+                when = g.declared_at.isoformat(timespec="seconds") if g.declared_at else ""
+                typer.echo(f"{g.tenant:16} {g.render():34} {g.declared_by:12} {when}  {g.reason}")
+            return 0
+        if tenant:
+            g = await current(tenant)
+            typer.echo(f"{tenant}: {g.render()} (by {g.declared_by})" if g
+                       else f"{tenant}: 선언 없음")
+            return 0
+        rows = await history()
+        seen: set[str] = set()
+        for g in rows:                      # history 는 (tenant, id desc) 순 → 첫 등장이 최신
+            if g.tenant not in seen:
+                seen.add(g.tenant)
+                typer.echo(f"{g.tenant:16} {g.render():34} (by {g.declared_by})")
+        if not seen:
+            typer.echo("선언 없음")
+        return 0
 
     raise typer.Exit(_run(_go()))
 

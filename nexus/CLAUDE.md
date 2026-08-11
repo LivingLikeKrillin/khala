@@ -293,14 +293,24 @@ def base_filter() -> str:
 task up
 task up:prod          # 팀 배포 — docker-compose.prod.yml 오버레이 (reload 없음·이미지 구움·강토큰 필수)
 
+# ⚠ 쓰는 명령은 **배포의 임베딩 세대가 설정된 곳**에서 돌려야 한다. 이 배포에서는 컨테이너 안이다
+#   (세대는 env 로 오고, 그 env 는 컨테이너에만 있다). 호스트 셸에서 그냥 `nexus ingest` 를 치면
+#   config.yaml 기본값 = 768/nomic 세대로 해석돼, **검색되지 않는 컬럼**에 적재된다.
+#   2026-08-10 에 실제로 그렇게 됐다 (SPEC-nexus-generation-of-record).
+#   컨테이너 없이 돌리는 배포라면 NEXUS_EMBEDDING_MODEL/NEXUS_EMBEDDING_COLUMN 을 같은 값으로
+#   export 한 셸에서 돌린다. 세대를 DB 에 선언해 두면 어긋난 실행은 거부된다:
+#     docker exec nexus-app nexus generation declare --tenant default \
+#         --column embedding_1024 --model KURE-v1 --by <who>
+#     docker exec nexus-app nexus generation show
+
 # 문서 인덱싱
 docker exec nexus-app nexus ingest ./docs
 docker exec nexus-app nexus ingest ./docs --force   # hash 무시, 전체 재인덱싱
 
 # Notion 적재 (미러 — 정본은 Notion 에 남는다)
-nexus ingest-notion --roots "pageId1,pageId2"
-nexus ingest-notion --roots "..." --reconcile --dry-run   # 사라진/되살아난 페이지 계획만 확인
-nexus ingest-notion --roots "..." --reconcile             # soft_delete + revive 적용
+docker exec nexus-app nexus ingest-notion --roots "pageId1,pageId2"
+docker exec nexus-app nexus ingest-notion --roots "..." --reconcile --dry-run   # 계획만 확인
+docker exec nexus-app nexus ingest-notion --roots "..." --reconcile             # soft_delete + revive
 
 # 검색
 nexus query "결제 서비스가 발행하는 토픽이 뭐야?"
