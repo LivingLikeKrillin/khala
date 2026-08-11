@@ -85,6 +85,20 @@ def test_a_gold_path_that_is_not_in_the_pack_fails(labels):
     assert any("팩에 없는 gold" in p for p in _check(bad))
 
 
+def test_a_not_gold_outside_the_pack_fails(labels):
+    """판정의 음성 절반도 실재하는 문서를 가리켜야 한다 — 아니면 아무것도 판정하지 않은 것이다."""
+    bad = copy.deepcopy(labels)
+    _first_answerable(bad)["not_gold"] = ["concepts/does-not-exist.md"]
+    assert any("팩에 없는 not_gold" in p for p in _check(bad))
+
+
+def test_a_document_cannot_be_gold_and_not_gold_at_once(labels):
+    bad = copy.deepcopy(labels)
+    q = _first_answerable(bad)
+    q["not_gold"] = list(q["gold"])
+    assert any("gold 이자 not_gold" in p for p in _check(bad))
+
+
 def test_a_prefix_instead_of_a_path_fails(labels):
     """8자 접두사가 서로 다른 두 페이지에 걸려 정답을 '회귀' 로 적은 적이 있다."""
     bad = copy.deepcopy(labels)
@@ -234,3 +248,83 @@ def test_the_revision_check_only_applies_to_agent_authored_labels(labels):
         q.pop("reviewed_by", None)
         q.pop("reviewed_revision", None)
     assert not any("검토 리비전" in p or "reviewed_by 가 없다" in p for p in _check(human))
+
+
+# ── 라벨은 서명된 본문에 묶인다 (SPEC-nexus-answer-quality-ruler §3.3) ────────
+#
+# **이 게이트가 없어서 이틀치 판독이 만료된 라벨 위에 얹혀 있었다.** 옛 게이트는 gold 가
+# 매니페스트에 *존재하는지*만 봤고, 실행은 라이브 테넌트를 쟀다. 그 사이 116문서 중 8건의 본문이
+# 바뀌었고 — 그 8건이 답변가능 40건 중 21건의 gold 였다.
+
+
+def _bound(labels, bodies=None):
+    """검사용 라벨 사본에 corpus 결속 블록을 달아 준다."""
+    import copy
+    out = copy.deepcopy(labels)
+    keys = {k for q in out["queries"] if q.get("answerable")
+            for k in (list(q.get("gold") or []) + list(q.get("not_gold") or []))}
+    out["corpus"] = {"tenant": "default", "signed_at": "2026-08-12",
+                     "bodies": bodies if bodies is not None else {k: f"sha256:{k}" for k in keys}}
+    return out
+
+
+def test_a_gold_body_that_moved_expires_its_query(labels):
+    from scripts.ko_eval_labels import expired
+
+    bound = _bound(labels)
+    live = dict(bound["corpus"]["bodies"])
+    q = _first_answerable(bound)
+    live[q["gold"][0]] = "sha256:다른 본문"
+    assert expired(bound, live).get(q["id"]) == [q["gold"][0]]
+
+
+def test_a_body_that_still_matches_does_not_expire(labels):
+    from scripts.ko_eval_labels import expired
+
+    bound = _bound(labels)
+    assert expired(bound, dict(bound["corpus"]["bodies"])) == {}
+
+
+def test_a_not_gold_body_that_moved_expires_too(labels):
+    """판정의 음성 절반도 텍스트에 묶인다 — 안 그러면 기계가 그림에서 읽은 텍스트가 들어와
+    답을 담게 된 문서가 영원히 not_gold 로 남는다."""
+    from scripts.ko_eval_labels import expired
+
+    import copy
+    src = copy.deepcopy(labels)
+    q = _first_answerable(src)
+    other = next(o["gold"][0] for o in src["queries"]
+                 if o.get("answerable") and o["gold"] and o["gold"][0] not in q["gold"])
+    q["not_gold"] = [other]
+    bound = _bound(src)
+    live = dict(bound["corpus"]["bodies"])
+    live[other] = "sha256:바뀐 본문"
+    assert expired(bound, live).get(q["id"]) == [other]
+
+
+def test_a_disappeared_document_expires_its_query(labels):
+    from scripts.ko_eval_labels import expired
+
+    bound = _bound(labels)
+    live = dict(bound["corpus"]["bodies"])
+    q = _first_answerable(bound)
+    del live[q["gold"][0]]
+    assert q["id"] in expired(bound, live)
+
+
+def test_a_live_run_needs_the_labels_to_say_what_they_were_signed_against(labels):
+    """테넌트를 재는 실행은 결속을 요구한다. 얼어 있는 디스크 팩(Pack A)은 매니페스트 해시
+    가드가 같은 일을 하므로 요구하지 않는다 — 움직이는 것은 테넌트다."""
+    unbound = check(labels, DEFAULT_PACK_DIR, require_corpus_binding=True)
+    assert any("corpus.tenant 없음" in p for p in unbound)
+    assert any("corpus.bodies 없음" in p for p in unbound)
+    assert check(labels, DEFAULT_PACK_DIR) == [], "팩 경로 검사는 결속을 요구하면 안 된다"
+    assert check(_bound(labels), DEFAULT_PACK_DIR, require_corpus_binding=True) == []
+
+
+def test_a_judged_document_with_no_signed_hash_fails(labels):
+    bound = _bound(labels)
+    dropped = next(iter(bound["corpus"]["bodies"]))
+    del bound["corpus"]["bodies"][dropped]
+    assert any("서명된 본문 해시가 없다" in p
+               for p in check(bound, DEFAULT_PACK_DIR, require_corpus_binding=True))

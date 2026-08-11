@@ -142,6 +142,73 @@ def test_delivered_text_drops_the_refusal_and_keeps_the_rest():
     assert "충돌을 감지하며" in delivered
 
 
+# ── 판정되지 않은 문서는 틀린 문서가 아니다 (SPEC-nexus-answer-quality-ruler §3.2) ──
+
+#: 테넌트에 실재하는 문서 제목들. 실행기는 이것을 DB 에서 읽어 넘긴다.
+TENANT = {"정답 문서", "같은 사실을 적은 다른 문서", "판정 끝난 무관한 문서"}
+
+
+def _cited(title, verified=True):
+    return {"title": title, "verified": verified}
+
+
+def test_a_correct_answer_citing_an_unjudged_document_is_not_incorrect():
+    """`pb-part-02` 의 모양. 사실도 맞고 인용도 해소되는데 라벨이 그 문서를 판정한 적이 없다.
+    자는 그 문서가 답을 담는지 **모른다** — 모르는 것을 오답이라 부르면 안 된다."""
+    s = score_answer("q", "최대 100 곡입니다 [출처: 같은 사실을 적은 다른 문서]",
+                     [_cited("같은 사실을 적은 다른 문서")], {"정답 문서"}, [["100"]],
+                     known_titles=TENANT)
+    assert s.outcome == "unadjudicated"
+    assert s.unjudged == ["같은 사실을 적은 다른 문서"]
+    assert s.ok is False, "미판정은 만점이 아니다 — 사람이 읽어야 닫힌다"
+
+
+def test_a_document_already_judged_not_gold_is_incorrect():
+    """판정의 **음성 절반**이 없으면 같은 건이 매 실행 되살아나 게이트가 절대 안 닫힌다."""
+    s = score_answer("q", "최대 100 곡입니다 [출처: 판정 끝난 무관한 문서]",
+                     [_cited("판정 끝난 무관한 문서")], {"정답 문서"}, [["100"]],
+                     not_gold_titles={"판정 끝난 무관한 문서"}, known_titles=TENANT)
+    assert s.outcome == "incorrect" and s.unjudged == []
+
+
+def test_a_citation_that_resolves_to_nothing_stays_incorrect():
+    """테넌트에 없는 제목은 판정할 대상이 없다 — 지어낸 출처와 구별되지 않는다."""
+    s = score_answer("q", "최대 100 곡입니다 [출처: 세상에 없는 문서]",
+                     [_cited("세상에 없는 문서")], {"정답 문서"}, [["100"]], known_titles=TENANT)
+    assert s.outcome == "incorrect"
+
+
+def test_an_unverified_citation_is_never_adjudicable():
+    s = score_answer("q", "최대 100 곡입니다 [출처: 같은 사실을 적은 다른 문서]",
+                     [_cited("같은 사실을 적은 다른 문서", verified=False)],
+                     {"정답 문서"}, [["100"]], known_titles=TENANT)
+    assert s.grounded is False and s.outcome == "incorrect"
+
+
+def test_an_unjudged_document_is_surfaced_even_when_the_answer_is_correct():
+    """정답 문서와 미판정 문서를 함께 인용한 답변은 `correct` 지만, 미판정 목록은 남아야 한다.
+    안 그러면 미판정 풀이 조용히 자라고 '게이트가 정직함을 지킨다' 는 방어가 거짓이 된다."""
+    s = score_answer("q", "최대 100 곡입니다 [출처: 정답 문서][출처: 같은 사실을 적은 다른 문서]",
+                     [_cited("정답 문서"), _cited("같은 사실을 적은 다른 문서")],
+                     {"정답 문서"}, [["100"]], known_titles=TENANT)
+    assert s.outcome == "correct"
+    assert s.unjudged == ["같은 사실을 적은 다른 문서"]
+
+
+def test_the_aggregate_keeps_unadjudicated_out_of_incorrect():
+    scores = [
+        score_answer("a", "100 [출처: 정답 문서]", [_cited("정답 문서")], {"정답 문서"}, [["100"]],
+                     known_titles=TENANT),
+        score_answer("b", "100 [출처: 같은 사실을 적은 다른 문서]",
+                     [_cited("같은 사실을 적은 다른 문서")], {"정답 문서"}, [["100"]],
+                     known_titles=TENANT),
+    ]
+    a = aggregate(scores)
+    assert a["outcomes"]["unadjudicated"] == 1 and a["outcomes"]["incorrect"] == 0
+    assert a["unadjudicated_qids"] == ["b"]
+    assert a["adjudication_candidates"] == {"b": ["같은 사실을 적은 다른 문서"]}
+
+
 def test_a_wrong_answer_with_the_gold_document_is_incorrect():
     s = AnswerScore(qid="q", grounded=True, cites_gold=True, facts=[False])
     assert s.outcome == "incorrect"
@@ -166,7 +233,8 @@ def test_the_aggregate_separates_abstention_from_incorrect():
         AnswerScore(qid="c", grounded=False, cites_gold=False, facts=[False], abstained=True),
     ]
     a = aggregate(scores)
-    assert a["outcomes"] == {"correct": 1, "incorrect": 1, "abstained": 1, "unmeasurable": 0}
+    assert a["outcomes"] == {"correct": 1, "incorrect": 1, "abstained": 1,
+                             "unadjudicated": 0, "unmeasurable": 0}
     assert a["abstained_qids"] == ["c"] and a["incorrect_qids"] == ["b"]
     # 옛 지표는 그대로 살아 있다 — 과거 실행과 비교할 수 있어야 한다.
     assert a["all_three"] == 1
