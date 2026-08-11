@@ -47,32 +47,65 @@ _NEGATION = r"(없|않|어렵|불가|못 (찾|하)|아닙니다)"
 #: 모두 잡고 오탐이 0 이었다. 문장 경계가 이미 범위를 막으므로 여유를 둔 80 을 쓴다.
 _REFUSAL = re.compile(_EVIDENCE + r".{0,80}?" + _NEGATION)
 
-#: 거절은 **첫 문장**에서만 센다. 답을 하면서 하위 항목 하나만 "확인되지 않는다" 고 덧붙이는
-#: 경우가 흔하고(2026-08-10 실행 40건 중 2건), 그것은 기권이 아니라 답변이다. 진짜 기권은 첫
-#: 문장에서 거절한다.
+#: 거절은 **문장(세그먼트) 범위**를 갖는다 — SPEC-nexus-answer-quality-ruler §3.1.
 #:
-#: 앞선 판은 "앞 110자" 였다. 같은 40건에서 결과는 같았지만, 그건 그 답변들이 길었기 때문이지
-#: 규칙이 맞아서가 아니다 — 짧은 답변이 끝에서 거절하면 기권으로 잘못 세어진다. 위치가 아니라
-#: **문장 경계**가 뜻을 가진 단위다.
-_LEADING_MARKUP = re.compile(r"^[#\s*_>-]+")
-_SENTENCE_END = re.compile(r"(다\.|습니다\.|\?|!)")
-_NO_SENTENCE_END_CAP = 160
+#: 앞선 두 판은 위치만 봤다("앞 110자" → "첫 문장"). 둘 다 같은 자리에서 틀렸다: 답을 다 하면서
+#: 하위 항목 하나를 "확인되지 않는다" 고 좁히는 답변을 **전체 기권**으로 셌다(2026-08-11 실행에서
+#: `pb-space-01`·`pb-mix-08` 2건). 반대편에는 거절 문장이 질문 어휘를 되풀이해 `must_contain` 을
+#: 거저 통과시킨 결함이 있었다(`pb-part-07`). 두 오탐이 반대 방향인 것이 **단위가 틀렸다**는 신호다.
+#:
+#: 그래서 두 조건을 함께 본다. ① 사실은 거절 세그먼트 **밖**에서 배달돼야 세고, ② 기권은 거절이
+#: **선두**에 설 때만이다. ②가 없던 첫 판은 새 45건 표본에서 새 오탐을 만들었다 — 답을 다 하고
+#: 근거 등급을 밝히는 **후행 단서**("실제 구현 관측 데이터는 제공된 근거에 없습니다")가 기권으로
+#: 세어졌다. 규칙이 표본에 맞춰졌다는 뜻이므로, 다음 반증도 여기 기록될 자리를 비워 둔다.
+_SEGMENT = re.compile(r"(?<=다\.)|(?<=습니다\.)|(?<=\?)|(?<=!)|\n")
+#: 헤딩·구분선은 실질 세그먼트가 아니다 — `## 결론` 뒤에 오는 거절도 선두다.
+_NOT_SUBSTANTIVE = re.compile(r"^(#{1,6}\s.*|[#>*\-\s_|=]*)$")
 
 
-def _first_sentence(text: str) -> str:
-    head = _LEADING_MARKUP.sub("", _norm(text))
-    m = _SENTENCE_END.search(head)
-    return head[: m.end()] if m else head[:_NO_SENTENCE_END_CAP]
+def segments(answer_text: str) -> list[str]:
+    """답변을 문장/줄 단위로 자른다. 표·코드처럼 종결어미가 없는 줄은 줄 단위로 남는다."""
+    raw = unicodedata.normalize("NFC", answer_text or "")
+    return [s for s in _SEGMENT.split(raw) if s and s.strip()]
 
 
-def is_abstention(answer_text: str) -> bool:
-    """답변자가 질문 자체를 거절했는가. **어휘 규칙이고, 한계는 여기 적어 둔다.**
+def refusal_segments(answer_text: str) -> list[str]:
+    """근거를 지목하며 부정하는 세그먼트. **어휘 규칙이고, 한계는 SPEC §4 에 적혀 있다.**"""
+    return [s for s in segments(answer_text) if _REFUSAL.search(_norm(s))]
 
-    LLM 심판을 안 쓰는 이 자의 방침을 따른다(그쪽 취향을 재게 되므로). 대신 어휘 규칙은
-    표현이 바뀌면 놓치고, 그때는 `_REFUSAL` 이 늘어야 한다 — 조용히 틀리지 않도록 테스트가
-    실제 답변 문구를 고정한다.
+
+def refuses(answer_text: str) -> bool:
+    """답변 어딘가에서 근거를 지목하며 부정했는가. 대조군(답변불가 5건)이 재는 값이다."""
+    return bool(refusal_segments(answer_text))
+
+
+def leads_with_refusal(answer_text: str) -> bool:
+    """첫 **실질** 세그먼트가 거절인가. 헤딩·구분선은 건너뛴다."""
+    for seg in segments(answer_text):
+        s = _norm(seg)
+        if not s or _NOT_SUBSTANTIVE.match(s):
+            continue
+        return bool(_REFUSAL.search(s))
+    return False
+
+
+def delivered_text(answer_text: str) -> str:
+    """거절 세그먼트를 뺀 나머지 — 답변자가 **배달한** 것. 사실검사는 여기서만 한다."""
+    return " ".join(s for s in segments(answer_text) if not _REFUSAL.search(_norm(s)))
+
+
+def is_abstention(answer_text: str, must_contain: list[list[str]] | None = None) -> bool:
+    """답변자가 질문 자체를 거절했는가 = **선두에서 거절했고, 요구한 사실을 배달하지 않았다.**
+
+    `must_contain` 을 안 주면 배달할 것이 없다는 뜻이고(대조군이 그렇다), 그때는 선두 거절이 곧
+    기권이다. `all([]) == True` 에 맡기면 반대로 읽히므로 명시적으로 쓴다.
     """
-    return bool(_REFUSAL.search(_first_sentence(answer_text)))
+    if not leads_with_refusal(answer_text):
+        return False
+    if not must_contain:
+        return True
+    body = _norm(delivered_text(answer_text))
+    return not all(any(_norm(alt) in body for alt in group) for group in must_contain)
 
 
 def _norm(text: str) -> str:
@@ -88,6 +121,9 @@ class AnswerScore:
     cites_gold: bool = False
     facts: list[bool] = field(default_factory=list)
     abstained: bool = False
+    #: 답변 어딘가에서 근거를 지목하며 부정했는가. 기권과 **다르다** — 답을 다 하면서 한 항목을
+    #: 좁힌 답변도 참이다. 대조군(답변불가)이 재는 값이 이것이다.
+    refused: bool = False
     llm_failed: bool = False
     n_citations: int = 0
     unverified: int = 0
@@ -149,15 +185,19 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
     # `abstained` 인자는 코드가 세운 플래그(`AnswerResult.abstained`, 조건 = 근거 0건)다.
     # 그 조건은 BM25 가 늘 무언가를 돌려주므로 **한 번도 안 터진다**(abstention-never-fires).
     # 그래서 답변 텍스트에서 직접 본다 — 답변자가 질문을 거절했는가.
-    s = AnswerScore(qid=qid, abstained=bool(abstained) or is_abstention(answer_text),
+    s = AnswerScore(qid=qid,
+                    abstained=bool(abstained) or is_abstention(answer_text, must_contain),
+                    refused=refuses(answer_text),
                     llm_failed=llm_failed,
                     n_citations=len(citations), unverified=unverified)
     # 인용 0개는 grounded 가 아니다 — 아무것도 인용 안 하는 것이 가장 쉬운 만점이 되면 안 된다.
     s.grounded = len(citations) > 0 and unverified == 0
     s.cites_gold = any(_norm(_get(c, "title") or "") in gold_norm for c in verified)
 
-    text = _norm(answer_text)
-    s.facts = [any(_norm(alt) in text for alt in group) for group in must_contain]
+    # **사실은 배달돼야 센다.** 거절 세그먼트 안에서 질문 어휘가 되풀이된 것은 배달이 아니다
+    # (`pb-part-07`: 거절하면서 `태스크`·`다른` 을 담아 사실검사를 통과했다).
+    body = _norm(delivered_text(answer_text))
+    s.facts = [any(_norm(alt) in body for alt in group) for group in must_contain]
     return s
 
 
@@ -174,6 +214,9 @@ def aggregate(scores: list[AnswerScore]) -> dict:
         "grounded": sum(1 for s in scores if s.grounded),
         "cites_gold": sum(1 for s in scores if s.cites_gold),
         "abstained": sum(1 for s in scores if s.abstained),
+        # 거절과 기권은 다른 수다. 답을 하면서 한 항목을 좁힌 답변이 `refused` 에는 들어가고
+        # `abstained` 에는 안 들어간다 — 그 차이가 §1.1 의 오탐이 살던 자리다.
+        "refused": sum(1 for s in scores if s.refused),
         "unverified_citations": sum(s.unverified for s in scores),
         "no_citation_at_all": sum(1 for s in scores if s.n_citations == 0),
         "facts_measurable": len(measurable),

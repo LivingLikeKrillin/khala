@@ -93,7 +93,7 @@ async def _run(args) -> int:
                 sufficiency[q["id"]] = v.label.value
 
             rows.append({"qid": q["id"], "grounded": s.grounded, "cites_gold": s.cites_gold,
-                         "facts": s.facts, "outcome": s.outcome,
+                         "facts": s.facts, "outcome": s.outcome, "refused": s.refused,
                          "sufficiency": sufficiency.get(q["id"]), "answer": ans.answer})
             mark = "OK " if s.ok else "   "
             print(f"{mark} {q['id']:12s} 근거{'✓' if s.grounded else '✗'} "
