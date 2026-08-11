@@ -14,8 +14,8 @@ tags:
 - eval
 - answer-quality
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-11T18:40:55Z'
-content_hash: sha256:db80412750c3ed4346a731796272e78f4a9faeae469b707469c198922109a46f
+reviewed_at: '2026-08-11T18:58:48Z'
+content_hash: sha256:699ad7400719f81aca0438fc2d23393ea89fcd4e43b9099dd8c785b1618d1f87
 ---
 
 ## 1. What prompted it
@@ -83,7 +83,7 @@ The label was authored before that text existed. Measuring how general the probl
 |---|---|
 | documents in the signed pack | 116 |
 | whose active body hash differs from the pack today | **8** |
-| answerable queries whose gold is one of those 8 | **21 of 40** |
+| answerable queries whose gold is one of those 8 | **22 of 40** |
 
 `로그인 정책` went 3 → 9 active chunks, 11,138 → 4,578 chars. `[파티룸] 디제잉 정책` went 4 → 15
 chunks. Both directions moved: extraction added machine-read text, and the expired-S3-URL repair
@@ -302,8 +302,8 @@ unsupported verdict this SPEC exists to remove.
   document parks in a bucket instead of counting against the grade. The only thing keeping that
   honest is the gate: **a grade reported with a non-empty bucket is inflated**, and any run that
   prints one is a bug in this design, not a reading of it.
-- **Hash binding is byte-level, and meaning is not.** A whitespace repair expires 21 labels; a
-  rewrite that inverts a policy expires them the same way, so the signal carries no severity. And 21
+- **Hash binding is byte-level, and meaning is not.** A whitespace repair expires 22 labels; a
+  rewrite that inverts a policy expires them the same way, so the signal carries no severity. And 22
   labels re-signed in one sitting is exactly the shape that produces rubber-stamping — the gate can
   force a read, it cannot force attention.
 - **The drift gate cannot tell what changed the text**, only that it changed. It reports the
@@ -351,7 +351,7 @@ non-zero.
 1. The three §1 defects are gone on the same inputs: `pb-space-01` scores `correct`,
    `pb-part-02` reaches a human judgment through `unadjudicated` rather than being scored wrong,
    and `pb-part-01`'s label is re-signed against the text actually in the corpus.
-2. The 21 expired labels are re-signed (or corrected) by the human whose name is on them, and the
+2. The 22 expired labels are re-signed (or corrected) by the human whose name is on them, and the
    run passes its own gate afterwards.
 3. Three answer runs on the re-signed labels, recorded in `packb-answer-runs.jsonl` with the
    per-query `ok` map. **Criterion:** the report names the failure count of each run (the noise
@@ -371,6 +371,6 @@ non-zero.
 | U1 | Refusal scope: segments, `refuses`, `leads_with_refusal`, facts on delivered text | `ko_eval_answer_quality.py`, tests |
 | U2 | `unadjudicated` outcome + `not_gold` schema + in-tenant title resolution + gate | `ko_eval_answer_quality.py`, `ko_eval_answer_run.py`, `ko_eval_labels.py`, tests |
 | U3 | `corpus` binding, per-query expiry with `partial` report, tenant refusal, control arm | `ko_eval_labels.py`, `ko_eval_answer_run.py`, tests |
-| U4 | Re-sign the 21 expired labels; adjudicate the open citations; 3 runs | `tests/eval/local/` (not committed), report in the PR body |
+| U4 | Re-sign the 22 expired labels; adjudicate the open citations; 3 runs | `tests/eval/local/` (not committed), report in the PR body |
 
 U4 is the only unit whose product is not code, and the only one that requires the human signature.
