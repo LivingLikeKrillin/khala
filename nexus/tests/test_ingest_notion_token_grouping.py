@@ -13,7 +13,13 @@ migration 009 가 이 실패를 이름까지 붙여 예고했다:
 from __future__ import annotations
 
 
+from nexus.a2a.server import _default_external_ingest_fn
 from nexus.sources import roots_store
+
+# `nexus.a2a` 를 여기서 명시적으로 import 하는 이유: `cli.ingest_notion` 이 그것을 끌어오므로 이
+# 파일은 **a2a 를 건드리는 시험**이고, conftest 의 자동 skip 은 파일 자체의 import 문을 본다.
+# 간접 의존을 숨기면 a2a extra 가 없는 CI 잡에서 ModuleNotFoundError 로 터진다(실제로 터졌다).
+# 숨기는 대신 아래 단언에서 실제로 쓴다.
 
 
 def test_group_by_token_splits_the_walk():
@@ -52,6 +58,7 @@ def test_cli_walks_once_per_token_env(monkeypatch):
     walked: list[tuple[str, ...]] = []
 
     async def _import(source, tenant, ingest_fn, **kw):
+        assert ingest_fn is _default_external_ingest_fn, "적재 함수는 그대로 넘어가야 한다"
         walked.append(built[-1][1])
         return _Report()
 
