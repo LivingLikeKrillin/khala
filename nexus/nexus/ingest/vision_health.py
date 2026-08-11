@@ -20,7 +20,15 @@ import unicodedata
 MAX_VARIATION = 0.10
 
 _SCAFFOLD = re.compile(r"^\s*[|#>\-\s]*$")
-_IDENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.\-]*")
+
+#: 식별자 후보 = 영숫자·한글·연결자(`_ . -`)의 **최대 연속 구간**.
+#:
+#: 앞선 판은 `[A-Za-z0-9][A-Za-z0-9_.-]*` 로 **ASCII 에 앵커**돼 있었고, 그래서
+#: `툴팁_사용가이드_02` 를 `02` 로 잘랐다. 그 조각을 사람에게 "이 문자열이 그림에 있습니까" 로
+#: 물으면 거의 답할 수 없고, 실제로 2026-08-11 판정에서 대조군 하나가 그렇게 뒤집혔다.
+#: 더 나쁜 것은 조용한 쪽이다: 서로 다른 식별자를 읽은 두 판독이 잘린 `02` 에서 **일치로** 세어진다.
+_IDENT_RUN = re.compile(r"[A-Za-z0-9가-힣][A-Za-z0-9가-힣_.\-]*")
+_HAS_ASCII_ALNUM = re.compile(r"[A-Za-z0-9]")
 _HANGUL = re.compile(r"[가-힣]{2,}")
 
 #: NFKC 가 접지 않는 것들. 수학 빼기표와 대시류는 판독기마다 다르게 쓴다.
@@ -47,14 +55,28 @@ def normalize(text: str) -> str:
 
 
 def tokens(text: str) -> tuple[set[str], set[str]]:
-    """(식별자·숫자, 한글) 토큰 집합.
+    """(식별자·숫자, 한글) 토큰 집합. **두 집합은 겹치지 않는다.**
 
     식별자만 판정에 쓴다. 한글 산문은 판독기마다 줄바꿈·조사가 정당하게 달라서, 그 변동을
     판독기 불안정으로 세면 안정된 판독기도 떨어진다 (SPEC §5).
+
+    가르는 규칙: 최대 연속 구간에 **ASCII 영숫자가 하나라도 있으면 식별자**, 없으면(순수 한글)
+    한글 토큰이다. `툴팁_사용가이드_02` 는 통째로 식별자이고, `디제잉` 은 한글이다. 식별자로 간
+    구간은 한글 스캔에서 **제외한다** — 안 그러면 같은 내용이 두 축에 이중으로 세어진다.
     """
     n = normalize(text)
-    idents = {m.group(0) for m in _IDENT.finditer(n) if len(m.group(0)) > 1}
-    hangul = {m.group(0) for m in _HANGUL.finditer(n)}
+    idents: set[str] = set()
+    leftover: list[str] = []
+    last = 0
+    for m in _IDENT_RUN.finditer(n):
+        run = m.group(0)
+        if _HAS_ASCII_ALNUM.search(run):
+            if len(run) > 1:
+                idents.add(run)
+            leftover.append(n[last:m.start()])
+            last = m.end()
+    leftover.append(n[last:])
+    hangul = {h.group(0) for h in _HANGUL.finditer(" ".join(leftover))}
     return idents, hangul
 
 
