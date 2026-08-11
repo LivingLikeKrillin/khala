@@ -103,11 +103,11 @@ async def _fill_images(conv, tenant: str) -> tuple[str, int]:
         return md, 0
 
     from nexus.ingest.pipeline import _load_config
-    from nexus.providers.llm import LLMService
+    from nexus.ingest.vision import vision_service
 
     cfg = _load_config()
     return await vision_store.apply(
-        conv.markdown, conv.images, tenant=tenant, llm_svc=LLMService(),
+        conv.markdown, conv.images, tenant=tenant, llm_svc=vision_service(),
         pii_patterns=(cfg.get("pii_patterns") or {}))
 
 

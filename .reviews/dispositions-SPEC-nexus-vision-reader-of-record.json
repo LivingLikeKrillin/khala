@@ -1,0 +1,17 @@
+[
+  { "issue_id": "I-001", "disposition": "accepted" },
+  { "issue_id": "I-002", "disposition": "accepted" },
+  { "issue_id": "I-003", "disposition": "accepted" },
+  { "issue_id": "I-004", "disposition": "accepted" },
+  { "issue_id": "I-005", "disposition": "accepted" },
+  { "issue_id": "I-006", "disposition": "accepted" },
+  { "issue_id": "I-007", "disposition": "accepted" },
+  { "issue_id": "I-008", "disposition": "accepted" },
+  { "issue_id": "I-009", "disposition": "accepted" },
+  { "issue_id": "I-010", "disposition": "accepted" },
+  { "issue_id": "I-011", "disposition": "accepted" },
+  { "issue_id": "I-012", "disposition": "deferred",
+    "reason": "표식 기제가 이 SPEC 에 없다. `doc_reingest_events` 에 '의도된 마이그레이션' 을 구분할 컬럼이 없고, 그걸 만드는 것은 ADR-0006 의 엔트로피 신호 스키마를 건드리는 별개 변경이다. 다만 지적의 절반은 옳다 — '신호 ① 을 다음에 읽을 때' 는 아무도 지키지 않는 방아쇠다. 그래서 방아쇠를 **관측 가능한 것**으로 바꿨다: 이 마이그레이션이 넣는 5행의 시각과 문서 rid 를 §6 에 적어 둔다. 신호를 읽는 사람이 그 목록과 대조하면 구분되고, 그것은 지금 확인 가능한 사실이다." },
+  { "issue_id": "I-013", "disposition": "accepted" },
+  { "issue_id": "I-014", "disposition": "accepted" }
+]

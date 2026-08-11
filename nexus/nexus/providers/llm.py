@@ -205,6 +205,61 @@ class _ClaudeCodeBackend:
             usage_out.append(r.usage)
 
 
+class _GeminiBackend:
+    """Gemini REST — **그림 판독 전용**이다 (SPEC-nexus-vision-reader-of-record).
+
+    답변 생성 경로는 여기로 오지 않는다: 이 백엔드는 `vision_extract` 만 구현하고, 답변용
+    `generate*` 를 부르면 명시적으로 실패한다. 두 수명주기를 한 백엔드에 묶으면 답변 모델을
+    바꾸는 변경이 추출기 신원을 조용히 움직인다 — `vision.py` 가 상수를 따로 두는 이유와 같다.
+
+    ADR-0010 §6: 요청은 **이미지 한 장**을 싣고, `tools` 를 선언하지 않으며, 파일시스템 경로를
+    담지 않는다. 그 셋이 이 경로의 통제다.
+    """
+
+    ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+    def __init__(self, model: str) -> None:
+        self.model = model
+        self._key = os.getenv("GEMINI_API_KEY", "")
+        self.configured = bool(self._key)
+
+    async def generate_full(self, *_a, **_k):
+        raise NotImplementedError(
+            "Gemini 백엔드는 그림 판독 전용이다 — 답변 생성은 NEXUS_LLM_PROVIDER 가 정한다")
+
+    async def vision_extract(
+        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int
+    ) -> tuple[str, str | None]:
+        """이미지 1장 → (텍스트, 절단 사유).
+
+        `thinkingLevel: minimal` 은 비용이 아니라 **통제**다: 사고 예산이 붙은 팔과 안 붙은 팔을
+        비교하면 차이를 판독 능력으로 못 돌린다. Gemini 3.x 는 `thinkingBudget: 0` 을 400 으로
+        거부하므로 끌 수는 없고 낮출 수만 있다 (실측).
+        """
+        if not self._key:
+            raise RuntimeError("GEMINI_API_KEY 가 없다 — 그림 판독기가 설정되지 않았다")
+        body = {
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "contents": [{"role": "user", "parts": [
+                {"inline_data": {"mime_type": media_type, "data": image_b64}},
+            ]}],
+            "generationConfig": {"temperature": 0, "maxOutputTokens": max_tokens,
+                                 "thinkingConfig": {"thinkingLevel": "minimal"}},
+        }
+        async with httpx.AsyncClient(timeout=300) as client:
+            resp = await client.post(self.ENDPOINT.format(model=self.model),
+                                     headers={"x-goog-api-key": self._key}, json=body)
+        if resp.status_code != 200:
+            raise RuntimeError(f"Gemini {resp.status_code}: {resp.text[:300]}")
+        data = resp.json()
+        text, stop = "", None
+        for cand in data.get("candidates", []):
+            stop = cand.get("finishReason") or stop
+            for part in (cand.get("content") or {}).get("parts", []):
+                text += part.get("text", "")
+        return text, (stop if stop not in (None, "STOP") else None)
+
+
 class LLMService:
     """LLM 답변 생성. 백엔드 선택을 격리한다."""
 
@@ -214,11 +269,20 @@ class LLMService:
 
     def __init__(
         self, model: str | None = None, api_key: str | None = None,
-        pricing: dict | None = None,
+        pricing: dict | None = None, vision_backend: str | None = None,
     ) -> None:
         self.model = model or os.getenv("NEXUS_LLM_MODEL") or self.DEFAULT_MODEL
         self._pricing = pricing if pricing is not None else _load_pricing()
-        provider = (os.getenv("NEXUS_LLM_PROVIDER") or "anthropic").strip().lower()
+        # 그림 판독기는 **답변 백엔드와 수명주기가 다르다** (ADR-0010; vision.VISION_BACKENDS).
+        # 호출자가 명시하면 그것이 이긴다 — 그래야 답변 provider 를 바꾸는 변경이 추출기 신원을
+        # 조용히 움직이지 않는다.
+        if vision_backend == "gemini":
+            self._backend = _GeminiBackend(self.model)
+            self.configured = self._backend.configured
+            return
+        provider = (vision_backend or os.getenv("NEXUS_LLM_PROVIDER") or "anthropic").strip().lower()
+        if provider == "claude":
+            provider = "claude-code" if os.getenv("NEXUS_LLM_BRIDGE_URL") else "anthropic"
         if provider == "anthropic":
             self._backend: _AnthropicBackend | _ClaudeCodeBackend = _AnthropicBackend(
                 self.model, api_key)
