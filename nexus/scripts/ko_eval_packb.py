@@ -101,6 +101,27 @@ async def _collect(con, tenant: str) -> dict[str, dict]:
     return out
 
 
+async def tenant_bodies(con, tenant: str) -> dict[str, dict]:
+    """`{문서키: {sha, chunks, chars, machine_read}}` — **지금** 그 테넌트에 있는 본문.
+
+    해시는 매니페스트와 **같은 함수**다. 갈라지면 라벨 서명과 팩 서명이 다른 것을 재게 된다.
+    `machine_read` 를 같이 내는 이유는 재서명하는 사람이 자기가 무엇에 서명하는지 봐야 하기
+    때문이다 — ADR-0010 §2 는 기계가 읽은 텍스트를 저술 텍스트와 같이 취급하지 말라고 한다.
+    """
+    docs = await _collect(con, tenant)
+    tiers = {r["key"]: r["n"] for r in await con.fetch(
+        "SELECT split_part(d.source_uri, ':', 2) AS key, count(*) AS n "
+        "FROM documents d JOIN chunks c ON c.doc_rid = d.rid AND c.tenant = d.tenant "
+        "WHERE d.tenant = $1 AND d.status = 'active' AND c.status = 'active' "
+        "  AND d.is_quarantined = false AND c.is_quarantined = false "
+        "  AND c.provenance_tier = 'machine_read' GROUP BY 1", tenant)}
+    return {key: {"sha": _body_hash([t for _, _, t in doc["chunks"]]),
+                  "chunks": len(doc["chunks"]),
+                  "chars": sum(len(t) for _, _, t in doc["chunks"]),
+                  "machine_read": tiers.get(key, 0)}
+            for key, doc in docs.items()}
+
+
 async def cmd_freeze(args) -> int:
     """라이브 테넌트를 스냅샷 테넌트로 얼리고 매니페스트를 쓴다."""
     from nexus import db

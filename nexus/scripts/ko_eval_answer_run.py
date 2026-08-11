@@ -25,9 +25,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.ko_eval_answer_quality import aggregate, grid, score_answer  # noqa: E402
-from scripts.ko_eval_labels import ManifestPack, check, load  # noqa: E402
-from scripts.ko_eval_packb import MANIFEST  # noqa: E402
+from scripts.ko_eval_answer_quality import aggregate, grid, refuses, score_answer  # noqa: E402
+from scripts.ko_eval_labels import ManifestPack, check, expired, load  # noqa: E402
+from scripts.ko_eval_packb import MANIFEST, tenant_bodies  # noqa: E402
 
 LOCAL_DIR = Path(__file__).resolve().parents[1] / "tests" / "eval" / "local"
 LABELS = LOCAL_DIR / "packb-labels.yaml"
@@ -39,7 +39,7 @@ RUNS = LOCAL_DIR / "packb-answer-runs.jsonl"
 TENANT = "default"
 
 
-def gate_reasons(summary: dict) -> list[str]:
+def gate_reasons(summary: dict, expired_qids: list[str] | None = None) -> list[str]:
     """총점을 내면 안 되는 이유들. 비어 있어야 실행이 결과가 된다.
 
     관문을 **뒤**에 두면 숫자를 보고 자를 고치게 되므로, 이 판단은 총점 출력 이전에 한다.
@@ -47,10 +47,14 @@ def gate_reasons(summary: dict) -> list[str]:
     reasons = []
     if qids := summary.get("unadjudicated_qids"):
         reasons.append(f"미판정 {len(qids)}건: {', '.join(qids)}")
+    if expired_qids:
+        reasons.append(f"만료된 라벨 {len(expired_qids)}건: {', '.join(expired_qids[:6])}"
+                       + (" …" if len(expired_qids) > 6 else ""))
     return reasons
 
 
-def _write_report(args, labels, llm, summary, rows, *, partial: bool) -> None:
+def _write_report(args, labels, llm, summary, rows, *, partial: bool,
+                  expired_qids: list[str] | None = None, controls: list | None = None) -> None:
     """리포트는 막힌 실행에서도 쓴다 — **판정할 재료가 리포트 안에 있기 때문이다.**
 
     막혔다는 사실은 파일 안에 `partial` 로 남는다. 사람의 기억이 아니라 파일이 그것을 말해야
@@ -61,7 +65,8 @@ def _write_report(args, labels, llm, summary, rows, *, partial: bool) -> None:
         {"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
          "labels_revision": labels["revision"], "tenant": TENANT,
          "tag": args.tag, "llm_model": getattr(llm, "model", None),
-         "partial": partial, "summary": summary, "queries": rows},
+         "partial": partial, "expired": expired_qids or [],
+         "controls": controls or [], "summary": summary, "queries": rows},
         ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     if partial:
         print(f"\n기록: {REPORT}  (partial — 총점 없음, 판정 재료만)")
@@ -76,8 +81,15 @@ async def _run(args) -> int:
     from nexus.llm.answer import generate_answer
 
     labels = load(LABELS)
-    if problems := check(labels, ManifestPack(MANIFEST)):
+    if problems := check(labels, ManifestPack(MANIFEST), require_corpus_binding=True):
         print("✗ 라벨 게이트 실패 — 측정 이전에 자가 틀렸다:", *problems[:4], sep="\n  ")
+        return 1
+
+    # **서명된 테넌트가 아니면 시작하지 않는다.** 다른 테넌트의 해시는 이 라벨에 대해 아무것도
+    # 말해 주지 않으므로, 만료도 통과도 판정할 수 없다.
+    signed_tenant = (labels.get("corpus") or {}).get("tenant")
+    if signed_tenant != TENANT:
+        print(f"✗ 라벨은 테넌트 {signed_tenant!r} 에 서명됐는데 재는 것은 {TENANT!r} 이다")
         return 1
 
     titles = {d["key"]: d["title"] for d in json.loads(MANIFEST.read_text(encoding="utf-8"))["docs"]}
@@ -94,7 +106,31 @@ async def _run(args) -> int:
         known_titles = {r["title"] for r in await con.fetch(
             "SELECT DISTINCT title FROM documents "
             "WHERE tenant = $1 AND status = 'active' AND is_quarantined = false", TENANT)}
-    scores, rows = [], []
+        live = await tenant_bodies(con, TENANT)
+
+    # ── 라벨이 서명된 본문과 지금 재는 본문이 같은가 ──────────────────────────
+    stale = expired(labels, {k: v["sha"] for k, v in live.items()})
+    if stale:
+        signed = (labels.get("corpus") or {}).get("bodies") or {}
+        print(f"✗ 만료된 라벨 {len(stale)}건 — 서명된 본문이 지금 코퍼스에 없다.")
+        print("  라벨은 문서에 대한 주장이다. 본문이 바뀌면 그 주장은 사라진 텍스트에 대한 것이다.")
+        for qid, keys in list(stale.items())[:8]:
+            for k in keys:
+                now = live.get(k)
+                if now is None:
+                    print(f"    {qid:12s} {titles.get(k, k)[:28]:28s} 코퍼스에서 사라졌다")
+                    continue
+                seen = "서명됨" if k in signed else "서명 없음"
+                print(f"    {qid:12s} {titles.get(k, k)[:28]:28s} "
+                      f"{now['chunks']:2d}청크 {now['chars']:6d}자 "
+                      f"(기계가 읽은 청크 {now['machine_read']}) — {seen}")
+        if len(stale) > 8:
+            print(f"    … 외 {len(stale) - 8}건")
+        print("  사람이 바뀐 문서를 다시 읽고 rationale·must_contain·gold·not_gold 를 확인한 뒤")
+        print("  revision 을 올려 다시 서명해야 한다. 만료된 질의는 채점하지 않는다.\n")
+        queries = [q for q in queries if q["id"] not in stale]
+
+    scores, rows, controls = [], [], []
     sufficiency: dict[str, str] = {}
     try:
         for q in queries:
@@ -135,11 +171,38 @@ async def _run(args) -> int:
             print(f"{mark} {q['id']:12s} 근거{'✓' if s.grounded else '✗'} "
                   f"정답문서{'✓' if s.cites_gold else '✗'} 사실{'✓' if s.has_facts else '✗'}"
                   f"  인용 {s.n_citations}")
+
+        # ── 대조군: 코퍼스가 답을 못 가진 질의에서 답변자는 거절해야 한다 ──────
+        # 이 팔이 없으면 기권 탐지기에는 **양성 대조군이 없다**. 라벨엔 5건이 일주일째 있었고
+        # 한 번도 안 돌렸다 — 돌리자마자 규칙 하나가 죽었다(SPEC §1.4).
+        for q in ([q for q in labels["queries"] if not q.get("answerable")]
+                  if args.controls else []):
+            result = await hybrid.hybrid_search(q["query"], tenant=TENANT, clearance="INTERNAL",
+                                                top_k=10, embedding_svc=svc)
+            ans = await generate_answer(q["query"], assemble_packet(result.hits, result.graph),
+                                        llm_svc=llm)
+            if ans.llm_failed:
+                print(f"✗ {q['id']}: LLM 호출 실패 — 대조군도 결과가 아니다")
+                return 1
+            controls.append({"qid": q["id"], "refused": refuses(ans.answer),
+                             "chars": len(ans.answer), "answer": ans.answer})
+            print(f"{'OK ' if controls[-1]['refused'] else '‼  '} {q['id']:12s} "
+                  f"거절{'✓' if controls[-1]['refused'] else '✗'}  {len(ans.answer)}자")
     finally:
         await db.close_pool()
 
     a = aggregate(scores)
     o = a["outcomes"]
+
+    # ── 대조군이 거절하지 않았다면, 그것은 **환각 판정이 아니라 재판정 대상**이다 ──
+    # 코퍼스가 답을 얻었을 수도 있고(2026-08-10 에 스크린샷 44장이 그렇게 했다) 답변자가
+    # 지어냈을 수도 있다. 자는 둘을 못 가른다 — 그러니 이름만 부르고 멈춘다.
+    if answered := [c["qid"] for c in controls if not c["refused"]]:
+        print(f"\n  ‼ 대조군 {len(answered)}건이 거절하지 않았다: {', '.join(answered)}")
+        print("    코퍼스가 답을 얻었는지(라벨을 answerable 로 뒤집어야 한다) 답변자가 지어냈는지")
+        print("    자는 못 가른다. 사람이 근거를 읽어야 한다.")
+    elif controls:
+        print(f"\n  대조군 {len(controls)}/{len(controls)} 거절 — 기권 탐지기의 양성 대조군은 살아 있다")
 
     # ── 판정할 거리는 총점보다 먼저 나온다 ────────────────────────────────────
     # **미판정은 오답이 아니다.** 사실을 배달했고 인용이 해소되는데 라벨이 그 문서를 판정한 적이
@@ -149,11 +212,12 @@ async def _run(args) -> int:
         for qid, cited in a["adjudication_candidates"].items():
             flag = "‼" if qid in a["unadjudicated_qids"] else " "
             print(f"   {flag} {qid:12s} {', '.join(cited)}")
-    if reasons := gate_reasons(a):
+    if reasons := gate_reasons(a, sorted(stale)):
         print(f"\n✗ **총점을 내지 않는다** — {' · '.join(reasons)}")
         print("  사람이 그 문서를 읽고 라벨의 gold 또는 not_gold 로 보내야 닫힌다.")
         print("  (판정 없이 나온 총점은 부풀려진 수다 — SPEC-nexus-answer-quality-ruler §3.2)")
-        _write_report(args, labels, llm, a, rows, partial=True)
+        _write_report(args, labels, llm, a, rows, partial=True,
+                      expired_qids=sorted(stale), controls=controls)
         return 1
 
     print(f"\n  정답 {o['correct']}   오답 {o['incorrect']}   기권 {o['abstained']}"
@@ -175,7 +239,7 @@ async def _run(args) -> int:
     if a["failed"]:
         print(f"  실패: {', '.join(a['failed'])}")
 
-    _write_report(args, labels, llm, a, rows, partial=False)
+    _write_report(args, labels, llm, a, rows, partial=False, controls=controls)
 
     # **덮어쓰지 않고 쌓는다.** REPORT 는 매 실행이 덮으므로 회차 간 변동을 담을 수 없고, 변동을
     # 모르면 두 모델의 차이가 잡음인지 실력인지 못 가린다. 질의별 `ok` 까지 남겨야 다수결이 된다.
@@ -201,6 +265,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--limit", type=int, default=40, help="LLM 을 부르는 횟수 — 돈이 든다")
     ap.add_argument("--tag", default="", help="이 실행의 이름(모델 팔·반복 회차 구분용)")
     ap.add_argument("--model", default="", help="브리지에 넘길 모델. 비우면 백엔드 기본값")
+    ap.add_argument("--controls", action="store_true",
+                    help="답변불가 5건도 돌린다 — 기권 탐지기의 **양성 대조군**이다. "
+                         "거절하지 않는 대조군은 라벨 재판정 대상이다")
     ap.add_argument("--sufficiency", action="store_true",
                     help="근거 충분성도 판정한다(질의당 LLM 1회 추가). 이것 없이는 기권이 "
                          "정직한 기권인지 과잉 기권인지, 오답이 생성 결함인지 환각인지 못 가른다")

@@ -24,8 +24,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.ko_eval_labels import ManifestPack, check, load  # noqa: E402
-from scripts.ko_eval_packb import MANIFEST  # noqa: E402
+from scripts.ko_eval_labels import ManifestPack, check, expired, load  # noqa: E402
+from scripts.ko_eval_packb import MANIFEST, tenant_bodies  # noqa: E402
 
 LOCAL_DIR = Path(__file__).resolve().parents[1] / "tests" / "eval" / "local"
 LABELS = LOCAL_DIR / "packb-labels.yaml"
@@ -39,8 +39,11 @@ async def _run(args) -> int:
     from nexus.search import hybrid
 
     labels = load(LABELS)
-    if problems := check(labels, ManifestPack(MANIFEST)):
+    if problems := check(labels, ManifestPack(MANIFEST), require_corpus_binding=True):
         print("✗ 라벨 게이트 실패 — 측정 이전에 자가 틀렸다:", *problems[:4], sep="\n  ")
+        return 1
+    if (signed := (labels.get("corpus") or {}).get("tenant")) != TENANT:
+        print(f"✗ 라벨은 테넌트 {signed!r} 에 서명됐는데 재는 것은 {TENANT!r} 이다")
         return 1
 
     titles = {d["key"]: d["title"] for d in json.loads(MANIFEST.read_text(encoding="utf-8"))["docs"]}
@@ -49,7 +52,19 @@ async def _run(args) -> int:
           f"(테넌트 {TENANT}, LLM 미사용)\n")
 
     svc = embedding_service_from_config()
-    await db.get_pool()
+    pool = await db.get_pool()
+    # **같은 라벨·같은 테넌트를 재므로 같은 만료가 여기에도 걸린다.** 답변 쪽에만 게이트를 달면
+    # 만료된 라벨로 잰 숫자가 이 문으로 그대로 나온다(SPEC-nexus-answer-quality-ruler §3.3).
+    async with pool.acquire() as con:
+        stale = expired(labels, {k: v["sha"] for k, v in (await tenant_bodies(con, TENANT)).items()})
+    if stale:
+        print(f"✗ 만료된 라벨 {len(stale)}건 — 서명된 본문이 지금 코퍼스에 없다: "
+              f"{', '.join(sorted(stale)[:6])}{' …' if len(stale) > 6 else ''}")
+        print("  사람이 바뀐 문서를 다시 읽고 revision 을 올려 서명해야 한다.")
+        queries = [q for q in queries if q["id"] not in stale]
+        if not queries:
+            await db.close_pool()
+            return 1
     rows, ranks = [], []
     try:
         for q in queries:
@@ -77,18 +92,26 @@ async def _run(args) -> int:
     recall = len(hit) / n if n else 0.0
     mrr = sum(1 / r for r in hit) / n if n else 0.0
     top1 = sum(1 for r in hit if r == 1) / n if n else 0.0
-    print(f"\n  Recall@{args.top_k} {len(hit)}/{n} = {recall:.3f}"
-          f"   MRR {mrr:.3f}   Top-1 {top1:.3f}")
     misses = [r["qid"] for r in rows if not r["rank"]]
+
+    # **만료가 있으면 총점을 찍지 않는다.** 21/40 은 성적이 아니고, 성적처럼 인용되면 안 된다.
+    # 질의별 순위는 그대로 쓴다 — 재서명하는 사람이 볼 재료가 그것이다.
+    if stale:
+        print(f"\n  ✗ 만료 {len(stale)}건 — 총점 없음. 잰 질의 {n}건의 순위만 남긴다.")
+    else:
+        print(f"\n  Recall@{args.top_k} {len(hit)}/{n} = {recall:.3f}"
+              f"   MRR {mrr:.3f}   Top-1 {top1:.3f}")
     if misses:
         print(f"  놓친 질의: {', '.join(misses)}")
 
     REPORT.write_text(json.dumps(
         {"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
          "labels_revision": labels["revision"], "tenant": TENANT, "top_k": args.top_k,
-         "recall": recall, "mrr": mrr, "top1": top1, "queries": rows},
+         "partial": bool(stale), "expired": sorted(stale),
+         **({} if stale else {"recall": recall, "mrr": mrr, "top1": top1}),
+         "queries": rows},
         ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    return 0
+    return 1 if stale else 0
 
 
 def main() -> int:

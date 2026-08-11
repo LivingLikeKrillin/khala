@@ -45,6 +45,34 @@ def load(path: Path = DEFAULT_LABELS) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
+def judged_keys(q: dict) -> list[str]:
+    """이 질의에서 **사람이 판정한** 문서들 — 양성(gold)과 음성(not_gold) 둘 다.
+
+    둘 다 텍스트에 묶인다. 음성만 안 묶으면, 판정 뒤에 기계가 그림에서 읽은 텍스트가 들어와
+    답을 담게 된 문서가 영원히 not_gold 로 남아 재판정이 막힌다.
+    """
+    return list(q.get("gold") or []) + list(q.get("not_gold") or [])
+
+
+def expired(labels: dict, live_bodies: dict[str, str]) -> dict[str, list[str]]:
+    """서명된 본문과 **지금 재는 코퍼스**가 다른 질의 → {qid: [바뀐 문서키]}.
+
+    라벨은 문서에 대한 주장이다("이 문서가 이 질의에 답하고, 답에는 이 사실이 있어야 한다").
+    그 문서의 본문이 바뀌면 주장은 사라진 텍스트에 대한 것이 된다 — 2026-08-10 에 44장의
+    스크린샷이 코퍼스에 들어오면서 실제로 그렇게 됐고, 게이트가 매니페스트만 보느라 못 봤다.
+    """
+    signed = ((labels.get("corpus") or {}).get("bodies") or {})
+    out: dict[str, list[str]] = {}
+    for q in labels.get("queries") or []:
+        if not q.get("answerable"):
+            continue
+        moved = [k for k in judged_keys(q)
+                 if signed.get(k) != live_bodies.get(k)]
+        if moved:
+            out[q["id"]] = moved
+    return out
+
+
 def answerable(labels: dict) -> list[dict]:
     """집계에 들어가는 질의만 (§4.3 분모는 40이지 45가 아니다)."""
     return [q for q in labels.get("queries", []) if q.get("answerable")]
@@ -115,10 +143,14 @@ def _as_corpus(source):
     return DiskPack(source) if isinstance(source, (str, Path)) else source
 
 
-def check(labels: dict, pack_dir) -> list[str]:
+def check(labels: dict, pack_dir, *, require_corpus_binding: bool = False) -> list[str]:
     """라벨 파일의 자 검사. 문제 목록을 돌려준다(빈 목록 = 통과).
 
     `pack_dir` 는 디스크 팩 경로이거나 `ManifestPack` 같은 코퍼스다.
+
+    `require_corpus_binding` 은 **살아 있는 테넌트를 재는 실행**이 켠다(Pack B). 디스크 팩
+    (Pack A)은 매니페스트 해시 가드가 이미 같은 일을 하므로 켜지 않는다 — 팩은 얼어 있고,
+    움직이는 것은 테넌트다.
     """
     corpus = _as_corpus(pack_dir)
     problems: list[str] = []
@@ -127,6 +159,20 @@ def check(labels: dict, pack_dir) -> list[str]:
         problems.append("revision 없음 — 바닥값이 어느 라벨판에 박혔는지 말할 수 없다")
     if not labels.get("pack"):
         problems.append("pack 없음 — 어느 코퍼스에 대한 라벨인지 말할 수 없다")
+
+    if require_corpus_binding:
+        block = labels.get("corpus") or {}
+        signed = block.get("bodies") or {}
+        if not block.get("tenant"):
+            problems.append("corpus.tenant 없음 — 어느 테넌트에 서명했는지 말할 수 없는 자다")
+        if not signed:
+            problems.append("corpus.bodies 없음 — 어느 본문에 서명했는지 말할 수 없는 자다")
+        else:
+            missing = sorted({k for q in (labels.get("queries") or []) if q.get("answerable")
+                              for k in judged_keys(q)} - set(signed))
+            if missing:
+                problems.append(
+                    "판정된 문서인데 서명된 본문 해시가 없다 — " + ", ".join(missing[:4]))
 
     problems += [f"금지된 키(기대 어휘 칸): {k}" for k in _banned_keys(labels)]
 

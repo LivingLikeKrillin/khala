@@ -68,3 +68,18 @@ def test_a_complete_run_is_not_marked_partial(tmp_path, monkeypatch):
     run._write_report(SimpleNamespace(tag="t"), {"revision": 9}, SimpleNamespace(model="m"),
                       _summary(s), [{"qid": "a"}], partial=False)
     assert json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))["partial"] is False
+
+
+def test_an_expired_label_blocks_the_grade_too():
+    """만료된 라벨은 사라진 텍스트에 대한 주장이다 — 그 위에서 나온 총점은 결과가 아니다."""
+    s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
+                     [["100"]], known_titles=TENANT_TITLES)
+    reasons = run.gate_reasons(_summary(s), ["pb-part-01", "pb-space-05"])
+    assert reasons and "만료된 라벨 2건" in reasons[0]
+
+
+def test_the_two_reasons_are_reported_separately():
+    s = score_answer("b", "100 곡 [출처: 아무도 판정 안 한 문서]",
+                     [_cite("아무도 판정 안 한 문서")], {"정답 문서"}, [["100"]],
+                     known_titles=TENANT_TITLES)
+    assert len(run.gate_reasons(_summary(s), ["pb-part-01"])) == 2
