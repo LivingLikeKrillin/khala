@@ -508,6 +508,30 @@ def status() -> None:
 
             # 선언되지 않은 테넌트 (SPEC-nexus-generation-of-record §3.5). 선언이 없으면 §3.2 의
             # 가드가 통과시키므로, 고쳐 놓고도 노출된 상태다 — 그 상태를 여기서 지목한다.
+            # 그림 판독기의 재현율 (SPEC-nexus-vision-reproducibility §2.3). 컬럼을 만들어 두고
+            # 아무도 안 읽으면 신호가 아니다 — 이 리포가 그 실패를 이미 한 번 기록했다.
+            # `machine_read` 청크가 없는 테넌트에는 **한 줄도 찍지 않는다**: 새 상시 경보를
+            # 만드는 것이 오늘 고친 문제의 모양이다.
+            from nexus.ingest.vision_health import MAX_VARIATION, fetch_reader_health
+            try:
+                for row_ in [c for c in coverage if c["active"]]:
+                    vh = await fetch_reader_health(row_["tenant"])
+                    if not vh["machine_read_chunks"]:
+                        continue
+                    typer.echo(
+                        f"  그림 판독 {row_['tenant']:<16} machine_read 청크 "
+                        f"{vh['machine_read_chunks']:>4}  추출 {vh['extractions']:>4}")
+                    if vh["unmeasured"]:
+                        typer.echo(
+                            f"   └ ⚠ 재현율 미측정 추출 {vh['unmeasured']}건 — 이 판독기가 같은 "
+                            f"그림을 두 번 읽어 같은 값을 내는지 아무도 안 쟀다")
+                    if vh["above_threshold"]:
+                        typer.echo(
+                            f"   └ ⚠ 재현율이 문턱({MAX_VARIATION:.0%})을 넘는 추출 "
+                            f"{vh['above_threshold']}건 — 같은 바이트가 다른 텍스트를 낸다")
+            except Exception:      # noqa: BLE001 — 마이그레이션 전이면 컬럼이 없다
+                pass
+
             # 면제 테넌트는 **묻지 않는다**: 벡터를 일부러 안 만드는 코퍼스에게 "어느 세대냐" 는
             # 물음은 성립하지 않는다. 여기를 빼먹었더니 ⚠ 가 3줄이 됐고, 그중 2줄이 영원히 안
             # 꺼지는 것이었다 — 이 작업이 통째로 그 실패에 관한 것이다.

@@ -13,7 +13,7 @@
 | SPEC-nexus-screenshot-text-extraction | Read the policy that lives inside screenshots — khala absorbs the friction, the organisation does not retype its documents | LivingLikeKrillin |  | ADR-0002, ADR-0004, ADR-0006, ADR-0010 |
 | SPEC-nexus-sufficiency-signal | Record whether the evidence answered the question — a per-search verdict, off by default |  |  | ADR-0002, ADR-0006 |
 
-## 🟢 승인 (44)
+## 🟢 승인 (45)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
@@ -48,6 +48,7 @@
 | SPEC-nexus-search-signal-completeness | Search signals — record the streaming path, and measure citation fabrication | LivingLikeKrillin |  | ADR-0004, ADR-0006 |
 | SPEC-nexus-slack-bot | The Slack bot, revived — the lowest-friction on-ramp for a team that lives in Slack | LivingLikeKrillin | 2026-07-10 | ADR-0004 |
 | SPEC-nexus-snippet-boundary-truncation | Evidence snippets truncate at a sentence boundary, not mid-sentence | LivingLikeKrillin |  | ADR-0004 |
+| SPEC-nexus-vision-reproducibility | The reader must be able to repeat itself — ADR-0010's central invariant is false in production, and nothing was checking | LivingLikeKrillin |  | ADR-0006, ADR-0010 |
 | SPEC-nexus-web-citation-verification | Web chat renders citation verification (verified / unverified) | LivingLikeKrillin |  |  |
 | SPEC-probe-a2a-client-phase1 | Phase 1 — Probe as an A2A client of Nexus | LivingLikeKrillin | 2026-06-18 | ADR-0001 |
 | SPEC-probe-cli | Probe gets a CLI — the deterministic spine as one command, the judgment left where it belongs | LivingLikeKrillin |  | ADR-0004, ADR-0005 |
