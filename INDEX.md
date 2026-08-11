@@ -13,7 +13,7 @@
 | SPEC-nexus-screenshot-text-extraction | Read the policy that lives inside screenshots — khala absorbs the friction, the organisation does not retype its documents | LivingLikeKrillin |  | ADR-0002, ADR-0004, ADR-0006, ADR-0010 |
 | SPEC-nexus-sufficiency-signal | Record whether the evidence answered the question — a per-search verdict, off by default |  |  | ADR-0002, ADR-0006 |
 
-## 🟢 승인 (43)
+## 🟢 승인 (44)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
@@ -30,6 +30,7 @@
 | SPEC-nexus-embed-generation-drift | Detect mixed embedding generations (partial re-embed guardrail) | LivingLikeKrillin |  |  |
 | SPEC-nexus-embed-tokenizer-race | The over-length guard races the encoder - give it its own tokenizer | LivingLikeKrillin | 2026-08-05T01:28:06Z | ADR-0008 |
 | SPEC-nexus-embedding-cutover-seam | The embedding cutover seam is half-built - the query path, the write path, and the wiring still hardcode the old generation | LivingLikeKrillin | 2026-08-04T13:28:28Z | ADR-0008 |
+| SPEC-nexus-generation-of-record | Which generation is this corpus on — declare it in the database, because two processes reading the same config disagreed and nothing noticed | LivingLikeKrillin |  | ADR-0006, ADR-0008, ADR-0009 |
 | SPEC-nexus-graph-scope-filter | The graph channel must obey base_filter — stop cross-tenant / over-clearance / quarantined leakage | LivingLikeKrillin |  | ADR-0004, ADR-0006 |
 | SPEC-nexus-index-completeness | Surface the coverage signal where someone reads it — the gap was measured, logged, and buried under an alarm that is always on | LivingLikeKrillin |  | ADR-0006, ADR-0008, ADR-0009 |
 | SPEC-nexus-ko-eval-pool-sensitivity | A record of measurements already taken — how far the deferred pool adjudication could move the KURE verdict | LivingLikeKrillin | 2026-08-05 | ADR-0009, ADR-0008 |

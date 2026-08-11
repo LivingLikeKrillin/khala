@@ -126,6 +126,30 @@ async def _save_document(
     return rid
 
 
+def _invalidate_derived() -> str:
+    """텍스트가 바뀌면 그 텍스트에서 파생된 **모든 것**을 무효화하는 SET 절
+    (SPEC-nexus-generation-of-record §3.4).
+
+    예전엔 `embedding` 과 `tsvector_ko` 만 NULL 로 되돌렸다. 컬럼이 하나이던 시절엔 그게 전부였고,
+    ADR-0006 은 그 수정을 두고 *"killing stale-vector retrieval drift"* 라고 적었다. 두 번째 벡터
+    컬럼이 생기면서 그 문장이 거짓이 됐다 — 재임베딩 큐가 `WHERE <컬럼> IS NULL` 이라, 안 지워진
+    컬럼은 큐에 영영 안 들어가고 **옛 텍스트의 벡터로 검색된다**. 실측 8건(최저 코사인 0.593).
+
+    그래서 컬럼을 손으로 나열하지 않고 **레지스트리에서 꺼낸다.** 세 번째 세대가 추가될 때
+    누군가 이 함수를 잊는 것이 이 버그가 돌아오는 유일한 길이었다.
+
+    컬럼명은 화이트리스트(`VECTOR_COLUMNS`)에서만 오므로 문자열 조립이 안전하다 — 설정값이
+    SQL 에 닿는 경로가 아니다.
+    """
+    from nexus.index.vector_index import VECTOR_COLUMNS
+
+    changed = "chunks.chunk_text IS DISTINCT FROM EXCLUDED.chunk_text"
+    parts = [f"{col} = CASE WHEN {changed} THEN NULL ELSE chunks.{col} END"
+             for col in sorted(VECTOR_COLUMNS)]
+    parts.append(f"tsvector_ko = CASE WHEN {changed} THEN NULL ELSE chunks.tsvector_ko END")
+    return ",\n                ".join(parts)
+
+
 async def _save_chunks(
     chunks: list[ChunkData],
     parent_rid: str,
@@ -156,7 +180,7 @@ async def _save_chunks(
         now = datetime.now(timezone.utc)
 
         await db.execute(
-            """
+            f"""
             INSERT INTO chunks (
                 rid, rtype, tenant, classification, owner,
                 source_uri, source_kind, hash,
@@ -182,10 +206,7 @@ async def _save_chunks(
                 classification = EXCLUDED.classification,
                 updated_at = EXCLUDED.updated_at,
                 status = $12,
-                embedding   = CASE WHEN chunks.chunk_text IS DISTINCT FROM EXCLUDED.chunk_text
-                                   THEN NULL ELSE chunks.embedding END,
-                tsvector_ko = CASE WHEN chunks.chunk_text IS DISTINCT FROM EXCLUDED.chunk_text
-                                   THEN NULL ELSE chunks.tsvector_ko END
+                {_invalidate_derived()}
             """,
             rid, tenant, classification.classification,
             collected.canonical_uri, collected.content_hash,
@@ -316,6 +337,18 @@ async def run_ingest(
     """
     config = _load_config(config_path)
     result = IngestResult()
+
+    # 0. 이 프로세스가 해석한 세대가 코퍼스의 선언과 같은가 (SPEC-nexus-generation-of-record §3.2).
+    # **collect 보다도 먼저** 본다: "아무것도 쓰기 전에 거부한다" 는 문서 한 행도 안 남긴다는 뜻이다.
+    # 모든 쓰기 경로(CLI·HTTP·A2A·ingest-notion)가 이 함수로 모이므로 검사는 여기 한 곳이면 된다.
+    if not skip_index:
+        from nexus.index.generation import assert_writable
+        from nexus.index.vector_index import configured_column
+        from nexus.providers.embedding import embedding_service_from_config
+
+        svc = embedding_service_from_config(config)
+        await assert_writable(tenant, configured_column(config), svc.get_model_name(),
+                              what="ingest")
 
     # 1. Collect
     glob_pattern = config.get("sources", {}).get("glob_pattern", "**/*.md")

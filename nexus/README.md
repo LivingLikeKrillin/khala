@@ -293,6 +293,12 @@ Response includes evidence snippets with source URIs and provenance.
 
 컨테이너 안에서 돈다: `docker compose exec nexus-app nexus <command>`.
 
+> **쓰는 명령은 반드시 그렇게 돌린다.** 임베딩 세대(모델·컬럼)는 env 로 오고 그 env 는 컨테이너
+> 안에만 있다. 호스트 셸에서 그냥 `nexus ingest` 를 치면 `config.yaml` 기본값으로 해석돼
+> **배포가 검색하지 않는 컬럼**에 적재된다 — 2026-08-10 에 실제로 그렇게 됐다
+> (`SPEC-nexus-generation-of-record`). 컨테이너 없이 운영한다면 같은 변수를 export 한 셸에서
+> 돌린다. 세대를 DB 에 선언(`nexus generation declare`)해 두면 어긋난 실행은 **거부**된다.
+
 ```bash
 # ── 적재 ──
 nexus ingest ./docs                         # 문서 인덱싱
