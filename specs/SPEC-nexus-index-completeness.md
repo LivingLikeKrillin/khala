@@ -14,8 +14,8 @@ tags:
 - embedding
 - observability
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-10T18:44:40Z'
-content_hash: sha256:73ea975849674c394ae45b51fa730b5d865325bc4cc5e742d8cb30206988585f
+reviewed_at: '2026-08-11T03:13:09Z'
+content_hash: sha256:4c1cb70652b99fdde592fcea244d957be089e7d84d12154e93af507079342b7c
 ---
 
 ## 1. What prompted it
@@ -34,10 +34,22 @@ FROM chunks WHERE tenant = 'default' AND status = 'active' GROUP BY 1;
 | `machine_read` (text read out of screenshots) | 45 | **45 — all of them** |
 | `authored` | 289 | 6 |
 
-All 51 carried `updated_at` inside the ingest window 2026-08-10 13:08–13:10 UTC, and chunks written
-in that same window **did** receive vectors — so that run's vector indexing stopped partway. The
-content that went missing is the whole payoff of [[SPEC-nexus-screenshot-text-extraction]]: the
-policy text extracted from 44 screenshots was reachable only through the keyword leg, for a day.
+All 51 carried `updated_at` inside the ingest window 2026-08-10 13:08–13:10 UTC. The content that
+went missing is the whole payoff of [[SPEC-nexus-screenshot-text-extraction]]: the policy text
+extracted from 44 screenshots was reachable only through the keyword leg, for a day.
+
+> **Correction (2026-08-11).** This section originally continued *"chunks written in that same
+> window **did** receive vectors — so that run's vector indexing stopped partway."* **That is
+> wrong.** The run did not stop; it completed **into the other embedding generation**. A host shell
+> resolves `embedding`/`nomic-embed-text` from `config.yaml` while the container resolves
+> `embedding_1024`/`KURE-v1` from env, and the documented `ingest-notion` command was written
+> without `docker exec`. The evidence was in the first query and went unread: **all 51 chunks held
+> a 768 vector.** A run that stopped would have left neither. [[SPEC-nexus-generation-of-record]]
+> establishes this, and ships the guard; it also measures a third state this document could not
+> see — 8 chunks holding a vector for text they no longer had. §2.5 carries its own correction.
+> **Everything else in this document stands**: the coverage signal was still measured, still
+> logged, and still unread, which is what §2 onward is about — and it stays true whichever way the
+> run ended.
 
 `nexus reembed run --tenant default` filled 51/51 with zero failures in about four minutes. Both
 rulers were then re-run on the repaired corpus.
@@ -104,13 +116,21 @@ legitimately coverage 0, and turning that into a refusal *"turns an ordinary ing
 whole-deployment outage — enforcement belongs where a cutover condition is; only a check with a
 decision attached is entitled to refuse."* That reasoning stands. **No exit code changes here.**
 
-**2.5 What is not established — and what follows from that.**
-Whether the 2026-08-10 run *raised* or was *killed* is **unknown**. The ingest was run through
-`docker exec`, whose output does not reach the container log, so the absence of a
-`vector_indexing_failed` line there proves nothing. This is load-bearing: if the process died, no
-in-process remedy — no line appended to `run_ingest`'s tail, no exit code — would have executed
-either. **The remedy must therefore not depend on the ingesting process surviving.** Anything added
-inside `run_ingest` is a convenience; the guarantee has to live where someone looks afterwards.
+**2.5 The remedy must not depend on the ingesting process surviving.**
+
+> **Corrected 2026-08-11.** This section originally argued from *"whether the run raised or was
+> killed is unknown"*, and asserted the run went through `docker exec`. Both are superseded: the
+> run **neither raised nor was killed** — it completed into the other generation
+> ([[SPEC-nexus-generation-of-record]] §1), and it was most likely a host shell, not `docker exec`.
+> The conclusion below is unchanged and is why it is kept.
+
+An in-process remedy — a line appended to `run_ingest`'s tail, an exit code — executes only if the
+process reaches it. A killed process reaches nothing, and this SPEC could not tell the difference
+from the outside: `docker exec` output does not reach the container log, so an absent
+`vector_indexing_failed` line proves nothing either way. **Therefore anything added inside
+`run_ingest` is a convenience; the guarantee has to live where someone looks afterwards.** §3.2 is
+that place. (The 2026-08-10 run turned out to be a third case neither branch covered, which is the
+argument's point made twice over.)
 
 ## 3. Design
 
@@ -231,7 +251,7 @@ measured is a database state ([[ci-must-cover-destructive-paths]]).
 
 | item | why it is not decided here | when it is looked at |
 |---|---|---|
-| The mixed-generation ⚠ is currently **false** | `chunks.embed_model` is one label for two coexisting vector columns. Measured: all 334 active chunks in the operating tenant hold both a 768- and a 1024-dim vector; 215 are labelled `KURE-v1`, 119 `nomic-embed-text` (all 119 `updated_at` on 2026-08-10, all `authored`). The searched column is single-generation by dimension. **How the 119 labels arose is not established.** The leading hypothesis is a `reembed --column embedding --model nomic-embed-text` run keeping the rollback column warm, which would make the ⚠ a rollback-readiness artifact rather than corruption — untested. Retiring the alarm would also delete the only check on ADR-0009's recorded "one generation per column" invariant, and `vector_dims` cannot replace it (two 1024-dim models are indistinguishable). | Before the next embedding cutover, or when the ⚠ is next read as if it meant something |
+| The mixed-generation ⚠ is **not what it says, and not false either** | `chunks.embed_model` is one label for two coexisting vector columns, so it cannot say which generation indexes a chunk. Measured: all 334 active chunks hold both a 768- and a 1024-dim vector; 215 were labelled `KURE-v1`, 119 `nomic-embed-text`. **Resolved 2026-08-11** — the origin was not the rollback-warming reembed this row first guessed; it was the host-resolved ingest of [[SPEC-nexus-generation-of-record]] §1, which refilled `embedding` for chunks whose text had changed and stamped its own model name. So the ⚠'s *inference* ("partial re-embedding of the searched column") is wrong while the anomaly it points at was **real and serious**: a foreign generation was writing to this corpus. Not retiring it was right. What remains is the label's design — retiring the alarm would delete the only check on ADR-0009's "one generation per column" invariant, and `vector_dims` cannot replace it (two 1024-dim models are indistinguishable). | Before the next embedding cutover |
 | `embed_waivers` cannot express a per-generation waiver | PK is `chunk_rid`; with two columns live, one waiver cannot describe both. No waivers exist today (0 rows), so nothing is masked yet. | When the first waiver is taken under a second live column |
 | ADR-0009's backstop-detection and "materially expand" obligations | §5 — fired, recorded, not taken up. | The next SPEC linking ADR-0008 |
 | The ranking work, withdrawn on a bounded measurement | §1. Research already done and preserved: brevity bias is a named, measured phenomenon (arXiv:2503.05037) with **no mitigation proposed in the literature**; the standard remedy is filling `context_prefix` (Anthropic Contextual Retrieval; dsRAG's CCH-alone ablation 4.72→6.04 on KITE); Onyx's Notion connector prepends the page title but not the parent database title; late chunking does not apply, because a one-line row is not a fragment of a longer document. | If a measurement under §4.7's verdict rule shows a remaining effect |
