@@ -1,0 +1,21 @@
+[
+  { "issue_id": "I-001", "disposition": "accepted" },
+  { "issue_id": "I-002", "disposition": "accepted" },
+  { "issue_id": "I-003", "disposition": "accepted" },
+  { "issue_id": "I-004", "disposition": "accepted" },
+  { "issue_id": "I-005", "disposition": "accepted" },
+  { "issue_id": "I-006", "disposition": "accepted" },
+  { "issue_id": "I-007", "disposition": "accepted" },
+  { "issue_id": "I-008", "disposition": "accepted" },
+  { "issue_id": "I-009", "disposition": "accepted" },
+  { "issue_id": "I-010", "disposition": "accepted" },
+  { "issue_id": "I-011", "disposition": "accepted" },
+  { "issue_id": "I-012", "disposition": "accepted" },
+  { "issue_id": "I-013", "disposition": "accepted" },
+  { "issue_id": "I-014", "disposition": "accepted" },
+  { "issue_id": "I-015", "disposition": "accepted" },
+  { "issue_id": "I-016", "disposition": "accepted" },
+  { "issue_id": "I-017", "disposition": "rejected",
+    "reason": "문턱을 지금 못박는 것이 이 SPEC 의 요지다. 재현율 기준을 판독기 교체 SPEC 으로 미루면, 그때 고를 후보의 측정값을 보고 선을 긋게 된다 — 오늘 네 번 되돌아온 실패가 정확히 그것(숫자를 본 뒤 기준을 맞춤)이다. ADR 을 SPEC 이 제약하는 것과 다르다: 여기서 정하는 것은 **이 SPEC 이 도입하는 계측기의 합격선**이고, 그것을 계측기와 같은 문서에 두는 것이 사전등록이다. 다만 지적의 절반은 옳아서 §2.1 의 근거를 '두 측정에서 멀다'(틀린 산수)에서 'ADR-0010 §5 의 해석 키가 의미를 갖는 최대 불일치'로 바꿨다." },
+  { "issue_id": "I-018", "disposition": "accepted" }
+]
