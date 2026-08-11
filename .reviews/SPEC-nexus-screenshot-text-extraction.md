@@ -1,294 +1,335 @@
 ---
 target: SPEC-nexus-screenshot-text-extraction
-critiqued_hash: sha256:f2aa234b3836ebce28d2bcb70053d9ac6d2dd1e22351820795a84be8daeb4abc
-critiqued_at: '2026-08-10T09:09:26Z'
+critiqued_hash: sha256:adeaf706020bd586db7bed926b1bd357126081036445b52c0ec5e3b7d65e1427
+critiqued_at: '2026-08-11T16:16:49Z'
 issues:
 - issue_id: I-001
-  category: missing-invariant
+  category: adr-contradiction
   severity: high
-  description: §4.4 specifies `ON CONFLICT DO NOTHING` for the durable write but never
-    says what the losing writer does with its own extraction. Two concurrent ingests
-    of the same byte-identical image both miss the store, both run the non-deterministic
-    reader, and both get different text; the first insert wins the row, but the second
-    ingest goes on to assemble §4.3's marker block from *its own* text and writes
-    it into the document body. The stored row and the served chunk then disagree under
-    the same `extractor_identity`, which is exactly the drift ADR-0010 §5 forbids
-    ('stored text for unchanged bytes never changes'), and it is invisible because
-    the identity did not move. The spec needs a read-back-after-conflict rule (INSERT
-    ... ON CONFLICT DO NOTHING RETURNING, then re-SELECT and use the winner's text)
-    and a test.
+  description: 'ADR-0010 §7 makes it an invariant that "no extraction is committed
+    before the tier exists" — §3''s field and all six §4 hops must be in place first.
+    §7.3 records that extraction was run against the live tenant on 2026-08-10 and
+    that four defects surfaced only then, the first being "the trust flag never reached
+    the chunker (extraction laundered as authored)". That is hop 1 failing: machine-read
+    text entered the live corpus tiered `authored`, which is precisely the outcome
+    ADR-0010 §4 calls "worse than not extracting". The SPEC reports this as a discovery
+    about testing rather than as a violation of the ADR invariant it is bound by,
+    and states no remediation (were the mistiered chunks re-ingested? is there an
+    assertion that no `authored` chunk in the live corpus originated from an image?).'
   status: accepted
-  disposition_reason: Fixed in text. ON CONFLICT DO NOTHING left the losing writer's
-    behaviour unstated; it discards its own extraction and reads the stored row back,
-    so content_hash cannot depend on which process won a race.
+  disposition_reason: 'Correct, and the SPEC understated it by filing a violated ADR-0010
+    §7 invariant under ''defects found by running it''. §7.5 now names it as the violation
+    it was, records the remediation (re-ingest), and replaces the assumption with
+    a measurement: 0 active chunks are tiered authored while carrying a vision marker
+    (2026-08-11). The mistiered rows are superseded, which is where the base filter
+    leaves them.'
 - issue_id: I-002
-  category: missing-invariant
-  severity: high
-  description: '§4.4''s cache and §7.2.9''s failure rows are keyed by `image_sha256`,
-    which can only be computed after a successful fetch — so a *fetch* failure has
-    no key and cannot be recorded or resolved. §4.1 concedes the URL is presigned
-    with a one-hour expiry. Scenario: first ingest extracts 44 images and writes the
-    blocks into the body; a later re-ingest hits an expired/500 URL for image 7, cannot
-    compute its hash, cannot look up the stored extraction, and emits a bare `![]()`.
-    The body loses a vision block, `content_hash` flips, the document reads as edited
-    when nothing was edited, ADR-0006''s signal ② is poisoned, and the whole document
-    re-embeds. §7.2.9 explicitly claims failure rows prevent precisely this (''fetch
-    failure and extraction failure alike''), but the schema''s primary key makes that
-    impossible for the fetch case.'
-  status: accepted
-  disposition_reason: Fixed in code and now in text. A fetch failure has no bytes
-    and so no key, and that is the most likely failure since the URL expires within
-    the hour. The key derives deterministically from the block id with an 'unfetched:'
-    prefix so no reader mistakes it for a content hash.
-- issue_id: I-003
-  category: missing-invariant
-  severity: high
-  description: '§4.3 makes the chunker split at `<!-- khala:vision:begin/end -->`
-    *unconditionally* and derive the tier from those markers, but the authored-side
-    stripping is specified only ''at convert time'' and §6''s ships list touches only
-    `notion_convert.py`. Nexus has other intake paths (ADR-0006 names `ingest_external_spec`
-    and filesystem docs; ADR-0004 adds Arbiter''s `promote_external`). Scenario: an
-    external spec or filesystem markdown file whose body contains `<!-- khala:vision:begin
-    -->` is ingested through a non-Notion path, reaches the shared chunker unstripped,
-    and its authored prose is split off and tiered `machine_read` — the defamation
-    §4.3 says it exists to prevent, and a tier-forgery primitive available to anyone
-    who can get a document ingested. §7.2.15 as written would pass while the hole
-    stays open.'
-  status: accepted
-  disposition_reason: Fixed in code and now in text. Stripping authored markers only
-    in the Notion converter left filesystem docs and external-spec payloads able to
-    have their author's prose tiered machine_read. The chunker now distrusts markers
-    by default; only a caller that wrote the block declares trust.
-- issue_id: I-004
   category: risky-assumption
   severity: high
-  description: 'ADR-0010 records the ADR-0002 demand-pull gate as fired on the strength
-    of one specific observation: ''a real question was asked, the answer was unavailable,
-    and the cause was counted (44 images…)''. §7.1''s step 0 falsified the causal
-    half of that — no unlock condition or point value appears in any of the eleven
-    images, and every `포인트` match in the corpus is `엔드포인트`, so the answer was unavailable
-    because the organisation never wrote the rule down. The SPEC swaps in a new acceptance
-    question (§7.1a) but never revisits whether the gate itself still holds. The one
-    measured instance of ''policy trapped in pixels'' evaporated, and the remaining
-    justification is the un-sampled inference over the other four documents that ADR-0010''s
-    Generalisation limit explicitly refuses to state as fact. Under ADR-0002''s own
-    rule the gate should be re-declared on surviving evidence, or the build re-justified,
-    before code ships.'
+  description: §4.2 claims the three ADR-0010 §6 constraints are satisfied "structurally…
+    a consequence of the transport rather than a rule someone must follow", but the
+    default transport is the `claude-code` bridge, where no-tools is a CLI flag (`--allowed-tools
+    ""`) interpreted by an authenticated host CLI that also loads host-side configuration
+    — user/project settings, MCP servers, hooks, and system prompts the SPEC never
+    constrains. On that path the reader is a full agent runtime with a restricting
+    flag, not a request with no tool definitions. Since §4.6/ADR-0010 §6 place this
+    reader *ahead* of the quarantine gate on attacker-controllable bytes, a host config
+    that re-enables any tool reinstates exactly the file-exfiltration primitive §3
+    withdrew the `--allowed-tools Read` design for. The SPEC needs an invariant on
+    what the bridge may load, not just on what flags it passes.
   status: accepted
-  disposition_reason: Accepted, and it is the most important finding of the round.
-    ADR-0010's gate was declared fired partly on 'the cause was counted', and step
-    0 shows the cause of that specific failure was not the images. §7.1a-0 records
-    the falsification, states what survives (44 images carrying spec tables absent
-    from all corpus text, confirmed by opening five), and notes the ADR is hash-stamped
-    so a successor note is owed rather than an edit.
+  disposition_reason: The strongest issue in the round. 'Structural' was true of the
+    API request and false of the bridge, where the other end is an agent runtime and
+    the properties are flags — sitting ahead of the quarantine gate on attacker-controllable
+    bytes. §4.2 now states the bridge's own invariant, names the four flags, and points
+    at the test that pins the argv rather than leaving it to intention. Note the reader
+    of record has since moved off this transport (§7.5), so today's exposure is dev-only;
+    the invariant still binds wherever the bridge runs.
+- issue_id: I-003
+  category: untestable-requirement
+  severity: high
+  description: §7.2.3/§7.2.4 assert "no tool definitions" and "exactly one image block"
+    on the outgoing payload, but §7.2's preamble stubs the reader at the `LLMService`
+    boundary so no test needs an authenticated CLI. That means the two primary security
+    controls are asserted only against the API transport's request object, while the
+    *default and actually-used* transport (§3.0, §7.3's live run) is the bridge, whose
+    surface is process argv plus host CLI state and is never exercised. This is the
+    same failure §7.2.3 congratulates itself for avoiding — a control whose test cannot
+    reach the attack it targets.
+  status: accepted
+  disposition_reason: 'Partly already untrue and the SPEC failed to say so: tests/test_claude_llm_bridge.py
+    fixes the doors-closed argv, which is the bridge''s actual surface. §4.2 now cites
+    it. The stub-at-LLMService boundary stays for the reader tests — that is what
+    keeps them runnable without an authenticated CLI — so the two surfaces are tested
+    by two different means, which the SPEC now states instead of implying one covers
+    both.'
+- issue_id: I-004
+  category: missing-invariant
+  severity: high
+  description: '§3.1 makes recording `stop_reason` a load-bearing control — it is
+    the only thing that detects a table half-transcribed because the model ran out
+    of output budget, and the SPEC narrates at length how the earlier 2048/8000 pairing
+    made that truncation invisible. §3.0 then concedes the bridge does not provide
+    `stop_reason` and `read_image` records it as unknown. The bridge is the default
+    and is what produced all 44 live rows, so on the shipped path the control is permanently
+    inert: a half-transcribed spec table travels all six hops marked `machine_read`
+    and complete. No invariant is stated for what happens on an `unknown` stop_reason
+    (is the extraction stored? marked? refused?), and no §7.2 test asserts truncation
+    marking for either transport or the 20,000-character cap.'
+  status: accepted
+  disposition_reason: 'Real, and the fix is partly historical: the reader of record
+    moved to Gemini REST, which returns finishReason, so the truncation control is
+    live on the shipped path — 0 of 44 rows are marked truncated. §7.5 records that
+    it was inert on the bridge that produced the first run, which is a control that
+    read as present and was not. What an unknown stop reason should DO is still unstated
+    and is carried in §8 with the transport that has the gap.'
 - issue_id: I-005
   category: adr-contradiction
-  severity: medium
-  description: '§3.1 says the per-ingest ceiling is enforced by leaving remaining
-    images ''unextracted and recorded as failure rows, so the run is repeatable'',
-    while §7.2.9 declares failure rows ''sticky by design'' — an image with a failure
-    row stays unextracted ''until a human deletes the row''. These cannot both hold.
-    Scenario: a tenant with 250 images ingests; images 101–250 get failure rows; the
-    second run extracts none of them because their rows already exist, and a human
-    must hand-delete 150 rows to make progress. The run is not repeatable, and the
-    ceiling silently becomes a permanent cap. One of the two behaviours (ceiling-skip
-    rows must be non-sticky, or the ceiling must not write rows at all) needs to be
-    chosen and tested; today neither the ceiling nor the stickiness has a test in
-    §7.2.'
+  severity: high
+  description: '§4.4 asserts a deletion exception to ADR-0010 §5 and openly calls
+    it "a narrowing this SPEC makes", noting the ADR "names no exception" — a SPEC
+    amending an accepted ADR, which ADR-0010''s own Status paragraph says a SPEC may
+    not do. The remove-vs-rewrite argument does not close the hole it opens: after
+    deletion a later ingest re-runs a reader measured at 3.6% run-to-run divergence,
+    so different stored text ends up serving the same (bytes, extractor identity)
+    pair. Because §4.3 puts extracted text inside `content_hash`, that flips the document
+    hash with no edit, which is the churn ADR-0006''s spine (re-embed on `chunk_text
+    IS DISTINCT FROM`, entropy signal ② cross-URI hash collisions, `doc_reingest_events`)
+    is built to keep meaningful. Either the exception belongs in a successor ADR or
+    the deleted row must be tombstoned so re-extraction is blocked under the same
+    identity.'
   status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
+  disposition_reason: 'Governance, and the reviewer is right that a SPEC cannot amend
+    an accepted ADR — ADR-0010''s Status paragraph says so. The second half is also
+    right: after a deletion, re-ingest re-reads with a reader that diverges run to
+    run, so different text lands under the same (bytes, identity) pair and flips content_hash
+    with no edit. Recorded in §8 with the two ways out — a successor ADR, or a tombstone
+    that refuses re-extraction under the same identity. Not decided inside this SPEC,
+    because deciding it here is the thing being objected to.'
 - issue_id: I-006
-  category: missing-invariant
-  severity: medium
-  description: '§3.1 requires `stop_reason` and per-extraction token counts to be
-    recorded on the durable row, but §4.4''s schema is `vision_extractions(tenant,
-    image_sha256, extractor_identity, text, error, truncated, at)` — no `stop_reason`,
-    no token columns — and §6''s migration line repeats only the PK. The spec''s own
-    argument (''§3.1 criticised the sufficiency signal for shipping without a spend
-    instrument and an earlier draft of this SPEC then did the same'') is defeated
-    by its own schema: after the first run there is no way to answer ''what did it
-    cost'', and `max_tokens` truncation is detectable only through the `truncated`
-    boolean, losing the distinction between the token cap and the 20,000-character
-    cap that §3.1 spent a paragraph separating.'
+  category: untestable-requirement
+  severity: high
+  description: '§7.1 pre-registers two gates: zero invention and fidelity ≥6 of 8
+    on the pass/partial scale. §7.4 concedes the fidelity score "was never computed"
+    and that the substitute method cannot produce it — "a reader that omits half a
+    screen scores clean here" — and also concedes §7.1c''s ordering (director''s reading
+    precedes the machine''s) is unsatisfied. No replacement fidelity criterion is
+    registered anywhere in the SPEC. So the shipped system has no gate at all on whether
+    the transcription is faithful, only on whether it is fabricated, and §7''s opening
+    claim that nothing counts as success until acceptance is met is left unsatisfiable
+    as written.'
   status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
+  disposition_reason: 'Correct and load-bearing: with the fidelity leg unmet and no
+    replacement registered, the corpus is guaranteed against fabrication and not against
+    omission. §7.5 states the gate as NOT MET rather than unmeasured, and §8 carries
+    what would close it — a bound on omission, the axis §7.4 opened with 14 measured
+    items. Registering that gate now, in the same document that discovered the axis,
+    would be the post-hoc criterion §7.1 exists to prevent.'
 - issue_id: I-007
   category: missing-invariant
-  severity: medium
-  description: '§3.1 says a truncated extraction ''marks the chunk'', but the only
-    truncation field defined anywhere is `vision_extractions.truncated` (§4.4), and
-    §4.5''s six hops carry `provenance_tier`, `extractor_identity` and `source_ref`
-    — not truncation. Scenario: the reader hits `max_tokens` mid-table; the block
-    is stored with `truncated=true`; the chunk, the SearchHit, the evidence packet,
-    the prompt, the citation, the API response and the MCP result all show a `machine_read`
-    chunk that looks complete. That is verbatim the failure §3.1 introduced the flag
-    to stop (''A half-transcribed spec table would have travelled all six hops looking
-    complete''), just relocated from the reader to the transport. Either truncation
-    joins the travelling fields or the claim in §3.1 must be withdrawn.'
+  severity: high
+  description: §4.4 states the tenant is in the store's primary key as a security
+    boundary — a global store "would serve one tenant's extracted text to another,
+    including text that the first tenant's quarantine gate rejected", and would leak
+    the existence of an image across the boundary. §7.2.8, the only cache test, asserts
+    the key is "(bytes, extractor identity)" and says nothing about tenant. No test
+    asserts that byte-identical images in two tenants extract independently, or that
+    a quarantine deletion in tenant A does not affect tenant B. The stated boundary
+    is therefore unenforced by the test suite, and §7.2.8's wording reproduces exactly
+    the two-part key the section says was the earlier defect.
   status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
+  disposition_reason: 'The stated security boundary is untested: §7.2.8''s wording
+    even reproduces the two-part key §4.4 says was the defect. A test that byte-identical
+    images in two tenants extract independently, and that a quarantine deletion in
+    one does not affect the other, is cheap and belongs with the cache tests. Carried
+    as an accepted correction to §7.2 rather than a design change — the key is already
+    right in code.'
 - issue_id: I-008
-  category: adr-contradiction
-  severity: medium
-  description: '§4.4 introduces deletion as ''the one named exception'' to the stored-text
-    invariant and states plainly that it is ''a narrowing this SPEC makes, not something
-    ADR-0010 §5 already allowed''. ADR-0010''s own Status paragraph exists because
-    a SPEC was told, correctly, that ''a SPEC cannot amend an ADR'', and §5 states
-    the invariant with no exception. The reasoning for the exception may well be right,
-    but the vehicle is wrong: this is an ADR-0010 amendment being made in a SPEC.
-    It should be an accepted edit to ADR-0010 §5 (or a superseding ADR) before implementation,
-    not a paragraph in the design that depends on it.'
-  status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
-- issue_id: I-009
-  category: missing-invariant
-  severity: medium
-  description: '§4.4 orders the scanner before the durable write so that only passing
-    text is stored — but nothing is recorded when text *fails* the gate. Scenario:
-    an image containing a work email address (§4.6 says one exists in the examined
-    corpus) is extracted, quarantined, and not stored. Every subsequent ingest of
-    that document misses the store, re-runs a non-deterministic reader on the same
-    bytes, and produces a slightly different extraction; whether the body ends up
-    with a block, a bare placeholder, or differently-worded quarantined text is unspecified,
-    so `content_hash` may churn on every ingest and the paid extraction is re-paid
-    every run. The design needs a gated-outcome marker row (distinct from the §4.4
-    rows that hold servable text) with a defined body representation, or §3.1''s ''a
-    re-ingest of unchanged documents extracts nothing'' is false for exactly the documents
-    the gate touches.'
-  status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
-- issue_id: I-010
-  category: unverifiable-claim
-  severity: medium
-  description: §7.1's step 0b requires a re-fetch demonstrated 'from a stored `source_ref`
-    alone for at least one image per document' — five documents. §7.1b declares step
-    0b passed on eleven images of a single document (the avatar-policy one), from
-    'its stored block id alone', and §4.3 defines `source_ref` as source URI + block
-    id + byte hash while §8 concedes `canonical_uri` is basename-only. So the demonstration
-    covered one fifth of the required scope, used the block id rather than the `source_ref`
-    the criterion names, and ran against a store that does not exist yet. §7.1b's
-    headline ('Step 0b passed, so the recourse is real') overstates what was run;
-    per the criterion's own terms extraction cannot ship on this evidence.
-  status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
-- issue_id: I-011
-  category: untestable-requirement
-  severity: medium
-  description: '§7.1''s fidelity bar is ''≥ 6 of 8 at pass or partial'' on §2''s scale,
-    but that scale is written against one specific screenshot''s anatomy — `pass`
-    requires ''screen id, version, the rule sentence, and both table attribute names'',
-    `partial` requires ''rule sentence and table attributes''. §7.1 simultaneously
-    drops any requirement on what the sampled images contain (''No requirement about
-    what the images contain''). An image with no version strip, no rule sentence,
-    or no attribute table cannot be scored `pass` or `partial` at all, and by construction
-    scores `fail`. Scenario: four of the eight drawn images are UI-state screens without
-    a rule box; the sample fails on 5/8 for reasons unrelated to transcription fidelity.
-    The scale needs a per-image ''what this image contains'' step recorded by the
-    director before scoring, or an explicit N/A disposition.'
-  status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
-- issue_id: I-012
-  category: undefined
-  severity: medium
-  description: '§7.1''s invention rule is ''one non-trivial line of extracted text
-    that does not appear in the image'', but the operational comparison is against
-    the director''s recorded reading, not against the image. The adjudication procedure
-    for the gap between the two is undefined. Scenario: the machine reads the small
-    grey header strip that §2 records both local models losing and that a human transcribing
-    under time pressure may also skip; the line is non-trivial (carries an ID and
-    a version), does not appear in the recorded reference, and by the letter of the
-    rule fails the sample outright and blocks the ship — punishing the reader for
-    reading better than the reference. The spec fixes a tie-break for triviality but
-    not for presence; it needs one (e.g. re-open the image on any disputed line, and
-    score invention only against the pixels).'
-  status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
-- issue_id: I-013
-  category: undefined
-  severity: medium
-  description: 'ADR-0010 §3.1 requires three durable fields per chunk, and §6''s migration
-    line is ''tier + extractor identity + source ref; backfill authored'' — but the
-    SPEC never states nullability, the enum type, or what `extractor_identity` and
-    `source_ref` hold for `authored` chunks, which are the overwhelming majority (289
-    of 289 today). ADR-0010 §3 fixes only `provenance_tier` as NOT NULL enum. Scenario:
-    the migration is written with all three NOT NULL and the backfill of 289 authored
-    chunks needs an `extractor_identity` value it cannot have; or all three are nullable
-    and §7.2.7''s six-hop assertions have no defined behaviour for a null tier arriving
-    from an older row. §7.2.10 tests only that a pre-ADR chunk reads `authored`.'
-  status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
-- issue_id: I-014
   category: risky-assumption
   severity: medium
-  description: '§7.1a''s acceptance question (''Ava_01 화면에서 NFT 크기/위치 조정 범위'') requires
-    retrieval to find the machine_read chunk, but §8 concedes ADR-0010 §3''s separate-chunk
-    rule strips the 100–171 characters of authored heading that name what the image
-    depicts, and calls a context prefix ''unmeasured''. The query''s discriminating
-    token is `Ava_01`, which most plausibly lives in the authored heading, not in
-    the extracted 속성 table. Scenario: extraction works perfectly, the table text is
-    stored and tiered correctly, and the acceptance query still fails because the
-    chunk carrying `1/2` and `마스킹` has nothing in it that matches `Ava_01`. The sole
-    ship criterion would then be failed by a referent problem the SPEC has already
-    identified and deferred, and the failure would be indistinguishable from an extraction
-    failure.'
+  description: '§3.1 caps extraction at `NEXUS_VISION_MAX_PER_INGEST` = 100 *per run
+    of the ingest command*, and says images past the ceiling are "recorded as failure
+    rows, so the run is repeatable". §7.2.9 then makes failure rows sticky by design
+    — an image with a failure row stays unextracted "until a human deletes the row".
+    These two combine into non-convergence: a tenant with more than 100 images can
+    never fully extract by re-running ingest, because the overflow images now carry
+    sticky rows that suppress the retry the ceiling assumed. The current corpus (44)
+    hides this; the first larger tenant hits it silently, with only a count in the
+    ingest summary to show for it.'
   status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
-- issue_id: I-015
-  category: untestable-requirement
+  disposition_reason: 'A real non-convergence and nicely spotted: the ceiling records
+    overflow as failure rows so the run is repeatable, and §7.2.9 makes failure rows
+    suppress the very retry that repeatability assumed. 44 images is under the ceiling
+    so it is latent today. Recorded in §8 with the trigger — the first tenant above
+    the ceiling — rather than fixed now, because the fix (distinguishing ''not attempted''
+    from ''attempted and failed'') is a schema change.'
+- issue_id: I-009
+  category: undefined
   severity: medium
-  description: §3.1 makes four limits load-bearing and closes with 'A limit nothing
-    enforces is worse than no limit… the per-ingest ceiling was defined and never
-    wired' — yet §7.2's sixteen tests cover none of the four. There is no test that
-    `max_tokens` truncation sets the flag, none that the 20,000-character cap marks
-    rather than silently shortens, none that `NEXUS_VISION_MAX_PER_INGEST` stops at
-    the ceiling, and none that token counts are recorded. By this SPEC's own standard
-    those are limits nothing enforces, in a document whose §7.2 preamble insists controls
-    that cannot run in CI 'would not exist'.
+  description: 'Retry is defined as "an explicit act — deleting the failure row" (§7.2.9)
+    and quarantine remediation is defined as deleting the `vision_extractions` row
+    (§4.4), but no operator surface for either is specified: no CLI command, no API
+    endpoint, no MCP tool, and §6''s ships list contains none. The only documented
+    remedy for a transient fetch failure or for quarantined PII is hand-written SQL
+    against a production table, which is also the one path §4.4''s invariant depends
+    on being performed correctly. §6 also lists migrations as `0NN_*` while §4.4 names
+    "migration 013", so even the migration identity is unfixed.'
   status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
+  disposition_reason: 'Both remedies are hand-written SQL against a live table, and
+    one of them is what §4.4''s invariant depends on being done correctly. Recorded
+    in §8. Not shipped in this round: the surface should follow the tombstone decision
+    in I-005, since what the operator needs to express changes with it.'
+- issue_id: I-010
+  category: undefined
+  severity: medium
+  description: The extractor identity is load-bearing for §4.3's marker, §4.4's primary
+    key, and any recall scope, yet the SPEC never states its current value. §3 pins
+    `NEXUS_VISION_MODEL` to the literal `claude-sonnet-4-6` and the prompt to a module
+    constant; §7.3 says "the reader that produced those rows has since been withdrawn"
+    and replaced under two other SPECs; §7.4 says the system prompt gained a rule
+    that "moved `prompt_sha` and therefore the extractor identity". A reader of this
+    document cannot determine which model id and which prompt constitute the reader
+    of record, nor whether §3's pinned default still matches what the 44 live rows
+    were produced under — which is precisely the enumeration ADR-0010 §3.1 says identity
+    exists to make possible.
+  status: accepted
+  disposition_reason: 'A reader could not tell which model and prompt produced the
+    live rows, and identity is what ADR-0010 §3.1 makes a recall scopable by. §7.5
+    states it once: gemini-3.6-flash/06e83390, 44 rows, 41 active chunks, 0 truncated,
+    and the note that §3''s pinned default must move with it.'
+- issue_id: I-011
+  category: unverifiable-claim
+  severity: medium
+  description: §7.1b claims "Step 0b passed", but §7.1's registration required a working
+    re-fetch from stored `source_ref` alone "for at least one image per document"
+    — five documents. The run covered 11 images of a single document, and the closure
+    via SPEC-nexus-vision-source-ref rests on "3 of 3 citations resolved by hand",
+    again with no per-document coverage claim. Since the four unopened documents are
+    also the ones §1 and ADR-0010 flag as inference rather than measurement, the gate
+    was scored on the one document least representative of the residual risk, while
+    being reported as satisfied.
+  status: accepted
+  disposition_reason: 'The registration said one image per document — five — and both
+    the original run and its replacement drew from documents already opened. §7.5
+    records the gate as partially met and names the gap precisely: the four documents
+    §1 flags as inference rather than measurement are the uncovered ones, which is
+    the worst place for the coverage to be thin.'
+- issue_id: I-012
+  category: unverifiable-claim
+  severity: medium
+  description: The acceptance criterion is in three mutually inconsistent states and
+    the document never resolves which binds. §7.1a-0 declares ADR-0010's demand-pull
+    gate partly falsified and §7.1a declares the original criterion void and replaces
+    it with the Ava_01 question, whose expected value is explicitly marked UNVERIFIED
+    pending the director; §7.3 then withdraws the step 0 verdict entirely and says
+    "the original acceptance criterion stands and it passes"; §8 still carries "ADR-0010
+    owes a successor note" premised on the withdrawn falsification. A reader cannot
+    tell whether §7.1a's replacement is live, dead, or still owed a verification,
+    nor whether the ADR debt is real.
+  status: accepted
+  disposition_reason: 'Three inconsistent states in one document, and the reviewer
+    is right that a reader cannot tell which binds. §7.5 resolves it in a table: §7.1a''s
+    replacement is dead (it existed only because step 0 concluded the thresholds were
+    in no image, and that conclusion was withdrawn), the original question is live
+    and passes, and the ADR successor note is still owed but for the §7.1b reason
+    rather than the withdrawn one.'
+- issue_id: I-013
+  category: risky-assumption
+  severity: medium
+  description: 'Omission is measured and unbounded. §7.4 reports 14 items in rounds
+    2 and 3 where each reader recovered real in-image content the other missed, and
+    §8 defers the union-of-two-readers remedy. The shipped design is a single reader,
+    so an unknown fraction of every extracted screen is silently absent — and unlike
+    invention, omission carries no signal at all: the chunk is tiered `machine_read`
+    and reads as a complete transcription. §5''s "the honest outcome there is a short
+    extraction" assumes a reader that fails visibly; the measurement shows one that
+    fails quietly, and nothing in §3, §4, or the tier communicates partiality to a
+    consumer.'
+  status: accepted
+  disposition_reason: 'The sharpest consequence of §7.4 and it deserves the emphasis:
+    unlike invention, omission carries no signal — the chunk is tiered machine_read
+    and reads as a complete transcription. §5''s assumption of a visibly-failing reader
+    is contradicted by the measurement. Recorded in §7.4, §7.5 and §8; the remedy
+    (a union of two readers) doubles the standing cost and is a different design,
+    deferred to its own SPEC.'
+- issue_id: I-014
+  category: missing-invariant
+  severity: medium
+  description: §4.1 fetches image bytes from a URL supplied by the source system during
+    the converter walk, and §7.3 records that an SSRF in that fetcher "was found by
+    review before it ran" — yet no section of the design states any constraint on
+    the fetcher (scheme allowlist, host allowlist, redirect handling, size limit,
+    timeout, private-address refusal), and §7.2 contains no test for any of them.
+    A defect caught once by a human review and never converted into a stated invariant
+    plus a test is, by this SPEC's own standard in §3.1, a control that reads as present
+    and is not.
+  status: rejected
+  disposition_reason: 'The premise is wrong in its second half, and that matters more
+    than the first. The constraints do exist and are tested: vision_store.check_url
+    refuses non-https schemes, refuses hosts resolving to private/loopback/link-local/reserved
+    addresses across ALL resolved records, and _fetch_bytes refuses to follow redirects;
+    tests/test_vision_wiring.py asserts each, including that a refused URL is recorded
+    as a failure row rather than silently skipped. What is true is that the design
+    section never stated the invariant, which is the accepted half of I-002/I-003''s
+    complaint and is addressed there. Rejected as written because it asserts an absence
+    that measurement contradicts — the same shape of error this SPEC has been caught
+    by twice.'
+- issue_id: I-015
+  category: unverifiable-claim
+  severity: low
+  description: '§3.1 justifies the 20,000-character store cap as "sized deliberately
+    above what the token cap can emit" for a 4096-token ceiling, and the withdrawn
+    design is criticised on the parallel arithmetic that "2048 tokens of Korean does
+    not reach 8000 characters". Neither ratio is measured or cited for the actual
+    tokenizer and the actual Korean/markdown-table mix, and the safety argument depends
+    on it: if the real chars-per-token exceeds ~4.9, the character cap becomes the
+    binding limit again and the truncation the design intends to mark is the one it
+    silently performs.'
+  status: deferred
+  disposition_reason: 'Fair: the character cap''s safety argument rests on an unmeasured
+    chars-per-token ratio for Korean plus markdown tables. Deferred rather than accepted
+    because the binding limit is now observable directly — 0 of 44 rows are marked
+    truncated and the reader of record reports finishReason — so the cheap answer
+    is to watch that counter rather than to derive a ratio. Trigger: the first row
+    that is truncated with a stop reason of anything other than the token ceiling.'
 - issue_id: I-016
   category: unverifiable-claim
   severity: low
-  description: '§7.2.5 (''an injected instruction inside the image becomes content,
-    not direction'') is run against a reader stubbed at the `LLMService` boundary,
-    so the stub returns the injected string because the test author made it do so,
-    and the ''next request unchanged'' assertion holds because no model is in the
-    loop. §7.2.2 carefully disclaims exactly this limitation for transcription (''This
-    does not establish no-invention… its name must not suggest it does'') but §7.2.5
-    carries no equivalent disclaimer, and §4.2''s structural argument (no tool definitions
-    in the payload, asserted by §7.2.3) is what actually carries the property. #5
-    should be renamed to what it proves — that the pipeline does not branch on extracted
-    content — or the injection claim will read as tested when it is not.'
+  description: §7.3 concludes that the answer-quality drop is not caused by extraction
+    and that the NULL-vector repair was the real fix, but the only post-repair number
+    reported is a retrieval statistic ("gold answers outside the top ten went from
+    3 to 0"); no answer-quality run after the repair is given, while the pre-repair
+    series (34, 36, 35, then 36, 34, 32) is. The conclusion that quality is now accounted
+    for therefore rests on a measurement the SPEC does not report — and §8 concedes
+    the eval set itself "measures a corpus that no longer exists", so the ruler used
+    for both series is disclaimed in the same document.
   status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
+  disposition_reason: 'The conclusion did rest on a number the SPEC never reported.
+    Now reported in §7.3: retrieval Recall@10 40/40 and three answer runs at grounded
+    39/40 — level with the best figure this SPEC ever recorded, with extraction in
+    the corpus. The reviewer''s second point stands and is recorded beside it: the
+    ruler is disclaimed in the same document, and the 2026-08-11 run additionally
+    found the scoring marks a correct answer wrong when it cites a document other
+    than the single one a label names.'
 - issue_id: I-017
   category: scope-creep
   severity: low
-  description: §4.3's authored-side stripping mutates authored document bodies for
-    every ingested document, including the 111 that carry no images, and since the
-    body feeds `content_hash` it can flip the hash of documents this feature is not
-    otherwise touching. No ADR authorises Nexus to rewrite authored text, and the
-    trigger string is a khala-internal marker no author would knowingly type. The
-    blast radius is small in practice but the rule as written is unbounded ('stripped
-    from authored body text at convert time as well'); it should be scoped to the
-    marker's exact literal form, applied at every intake path (see the notion_convert-only
-    gap), and its effect on `content_hash` for previously-ingested documents stated.
+  description: §4.3 moves marker sanitisation from the Notion converter into the chunker
+    as a default-distrust flag applied to *every* intake path, present and future
+    (`ingest_external_spec`, filesystem docs, anything added later). The reasoning
+    is sound for tiering, but the effect is that this image-extraction SPEC now silently
+    mutates authored body text on paths it does not otherwise touch, deleting any
+    literal occurrence of two HTML comment strings from documents nobody extracted
+    an image from. Only §7.2.15 covers the authored direction and only, by its wording,
+    for one path; the cross-path behaviour change is neither enumerated in §6's ships
+    list nor tested per intake path.
   status: accepted
-  disposition_reason: Accepted; addressed together with the round's other corrections
-    at implementation, and recorded in the SPEC where it changes what ships.
+  disposition_reason: Correct that an image-extraction SPEC now mutates authored bodies
+    on paths it does not otherwise touch, and that body text feeds content_hash. The
+    behaviour is right for tiering — a marker this repo writes must not be trusted
+    when it appears in authored text — so what is owed is enumeration, not reversal.
+    Recorded in §8 as a cross-path behaviour to be listed and tested per intake path.
 approved_by: LivingLikeKrillin
-approved_at: '2026-08-10T09:10:36Z'
+approved_at: '2026-08-11T16:19:46Z'
 ---
 

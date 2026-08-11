@@ -1,0 +1,52 @@
+[
+  {"issue_id": "I-001", "disposition": "accepted",
+   "reason": "Correct, and the SPEC understated it by filing a violated ADR-0010 §7 invariant under 'defects found by running it'. §7.5 now names it as the violation it was, records the remediation (re-ingest), and replaces the assumption with a measurement: 0 active chunks are tiered authored while carrying a vision marker (2026-08-11). The mistiered rows are superseded, which is where the base filter leaves them."},
+
+  {"issue_id": "I-002", "disposition": "accepted",
+   "reason": "The strongest issue in the round. 'Structural' was true of the API request and false of the bridge, where the other end is an agent runtime and the properties are flags — sitting ahead of the quarantine gate on attacker-controllable bytes. §4.2 now states the bridge's own invariant, names the four flags, and points at the test that pins the argv rather than leaving it to intention. Note the reader of record has since moved off this transport (§7.5), so today's exposure is dev-only; the invariant still binds wherever the bridge runs."},
+
+  {"issue_id": "I-003", "disposition": "accepted",
+   "reason": "Partly already untrue and the SPEC failed to say so: tests/test_claude_llm_bridge.py fixes the doors-closed argv, which is the bridge's actual surface. §4.2 now cites it. The stub-at-LLMService boundary stays for the reader tests — that is what keeps them runnable without an authenticated CLI — so the two surfaces are tested by two different means, which the SPEC now states instead of implying one covers both."},
+
+  {"issue_id": "I-004", "disposition": "accepted",
+   "reason": "Real, and the fix is partly historical: the reader of record moved to Gemini REST, which returns finishReason, so the truncation control is live on the shipped path — 0 of 44 rows are marked truncated. §7.5 records that it was inert on the bridge that produced the first run, which is a control that read as present and was not. What an unknown stop reason should DO is still unstated and is carried in §8 with the transport that has the gap."},
+
+  {"issue_id": "I-005", "disposition": "accepted",
+   "reason": "Governance, and the reviewer is right that a SPEC cannot amend an accepted ADR — ADR-0010's Status paragraph says so. The second half is also right: after a deletion, re-ingest re-reads with a reader that diverges run to run, so different text lands under the same (bytes, identity) pair and flips content_hash with no edit. Recorded in §8 with the two ways out — a successor ADR, or a tombstone that refuses re-extraction under the same identity. Not decided inside this SPEC, because deciding it here is the thing being objected to."},
+
+  {"issue_id": "I-006", "disposition": "accepted",
+   "reason": "Correct and load-bearing: with the fidelity leg unmet and no replacement registered, the corpus is guaranteed against fabrication and not against omission. §7.5 states the gate as NOT MET rather than unmeasured, and §8 carries what would close it — a bound on omission, the axis §7.4 opened with 14 measured items. Registering that gate now, in the same document that discovered the axis, would be the post-hoc criterion §7.1 exists to prevent."},
+
+  {"issue_id": "I-007", "disposition": "accepted",
+   "reason": "The stated security boundary is untested: §7.2.8's wording even reproduces the two-part key §4.4 says was the defect. A test that byte-identical images in two tenants extract independently, and that a quarantine deletion in one does not affect the other, is cheap and belongs with the cache tests. Carried as an accepted correction to §7.2 rather than a design change — the key is already right in code."},
+
+  {"issue_id": "I-008", "disposition": "accepted",
+   "reason": "A real non-convergence and nicely spotted: the ceiling records overflow as failure rows so the run is repeatable, and §7.2.9 makes failure rows suppress the very retry that repeatability assumed. 44 images is under the ceiling so it is latent today. Recorded in §8 with the trigger — the first tenant above the ceiling — rather than fixed now, because the fix (distinguishing 'not attempted' from 'attempted and failed') is a schema change."},
+
+  {"issue_id": "I-009", "disposition": "accepted",
+   "reason": "Both remedies are hand-written SQL against a live table, and one of them is what §4.4's invariant depends on being done correctly. Recorded in §8. Not shipped in this round: the surface should follow the tombstone decision in I-005, since what the operator needs to express changes with it."},
+
+  {"issue_id": "I-010", "disposition": "accepted",
+   "reason": "A reader could not tell which model and prompt produced the live rows, and identity is what ADR-0010 §3.1 makes a recall scopable by. §7.5 states it once: gemini-3.6-flash/06e83390, 44 rows, 41 active chunks, 0 truncated, and the note that §3's pinned default must move with it."},
+
+  {"issue_id": "I-011", "disposition": "accepted",
+   "reason": "The registration said one image per document — five — and both the original run and its replacement drew from documents already opened. §7.5 records the gate as partially met and names the gap precisely: the four documents §1 flags as inference rather than measurement are the uncovered ones, which is the worst place for the coverage to be thin."},
+
+  {"issue_id": "I-012", "disposition": "accepted",
+   "reason": "Three inconsistent states in one document, and the reviewer is right that a reader cannot tell which binds. §7.5 resolves it in a table: §7.1a's replacement is dead (it existed only because step 0 concluded the thresholds were in no image, and that conclusion was withdrawn), the original question is live and passes, and the ADR successor note is still owed but for the §7.1b reason rather than the withdrawn one."},
+
+  {"issue_id": "I-013", "disposition": "accepted",
+   "reason": "The sharpest consequence of §7.4 and it deserves the emphasis: unlike invention, omission carries no signal — the chunk is tiered machine_read and reads as a complete transcription. §5's assumption of a visibly-failing reader is contradicted by the measurement. Recorded in §7.4, §7.5 and §8; the remedy (a union of two readers) doubles the standing cost and is a different design, deferred to its own SPEC."},
+
+  {"issue_id": "I-014", "disposition": "rejected",
+   "reason": "The premise is wrong in its second half, and that matters more than the first. The constraints do exist and are tested: vision_store.check_url refuses non-https schemes, refuses hosts resolving to private/loopback/link-local/reserved addresses across ALL resolved records, and _fetch_bytes refuses to follow redirects; tests/test_vision_wiring.py asserts each, including that a refused URL is recorded as a failure row rather than silently skipped. What is true is that the design section never stated the invariant, which is the accepted half of I-002/I-003's complaint and is addressed there. Rejected as written because it asserts an absence that measurement contradicts — the same shape of error this SPEC has been caught by twice."},
+
+  {"issue_id": "I-015", "disposition": "deferred",
+   "reason": "Fair: the character cap's safety argument rests on an unmeasured chars-per-token ratio for Korean plus markdown tables. Deferred rather than accepted because the binding limit is now observable directly — 0 of 44 rows are marked truncated and the reader of record reports finishReason — so the cheap answer is to watch that counter rather than to derive a ratio. Trigger: the first row that is truncated with a stop reason of anything other than the token ceiling."},
+
+  {"issue_id": "I-016", "disposition": "accepted",
+   "reason": "The conclusion did rest on a number the SPEC never reported. Now reported in §7.3: retrieval Recall@10 40/40 and three answer runs at grounded 39/40 — level with the best figure this SPEC ever recorded, with extraction in the corpus. The reviewer's second point stands and is recorded beside it: the ruler is disclaimed in the same document, and the 2026-08-11 run additionally found the scoring marks a correct answer wrong when it cites a document other than the single one a label names."},
+
+  {"issue_id": "I-017", "disposition": "accepted",
+   "reason": "Correct that an image-extraction SPEC now mutates authored bodies on paths it does not otherwise touch, and that body text feeds content_hash. The behaviour is right for tiering — a marker this repo writes must not be trusted when it appears in authored text — so what is owed is enumeration, not reversal. Recorded in §8 as a cross-path behaviour to be listed and tested per intake path."}
+]

@@ -1,0 +1,43 @@
+[
+  {"issue_id": "I-001", "disposition": "accepted",
+   "reason": "Real: byte-keyed storage means the same image in two blocks is one row with one reference, and the fill is first-walk-wins. Recorded as a limit in §4 with what a surface may and may not claim, and the per-occurrence alternative is priced in §7 rather than taken — it means re-reading the same image once per block, which is the cost ADR-0010 §5 exists to avoid."},
+
+  {"issue_id": "I-002", "disposition": "accepted",
+   "reason": "Correct that the round trip could pass without the reference being used. §5.12 now requires two distinct images in the stub source plus a mangled-handle negative control, so the assertion depends on selection rather than on there being one fixture."},
+
+  {"issue_id": "I-003", "disposition": "accepted",
+   "reason": "Worse than described: ON CONFLICT DO NOTHING carries no conflict target, so it absorbs the index violation, no row is written, and the chunk's handle then resolves to the other image — the wrong-provenance outcome the index exists to prevent, arriving through the index. §2.7 makes it raise; §5.13 tests it. Improbable is not handled."},
+
+  {"issue_id": "I-004", "disposition": "accepted",
+   "reason": "A citation renders a snippet, and ADR-0010 §1 already records snippet truncation — the marker is on the block's first line, exactly what a truncating renderer drops. §2.2 now specifies resolve_chunk(tenant, chunk_rid) so a surface carries the rid it already has instead of the marker through six hops; §5.14 tests it. Building the affordance stays out of scope, being able to call it does not."},
+
+  {"issue_id": "I-005", "disposition": "accepted",
+   "reason": "The rule is written against one connector's identifier shape. Today only ingest-notion produces images, so nothing is losing content, but the refusal is stated in §4 as being on 'no reference at all' rather than on a Notion id, and the trade a future connector would face is named there instead of being inherited silently."},
+
+  {"issue_id": "I-006", "disposition": "accepted",
+   "reason": "The cost recurs: extractor=<model>/<prompt_sha> was already in the marker and ADR-0010 §5 requires it to change on every reader swap, so every swap rewrites every image-bearing document. §2.3 no longer claims it is paid once. Note this predates the SPEC and img= neither causes nor worsens it; the ADR-0006 signal ① item in §7 already covers the mitigation."},
+
+  {"issue_id": "I-007", "disposition": "accepted",
+   "reason": "The strongest issue in the round. The counter names citations but counts rows, and the three ways a citation goes unresolvable — no img=, pruned identity, lost fragment handle — are all invisible to the row leg. The supporting claim that every active chunk carries the current identity was a point-in-time observation with nothing enforcing it. §5.11 adds the chunk leg and §5.15 tests that the two legs disagree."},
+
+  {"issue_id": "I-008", "disposition": "accepted",
+   "reason": "'Current' is vision.extractor_identity() — deployment state, not a stored fact. §5.11 says so, and says that rows moving between the two lines on a configuration change is the intended reading rather than a bug: the question the counter answers is whether this deployment's readings can be traced."},
+
+  {"issue_id": "I-009", "disposition": "accepted",
+   "reason": "The inconsistency was real and the resolution is that the premise was wrong: the four empty extractions are written on the fetch path, which holds the block id whether or not the reader returned text, so they carry references like everything else. §2.3 withdraws 'unresolvable-by-design' and §6 no longer excludes them — measured 44/44 including those four."},
+
+  {"issue_id": "I-010", "disposition": "accepted",
+   "reason": "The arithmetic did not close. Corrected in §2.3 with both gaps stated: 44 rows − 4 empty + 1 split fragment = 41 active machine_read chunks. The earlier 40 counted before the split fix and did not separate active from superseded chunks. The 44→44 leg is also no longer presented as a bijection (§4)."},
+
+  {"issue_id": "I-011", "disposition": "deferred",
+   "reason": "The invariant is 'rows of the current identity carry a reference', and 'current' is deployment state (§5.11) — a CHECK or partial index would have to freeze today's identity string into DDL and would reject the retired rows §2.6 deliberately keeps. There is exactly one writer today. Recorded in §7 with its trigger: a second writer to vision_extractions. The compensating detector is the counter, which is why I-007's chunk leg matters."},
+
+  {"issue_id": "I-012", "disposition": "accepted",
+   "reason": "The prose contradicted itself one line apart. §2.2 now says the outcomes are distinguishable rather than 'none is a None', names None as one of them, and states the contract: Unresolvable is a frozen dataclass whose reason strings are diagnostic, matched by tests, and not for any surface to parse."},
+
+  {"issue_id": "I-013", "disposition": "accepted",
+   "reason": "The chunker became a third participant in the grammar when §4's fix made it re-emit the marker per fragment. §2.5 says so, and §5.7 is the pinning test for that edge because it runs writer → chunker → parser rather than writer → parser."},
+
+  {"issue_id": "I-014", "disposition": "accepted",
+   "reason": "Partly: the hand run is re-runnable rather than anecdotal, and §6.1 now names scripts/vision_roundtrip_probe.py and says it takes any N and exits non-zero on failure. It stays out of CI for the reason §5 already gives — live Notion access, a valid per-root token and an unexpired URL are three things §4 says can vanish, and a test that goes red for those reasons teaches the suite to be ignored."}
+]

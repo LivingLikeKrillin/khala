@@ -3,7 +3,7 @@ id: SPEC-nexus-sufficiency-signal
 type: spec
 title: Record whether the evidence answered the question — a per-search verdict, off
   by default
-status: in_review
+status: approved
 linked_adrs:
 - ADR-0002
 - ADR-0006
@@ -12,6 +12,9 @@ tags:
 - llm
 - grounding
 - abstention
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-08-11T16:23:16Z'
+content_hash: sha256:9cc84336d4827f8c10140df7677e1ebe9ef698b0fb040af88be4fc91253a5b06
 ---
 
 ## 0. What shipped
@@ -698,7 +701,87 @@ whether or not the mechanism works.
     parameters change**; **`evidence_fingerprint` changes when `NEXUS_EMBEDDING_COLUMN` changes and
     when the active tokenizer changes**.
 
+## 5.1 What actually shipped, checked against the code on re-signing
+
+This SPEC was approved and then the implementation diverged from it, and the divergence was never
+written down. Checked line by line against `nexus/search/signals.py`, `nexus/llm/sufficiency.py` and
+`migrations/012_sufficiency.sql` on 2026-08-11:
+
+| this document says | what is in the tree |
+|---|---|
+| 7 new columns | **4**: `sufficiency`, `sufficiency_at`, `sufficiency_judge`, `evidence_fingerprint` |
+| `judge_prompt_tokens`, `judge_completion_tokens`, `judge_cost_usd` | **not built** |
+| 5 environment variables | **4**: `NEXUS_SUFFICIENCY`, `_TENANTS`, `_CONCURRENCY`, `_TIMEOUT` |
+| a per-process per-UTC-day ceiling | **not built** |
+| the CHECK lists nine values (§3.5) | **ten** — §3.3's list is the right one; `uninstrumented` is the value §3.5 lost |
+| `signals.py` refuses to **start** above 150 s | it refuses **at the judge call**, raising before any request goes out |
+| test 20, keyed to a calendar date | **not built** |
+
+**The ceiling not shipping is the one that changes an argument, not just a count.** §3.4 offered the
+daily ceiling as the volume bound and conceded it bounded rows rather than dollars. With no ceiling
+at all, what bounds spend is: off by default, an explicit per-tenant allowlist, and **two** in-flight
+judgements per process. That is a bound on concurrency, not on volume — a busy deployment judges
+every eligible search. The honest statement is that this instrument has **no volume bound**, and
+§6 carries it rather than the SPEC continuing to describe a control that does not exist.
+
+**Three of the round's objections were answered by the implementation rather than by prose**, and the
+answers belong here:
+
+* **The slot cannot leak on the prologue-failure path.** Acquisition is the *last statement* of the
+  prologue — nothing between it and the end of the `try` can raise — and `_release_slot()` sits in a
+  `finally` that covers every exit after the slot is taken, including the early return when the
+  INSERT produced no row. The failure mode the objection described (two leaks pin the cap at 2 and
+  every later search records `shed` forever) is unreachable.
+* **`sufficiency_at` is stamped on every row**, including the `uninstrumented` one: the INSERT writes
+  `now()` unconditionally. "Everything else NULL" never applied to it, so no row is unplaceable in
+  time.
+* **`sufficiency_judge` is `{backend}/{model}/{prompt_sha}`**, three parts, with the backend read
+  from `NEXUS_LLM_PROVIDER` and the sha derived from the prompt actually sent. §3.5's two-part
+  description was wrong.
+
+**Two objections survive the implementation and are real:**
+
+* **The stranded bound is enforced by the database clock, not the injectable Python one.** The guard
+  is `sufficiency_at > now() - interval` inside the UPDATE, so a test that injects a Python clock
+  exercises a different predicate than the one that protects the invariant. Testing it honestly means
+  back-dating `sufficiency_at`, which is what the DB test must do.
+* **Spend is unobservable on the deployment named to turn it on.** The bridge backend reports no
+  tokens, the cost columns were not built, and §2.2c forbids the aggregate that would surface it.
+
 ## 6. Open items
+
+**Added on re-signing (2026-08-11), from the critique round this SPEC never dispositioned:**
+
+* **There is no volume bound.** The daily ceiling was specified and not built (§5.1). Off-by-default
+  plus a tenant allowlist plus a concurrency cap of 2 bounds how many judgements run *at once*, not
+  how many run. Whoever turns this on for a busy tenant is the one who needs the bound, and they
+  currently have none.
+* **Spend is unobservable where it will first be spent.** The cost columns were not built and the
+  named switch-on backend reports no tokens, so `judge_cost_usd` would be NULL even if the column
+  existed — and §2.2c forbids the aggregate that would show a runaway. Any successor that raises
+  volume must land the accounting first.
+* **The stranded guard is tested on the wrong clock.** Enforcement is `now()` in Postgres; §5's
+  determinism argument is about the Python clock. The DB test must back-date `sufficiency_at`
+  instead, and until it does, the invariant this SPEC calls terminal is unasserted.
+* **The 300 s constant cannot be raised by a deployment**, though §3.2 tells deployments to raise it
+  alongside the timeout. It is a module constant, and changing it retroactively reclassifies every
+  historical row — which is the reason it was made a constant. The guidance describes an action the
+  design forbids; either the threshold is versioned per row or the guidance goes.
+* **Neither remedy for a stuck instrument has a surface.** A growing stranded count is designated a
+  fault signal while §2.2c forbids the view that would show it, and the zero-row UPDATE logs the
+  benign and fault cases identically.
+* **The consent claim is weaker than stated.** `NEXUS_SUFFICIENCY_TENANTS` is a per-tenant scoping
+  control set by whoever runs the server; nothing ties an entry to an act by the corpus owner, and
+  nothing records who added it. It is worth having as scoping. It is not consent, and §2.3's egress
+  argument should not lean on it as though it were.
+* **The evidentiary base is not independently checkable.** The artifacts behind §1 live in a
+  gitignored directory over a corpus that cannot be published, two runs were destroyed by a fixed
+  output filename, and one arm is n=5. Each limit is stated in §1; the compound consequence — no
+  reviewer or CI can audit any number in §1, and §2.2's successor inherits that harness — was not.
+* **The expiry that was specified was never built.** Test 20 would have failed CI from a fixed date
+  unless a successor record existed. It does not exist, so nothing expires this instrument. Note the
+  original objection to it stands too: a date-keyed test cannot tell a deliberate successor from a
+  one-line stub written to unblock a red build.
 
 * **Review date 2026-11-10** (§2.2h). By then a consumer gate is declared against §2.2's
   pre-registered threshold, or migration 012 is reversed. Ungated observation that nobody ever

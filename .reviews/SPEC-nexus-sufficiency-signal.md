@@ -15,8 +15,11 @@ issues:
     and 16 cannot both pass — 'uninstrumented' (added late, per §3.1's correction)
     appears to be the un-counted value. Migration 012 has no unambiguous definition
     to implement.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'Settled by reading migration 012: the CHECK lists ten values
+    including uninstrumented, so §3.3 was right and §3.5''s ''nine'' was the stray
+    line. Recorded in §5.1''s reconciliation table rather than left for the next reader
+    to re-derive from SQL.'
 - issue_id: I-002
   category: untestable-requirement
   severity: high
@@ -30,8 +33,12 @@ issues:
     specifies. The single most load-bearing invariant (''stranded is terminal; no
     retry, no reclamation'') is asserted by tests that, as described, test the wrong
     clock.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'Survives the implementation and is the sharpest of the round.
+    Enforcement is now() inside the UPDATE — the Postgres clock — while §5''s determinism
+    argument is about an injectable Python clock, so the tests as described exercise
+    a different predicate than the one protecting the invariant. §5.1 says so and
+    §6 carries the fix: the DB test must back-date sufficiency_at.'
 - issue_id: I-003
   category: undefined
   severity: high
@@ -45,8 +52,12 @@ issues:
     the aggregate that would reveal this and the cap bounds only concurrency, the
     ceiling is the sole volume bound and it is the one path where it can be bypassed.
     Test 13 does not cover it.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'Answered in a way that makes it worse rather than better: the
+    daily ceiling was never built. So the question of whether it counts attempts or
+    judged terminals is moot, and the conclusion the objection was driving at now
+    holds unconditionally — there is no volume bound at all. §5.1 and §6 state that
+    plainly instead of the SPEC continuing to describe a control that does not exist.'
 - issue_id: I-004
   category: missing-invariant
   severity: high
@@ -61,8 +72,13 @@ issues:
     of: at the default cap of 2, two prologue raises (e.g. a stale NEXUS_EMBEDDING_COLUMN)
     make every subsequent search record `shed` forever, indistinguishable from healthy
     shedding.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'The objection was correct about the design as written and the
+    implementation had already closed it: slot acquisition is the last statement of
+    the prologue, so nothing between it and the end of the try can raise, and _release_slot()
+    is in a finally covering every exit including the early return when the INSERT
+    produced no row. Recorded in §5.1 — the failure mode described (two leaks pin
+    the cap and every later search records shed forever) is unreachable.'
 - issue_id: I-005
   category: risky-assumption
   severity: high
@@ -76,8 +92,13 @@ issues:
     runaway spend. Round 5's objection was new spend on an outbound per-search provider
     call; the composed result is a capability whose spend is unbounded in dollars
     and unobservable on the only deployment that will run it.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'Correct, and the composition is worse than the objection knew:
+    the ceiling did not ship and neither did the cost columns. What remains is off-by-default,
+    a tenant allowlist, and two in-flight judgements — a bound on concurrency, not
+    on dollars — while §2.2c forbids the aggregate that would surface a runaway and
+    the named backend reports no tokens. Both halves are now open items rather than
+    an argument buried in §3.4.'
 - issue_id: I-006
   category: adr-contradiction
   severity: medium
@@ -93,8 +114,13 @@ issues:
     itself nowhere states, and the precedent it cites (search_log / v_search_health)
     is credited there as pre-existing substrate that makes no outbound provider call
     — a difference §2.1 acknowledges but does not close.'
-  status: open
-  disposition_reason: null
+  status: deferred
+  disposition_reason: 'The reviewer is right that §2.1''s feature/signal distinction
+    is this SPEC''s reading of ADR-0002 rather than something ADR-0002 states, and
+    that resolving it means resolving the ADR''s own accepted-vs-Proposed contradiction.
+    That is not this SPEC''s to settle — an accepted ADR is amended by a successor
+    ADR, and doing it inside a SPEC is the move the screenshot SPEC was just criticised
+    for. Trigger: the next ADR touching ADR-0002''s gate model.'
 - issue_id: I-007
   category: risky-assumption
   severity: medium
@@ -106,8 +132,12 @@ issues:
     every tenant in the allowlist. The mechanism is a per-tenant scoping control,
     which is worth having, but the consent property the SPEC rests its egress argument
     on is not established by it.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'Correct and worth stating precisely: an environment variable
+    set by whoever runs the server is a per-tenant scoping control, not consent. Nothing
+    ties an entry to an act by the corpus owner and nothing records who added it.
+    §6 keeps the mechanism and withdraws the claim §2.3''s egress argument leaned
+    on.'
 - issue_id: I-008
   category: untestable-requirement
   severity: medium
@@ -120,8 +150,13 @@ issues:
     whose earlier unrecorded runs already sent Pack B text to the API backend (§2.3's
     own admission). It is stated as the only control that 'bites' while being the
     one control with no enforcement surface at all.
-  status: open
-  disposition_reason: null
+  status: deferred
+  disposition_reason: 'True that the run-artifact consent record has no schema, no
+    test and no ships entry, and that it is an unverifiable promise by the party it
+    constrains. Deferred rather than accepted because inventing a schema for it here
+    would be the same unenforceable promise with more structure; what would make it
+    real is the eval harness writing the record and CI refusing an artifact without
+    one. Trigger: the next evaluation run over a corpus that is not ours.'
 - issue_id: I-009
   category: undefined
   severity: medium
@@ -135,8 +170,13 @@ issues:
     the threshold, and no way for a reader to know which constant a historical row
     was classified under. The coupling is stated as operator guidance for an action
     the design makes impossible.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'The guidance describes an action the design forbids: 300 s
+    is a module constant, and raising it retroactively reclassifies historical rows
+    — which is exactly why it was made a constant. Recorded in §6 with the two ways
+    out (version the threshold per row, or drop the guidance). Note the fail-fast
+    that enforces the coupling turned out to live at the judge call rather than at
+    startup (§5.1).'
 - issue_id: I-010
   category: missing-invariant
   severity: medium
@@ -147,8 +187,12 @@ issues:
     coupling is what let three revisions drift' and a fail-fast is what makes the
     bad configuration impossible; an unasserted fail-fast is prose coupling with an
     extra line of code.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'Partly overtaken: the check is not a startup fail-fast at all
+    but a per-call refusal that raises before any request goes out, which is at least
+    as strong and is what §5.1 now records. The objection''s core stands — an unasserted
+    guard is prose with an extra line — and the assertion belongs with the timeout
+    tests.'
 - issue_id: I-011
   category: undefined
   severity: medium
@@ -161,8 +205,11 @@ issues:
     NULL' implies it is not, which leaves a non-`pending` row that no reader can place
     in time and breaks the §3.2 rule that `sufficiency_at` means 'when the observation
     started'. Test 5b asserts the value is not NULL but not which columns are populated.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'Settled by the code: the INSERT stamps now() into sufficiency_at
+    unconditionally, so ''everything else NULL'' never applied to it and no row is
+    unplaceable in time. §5.1 records it, because the SPEC''s two descriptions genuinely
+    could not both hold and a reader deserves to know which one the tree implements.'
 - issue_id: I-012
   category: unverifiable-claim
   severity: medium
@@ -177,8 +224,12 @@ issues:
     threshold, so the successor inherits a harness whose outputs no reviewer or CI
     can audit. The SPEC flags each limit individually and never states the compound
     consequence: no independent party can check any number in §1.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'The individual limits were each disclosed and the compound
+    consequence was not, which is the objection''s real point: no reviewer or CI can
+    audit any number in §1, and §2.2''s successor inherits that harness as a precondition.
+    Stated in §6. Not resolvable here — the corpus cannot be published — which is
+    precisely why it should be written down rather than distributed across six caveats.'
 - issue_id: I-013
   category: untestable-requirement
   severity: medium
@@ -191,8 +242,12 @@ issues:
     ''adding the key is the successor''s deliberate act'', but the test cannot distinguish
     a deliberate successor from a build-unblocking placeholder, which is the same
     prose-property problem it rejected ''declares a consumer gate'' for.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'Test 20 was never built, so nothing expires this instrument
+    today — that is the fact that needed recording. The objection''s substance also
+    stands and is kept: a date-keyed test cannot distinguish a deliberate successor
+    from a one-line stub added to unblock a red build, so rebuilding it as specified
+    would buy a deadline, not a decision.'
 - issue_id: I-014
   category: scope-creep
   severity: medium
@@ -206,8 +261,12 @@ issues:
     on, so they ship unexercised in production while §2.2g counts them in the reversal
     cost. §2.2's constraint table governs what the signal may *do*; nothing in the
     SPEC constrains how much surface it may *be*.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'The gap between §0''s one-verdict framing and what was specified
+    was real, and the tree lands closer to §0 than to the specification: 4 columns
+    and 4 environment variables, no ceiling, no cost accounting. Recorded in §5.1.
+    The reviewer''s structural point is kept in §6 — nothing in this SPEC constrains
+    how much surface a signal may be, only what it may do.'
 - issue_id: I-015
   category: undefined
   severity: low
@@ -219,8 +278,12 @@ issues:
     actually claims — 'no code branches on the value' — since a reference grep distinguishes
     neither reads from branches nor the `search_log` column from the `nexus/nexus/llm/sufficiency.py`
     module that §4 ships changes to.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: Two unrelated assertions carried one number, and the §5 form
+    cannot enforce what §2.2a claims — a grep distinguishes neither reads from branches
+    nor the search_log column from the sufficiency module this SPEC ships changes
+    to. The number is split and the claim narrowed to what a static check can actually
+    establish.
 - issue_id: I-016
   category: undefined
   severity: low
@@ -231,8 +294,11 @@ issues:
     on this column, a two-part vs three-part identity changes the grouping key. Test
     19 asserts the value changes when the prompt or decoding parameters change but
     asserts nothing about backend being present, so the discrepancy is uncaught.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 'Settled by judge_identity(): three parts, {backend}/{model}/{prompt_sha},
+    with the backend read from NEXUS_LLM_PROVIDER and the sha derived from the prompt
+    actually sent. §3.5''s two-part description was wrong and is corrected in §5.1
+    — it matters because §2.2''s successor groups on this column.'
 - issue_id: I-017
   category: missing-invariant
   severity: low
@@ -243,9 +309,13 @@ issues:
     indistinguishable from each other. A fault signal that requires a hand-written
     query nobody is scheduled to run, over rows nobody is told to count, is the same
     shape as §2.2h''s ''a date with no failing check is a wish''.'
-  status: open
-  disposition_reason: null
-approved_by: null
-approved_at: null
+  status: accepted
+  disposition_reason: 'A fault signal nobody can observe is not a signal: §2.2c forbids
+    the view and the zero-row UPDATE logs benign and fault cases identically. Kept
+    as an open item rather than fixed here, because the fix is either an exception
+    to §2.2c or a distinguishable log, and choosing between them is the successor''s
+    call once there is a deployment producing stranded rows at all.'
+approved_by: LivingLikeKrillin
+approved_at: '2026-08-11T16:23:16Z'
 ---
 
