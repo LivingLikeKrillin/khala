@@ -806,13 +806,29 @@ def ingest_notion(
     from nexus.ingest.sources.notion_importer import import_notion
     from nexus.ingest.sources.notion_reconcile import make_reconcile_fn
 
-    root_list = [r.strip() for r in roots.split(",") if r.strip()]
-    if not root_list:
+    from nexus.sources import roots_store
+
+    # **루트는 토큰별로 갈라 걷는다** (migration 009). Notion 의 integration 은 워크스페이스에
+    # 속하므로, 한 토큰으로 두 워크스페이스의 루트를 함께 걸으면 그 토큰이 못 보는 쪽이 통째로
+    # `ObjectNotFound` 로 돌아온다 — 그리고 그 코드는 *공유 안 됨* 과 *삭제됨* 을 구분하지 않는다.
+    # 009 가 예고한 "조용한 오독" 이 그것이고, `--reconcile` 과 만나면 남의 워크스페이스 문서를
+    # 사라진 것으로 판정한다. HTTP 표면은 `group_by_token()` 으로 이미 갈라 걷고 있었고
+    # (`sources/api.py`), CLI 만 `--token-env` 하나를 전부에 적용하고 있었다.
+    explicit = [r.strip() for r in roots.split(",") if r.strip()]
+    if explicit:
+        # 명시된 루트도 **등록돼 있으면 그 루트의 토큰**을 쓴다. `--token-env` 는 미등록 루트의
+        # 기본값일 뿐이다 — 등록 정보를 손 인자가 덮으면 009 의 컬럼이 다시 무의미해진다.
+        known = {r["root_id"]: r.get("token_env") or token_env
+                 for r in asyncio.run(roots_store.list_roots(tenant))}
+        groups: dict[str, list[str]] = {}
+        for rid in explicit:
+            groups.setdefault(known.get(rid, token_env), []).append(rid)
+    else:
         # --roots 미지정 → DB 에 등록된 소스를 쓴다 (SPEC-nexus-notion-source-console §4.1).
         # cron 명령에서 페이지 id 를 지우고, 오타로 코퍼스를 날릴 여지를 없앤다.
-        from nexus.sources.roots_store import list_roots
+        groups = roots_store.group_by_token(asyncio.run(roots_store.list_roots(tenant)))
 
-        root_list = [r["root_id"] for r in asyncio.run(list_roots(tenant))]
+    root_list = [rid for ids in groups.values() for rid in ids]
     if not root_list:
         typer.echo(
             "등록된 Notion 소스가 없습니다. 웹 UI 의 '소스' 탭에서 추가하거나 "
@@ -822,28 +838,43 @@ def ingest_notion(
     if (dry_run or force) and not reconcile:
         typer.echo("--dry-run / --force 는 --reconcile 과 함께 써야 의미가 있습니다")
         raise typer.Exit(code=1)
-    try:
-        source = NotionSource(token_env=token_env, roots=root_list, tenant=tenant)
-    except KeyError:
-        typer.echo(f"환경변수 {token_env} 없음 — Notion 통합 토큰 필요")
-        raise typer.Exit(code=1) from None
-    except ImportError:
-        typer.echo("notion-client 미설치 — `pip install nexus[notion]`")
-        raise typer.Exit(code=1) from None
-
     reconcile_fn = (
         make_reconcile_fn(threshold=threshold, force=force, dry_run=dry_run)
         if reconcile else None
     )
-    report = asyncio.run(
-        # force 는 재조정 planner 뿐 아니라 **적재**까지 닿아야 한다. 안 그러면 본문이 안 바뀐
-        # 페이지는 --force 를 줘도 영원히 idempotent 다 (제목 같은 파생 메타데이터가 안 고쳐진다).
-        import_notion(source, tenant, _default_external_ingest_fn,
-                      since=since or None, reconcile_fn=reconcile_fn, force=force)
-    )
+
+    totals = {"ingested": 0, "idempotent": 0, "empty": 0, "skipped": 0}
+    watermarks: list[str] = []
+    for env, ids in sorted(groups.items()):
+        try:
+            source = NotionSource(token_env=env, roots=ids, tenant=tenant)
+        except KeyError:
+            typer.echo(f"환경변수 {env} 없음 — 이 토큰이 읽는 루트 {len(ids)}개를 건너뜁니다")
+            raise typer.Exit(code=1) from None
+        except ImportError:
+            typer.echo("notion-client 미설치 — `pip install nexus[notion]`")
+            raise typer.Exit(code=1) from None
+
+        if len(groups) > 1:
+            typer.echo(f"[{env}] 루트 {len(ids)}개")
+        report = asyncio.run(
+            # force 는 재조정 planner 뿐 아니라 **적재**까지 닿아야 한다. 안 그러면 본문이 안
+            # 바뀐 페이지는 --force 를 줘도 영원히 idempotent 다 (제목 같은 파생 메타데이터가
+            # 안 고쳐진다).
+            import_notion(source, tenant, _default_external_ingest_fn,
+                          since=since or None, reconcile_fn=reconcile_fn, force=force)
+        )
+        for k in totals:
+            totals[k] += getattr(report, k, 0) or 0
+        if report.watermark:
+            watermarks.append(report.watermark)
+
+    # **watermark 는 그룹들의 최소값이다.** 다음 증분 실행의 `--since` 로 쓰이므로, 최대값을
+    # 내면 뒤처진 그룹의 변경분을 건너뛴다. 최소값은 이미 본 것을 다시 볼 뿐이고 그건 멱등이다.
     typer.echo(
-        f"ingested={report.ingested} idempotent={report.idempotent} "
-        f"empty={report.empty} skipped={report.skipped} watermark={report.watermark or ''}"
+        f"ingested={totals['ingested']} idempotent={totals['idempotent']} "
+        f"empty={totals['empty']} skipped={totals['skipped']} "
+        f"watermark={min(watermarks) if watermarks else ''}"
     )
     if reconcile:
         typer.echo(f"pruned={report.pruned} revived={report.revived}")
