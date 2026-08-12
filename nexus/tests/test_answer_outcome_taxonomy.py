@@ -163,6 +163,37 @@ def test_a_correct_answer_citing_an_unjudged_document_is_not_incorrect():
     assert s.ok is False, "미판정은 만점이 아니다 — 사람이 읽어야 닫힌다"
 
 
+def test_an_answer_whose_citation_did_not_verify_is_not_correct():
+    """`rev6-r1` 의 모양: 사실 40/40, 정답문서 40/40, 그런데 grounded 39 — 미검증 인용 2건.
+
+    콘솔은 `정답 40 오답 0` 을 찍고 같은 실행의 누적 로그는 `all_three 39` 를 적었다. 한 리포트가
+    두 개의 '정답' 을 담았고, 사람 눈에 먼저 닿는 쪽이 후한 값이었다.
+    """
+    # gold 는 검증됐고 **다른 인용 하나가 검증에 실패했다** — 실제 rev6-r1 의 모양이다.
+    # (`cites_gold` 는 검증된 인용만 세므로, 인용이 하나뿐인데 미검증이면 애초에 False 다.)
+    s = score_answer("q", "최대 100 곡입니다 [출처: 정답 문서]",
+                     [_cited("정답 문서"), _cited("확인 안 되는 문서", verified=False)],
+                     {"정답 문서"}, [["100"]], known_titles=TENANT)
+    assert s.cites_gold is True and s.has_facts is True
+    assert s.grounded is False, "미검증 인용이 하나라도 있으면 근거가 확인된 답이 아니다"
+    assert s.outcome != "correct", "근거가 확인되지 않은 답을 맞았다고 세면 ADR-0002 가 무너진다"
+
+
+def test_the_two_definitions_of_correct_are_one():
+    """`outcome == 'correct'` 와 `ok` 가 갈라지면 리포트가 자기와 모순된다 — 양쪽에서 건다."""
+    cases = [
+        ([_cited("정답 문서")], {"정답 문서"}, [["100"]]),                    # 정상
+        ([_cited("정답 문서", verified=False)], {"정답 문서"}, [["100"]]),    # 미검증
+        ([], {"정답 문서"}, [["100"]]),                                       # 인용 0개
+        ([_cited("다른 문서")], {"정답 문서"}, [["100"]]),                    # gold 아님
+        ([_cited("정답 문서")], {"정답 문서"}, [["없는말"]]),                 # 사실 불충족
+    ]
+    for citations, gold, must in cases:
+        s = score_answer("q", "최대 100 곡입니다 [출처: 문서]", citations, gold, must,
+                         known_titles=TENANT)
+        assert (s.outcome == "correct") == s.ok, f"{citations} → {s.outcome} vs ok={s.ok}"
+
+
 def test_a_document_already_judged_not_gold_is_incorrect():
     """판정의 **음성 절반**이 없으면 같은 건이 매 실행 되살아나 게이트가 절대 안 닫힌다."""
     s = score_answer("q", "최대 100 곡입니다 [출처: 판정 끝난 무관한 문서]",
