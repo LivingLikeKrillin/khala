@@ -149,3 +149,64 @@ def test_a_missing_labels_file_does_not_crash_path_resolution(tmp_path):
 def test_an_untagged_run_still_has_a_path():
     report, _ = run.resolve_paths(run.DEFAULT_LABELS, "")
     assert report.name == "packb-answer-quality.json"
+
+
+# ── 등급으로 못 읽는 gold (2026-08-12) ───────────────────────────────────────
+#
+# q002 가 4런 연속 실패했고 원인은 랭킹이 아니었다: gold 인 `tutorials/security/apparmor.md` 가
+# 경로 규칙(`**/security/**`)으로 RESTRICTED 인데 실행은 INTERNAL 로 돌아, 검색의
+# `classification <= clearance` 가 그 문서를 원천 배제했다. **정책 준수를 검색 실패로 적었다.**
+
+class _Con:
+    """`unreadable_gold` 가 쓰는 것은 `fetch` 하나다."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    async def fetch(self, *_a):
+        return [{"key": k, "classification": c} for k, c in self._rows]
+
+
+_DOCS = [("public.md", "PUBLIC"), ("normal.md", "INTERNAL"), ("secret.md", "RESTRICTED")]
+
+
+def _labels(*golds):
+    return {"queries": [{"id": f"q{i}", "answerable": True, "gold": list(g)}
+                        for i, g in enumerate(golds, 1)]}
+
+
+async def test_gold_above_the_clearance_is_named():
+    blind = await run.unreadable_gold(_Con(_DOCS), _labels(["secret.md"]), "t", "INTERNAL")
+    assert "q1" in blind and "RESTRICTED" in blind["q1"][0]
+
+
+async def test_a_query_whose_every_gold_is_unreadable_is_impossible():
+    """전부 못 읽으면 어떤 질의문으로도 통과할 수 없다 — 총점에 섞이면 안 된다."""
+    blind = await run.unreadable_gold(_Con(_DOCS), _labels(["secret.md"]), "t", "INTERNAL")
+    assert "**통과 불가능**" in blind["q1"]
+
+
+async def test_a_query_with_one_readable_gold_is_flagged_but_not_impossible():
+    """남은 gold 로 통과할 수 있다 — 막을 것은 숫자를 거짓으로 만드는 것뿐이다."""
+    blind = await run.unreadable_gold(
+        _Con(_DOCS), _labels(["secret.md", "normal.md"]), "t", "INTERNAL")
+    assert "**통과 불가능**" not in blind["q1"]
+
+
+async def test_nothing_is_flagged_when_the_clearance_covers_the_corpus():
+    assert await run.unreadable_gold(
+        _Con(_DOCS), _labels(["secret.md"]), "t", "RESTRICTED") == {}
+
+
+async def test_a_lower_clearance_flags_more():
+    """등급은 재는 조건이다 — 낮추면 더 많은 gold 가 사라진다."""
+    blind = await run.unreadable_gold(_Con(_DOCS), _labels(["normal.md"]), "t", "PUBLIC")
+    assert "q1" in blind
+
+
+async def test_an_unknown_clearance_is_refused_not_guessed():
+    """모르는 등급을 통과시키면 필터와 게이트가 다른 순서를 믿게 된다."""
+    import pytest
+
+    with pytest.raises(ValueError):
+        await run.unreadable_gold(_Con(_DOCS), _labels(["normal.md"]), "t", "SECRET-ISH")
