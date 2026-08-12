@@ -343,3 +343,25 @@ def test_the_label_gate_knows_where_a_query_came_from():
     typo["queries"][0]["provenance"] = "from_user_queries"
     problems = check(typo, pack)
     assert any("provenance" in p for p in problems), "오타가 조용히 통과하면 구별이 무너진다"
+
+
+async def test_status_before_the_migration_says_so_instead_of_a_traceback(db, monkeypatch):
+    """"테이블이 없다" 는 고장이 아니라 상태다 — 아직 안 켠 배포가 현황을 물으면 한 줄이 나와야
+    한다. 실제로는 트레이스백 50줄이 나왔다(2026-08-12)."""
+    from nexus.search.query_retention import NotMigrated
+    from nexus.search.query_retention import status as retention_status
+
+    async def no_table(q, *a):
+        return None if "to_regclass" in q else await db.fetch_val(q, *a)
+
+    with monkeypatch.context() as m:
+        m.setattr(db, "fetch_val", no_table)
+        with pytest.raises(NotMigrated):
+            await retention_status()
+
+
+async def test_status_distinguishes_not_migrated_from_not_enabled(db):
+    """빈 목록으로 뭉치면 '안 켰다' 와 '아직 안 만들었다' 가 같은 화면이 된다 — 조치가 다르다."""
+    from nexus.search.query_retention import status as retention_status
+
+    assert await retention_status() == [], "테이블은 있고 켠 테넌트가 없으면 빈 목록이다"

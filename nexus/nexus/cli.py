@@ -1203,10 +1203,15 @@ app.add_typer(retention_app, name="query-text")
 def query_text_status() -> None:
     """테넌트별 보존 현황. **가장 오래된 행과 만료 초과분을 함께 낸다** — 안 도는 purge 는
     증상이 없고, 그 침묵을 깨는 것이 이 줄의 목적이다."""
+    from nexus.search.query_retention import NotMigrated
     from nexus.search.query_retention import status as retention_status
 
     async def _go() -> int:
-        rows = await retention_status()
+        try:
+            rows = await retention_status()
+        except NotMigrated as e:
+            typer.echo(f"{e}. `python -m scripts.migrate` 를 먼저 돌려라.", err=True)
+            return 2
         if not rows:
             typer.echo("보존 중인 테넌트 없음 (기본값: 아무것도 저장하지 않는다)")
             return 0
