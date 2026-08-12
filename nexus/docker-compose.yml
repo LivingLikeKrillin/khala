@@ -152,6 +152,11 @@ services:
       # 배포가 `depends on undefined service` 로 아예 죽는다(실측) — 없는 사이드카는 벡터 다리의
       # degrade 경로가 맡는다 (§4.4).
       EMBED_URL: ${EMBED_URL:-http://nexus-embed:8080}
+      # 슬랙 봇 신원 — **봇과 같은 변수**를 앱도 읽는다. 앱은 이 토큰의 해시로 읽기 전용
+      # principal `slack-bot` 을 만들고, 봇은 같은 토큰을 bearer 로 보낸다. 둘이 어긋날 수 없다.
+      # 비어 있으면 principal 도 안 생긴다(기본은 슬랙 표면 없음).
+      NEXUS_SLACK_TOKEN: ${NEXUS_SLACK_TOKEN:-}
+      NEXUS_SLACK_CLEARANCE: ${NEXUS_SLACK_CLEARANCE:-PUBLIC}
     volumes:
       - .:/app                    # 개발 중 코드 변경 반영 (hot reload)
       - ./docs:/app/docs:ro       # 인덱싱할 문서 폴더

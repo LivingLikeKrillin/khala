@@ -72,6 +72,30 @@ class AuthConfig:
             dev_token_weak = (
                 dev_token == _WEAK_DEV_TOKEN_DEFAULT or len(dev_token) < _MIN_DEV_TOKEN_LEN
             )
+        # 슬랙 봇 신원: **봇이 보내는 그 토큰**으로 서버 쪽 principal 을 만든다.
+        #
+        # 봇은 `NEXUS_SLACK_TOKEN` 을 bearer 로 보내는데, 지금까지 서버에는 그 토큰에 대응하는
+        # principal 이 없었다 — compose 주석은 "gen-token 으로 발급한 읽기 전용 principal" 이라
+        # 적어 두었지만 그것을 만드는 코드도, config 항목도 없었다. 봇을 띄우면 401 이다.
+        #
+        # 같은 env 변수를 양쪽이 읽게 두는 것이 요점이다. 서버가 config 의 해시를, 봇이 env 의
+        # 토큰을 각각 들고 있으면 둘은 조용히 어긋날 수 있고, 그 어긋남은 401 루프로만 보인다.
+        # 하나의 변수에서 둘 다 파생되면 어긋남 자체가 표현 불가능하다.
+        #
+        # 능력은 비운다: 봇은 **읽기 전용**이고, 워크스페이스 전원에게 열리는 표면이 문서를
+        # 내리거나 소스를 고칠 수 있으면 안 된다. clearance 기본이 PUBLIC 인 것도 같은 이유다
+        # (`NEXUS_SLACK_CLEARANCE` — 봇 쪽 기본값과 같은 변수).
+        slack_token = os.getenv("NEXUS_SLACK_TOKEN")
+        if slack_token:
+            from .principal import hash_token
+            principals.append({
+                "name": "slack-bot",
+                "token_sha256": hash_token(slack_token),
+                "tenant": os.getenv("NEXUS_SLACK_TENANT", "default"),
+                "clearance": os.getenv("NEXUS_SLACK_CLEARANCE", "PUBLIC"),
+                "capabilities": [],
+            })
+
         return cls(
             mode=mode,
             allowed_origins=list(origins),
