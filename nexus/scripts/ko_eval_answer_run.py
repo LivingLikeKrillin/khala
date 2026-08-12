@@ -30,13 +30,28 @@ from scripts.ko_eval_labels import ManifestPack, check, expired, load  # noqa: E
 from scripts.ko_eval_packb import MANIFEST, tenant_bodies  # noqa: E402
 
 LOCAL_DIR = Path(__file__).resolve().parents[1] / "tests" / "eval" / "local"
-LABELS = LOCAL_DIR / "packb-labels.yaml"
-REPORT = LOCAL_DIR / "packb-answer-quality.json"
-#: 반복 실행은 덮어쓰지 않고 쌓는다. **같은 입력에 같은 답이 안 나오기 때문이다** — 두 실행이
-#: grounded 에서 1, 인용 0개에서 2 흔들렸다(2026-08-08). 그 폭을 모르면 모델 간 차이를 잡음과
-#: 구별할 수 없고, 구별 못 하는 비교는 비교가 아니다.
-RUNS = LOCAL_DIR / "packb-answer-runs.jsonl"
-TENANT = "default"
+DEFAULT_LABELS = LOCAL_DIR / "packb-labels.yaml"
+DEFAULT_MANIFEST = MANIFEST
+
+
+def resolve_paths(labels_path: Path, tag: str) -> tuple[Path, Path]:
+    """(리포트, 누적로그). **리포트 파일명에 tag 가 들어간다.**
+
+    예전에는 리포트가 고정 경로 하나여서 매 실행이 앞 실행을 덮었다. 2026-08-12 에 충분성 런의
+    격자(파라메트릭 2건이 **어느 질의였는지**)가 40초 뒤 다음 런에 덮여 복구 불가능해졌다 —
+    가장 진단적인 산출물이 가장 안 남는 구조였다. 누적 로그는 요약과 `ok` 맵만 담으므로
+    그것으로도 되살릴 수 없었다.
+
+    접두는 라벨 파일에서 딴다(`packb-labels.yaml` → `packb-…`). 라벨셋이 다르면 산출물도
+    자동으로 갈라져, 두 코퍼스의 숫자가 한 파일에서 섞이지 않는다.
+    """
+    prefix = labels_path.stem.removesuffix("-labels")
+    suffix = f"-{tag}" if tag else ""
+    #: 반복 실행은 덮어쓰지 않고 쌓는다. **같은 입력에 같은 답이 안 나오기 때문이다** — 두 실행이
+    #: grounded 에서 1, 인용 0개에서 2 흔들렸다(2026-08-08). 그 폭을 모르면 모델 간 차이를 잡음과
+    #: 구별할 수 없고, 구별 못 하는 비교는 비교가 아니다.
+    return (LOCAL_DIR / f"{prefix}-answer-quality{suffix}.json",
+            LOCAL_DIR / f"{prefix}-answer-runs.jsonl")
 
 
 def gate_reasons(summary: dict, expired_qids: list[str] | None = None) -> list[str]:
@@ -61,15 +76,15 @@ def _write_report(args, labels, llm, summary, rows, *, partial: bool,
     한다(SPEC-nexus-answer-quality-ruler §3.2·§3.3). 총점만 없다.
     """
     LOCAL_DIR.mkdir(parents=True, exist_ok=True)
-    REPORT.write_text(json.dumps(
+    args.report.write_text(json.dumps(
         {"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-         "labels_revision": labels["revision"], "tenant": TENANT,
+         "labels_revision": labels["revision"], "tenant": args.tenant,
          "tag": args.tag, "llm_model": getattr(llm, "model", None),
          "partial": partial, "expired": expired_qids or [],
          "controls": controls or [], "summary": summary, "queries": rows},
         ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     if partial:
-        print(f"\n기록: {REPORT}  (partial — 총점 없음, 판정 재료만)")
+        print(f"\n기록: {args.report}  (partial — 총점 없음, 판정 재료만)")
 
 
 async def _run(args) -> int:
@@ -80,19 +95,19 @@ async def _run(args) -> int:
     from nexus.search.evidence_packet import assemble_packet, format_for_llm
     from nexus.llm.answer import generate_answer
 
-    labels = load(LABELS)
-    if problems := check(labels, ManifestPack(MANIFEST), require_corpus_binding=True):
+    labels = load(args.labels)
+    if problems := check(labels, ManifestPack(args.manifest), require_corpus_binding=True):
         print("✗ 라벨 게이트 실패 — 측정 이전에 자가 틀렸다:", *problems[:4], sep="\n  ")
         return 1
 
     # **서명된 테넌트가 아니면 시작하지 않는다.** 다른 테넌트의 해시는 이 라벨에 대해 아무것도
     # 말해 주지 않으므로, 만료도 통과도 판정할 수 없다.
     signed_tenant = (labels.get("corpus") or {}).get("tenant")
-    if signed_tenant != TENANT:
-        print(f"✗ 라벨은 테넌트 {signed_tenant!r} 에 서명됐는데 재는 것은 {TENANT!r} 이다")
+    if signed_tenant != args.tenant:
+        print(f"✗ 라벨은 테넌트 {signed_tenant!r} 에 서명됐는데 재는 것은 {args.tenant!r} 이다")
         return 1
 
-    titles = {d["key"]: d["title"] for d in json.loads(MANIFEST.read_text(encoding="utf-8"))["docs"]}
+    titles = {d["key"]: d["title"] for d in json.loads(args.manifest.read_text(encoding="utf-8"))["docs"]}
     queries = [q for q in labels["queries"] if q.get("answerable")][:args.limit]
     print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 질의 {len(queries)}건\n")
 
@@ -105,8 +120,8 @@ async def _run(args) -> int:
     async with pool.acquire() as con:
         known_titles = {r["title"] for r in await con.fetch(
             "SELECT DISTINCT title FROM documents "
-            "WHERE tenant = $1 AND status = 'active' AND is_quarantined = false", TENANT)}
-        live = await tenant_bodies(con, TENANT)
+            "WHERE tenant = $1 AND status = 'active' AND is_quarantined = false", args.tenant)}
+        live = await tenant_bodies(con, args.tenant)
 
     # ── 라벨이 서명된 본문과 지금 재는 본문이 같은가 ──────────────────────────
     stale = expired(labels, {k: v["sha"] for k, v in live.items()})
@@ -134,7 +149,7 @@ async def _run(args) -> int:
     sufficiency: dict[str, str] = {}
     try:
         for q in queries:
-            result = await hybrid.hybrid_search(q["query"], tenant=TENANT, clearance="INTERNAL",
+            result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance="INTERNAL",
                                                 top_k=10, embedding_svc=svc)
             if result.degraded:
                 print(f"✗ 다리가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
@@ -177,7 +192,7 @@ async def _run(args) -> int:
         # 한 번도 안 돌렸다 — 돌리자마자 규칙 하나가 죽었다(SPEC §1.4).
         for q in ([q for q in labels["queries"] if not q.get("answerable")]
                   if args.controls else []):
-            result = await hybrid.hybrid_search(q["query"], tenant=TENANT, clearance="INTERNAL",
+            result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance="INTERNAL",
                                                 top_k=10, embedding_svc=svc)
             ans = await generate_answer(q["query"], assemble_packet(result.hits, result.graph),
                                         llm_svc=llm)
@@ -241,17 +256,25 @@ async def _run(args) -> int:
 
     _write_report(args, labels, llm, a, rows, partial=False, controls=controls)
 
-    # **덮어쓰지 않고 쌓는다.** REPORT 는 매 실행이 덮으므로 회차 간 변동을 담을 수 없고, 변동을
-    # 모르면 두 모델의 차이가 잡음인지 실력인지 못 가린다. 질의별 `ok` 까지 남겨야 다수결이 된다.
-    with RUNS.open("a", encoding="utf-8", newline="\n") as f:
+    # **덮어쓰지 않고 쌓는다.** 리포트는 tag 별로 갈라지지만, 회차 간 변동은 한 파일에 모여야
+    # 읽힌다. 변동을 모르면 두 모델의 차이가 잡음인지 실력인지 못 가리고, 질의별 `ok` 까지
+    # 남겨야 다수결이 된다.
+    #
+    # **충분성도 여기 남긴다.** 격자는 콘솔에만 찍혔고 리포트는 다음 실행이 덮었다 —
+    # 2026-08-12 에 "파라메트릭 2건" 이 어느 질의였는지 40초 만에 복구 불가능해졌다.
+    # 가장 진단적인 산출물이 가장 안 남는 구조였다.
+    with args.runs.open("a", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps({
             "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "tag": args.tag, "model": getattr(llm, "model", None), "summary": a,
+            "labels": args.labels.name, "tenant": args.tenant,
             "ok": {s.qid: s.ok for s in scores},
+            "sufficiency": sufficiency or None,
+            "grid": grid(scores, sufficiency) if sufficiency else None,
         }, ensure_ascii=False) + "\n")
 
-    print(f"\n기록: {REPORT}  (답변 본문 — 커밋하지 않는다)")
-    print(f"      {RUNS}  (실행별 누적 — 잡음 폭은 이것으로만 나온다)")
+    print(f"\n기록: {args.report}  (답변 본문 — 커밋하지 않는다)")
+    print(f"      {args.runs}  (실행별 누적 — 잡음 폭은 이것으로만 나온다)")
     return 0
 
 
@@ -264,6 +287,11 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--limit", type=int, default=40, help="LLM 을 부르는 횟수 — 돈이 든다")
     ap.add_argument("--tag", default="", help="이 실행의 이름(모델 팔·반복 회차 구분용)")
+    # 라벨셋·매니페스트·테넌트가 인자인 이유: 하니스가 Pack B 에 못박혀 있으면 "다른 코퍼스에서도
+    # 같은 수가 나오나" 를 물을 수 없고, 물을 수 없는 질문은 한계가 아니라 사각이 된다.
+    ap.add_argument("--labels", type=Path, default=DEFAULT_LABELS, help="라벨 파일")
+    ap.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST, help="팩 매니페스트")
+    ap.add_argument("--tenant", default="default", help="재는 테넌트(라벨의 서명 테넌트와 같아야 한다)")
     ap.add_argument("--model", default="", help="브리지에 넘길 모델. 비우면 백엔드 기본값")
     ap.add_argument("--controls", action="store_true",
                     help="답변불가 5건도 돌린다 — 기권 탐지기의 **양성 대조군**이다. "
@@ -272,6 +300,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="근거 충분성도 판정한다(질의당 LLM 1회 추가). 이것 없이는 기권이 "
                          "정직한 기권인지 과잉 기권인지, 오답이 생성 결함인지 환각인지 못 가른다")
     args = ap.parse_args(argv)
+    args.report, args.runs = resolve_paths(args.labels, args.tag)
     if not os.getenv("DATABASE_URL"):
         print("✗ DATABASE_URL 이 없다")
         return 1

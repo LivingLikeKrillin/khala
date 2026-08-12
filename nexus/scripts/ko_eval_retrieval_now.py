@@ -115,6 +115,13 @@ async def _run(args) -> int:
 
 
 def main() -> int:
+    # 답변 하니스에는 있고 여기엔 없었다. 2026-08-12 에 이 스크립트가 첫 줄의 `✓` 하나로 죽었다
+    # (Windows 콘솔 기본 cp949). 게이트를 이미 통과한 뒤라, 실패가 측정이 아니라 출력에서 났다.
+    if sys.platform == "win32":
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=40)
     ap.add_argument("--top-k", type=int, default=10)
