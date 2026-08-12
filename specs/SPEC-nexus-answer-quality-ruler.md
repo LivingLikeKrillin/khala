@@ -14,8 +14,8 @@ tags:
 - eval
 - answer-quality
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-11T18:58:48Z'
-content_hash: sha256:699ad7400719f81aca0438fc2d23393ea89fcd4e43b9099dd8c785b1618d1f87
+reviewed_at: '2026-08-12T14:47:44Z'
+content_hash: sha256:f97b028ae2673b159b0fcd44bd60d8ce6f453faa50992c70b1f7678e0cb2f147
 ---
 
 ## 1. What prompted it
@@ -279,6 +279,30 @@ or the answerer invented one. The ruler cannot tell those apart, so it names the
 there; a human reads the cited evidence and either flips the label to `answerable: true` with gold,
 or records a hallucination. Reporting it as a hallucination without that read is the same
 unsupported verdict this SPEC exists to remove.
+
+### 3.5 A gold document the run cannot read is not a retrieval failure
+
+*Added 2026-08-12, after Pack A.* `q002` failed four runs in a row and the cause was not ranking.
+Its gold — `tutorials/security/apparmor.md` — is `RESTRICTED` under the `**/security/**` path rule,
+while the harness searched at a hardcoded `INTERNAL`. Search obeys
+`classification <= clearance`, so that document was excluded before ranking ever happened. Neither
+leg could return it under any phrasing, native or transliterated, and the ruler wrote it down as a
+retrieval failure. **The system was keeping a policy and the instrument scored it as a defect.**
+
+Clearance is a *condition of the measurement*, not a constant. It is a run argument now, recorded
+with the run, and the gate checks the labels against it before scoring:
+
+- a query whose gold is **entirely** unreadable at this clearance **blocks the run**. It cannot pass
+  under any phrasing, and a grade that includes impossible queries measures the classification
+  settings rather than the system;
+- a query with one unreadable gold among several is **named and the run continues** — it can still
+  pass on the readable one. Half its label is dead, and saying so is the point; blocking is reserved
+  for what makes the number false.
+
+The blast radius when this was found: 3 of 64 judged documents, and 1 of 40 queries impossible.
+Correcting it moved Pack A from 34–35 to 38 of 40 with **nothing in retrieval or generation
+changed** — which is the exact shape of an instrument defect, and the reason the number has to be
+reported with its cause rather than as an improvement.
 
 ## 4. How this instrument can lie
 

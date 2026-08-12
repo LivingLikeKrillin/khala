@@ -95,6 +95,42 @@ def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, st
         }, ensure_ascii=False) + "\n")
 
 
+#: 등급 순서 — `classification <= clearance` 필터와 같은 순서여야 한다.
+_LEVELS = ("PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED")
+
+
+async def unreadable_gold(con, labels: dict, tenant: str, clearance: str) -> dict[str, list[str]]:
+    """이 등급으로 **읽을 수 없는** gold 를 가진 질의 → {qid: ["문서 (등급)"]}.
+
+    2026-08-12 에 q002 가 4런 연속 실패했고 원인은 랭킹이 아니었다: gold 인
+    `tutorials/security/apparmor.md` 가 경로 규칙(`**/security/**`)으로 RESTRICTED 인데
+    실행은 INTERNAL 로 돌아, `classification <= clearance` 가 그 문서를 원천 배제했다.
+    **시스템이 정책을 지킨 것을 자가 검색 실패로 적고 있었다.**
+
+    라벨은 못 읽는 문서를 gold 로 가질 수 없다 — 그런 질의는 통과가 불가능하고, 불가능한
+    질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을 재는 수다.
+    """
+    if clearance not in _LEVELS:
+        raise ValueError(f"알 수 없는 clearance: {clearance!r}")
+    ceiling = _LEVELS.index(clearance)
+    rows = await con.fetch(
+        "SELECT split_part(source_uri, ':', 2) AS key, classification FROM documents "
+        "WHERE tenant = $1 AND status = 'active'", tenant)
+    cls = {r["key"]: r["classification"] for r in rows}
+    out: dict[str, list[str]] = {}
+    for q in labels.get("queries") or []:
+        if not q.get("answerable"):
+            continue
+        gold = [k for k in (q.get("gold") or []) if k in cls]
+        bad = [k for k in gold if _LEVELS.index(cls[k]) > ceiling]
+        if bad:
+            # 전부 못 읽으면 그 질의는 **통과 불가능**하다. 일부만이면 남은 gold 로 통과할 수
+            # 있으니 알리되 막지 않는다 — 막을 것은 숫자를 거짓으로 만드는 것뿐이다.
+            out[q["id"]] = [f"{k} ({cls[k]})" for k in bad] + (
+                [] if len(bad) < len(gold) else ["**통과 불가능**"])
+    return out
+
+
 def gate_reasons(summary: dict, expired_qids: list[str] | None = None) -> list[str]:
     """총점을 내면 안 되는 이유들. 비어 있어야 실행이 결과가 된다.
 
@@ -163,6 +199,24 @@ async def _run(args) -> int:
             "SELECT DISTINCT title FROM documents "
             "WHERE tenant = $1 AND status = 'active' AND is_quarantined = false", args.tenant)}
         live = await tenant_bodies(con, args.tenant)
+        blind = await unreadable_gold(con, labels, args.tenant, args.clearance)
+
+    # ── 이 등급으로 읽을 수 없는 gold ────────────────────────────────────────
+    # 측정 **이전에** 막는다. 통과 불가능한 질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을
+    # 재는 수이고, 그 실패는 랭킹 결함처럼 보인다.
+    if blind:
+        impossible = {q: d for q, d in blind.items() if "**통과 불가능**" in d}
+        print(f"⚠ 이 등급({args.clearance})으로 읽을 수 없는 gold — 질의 {len(blind)}건")
+        print("  검색은 `classification <= clearance` 를 지킨다. 그 실패는 랭킹이 아니라 등급이다.")
+        for qid, docs in list(blind.items())[:8]:
+            print(f"    {qid:8s} {', '.join(docs)}")
+        if impossible:
+            print(f"\n✗ 그중 {len(impossible)}건은 gold 를 **전부** 못 읽어 통과가 불가능하다: "
+                  f"{', '.join(impossible)}")
+            print("  불가능한 질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을 재는 수다.")
+            print("  고치는 법: --clearance 를 올리거나(예: RESTRICTED), 라벨의 gold 를 바꿔라.\n")
+            return 1
+        print("  남은 gold 로 통과할 수 있어 실행은 계속한다 — 다만 그 라벨은 절반이 죽어 있다.\n")
 
     # ── 라벨이 서명된 본문과 지금 재는 본문이 같은가 ──────────────────────────
     stale = expired(labels, {k: v["sha"] for k, v in live.items()})
@@ -190,7 +244,7 @@ async def _run(args) -> int:
     sufficiency: dict[str, str] = {}
     try:
         for q in queries:
-            result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance="INTERNAL",
+            result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance=args.clearance,
                                                 top_k=10, embedding_svc=svc)
             if result.degraded:
                 print(f"✗ 다리가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
@@ -233,7 +287,7 @@ async def _run(args) -> int:
         # 한 번도 안 돌렸다 — 돌리자마자 규칙 하나가 죽었다(SPEC §1.4).
         for q in ([q for q in labels["queries"] if not q.get("answerable")]
                   if args.controls else []):
-            result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance="INTERNAL",
+            result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance=args.clearance,
                                                 top_k=10, embedding_svc=svc)
             ans = await generate_answer(q["query"], assemble_packet(result.hits, result.graph),
                                         llm_svc=llm)
@@ -322,6 +376,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--labels", type=Path, default=DEFAULT_LABELS, help="라벨 파일")
     ap.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST, help="팩 매니페스트")
     ap.add_argument("--tenant", default="default", help="재는 테넌트(라벨의 서명 테넌트와 같아야 한다)")
+    # 등급은 **재는 조건**이지 상수가 아니다. 하드코딩돼 있던 동안, 그 등급으로 못 읽는 문서를
+    # gold 로 가진 질의는 어떤 질의문으로도 통과할 수 없었고 자는 그것을 "검색 실패" 로 적었다.
+    ap.add_argument("--clearance", default="INTERNAL",
+                    help="이 등급으로 읽을 수 있는 것만 검색된다. gold 가 이보다 위면 실행이 거부된다")
     ap.add_argument("--model", default="", help="브리지에 넘길 모델. 비우면 백엔드 기본값")
     ap.add_argument("--controls", action="store_true",
                     help="답변불가 5건도 돌린다 — 기권 탐지기의 **양성 대조군**이다. "
