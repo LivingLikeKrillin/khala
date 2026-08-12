@@ -1,0 +1,717 @@
+# Pack A 답변 라벨 — 공개 코퍼스(쿠버네티스 한국어 문서 266건) 위의 **답변 품질** 자.
+#
+# **이 파일은 커밋한다.** Pack B 라벨과 다른 점이 그것이고, 그것이 존재 이유다: Pack B 는 조직
+# 문서라 리포에 못 올라가고, 그래서 지금까지 답변 품질 주장은 코퍼스를 가진 사람만 확인할 수
+# 있었다. 여기 코퍼스는 이미 `tests/eval/ko/corpus/` 에 있으므로, 체크아웃 + Postgres +
+# 임베딩 모델만 있으면 누구나 처음부터 끝까지 재현할 수 있다.
+#
+# 검색 라벨(`labels.yaml`, revision 2)의 질의·gold·층을 그대로 물려받고 `must_contain` 을
+# 더했다 — 같은 질의를 두 자로 재기 위해서다(검색이 찾았나 / 답이 사실을 담았나).
+#
+# revision 1 — 2026-08-12 검토·서명. 요구는 각 질의의 rationale 이 지목한 절에서 발췌했고,
+#   40건 전부 gold 본문에서 성립함을 채점기 함수(`facts_present`)로 확인했다. 대조군: 같은
+#   요구를 무관한 문서에 대면 6/6 탈락한다 — 검사가 본문을 실제로 본다는 뜻이다.
+#   q004 는 조였다: `크론+일정` 은 문서 어휘 되풀이로 통과할 수 있어, 필드 나열
+#   (`* * * * *` 또는 `분 시 일 월`)과 `요일` 을 함께 요구한다. 맨 글자 `시`·`일`·`월` 은
+#   쓰지 않았다 — 부분문자열 매칭이라 `일` 이 "일정" 에, `월` 이 "월요일" 에 걸린다.
+#
+# **천장은 그대로다.** 이 라벨도 문서를 보고 저술했다(`provenance: authored_from_doc`).
+# 이 파일이 메우는 것은 재현성과 두 번째 코퍼스이지 대표성이 아니다 —
+# 그쪽은 SPEC-nexus-query-text-retention 이 맡는다.
+#
+# corpus 결속(§3.3)은 아직 없다. 테넌트 `ko_eval_packa` 적재가 끝나면 서명한다.
+
+revision: 1
+pack: packa-corpus-266
+queries:
+- id: q001
+  query: 수평 파드 오토스케일링은 레플리카 수를 무엇을 보고 정하나
+  stratum: loanword
+  answerable: true
+  gold:
+  - tasks/run-application/horizontal-pod-autoscale.md
+  - concepts/workloads/autoscaling.md
+  rationale: HPA 가 메트릭으로 레플리카 수를 계산하는 알고리즘을 설명하는 문서. 제목은 라틴 표기, 질의는 음차.
+  must_contain:
+  - - 메트릭
+    - 사용률
+  - - 레플리카
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q002
+  query: 앱아머로 컨테이너가 건드릴 수 있는 자원을 제한하려면
+  stratum: loanword
+  answerable: true
+  gold:
+  - tutorials/security/apparmor.md
+  rationale: AppArmor 프로파일을 파드에 적용해 접근을 제한하는 절차. 문서는 AppArmor, 질의는 음차.
+  must_contain:
+  - - 프로파일
+  - - 제한
+    - 차단
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q003
+  query: 코넥티비티 서비스는 어떻게 설정하나
+  stratum: loanword
+  answerable: true
+  gold:
+  - tasks/extend-kubernetes/setup-konnectivity.md
+  rationale: Konnectivity 서비스 설치·설정 문서. 질의는 음차 표기.
+  must_contain:
+  - - 프록시
+  - - 에이전트
+    - agent
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q004
+  query: CronJob 의 스케줄 표기법은 어떻게 쓰나
+  stratum: loanword
+  answerable: true
+  gold:
+  - concepts/workloads/controllers/cron-jobs.md
+  - tasks/job/automated-tasks-with-cron-jobs.md
+  rationale: 크론 표현식 문법과 필드 의미를 설명하는 개념 문서. 문서 제목은 한글 음차, 질의는 라틴 표기.
+  must_contain:
+  - - 크론
+    - cron
+  - - '* * * * *'
+    - 분 시 일 월
+    - 다섯
+    - 5개
+  - - 요일
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q005
+  query: EndpointSlice 는 엔드포인트를 어떻게 나눠서 들고 있나
+  stratum: loanword
+  answerable: true
+  gold:
+  - concepts/services-networking/endpoint-slices.md
+  rationale: 엔드포인트를 여러 조각으로 나눠 담는 이유와 방식. 문서 제목은 음차, 질의는 라틴 표기.
+  must_contain:
+  - - 엔드포인트슬라이스
+    - EndpointSlice
+  - - '100'
+    - 그룹
+    - 나눠
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q006
+  query: 인증서 서명 요청을 만들어 클라이언트 인증서를 발급받으려면
+  stratum: loanword
+  answerable: true
+  gold:
+  - tasks/tls/certificate-issue-client-csr.md
+  - tasks/administer-cluster/certificates.md
+  - tasks/tls/managing-tls-in-a-cluster.md
+  rationale: CertificateSigningRequest 로 클라이언트 인증서를 발급하는 절차. 질의는 그 개념의 한글 표현.
+  must_contain:
+  - - CertificateSigningRequest
+    - 인증서 서명 요청
+  - - 승인
+    - approve
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q007
+  query: 미니큐브에서 엔진엑스 인그레스 컨트롤러를 켜려면
+  stratum: loanword
+  answerable: true
+  gold:
+  - tasks/access-application-cluster/ingress-minikube.md
+  rationale: Minikube 애드온으로 NGINX 인그레스 컨트롤러를 활성화하는 절차. 질의는 둘 다 음차.
+  must_contain:
+  - - addons
+    - 애드온
+  - - ingress
+    - 인그레스
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q008
+  query: 워드프레스와 마이에스큐엘을 퍼시스턴트 볼륨 위에 올리는 예제
+  stratum: loanword
+  answerable: true
+  gold:
+  - tutorials/stateful-application/mysql-wordpress-persistent-volume.md
+  rationale: WordPress·MySQL 을 PV/PVC 로 배포하는 튜토리얼. 문서는 라틴 표기, 질의는 음차.
+  must_contain:
+  - - 퍼시스턴트볼륨
+    - PersistentVolume
+  - - MySQL
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q009
+  query: 퍼시스턴트볼륨클레임을 만들어 파드에 저장소를 붙이는 절차
+  stratum: compound
+  answerable: true
+  gold:
+  - tasks/configure-pod-container/configure-persistent-volume-storage.md
+  rationale: PV 를 만들고 PVC 로 요청해 파드에 마운트하는 전 과정이 이 문서의 본문.
+  must_contain:
+  - - 퍼시스턴트볼륨클레임
+    - PersistentVolumeClaim
+  - - 마운트
+    - volumeMounts
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q010
+  query: 스테이트풀셋 레플리카 개수를 늘리거나 줄이려면
+  stratum: compound
+  answerable: true
+  gold:
+  - tasks/run-application/scale-stateful-set.md
+  rationale: 스테이트풀셋 스케일 명령과 주의점을 다루는 작업 문서. 풀 판정에서 개념 문서(제목 '스테이트풀셋')가 후보로 올라왔으나, 질의가 그 제목을 통째로 품고 있어
+    제목-재사용 게이트에 걸린다 — 규칙을 지켜 추가하지 않았다.
+  must_contain:
+  - - scale
+  - - 레플리카
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q011
+  query: 데몬셋을 롤링 업데이트하려면 어떤 전략을 쓰나
+  stratum: compound
+  answerable: true
+  gold:
+  - tasks/manage-daemon/update-daemon-set.md
+  - concepts/workloads/controllers/daemonset.md
+  rationale: 데몬셋의 RollingUpdate 전략과 수행 절차.
+  must_contain:
+  - - RollingUpdate
+  - - updateStrategy
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q012
+  query: 네트워크폴리시를 선언해서 파드 사이 트래픽을 막으려면
+  stratum: compound
+  answerable: true
+  gold:
+  - tasks/administer-cluster/declare-network-policy.md
+  - concepts/services-networking/network-policies.md
+  rationale: 네트워크 폴리시를 선언해 파드 간 통신을 제한하는 실습 문서.
+  must_contain:
+  - - 네트워크폴리시
+    - NetworkPolicy
+  - - 적용
+    - 생성
+    - apply
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q013
+  query: 파드시큐리티어드미션은 어떤 모드로 강제하나
+  stratum: compound
+  answerable: true
+  gold:
+  - concepts/security/pod-security-admission.md
+  - setup/best-practices/enforcing-pod-security-standards.md
+  rationale: enforce/audit/warn 모드와 레이블 기반 적용을 설명하는 개념 문서.
+  must_contain:
+  - - enforce
+    - 강제
+  - - audit
+    - 감사
+  - - warn
+    - 경고
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q014
+  query: 리소스쿼터로 네임스페이스별 사용량을 제한하려면
+  stratum: compound
+  answerable: true
+  gold:
+  - concepts/policy/resource-quotas.md
+  rationale: 네임스페이스 단위 총량 제한의 정의·종류·동작을 다루는 문서.
+  must_contain:
+  - - ResourceQuota
+    - 리소스 쿼터
+  - - 네임스페이스
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q015
+  query: 노드어피니티로 특정 노드에만 파드를 올리려면
+  stratum: compound
+  answerable: true
+  gold:
+  - tasks/configure-pod-container/assign-pods-nodes-using-node-affinity.md
+  - concepts/scheduling-eviction/assign-pod-node.md
+  rationale: 노드 어피니티로 배치를 강제하는 실습 문서.
+  must_contain:
+  - - nodeAffinity
+    - 노드 어피니티
+  - - 레이블
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q016
+  query: 컨피그맵을 붙여서 레디스 설정을 바꾸려면
+  stratum: compound
+  answerable: true
+  gold:
+  - tutorials/configuration/configure-redis-using-configmap.md
+  rationale: 컨피그맵으로 Redis 설정을 주입하는 튜토리얼.
+  must_contain:
+  - - 컨피그맵
+    - ConfigMap
+  - - Redis
+    - 레디스
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q017
+  query: 노드에 자원이 모자랄 때 어떤 파드부터 쫓겨나나
+  stratum: particle
+  answerable: true
+  gold:
+  - concepts/scheduling-eviction/node-pressure-eviction.md
+  - concepts/workloads/pods/pod-qos.md
+  rationale: kubelet 이 자원 압박에서 축출 대상을 고르는 기준과 순서.
+  must_contain:
+  - - 축출
+  - - 임계값
+    - 신호
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q018
+  query: 네임스페이스마다 메모리 요청량 기본값을 정해두려면
+  stratum: particle
+  answerable: true
+  gold:
+  - tasks/administer-cluster/manage-resources/memory-default-namespace.md
+  - concepts/policy/limit-range.md
+  rationale: LimitRange 로 기본 메모리 요청·상한을 설정하는 절차.
+  must_contain:
+  - - LimitRange
+    - 리밋레인지
+  - - 기본값
+    - 기본
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q019
+  query: 컨테이너에게 환경 변수를 넘겨주려면
+  stratum: particle
+  answerable: true
+  gold:
+  - tasks/inject-data-application/define-environment-variable-container.md
+  - concepts/containers/container-environment.md
+  - tasks/inject-data-application/define-interdependent-environment-variables.md
+  rationale: 파드 스펙의 env 로 컨테이너에 환경 변수를 정의하는 문서.
+  must_contain:
+  - - env
+  - - 환경 변수
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q020
+  query: 잡에서 병렬 처리 개수를 늘리려면
+  stratum: particle
+  answerable: true
+  gold:
+  - tasks/job/parallel-processing-expansion.md
+  - tasks/job/coarse-parallel-processing-work-queue.md
+  - tasks/job/fine-parallel-processing-work-queue.md
+  - tasks/job/indexed-parallel-processing-static.md
+  rationale: 템플릿 확장으로 잡의 병렬도를 키우는 방법.
+  must_contain:
+  - - 병렬
+    - parallelism
+  - - 잡
+    - Job
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q021
+  query: 파드 안에서 API 서버로 요청을 보내려면
+  stratum: particle
+  answerable: true
+  gold:
+  - tasks/run-application/access-api-from-pod.md
+  rationale: 파드 내부에서 서비스 어카운트 토큰으로 API 서버에 접근하는 방법.
+  must_contain:
+  - - 서비스 어카운트
+    - ServiceAccount
+  - - 토큰
+    - token
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q022
+  query: 여러 팀이 클러스터를 나눠 쓰도록 가르려면
+  stratum: particle
+  answerable: true
+  gold:
+  - tasks/administer-cluster/namespaces.md
+  - concepts/security/multi-tenancy.md
+  rationale: 네임스페이스로 클러스터를 분할해 공유하는 운영 문서.
+  must_contain:
+  - - 네임스페이스
+  - - 분할
+    - 나눠
+    - 공유
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q023
+  query: 컨트롤 플레인 컴포넌트의 로그는 어디에 쌓이나
+  stratum: particle
+  answerable: true
+  gold:
+  - concepts/cluster-administration/system-logs.md
+  - concepts/cluster-administration/logging.md
+  rationale: 시스템 컴포넌트 로그의 위치와 로깅 수준을 설명하는 문서.
+  must_contain:
+  - - /var/log
+  - - klog
+    - 로그
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q024
+  query: 볼륨으로부터 스냅샷을 떠두려면
+  stratum: particle
+  answerable: true
+  gold:
+  - concepts/storage/volume-snapshots.md
+  rationale: VolumeSnapshot 의 수명주기와 생성 방법.
+  must_contain:
+  - - VolumeSnapshot
+    - 볼륨 스냅샷
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q025
+  query: 노드에 taint 를 걸면 파드가 어떻게 되나
+  stratum: mixed
+  answerable: true
+  gold:
+  - concepts/scheduling-eviction/taint-and-toleration.md
+  rationale: 테인트와 톨러레이션의 상호작용, NoSchedule/NoExecute 효과.
+  must_contain:
+  - - NoSchedule
+  - - NoExecute
+    - 축출
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q026
+  query: kubectl 로 시크릿을 만들고 값을 확인하려면
+  stratum: mixed
+  answerable: true
+  gold:
+  - tasks/configmap-secret/managing-secret-using-kubectl.md
+  rationale: kubectl create secret 과 조회·디코딩 절차.
+  must_contain:
+  - - create secret
+  - - base64
+    - 디코딩
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q027
+  query: kubeadm 클러스터를 어떤 순서로 업그레이드하나
+  stratum: mixed
+  answerable: true
+  gold:
+  - tasks/administer-cluster/kubeadm/kubeadm-upgrade.md
+  - tasks/administer-cluster/cluster-upgrade.md
+  rationale: 컨트롤 플레인 → 워커 순의 업그레이드 절차.
+  must_contain:
+  - - 컨트롤 플레인
+  - - 워커
+    - worker
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q028
+  query: HPA 가 CPU 사용률을 보고 스케일하는 실습 예제
+  stratum: mixed
+  answerable: true
+  gold:
+  - tasks/run-application/horizontal-pod-autoscale-walkthrough.md
+  - tasks/run-application/horizontal-pod-autoscale.md
+  rationale: 부하를 걸어 HPA 동작을 확인하는 연습 문서.
+  must_contain:
+  - - HorizontalPodAutoscaler
+    - HPA
+  - - 부하
+    - load
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q029
+  query: CoreDNS 로 서비스 디스커버리를 붙이려면
+  stratum: mixed
+  answerable: true
+  gold:
+  - tasks/administer-cluster/coredns.md
+  - tasks/administer-cluster/dns-custom-nameservers.md
+  rationale: CoreDNS 설치·전환으로 서비스 디스커버리를 구성하는 문서.
+  must_contain:
+  - - CoreDNS
+  - - kube-dns
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q030
+  query: livenessProbe 와 readinessProbe 를 어떻게 나눠 설정하나
+  stratum: mixed
+  answerable: true
+  gold:
+  - tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md
+  rationale: 세 프로브의 설정 필드와 차이를 예제로 다루는 문서.
+  must_contain:
+  - - livenessProbe
+  - - readinessProbe
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q031
+  query: PV 반환 정책을 Retain 으로 바꾸려면
+  stratum: mixed
+  answerable: true
+  gold:
+  - tasks/administer-cluster/change-pv-reclaim-policy.md
+  - concepts/storage/storage-classes.md
+  rationale: persistentVolumeReclaimPolicy 를 Retain 으로 변경하는 절차.
+  must_contain:
+  - - Retain
+  - - persistentVolumeReclaimPolicy
+    - 반환 정책
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q032
+  query: sysctl 값을 파드 단위로 조정하려면
+  stratum: mixed
+  answerable: true
+  gold:
+  - tasks/administer-cluster/sysctl-cluster.md
+  rationale: 안전/비안전 sysctl 구분과 파드에 적용하는 방법.
+  must_contain:
+  - - sysctl
+  - - safe
+    - 안전
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q033
+  query: 스테이트풀 셋 파드가 안 지워질 때 강제로 지우려면
+  stratum: spacing
+  answerable: true
+  gold:
+  - tasks/run-application/force-delete-stateful-set-pod.md
+  - tasks/run-application/delete-stateful-set.md
+  rationale: 종료되지 않는 스테이트풀셋 파드의 강제 삭제 절차와 위험.
+  must_contain:
+  - - --force
+  - - --grace-period
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q034
+  query: 데몬 셋을 이전 리비전으로 되돌리려면
+  stratum: spacing
+  answerable: true
+  gold:
+  - tasks/manage-daemon/rollback-daemon-set.md
+  rationale: 데몬셋 롤백 명령과 리비전 확인.
+  must_contain:
+  - - rollout undo
+  - - 리비전
+    - revision
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q035
+  query: 컨피그 맵을 바꾸면 설정 파일을 어떻게 갱신하나
+  stratum: spacing
+  answerable: true
+  gold:
+  - tutorials/configuration/updating-configuration-via-a-configmap.md
+  - concepts/configuration/configmap.md
+  rationale: 컨피그맵 변경이 마운트된 설정 파일에 반영되는 과정을 다루는 튜토리얼.
+  must_contain:
+  - - 마운트
+    - 볼륨
+  - - 갱신
+    - 반영
+    - 업데이트
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q036
+  query: 퍼시스턴트 볼륨 접근 모드를 한 파드 전용으로 바꾸려면
+  stratum: spacing
+  answerable: true
+  gold:
+  - tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md
+  rationale: ReadWriteOncePod 로 접근 모드를 바꾸는 절차.
+  must_contain:
+  - - ReadWriteOncePod
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q037
+  query: 레플리카 셋은 파드 개수를 어떻게 유지하나
+  stratum: spacing
+  answerable: true
+  gold:
+  - concepts/workloads/controllers/replicaset.md
+  rationale: 레플리카셋이 원하는 파드 수를 유지하는 방식과 셀렉터.
+  must_contain:
+  - - 셀렉터
+    - selector
+  - - 레플리카
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q038
+  query: 사이드 카 컨테이너를 파드에 넣는 방법
+  stratum: spacing
+  answerable: true
+  gold:
+  - tutorials/configuration/pod-sidecar-containers.md
+  - concepts/workloads/pods/sidecar-containers.md
+  - concepts/workloads/pods/init-containers.md
+  rationale: '사이드카(초기화 컨테이너 restartPolicy: Always)를 파드에 추가하는 방법 — 튜토리얼과 개념 문서 둘 다 답이 된다.'
+  must_contain:
+  - - 사이드카
+  - - restartPolicy
+    - 초기화 컨테이너
+  provenance: adjudicated
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q039
+  query: 인그레스컨트롤러는 어떤 기준으로 고르나
+  stratum: spacing
+  answerable: true
+  gold:
+  - concepts/services-networking/ingress-controllers.md
+  rationale: 인그레스 컨트롤러의 종류와 선택 시 고려 사항.
+  must_contain:
+  - - 인그레스 컨트롤러
+  - - IngressClass
+    - 인그레스클래스
+    - 기본
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q040
+  query: 노드 오토 스케일링은 무엇을 보고 노드를 늘리나
+  stratum: spacing
+  answerable: true
+  gold:
+  - concepts/cluster-administration/node-autoscaling.md
+  rationale: 노드 오토스케일러가 스케일 업/다운을 결정하는 근거.
+  must_contain:
+  - - 스케줄할 수 없는
+    - 스케줄되지
+    - Pending
+  - - 노드
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q041
+  query: 노션 페이지를 넥서스에 적재하려면 어떤 명령을 쓰나
+  stratum: unanswerable
+  answerable: false
+  gold: []
+  rationale: khala 자체 기능. 쿠버네티스 문서 코퍼스에 답이 있을 수 없다.
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q042
+  query: 승인 게이트의 처분은 누가 서명하나
+  stratum: unanswerable
+  answerable: false
+  gold: []
+  rationale: Arbiter 거버넌스 절차. 코퍼스 밖.
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q043
+  query: 형태소 분석기 사전에 신조어를 추가하려면
+  stratum: unanswerable
+  answerable: false
+  gold: []
+  rationale: mecab-ko 사용자 사전 얘기. 코퍼스 밖이며, 하필 이 평가셋의 주제와 인접해 오검색을 유도한다.
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q044
+  query: 벡터 인덱스를 만들 때 차원 수는 어떻게 정하나
+  stratum: unanswerable
+  answerable: false
+  gold: []
+  rationale: 임베딩/pgvector 주제. 코퍼스 밖.
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
+- id: q045
+  query: 이번 분기 팀 목표는 무엇인가
+  stratum: unanswerable
+  answerable: false
+  gold: []
+  rationale: 조직 내부 문서에나 있을 질문. 공개 기술 문서 코퍼스에는 없다.
+  provenance: authored_from_doc
+  authored_by: agent
+  reviewed_by: LivingLikeKrillin
+  reviewed_revision: 1
