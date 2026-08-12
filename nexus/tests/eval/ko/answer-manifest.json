@@ -1,0 +1,1865 @@
+{
+ "pack": "packa-corpus-266",
+ "source_tenant": "ko_eval_packa",
+ "frozen_at": "2026-08-12T09:46:46+00:00",
+ "documents": 265,
+ "chunks": 1897,
+ "note": "Pack A 답변 라벨의 corpus 결속 기준. 코퍼스가 공개 문서라 이 파일은 커밋한다.",
+ "docs": [
+  {
+   "key": "concepts/architecture/cgroups.md",
+   "title": "cgroup v2에 대하여",
+   "chunks": 4,
+   "body_chars": 3838,
+   "body_sha256": "8f4dd26cd81307abbeef77b2e1fdd3313716c91f0f4037aa8fd25ca71ca62fc7"
+  },
+  {
+   "key": "concepts/architecture/cloud-controller.md",
+   "title": "클라우드 컨트롤러 매니저",
+   "chunks": 4,
+   "body_chars": 4121,
+   "body_sha256": "ac743f250fbe43ac530f713d8b994a8c3c6eb5e2dc33c69421ba344b98f373a6"
+  },
+  {
+   "key": "concepts/architecture/control-plane-node-communication.md",
+   "title": "컨트롤 플레인-노드 간 통신",
+   "chunks": 3,
+   "body_chars": 4263,
+   "body_sha256": "800e32e651d87614b56bc3a206ebd9bf6cbcc8fbc176a3fd74eb44b67d94bbc4"
+  },
+  {
+   "key": "concepts/architecture/controller.md",
+   "title": "컨트롤러",
+   "chunks": 5,
+   "body_chars": 3665,
+   "body_sha256": "eb00a5bbd5d056b22d1b7b30d06b729056f2e01866eb2da1253274ce6a631230"
+  },
+  {
+   "key": "concepts/architecture/garbage-collection.md",
+   "title": "가비지(Garbage) 수집",
+   "chunks": 5,
+   "body_chars": 6008,
+   "body_sha256": "2ecf962cc92ac65574c34e6a7f36a53879e439a7c5932c91f96049edc0aa21d1"
+  },
+  {
+   "key": "concepts/architecture/leases.md",
+   "title": "리스(Lease)",
+   "chunks": 4,
+   "body_chars": 2784,
+   "body_sha256": "f252c84674e9f51912bba95e4fec449b0020c95ff50c41a50b3ef85662709143"
+  },
+  {
+   "key": "concepts/architecture/nodes.md",
+   "title": "노드",
+   "chunks": 8,
+   "body_chars": 8699,
+   "body_sha256": "f0d4befc39f4dcfafcf289d4819f17e80c31f47737ed2e485a8661a3363de4bf"
+  },
+  {
+   "key": "concepts/architecture/self-healing.md",
+   "title": "쿠버네티스 자가 치유",
+   "chunks": 3,
+   "body_chars": 1633,
+   "body_sha256": "1cc60c30581ddee70f9e3c646be18658da4a7d1abfa770a3febd4ca28eb20727"
+  },
+  {
+   "key": "concepts/cluster-administration/addons.md",
+   "title": "애드온 설치",
+   "chunks": 6,
+   "body_chars": 4191,
+   "body_sha256": "dcaf1f1ae1d190e5bc9387d0574789aead452a6e35e475bf4e334fd1632d3907"
+  },
+  {
+   "key": "concepts/cluster-administration/kube-state-metrics.md",
+   "title": "쿠버네티스 오브젝트 상태에 대한 메트릭",
+   "chunks": 3,
+   "body_chars": 1531,
+   "body_sha256": "bdc121bd3e354d5be2c64cd01327e3091349c9936df5e45834868360382d2609"
+  },
+  {
+   "key": "concepts/cluster-administration/logging.md",
+   "title": "로깅 아키텍처",
+   "chunks": 5,
+   "body_chars": 10558,
+   "body_sha256": "e21ab33f8fe7c08608bb6f31cfebaf18331e5db9ef6365726a6994f8ab1fe42d"
+  },
+  {
+   "key": "concepts/cluster-administration/manage-deployment.md",
+   "title": "리소스 관리",
+   "chunks": 12,
+   "body_chars": 13403,
+   "body_sha256": "f1e2bd1f73b474bf97dfc9de2479f5cdf1b1ad3562d0c513a30a840292a1cb9b"
+  },
+  {
+   "key": "concepts/cluster-administration/networking.md",
+   "title": "클러스터 네트워킹",
+   "chunks": 2,
+   "body_chars": 1303,
+   "body_sha256": "384803c5be834c26ebf236e3a1890263716eec25d75b880062b66713c7879853"
+  },
+  {
+   "key": "concepts/cluster-administration/node-autoscaling.md",
+   "title": "노드 오토스케일링",
+   "chunks": 6,
+   "body_chars": 8929,
+   "body_sha256": "bb589104bde240258d0d7c8b7b6b6455d2bee8be78a71251e754163d0c431662"
+  },
+  {
+   "key": "concepts/cluster-administration/node-shutdown.md",
+   "title": "노드 셧다운",
+   "chunks": 5,
+   "body_chars": 9748,
+   "body_sha256": "dea7ad592175138232ae28b4a1a7e112d6a773a75bc25db74affc18e7520c2d4"
+  },
+  {
+   "key": "concepts/cluster-administration/proxies.md",
+   "title": "쿠버네티스에서 프락시(Proxy)",
+   "chunks": 3,
+   "body_chars": 1503,
+   "body_sha256": "dbd48d16b67de735659b945ffbf623637480cc7dc3b304098e92a537717b8c36"
+  },
+  {
+   "key": "concepts/cluster-administration/system-logs.md",
+   "title": "시스템 로그",
+   "chunks": 3,
+   "body_chars": 7966,
+   "body_sha256": "8913c16eec04b56f46a714176d639ba6eb6dffc68a77cbb85093e6fd8dd2ce2e"
+  },
+  {
+   "key": "concepts/cluster-administration/system-metrics.md",
+   "title": "쿠버네티스 시스템 컴포넌트에 대한 메트릭",
+   "chunks": 12,
+   "body_chars": 6626,
+   "body_sha256": "276d3c925bb12f01443fe9b46085b41fb5b2ad8c8ab8399a1a2c76bc5b16807b"
+  },
+  {
+   "key": "concepts/cluster-administration/system-traces.md",
+   "title": "쿠버네티스 시스템 컴포넌트에 대한 추적(trace)",
+   "chunks": 7,
+   "body_chars": 3368,
+   "body_sha256": "bd70e4c5e1807a09d28ce5c80351fc5d7cb195aa696cb618f389fd6fc467deee"
+  },
+  {
+   "key": "concepts/configuration/configmap.md",
+   "title": "컨피그맵(ConfigMap)",
+   "chunks": 8,
+   "body_chars": 5877,
+   "body_sha256": "220de4d8975bc9ed0119e2e55c675a1048d9bfdb39ec6cd1483f9b6ab42dc429"
+  },
+  {
+   "key": "concepts/configuration/liveness-readiness-startup-probes.md",
+   "title": "활성(Liveness), 준비성(Readiness) 그리고 시작(Startup) 프로브",
+   "chunks": 4,
+   "body_chars": 1057,
+   "body_sha256": "8463d5bace83f674b0fde004d9b95136a08bedb66b870cd473379b506a7ff806"
+  },
+  {
+   "key": "concepts/configuration/manage-resources-containers.md",
+   "title": "파드 및 컨테이너 리소스 관리",
+   "chunks": 16,
+   "body_chars": 22876,
+   "body_sha256": "b79dfee13cdd6057ee6957f37c120a3516794b1f1d83e4127be98f0cc591ace6"
+  },
+  {
+   "key": "concepts/configuration/organize-cluster-access-kubeconfig.md",
+   "title": "kubeconfig 파일을 사용하여 클러스터 접근 구성하기",
+   "chunks": 7,
+   "body_chars": 4237,
+   "body_sha256": "599848a6ab7f8aa384a63b02b5ce1827ae09bf17de45b39ea8e56622215224c9"
+  },
+  {
+   "key": "concepts/configuration/overview.md",
+   "title": "구성 모범 사례",
+   "chunks": 6,
+   "body_chars": 5235,
+   "body_sha256": "c7430888dc848dfd394d95e129f483473994e880a9639715f2857c756ec6ca39"
+  },
+  {
+   "key": "concepts/configuration/windows-resource-management.md",
+   "title": "윈도우 노드의 자원 관리",
+   "chunks": 4,
+   "body_chars": 2280,
+   "body_sha256": "4bc651324294712707f42ad4ec1d84ebc406dccfee632c25da44585d751241ce"
+  },
+  {
+   "key": "concepts/containers/container-environment.md",
+   "title": "컨테이너 환경 변수",
+   "chunks": 2,
+   "body_chars": 1273,
+   "body_sha256": "34d132eba1410c743465ce3dcf1e985821bf3bfe2c4c7e7e63ed73d3704cda13"
+  },
+  {
+   "key": "concepts/containers/container-lifecycle-hooks.md",
+   "title": "컨테이너 라이프사이클 훅(Hook)",
+   "chunks": 4,
+   "body_chars": 4984,
+   "body_sha256": "f13862fc57f4e7a990e9a608fce6b7b77a3ef1c4eae3ca8fc8c1e475e6a31c12"
+  },
+  {
+   "key": "concepts/containers/cri.md",
+   "title": "컨테이너 런타임 인터페이스 (CRI)",
+   "chunks": 3,
+   "body_chars": 912,
+   "body_sha256": "971d1213c71db1d74186d9a63314d94b332297b7a35bebc7ded9670f9d283f93"
+  },
+  {
+   "key": "concepts/containers/images.md",
+   "title": "이미지",
+   "chunks": 11,
+   "body_chars": 18671,
+   "body_sha256": "774722bb0a7a0ef47660adc16f1adb79f897f06034bd18b08008887fd2b530a6"
+  },
+  {
+   "key": "concepts/containers/runtime-class.md",
+   "title": "런타임클래스(RuntimeClass)",
+   "chunks": 10,
+   "body_chars": 4306,
+   "body_sha256": "9b4b81fa55791962979d814e555b8f2a57485b466c799630d4ca60a719ea2e3f"
+  },
+  {
+   "key": "concepts/extend-kubernetes/api-extension/apiserver-aggregation.md",
+   "title": "쿠버네티스 API 애그리게이션 레이어(aggregation layer)",
+   "chunks": 2,
+   "body_chars": 1624,
+   "body_sha256": "273515532148af644c2b8a51891f438e7ee4a577fa66f856eb99c976c92fcb98"
+  },
+  {
+   "key": "concepts/extend-kubernetes/api-extension/custom-resources.md",
+   "title": "커스텀 리소스",
+   "chunks": 14,
+   "body_chars": 13290,
+   "body_sha256": "ae65f6d065b32bf01e193dd76dacd735b236b7892f1c476815ce76435bd4dacd"
+  },
+  {
+   "key": "concepts/extend-kubernetes/compute-storage-net/device-plugins.md",
+   "title": "장치 플러그인",
+   "chunks": 14,
+   "body_chars": 12566,
+   "body_sha256": "69df4fa3900a235bfb93428eb787134409cdc1f8c4a9b78a3d6628e0d3aea054"
+  },
+  {
+   "key": "concepts/extend-kubernetes/compute-storage-net/network-plugins.md",
+   "title": "네트워크 플러그인",
+   "chunks": 3,
+   "body_chars": 4374,
+   "body_sha256": "b799f693bc5eabaec9b98619a72ea76dfa4cb447728c968ec0c9c954b178cd67"
+  },
+  {
+   "key": "concepts/extend-kubernetes/operator.md",
+   "title": "오퍼레이터(operator) 패턴",
+   "chunks": 7,
+   "body_chars": 4131,
+   "body_sha256": "d9fe127df81a1b36ccb35fc5a05ed55a45ff7b0183e9b7e5da7d3508818c6cea"
+  },
+  {
+   "key": "concepts/overview/components.md",
+   "title": "쿠버네티스 컴포넌트",
+   "chunks": 5,
+   "body_chars": 1833,
+   "body_sha256": "50c2cf63298754e57bb6e4ec49b94c4f573cf89a9d0fb990de676a74517643e3"
+  },
+  {
+   "key": "concepts/overview/kubernetes-api.md",
+   "title": "쿠버네티스 API",
+   "chunks": 6,
+   "body_chars": 6642,
+   "body_sha256": "874a4bb66f1b3ae1462bf22e93d2a4586aec681ec885a3ae7f848fabfcff98ea"
+  },
+  {
+   "key": "concepts/overview/working-with-objects/annotations.md",
+   "title": "어노테이션",
+   "chunks": 3,
+   "body_chars": 2297,
+   "body_sha256": "b80158f71d899bf1fb7ee8a2d7d7b53d59a5e08a8b7492ed368da8ea07364a05"
+  },
+  {
+   "key": "concepts/overview/working-with-objects/common-labels.md",
+   "title": "권장 레이블",
+   "chunks": 5,
+   "body_chars": 4328,
+   "body_sha256": "2df34847e7d2d40fb6f36705d149e0f002bfd2839128bd9949b594e571759104"
+  },
+  {
+   "key": "concepts/overview/working-with-objects/field-selectors.md",
+   "title": "필드 셀렉터",
+   "chunks": 5,
+   "body_chars": 5531,
+   "body_sha256": "96b09ac43072999ef84d4b5541a7600c480fdbb7ab9cca282eaec8576ee1715a"
+  },
+  {
+   "key": "concepts/overview/working-with-objects/finalizers.md",
+   "title": "파이널라이저",
+   "chunks": 3,
+   "body_chars": 2684,
+   "body_sha256": "ca4508fd78236e98c202231fa9007b743fa5e124d2384a2e67370b049796086e"
+  },
+  {
+   "key": "concepts/overview/working-with-objects/kubernetes-objects.md",
+   "title": "쿠버네티스 오브젝트 이해하기",
+   "chunks": 3,
+   "body_chars": 4141,
+   "body_sha256": "910cef29f14d1f46aaa0c99a71b736fe329fd71372bd576dbb4c2da4025b07b2"
+  },
+  {
+   "key": "concepts/overview/working-with-objects/labels.md",
+   "title": "레이블과 셀렉터",
+   "chunks": 7,
+   "body_chars": 10708,
+   "body_sha256": "007d7264431b88e2b67a8c8b90af9a81602b468b3e5d9cfdd90ae1e0fcb7ac99"
+  },
+  {
+   "key": "concepts/overview/working-with-objects/names.md",
+   "title": "오브젝트 이름과 ID",
+   "chunks": 3,
+   "body_chars": 2618,
+   "body_sha256": "c2f3656408b15083d71e29223fa986862b23d08f71be3a6ac94cb32443ecd374"
+  },
+  {
+   "key": "concepts/overview/working-with-objects/namespaces.md",
+   "title": "네임스페이스",
+   "chunks": 10,
+   "body_chars": 4103,
+   "body_sha256": "a433a683066b549ce7821d4149534e7e5f1221d9fe523ad0821f9390d8fb3398"
+  },
+  {
+   "key": "concepts/overview/working-with-objects/object-management.md",
+   "title": "쿠버네티스 오브젝트 관리",
+   "chunks": 5,
+   "body_chars": 3960,
+   "body_sha256": "45fc25c190ed1b2d246189c18c000bcb5110d2c839cfed65c49ebc41b0b3a741"
+  },
+  {
+   "key": "concepts/policy/limit-range.md",
+   "title": "리밋 레인지(Limit Range)",
+   "chunks": 3,
+   "body_chars": 3782,
+   "body_sha256": "79ed7c7a1eb52f9a0a690018379803662f3011703cd93ac07322f7af68dee156"
+  },
+  {
+   "key": "concepts/policy/pid-limiting.md",
+   "title": "프로세스 ID 제한 및 예약",
+   "chunks": 4,
+   "body_chars": 3525,
+   "body_sha256": "8f264fdc47348e952d3c1102bf887e6a34d31877d248c2742f8c31173fa6f8eb"
+  },
+  {
+   "key": "concepts/policy/resource-quotas.md",
+   "title": "리소스 쿼터",
+   "chunks": 11,
+   "body_chars": 18774,
+   "body_sha256": "858a1ee4a4fe18f0ce88ede15a9f75eba82e1c1cfb502b0f01b6e4a5ff39e497"
+  },
+  {
+   "key": "concepts/scheduling-eviction/api-eviction.md",
+   "title": "API를 이용한 축출(API-initiated Eviction)",
+   "chunks": 4,
+   "body_chars": 3151,
+   "body_sha256": "1109d85a74e64882d3a62642115cf617713f53a9d16a34955c2739c1873202d1"
+  },
+  {
+   "key": "concepts/scheduling-eviction/assign-pod-node.md",
+   "title": "노드에 파드 할당하기",
+   "chunks": 23,
+   "body_chars": 22621,
+   "body_sha256": "fbe094c1ef27281e1d54da9dab701492213f86570c7facd0cd0ec93fe1a57e62"
+  },
+  {
+   "key": "concepts/scheduling-eviction/kube-scheduler.md",
+   "title": "쿠버네티스 스케줄러",
+   "chunks": 3,
+   "body_chars": 2933,
+   "body_sha256": "4fbd018e655f8ec91d98d732fb2d97cc85f10a25985030986210509fb603b8cb"
+  },
+  {
+   "key": "concepts/scheduling-eviction/node-declared-features.md",
+   "title": "노드 선언형 기능",
+   "chunks": 3,
+   "body_chars": 1750,
+   "body_sha256": "a0810bb8b45e90c5e12a10bc83613ecdc97ab4f71b1671aa6c3f24b7d072cbf0"
+  },
+  {
+   "key": "concepts/scheduling-eviction/node-pressure-eviction.md",
+   "title": "노드-압박 축출",
+   "chunks": 6,
+   "body_chars": 15589,
+   "body_sha256": "a7af3045710d0455a19ba2025eaad6db7508fb5ee3ef15295f17d80123e38f52"
+  },
+  {
+   "key": "concepts/scheduling-eviction/pod-overhead.md",
+   "title": "파드 오버헤드",
+   "chunks": 8,
+   "body_chars": 4755,
+   "body_sha256": "da300b33303933ca90e220d8502549b0f24ab99c62ed49191a3ca5587a4f30bd"
+  },
+  {
+   "key": "concepts/scheduling-eviction/pod-priority-preemption.md",
+   "title": "파드 우선순위(priority)와 선점(preemption)",
+   "chunks": 9,
+   "body_chars": 10207,
+   "body_sha256": "0652f455bde26aeb475c4ba3f660fce032bc41cb0fc26507d4d1df533502de04"
+  },
+  {
+   "key": "concepts/scheduling-eviction/pod-scheduling-readiness.md",
+   "title": "파드 스케줄링 준비성(readiness)",
+   "chunks": 4,
+   "body_chars": 2226,
+   "body_sha256": "f3a62a20d825aef0d41949c9475044e4dab298ca5e5d4ea09cce871bf6ddea89"
+  },
+  {
+   "key": "concepts/scheduling-eviction/resource-bin-packing.md",
+   "title": "리소스 빈 패킹(bin packing)",
+   "chunks": 4,
+   "body_chars": 5927,
+   "body_sha256": "3d3185e321e19e702f95cc13852d8948fd1189387519c44f140b6e10ba01aab4"
+  },
+  {
+   "key": "concepts/scheduling-eviction/scheduler-perf-tuning.md",
+   "title": "스케줄러 성능 튜닝",
+   "chunks": 4,
+   "body_chars": 3853,
+   "body_sha256": "2854699ed2ae3815afc12c66c64d1b9467439c1aacecaaca96d34b118abf15c1"
+  },
+  {
+   "key": "concepts/scheduling-eviction/taint-and-toleration.md",
+   "title": "테인트(Taints)와 톨러레이션(Tolerations)",
+   "chunks": 6,
+   "body_chars": 8761,
+   "body_sha256": "541be01af5385592d77120fa6868ef81fc875c21211421745b4412f8b2429960"
+  },
+  {
+   "key": "concepts/scheduling-eviction/topology-spread-constraints.md",
+   "title": "파드 토폴로지 분배 제약 조건",
+   "chunks": 12,
+   "body_chars": 19331,
+   "body_sha256": "a23588bbc0630ba05542ebd0ce9c0f3890916c9b08b229f81964477ec14a1500"
+  },
+  {
+   "key": "concepts/security/cloud-native-security.md",
+   "title": "클라우드 네이티브 보안과 쿠버네티스",
+   "chunks": 7,
+   "body_chars": 7303,
+   "body_sha256": "ba15ff4be3ae8d6b20bcfc9a09066a8e59fc922a04592f15bb8afefd84cff5bc"
+  },
+  {
+   "key": "concepts/security/controlling-access.md",
+   "title": "쿠버네티스 API 접근 제어하기",
+   "chunks": 6,
+   "body_chars": 5261,
+   "body_sha256": "d2dd4eb9a913d32ad635f690c6664b6d516a8b5a0602ef239bf09cdf5f8d7a16"
+  },
+  {
+   "key": "concepts/security/multi-tenancy.md",
+   "title": "멀티 테넌시(multi-tenancy)",
+   "chunks": 12,
+   "body_chars": 18149,
+   "body_sha256": "ee12e3b0d66fd2f0f815ae36939efce80981fd0384913447dee47b64e967f1f6"
+  },
+  {
+   "key": "concepts/security/overview.md",
+   "title": "클라우드 네이티브 보안 개요",
+   "chunks": 6,
+   "body_chars": 5991,
+   "body_sha256": "1ff8f08c82103d868f8efeac5e1748c3eb4e77e562b3cde74e72083656aad313"
+  },
+  {
+   "key": "concepts/security/pod-security-admission.md",
+   "title": "파드 시큐리티 어드미션",
+   "chunks": 13,
+   "body_chars": 4393,
+   "body_sha256": "13c4d8d7115881b15c96e56fa3d736a0be28ae812343a3c3a1b90695e20fd94d"
+  },
+  {
+   "key": "concepts/security/pod-security-standards.md",
+   "title": "파드 시큐리티 스탠다드",
+   "chunks": 7,
+   "body_chars": 17630,
+   "body_sha256": "9d5f4514dbe623d7aeb3a0fb2186932dd7f25bc379bf48085f1425a97c894d78"
+  },
+  {
+   "key": "concepts/security/rbac-good-practices.md",
+   "title": "역할 기반 접근 제어 (RBAC) 모범 사례",
+   "chunks": 5,
+   "body_chars": 6604,
+   "body_sha256": "5f697ded2877b2ea35d5cff84767033a19697082000e18dc6a9f257ceb1e008d"
+  },
+  {
+   "key": "concepts/security/secrets-good-practices.md",
+   "title": "쿠버네티스 시크릿 모범 사례",
+   "chunks": 3,
+   "body_chars": 2513,
+   "body_sha256": "6587302cd4ab608a1543ad5d888c54921015a853aee060cd2f09bee3df0e5805"
+  },
+  {
+   "key": "concepts/security/service-accounts.md",
+   "title": "서비스 어카운트",
+   "chunks": 7,
+   "body_chars": 11620,
+   "body_sha256": "db062c82dd625811f8376548649a82c66d5d1af651448a89b85c448a8de1a556"
+  },
+  {
+   "key": "concepts/security/windows-security.md",
+   "title": "윈도우 노드에서의 보안",
+   "chunks": 4,
+   "body_chars": 1741,
+   "body_sha256": "d3c32802e56277b973e0c1b225e1352fae99766e5d6973593bb77c99a0c97feb"
+  },
+  {
+   "key": "concepts/services-networking/cluster-ip-allocation.md",
+   "title": "서비스 클러스터IP 할당",
+   "chunks": 5,
+   "body_chars": 3038,
+   "body_sha256": "121d22bc57df078b16627f56d66852c92eb93ffc08aa520dd832ce7bcda71b1d"
+  },
+  {
+   "key": "concepts/services-networking/dns-pod-service.md",
+   "title": "서비스 및 파드용 DNS",
+   "chunks": 6,
+   "body_chars": 10025,
+   "body_sha256": "4e860c49785dbdceed8df0c064f7b3765cba1626b1eba8c8e8e5a6a219608ee8"
+  },
+  {
+   "key": "concepts/services-networking/dual-stack.md",
+   "title": "IPv4/IPv6 이중 스택",
+   "chunks": 8,
+   "body_chars": 8174,
+   "body_sha256": "5cb8a132dd30c40d43673b3076ee850625fa8cc4c1829369130ff02df496b546"
+  },
+  {
+   "key": "concepts/services-networking/endpoint-slices.md",
+   "title": "엔드포인트슬라이스",
+   "chunks": 5,
+   "body_chars": 7274,
+   "body_sha256": "7214b508c0be1e6b3469d69c4bca2d8dad1a8a312832c02a5b55eec4a0c542de"
+  },
+  {
+   "key": "concepts/services-networking/gateway.md",
+   "title": "게이트웨이 API",
+   "chunks": 7,
+   "body_chars": 8219,
+   "body_sha256": "57d45fad83f39c0d0874c2e085ef23daed76237f9634448f33d6aba156c74752"
+  },
+  {
+   "key": "concepts/services-networking/ingress-controllers.md",
+   "title": "인그레스 컨트롤러",
+   "chunks": 4,
+   "body_chars": 6165,
+   "body_sha256": "a7acb8bc55970b57df43631b5b03923280bcc87913ef5caec2e39e069a478765"
+  },
+  {
+   "key": "concepts/services-networking/ingress.md",
+   "title": "인그레스(Ingress)",
+   "chunks": 20,
+   "body_chars": 18160,
+   "body_sha256": "0c2a4295a4543cc8196c9b456a731dfee26d9d9765650b88c413b64329c89989"
+  },
+  {
+   "key": "concepts/services-networking/network-policies.md",
+   "title": "네트워크 정책",
+   "chunks": 10,
+   "body_chars": 9614,
+   "body_sha256": "308637534378d094044f1850dabff13b29d90673312d19f8a7476aa281ce95a1"
+  },
+  {
+   "key": "concepts/services-networking/service-topology.md",
+   "title": "토폴로지 키를 사용하여 토폴로지-인지 트래픽 라우팅",
+   "chunks": 5,
+   "body_chars": 4222,
+   "body_sha256": "455fcfe026b2f9a1742224cb26479ff467a046de8d80fdccff56b5cd559da1c9"
+  },
+  {
+   "key": "concepts/services-networking/service-traffic-policy.md",
+   "title": "서비스 내부 트래픽 정책",
+   "chunks": 3,
+   "body_chars": 1177,
+   "body_sha256": "65653e6e4429420361b76fa19a59775db4fbc97f98c3514202d96f95186fd6c7"
+  },
+  {
+   "key": "concepts/services-networking/topology-aware-hints.md",
+   "title": "토폴로지 인지 힌트",
+   "chunks": 6,
+   "body_chars": 4046,
+   "body_sha256": "f6a3b54ccf1fe3da47fa8309eab013bf0c0faa0475ec04d36b4cac3655b14f7d"
+  },
+  {
+   "key": "concepts/services-networking/windows-networking.md",
+   "title": "윈도우에서의 네트워킹",
+   "chunks": 7,
+   "body_chars": 9043,
+   "body_sha256": "d03b9ddfee295767e7e8fb4d99552bdeac7545ffa97b7010d716f34a642edb3e"
+  },
+  {
+   "key": "concepts/storage/dynamic-provisioning.md",
+   "title": "동적 볼륨 프로비저닝",
+   "chunks": 6,
+   "body_chars": 3178,
+   "body_sha256": "bd3ff630056ad21ef81ad5908bd9cf93f8f90bb7c37b87b537fa978db61c7266"
+  },
+  {
+   "key": "concepts/storage/ephemeral-volumes.md",
+   "title": "임시 볼륨",
+   "chunks": 3,
+   "body_chars": 8222,
+   "body_sha256": "b6fde744b363526f8a007f70ad2ddac2387eecbb27e81be8973b098de336641d"
+  },
+  {
+   "key": "concepts/storage/projected-volumes.md",
+   "title": "프로젝티드 볼륨",
+   "chunks": 4,
+   "body_chars": 4183,
+   "body_sha256": "56aa8d498957a91ed9f24780b547fc6035dcb0225c36b610a5a52e74f7b9cbac"
+  },
+  {
+   "key": "concepts/storage/storage-capacity.md",
+   "title": "스토리지 용량",
+   "chunks": 5,
+   "body_chars": 2577,
+   "body_sha256": "8c9f0c5dff3d260ed5ade339b1765f3b383ce69a6ef8231ca2e127819d079649"
+  },
+  {
+   "key": "concepts/storage/storage-classes.md",
+   "title": "스토리지 클래스",
+   "chunks": 8,
+   "body_chars": 21298,
+   "body_sha256": "5b4fa2d6d75e865c41cd45a29eb1ab867da4836112e6197e45cad52b7e688a20"
+  },
+  {
+   "key": "concepts/storage/storage-limits.md",
+   "title": "노드 별 볼륨 한도",
+   "chunks": 4,
+   "body_chars": 1985,
+   "body_sha256": "916f6a6413210d5ce09c075350ac278dc668d61198e6a55167b809133cfbb97f"
+  },
+  {
+   "key": "concepts/storage/volume-health-monitoring.md",
+   "title": "볼륨 헬스 모니터링",
+   "chunks": 2,
+   "body_chars": 1256,
+   "body_sha256": "37e3cebce0c8723244c1e11c4e089dcd6240ecd3d70a16605174e2854fdb6030"
+  },
+  {
+   "key": "concepts/storage/volume-pvc-datasource.md",
+   "title": "CSI 볼륨 복제하기",
+   "chunks": 4,
+   "body_chars": 1673,
+   "body_sha256": "30d3784a7b42c61c3af37e19a7bc6f3b55414c0b6de31d9e87f9e3e4a202f21c"
+  },
+  {
+   "key": "concepts/storage/volume-snapshot-classes.md",
+   "title": "볼륨 스냅샷 클래스",
+   "chunks": 4,
+   "body_chars": 1730,
+   "body_sha256": "3aa5cf4f64344f3dd1c5a4f8507c5fc19cd2be7f67a6a8ed97c52d1e25d80b60"
+  },
+  {
+   "key": "concepts/storage/volume-snapshots.md",
+   "title": "볼륨 스냅샷",
+   "chunks": 7,
+   "body_chars": 6814,
+   "body_sha256": "7a8b30ecbde25fcf21052ab9749d2969debfeb9b0dfb9d926a50634145bace91"
+  },
+  {
+   "key": "concepts/storage/windows-storage.md",
+   "title": "윈도우 스토리지",
+   "chunks": 2,
+   "body_chars": 1979,
+   "body_sha256": "b9f778adfc256c779b4f60c052812738943e6c30c9b3dbedffc891114bd9e003"
+  },
+  {
+   "key": "concepts/windows/intro.md",
+   "title": "쿠버네티스에서의 윈도우 컨테이너",
+   "chunks": 12,
+   "body_chars": 13301,
+   "body_sha256": "25f66b1bf388bad1a0c7f474ee0a353dd82ee9a3fc58ae422857ad491dfbd1ba"
+  },
+  {
+   "key": "concepts/windows/user-guide.md",
+   "title": "쿠버네티스에서 윈도우 컨테이너 스케줄링을 위한 가이드",
+   "chunks": 9,
+   "body_chars": 9939,
+   "body_sha256": "67f4c99152824b7a18bef76bc8c8127c78a9098463920720354b158db5a59080"
+  },
+  {
+   "key": "concepts/workloads/autoscaling.md",
+   "title": "오토스케일링 워크로드",
+   "chunks": 4,
+   "body_chars": 4192,
+   "body_sha256": "9538752c699bf9fe2899e588d9cfc4a084f65b4858d501607e74ec5cfa9d7123"
+  },
+  {
+   "key": "concepts/workloads/controllers/cron-jobs.md",
+   "title": "크론잡(CronJob)",
+   "chunks": 15,
+   "body_chars": 8349,
+   "body_sha256": "d1bc483893ea0a29108cd421d2420edd87e6e920e382c0ecbc75f535cd28974c"
+  },
+  {
+   "key": "concepts/workloads/controllers/daemonset.md",
+   "title": "데몬셋",
+   "chunks": 6,
+   "body_chars": 9630,
+   "body_sha256": "184d02a0c08fb21deb1413794db3797ef0425600abe6a5d8ba85fab571e61d0f"
+  },
+  {
+   "key": "concepts/workloads/controllers/replicaset.md",
+   "title": "레플리카셋",
+   "chunks": 9,
+   "body_chars": 12434,
+   "body_sha256": "bab9473210f329d64805731bd3ed40de605b55e05df45b763e5d3d9592091420"
+  },
+  {
+   "key": "concepts/workloads/controllers/replicationcontroller.md",
+   "title": "레플리케이션 컨트롤러",
+   "chunks": 10,
+   "body_chars": 11103,
+   "body_sha256": "ec769c10deb3526e31a8468e3b64e000f85204d2f9b153fba67a2ec89ff1e44a"
+  },
+  {
+   "key": "concepts/workloads/controllers/statefulset.md",
+   "title": "스테이트풀셋",
+   "chunks": 17,
+   "body_chars": 16530,
+   "body_sha256": "2ffc9c68ad5abaf00b94e209dc5151cc8a827f88b42eabd15eb48c12fa23bf11"
+  },
+  {
+   "key": "concepts/workloads/controllers/ttlafterfinished.md",
+   "title": "완료된 잡 자동 정리",
+   "chunks": 3,
+   "body_chars": 1764,
+   "body_sha256": "9650fa9324455e7a6c2c800b214e9b52cadbbf0a3b03a409289b457df5b3f1bb"
+  },
+  {
+   "key": "concepts/workloads/management.md",
+   "title": "워크로드 관리",
+   "chunks": 14,
+   "body_chars": 11100,
+   "body_sha256": "ddb5c3fb20c2ae95399071a9ab398b0d4cf4c9398177e6224d051a634f0d7784"
+  },
+  {
+   "key": "concepts/workloads/pods/disruptions.md",
+   "title": "중단(disruption)",
+   "chunks": 9,
+   "body_chars": 10307,
+   "body_sha256": "d2851773f6f215019ac4b514841119f96441b4a66bda02b8b8ee62d7962f9247"
+  },
+  {
+   "key": "concepts/workloads/pods/downward-api.md",
+   "title": "다운워드(Downward) API",
+   "chunks": 2,
+   "body_chars": 3146,
+   "body_sha256": "5b4dcb5336e6a51309079a0529a6c82b0bc1af790736f4bcc9a48c7fb616b67d"
+  },
+  {
+   "key": "concepts/workloads/pods/ephemeral-containers.md",
+   "title": "임시(Ephemeral) 컨테이너",
+   "chunks": 3,
+   "body_chars": 1778,
+   "body_sha256": "3cb09e9ea140f7d987e0844d7fcf9025d746c2cda029cddaaa3128580ce78598"
+  },
+  {
+   "key": "concepts/workloads/pods/init-containers.md",
+   "title": "초기화 컨테이너",
+   "chunks": 6,
+   "body_chars": 11368,
+   "body_sha256": "cbf98e575cc6cd2aee7b62e7312c45a066c6188d804a9d897060f84679c9b346"
+  },
+  {
+   "key": "concepts/workloads/pods/pod-hostname.md",
+   "title": "파드 호스트네임",
+   "chunks": 5,
+   "body_chars": 3322,
+   "body_sha256": "36a3b4e101800881d04e8e87694bf8a1f058fd28330b35722610841d4324e3a1"
+  },
+  {
+   "key": "concepts/workloads/pods/pod-lifecycle.md",
+   "title": "파드 라이프사이클",
+   "chunks": 11,
+   "body_chars": 16513,
+   "body_sha256": "c9c42d53a8acdd705165a1850dc7da4e2769326676fac2540c638244799dfbda"
+  },
+  {
+   "key": "concepts/workloads/pods/pod-qos.md",
+   "title": "파드 서비스 품질(QoS) 클래스",
+   "chunks": 4,
+   "body_chars": 4216,
+   "body_sha256": "7274debda66dcfe212ffd4c5443e88cfaced2777e85e288579cad6ab61e31019"
+  },
+  {
+   "key": "concepts/workloads/pods/sidecar-containers.md",
+   "title": "사이드카(sidecar) 컨테이너",
+   "chunks": 6,
+   "body_chars": 4875,
+   "body_sha256": "e47ce9c51d55daee74fd29d8904374411e16532f6555fd03d0eb4b69cab8e620"
+  },
+  {
+   "key": "concepts/workloads/pods/user-namespaces.md",
+   "title": "사용자 네임스페이스",
+   "chunks": 5,
+   "body_chars": 4106,
+   "body_sha256": "d30b3bb08133a85cda9688780185f3e565b3ece40252e5a8e6e7fd726f877d4c"
+  },
+  {
+   "key": "setup/best-practices/certificates.md",
+   "title": "PKI 인증서 및 요구 사항",
+   "chunks": 6,
+   "body_chars": 12398,
+   "body_sha256": "0b6f481f90474bcd8525bf67650dc177ca7cabbd3777922bf2de5badd76fb458"
+  },
+  {
+   "key": "setup/best-practices/cluster-large.md",
+   "title": "대형 클러스터에 대한 고려 사항",
+   "chunks": 4,
+   "body_chars": 3382,
+   "body_sha256": "ad2a9625d4d41b2f12345c1503fa9164f7b03e76abe949aaf9063fc2defb67e0"
+  },
+  {
+   "key": "setup/best-practices/enforcing-pod-security-standards.md",
+   "title": "파드 시큐리티 스탠다드 강제하기",
+   "chunks": 3,
+   "body_chars": 2161,
+   "body_sha256": "8987ced3d5b9b885917b9c7f0c158a0a2087b58e43df5666c6b6c47d37849ba6"
+  },
+  {
+   "key": "setup/best-practices/multiple-zones.md",
+   "title": "여러 영역에서 실행",
+   "chunks": 8,
+   "body_chars": 3416,
+   "body_sha256": "f09a5e23e6a4005ccb374b01c35369d73fa28784218afd91e543b236d472c4d2"
+  },
+  {
+   "key": "setup/best-practices/node-conformance.md",
+   "title": "노드 구성 검증하기",
+   "chunks": 9,
+   "body_chars": 2174,
+   "body_sha256": "127a6046191227bfbeee95b18fed671bd7f8d05ad45494f72556a8e3cf5ef364"
+  },
+  {
+   "key": "setup/production-environment/container-runtimes.md",
+   "title": "컨테이너 런타임",
+   "chunks": 7,
+   "body_chars": 9665,
+   "body_sha256": "4b7b5659330dbc66abaa101b2b3f6f85483a309becfeb870c64f8fc0d7b81606"
+  },
+  {
+   "key": "setup/production-environment/tools/kubeadm/control-plane-flags.md",
+   "title": "kubeadm API로 컴포넌트 사용자 정의하기",
+   "chunks": 5,
+   "body_chars": 5707,
+   "body_sha256": "6e80d65c0ca5bdc15729ba34202eade2cf051f2b27c456dacc12a623ff5583cf"
+  },
+  {
+   "key": "setup/production-environment/tools/kubeadm/create-cluster-kubeadm.md",
+   "title": "kubeadm으로 클러스터 생성하기",
+   "chunks": 10,
+   "body_chars": 19293,
+   "body_sha256": "2f863e830560338f429f3751df5c65a0563c0204abd4a78ddeff82e4e6540d9a"
+  },
+  {
+   "key": "setup/production-environment/tools/kubeadm/ha-topology.md",
+   "title": "고가용성 토폴로지 선택",
+   "chunks": 3,
+   "body_chars": 2145,
+   "body_sha256": "cd0d968acbd24901829797835631429c4865d8bb729d8470346f792e3f891fc3"
+  },
+  {
+   "key": "setup/production-environment/tools/kubeadm/install-kubeadm.md",
+   "title": "kubeadm 설치하기",
+   "chunks": 16,
+   "body_chars": 11620,
+   "body_sha256": "1bf290e7b02a439b9ab9bcfe27b47be02333ec983237d46919cb3ff693af2391"
+  },
+  {
+   "key": "setup/production-environment/tools/kubeadm/troubleshooting-kubeadm.md",
+   "title": "kubeadm 문제 해결",
+   "chunks": 23,
+   "body_chars": 18432,
+   "body_sha256": "2d13b4a46f29d256d4a817cb9bbfebaa9b5b2cdd5d82c693c519238bce4a3dd7"
+  },
+  {
+   "key": "tasks/access-application-cluster/access-cluster-services.md",
+   "title": "클러스터에서 실행되는 서비스에 접근",
+   "chunks": 3,
+   "body_chars": 5749,
+   "body_sha256": "7601666ae9538524f7a13640899a0547e212673a08e9e6f3d32ee1dd36e157c8"
+  },
+  {
+   "key": "tasks/access-application-cluster/access-cluster.md",
+   "title": "클러스터 접근",
+   "chunks": 8,
+   "body_chars": 6918,
+   "body_sha256": "dbf3607cecd23c3ad7b081824ba64a781a78078b4bb057f161f4f7745a1b6194"
+  },
+  {
+   "key": "tasks/access-application-cluster/communicate-containers-same-pod-shared-volume.md",
+   "title": "공유 볼륨을 이용하여 동일한 파드의 컨테이너 간에 통신하기",
+   "chunks": 3,
+   "body_chars": 3137,
+   "body_sha256": "67603983208cc1ede9da9018c4c6f270a9f8f51679a4e598a51d64c25ed12d75"
+  },
+  {
+   "key": "tasks/access-application-cluster/configure-access-multiple-clusters.md",
+   "title": "다중 클러스터 접근 구성",
+   "chunks": 13,
+   "body_chars": 9118,
+   "body_sha256": "f4946458e481ca9882c1c051170f7c87668f39a47adfcb155877da21ea2c3c60"
+  },
+  {
+   "key": "tasks/access-application-cluster/connecting-frontend-backend.md",
+   "title": "서비스를 사용하여 프론트엔드를 백엔드에 연결",
+   "chunks": 6,
+   "body_chars": 5033,
+   "body_sha256": "474313a409cd396fd1b96f3ac526268936be6d853407f0b4255677f7377f7780"
+  },
+  {
+   "key": "tasks/access-application-cluster/create-external-load-balancer.md",
+   "title": "외부 로드 밸런서 생성하기",
+   "chunks": 6,
+   "body_chars": 4854,
+   "body_sha256": "84a0828975c02da4a672f40d98a6e3e911434b4489830a5b70893b3b94ba692d"
+  },
+  {
+   "key": "tasks/access-application-cluster/ingress-minikube.md",
+   "title": "NGINX 인그레스(Ingress) 컨트롤러로 Minikube에서 인그레스 설정하기",
+   "chunks": 8,
+   "body_chars": 8125,
+   "body_sha256": "50b9f422a84ba7514d90b4d6ece03d3d5c9265a8ef8e01596b705f4e56304ef0"
+  },
+  {
+   "key": "tasks/access-application-cluster/list-all-running-container-images.md",
+   "title": "클러스터 내 모든 컨테이너 이미지 목록 보기",
+   "chunks": 6,
+   "body_chars": 2276,
+   "body_sha256": "66319e75f3eebad8eb8bf3cce20ad2e39be0abf6ef8c8c65475aaeb9dd9208b9"
+  },
+  {
+   "key": "tasks/access-application-cluster/port-forward-access-application-cluster.md",
+   "title": "포트 포워딩을 사용해서 클러스터 내 애플리케이션에 접근하기",
+   "chunks": 6,
+   "body_chars": 3817,
+   "body_sha256": "0713713d36e13be6ad7ebd591eb67bd54fce06224f04cec12372a4685eff12f6"
+  },
+  {
+   "key": "tasks/access-application-cluster/service-access-application-cluster.md",
+   "title": "클러스터 내 애플리케이션에 접근하기 위해 서비스 사용하기",
+   "chunks": 3,
+   "body_chars": 3279,
+   "body_sha256": "536272b26983811ad2f4b6ce86b68da95985dc1a4d8715f84a36900b9a367cb3"
+  },
+  {
+   "key": "tasks/access-application-cluster/web-ui-dashboard.md",
+   "title": "쿠버네티스 대시보드를 배포하고 접속하기",
+   "chunks": 7,
+   "body_chars": 7587,
+   "body_sha256": "ae3f6fa363fc576915e838832039c4a255528a497c1e4f75d0316ecefdbe8069"
+  },
+  {
+   "key": "tasks/administer-cluster/access-cluster-api.md",
+   "title": "쿠버네티스 API를 사용하여 클러스터에 접근하기",
+   "chunks": 11,
+   "body_chars": 10973,
+   "body_sha256": "ad1a40c42ffe76ffbb1d4223308dd76c5189615e45e8cef61004d6f16893d61c"
+  },
+  {
+   "key": "tasks/administer-cluster/certificates.md",
+   "title": "인증서",
+   "chunks": 4,
+   "body_chars": 7723,
+   "body_sha256": "51325e794a13db9659f6348eb7cf07d294e1c7ed387e8208aee30f41591d4265"
+  },
+  {
+   "key": "tasks/administer-cluster/change-default-storage-class.md",
+   "title": "기본 스토리지클래스(StorageClass) 변경하기",
+   "chunks": 3,
+   "body_chars": 2288,
+   "body_sha256": "77737c6754d6ad81705ad27006c08b9da2fe3d91bf667b079b2ce1f09b25b0e1"
+  },
+  {
+   "key": "tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md",
+   "title": "퍼시스턴트볼륨의 접근 모드를 ReadWriteOncePod로 변경하기",
+   "chunks": 8,
+   "body_chars": 4513,
+   "body_sha256": "76a3296e1a41d26f0329d51369c4fe4e3cea0c0f9737c3223de54f3341cff81c"
+  },
+  {
+   "key": "tasks/administer-cluster/change-pv-reclaim-policy.md",
+   "title": "퍼시스턴트볼륨 반환 정책 변경하기",
+   "chunks": 3,
+   "body_chars": 3020,
+   "body_sha256": "a418452ec848d0075cc5e50471799582cd9c63a1fd7eb361142088f62dfb0ba3"
+  },
+  {
+   "key": "tasks/administer-cluster/cluster-upgrade.md",
+   "title": "클러스터 업그레이드",
+   "chunks": 3,
+   "body_chars": 2144,
+   "body_sha256": "2d0cb0790e4eec9d0f4540d106ec1abcfaa0e61eca64b8448bc8a419539071ef"
+  },
+  {
+   "key": "tasks/administer-cluster/coredns.md",
+   "title": "서비스 디스커버리를 위해 CoreDNS 사용하기",
+   "chunks": 6,
+   "body_chars": 1849,
+   "body_sha256": "194a49c329da2cefe7f91ee354026a6d38f5390931caa74ed8aea1ffaa8dd22b"
+  },
+  {
+   "key": "tasks/administer-cluster/declare-network-policy.md",
+   "title": "네트워크 폴리시(Network Policy) 선언하기",
+   "chunks": 7,
+   "body_chars": 3348,
+   "body_sha256": "96b5efca64bd0c0acc4309b20872907448965c366db3a216c0ac1a83f585152d"
+  },
+  {
+   "key": "tasks/administer-cluster/dns-custom-nameservers.md",
+   "title": "DNS 서비스 사용자 정의하기",
+   "chunks": 3,
+   "body_chars": 5315,
+   "body_sha256": "f3205a99ded39887ced5249fb80ff6032c174ecec67c5ce5d2639e0fef9ab0da"
+  },
+  {
+   "key": "tasks/administer-cluster/dns-horizontal-autoscaling.md",
+   "title": "클러스터에서 DNS 서비스 오토스케일",
+   "chunks": 7,
+   "body_chars": 4785,
+   "body_sha256": "cc1d1976ff25bd49966f92870d6eeed982fe6a1411a6e018e699bab913d8c138"
+  },
+  {
+   "key": "tasks/administer-cluster/extended-resource-node.md",
+   "title": "노드에 대한 확장 리소스 알리기",
+   "chunks": 5,
+   "body_chars": 3632,
+   "body_sha256": "ae74efe60c20af026680c927ac4d494d9de45c0e823085fb2e58c8e29440941a"
+  },
+  {
+   "key": "tasks/administer-cluster/kubeadm/kubeadm-certs.md",
+   "title": "kubeadm을 사용한 인증서 관리",
+   "chunks": 15,
+   "body_chars": 11853,
+   "body_sha256": "404d779ae03998eb1ecd0d11a076e6ccaf93e991413da045adc176bc35a83b4d"
+  },
+  {
+   "key": "tasks/administer-cluster/kubeadm/kubeadm-upgrade.md",
+   "title": "kubeadm 클러스터 업그레이드",
+   "chunks": 24,
+   "body_chars": 8216,
+   "body_sha256": "3cc908ea431e99f928029426c905f5c4b312d3415e431bdb825463b16697e705"
+  },
+  {
+   "key": "tasks/administer-cluster/kubeadm/upgrading-linux-nodes.md",
+   "title": "리눅스 노드 업그레이드",
+   "chunks": 8,
+   "body_chars": 1545,
+   "body_sha256": "59bdd6370b71853a7a3163c5384facf812ff9577207bc20fae8e39980f5e3d98"
+  },
+  {
+   "key": "tasks/administer-cluster/kubeadm/upgrading-windows-nodes.md",
+   "title": "윈도우 노드 업그레이드",
+   "chunks": 5,
+   "body_chars": 1712,
+   "body_sha256": "cf98ba3df34e47651e89e7f35491b6c92c7cc9e4133b85c159436ffd4f3e6a81"
+  },
+  {
+   "key": "tasks/administer-cluster/kubelet-config-file.md",
+   "title": "구성 파일을 통해 Kubelet 파라미터 설정하기",
+   "chunks": 3,
+   "body_chars": 1669,
+   "body_sha256": "e66ea08b5d51a39abc8f12c2b9bca7f8a31b3c4d529edb28a07b4b76b912944c"
+  },
+  {
+   "key": "tasks/administer-cluster/kubelet-credential-provider.md",
+   "title": "kubelet 이미지 자격 증명 공급자 구성하기",
+   "chunks": 42,
+   "body_chars": 5039,
+   "body_sha256": "61fd5e85d24eb5a1e4e556fb6e38582b5bbc17f60bd9311f25a1dd2cebaeb3fc"
+  },
+  {
+   "key": "tasks/administer-cluster/limit-storage-consumption.md",
+   "title": "스토리지 사용량 제한",
+   "chunks": 5,
+   "body_chars": 1791,
+   "body_sha256": "f7e98f41727cc78b18cbf1e52ebe3d95afb982c39db500a6e6a6e5b33ab0bc5f"
+  },
+  {
+   "key": "tasks/administer-cluster/manage-resources/cpu-constraint-namespace.md",
+   "title": "네임스페이스에 대한 CPU의 최소 및 최대 제약 조건 구성",
+   "chunks": 10,
+   "body_chars": 6152,
+   "body_sha256": "b712556abdfee181589a9b4d373764b4e73f3757f6fcd975b8862fb5dccc12c1"
+  },
+  {
+   "key": "tasks/administer-cluster/manage-resources/cpu-default-namespace.md",
+   "title": "네임스페이스에 대한 기본 CPU 요청량과 상한 구성",
+   "chunks": 7,
+   "body_chars": 4482,
+   "body_sha256": "abf9161391e2e4912a4d8690855a69470fb5f72c081210123b924b2922675c79"
+  },
+  {
+   "key": "tasks/administer-cluster/manage-resources/memory-constraint-namespace.md",
+   "title": "네임스페이스에 대한 메모리의 최소 및 최대 제약 조건 구성",
+   "chunks": 10,
+   "body_chars": 6011,
+   "body_sha256": "b0ec207d2583ce8f5c81e73bf040d5302a4288cec656a2e757ff6870a0acf7e1"
+  },
+  {
+   "key": "tasks/administer-cluster/manage-resources/memory-default-namespace.md",
+   "title": "네임스페이스에 대한 기본 메모리 요청량과 상한 구성",
+   "chunks": 7,
+   "body_chars": 4620,
+   "body_sha256": "82f6789e01fd5404c1fda6d7a7680cbabe54dcefd207b551a4ca532adf499a56"
+  },
+  {
+   "key": "tasks/administer-cluster/manage-resources/quota-memory-cpu-namespace.md",
+   "title": "네임스페이스에 대한 메모리 및 CPU 쿼터 구성",
+   "chunks": 7,
+   "body_chars": 4121,
+   "body_sha256": "b9809c9264cb44dd91e8fd6f3ec2099a659cf355f1a81ba8688e93e126897461"
+  },
+  {
+   "key": "tasks/administer-cluster/manage-resources/quota-pod-namespace.md",
+   "title": "네임스페이스에 대한 파드 쿼터 구성",
+   "chunks": 4,
+   "body_chars": 2703,
+   "body_sha256": "4d53435bec9ce5b1ead41c10db69dfe0bf023f58b1f6b223c2d37f412e2d224c"
+  },
+  {
+   "key": "tasks/administer-cluster/migrating-from-dockershim/migrate-dockershim-dockerd.md",
+   "title": "도커 엔진 노드를 도커심에서 cri-dockerd로 마이그레이션하기",
+   "chunks": 7,
+   "body_chars": 2955,
+   "body_sha256": "9b89827e6327c80f44d5ab62bd184bc4258d2f2f789ea526a058a66374ab233b"
+  },
+  {
+   "key": "tasks/administer-cluster/namespaces.md",
+   "title": "네임스페이스를 사용해 클러스터 공유하기",
+   "chunks": 8,
+   "body_chars": 8864,
+   "body_sha256": "e570d59f48dc72cf6dfcca54b2e766efbf38c1dcdaa89c323a8a302523952110"
+  },
+  {
+   "key": "tasks/administer-cluster/network-policy-provider/cilium-network-policy.md",
+   "title": "네트워크 폴리시로 실리움(Cilium) 사용하기",
+   "chunks": 4,
+   "body_chars": 2237,
+   "body_sha256": "2fce8a7d70e44391d2d3e62399862354099ff8589d6dae7a836de4fbaf4e3708"
+  },
+  {
+   "key": "tasks/administer-cluster/network-policy-provider/weave-network-policy.md",
+   "title": "네트워크 폴리시로 위브넷(Weave Net) 사용하기",
+   "chunks": 3,
+   "body_chars": 1564,
+   "body_sha256": "90168af608cd7945054c05ba2b40883869886f2181a2a07bd44032937e834994"
+  },
+  {
+   "key": "tasks/administer-cluster/quota-api-object.md",
+   "title": "API 오브젝트에 대한 쿼터 구성",
+   "chunks": 7,
+   "body_chars": 3744,
+   "body_sha256": "320a99fa9de6e6cf7b61503c1bb18136fe1a80a6dd642d23c1ec4c754dfdadf9"
+  },
+  {
+   "key": "tasks/administer-cluster/sysctl-cluster.md",
+   "title": "쿠버네티스 클러스터에서 sysctl 사용하기",
+   "chunks": 4,
+   "body_chars": 3985,
+   "body_sha256": "4264f2ee1b2759022a8ae6f64ba17954973d3dd0236cb34a011a760738199fe4"
+  },
+  {
+   "key": "tasks/administer-cluster/use-cascading-deletion.md",
+   "title": "클러스터에서 캐스케이딩 삭제 사용",
+   "chunks": 5,
+   "body_chars": 4638,
+   "body_sha256": "16d9aa99f18ae011536db8a53d04fd7e7ef1aa4c5c8c05115176b7d853c54d5a"
+  },
+  {
+   "key": "tasks/configmap-secret/managing-secret-using-config-file.md",
+   "title": "환경 설정 파일을 사용하여 시크릿을 관리",
+   "chunks": 4,
+   "body_chars": 4727,
+   "body_sha256": "9292c6728a9805bf18027cde7ab19a3ad644f7da7f413f05f3a68a8c1b7eb037"
+  },
+  {
+   "key": "tasks/configmap-secret/managing-secret-using-kubectl.md",
+   "title": "kubectl을 사용한 시크릿(Secret) 관리",
+   "chunks": 7,
+   "body_chars": 3810,
+   "body_sha256": "4195f3978fc14725b7b55b6b1b925e01691cf3d152537fc0887b90d8898010b5"
+  },
+  {
+   "key": "tasks/configmap-secret/managing-secret-using-kustomize.md",
+   "title": "kustomize를 사용하여 시크릿(Secret) 관리",
+   "chunks": 4,
+   "body_chars": 2385,
+   "body_sha256": "3228c390bcd080b27241d505aa85d0844ba4b0d68df9e74668a91c1a1e2b7120"
+  },
+  {
+   "key": "tasks/configure-pod-container/assign-cpu-resource.md",
+   "title": "컨테이너 및 파드 CPU 리소스 할당",
+   "chunks": 9,
+   "body_chars": 5861,
+   "body_sha256": "5509b116d0b812d6f35805c79c2a2f685731f79b9bddc6b9ef49488eb3afb095"
+  },
+  {
+   "key": "tasks/configure-pod-container/assign-memory-resource.md",
+   "title": "컨테이너 및 파드 메모리 리소스 할당",
+   "chunks": 9,
+   "body_chars": 7468,
+   "body_sha256": "0cb3c3f3c055ece6f3023a734aa6d785745d0c72023e79bd055f1099380244c7"
+  },
+  {
+   "key": "tasks/configure-pod-container/assign-pods-nodes-using-node-affinity.md",
+   "title": "노드 어피니티를 사용해 노드에 파드 할당",
+   "chunks": 4,
+   "body_chars": 2537,
+   "body_sha256": "5a0bf1f014421207ad5dcdf21b630c853d42ee79607ac853b0e5c7845cafb63f"
+  },
+  {
+   "key": "tasks/configure-pod-container/assign-pods-nodes.md",
+   "title": "노드에 파드 할당",
+   "chunks": 4,
+   "body_chars": 2033,
+   "body_sha256": "8840734459aea644cc385ee477be884b14b46759f524852383417a0f8cda788a"
+  },
+  {
+   "key": "tasks/configure-pod-container/assign-resources/allocate-devices-dra.md",
+   "title": "DRA를 사용하여 워크로드에 디바이스 할당하기",
+   "chunks": 6,
+   "body_chars": 4081,
+   "body_sha256": "21aad657f3e2c8cb91ec69fbda32fb68a128adbcd4da601d76af293c98def5b9"
+  },
+  {
+   "key": "tasks/configure-pod-container/configure-gmsa.md",
+   "title": "윈도우 파드와 컨테이너용 GMSA 구성",
+   "chunks": 8,
+   "body_chars": 9758,
+   "body_sha256": "5094f6d7bf73394936d06ee67b3cf10b6bfda4d77af9a6bb516808a6d8ff89b4"
+  },
+  {
+   "key": "tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md",
+   "title": "활성(Liveness), 준비성(Readiness), 시작(Startup) 프로브 구성",
+   "chunks": 11,
+   "body_chars": 16489,
+   "body_sha256": "5cbe8d182f3e9b932f6451ea100a4df6504d24df163382a79a69803382de64fd"
+  },
+  {
+   "key": "tasks/configure-pod-container/configure-persistent-volume-storage.md",
+   "title": "스토리지로 퍼시스턴트볼륨(PersistentVolume)을 사용하도록 파드 설정하기",
+   "chunks": 16,
+   "body_chars": 6146,
+   "body_sha256": "1d135aca3df424f9c904ae383b4a6cfebe32d3bac5520cad3de8a35b2a5073eb"
+  },
+  {
+   "key": "tasks/configure-pod-container/configure-pod-initialization.md",
+   "title": "초기화 컨테이너에 대한 구성",
+   "chunks": 2,
+   "body_chars": 1688,
+   "body_sha256": "496d29d90cee9a6640b05cf6c0e08e9ee98d4ba53e5b82809cc6188004660653"
+  },
+  {
+   "key": "tasks/configure-pod-container/configure-projected-volume-storage.md",
+   "title": "파드의 스토리지에 프로젝티드 볼륨(Projected Volume)을 사용하도록 구성",
+   "chunks": 5,
+   "body_chars": 1763,
+   "body_sha256": "e6a708f24cf716bf61605e68a922c59ce2dcd50e1715df51da45222e9d80a13d"
+  },
+  {
+   "key": "tasks/configure-pod-container/configure-runasusername.md",
+   "title": "윈도우 파드 및 컨테이너에서 RunAsUserName 구성",
+   "chunks": 4,
+   "body_chars": 3378,
+   "body_sha256": "b78156c68bf4bdbfcab579d667bec4589907bead8d27c55eae5a03445c47cabc"
+  },
+  {
+   "key": "tasks/configure-pod-container/configure-volume-storage.md",
+   "title": "스토리지의 볼륨을 사용하는 파드 구성",
+   "chunks": 2,
+   "body_chars": 2787,
+   "body_sha256": "befa2810f8220027559fe1cff548f1e6c01a6088b29bce19256c8f5386a15b27"
+  },
+  {
+   "key": "tasks/configure-pod-container/extended-resource.md",
+   "title": "컨테이너에 확장 리소스 지정",
+   "chunks": 4,
+   "body_chars": 2194,
+   "body_sha256": "7a5488137e78108752663d00dca0655be833880b4f2ce0db3649c4972401bab2"
+  },
+  {
+   "key": "tasks/configure-pod-container/pull-image-private-registry.md",
+   "title": "프라이빗 레지스트리에서 이미지 받아오기",
+   "chunks": 6,
+   "body_chars": 5455,
+   "body_sha256": "e7edaf0c7dc062781ad01d649631e1f26b5a8966ca2c081e610471806bdc4262"
+  },
+  {
+   "key": "tasks/configure-pod-container/quality-service-pod.md",
+   "title": "파드에 대한 서비스 품질(QoS) 구성",
+   "chunks": 8,
+   "body_chars": 4842,
+   "body_sha256": "83906c1633f813ff0853fbd47fa3082b7f6bae913ade6a69c0d946d4dede0b65"
+  },
+  {
+   "key": "tasks/configure-pod-container/resize-container-resources.md",
+   "title": "컨테이너에 할당된 CPU 및 메모리 리소스 리사이즈",
+   "chunks": 14,
+   "body_chars": 9437,
+   "body_sha256": "7a06d2d8d7a3e226c7642533d4252f2d1e5064855c6863c1f98055a452e3dc02"
+  },
+  {
+   "key": "tasks/configure-pod-container/static-pod.md",
+   "title": "스태틱(static) 파드 생성하기",
+   "chunks": 12,
+   "body_chars": 6129,
+   "body_sha256": "150cda6ee4dd8e71e29944db44dbf559ca73d18d69c10ac779369c6c5676f64f"
+  },
+  {
+   "key": "tasks/configure-pod-container/translate-compose-kubernetes.md",
+   "title": "도커 컴포즈 파일을 쿠버네티스 리소스로 변환하기",
+   "chunks": 12,
+   "body_chars": 13658,
+   "body_sha256": "7776f6a233ca6ec969f45ec9ae81196a56b371c7509318fde161ac681f78883e"
+  },
+  {
+   "key": "tasks/configure-pod-container/user-namespaces.md",
+   "title": "파드에 유저 네임스페이스 사용하기",
+   "chunks": 2,
+   "body_chars": 1885,
+   "body_sha256": "8aa3e8a15496662eee87f0f11186b30a9d1c7ec13f11152d35909e1611e27a77"
+  },
+  {
+   "key": "tasks/debug/debug-application/debug-init-containers.md",
+   "title": "초기화 컨테이너(Init Containers) 디버그하기",
+   "chunks": 5,
+   "body_chars": 2277,
+   "body_sha256": "027f34e262997513fc71fe4095e13181f08219f76ca70e1fe30fbf5bf18282da"
+  },
+  {
+   "key": "tasks/debug/debug-application/debug-pods.md",
+   "title": "파드 디버깅하기",
+   "chunks": 3,
+   "body_chars": 4393,
+   "body_sha256": "93e130e87071637e2df9a40eb3202dd9917a49fddfb5b91f20b8dc5d80962420"
+  },
+  {
+   "key": "tasks/debug/debug-application/debug-running-pod.md",
+   "title": "동작 중인 파드 디버그",
+   "chunks": 10,
+   "body_chars": 18818,
+   "body_sha256": "dc3abe21cc52e2a26131d22d58e704c20652439c35e0ca1643e9e6d0398d0643"
+  },
+  {
+   "key": "tasks/debug/debug-application/debug-service.md",
+   "title": "서비스 디버깅하기",
+   "chunks": 13,
+   "body_chars": 18448,
+   "body_sha256": "63fef493ed47960a4a0c1d1504eeb8000300d6c0c2754b9f82963c38a32a3f2e"
+  },
+  {
+   "key": "tasks/debug/debug-application/determine-reason-pod-failure.md",
+   "title": "파드 실패의 원인 검증하기",
+   "chunks": 3,
+   "body_chars": 2990,
+   "body_sha256": "b17c4724d0cdb1b2af78f3ad55334e60f7678f4a606ece5837610a2298149b2a"
+  },
+  {
+   "key": "tasks/debug/debug-application/get-shell-running-container.md",
+   "title": "동작중인 컨테이너의 셸에 접근하기",
+   "chunks": 9,
+   "body_chars": 2279,
+   "body_sha256": "a3ddb6243d273e95c8c7d8f55910ed66ffa58319b0988a663e75f5fa32bb753d"
+  },
+  {
+   "key": "tasks/debug/debug-cluster/audit.md",
+   "title": "감사(auditing)",
+   "chunks": 6,
+   "body_chars": 7113,
+   "body_sha256": "de5e7e438829ad53609bcae95d8e4d10f7cd73fb72d52a122476e196d4023a7d"
+  },
+  {
+   "key": "tasks/debug/debug-cluster/crictl.md",
+   "title": "crictl로 쿠버네티스 노드 디버깅하기",
+   "chunks": 5,
+   "body_chars": 9706,
+   "body_sha256": "4fa8108a6c95d4d525218e5bbdaaade9ee9e1017de0686485961d398752c3133"
+  },
+  {
+   "key": "tasks/debug/debug-cluster/local-debugging.md",
+   "title": "로컬에서 텔레프레즌스를 이용한 서비스 개발 및 디버깅",
+   "chunks": 4,
+   "body_chars": 2350,
+   "body_sha256": "ee9d3437bdffd983674187c15ab5d20de927673134928566bc42dfe33259072c"
+  },
+  {
+   "key": "tasks/debug/debug-cluster/monitor-node-health.md",
+   "title": "노드 헬스 모니터링하기",
+   "chunks": 7,
+   "body_chars": 4188,
+   "body_sha256": "9c5cfbd7ed68fc282956b2c553ce9969f602382c55a071d98a6ad350899d59c5"
+  },
+  {
+   "key": "tasks/debug/debug-cluster/resource-metrics-pipeline.md",
+   "title": "리소스 메트릭 파이프라인",
+   "chunks": 4,
+   "body_chars": 7493,
+   "body_sha256": "18f98df0ed278ef5fa5fe5b40cfdd175234f7a94c9a7380d3e2a5c53122153ba"
+  },
+  {
+   "key": "tasks/debug/debug-cluster/resource-usage-monitoring.md",
+   "title": "리소스 모니터링 도구",
+   "chunks": 3,
+   "body_chars": 2314,
+   "body_sha256": "91eefb7a09651e2cafdd9767fb5be08562d16b8430d9340d2042d96a69ee8d8a"
+  },
+  {
+   "key": "tasks/debug/debug-cluster/windows.md",
+   "title": "윈도우 디버깅 팁",
+   "chunks": 4,
+   "body_chars": 6079,
+   "body_sha256": "49f46b20c6e56e6482c0d5015a75322fdb287547499ca356abd902580ab7a1ae"
+  },
+  {
+   "key": "tasks/extend-kubectl/kubectl-plugins.md",
+   "title": "플러그인으로 kubectl 확장",
+   "chunks": 18,
+   "body_chars": 9243,
+   "body_sha256": "5da1414623eb03d41e769f2502a99b9885dc1ed6ce5c49fbac0ba2721703d32f"
+  },
+  {
+   "key": "tasks/extend-kubernetes/configure-multiple-schedulers.md",
+   "title": "다중 스케줄러 설정",
+   "chunks": 5,
+   "body_chars": 5537,
+   "body_sha256": "3873c40a72a0528e27f2a175d74e65da5eb67c4860e290a590bf5845e5bebdbd"
+  },
+  {
+   "key": "tasks/extend-kubernetes/http-proxy-access-api.md",
+   "title": "HTTP 프록시를 사용하여 쿠버네티스 API에 접근",
+   "chunks": 3,
+   "body_chars": 1554,
+   "body_sha256": "6c47c897d50d78d9a5274296a4d7b7199a1fae2c480bc2cb7bfb7813214afae1"
+  },
+  {
+   "key": "tasks/extend-kubernetes/setup-extension-api-server.md",
+   "title": "확장 API 서버 설정",
+   "chunks": 2,
+   "body_chars": 2649,
+   "body_sha256": "1658029d48115b8e9fc95037a2079adc0363eb285c1999f3f556e98d64a86e36"
+  },
+  {
+   "key": "tasks/extend-kubernetes/setup-konnectivity.md",
+   "title": "Konnectivity 서비스 설정",
+   "chunks": 2,
+   "body_chars": 2847,
+   "body_sha256": "ec16ff12da051ac68ed335316089db067b2775042dc2e10b7f670267bddb8718"
+  },
+  {
+   "key": "tasks/extend-kubernetes/socks5-proxy-access-api.md",
+   "title": "SOCKS5 프록시를 사용하여 쿠버네티스 API에 접근",
+   "chunks": 7,
+   "body_chars": 3498,
+   "body_sha256": "dcd2682b7d2fc01d400f86cf2c993c3e279319ec123358e764174e5a6ec0c8fa"
+  },
+  {
+   "key": "tasks/inject-data-application/define-command-argument-container.md",
+   "title": "컨테이너를 위한 커맨드와 인자 정의하기",
+   "chunks": 4,
+   "body_chars": 1972,
+   "body_sha256": "eb0b34d9b3df81574f45f78e7508ca12f862f103f4b024b9891db051d909fef4"
+  },
+  {
+   "key": "tasks/inject-data-application/define-environment-variable-container.md",
+   "title": "컨테이너를 위한 환경 변수 정의하기",
+   "chunks": 3,
+   "body_chars": 2225,
+   "body_sha256": "b6962aa93752d5e05f6176abf6eeec65cdaca77346525b3297ff0914a0b73e20"
+  },
+  {
+   "key": "tasks/inject-data-application/define-interdependent-environment-variables.md",
+   "title": "종속 환경 변수 정의하기",
+   "chunks": 2,
+   "body_chars": 1791,
+   "body_sha256": "8c2cd27aa31fd923e48feaa7cfc2387942d9d08a0418198c8c9f836757907825"
+  },
+  {
+   "key": "tasks/inject-data-application/distribute-credentials-secure.md",
+   "title": "시크릿(Secret)을 사용하여 안전하게 자격증명 배포하기",
+   "chunks": 7,
+   "body_chars": 4674,
+   "body_sha256": "72500c543b364caaf185e1fdb5ac9468df6582180023feba25304aed6b76e251"
+  },
+  {
+   "key": "tasks/inject-data-application/downward-api-volume-expose-pod-information.md",
+   "title": "파일로 컨테이너에 파드 정보 노출하기",
+   "chunks": 5,
+   "body_chars": 4645,
+   "body_sha256": "7b924f88dad15f462f45c73d0ffa20652dd998f7881deff12b7107c4b2630c19"
+  },
+  {
+   "key": "tasks/inject-data-application/environment-variable-expose-pod-information.md",
+   "title": "환경 변수로 컨테이너에 파드 정보 노출하기",
+   "chunks": 6,
+   "body_chars": 3152,
+   "body_sha256": "d38f0ddadec23d822f6e02db46ec4082f1843d2b0356c5e9220e4d17244190e8"
+  },
+  {
+   "key": "tasks/job/automated-tasks-with-cron-jobs.md",
+   "title": "크론잡(CronJob)으로 자동화된 작업 실행",
+   "chunks": 6,
+   "body_chars": 5431,
+   "body_sha256": "c45c526f1051e3d35a16a4c610152e4be31cf1347bd5585b0aa3da309ea35b74"
+  },
+  {
+   "key": "tasks/job/coarse-parallel-processing-work-queue.md",
+   "title": "작업 대기열을 사용한 거친 병렬 처리",
+   "chunks": 24,
+   "body_chars": 8400,
+   "body_sha256": "f91acfd7b35737d4afccd5731face360c9b13f56fd64ae78c26d9a0a87aef55a"
+  },
+  {
+   "key": "tasks/job/fine-parallel-processing-work-queue.md",
+   "title": "작업 대기열을 사용한 정밀 병렬 처리",
+   "chunks": 9,
+   "body_chars": 5704,
+   "body_sha256": "51fdd802c8e6f7704619a5ffe6b9cbe3eeb35f78f649b11b65838bc274a59b9b"
+  },
+  {
+   "key": "tasks/job/indexed-parallel-processing-static.md",
+   "title": "정적 작업 할당을 통한 병렬 처리를 위한 색인된 잡",
+   "chunks": 6,
+   "body_chars": 4872,
+   "body_sha256": "d308c3eecbb360255050abc27fc0025952b65a25ef6207ba35427db92824fd61"
+  },
+  {
+   "key": "tasks/job/job-with-pod-to-pod-communication.md",
+   "title": "파드 간 통신이 활성화된 잡",
+   "chunks": 2,
+   "body_chars": 3231,
+   "body_sha256": "1288c1945966bbca44d013ff965f2add125011e68f8d12e06c34803d62d68043"
+  },
+  {
+   "key": "tasks/job/parallel-processing-expansion.md",
+   "title": "확장을 사용한 병렬 처리",
+   "chunks": 13,
+   "body_chars": 6279,
+   "body_sha256": "7f1109b3176ecd2d262949fe1e49f54451dfaff72f393175a500966e8ccba61a"
+  },
+  {
+   "key": "tasks/manage-daemon/create-daemon-set.md",
+   "title": "기본 데몬셋(DaemonSet) 생성하기",
+   "chunks": 2,
+   "body_chars": 1692,
+   "body_sha256": "48bf4f9091f1ab12bc22bbb1dede09f22bc91eed14f45d7b4865a9a72571836f"
+  },
+  {
+   "key": "tasks/manage-daemon/pods-some-nodes.md",
+   "title": "특정 노드에서만 파드 실행하기",
+   "chunks": 2,
+   "body_chars": 1210,
+   "body_sha256": "c2453be7bcbc8274ad8ac8c4a9526c40e80982e62729ddfad70cf6837c5a1026"
+  },
+  {
+   "key": "tasks/manage-daemon/rollback-daemon-set.md",
+   "title": "데몬셋(DaemonSet)에서 롤백 수행",
+   "chunks": 5,
+   "body_chars": 2598,
+   "body_sha256": "1d14eb0d44359795c1f55ce8aa8426a87680845a4282fba882c806c3bd9c238c"
+  },
+  {
+   "key": "tasks/manage-daemon/update-daemon-set.md",
+   "title": "데몬셋(DaemonSet)에서 롤링 업데이트 수행",
+   "chunks": 5,
+   "body_chars": 4173,
+   "body_sha256": "995156dd9ea709984a5771cd1fa991208ba82047bbd00365688589e5e26dc38a"
+  },
+  {
+   "key": "tasks/manage-gpus/scheduling-gpus.md",
+   "title": "GPU 스케줄링",
+   "chunks": 6,
+   "body_chars": 3578,
+   "body_sha256": "20952c66cc17b8b2babf5e1bd1acc30c46b65437c61790091ac45f1ec69d9b54"
+  },
+  {
+   "key": "tasks/manage-hugepages/scheduling-hugepages.md",
+   "title": "HugePages 관리",
+   "chunks": 2,
+   "body_chars": 2313,
+   "body_sha256": "cda8d4aa3d981d32bf1d7901b0c741ec14fd39e8eb33b82286cd2d5f00ac94cc"
+  },
+  {
+   "key": "tasks/manage-kubernetes-objects/declarative-config.md",
+   "title": "구성 파일을 이용한 쿠버네티스 오브젝트의 선언형 관리",
+   "chunks": 95,
+   "body_chars": 24950,
+   "body_sha256": "a16fb26a80f8374aeece82beea60d753866518c2b3a6d1779811644ff338e58b"
+  },
+  {
+   "key": "tasks/manage-kubernetes-objects/imperative-command.md",
+   "title": "명령형 커맨드를 이용한 쿠버네티스 오브젝트 관리하기",
+   "chunks": 8,
+   "body_chars": 4212,
+   "body_sha256": "e73cd8a6789df7c5e674300b675ab709d7fbd7ccabc1456948cb1b148906d90b"
+  },
+  {
+   "key": "tasks/manage-kubernetes-objects/imperative-config.md",
+   "title": "구성 파일을 이용한 명령형 쿠버네티스 오브젝트 관리",
+   "chunks": 10,
+   "body_chars": 3183,
+   "body_sha256": "2b158288eda4e4ea5b322bb9da564d921736f38dea6b5344afe7518d8196c21f"
+  },
+  {
+   "key": "tasks/manage-kubernetes-objects/kustomization.md",
+   "title": "Kustomize를 이용한 쿠버네티스 오브젝트의 선언형 관리",
+   "chunks": 28,
+   "body_chars": 21526,
+   "body_sha256": "a97bcde0db23e1eab937dce3a7e759b59677bc064e170d7230fb04d8c10fe12e"
+  },
+  {
+   "key": "tasks/network/customize-hosts-file-for-pods.md",
+   "title": "HostAliases로 파드의 /etc/hosts 항목 추가하기",
+   "chunks": 7,
+   "body_chars": 2500,
+   "body_sha256": "a39a0ec7c47f86306ad39bae738a67fccf992b206895944112f2a447205c9eb2"
+  },
+  {
+   "key": "tasks/network/extend-service-ip-ranges.md",
+   "title": "서비스 IP 범위 확장",
+   "chunks": 7,
+   "body_chars": 6894,
+   "body_sha256": "85460553b96d23c40e65c5d3e1c978dbd71b599a891bc7c6ffb6a3d9284783e2"
+  },
+  {
+   "key": "tasks/network/reconfigure-default-service-ip-ranges.md",
+   "title": "쿠버네티스 기본 서비스 CIDR 재구성",
+   "chunks": 3,
+   "body_chars": 3853,
+   "body_sha256": "98186f21de4bee5dea577ce8352d95169b391a43e79e88ad1e37c42506b0e0bf"
+  },
+  {
+   "key": "tasks/network/validate-dual-stack.md",
+   "title": "IPv4/IPv6 이중 스택 검증",
+   "chunks": 4,
+   "body_chars": 5793,
+   "body_sha256": "c91e30e67b237c1661188a5be0af04dc2d4fa7da795d312e8a52de84a83c82bc"
+  },
+  {
+   "key": "tasks/run-application/access-api-from-pod.md",
+   "title": "파드 내에서 쿠버네티스 API에 접근",
+   "chunks": 8,
+   "body_chars": 2835,
+   "body_sha256": "432ba852a7755283bae20fcbf8588ef5af19140d21395720ff4155477992329d"
+  },
+  {
+   "key": "tasks/run-application/delete-stateful-set.md",
+   "title": "스테이트풀셋(StatefulSet) 삭제하기",
+   "chunks": 2,
+   "body_chars": 1851,
+   "body_sha256": "9b551a4b5bf6788bf27dad1511ad35e9b764ef4b49e497a62c5c711ab29a4c9a"
+  },
+  {
+   "key": "tasks/run-application/force-delete-stateful-set-pod.md",
+   "title": "스테이트풀셋(StatefulSet) 파드 강제 삭제하기",
+   "chunks": 3,
+   "body_chars": 2797,
+   "body_sha256": "ff4c2ed0292bfa2f61c64c3fefe9de09ca226b6841cd94fb24c934ea7c3ff35f"
+  },
+  {
+   "key": "tasks/run-application/horizontal-pod-autoscale-walkthrough.md",
+   "title": "HorizontalPodAutoscaler 연습",
+   "chunks": 15,
+   "body_chars": 13329,
+   "body_sha256": "5e1103cdbc0d690a1cd530b10679d2d6edf836392c437c6b9327c06f52e605cf"
+  },
+  {
+   "key": "tasks/run-application/horizontal-pod-autoscale.md",
+   "title": "Horizontal Pod Autoscaling",
+   "chunks": 15,
+   "body_chars": 18030,
+   "body_sha256": "5d8e265be658b1a536aa605a7d4e86b1494e1d2d5f5b6bb54e0e1fd20280bcc7"
+  },
+  {
+   "key": "tasks/run-application/run-replicated-stateful-application.md",
+   "title": "복제 스테이트풀 애플리케이션 실행하기",
+   "chunks": 7,
+   "body_chars": 13139,
+   "body_sha256": "b4a38572c394daee2e09cad8a73edfc260de0958554e960d92e47cf59a580d62"
+  },
+  {
+   "key": "tasks/run-application/run-single-instance-stateful-application.md",
+   "title": "단일 인스턴스 스테이트풀 애플리케이션 실행하기",
+   "chunks": 5,
+   "body_chars": 5249,
+   "body_sha256": "019af525035469f7e8159d6b0d97737591e58df814f0a565e0f6d05157681588"
+  },
+  {
+   "key": "tasks/run-application/run-stateless-application-deployment.md",
+   "title": "디플로이먼트(Deployment)로 스테이트리스 애플리케이션 실행하기",
+   "chunks": 6,
+   "body_chars": 3534,
+   "body_sha256": "d8e75eab0d407fbd2b9154720f39a872687a97eface017132d8b8ebcf32b9218"
+  },
+  {
+   "key": "tasks/run-application/scale-stateful-set.md",
+   "title": "스테이트풀셋(StatefulSet) 확장하기",
+   "chunks": 3,
+   "body_chars": 1922,
+   "body_sha256": "7213df0d1b84eb38d9c1a2a5f51e87dd6e98d0aae5763c698bff99326459957e"
+  },
+  {
+   "key": "tasks/tls/certificate-issue-client-csr.md",
+   "title": "CertificateSigningRequest를 사용하여 쿠버네티스 API 클라이언트용 인증서 발급하기",
+   "chunks": 11,
+   "body_chars": 5185,
+   "body_sha256": "ae7f7a45b96c333f35a1fb7921363b5d4bb7abaeafe1e90030de44e82f3488dc"
+  },
+  {
+   "key": "tasks/tls/certificate-rotation.md",
+   "title": "Kubelet의 인증서 갱신 구성",
+   "chunks": 4,
+   "body_chars": 1511,
+   "body_sha256": "d50b440d96e3de7a2d838cd65e6451d7b897754d4242440170d2f728f086f9c6"
+  },
+  {
+   "key": "tasks/tls/managing-tls-in-a-cluster.md",
+   "title": "클러스터에서 TLS 인증서 관리",
+   "chunks": 10,
+   "body_chars": 8802,
+   "body_sha256": "44d9861970f1d907b55f98f3e2f438fbf794ddf2137337867e656fe4f89cdd63"
+  },
+  {
+   "key": "tasks/tools/included/optional-kubectl-configs-bash-linux.md",
+   "title": "리눅스에서 bash 자동 완성 사용하기",
+   "chunks": 1,
+   "body_chars": 1555,
+   "body_sha256": "e08d7b51b2f64eb98169defcc370c977c4381550e4f2cc3c96f6eb74070d0d5c"
+  },
+  {
+   "key": "tasks/tools/included/optional-kubectl-configs-bash-mac.md",
+   "title": "macOS에서 bash 자동 완성 사용하기",
+   "chunks": 1,
+   "body_chars": 2523,
+   "body_sha256": "f869ffd10e378850a624438a6893a2dcecf7758313d3e651038a10cb336b3741"
+  },
+  {
+   "key": "tasks/tools/install-kubectl-linux.md",
+   "title": "리눅스에 kubectl 설치 및 설정",
+   "chunks": 5,
+   "body_chars": 5066,
+   "body_sha256": "249f5770703d08a672401900ac045a4521939de1b3ace8e6fd3515ecdbe0cac6"
+  },
+  {
+   "key": "tasks/tools/install-kubectl-macos.md",
+   "title": "macOS에 kubectl 설치 및 설정",
+   "chunks": 4,
+   "body_chars": 4594,
+   "body_sha256": "c16be5d611cbc8e82524692729696c77e500e5cde9c84da2a2966375ecfcd178"
+  },
+  {
+   "key": "tasks/tools/install-kubectl-windows.md",
+   "title": "윈도우에 kubectl 설치 및 설정",
+   "chunks": 5,
+   "body_chars": 3933,
+   "body_sha256": "da72607ff1a84fe157ea76392abd661ca813469369d9b8eb8ccbea952a1baf81"
+  },
+  {
+   "key": "tutorials/configuration/configure-redis-using-configmap.md",
+   "title": "컨피그맵을 사용해서 Redis 설정하기",
+   "chunks": 2,
+   "body_chars": 4086,
+   "body_sha256": "5f2666f71e9c0031081813a95d682265a026425f16594acc2b846743a2a876fa"
+  },
+  {
+   "key": "tutorials/configuration/pod-sidecar-containers.md",
+   "title": "사이드카 컨테이너 도입",
+   "chunks": 5,
+   "body_chars": 5873,
+   "body_sha256": "905dcce3896719c513bbcff852adc7e8e7a07c81482db56a25c8ce73a7d347c3"
+  },
+  {
+   "key": "tutorials/configuration/updating-configuration-via-a-configmap.md",
+   "title": "컨피그맵으로 구성 파일 업데이트하기",
+   "chunks": 26,
+   "body_chars": 18549,
+   "body_sha256": "338c0ea2b2f918e68edd5efe11159ba9b6996efddc1718a6046531738ee4697b"
+  },
+  {
+   "key": "tutorials/hello-minikube.md",
+   "title": "Hello Minikube",
+   "chunks": 12,
+   "body_chars": 8165,
+   "body_sha256": "892415da0bfa2210106c1ba76e4ca90ea5247aa6375f3b308a79ee9c334949ab"
+  },
+  {
+   "key": "tutorials/kubernetes-basics/create-cluster/cluster-intro.md",
+   "title": "Minikube를 사용해서 클러스터 생성하기",
+   "chunks": 2,
+   "body_chars": 2326,
+   "body_sha256": "e422d7e079fcb756c685006de6b97bcb35d6d4eb76f9b18010341e2ec35b7d1f"
+  },
+  {
+   "key": "tutorials/security/apparmor.md",
+   "title": "AppArmor를 사용하여 리소스에 대한 컨테이너의 접근 제한",
+   "chunks": 9,
+   "body_chars": 12226,
+   "body_sha256": "d8fd81bbce9617fa85dae6f8986b3311b1cf43872bd6601e48e914d4e6a54694"
+  },
+  {
+   "key": "tutorials/security/cluster-level-pss.md",
+   "title": "파드 시큐리티 스탠다드를 클러스터 수준에 적용하기",
+   "chunks": 11,
+   "body_chars": 10923,
+   "body_sha256": "713a2d848050683f8cf5ceba5a457fb55c36e07e1c058b629560e1d62113d1ba"
+  },
+  {
+   "key": "tutorials/security/ns-level-pss.md",
+   "title": "파드 시큐리티 스탠다드를 네임스페이스 수준에 적용하기",
+   "chunks": 6,
+   "body_chars": 4179,
+   "body_sha256": "fcd11578691812175997e3742fdec72991037bee2480a3da9388314d2b38c525"
+  },
+  {
+   "key": "tutorials/services/connect-applications-service.md",
+   "title": "서비스와 애플리케이션 연결하기",
+   "chunks": 10,
+   "body_chars": 12064,
+   "body_sha256": "cd913cb46307853dfd165930cdec67cad03cc71ddfed30fc68bec6f0828fe8d3"
+  },
+  {
+   "key": "tutorials/services/pods-and-endpoint-termination-flow.md",
+   "title": "파드와 해당 엔드포인트의 종료 동작 살펴보기",
+   "chunks": 3,
+   "body_chars": 4271,
+   "body_sha256": "11361b9d0fa73a0bbab2f2bfd9b24a9b6032dacedf29f1132d6428c8ab3fa993"
+  },
+  {
+   "key": "tutorials/services/source-ip.md",
+   "title": "소스 IP 주소 이용하기",
+   "chunks": 10,
+   "body_chars": 9317,
+   "body_sha256": "b1da935bb3530eb179092abde2f7fc11aa392307aa73b0719b4408fd76974ef2"
+  },
+  {
+   "key": "tutorials/stateful-application/cassandra.md",
+   "title": "예시: 카산드라를 스테이트풀셋으로 배포하기",
+   "chunks": 11,
+   "body_chars": 6741,
+   "body_sha256": "4f8f2e6ed389a0cb98a1df22f9ac4a2b09ba1bf7b706ac0efcec902d417768a8"
+  },
+  {
+   "key": "tutorials/stateful-application/mysql-wordpress-persistent-volume.md",
+   "title": "예시: WordPress와 MySQL을 퍼시스턴트 볼륨에 배포하기",
+   "chunks": 5,
+   "body_chars": 5990,
+   "body_sha256": "9630e03162788b965b300f36d86b369ee34b711a7697e19f4f28c0de9265747d"
+  },
+  {
+   "key": "tutorials/stateless-application/expose-external-ip-address.md",
+   "title": "외부 IP 주소를 노출하여 클러스터의 애플리케이션에 접속하기",
+   "chunks": 2,
+   "body_chars": 4154,
+   "body_sha256": "4c86d01954b9da0a8ecae060ecd52c578e49174cead692cba6b1df655c1b563f"
+  },
+  {
+   "key": "tutorials/stateless-application/guestbook.md",
+   "title": "예시: Redis를 사용한 PHP 방명록 애플리케이션 배포하기",
+   "chunks": 4,
+   "body_chars": 9216,
+   "body_sha256": "71c5da7dfe959102270b4e3d03e7be3163d434cc7ce1c0f0f4dc153168a83857"
+  }
+ ]
+}

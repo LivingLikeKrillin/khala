@@ -19,10 +19,81 @@
 # 이 파일이 메우는 것은 재현성과 두 번째 코퍼스이지 대표성이 아니다 —
 # 그쪽은 SPEC-nexus-query-text-retention 이 맡는다.
 #
-# corpus 결속(§3.3)은 아직 없다. 테넌트 `ko_eval_packa` 적재가 끝나면 서명한다.
+# revision 1 의 corpus 결속: 테넌트 `ko_eval_packa` 에 팩을 적재한 뒤 판정 문서 64건의
+#   본문 해시로 서명했다. 이 해시는 **공개 문서에 대한 것**이라 커밋해도 안전하고,
+#   재현하는 사람은 같은 청커로 같은 테넌트에 적재하면 같은 값을 얻는다 — 다르면
+#   청킹이 달라진 것이고, 그것을 잡는 것이 결속의 목적이다.
 
 revision: 1
 pack: packa-corpus-266
+corpus:
+  tenant: ko_eval_packa
+  signed_at: '2026-08-12'
+  bodies:
+    concepts/cluster-administration/logging.md: sha256:e21ab33f8fe7c08608bb6f31cfebaf18331e5db9ef6365726a6994f8ab1fe42d
+    concepts/cluster-administration/node-autoscaling.md: sha256:bb589104bde240258d0d7c8b7b6b6455d2bee8be78a71251e754163d0c431662
+    concepts/cluster-administration/system-logs.md: sha256:8913c16eec04b56f46a714176d639ba6eb6dffc68a77cbb85093e6fd8dd2ce2e
+    concepts/configuration/configmap.md: sha256:220de4d8975bc9ed0119e2e55c675a1048d9bfdb39ec6cd1483f9b6ab42dc429
+    concepts/containers/container-environment.md: sha256:34d132eba1410c743465ce3dcf1e985821bf3bfe2c4c7e7e63ed73d3704cda13
+    concepts/policy/limit-range.md: sha256:79ed7c7a1eb52f9a0a690018379803662f3011703cd93ac07322f7af68dee156
+    concepts/policy/resource-quotas.md: sha256:858a1ee4a4fe18f0ce88ede15a9f75eba82e1c1cfb502b0f01b6e4a5ff39e497
+    concepts/scheduling-eviction/assign-pod-node.md: sha256:fbe094c1ef27281e1d54da9dab701492213f86570c7facd0cd0ec93fe1a57e62
+    concepts/scheduling-eviction/node-pressure-eviction.md: sha256:a7af3045710d0455a19ba2025eaad6db7508fb5ee3ef15295f17d80123e38f52
+    concepts/scheduling-eviction/taint-and-toleration.md: sha256:541be01af5385592d77120fa6868ef81fc875c21211421745b4412f8b2429960
+    concepts/security/multi-tenancy.md: sha256:ee12e3b0d66fd2f0f815ae36939efce80981fd0384913447dee47b64e967f1f6
+    concepts/security/pod-security-admission.md: sha256:13c4d8d7115881b15c96e56fa3d736a0be28ae812343a3c3a1b90695e20fd94d
+    concepts/services-networking/endpoint-slices.md: sha256:7214b508c0be1e6b3469d69c4bca2d8dad1a8a312832c02a5b55eec4a0c542de
+    concepts/services-networking/ingress-controllers.md: sha256:a7acb8bc55970b57df43631b5b03923280bcc87913ef5caec2e39e069a478765
+    concepts/services-networking/network-policies.md: sha256:308637534378d094044f1850dabff13b29d90673312d19f8a7476aa281ce95a1
+    concepts/storage/storage-classes.md: sha256:5b4fa2d6d75e865c41cd45a29eb1ab867da4836112e6197e45cad52b7e688a20
+    concepts/storage/volume-snapshots.md: sha256:7a8b30ecbde25fcf21052ab9749d2969debfeb9b0dfb9d926a50634145bace91
+    concepts/workloads/autoscaling.md: sha256:9538752c699bf9fe2899e588d9cfc4a084f65b4858d501607e74ec5cfa9d7123
+    concepts/workloads/controllers/cron-jobs.md: sha256:d1bc483893ea0a29108cd421d2420edd87e6e920e382c0ecbc75f535cd28974c
+    concepts/workloads/controllers/daemonset.md: sha256:184d02a0c08fb21deb1413794db3797ef0425600abe6a5d8ba85fab571e61d0f
+    concepts/workloads/controllers/replicaset.md: sha256:bab9473210f329d64805731bd3ed40de605b55e05df45b763e5d3d9592091420
+    concepts/workloads/pods/init-containers.md: sha256:cbf98e575cc6cd2aee7b62e7312c45a066c6188d804a9d897060f84679c9b346
+    concepts/workloads/pods/pod-qos.md: sha256:7274debda66dcfe212ffd4c5443e88cfaced2777e85e288579cad6ab61e31019
+    concepts/workloads/pods/sidecar-containers.md: sha256:e47ce9c51d55daee74fd29d8904374411e16532f6555fd03d0eb4b69cab8e620
+    setup/best-practices/enforcing-pod-security-standards.md: sha256:8987ced3d5b9b885917b9c7f0c158a0a2087b58e43df5666c6b6c47d37849ba6
+    tasks/access-application-cluster/ingress-minikube.md: sha256:50b9f422a84ba7514d90b4d6ece03d3d5c9265a8ef8e01596b705f4e56304ef0
+    tasks/administer-cluster/certificates.md: sha256:51325e794a13db9659f6348eb7cf07d294e1c7ed387e8208aee30f41591d4265
+    tasks/administer-cluster/change-pv-access-mode-readwriteoncepod.md: sha256:76a3296e1a41d26f0329d51369c4fe4e3cea0c0f9737c3223de54f3341cff81c
+    tasks/administer-cluster/change-pv-reclaim-policy.md: sha256:a418452ec848d0075cc5e50471799582cd9c63a1fd7eb361142088f62dfb0ba3
+    tasks/administer-cluster/cluster-upgrade.md: sha256:2d0cb0790e4eec9d0f4540d106ec1abcfaa0e61eca64b8448bc8a419539071ef
+    tasks/administer-cluster/coredns.md: sha256:194a49c329da2cefe7f91ee354026a6d38f5390931caa74ed8aea1ffaa8dd22b
+    tasks/administer-cluster/declare-network-policy.md: sha256:96b5efca64bd0c0acc4309b20872907448965c366db3a216c0ac1a83f585152d
+    tasks/administer-cluster/dns-custom-nameservers.md: sha256:f3205a99ded39887ced5249fb80ff6032c174ecec67c5ce5d2639e0fef9ab0da
+    tasks/administer-cluster/kubeadm/kubeadm-upgrade.md: sha256:3cc908ea431e99f928029426c905f5c4b312d3415e431bdb825463b16697e705
+    tasks/administer-cluster/manage-resources/memory-default-namespace.md: sha256:82f6789e01fd5404c1fda6d7a7680cbabe54dcefd207b551a4ca532adf499a56
+    tasks/administer-cluster/namespaces.md: sha256:e570d59f48dc72cf6dfcca54b2e766efbf38c1dcdaa89c323a8a302523952110
+    tasks/administer-cluster/sysctl-cluster.md: sha256:4264f2ee1b2759022a8ae6f64ba17954973d3dd0236cb34a011a760738199fe4
+    tasks/configmap-secret/managing-secret-using-kubectl.md: sha256:4195f3978fc14725b7b55b6b1b925e01691cf3d152537fc0887b90d8898010b5
+    tasks/configure-pod-container/assign-pods-nodes-using-node-affinity.md: sha256:5a0bf1f014421207ad5dcdf21b630c853d42ee79607ac853b0e5c7845cafb63f
+    tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md: sha256:5cbe8d182f3e9b932f6451ea100a4df6504d24df163382a79a69803382de64fd
+    tasks/configure-pod-container/configure-persistent-volume-storage.md: sha256:1d135aca3df424f9c904ae383b4a6cfebe32d3bac5520cad3de8a35b2a5073eb
+    tasks/extend-kubernetes/setup-konnectivity.md: sha256:ec16ff12da051ac68ed335316089db067b2775042dc2e10b7f670267bddb8718
+    tasks/inject-data-application/define-environment-variable-container.md: sha256:b6962aa93752d5e05f6176abf6eeec65cdaca77346525b3297ff0914a0b73e20
+    tasks/inject-data-application/define-interdependent-environment-variables.md: sha256:8c2cd27aa31fd923e48feaa7cfc2387942d9d08a0418198c8c9f836757907825
+    tasks/job/automated-tasks-with-cron-jobs.md: sha256:c45c526f1051e3d35a16a4c610152e4be31cf1347bd5585b0aa3da309ea35b74
+    tasks/job/coarse-parallel-processing-work-queue.md: sha256:f91acfd7b35737d4afccd5731face360c9b13f56fd64ae78c26d9a0a87aef55a
+    tasks/job/fine-parallel-processing-work-queue.md: sha256:51fdd802c8e6f7704619a5ffe6b9cbe3eeb35f78f649b11b65838bc274a59b9b
+    tasks/job/indexed-parallel-processing-static.md: sha256:d308c3eecbb360255050abc27fc0025952b65a25ef6207ba35427db92824fd61
+    tasks/job/parallel-processing-expansion.md: sha256:7f1109b3176ecd2d262949fe1e49f54451dfaff72f393175a500966e8ccba61a
+    tasks/manage-daemon/rollback-daemon-set.md: sha256:1d14eb0d44359795c1f55ce8aa8426a87680845a4282fba882c806c3bd9c238c
+    tasks/manage-daemon/update-daemon-set.md: sha256:995156dd9ea709984a5771cd1fa991208ba82047bbd00365688589e5e26dc38a
+    tasks/run-application/access-api-from-pod.md: sha256:432ba852a7755283bae20fcbf8588ef5af19140d21395720ff4155477992329d
+    tasks/run-application/delete-stateful-set.md: sha256:9b551a4b5bf6788bf27dad1511ad35e9b764ef4b49e497a62c5c711ab29a4c9a
+    tasks/run-application/force-delete-stateful-set-pod.md: sha256:ff4c2ed0292bfa2f61c64c3fefe9de09ca226b6841cd94fb24c934ea7c3ff35f
+    tasks/run-application/horizontal-pod-autoscale-walkthrough.md: sha256:5e1103cdbc0d690a1cd530b10679d2d6edf836392c437c6b9327c06f52e605cf
+    tasks/run-application/horizontal-pod-autoscale.md: sha256:5d8e265be658b1a536aa605a7d4e86b1494e1d2d5f5b6bb54e0e1fd20280bcc7
+    tasks/run-application/scale-stateful-set.md: sha256:7213df0d1b84eb38d9c1a2a5f51e87dd6e98d0aae5763c698bff99326459957e
+    tasks/tls/certificate-issue-client-csr.md: sha256:ae7f7a45b96c333f35a1fb7921363b5d4bb7abaeafe1e90030de44e82f3488dc
+    tasks/tls/managing-tls-in-a-cluster.md: sha256:44d9861970f1d907b55f98f3e2f438fbf794ddf2137337867e656fe4f89cdd63
+    tutorials/configuration/configure-redis-using-configmap.md: sha256:5f2666f71e9c0031081813a95d682265a026425f16594acc2b846743a2a876fa
+    tutorials/configuration/pod-sidecar-containers.md: sha256:905dcce3896719c513bbcff852adc7e8e7a07c81482db56a25c8ce73a7d347c3
+    tutorials/configuration/updating-configuration-via-a-configmap.md: sha256:338c0ea2b2f918e68edd5efe11159ba9b6996efddc1718a6046531738ee4697b
+    tutorials/security/apparmor.md: sha256:d8fd81bbce9617fa85dae6f8986b3311b1cf43872bd6601e48e914d4e6a54694
+    tutorials/stateful-application/mysql-wordpress-persistent-volume.md: sha256:9630e03162788b965b300f36d86b369ee34b711a7697e19f4f28c0de9265747d
 queries:
 - id: q001
   query: 수평 파드 오토스케일링은 레플리카 수를 무엇을 보고 정하나
