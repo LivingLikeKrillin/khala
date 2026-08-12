@@ -139,12 +139,25 @@ async def disable(tenant: str) -> int:
     return n
 
 
+class NotMigrated(RuntimeError):
+    """보존 테이블이 아직 없다 — 마이그레이션 017 전.
+
+    "테이블이 없다" 는 **고장이 아니라 상태**다. 아직 안 켠 배포에서 현황을 물으면 트레이스백
+    50줄이 아니라 한 줄이 나와야 한다. 2026-08-12 에 실제로 그 50줄을 봤다.
+    """
+
+
 async def status() -> list[dict]:
     """테넌트별 보존 현황 — **가장 오래된 `first_seen` 을 함께 낸다.**
 
     안 도는 purge 는 증상이 없다. 그 침묵을 깨는 것이 이 줄의 목적이다
     (SPEC-nexus-index-completeness 에서 배운 것: 존재하는데 아무도 안 본 숫자).
+
+    테이블이 없으면 `NotMigrated` 를 올린다 — 빈 목록으로 돌려주면 "안 켰다" 와 "아직 만들지
+    않았다" 가 같은 화면이 되고, 둘은 다른 조치를 부른다.
     """
+    if not await db.fetch_val("SELECT to_regclass('public.query_retention')"):
+        raise NotMigrated("query_retention 테이블이 없다 — 마이그레이션이 아직 안 돌았다")
     rows = await db.fetch_all(
         """
         SELECT r.tenant, r.retain_days, r.notice_shown <> '' AS has_notice,
