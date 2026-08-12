@@ -13,8 +13,8 @@ tags:
 - eval
 - governance
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-12T08:51:54Z'
-content_hash: sha256:e338b71bf87b2060c22ada33db3a18b46281c980afa8886d57676077e24372c2
+reviewed_at: '2026-08-12T09:22:46Z'
+content_hash: sha256:8d4d93a24593a7172734787dab1da7d51171f326553a1cb35aa4aa4bec38ca89
 ---
 # Keep the question, so the eval set can stop being written by the documents it grades
 
@@ -111,6 +111,27 @@ The writer refuses when `notice_shown` is empty, and the refusal is **counted an
 `/status`** (`query_retention_refused`), not only logged. A consent control whose failure is a log
 line nobody greps is the same failure as index coverage: the number existed, and no one was shown
 it (SPEC-nexus-index-completeness).
+
+**The tenant is not the group.** *Amended 2026-08-12, before U4 ran.* A notice goes to a set of
+people; a tenant is reached by every surface pointed at it — web UI, the Slack bot, the CLI, A2A
+clients all land on `default`. Announce in one channel, switch the tenant on, and questions from
+people who were never told are stored beside the ones from people who were.
+
+Path cannot separate them: the Slack bot calls the same HTTP API the web UI does. **Principal can** —
+each surface carries its own token, and the API already derives `(tenant, clearance)` from it. So
+`query_retention` carries `principals`, and a question is retained only when its principal is on
+that list. An empty list retains nothing, so a surface added later is out of scope until someone
+puts it there on purpose.
+
+**The principal is read for the decision and never written.** Storing it would seat identity next
+to the text and rebuild, inside one row, the person log §3.1 salts the key to prevent.
+
+Two consequences worth stating rather than discovering. Tool traffic — CLI, evaluation harnesses,
+agents — has no principal on the allowlist, so it is not retained; that is deliberate, because a
+corpus of "real questions" polluted by its own tooling measures nothing. And **A2A cannot be
+allowlisted today**: its answer path is an injected contract `(query, tenant, clearance)` that
+carries no identity. That is a limitation of the surface, not a judgement that agent questions are
+unwanted; widening the contract comes first if they are.
 
 ### 3.3 Expiry runs against `first_seen`, and what that does not promise
 
@@ -229,7 +250,7 @@ which is what ADR-0009 says an absent result means.
 
 | # | unit | lands in |
 |---|---|---|
-| U1 | `search_query_text` + `query_retention`, migration, salted key, no-op writer, best-effort write | `nexus/db`, `migrations/` |
+| U1 | `search_query_text` + `query_retention`, migration, salted key, no-op writer, best-effort write, surface allowlist | `nexus/db`, `migrations/`, `nexus/search/` |
 | U2 | `purge` (first_seen + orphans) · `disable` (transactional) · `/status` surfacing | `nexus/cli.py`, status payload |
 | U3 | `export` + `provenance: from_user_query` accepted by the label gate | `nexus/cli.py`, `ko_eval_labels.py` |
 | U4 | Turn it on for the pilot tenant with the notice recorded | operational — the notice goes to the team, `notice_shown` records where |

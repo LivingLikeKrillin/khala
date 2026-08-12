@@ -280,7 +280,8 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
 
 
 async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
-                   query_text: str | None = None) -> None:
+                   query_text: str | None = None,
+                   principal: str | None = None) -> None:
     """search_log에 1행 insert(+선택적 충분성 판정). 실패는 삼킴.
 
     두 개의 지역 try/except 가 있고 **둘 다 필요하다**:
@@ -296,7 +297,7 @@ async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
     # (SPEC-nexus-query-text-retention §3.5). search_log 쓰기보다 먼저 두는 이유는 없다 —
     # 뒤에 두면 신호 적재가 실패했을 때 보존도 같이 사라지고, 둘은 독립이어야 한다.
     from nexus.search.query_retention import retain
-    await retain(sig.tenant, query_text)
+    await retain(sig.tenant, query_text, principal)
 
     sufficiency, judge_id, fingerprint, took_slot = "uninstrumented", "off", None, False
     try:
@@ -342,7 +343,8 @@ async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
 
 async def record_search(sig: SearchSignals, *, await_persist: bool = False,
                         judge_input: JudgeInput | None = None,
-                        query_text: str | None = None) -> None:
+                        query_text: str | None = None,
+                        principal: str | None = None) -> None:
     """structlog(항상, 동기) + best-effort DB 적재. 절대 raise 안 함.
 
     서버 경로(api/a2a)는 기본 fire-and-forget(create_task) — 응답 지연에 DB 쓰기 미가산.
@@ -366,9 +368,9 @@ async def record_search(sig: SearchSignals, *, await_persist: bool = False,
     if not db.has_pool():
         return
     if await_persist:
-        await _persist(sig, judge_input, query_text)
+        await _persist(sig, judge_input, query_text, principal)
     else:
         # Retain a strong reference so the task isn't GC'd before completion (stdlib-recommended pattern).
-        task = asyncio.create_task(_persist(sig, judge_input, query_text))
+        task = asyncio.create_task(_persist(sig, judge_input, query_text, principal))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
