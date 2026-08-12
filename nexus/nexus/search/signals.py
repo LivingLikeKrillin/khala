@@ -279,7 +279,8 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
     )
 
 
-async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None) -> None:
+async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
+                   query_text: str | None = None) -> None:
     """search_log에 1행 insert(+선택적 충분성 판정). 실패는 삼킴.
 
     두 개의 지역 try/except 가 있고 **둘 다 필요하다**:
@@ -291,6 +292,12 @@ async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None) ->
     * **판정 호출** — 여기서 터지면 UPDATE 를 건너뛰어 행이 영원히 `pending` 에 남는다.
       `error`/`timeout` 이 도달 가능한 것은 이 핸들러 덕이다.
     """
+    # 질문 보존은 **옵트인한 테넌트에서만** 일어나고, 어느 경우에도 raise 하지 않는다
+    # (SPEC-nexus-query-text-retention §3.5). search_log 쓰기보다 먼저 두는 이유는 없다 —
+    # 뒤에 두면 신호 적재가 실패했을 때 보존도 같이 사라지고, 둘은 독립이어야 한다.
+    from nexus.search.query_retention import retain
+    await retain(sig.tenant, query_text)
+
     sufficiency, judge_id, fingerprint, took_slot = "uninstrumented", "off", None, False
     try:
         terminal, judge_id, fingerprint = _eligibility(sig, judge_input)
@@ -334,11 +341,16 @@ async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None) ->
 
 
 async def record_search(sig: SearchSignals, *, await_persist: bool = False,
-                        judge_input: JudgeInput | None = None) -> None:
+                        judge_input: JudgeInput | None = None,
+                        query_text: str | None = None) -> None:
     """structlog(항상, 동기) + best-effort DB 적재. 절대 raise 안 함.
 
     서버 경로(api/a2a)는 기본 fire-and-forget(create_task) — 응답 지연에 DB 쓰기 미가산.
     CLI는 await_persist=True — asyncio.run 종료/close_pool 이전에 적재 완료 보장.
+
+    `query_text` 는 **`SearchSignals` 에 넣지 않는다.** 그 객체는 통째로 로그 한 줄이 되고,
+    보존은 옵트인한 테넌트의 DB 행에서만 일어나야 한다(SPEC-nexus-query-text-retention §3.2).
+    필드로 두면 옵트인하지 않은 배포의 로그 파일에 질문이 남는다.
     """
     log.info(
         SIGNAL_EVENT,
@@ -354,9 +366,9 @@ async def record_search(sig: SearchSignals, *, await_persist: bool = False,
     if not db.has_pool():
         return
     if await_persist:
-        await _persist(sig, judge_input)
+        await _persist(sig, judge_input, query_text)
     else:
         # Retain a strong reference so the task isn't GC'd before completion (stdlib-recommended pattern).
-        task = asyncio.create_task(_persist(sig, judge_input))
+        task = asyncio.create_task(_persist(sig, judge_input, query_text))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
