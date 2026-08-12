@@ -54,6 +54,20 @@ def judged_keys(q: dict) -> list[str]:
     return list(q.get("gold") or []) + list(q.get("not_gold") or [])
 
 
+def _digest(value: str | None) -> str | None:
+    """`sha256:<hex>` 와 `<hex>` 를 같은 값으로 본다.
+
+    SPEC §3.3 의 예시는 `sha256:` 접두를 달고 있고 워크시트도 그렇게 뽑아 준다. 그런데 실행이
+    비교 대상으로 넘기는 것은 `tenant_bodies()` 의 **맨 hex** 다. 접두를 그대로 두면 문자열이
+    영원히 안 맞아 **40질의 전부가 만료된다** — 게이트는 통과하므로(키 존재만 본다) 라벨을
+    실제로 서명해서 돌려 보기 전에는 보이지 않았다. 2026-08-12 에 첫 서명에서 터졌다.
+
+    옛 테스트가 못 잡은 이유는 서명 쪽과 라이브 쪽을 **같은 가짜 문자열**로 만들어 비교했기
+    때문이다. 두 쪽의 형식이 다를 수 있다는 것 자체가 표현되지 않았다.
+    """
+    return None if value is None else value.strip().removeprefix("sha256:")
+
+
 def expired(labels: dict, live_bodies: dict[str, str]) -> dict[str, list[str]]:
     """서명된 본문과 **지금 재는 코퍼스**가 다른 질의 → {qid: [바뀐 문서키]}.
 
@@ -67,7 +81,7 @@ def expired(labels: dict, live_bodies: dict[str, str]) -> dict[str, list[str]]:
         if not q.get("answerable"):
             continue
         moved = [k for k in judged_keys(q)
-                 if signed.get(k) != live_bodies.get(k)]
+                 if _digest(signed.get(k)) != _digest(live_bodies.get(k))]
         if moved:
             out[q["id"]] = moved
     return out
