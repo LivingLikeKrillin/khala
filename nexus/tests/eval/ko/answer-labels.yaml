@@ -45,7 +45,17 @@
 #                      실재한다. Pack A 의 미검증 인용 5~8건 대부분이 이 형태이고, Pack B 문서는
 #                      짧아 드러나지 않았다. 별도 유닛으로 고친다(SPEC-nexus-citation-validation).
 #
-revision: 2
+# revision 3 — 2026-08-13 검토·서명. 3런 처분(§6.3)에서 **내 라벨 결함**으로 판정한 두 건을
+#   질의에 맞춰 고쳤다. 근거는 세 검증이다: 새 요구가 gold 본문에서 성립하고, **이미 옳았던
+#   답변(r7)이 통과하며**, 무관한 문서에서는 탈락한다. 옛 요구로는 그 옳은 답변이 떨어졌다 —
+#   라벨이 결함이었다는 증거가 그것이다.
+#   q017 "어떤 파드부터 쫓겨나나": [축출]+[임계값|신호] → [BestEffort]+[우선순위|요청량].
+#     축출 신호는 다른 질문이었다. 그리고 `축출` 은 질의 어휘를 되풀이하면 통과하므로 뺐다.
+#   q039 "어떤 기준으로 고르나": [IngressClass|기본] → [설명서|문서]+[검토|다르게 작동].
+#     기본 클래스 지정은 선택 기준이 아니다. 문서의 실제 기준은 "컨트롤러마다 다르게 작동하니
+#     각 설명서를 검토하라" 다.
+
+revision: 3
 pack: packa-corpus-266
 corpus:
   tenant: ko_eval_packa
@@ -132,7 +142,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q002
   query: 앱아머로 컨테이너가 건드릴 수 있는 자원을 제한하려면
   stratum: loanword
@@ -150,7 +160,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q003
   query: 코넥티비티 서비스는 어떻게 설정하나
   stratum: loanword
@@ -165,7 +175,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q004
   query: CronJob 의 스케줄 표기법은 어떻게 쓰나
   stratum: loanword
@@ -185,7 +195,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q005
   query: EndpointSlice 는 엔드포인트를 어떻게 나눠서 들고 있나
   stratum: loanword
@@ -202,7 +212,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q006
   query: 인증서 서명 요청을 만들어 클라이언트 인증서를 발급받으려면
   stratum: loanword
@@ -220,7 +230,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q007
   query: 미니큐브에서 엔진엑스 인그레스 컨트롤러를 켜려면
   stratum: loanword
@@ -236,7 +246,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q008
   query: 워드프레스와 마이에스큐엘을 퍼시스턴트 볼륨 위에 올리는 예제
   stratum: loanword
@@ -251,7 +261,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q009
   query: 퍼시스턴트볼륨클레임을 만들어 파드에 저장소를 붙이는 절차
   stratum: compound
@@ -267,7 +277,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q010
   query: 스테이트풀셋 레플리카 개수를 늘리거나 줄이려면
   stratum: compound
@@ -282,7 +292,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q011
   query: 데몬셋을 롤링 업데이트하려면 어떤 전략을 쓰나
   stratum: compound
@@ -297,7 +307,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q012
   query: 네트워크폴리시를 선언해서 파드 사이 트래픽을 막으려면
   stratum: compound
@@ -315,7 +325,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q013
   query: 파드시큐리티어드미션은 어떤 모드로 강제하나
   stratum: compound
@@ -334,7 +344,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q014
   query: 리소스쿼터로 네임스페이스별 사용량을 제한하려면
   stratum: compound
@@ -349,7 +359,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q015
   query: 노드어피니티로 특정 노드에만 파드를 올리려면
   stratum: compound
@@ -365,7 +375,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q016
   query: 컨피그맵을 붙여서 레디스 설정을 바꾸려면
   stratum: compound
@@ -381,7 +391,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q017
   query: 노드에 자원이 모자랄 때 어떤 파드부터 쫓겨나나
   stratum: particle
@@ -391,13 +401,13 @@ queries:
   - concepts/workloads/pods/pod-qos.md
   rationale: kubelet 이 자원 압박에서 축출 대상을 고르는 기준과 순서.
   must_contain:
-  - - 축출
-  - - 임계값
-    - 신호
+  - - BestEffort
+  - - 우선순위
+    - 요청량
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q018
   query: 네임스페이스마다 메모리 요청량 기본값을 정해두려면
   stratum: particle
@@ -414,7 +424,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q019
   query: 컨테이너에게 환경 변수를 넘겨주려면
   stratum: particle
@@ -430,7 +440,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q020
   query: 잡에서 병렬 처리 개수를 늘리려면
   stratum: particle
@@ -449,7 +459,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q021
   query: 파드 안에서 API 서버로 요청을 보내려면
   stratum: particle
@@ -465,7 +475,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q022
   query: 여러 팀이 클러스터를 나눠 쓰도록 가르려면
   stratum: particle
@@ -482,7 +492,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q023
   query: 컨트롤 플레인 컴포넌트의 로그는 어디에 쌓이나
   stratum: particle
@@ -498,7 +508,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q024
   query: 볼륨으로부터 스냅샷을 떠두려면
   stratum: particle
@@ -512,7 +522,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q025
   query: 노드에 taint 를 걸면 파드가 어떻게 되나
   stratum: mixed
@@ -527,7 +537,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q026
   query: kubectl 로 시크릿을 만들고 값을 확인하려면
   stratum: mixed
@@ -542,7 +552,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q027
   query: kubeadm 클러스터를 어떤 순서로 업그레이드하나
   stratum: mixed
@@ -558,7 +568,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q028
   query: HPA 가 CPU 사용률을 보고 스케일하는 실습 예제
   stratum: mixed
@@ -575,7 +585,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q029
   query: CoreDNS 로 서비스 디스커버리를 붙이려면
   stratum: mixed
@@ -590,7 +600,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q030
   query: livenessProbe 와 readinessProbe 를 어떻게 나눠 설정하나
   stratum: mixed
@@ -604,7 +614,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q031
   query: PV 반환 정책을 Retain 으로 바꾸려면
   stratum: mixed
@@ -620,7 +630,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q032
   query: sysctl 값을 파드 단위로 조정하려면
   stratum: mixed
@@ -635,7 +645,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q033
   query: 스테이트풀 셋 파드가 안 지워질 때 강제로 지우려면
   stratum: spacing
@@ -650,7 +660,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q034
   query: 데몬 셋을 이전 리비전으로 되돌리려면
   stratum: spacing
@@ -665,7 +675,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q035
   query: 컨피그 맵을 바꾸면 설정 파일을 어떻게 갱신하나
   stratum: spacing
@@ -683,7 +693,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q036
   query: 퍼시스턴트 볼륨 접근 모드를 한 파드 전용으로 바꾸려면
   stratum: spacing
@@ -696,7 +706,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q037
   query: 레플리카 셋은 파드 개수를 어떻게 유지하나
   stratum: spacing
@@ -711,7 +721,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q038
   query: 사이드 카 컨테이너를 파드에 넣는 방법
   stratum: spacing
@@ -728,7 +738,7 @@ queries:
   provenance: adjudicated
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q039
   query: 인그레스컨트롤러는 어떤 기준으로 고르나
   stratum: spacing
@@ -738,13 +748,14 @@ queries:
   rationale: 인그레스 컨트롤러의 종류와 선택 시 고려 사항.
   must_contain:
   - - 인그레스 컨트롤러
-  - - IngressClass
-    - 인그레스클래스
-    - 기본
+  - - 설명서
+    - 문서
+  - - 검토
+    - 다르게 작동
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q040
   query: 노드 오토 스케일링은 무엇을 보고 노드를 늘리나
   stratum: spacing
@@ -760,7 +771,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q041
   query: 노션 페이지를 넥서스에 적재하려면 어떤 명령을 쓰나
   stratum: unanswerable
@@ -770,7 +781,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q042
   query: 승인 게이트의 처분은 누가 서명하나
   stratum: unanswerable
@@ -780,7 +791,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q043
   query: 형태소 분석기 사전에 신조어를 추가하려면
   stratum: unanswerable
@@ -790,7 +801,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q044
   query: 벡터 인덱스를 만들 때 차원 수는 어떻게 정하나
   stratum: unanswerable
@@ -800,7 +811,7 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
 - id: q045
   query: 이번 분기 팀 목표는 무엇인가
   stratum: unanswerable
@@ -810,4 +821,4 @@ queries:
   provenance: authored_from_doc
   authored_by: agent
   reviewed_by: LivingLikeKrillin
-  reviewed_revision: 2
+  reviewed_revision: 3
