@@ -133,3 +133,44 @@ def test_the_binding_names_the_tenant_it_was_signed_against(labels):
 def test_the_manifest_covers_the_whole_pack_not_just_the_gold(manifest):
     """경쟁 문서가 빠지면 `cites_gold` 와 미판정 판정이 쉬워진다 — 재는 대상이 바뀐다."""
     assert manifest["documents"] > 200
+
+
+# ── CI 가 실제로 덮는 범위 ────────────────────────────────────────────────────
+#
+# 답변 하니스는 CI 에서 못 돈다: 임베딩 사이드카(KURE, CPU 로 시간당 500청크)와 LLM 이 필요하다.
+# CI 가 도는 것은 **키워드 다리 회귀**(`test_ko_eval_run_db.py`, mecab 강제)이고, 그것은
+# `labels.yaml` 을 읽는다. 답변 라벨은 별도 파일이다.
+#
+# 그래서 두 파일이 어긋나는 순간 CI 의 바닥값은 답변 세트가 재는 것을 더 이상 안 덮는다 —
+# 그리고 답변 하니스가 CI 에 없으니 **아무도 모른다**. 그 침묵을 이 검사가 깬다.
+
+RETRIEVAL_LABELS = ROOT / "tests" / "eval" / "ko" / "labels.yaml"
+
+
+@pytest.fixture(scope="module")
+def retrieval_labels():
+    from scripts.ko_eval_labels import load
+    return load(RETRIEVAL_LABELS)
+
+
+def test_the_answer_set_inherits_the_retrieval_set(labels, retrieval_labels):
+    """질의·gold·층이 검색 라벨과 같아야 CI 의 키워드 바닥값이 이 세트를 덮는다."""
+    a = {q["id"]: q for q in retrieval_labels["queries"]}
+    b = {q["id"]: q for q in labels["queries"]}
+    assert set(a) == set(b), "질의 id 가 갈라졌다 — 한쪽에만 있는 질의는 CI 가 못 본다"
+    for qid in sorted(a):
+        assert a[qid]["query"] == b[qid]["query"], f"{qid}: 질의문이 갈라졌다"
+        assert (a[qid].get("gold") or []) == (b[qid].get("gold") or []), f"{qid}: gold 가 갈라졌다"
+        assert a[qid]["stratum"] == b[qid]["stratum"], f"{qid}: 층이 갈라졌다"
+        assert a[qid]["answerable"] == b[qid]["answerable"], f"{qid}: 답변가능 여부가 갈라졌다"
+
+
+def test_what_the_answer_set_adds_is_only_judgement(labels, retrieval_labels):
+    """답변 라벨이 더하는 것은 **판단**뿐이다 — 요구·음성판정·결속. 질의 자체는 안 건드린다.
+
+    이 경계가 무너지면 두 세트가 서로 다른 질문을 재면서 같은 이름으로 불리게 된다.
+    """
+    extra = set()
+    for q in labels["queries"]:
+        extra |= set(q) - set(next(x for x in retrieval_labels["queries"] if x["id"] == q["id"]))
+    assert extra <= {"must_contain", "not_gold"}, f"예상 밖 필드: {extra}"
