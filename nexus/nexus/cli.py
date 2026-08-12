@@ -479,6 +479,24 @@ def status() -> None:
             if waived:
                 typer.echo(f"⚠ 임베딩 포기(waived) 청크 {waived}건 — 벡터 검색에서 빠져 있음")
 
+            # 질의 텍스트 보존 (SPEC-nexus-query-text-retention §3.3). 여기 한 줄이 없으면
+            # **안 도는 purge 는 증상이 없다** — 보관 중이라는 사실도, 만료를 넘겼다는 사실도
+            # 아무 화면에 안 뜬다. 켜지지 않은 배포에서는 아무것도 출력하지 않는다.
+            from nexus.search.query_retention import status as retention_status
+            try:
+                ret = await retention_status()
+            except Exception:      # noqa: BLE001 — 마이그레이션 전이면 테이블이 없다
+                ret = []
+            for r in ret:
+                oldest = r["oldest"].date().isoformat() if r["oldest"] else "-"
+                typer.echo(f"질의 보존 [{r['tenant']}] {r['stored']}건 · 최고령 {oldest}")
+                if r["overdue"]:
+                    typer.echo(f"  ⚠ 만료 초과 {r['overdue']}건 — `nexus query-text purge` 가 안 돌고 있다")
+                if not r["has_notice"]:
+                    typer.echo("  ⚠ 고지(notice_shown) 없음 — 쓰기가 거부되고 있다")
+                if r.get("orphan"):
+                    typer.echo("  ⚠ 옵트인 행 없이 남은 텍스트 — 철회가 절반만 됐다")
+
             # 인덱스 커버리지 (SPEC-nexus-index-completeness §3.2). 이 값은 이미 재고 있었지만
             # **API 기동 로그에만** 있었다 — 사람이 치는 건 이 명령이다. 51개 청크가 벡터 다리에서
             # 빠진 채 하루를 지나간 이유가 그 간극이었다.
@@ -1151,6 +1169,82 @@ def reembed_status(column: str = typer.Option("embedding_1024", "--column"),
         if blocked:
             return 1
         typer.echo("\n✓ 컷오버 조건 충족 — 배포 env 의 세대 셋(모델·컬럼·백엔드)을 함께 전환")
+        return 0
+
+    raise typer.Exit(_run(_go()))
+
+
+# ── 질의 텍스트 보존 (SPEC-nexus-query-text-retention §3.2~§3.4) ──────────────
+#
+# 켜는 명령은 여기 없다. 옵트인은 `notice_shown` 이 가리킬 고지가 **실제로 있어야** 성립하고,
+# 그것은 사람이 하는 일이다 — CLI 한 줄로 켜지게 만들면 고지 없는 켜짐이 기본 경로가 된다.
+# 켤 때는 `query_retention` 에 직접 INSERT 하고, 무엇을 가리켰는지 PR 본문에 인용한다(§6.2).
+
+retention_app = typer.Typer(help="질의 텍스트 보존 — 옵트인·만료·철회 "
+                                 "(SPEC-nexus-query-text-retention)")
+app.add_typer(retention_app, name="query-text")
+
+
+@retention_app.command("status")
+def query_text_status() -> None:
+    """테넌트별 보존 현황. **가장 오래된 행과 만료 초과분을 함께 낸다** — 안 도는 purge 는
+    증상이 없고, 그 침묵을 깨는 것이 이 줄의 목적이다."""
+    from nexus.search.query_retention import status as retention_status
+
+    async def _go() -> int:
+        rows = await retention_status()
+        if not rows:
+            typer.echo("보존 중인 테넌트 없음 (기본값: 아무것도 저장하지 않는다)")
+            return 0
+        for r in rows:
+            tag = " [고아 — 옵트인 행 없음]" if r.get("orphan") else ""
+            notice = "" if r["has_notice"] else "  ⚠ 고지 없음 → 쓰기 거부 중"
+            days = r["retain_days"] if r["retain_days"] is not None else "-"
+            oldest = r["oldest"].date().isoformat() if r["oldest"] else "-"
+            over = f"  ⚠ 만료 초과 {r['overdue']}건" if r["overdue"] else ""
+            typer.echo(f"{r['tenant']:20s} 보관 {r['stored']:5d}건  "
+                       f"최고령 {oldest}  보존 {days}일{over}{notice}{tag}")
+        return 0
+
+    raise typer.Exit(_run(_go()))
+
+
+@retention_app.command("purge")
+def query_text_purge(
+    tenant: str = typer.Option("", "--tenant", "-t", help="비우면 모든 테넌트"),
+) -> None:
+    """만료된 텍스트를 지운다(기준: `first_seen`). 고아 행은 나이와 무관하게 지운다."""
+    from nexus.search.query_retention import purge
+
+    async def _go() -> int:
+        deleted = await purge(tenant or None)
+        if not deleted:
+            typer.echo("지울 것 없음")
+            return 0
+        for t, n in sorted(deleted.items()):
+            typer.echo(f"{t}: {n}건 삭제")
+        return 0
+
+    raise typer.Exit(_run(_go()))
+
+
+@retention_app.command("disable")
+def query_text_disable(
+    tenant: str = typer.Option(..., "--tenant", "-t"),
+    yes: bool = typer.Option(False, "--yes", help="확인 없이 진행"),
+) -> None:
+    """보존을 끈다 — 저장된 텍스트와 옵트인 행을 **함께** 지운다(되돌릴 수 없다)."""
+    from nexus.search.query_retention import disable
+
+    async def _go() -> int:
+        from nexus import db
+        n = await db.fetch_val(
+            "SELECT count(*) FROM search_query_text WHERE tenant = $1", tenant) or 0
+        if not yes:
+            typer.echo(f"[{tenant}] 저장된 질문 {n}건과 옵트인 행을 지운다. --yes 로 진행.")
+            return 1
+        deleted = await disable(tenant)
+        typer.echo(f"[{tenant}] 텍스트 {deleted}건 + 옵트인 행 삭제됨")
         return 0
 
     raise typer.Exit(_run(_go()))

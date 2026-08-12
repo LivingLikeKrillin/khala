@@ -165,3 +165,110 @@ async def test_a_broken_retention_write_does_not_raise(db, monkeypatch):
         m.setattr(db, "execute", boom)
         assert await retain(TENANT, "실패해도 되는 질문") == "failed"
     assert counters["failed"] == before + 1
+
+
+# ── U2: 만료·철회·노출 ────────────────────────────────────────────────────────
+
+async def _age(db, tenant, days):
+    """행을 과거로 민다 — 시간을 기다리지 않고 만료를 재기 위해."""
+    await db.execute(
+        "UPDATE search_query_text SET first_seen = now() - make_interval(days => $2) "
+        "WHERE tenant = $1", tenant, days)
+
+
+async def test_purge_deletes_by_first_seen_and_keeps_the_rest(db):
+    from nexus.search.query_retention import purge
+
+    await _enable(db, days=30)
+    await retain(TENANT, "오래된 질문")
+    await _age(db, TENANT, 31)
+    await retain(TENANT, "새 질문")
+    assert await _count(db) == 2
+
+    deleted = await purge(TENANT)
+    assert deleted == {TENANT: 1}
+    left = await db.fetch_val(
+        "SELECT query_text FROM search_query_text WHERE tenant=$1", TENANT)
+    assert left == "새 질문"
+
+
+async def test_purge_reads_first_seen_not_last_seen(db):
+    """`last_seen` 기준이면 반복되는 질문이 영원히 안 지워진다 — 정확히 그 질문이 위험하다."""
+    from nexus.search.query_retention import purge
+
+    await _enable(db, days=30)
+    await retain(TENANT, "계속 물어보는 질문")
+    await _age(db, TENANT, 31)
+    await retain(TENANT, "계속 물어보는 질문")      # last_seen 은 방금으로 갱신된다
+    assert await db.fetch_val(
+        "SELECT seen_count FROM search_query_text WHERE tenant=$1", TENANT) == 2
+    assert await purge(TENANT) == {TENANT: 1}, "재관측이 만료를 미루면 안 된다"
+
+
+async def test_purge_treats_orphaned_text_as_expired(db):
+    """옵트인 행만 손으로 지우면 텍스트는 적용할 retain_days 가 없어 영원히 남는다."""
+    from nexus.search.query_retention import purge
+
+    await _enable(db)
+    await retain(TENANT, "철회 뒤 남은 질문")
+    await db.execute("DELETE FROM query_retention WHERE tenant=$1", TENANT)
+    assert await _count(db) == 1, "여기서 이미 사라지면 이 검사는 아무것도 안 잰다"
+    assert await purge() == {TENANT: 1}
+    assert await _count(db) == 0
+
+
+async def test_purge_keeps_text_that_is_still_inside_the_window(db):
+    from nexus.search.query_retention import purge
+
+    await _enable(db, days=90)
+    await retain(TENANT, "아직 유효한 질문")
+    await _age(db, TENANT, 10)
+    assert await purge(TENANT) == {}
+    assert await _count(db) == 1
+
+
+async def test_disable_removes_text_and_opt_in_together(db):
+    """둘이 갈라지면 철회가 보존이 된다 — 행만 지우면 고아, 텍스트만 지우면 다시 쌓인다."""
+    from nexus.search.query_retention import disable
+
+    await _enable(db)
+    await retain(TENANT, "지워질 질문")
+    assert await disable(TENANT) == 1
+    assert await _count(db) == 0
+    assert await db.fetch_val(
+        "SELECT count(*) FROM query_retention WHERE tenant=$1", TENANT) == 0
+    # 그리고 다시 쌓이지 않는다 — 옵트인이 함께 사라졌으므로.
+    assert await retain(TENANT, "그 뒤에 들어온 질문") == "off"
+    assert await _count(db) == 0
+
+
+async def test_status_shows_the_oldest_row_and_the_overdue_count(db):
+    """안 도는 purge 는 증상이 없다. 이 줄이 그 침묵을 깬다."""
+    from nexus.search.query_retention import status
+
+    await _enable(db, days=30)
+    await retain(TENANT, "오래된 질문")
+    await _age(db, TENANT, 31)
+    row = next(r for r in await status() if r["tenant"] == TENANT)
+    assert row["stored"] == 1
+    assert row["overdue"] == 1
+    assert row["oldest"] is not None
+    assert row["has_notice"] is True
+
+
+async def test_status_names_a_tenant_whose_notice_is_missing(db):
+    from nexus.search.query_retention import status
+
+    await _enable(db, notice="")
+    row = next(r for r in await status() if r["tenant"] == TENANT)
+    assert row["has_notice"] is False
+
+
+async def test_status_names_orphaned_text(db):
+    from nexus.search.query_retention import status
+
+    await _enable(db)
+    await retain(TENANT, "고아가 될 질문")
+    await db.execute("DELETE FROM query_retention WHERE tenant=$1", TENANT)
+    row = next(r for r in await status() if r["tenant"] == TENANT)
+    assert row.get("orphan") is True and row["stored"] == 1

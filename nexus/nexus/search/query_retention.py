@@ -86,3 +86,88 @@ async def retain(tenant: str | None, query_text: str | None) -> str:
         counters["failed"] += 1
         log.warning("query_retention.failed", tenant=tenant, error=str(exc))
         return "failed"
+
+
+async def purge(tenant: str | None = None) -> dict[str, int]:
+    """만료된 텍스트를 지운다. `{tenant: 지운 행 수}`.
+
+    **기준은 `first_seen` 이다**(§3.3). `last_seen` 을 보면 반복되는 질문이 영원히 안 지워지고,
+    반복되는 질문이야말로 내보내질 가능성이 높다.
+
+    **고아 행도 만료로 친다.** `query_retention` 행을 손으로 지우면 그 테넌트의 텍스트에는
+    적용할 `retain_days` 가 없어져 purge 가 건너뛰고 영원히 남는다 — 철회가 보존으로 뒤집히는
+    가장 조용한 경로다. 여기서는 나이와 무관하게 지운다.
+    """
+    scope = "AND t.tenant = $1" if tenant else ""
+    args = (tenant,) if tenant else ()
+    rows = await db.fetch_all(
+        f"""
+        WITH doomed AS (
+            SELECT t.tenant, t.retention_key
+              FROM search_query_text t
+              LEFT JOIN query_retention r ON r.tenant = t.tenant
+             WHERE (r.tenant IS NULL
+                    OR t.first_seen < now() - make_interval(days => r.retain_days))
+               {scope}
+        )
+        DELETE FROM search_query_text s
+         USING doomed d
+         WHERE s.tenant = d.tenant AND s.retention_key = d.retention_key
+        RETURNING s.tenant
+        """, *args)
+    out: dict[str, int] = {}
+    for r in rows:
+        out[r["tenant"]] = out.get(r["tenant"], 0) + 1
+    if out:
+        log.info("query_retention.purged", deleted=out)
+    return out
+
+
+async def disable(tenant: str) -> int:
+    """보존을 끈다 — **텍스트와 옵트인 행을 한 트랜잭션에서 함께** 지운다. 지운 텍스트 수.
+
+    순서가 뒤집히거나 둘이 갈라지면 철회가 보존이 된다: 옵트인 행만 지우면 텍스트가 고아로
+    남고(§3.4), 텍스트만 지우면 다음 검색이 다시 쌓기 시작한다.
+    """
+    n = await db.fetch_val(
+        "SELECT count(*) FROM search_query_text WHERE tenant = $1", tenant) or 0
+    await db.execute_in_transaction([
+        ("DELETE FROM search_query_text WHERE tenant = $1", (tenant,)),
+        ("DELETE FROM query_retention WHERE tenant = $1", (tenant,)),
+    ])
+    log.info("query_retention.disabled", tenant=tenant, deleted=n)
+    return n
+
+
+async def status() -> list[dict]:
+    """테넌트별 보존 현황 — **가장 오래된 `first_seen` 을 함께 낸다.**
+
+    안 도는 purge 는 증상이 없다. 그 침묵을 깨는 것이 이 줄의 목적이다
+    (SPEC-nexus-index-completeness 에서 배운 것: 존재하는데 아무도 안 본 숫자).
+    """
+    rows = await db.fetch_all(
+        """
+        SELECT r.tenant, r.retain_days, r.notice_shown <> '' AS has_notice,
+               count(t.retention_key) AS stored,
+               min(t.first_seen) AS oldest,
+               count(t.retention_key) FILTER (
+                   WHERE t.first_seen < now() - make_interval(days => r.retain_days)
+               ) AS overdue
+          FROM query_retention r
+          LEFT JOIN search_query_text t ON t.tenant = r.tenant
+         GROUP BY r.tenant, r.retain_days, r.notice_shown
+         ORDER BY r.tenant
+        """)
+    out = [dict(r) for r in rows]
+    # 옵트인 행 없이 남아 있는 텍스트 — 철회 뒤 고아. purge 가 지울 때까지 보인다.
+    orphans = await db.fetch_all(
+        """
+        SELECT t.tenant, count(*) AS stored, min(t.first_seen) AS oldest
+          FROM search_query_text t
+          LEFT JOIN query_retention r ON r.tenant = t.tenant
+         WHERE r.tenant IS NULL
+         GROUP BY t.tenant
+        """)
+    out += [{**dict(r), "retain_days": None, "has_notice": False,
+             "overdue": r["stored"], "orphan": True} for r in orphans]
+    return out
