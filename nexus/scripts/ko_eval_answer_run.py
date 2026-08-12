@@ -54,6 +54,33 @@ def resolve_paths(labels_path: Path, tag: str) -> tuple[Path, Path]:
             LOCAL_DIR / f"{prefix}-answer-runs.jsonl")
 
 
+def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, str]) -> None:
+    """회차를 누적 로그에 **덧붙인다**. 리포트는 tag 별로 갈라지지만 변동은 한 파일에 모여야 한다.
+
+    변동 폭을 모르면 두 모델의 차이가 잡음인지 실력인지 못 가리고, 질의별 `ok` 까지 남겨야
+    다수결이 된다.
+
+    **충분성 격자도 여기 남는다.** 격자는 콘솔에만 찍혔고 리포트는 다음 실행이 덮었다 —
+    2026-08-12 에 "파라메트릭 2건" 이 어느 질의였는지 40초 만에 복구 불가능해졌다. 가장
+    진단적인 산출물이 가장 안 남는 구조였다.
+
+    함수로 떼어 둔 이유는 **배선을 행동으로 걸 수 있게** 하려는 것이다. 2026-08-08 에 누적 쓰기가
+    편집 실패로 통째로 빠진 채 3회 실행이 다 돌았고(`--tag` 는 먹었으므로 새 버전처럼 보였다),
+    그때 박은 검사는 소스에 `RUNS.open(` 문자열이 있는지 보는 것이었다 — 이름을 바꾸자 깨졌고,
+    애초에 문자열은 그 코드가 **돌았다는** 것을 증명하지 않는다.
+    """
+    args.runs.parent.mkdir(parents=True, exist_ok=True)
+    with args.runs.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(json.dumps({
+            "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "tag": args.tag, "model": getattr(llm, "model", None), "summary": summary,
+            "labels": Path(args.labels).name, "tenant": args.tenant,
+            "ok": {s.qid: s.ok for s in scores},
+            "sufficiency": sufficiency or None,
+            "grid": grid(scores, sufficiency) if sufficiency else None,
+        }, ensure_ascii=False) + "\n")
+
+
 def gate_reasons(summary: dict, expired_qids: list[str] | None = None) -> list[str]:
     """총점을 내면 안 되는 이유들. 비어 있어야 실행이 결과가 된다.
 
@@ -256,22 +283,7 @@ async def _run(args) -> int:
 
     _write_report(args, labels, llm, a, rows, partial=False, controls=controls)
 
-    # **덮어쓰지 않고 쌓는다.** 리포트는 tag 별로 갈라지지만, 회차 간 변동은 한 파일에 모여야
-    # 읽힌다. 변동을 모르면 두 모델의 차이가 잡음인지 실력인지 못 가리고, 질의별 `ok` 까지
-    # 남겨야 다수결이 된다.
-    #
-    # **충분성도 여기 남긴다.** 격자는 콘솔에만 찍혔고 리포트는 다음 실행이 덮었다 —
-    # 2026-08-12 에 "파라메트릭 2건" 이 어느 질의였는지 40초 만에 복구 불가능해졌다.
-    # 가장 진단적인 산출물이 가장 안 남는 구조였다.
-    with args.runs.open("a", encoding="utf-8", newline="\n") as f:
-        f.write(json.dumps({
-            "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "tag": args.tag, "model": getattr(llm, "model", None), "summary": a,
-            "labels": args.labels.name, "tenant": args.tenant,
-            "ok": {s.qid: s.ok for s in scores},
-            "sufficiency": sufficiency or None,
-            "grid": grid(scores, sufficiency) if sufficiency else None,
-        }, ensure_ascii=False) + "\n")
+    append_run(args, llm, a, scores, sufficiency)
 
     print(f"\n기록: {args.report}  (답변 본문 — 커밋하지 않는다)")
     print(f"      {args.runs}  (실행별 누적 — 잡음 폭은 이것으로만 나온다)")

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import sys
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -89,11 +90,35 @@ def test_only_queries_both_arms_ran_are_compared():
 # 게 아니라 검사로 박는 것이다.
 
 
-def test_the_runner_actually_appends_to_the_accumulating_file():
-    src = (ROOT / "scripts" / "ko_eval_answer_run.py").read_text(encoding="utf-8")
-    assert "RUNS.open(" in src, "누적 파일을 여는 코드가 없다 — 잡음 폭을 낼 수 없다"
-    assert '"a"' in src.split("RUNS.open(")[1][:40], "append 가 아니면 회차가 서로를 지운다"
-    assert '"ok":' in src, "질의별 ok 가 없으면 다수결을 못 낸다"
+def test_the_runner_actually_appends_to_the_accumulating_file(tmp_path):
+    """소스에 문자열이 있는지가 아니라 **파일에 줄이 쌓이는지**를 본다.
+
+    옛 판은 `"RUNS.open(" in src` 였다. 이름을 바꾸자 깨졌고, 애초에 문자열이 있다는 것은 그
+    코드가 돌았다는 뜻이 아니다 — 이 검사가 막으려던 사고(누적 쓰기가 통째로 빠진 채 3회 실행이
+    다 돈 것)를 문자열은 원리적으로 못 잡는다.
+    """
+    from types import SimpleNamespace
+
+    from scripts.ko_eval_answer_run import append_run
+
+    runs = tmp_path / "runs.jsonl"
+    args = SimpleNamespace(tag="r1", labels=Path("packb-labels.yaml"), tenant="default", runs=runs)
+    score = SimpleNamespace(qid="q1", ok=True, outcome="correct")
+    append_run(args, SimpleNamespace(model="m"), {"queries": 1}, [score], {})
+    args.tag = "r2"
+    append_run(args, SimpleNamespace(model="m"), {"queries": 1}, [score], {"q1": "sufficient"})
+
+    lines = [json.loads(x) for x in runs.read_text(encoding="utf-8").splitlines() if x.strip()]
+    assert [x["tag"] for x in lines] == ["r1", "r2"], "append 가 아니면 회차가 서로를 지운다"
+    assert lines[0]["ok"] == {"q1": True}, "질의별 ok 가 없으면 다수결을 못 낸다"
+    assert lines[1]["grid"], "충분성을 잰 회차는 격자가 남아야 한다 — 콘솔은 사라진다"
+
+
+def test_the_runner_is_wired_to_the_appender():
+    """호출 자체가 빠지는 사고를 막는다. 컴파일된 참조를 보므로 서식·이름 변경에 안 깨진다."""
+    from scripts import ko_eval_answer_run as run
+
+    assert "append_run" in run._run.__code__.co_names
 
 
 def test_the_runner_takes_a_tag_and_a_model():
