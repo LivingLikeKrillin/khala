@@ -44,14 +44,18 @@ def test_an_unadjudicated_citation_blocks_the_grade():
     assert reasons and "b" in reasons[0]
 
 
+def _args(tmp_path):
+    """실행 인자 — 리포트 경로가 여기 실려 온다(전역 상수였을 때 회차가 서로를 덮었다)."""
+    return SimpleNamespace(tag="t", tenant="default", report=tmp_path / "report.json")
+
+
 def test_a_blocked_run_still_writes_the_material_it_blocked_on(tmp_path, monkeypatch):
     monkeypatch.setattr(run, "LOCAL_DIR", tmp_path)
-    monkeypatch.setattr(run, "REPORT", tmp_path / "report.json")
     s = score_answer("b", "100 곡 [출처: 아무도 판정 안 한 문서]",
                      [_cite("아무도 판정 안 한 문서")], {"정답 문서"}, [["100"]],
                      known_titles=TENANT_TITLES)
     a = _summary(s)
-    run._write_report(SimpleNamespace(tag="t"), {"revision": 9}, SimpleNamespace(model="m"),
+    run._write_report(_args(tmp_path), {"revision": 9}, SimpleNamespace(model="m"),
                       a, [{"qid": "b"}], partial=True)
 
     written = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
@@ -62,10 +66,9 @@ def test_a_blocked_run_still_writes_the_material_it_blocked_on(tmp_path, monkeyp
 
 def test_a_complete_run_is_not_marked_partial(tmp_path, monkeypatch):
     monkeypatch.setattr(run, "LOCAL_DIR", tmp_path)
-    monkeypatch.setattr(run, "REPORT", tmp_path / "report.json")
     s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
                      [["100"]], known_titles=TENANT_TITLES)
-    run._write_report(SimpleNamespace(tag="t"), {"revision": 9}, SimpleNamespace(model="m"),
+    run._write_report(_args(tmp_path), {"revision": 9}, SimpleNamespace(model="m"),
                       _summary(s), [{"qid": "a"}], partial=False)
     assert json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))["partial"] is False
 
@@ -83,3 +86,32 @@ def test_the_two_reasons_are_reported_separately():
                      [_cite("아무도 판정 안 한 문서")], {"정답 문서"}, [["100"]],
                      known_titles=TENANT_TITLES)
     assert len(run.gate_reasons(_summary(s), ["pb-part-01"])) == 2
+
+
+# ── 실행별 산출물 경로 ────────────────────────────────────────────────────────
+#
+# 리포트가 고정 경로 하나였을 때, 충분성 런의 격자(파라메트릭 2건이 **어느 질의였는지**)가 40초
+# 뒤 다음 런에 덮여 복구 불가능해졌다. 누적 로그는 요약과 `ok` 맵만 담아 되살릴 수도 없었다.
+
+def test_the_report_path_carries_the_tag_and_the_run_log_does_not():
+    """리포트는 회차마다 갈라져야 하고, 누적 로그는 **한 파일이어야** 잡음 폭이 읽힌다."""
+    r1, runs1 = run.resolve_paths(run.DEFAULT_LABELS, "rev6-r1")
+    r2, runs2 = run.resolve_paths(run.DEFAULT_LABELS, "rev6-r2")
+    assert r1 != r2, "두 회차가 같은 파일에 쓰면 앞 회차의 판정 재료가 사라진다"
+    assert runs1 == runs2, "회차 간 변동은 한 파일에 모여야 폭이 된다"
+    assert "rev6-r1" in r1.name and "rev6-r1" not in runs1.name
+
+
+def test_a_different_label_set_writes_to_different_files():
+    """라벨셋이 다르면 산출물이 자동으로 갈라진다 — 두 코퍼스의 수가 한 파일에서 섞이면 안 된다."""
+    from pathlib import Path
+
+    b_report, b_runs = run.resolve_paths(run.DEFAULT_LABELS, "r1")
+    a_report, a_runs = run.resolve_paths(Path("somewhere/packa-labels.yaml"), "r1")
+    assert b_report.name.startswith("packb-") and a_report.name.startswith("packa-")
+    assert b_runs != a_runs
+
+
+def test_an_untagged_run_still_has_a_path():
+    report, _ = run.resolve_paths(run.DEFAULT_LABELS, "")
+    assert report.name == "packb-answer-quality.json"
