@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.ko_eval_answer_quality import aggregate, grid, refuses, score_answer  # noqa: E402
 from scripts.ko_eval_labels import ManifestPack, check, expired, load  # noqa: E402
+from nexus.auth.clearance import LEVELS  # noqa: E402
 from scripts.ko_eval_packb import MANIFEST, tenant_bodies  # noqa: E402
 
 LOCAL_DIR = Path(__file__).resolve().parents[1] / "tests" / "eval" / "local"
@@ -95,8 +96,10 @@ def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, st
         }, ensure_ascii=False) + "\n")
 
 
-#: 등급 순서 — `classification <= clearance` 필터와 같은 순서여야 한다.
-_LEVELS = ("PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED")
+#: 등급 순서는 **정본 하나**에서만 온다 (`nexus.auth.clearance`). 여기 사본을 두었더니 곧바로
+#: 갈라졌다: 사본은 `CONFIDENTIAL` 을 알았고 Postgres enum 은 `PUBLIC < INTERNAL < RESTRICTED`
+#: 셋뿐이라, 그 이름으로 `--clearance` 를 주면 게이트는 통과시키고 SQL 이 캐스트에서 터졌다.
+#: 오늘만 두 번째다 — 채점 규칙도 사본이었다가 하나로 합쳤다(`facts_present`).
 
 
 async def unreadable_gold(con, labels: dict, tenant: str, clearance: str) -> dict[str, list[str]]:
@@ -110,9 +113,9 @@ async def unreadable_gold(con, labels: dict, tenant: str, clearance: str) -> dic
     라벨은 못 읽는 문서를 gold 로 가질 수 없다 — 그런 질의는 통과가 불가능하고, 불가능한
     질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을 재는 수다.
     """
-    if clearance not in _LEVELS:
-        raise ValueError(f"알 수 없는 clearance: {clearance!r}")
-    ceiling = _LEVELS.index(clearance)
+    if clearance not in LEVELS:
+        raise ValueError(f"알 수 없는 clearance: {clearance!r} (아는 등급: {', '.join(LEVELS)})")
+    ceiling = LEVELS.index(clearance)
     rows = await con.fetch(
         "SELECT split_part(source_uri, ':', 2) AS key, classification FROM documents "
         "WHERE tenant = $1 AND status = 'active'", tenant)
@@ -122,7 +125,7 @@ async def unreadable_gold(con, labels: dict, tenant: str, clearance: str) -> dic
         if not q.get("answerable"):
             continue
         gold = [k for k in (q.get("gold") or []) if k in cls]
-        bad = [k for k in gold if _LEVELS.index(cls[k]) > ceiling]
+        bad = [k for k in gold if LEVELS.index(cls[k]) > ceiling]
         if bad:
             # 전부 못 읽으면 그 질의는 **통과 불가능**하다. 일부만이면 남은 gold 로 통과할 수
             # 있으니 알리되 막지 않는다 — 막을 것은 숫자를 거짓으로 만드는 것뿐이다.

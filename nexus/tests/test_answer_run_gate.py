@@ -210,3 +210,23 @@ async def test_an_unknown_clearance_is_refused_not_guessed():
 
     with pytest.raises(ValueError):
         await run.unreadable_gold(_Con(_DOCS), _labels(["normal.md"]), "t", "SECRET-ISH")
+
+
+async def test_the_gate_speaks_the_databases_vocabulary():
+    """등급 이름은 정본(`nexus.auth.clearance`) 하나에서만 온다.
+
+    이 파일의 게이트는 한때 자기 사본(`_LEVELS`)을 들고 있었고 거기엔 `CONFIDENTIAL` 이 있었다.
+    Postgres enum 은 `PUBLIC < INTERNAL < RESTRICTED` 셋뿐이라, 그 이름으로 `--clearance` 를
+    주면 **게이트는 통과시키고 SQL 캐스트가 터진다**. 정본을 지키는 parity 테스트는 이미
+    있었지만(`test_sql_enum_parity`), 사본은 그 그물 밖에 있었다.
+    """
+    import pytest
+
+    from nexus.auth import clearance
+
+    for level in clearance.LEVELS:                    # 아는 등급은 전부 받는다
+        await run.unreadable_gold(_Con(_DOCS), _labels(["public.md"]), "t", level)
+
+    for unknown in ("CONFIDENTIAL", "SECRET", "internal "):   # DB 에 없는 이름은 거부
+        with pytest.raises(ValueError):
+            await run.unreadable_gold(_Con(_DOCS), _labels(["public.md"]), "t", unknown)
