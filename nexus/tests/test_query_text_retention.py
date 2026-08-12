@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 
 import pytest
@@ -165,3 +166,180 @@ async def test_a_broken_retention_write_does_not_raise(db, monkeypatch):
         m.setattr(db, "execute", boom)
         assert await retain(TENANT, "실패해도 되는 질문") == "failed"
     assert counters["failed"] == before + 1
+
+
+# ── U2: 만료·철회·노출 ────────────────────────────────────────────────────────
+
+async def _age(db, tenant, days):
+    """행을 과거로 민다 — 시간을 기다리지 않고 만료를 재기 위해."""
+    await db.execute(
+        "UPDATE search_query_text SET first_seen = now() - make_interval(days => $2) "
+        "WHERE tenant = $1", tenant, days)
+
+
+async def test_purge_deletes_by_first_seen_and_keeps_the_rest(db):
+    from nexus.search.query_retention import purge
+
+    await _enable(db, days=30)
+    await retain(TENANT, "오래된 질문")
+    await _age(db, TENANT, 31)
+    await retain(TENANT, "새 질문")
+    assert await _count(db) == 2
+
+    deleted = await purge(TENANT)
+    assert deleted == {TENANT: 1}
+    left = await db.fetch_val(
+        "SELECT query_text FROM search_query_text WHERE tenant=$1", TENANT)
+    assert left == "새 질문"
+
+
+async def test_purge_reads_first_seen_not_last_seen(db):
+    """`last_seen` 기준이면 반복되는 질문이 영원히 안 지워진다 — 정확히 그 질문이 위험하다."""
+    from nexus.search.query_retention import purge
+
+    await _enable(db, days=30)
+    await retain(TENANT, "계속 물어보는 질문")
+    await _age(db, TENANT, 31)
+    await retain(TENANT, "계속 물어보는 질문")      # last_seen 은 방금으로 갱신된다
+    assert await db.fetch_val(
+        "SELECT seen_count FROM search_query_text WHERE tenant=$1", TENANT) == 2
+    assert await purge(TENANT) == {TENANT: 1}, "재관측이 만료를 미루면 안 된다"
+
+
+async def test_purge_treats_orphaned_text_as_expired(db):
+    """옵트인 행만 손으로 지우면 텍스트는 적용할 retain_days 가 없어 영원히 남는다."""
+    from nexus.search.query_retention import purge
+
+    await _enable(db)
+    await retain(TENANT, "철회 뒤 남은 질문")
+    await db.execute("DELETE FROM query_retention WHERE tenant=$1", TENANT)
+    assert await _count(db) == 1, "여기서 이미 사라지면 이 검사는 아무것도 안 잰다"
+    assert await purge() == {TENANT: 1}
+    assert await _count(db) == 0
+
+
+async def test_purge_keeps_text_that_is_still_inside_the_window(db):
+    from nexus.search.query_retention import purge
+
+    await _enable(db, days=90)
+    await retain(TENANT, "아직 유효한 질문")
+    await _age(db, TENANT, 10)
+    assert await purge(TENANT) == {}
+    assert await _count(db) == 1
+
+
+async def test_disable_removes_text_and_opt_in_together(db):
+    """둘이 갈라지면 철회가 보존이 된다 — 행만 지우면 고아, 텍스트만 지우면 다시 쌓인다."""
+    from nexus.search.query_retention import disable
+
+    await _enable(db)
+    await retain(TENANT, "지워질 질문")
+    assert await disable(TENANT) == 1
+    assert await _count(db) == 0
+    assert await db.fetch_val(
+        "SELECT count(*) FROM query_retention WHERE tenant=$1", TENANT) == 0
+    # 그리고 다시 쌓이지 않는다 — 옵트인이 함께 사라졌으므로.
+    assert await retain(TENANT, "그 뒤에 들어온 질문") == "off"
+    assert await _count(db) == 0
+
+
+async def test_status_shows_the_oldest_row_and_the_overdue_count(db):
+    """안 도는 purge 는 증상이 없다. 이 줄이 그 침묵을 깬다."""
+    from nexus.search.query_retention import status
+
+    await _enable(db, days=30)
+    await retain(TENANT, "오래된 질문")
+    await _age(db, TENANT, 31)
+    row = next(r for r in await status() if r["tenant"] == TENANT)
+    assert row["stored"] == 1
+    assert row["overdue"] == 1
+    assert row["oldest"] is not None
+    assert row["has_notice"] is True
+
+
+async def test_status_names_a_tenant_whose_notice_is_missing(db):
+    from nexus.search.query_retention import status
+
+    await _enable(db, notice="")
+    row = next(r for r in await status() if r["tenant"] == TENANT)
+    assert row["has_notice"] is False
+
+
+async def test_status_names_orphaned_text(db):
+    from nexus.search.query_retention import status
+
+    await _enable(db)
+    await retain(TENANT, "고아가 될 질문")
+    await db.execute("DELETE FROM query_retention WHERE tenant=$1", TENANT)
+    row = next(r for r in await status() if r["tenant"] == TENANT)
+    assert row.get("orphan") is True and row["stored"] == 1
+
+
+# ── U3: 내보내기 + provenance 어휘 ───────────────────────────────────────────
+
+async def test_export_writes_the_questions_a_labeller_needs(db, tmp_path):
+    import json
+    from typer.testing import CliRunner
+
+    from nexus.cli import app
+
+    await _enable(db)
+    await retain(TENANT, "자주 묻는 질문")
+    await retain(TENANT, "자주 묻는 질문")
+    await retain(TENANT, "한 번 물은 질문")
+
+    out = tmp_path / "questions.json"
+    # CLI 는 `asyncio.run` 을 쓴다 — 실행 중인 루프 안에서는 못 돈다. 스레드로 돌려서
+    # **CLI 경로 그대로** 잰다(우회해서 내부 함수를 직접 부르면 U2 의 배선 사고를 못 잡는다).
+    # 전역 풀을 먼저 닫는다: 안 닫으면 CLI 가 이 루프에 묶인 풀을 다른 스레드에서 집어
+    # `another operation is in progress` 로 죽는다. CLI 는 자기 풀을 연다.
+    await db.close_pool()
+    res = await asyncio.to_thread(
+        CliRunner().invoke, app,
+        ["query-text", "export", "--tenant", TENANT, "--out", str(out)])
+    assert res.exit_code == 0, res.output
+    rows = json.loads(out.read_text(encoding="utf-8"))
+    assert [r["query"] for r in rows] == ["자주 묻는 질문", "한 번 물은 질문"], "빈도 순이어야 한다"
+    assert rows[0]["seen_count"] == 2
+    assert {"first_seen", "last_seen"} <= set(rows[0])
+
+
+async def test_export_can_skip_one_off_questions(db, tmp_path):
+    import json
+    from typer.testing import CliRunner
+
+    from nexus.cli import app
+
+    await _enable(db)
+    await retain(TENANT, "두 번 물은 질문")
+    await retain(TENANT, "두 번 물은 질문")
+    await retain(TENANT, "한 번만 물은 질문")
+    out = tmp_path / "q.json"
+    await db.close_pool()
+    await asyncio.to_thread(
+        CliRunner().invoke, app,
+        ["query-text", "export", "--tenant", TENANT, "--out", str(out), "--min-count", "2"])
+    rows = json.loads(out.read_text(encoding="utf-8"))
+    assert [r["query"] for r in rows] == ["두 번 물은 질문"]
+
+
+def test_the_label_gate_knows_where_a_query_came_from():
+    """자유 문자열이면 `from_user_query` 와 `from_user_queries` 가 나란히 살 수 있고,
+    그러면 "저술된 질의와 실사용 질의를 영원히 구별한다" 가 오타에 달린 약속이 된다."""
+    import copy
+
+    from scripts.ko_eval_labels import DEFAULT_LABELS, DiskPack, check, load
+    from scripts.ko_eval_pack import DEFAULT_PACK_DIR
+
+    labels = load(DEFAULT_LABELS)
+    pack = DiskPack(DEFAULT_PACK_DIR)
+    assert check(labels, pack) == [], "바닥값이 이미 깨져 있으면 이 검사는 아무것도 안 잰다"
+
+    real = copy.deepcopy(labels)
+    real["queries"][0]["provenance"] = "from_user_query"
+    assert check(real, pack) == [], "실사용 질문에서 온 라벨은 게이트를 통과해야 한다"
+
+    typo = copy.deepcopy(labels)
+    typo["queries"][0]["provenance"] = "from_user_queries"
+    problems = check(typo, pack)
+    assert any("provenance" in p for p in problems), "오타가 조용히 통과하면 구별이 무너진다"
