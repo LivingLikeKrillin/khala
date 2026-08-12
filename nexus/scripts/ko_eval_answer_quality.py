@@ -104,14 +104,25 @@ def is_abstention(answer_text: str, must_contain: list[list[str]] | None = None)
         return False
     if not must_contain:
         return True
-    body = _norm(delivered_text(answer_text))
-    return not all(any(_norm(alt) in body for alt in group) for group in must_contain)
+    return not all(facts_present(must_contain, delivered_text(answer_text)))
 
 
 def _norm(text: str) -> str:
     """공백 축약 + NFC. **소문자화는 안 한다** — 한국어에는 대소문자가 없고, 영문 식별자
     (`NexusResponse`, `SELECT`)는 대소문자가 뜻을 가진다."""
     return _WS.sub(" ", unicodedata.normalize("NFC", text or "")).strip()
+
+
+def facts_present(must_contain: list[list[str]] | None, text: str) -> list[bool]:
+    """`must_contain` 각 항목이 이 텍스트에 있는가 — **항목은 AND, 항목 안의 후보는 OR.**
+
+    채점기와 재서명 워크시트가 **같은 함수**를 써야 한다. 워크시트가 '이 요구는 지금 본문에서
+    여전히 성립한다' 고 사람에게 말할 때, 그 '성립' 이 자가 답변에 적용하는 규칙과 다르면
+    워크시트는 재서명하는 사람에게 거짓말을 한다. 공백을 *지우는* 관대한 사본을 따로 두면
+    '본문에는 있다' 면서 자는 떨어뜨리는 조합이 나온다 — 그래서 사본을 두지 않는다.
+    """
+    body = _norm(text)
+    return [any(_norm(alt) in body for alt in group) for group in (must_contain or [])]
 
 
 @dataclass
@@ -229,8 +240,7 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
 
     # **사실은 배달돼야 센다.** 거절 세그먼트 안에서 질문 어휘가 되풀이된 것은 배달이 아니다
     # (`pb-part-07`: 거절하면서 `태스크`·`다른` 을 담아 사실검사를 통과했다).
-    body = _norm(delivered_text(answer_text))
-    s.facts = [any(_norm(alt) in body for alt in group) for group in must_contain]
+    s.facts = facts_present(must_contain, delivered_text(answer_text))
     return s
 
 
