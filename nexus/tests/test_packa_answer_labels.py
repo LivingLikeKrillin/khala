@@ -91,3 +91,45 @@ def test_no_query_here_came_from_a_real_user(labels):
     seen = {q["provenance"] for q in labels["queries"]}
     assert seen <= set(PROVENANCE)
     assert "from_user_query" not in seen
+
+
+# ── 커밋된 두 아티팩트가 서로 맞는가 ──────────────────────────────────────────
+#
+# 라벨과 매니페스트가 **둘 다 리포에 있다**. 그래서 "서명된 본문" 과 "얼린 본문" 이 같은지는
+# DB 없이, CI 에서, 누구나 확인할 수 있다 — Pack B 에서는 원리적으로 불가능했던 검사다.
+
+MANIFEST = ROOT / "tests" / "eval" / "ko" / "answer-manifest.json"
+
+
+@pytest.fixture(scope="module")
+def manifest():
+    import json
+    return json.loads(MANIFEST.read_text(encoding="utf-8"))
+
+
+def test_the_binding_matches_the_frozen_manifest(labels, manifest):
+    """서명한 해시와 매니페스트의 해시가 다르면, 둘 중 하나는 이미 다른 코퍼스를 말하고 있다."""
+    frozen = {d["key"]: d["body_sha256"] for d in manifest["docs"]}
+    signed = labels["corpus"]["bodies"]
+    mismatched = [k for k, v in signed.items()
+                  if frozen.get(k) != v.removeprefix("sha256:")]
+    assert mismatched == []
+
+
+def test_every_judged_document_is_bound(labels):
+    """gold 인데 결속에 없으면, 그 문서는 바뀌어도 아무도 모른다."""
+    from scripts.ko_eval_labels import judged_keys
+
+    signed = set(labels["corpus"]["bodies"])
+    judged = {k for q in answerable(labels) for k in judged_keys(q)}
+    assert judged - signed == set()
+
+
+def test_the_binding_names_the_tenant_it_was_signed_against(labels):
+    """다른 테넌트의 해시는 이 라벨에 대해 아무것도 말하지 않는다 — 실행이 거부해야 한다."""
+    assert labels["corpus"]["tenant"] == "ko_eval_packa"
+
+
+def test_the_manifest_covers_the_whole_pack_not_just_the_gold(manifest):
+    """경쟁 문서가 빠지면 `cites_gold` 와 미판정 판정이 쉬워진다 — 재는 대상이 바뀐다."""
+    assert manifest["documents"] > 200

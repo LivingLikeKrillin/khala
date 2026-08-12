@@ -102,14 +102,48 @@ def test_the_report_path_carries_the_tag_and_the_run_log_does_not():
     assert "rev6-r1" in r1.name and "rev6-r1" not in runs1.name
 
 
-def test_a_different_label_set_writes_to_different_files():
+def _write_labels(path, pack="packa-corpus-266"):
+    """경로 계산에 필요한 최소 라벨 — `pack` 이 산출물 이름을 정한다."""
+    path.write_text(f"pack: {pack}\nqueries: []\n", encoding="utf-8")
+    return path
+
+
+def test_a_different_label_set_writes_to_different_files(tmp_path):
     """라벨셋이 다르면 산출물이 자동으로 갈라진다 — 두 코퍼스의 수가 한 파일에서 섞이면 안 된다."""
-    from pathlib import Path
+    other = tmp_path / "answer-labels.yaml"
+    _write_labels(other)
 
     b_report, b_runs = run.resolve_paths(run.DEFAULT_LABELS, "r1")
-    a_report, a_runs = run.resolve_paths(Path("somewhere/packa-labels.yaml"), "r1")
+    a_report, a_runs = run.resolve_paths(other, "r1")
     assert b_report.name.startswith("packb-") and a_report.name.startswith("packa-")
     assert b_runs != a_runs
+
+
+def test_the_prefix_comes_from_the_pack_not_the_file_name(tmp_path):
+    """파일 이름은 사람이 붙이고 팩 이름은 라벨이 선언한다.
+
+    이름에서 따던 첫 판은 Pack A 의 `answer-labels.yaml` 에서 `answer-answer-runs.jsonl` 을
+    만들었다 — 실제로 그렇게 찍혔다.
+    """
+    lp = tmp_path / "answer-labels.yaml"
+    _write_labels(lp)
+    report, runs = run.resolve_paths(lp, "r1")
+    assert runs.name == "packa-answer-runs.jsonl"
+    assert "answer-answer" not in report.name
+
+
+def test_results_live_beside_their_labels(tmp_path):
+    """공개 라벨의 결과만 gitignore 안으로 가면 앞뒤가 안 맞는다 — 결과는 자기 라벨 옆에 산다."""
+    lp = tmp_path / "answer-labels.yaml"
+    _write_labels(lp)
+    report, runs = run.resolve_paths(lp, "r1")
+    assert report.parent == tmp_path and runs.parent == tmp_path
+
+
+def test_a_missing_labels_file_does_not_crash_path_resolution(tmp_path):
+    """경로 계산이 먼저 죽으면 진짜 원인("라벨 파일이 없다")이 스택 아래로 숨는다."""
+    report, _ = run.resolve_paths(tmp_path / "packb-labels.yaml", "r1")
+    assert report.name.startswith("packb-")
 
 
 def test_an_untagged_run_still_has_a_path():

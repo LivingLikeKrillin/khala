@@ -35,23 +35,37 @@ DEFAULT_MANIFEST = MANIFEST
 
 
 def resolve_paths(labels_path: Path, tag: str) -> tuple[Path, Path]:
-    """(리포트, 누적로그). **리포트 파일명에 tag 가 들어간다.**
+    """(리포트, 누적로그). 이름은 **팩**에서, 자리는 **라벨 파일 옆**에서 온다.
 
-    예전에는 리포트가 고정 경로 하나여서 매 실행이 앞 실행을 덮었다. 2026-08-12 에 충분성 런의
-    격자(파라메트릭 2건이 **어느 질의였는지**)가 40초 뒤 다음 런에 덮여 복구 불가능해졌다 —
-    가장 진단적인 산출물이 가장 안 남는 구조였다. 누적 로그는 요약과 `ok` 맵만 담으므로
-    그것으로도 되살릴 수 없었다.
+    리포트 파일명에 tag 가 들어간다. 예전에는 고정 경로 하나여서 매 실행이 앞 실행을 덮었고,
+    2026-08-12 에 충분성 런의 격자(파라메트릭 2건이 어느 질의였는지)가 40초 뒤 다음 런에 덮여
+    복구 불가능해졌다. 누적 로그는 요약과 `ok` 맵만 담으므로 그것으로도 되살릴 수 없었다.
 
-    접두는 라벨 파일에서 딴다(`packb-labels.yaml` → `packb-…`). 라벨셋이 다르면 산출물도
-    자동으로 갈라져, 두 코퍼스의 숫자가 한 파일에서 섞이지 않는다.
+    **접두는 라벨의 `pack` 필드에서 딴다.** 파일 이름에서 따던 첫 판은 Pack A 라벨
+    (`answer-labels.yaml`)에서 `answer-answer-runs.jsonl` 을 만들었다 — 파일 이름은 사람이
+    붙이는 것이고 팩 이름은 라벨이 이미 선언하는 것이다(게이트가 `pack` 을 요구한다).
+
+    **자리는 라벨 파일이 있는 디렉터리다.** 전에는 무조건 `tests/eval/local/` (gitignore)로
+    갔는데, Pack A 는 공개 코퍼스에 대한 공개 라벨이라 결과만 커밋 못 하는 것이 앞뒤가 안 맞았다.
+    결과는 자기 라벨 옆에 산다 — 라벨이 커밋되는 자리면 결과도 커밋할 수 있고, 라벨이 gitignore
+    안이면 결과도 거기 남는다.
     """
-    prefix = labels_path.stem.removesuffix("-labels")
+    import yaml
+
+    try:
+        pack = (yaml.safe_load(labels_path.read_text(encoding="utf-8")) or {}).get("pack") or ""
+    except OSError:
+        # 없는 파일이면 실행은 어차피 라벨 적재에서 멈춘다. 경로 계산이 그보다 먼저 죽으면
+        # 진짜 원인("라벨 파일이 없다")이 스택 아래로 숨는다.
+        pack = ""
+    prefix = pack.split("-")[0] or labels_path.stem.removesuffix("-labels")
     suffix = f"-{tag}" if tag else ""
+    out = labels_path.parent
     #: 반복 실행은 덮어쓰지 않고 쌓는다. **같은 입력에 같은 답이 안 나오기 때문이다** — 두 실행이
     #: grounded 에서 1, 인용 0개에서 2 흔들렸다(2026-08-08). 그 폭을 모르면 모델 간 차이를 잡음과
     #: 구별할 수 없고, 구별 못 하는 비교는 비교가 아니다.
-    return (LOCAL_DIR / f"{prefix}-answer-quality{suffix}.json",
-            LOCAL_DIR / f"{prefix}-answer-runs.jsonl")
+    return (out / f"{prefix}-answer-quality{suffix}.json",
+            out / f"{prefix}-answer-runs.jsonl")
 
 
 def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, str]) -> None:
@@ -285,7 +299,11 @@ async def _run(args) -> int:
 
     append_run(args, llm, a, scores, sufficiency)
 
-    print(f"\n기록: {args.report}  (답변 본문 — 커밋하지 않는다)")
+    # 커밋 여부는 **라벨이 사는 자리**가 정한다. 조직 문서 위의 라벨(Pack B)은 gitignore 안에
+    # 있고 그 결과도 거기 남는다. 공개 코퍼스 위의 라벨(Pack A)은 리포에 있고, 결과도 올릴 수
+    # 있다 — 그게 "누구나 재현한다" 의 나머지 절반이다. 문구를 고정해 두면 둘 중 하나에 거짓말한다.
+    local = "eval/local" in args.report.as_posix()
+    print(f"\n기록: {args.report}  (답변 본문 — {'커밋하지 않는다' if local else '커밋 가능'})")
     print(f"      {args.runs}  (실행별 누적 — 잡음 폭은 이것으로만 나온다)")
     return 0
 
