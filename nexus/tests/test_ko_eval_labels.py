@@ -302,6 +302,27 @@ def test_a_not_gold_body_that_moved_expires_too(labels):
     assert expired(bound, live).get(q["id"]) == [other]
 
 
+def test_the_signed_form_in_the_spec_matches_what_the_run_computes(labels):
+    """서명 파일은 `sha256:<hex>`, 실행이 넘기는 것은 맨 `<hex>` — 둘은 같은 값이어야 한다.
+
+    **이 테스트가 없어서 자를 실제로 서명하는 순간 40질의가 전부 만료됐다.** 옛 테스트들은 서명
+    쪽과 라이브 쪽을 같은 가짜 문자열로 만들어 비교해, 두 형식이 만나는 지점을 한 번도 재지
+    않았다. 여기서는 양쪽을 **다른 형식으로** 준다.
+    """
+    from scripts.ko_eval_labels import expired
+
+    hexes = {k: f"{i:064x}" for i, k in enumerate(
+        {k for q in labels["queries"] if q.get("answerable") for k in (q.get("gold") or [])})}
+    bound = _bound(labels, bodies={k: f"sha256:{v}" for k, v in hexes.items()})
+    assert expired(bound, hexes) == {}
+
+    # 이빨 확인: 형식을 넘어 **값**이 다르면 그 질의는 만료돼야 한다.
+    q = _first_answerable(bound)
+    moved = dict(hexes)
+    moved[q["gold"][0]] = "f" * 64
+    assert expired(bound, moved).get(q["id"]) == [q["gold"][0]]
+
+
 def test_a_disappeared_document_expires_its_query(labels):
     from scripts.ko_eval_labels import expired
 
