@@ -367,7 +367,8 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
             n_entities=len(entity_rids),
             latency_ms=int((time.time() - _t0) * 1000),
         )
-        await record_search(sig)   # fire-and-forget; 답변 경로가 아니다 → not_applicable
+        # fire-and-forget; 답변 경로가 아니다 → not_applicable
+        await record_search(sig, query_text=req.query, principal=principal.name)
         return NexusResponse(
             data={
                 "results": [_search_hit_to_dict(h) for h in result.hits],
@@ -449,7 +450,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         )
         await record_search(sig, judge_input=JudgeInput(   # 답변이 받은 것과 같은 근거
             query=req.query, evidence=format_for_llm(packet),
-            config=_load_config(), llm_svc=llm_svc))
+            config=_load_config(), llm_svc=llm_svc),
+            query_text=req.query, principal=principal.name)
         return NexusResponse(
             data={
                 "answer": answer_result.answer,
@@ -927,7 +929,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             )
             await record_search(sig, judge_input=JudgeInput(
                 query=req.query, evidence=evidence_text,
-                config=_load_config(), llm_svc=llm_svc) if has_answer else None)
+                config=_load_config(), llm_svc=llm_svc) if has_answer else None,
+                query_text=req.query, principal=principal.name)
 
             done_data = {
                 "timing_ms": search_result.timing_ms,

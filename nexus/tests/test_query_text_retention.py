@@ -70,10 +70,15 @@ async def db(db_url):
         await dbmod.close_pool()
 
 
-async def _enable(db, tenant=TENANT, notice="https://example.invalid/notice", days=90):
+#: 이 테스트들이 흉내내는 표면(슬랙 봇 같은 것). 고지를 받은 집단이 쓰는 신원이다.
+SURFACE = "test-surface"
+
+
+async def _enable(db, tenant=TENANT, notice="https://example.invalid/notice", days=90,
+                  principals=(SURFACE,)):
     await db.execute(
-        "INSERT INTO query_retention (tenant, enabled_by, notice_shown, retain_days) "
-        "VALUES ($1,$2,$3,$4)", tenant, "tester", notice, days)
+        "INSERT INTO query_retention (tenant, enabled_by, notice_shown, retain_days, principals) "
+        "VALUES ($1,$2,$3,$4,$5)", tenant, "tester", notice, days, list(principals))
 
 
 async def _count(db, tenant=TENANT):
@@ -84,13 +89,13 @@ async def _count(db, tenant=TENANT):
 # ── 쓰기: 켜짐/꺼짐 ───────────────────────────────────────────────────────────
 
 async def test_a_tenant_that_never_opted_in_stores_nothing(db):
-    assert await retain(TENANT, "저장되면 안 되는 질문") == "off"
+    assert await retain(TENANT, "저장되면 안 되는 질문", SURFACE) == "off"
     assert await _count(db) == 0
 
 
 async def test_an_opted_in_tenant_stores_the_question(db):
     await _enable(db)
-    assert await retain(TENANT, "파티룸 입장은 어떻게 하나") == "stored"
+    assert await retain(TENANT, "파티룸 입장은 어떻게 하나", SURFACE) == "stored"
     row = await db.fetch_one(
         "SELECT query_text, seen_count FROM search_query_text WHERE tenant=$1", TENANT)
     assert row["query_text"] == "파티룸 입장은 어떻게 하나"
@@ -101,7 +106,7 @@ async def test_an_opt_in_without_a_notice_retains_nothing_and_is_counted(db):
     """가리킬 수 없는 동의는 동의가 아니다. 그 거부는 세어져야 한다 — 로그는 안 읽힌다."""
     await _enable(db, notice="   ")
     before = counters["refused_no_notice"]
-    assert await retain(TENANT, "고지 없이 들어온 질문") == "no_notice"
+    assert await retain(TENANT, "고지 없이 들어온 질문", SURFACE) == "no_notice"
     assert await _count(db) == 0
     assert counters["refused_no_notice"] == before + 1
 
@@ -109,10 +114,10 @@ async def test_an_opt_in_without_a_notice_retains_nothing_and_is_counted(db):
 async def test_asking_again_counts_but_does_not_restart_the_window(db):
     """`first_seen` 이 밀리면 만료가 영원히 안 온다 — 만료는 그 컬럼을 본다(§3.3)."""
     await _enable(db)
-    await retain(TENANT, "같은 질문")
+    await retain(TENANT, "같은 질문", SURFACE)
     first = await db.fetch_val(
         "SELECT first_seen FROM search_query_text WHERE tenant=$1", TENANT)
-    await retain(TENANT, "같은 질문")
+    await retain(TENANT, "같은 질문", SURFACE)
     row = await db.fetch_one(
         "SELECT first_seen, last_seen, seen_count FROM search_query_text WHERE tenant=$1", TENANT)
     assert row["seen_count"] == 2
@@ -124,8 +129,8 @@ async def test_asking_again_counts_but_does_not_restart_the_window(db):
 async def test_an_opted_out_tenant_does_not_touch_another_tenants_row(db):
     """옵트아웃한 테넌트의 검색이 남의 행을 밀면, 그 배포는 '아무것도 안 남긴다' 가 아니다."""
     await _enable(db)
-    await retain(TENANT, "공유되는 질문")
-    assert await retain(OTHER, "공유되는 질문") == "off"
+    await retain(TENANT, "공유되는 질문", SURFACE)
+    assert await retain(OTHER, "공유되는 질문", SURFACE) == "off"
     assert await db.fetch_val(
         "SELECT seen_count FROM search_query_text WHERE tenant=$1", TENANT) == 1
     assert await _count(db, OTHER) == 0
@@ -164,7 +169,7 @@ async def test_a_broken_retention_write_does_not_raise(db, monkeypatch):
     # 살아 있으면 정리가 같이 죽는다(실제로 그렇게 깨졌다).
     with monkeypatch.context() as m:
         m.setattr(db, "execute", boom)
-        assert await retain(TENANT, "실패해도 되는 질문") == "failed"
+        assert await retain(TENANT, "실패해도 되는 질문", SURFACE) == "failed"
     assert counters["failed"] == before + 1
 
 
@@ -181,9 +186,9 @@ async def test_purge_deletes_by_first_seen_and_keeps_the_rest(db):
     from nexus.search.query_retention import purge
 
     await _enable(db, days=30)
-    await retain(TENANT, "오래된 질문")
+    await retain(TENANT, "오래된 질문", SURFACE)
     await _age(db, TENANT, 31)
-    await retain(TENANT, "새 질문")
+    await retain(TENANT, "새 질문", SURFACE)
     assert await _count(db) == 2
 
     deleted = await purge(TENANT)
@@ -198,9 +203,9 @@ async def test_purge_reads_first_seen_not_last_seen(db):
     from nexus.search.query_retention import purge
 
     await _enable(db, days=30)
-    await retain(TENANT, "계속 물어보는 질문")
+    await retain(TENANT, "계속 물어보는 질문", SURFACE)
     await _age(db, TENANT, 31)
-    await retain(TENANT, "계속 물어보는 질문")      # last_seen 은 방금으로 갱신된다
+    await retain(TENANT, "계속 물어보는 질문", SURFACE)      # last_seen 은 방금으로 갱신된다
     assert await db.fetch_val(
         "SELECT seen_count FROM search_query_text WHERE tenant=$1", TENANT) == 2
     assert await purge(TENANT) == {TENANT: 1}, "재관측이 만료를 미루면 안 된다"
@@ -211,7 +216,7 @@ async def test_purge_treats_orphaned_text_as_expired(db):
     from nexus.search.query_retention import purge
 
     await _enable(db)
-    await retain(TENANT, "철회 뒤 남은 질문")
+    await retain(TENANT, "철회 뒤 남은 질문", SURFACE)
     await db.execute("DELETE FROM query_retention WHERE tenant=$1", TENANT)
     assert await _count(db) == 1, "여기서 이미 사라지면 이 검사는 아무것도 안 잰다"
     assert await purge() == {TENANT: 1}
@@ -222,7 +227,7 @@ async def test_purge_keeps_text_that_is_still_inside_the_window(db):
     from nexus.search.query_retention import purge
 
     await _enable(db, days=90)
-    await retain(TENANT, "아직 유효한 질문")
+    await retain(TENANT, "아직 유효한 질문", SURFACE)
     await _age(db, TENANT, 10)
     assert await purge(TENANT) == {}
     assert await _count(db) == 1
@@ -233,13 +238,13 @@ async def test_disable_removes_text_and_opt_in_together(db):
     from nexus.search.query_retention import disable
 
     await _enable(db)
-    await retain(TENANT, "지워질 질문")
+    await retain(TENANT, "지워질 질문", SURFACE)
     assert await disable(TENANT) == 1
     assert await _count(db) == 0
     assert await db.fetch_val(
         "SELECT count(*) FROM query_retention WHERE tenant=$1", TENANT) == 0
     # 그리고 다시 쌓이지 않는다 — 옵트인이 함께 사라졌으므로.
-    assert await retain(TENANT, "그 뒤에 들어온 질문") == "off"
+    assert await retain(TENANT, "그 뒤에 들어온 질문", SURFACE) == "off"
     assert await _count(db) == 0
 
 
@@ -248,7 +253,7 @@ async def test_status_shows_the_oldest_row_and_the_overdue_count(db):
     from nexus.search.query_retention import status
 
     await _enable(db, days=30)
-    await retain(TENANT, "오래된 질문")
+    await retain(TENANT, "오래된 질문", SURFACE)
     await _age(db, TENANT, 31)
     row = next(r for r in await status() if r["tenant"] == TENANT)
     assert row["stored"] == 1
@@ -269,7 +274,7 @@ async def test_status_names_orphaned_text(db):
     from nexus.search.query_retention import status
 
     await _enable(db)
-    await retain(TENANT, "고아가 될 질문")
+    await retain(TENANT, "고아가 될 질문", SURFACE)
     await db.execute("DELETE FROM query_retention WHERE tenant=$1", TENANT)
     row = next(r for r in await status() if r["tenant"] == TENANT)
     assert row.get("orphan") is True and row["stored"] == 1
@@ -284,9 +289,9 @@ async def test_export_writes_the_questions_a_labeller_needs(db, tmp_path):
     from nexus.cli import app
 
     await _enable(db)
-    await retain(TENANT, "자주 묻는 질문")
-    await retain(TENANT, "자주 묻는 질문")
-    await retain(TENANT, "한 번 물은 질문")
+    await retain(TENANT, "자주 묻는 질문", SURFACE)
+    await retain(TENANT, "자주 묻는 질문", SURFACE)
+    await retain(TENANT, "한 번 물은 질문", SURFACE)
 
     out = tmp_path / "questions.json"
     # CLI 는 `asyncio.run` 을 쓴다 — 실행 중인 루프 안에서는 못 돈다. 스레드로 돌려서
@@ -311,9 +316,9 @@ async def test_export_can_skip_one_off_questions(db, tmp_path):
     from nexus.cli import app
 
     await _enable(db)
-    await retain(TENANT, "두 번 물은 질문")
-    await retain(TENANT, "두 번 물은 질문")
-    await retain(TENANT, "한 번만 물은 질문")
+    await retain(TENANT, "두 번 물은 질문", SURFACE)
+    await retain(TENANT, "두 번 물은 질문", SURFACE)
+    await retain(TENANT, "한 번만 물은 질문", SURFACE)
     out = tmp_path / "q.json"
     await db.close_pool()
     await asyncio.to_thread(
@@ -344,6 +349,67 @@ def test_the_label_gate_knows_where_a_query_came_from():
     problems = check(typo, pack)
     assert any("provenance" in p for p in problems), "오타가 조용히 통과하면 구별이 무너진다"
 
+
+# ── 표면 범위 (§3.2 amendment) ────────────────────────────────────────────────
+#
+# 고지는 **사람 집단**에게 가고, 테넌트에는 그 집단만 도달하지 않는다 — 웹·슬랙 봇·CLI·A2A 가
+# 같은 테넌트로 들어온다. 경로로는 못 가른다(봇도 HTTP API 를 부른다). 가를 수 있는 것은
+# principal 이다.
+
+BOT = "slack-bot"
+
+
+async def _enable_for(db, principals, tenant=TENANT):
+    await db.execute(
+        "INSERT INTO query_retention (tenant, enabled_by, notice_shown, retain_days, principals) "
+        "VALUES ($1,$2,$3,$4,$5)", tenant, "tester", "2026-08-12 #general 공지", 90, principals)
+
+
+async def test_only_the_notified_surface_is_retained(db):
+    await _enable_for(db, [BOT])
+    assert await retain(TENANT, "슬랙에서 온 질문", BOT) == "stored"
+    assert await retain(TENANT, "웹에서 온 질문", "web-ui") == "out_of_scope"
+    assert await _count(db) == 1
+
+
+async def test_an_empty_allowlist_retains_nothing(db):
+    """옵트인 행이 있어도 표면이 없으면 저장하지 않는다 — 새 표면이 조용히 포함되지 않게."""
+    await _enable_for(db, [])
+    assert await retain(TENANT, "아무 질문", BOT) == "out_of_scope"
+    assert await _count(db) == 0
+
+
+async def test_a_caller_without_a_principal_is_out_of_scope(db):
+    """CLI·A2A 처럼 신원이 안 오는 경로 — 도구 트래픽이 실사용 질문 집합을 오염시키면 안 된다."""
+    await _enable_for(db, [BOT])
+    assert await retain(TENANT, "도구가 던진 질문", None) == "out_of_scope"
+    assert await _count(db) == 0
+
+
+async def test_the_principal_is_used_for_the_decision_and_never_stored(db):
+    """신원이 텍스트 옆에 앉으면 소금 친 키로 막아 둔 사람-로그가 같은 행에서 부활한다."""
+    await _enable_for(db, [BOT])
+    await retain(TENANT, "저장되는 질문", BOT)
+    row = await db.fetch_one(
+        "SELECT * FROM search_query_text WHERE tenant=$1", TENANT)
+    assert BOT not in " ".join(str(v) for v in row.values())
+
+
+def test_the_search_paths_actually_pass_the_question_along():
+    """배선이 빠지면 보존은 **아무것도 저장하지 않는다** — U1 이 정확히 그 상태로 머지됐다.
+
+    소스 문자열이 아니라 컴파일된 참조를 본다: 호출부가 `query_text` 를 키워드로 넘기는지.
+    """
+    import inspect
+
+    from nexus import api
+    from nexus.search import signals
+
+    src = inspect.getsource(api)
+    assert src.count("query_text=req.query") == 3, "api.py 의 검색 경로 3곳이 질문을 넘겨야 한다"
+    assert "principal=principal.name" in src
+    assert "query_text" in inspect.signature(signals.record_search).parameters
+    assert "principal" in inspect.signature(signals.record_search).parameters
 
 async def test_status_before_the_migration_says_so_instead_of_a_traceback(db, monkeypatch):
     """"테이블이 없다" 는 고장이 아니라 상태다 — 아직 안 켠 배포가 현황을 물으면 한 줄이 나와야

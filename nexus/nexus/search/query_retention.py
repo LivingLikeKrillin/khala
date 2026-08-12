@@ -22,7 +22,8 @@ from nexus import db
 log = structlog.get_logger(__name__)
 
 #: 실행 중 카운터. `/status` 가 읽는다(U2) — 로그 한 줄은 아무도 안 본다.
-counters: dict[str, int] = {"stored": 0, "refused_no_notice": 0, "failed": 0}
+counters: dict[str, int] = {"stored": 0, "refused_no_notice": 0,
+                            "out_of_scope": 0, "failed": 0}
 
 
 def retention_key(tenant: str, query_text: str) -> str:
@@ -38,22 +39,27 @@ def retention_key(tenant: str, query_text: str) -> str:
     return h.hexdigest()
 
 
-async def _policy(tenant: str) -> tuple[bool, str]:
-    """(보존하는가, 고지 참조). 행이 없으면 (False, '')."""
+async def _policy(tenant: str) -> tuple[bool, str, list[str]]:
+    """(고지가 있는가, 고지 참조, 보존 대상 principal 목록). 행이 없으면 (False, '', [])."""
     row = await db.fetch_one(
-        "SELECT notice_shown FROM query_retention WHERE tenant = $1", tenant)
+        "SELECT notice_shown, principals FROM query_retention WHERE tenant = $1", tenant)
     if row is None:
-        return False, ""
+        return False, "", []
     notice = (row["notice_shown"] or "").strip()
-    return bool(notice), notice
+    return bool(notice), notice, list(row["principals"] or [])
 
 
-async def retain(tenant: str | None, query_text: str | None) -> str:
-    """질문을 보존한다 — 켜져 있고 고지가 있을 때만. 상태 문자열을 돌려준다.
+async def retain(tenant: str | None, query_text: str | None,
+                 principal: str | None = None) -> str:
+    """질문을 보존한다 — 켜져 있고, 고지가 있고, **그 표면이 허용목록에 있을 때만.**
 
-    `off`      옵트인 행이 없다. **아무것도 하지 않는다** — 기존 행의 `seen_count` 도 안 건드린다.
-    `no_notice` 행은 있는데 `notice_shown` 이 비었다. 거부하고 센다.
-    `stored`   저장했다(신규 또는 재관측).
+    `off`         옵트인 행이 없다. **아무것도 하지 않는다** — 기존 행의 `seen_count` 도 안 건드린다.
+    `no_notice`   행은 있는데 `notice_shown` 이 비었다. 거부하고 센다.
+    `out_of_scope` 켜져 있지만 이 principal 은 허용목록 밖이다. 고지를 받지 않은 표면이다.
+    `stored`      저장했다(신규 또는 재관측).
+
+    **principal 은 판단에만 쓰이고 저장되지 않는다.** 저장하면 텍스트 옆에 신원이 앉아, 소금 친
+    키로 막아 둔 사람-로그가 같은 행에서 부활한다.
 
     이 함수는 raise 하지 않는다. 동의 범위의 곁가지 기록이 답변을 못 내리게 하면 안 된다
     (§3.5). 실패는 세고 로그로 남긴다.
@@ -61,7 +67,12 @@ async def retain(tenant: str | None, query_text: str | None) -> str:
     if not tenant or not query_text:
         return "off"
     try:
-        on, _notice = await _policy(tenant)
+        on, _notice, allowed = await _policy(tenant)
+        if on and principal not in allowed:
+            # 새 표면이 조용히 포함되는 일을 막는다 — 고지는 사람 집단에게 갔고,
+            # 테넌트에는 그 집단만 도달하지 않는다.
+            counters["out_of_scope"] += 1
+            return "out_of_scope"
         if not on:
             # 고지 없는 옵트인 행과 옵트인 자체가 없는 것을 구분해서 센다.
             if await db.fetch_val(

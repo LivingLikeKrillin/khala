@@ -297,7 +297,9 @@ def query(
             from nexus.search.evidence_packet import format_for_llm
             _ji = JudgeInput(query=q, evidence=format_for_llm(packet),
                              config=config, llm_svc=llm_svc)
-        await record_search(sig, await_persist=True, judge_input=_ji)
+        # CLI 는 principal 이 없다 — 허용목록에 오를 수 없으므로 보존되지 않는다.
+        # 도구 트래픽이 '실사용 질문' 집합을 오염시키면 이 기능의 목적이 무너진다.
+        await record_search(sig, await_persist=True, judge_input=_ji, query_text=q)
         await db.close_pool()
 
     _run(_query())
