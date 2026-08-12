@@ -170,12 +170,19 @@ class AnswerScore:
         **`unadjudicated` 는 오답이 아니다.** 사실을 배달했고 인용이 전부 해소되는데 라벨이 그
         문서를 판정한 적이 없다면, 이 자는 그 문서가 답을 담는지 **모른다**. 모르는 것을 오답으로
         세면 `pb-part-02` 처럼 정답이 3회 연속 오답으로 찍힌다(SPEC §1.2).
+
+        **`correct` 는 `grounded` 를 요구한다.** 예전에는 `has_facts and cites_gold` 만 봤고,
+        바로 아래 `unadjudicated` 는 `grounded` 를 요구했다 — 그 비대칭 때문에 **인용이 검증되지
+        않은 답변이 헤드라인 '정답' 에 들어갔다.** 2026-08-12 `rev6-r1` 이 그것이다: 콘솔은
+        `정답 40 오답 0`, 같은 실행의 누적 로그는 `all_three 39`(미검증 인용 2건). 한 리포트가
+        두 개의 '정답' 을 담고 있었고 사람 눈에 먼저 닿는 쪽이 후한 값이었다. 근거가 확인되지
+        않은 답을 맞았다고 세는 것은 [[ADR-0002]] 가 금지하는 그 형태다.
         """
         if self.llm_failed:
             return "unmeasurable"
         if self.abstained:
             return "abstained"
-        if self.has_facts and self.cites_gold:
+        if self.has_facts and self.cites_gold and self.grounded:
             return "correct"
         if self.has_facts and self.grounded and self.unjudged:
             return "unadjudicated"
