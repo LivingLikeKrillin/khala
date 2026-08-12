@@ -254,6 +254,6 @@ issues:
   disposition_reason: '§2 문구를 고쳤다: ''답변 경로의 어떤 읽기도 답을 바꾸지 않는다''. upsert 가 읽는다는 사실을
     괄호로 명시했다.'
 approved_by: LivingLikeKrillin
-approved_at: '2026-08-12T06:41:49Z'
+approved_at: '2026-08-12T08:51:54Z'
 ---
 

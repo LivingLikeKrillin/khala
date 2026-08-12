@@ -13,8 +13,8 @@ tags:
 - eval
 - governance
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-12T06:41:49Z'
-content_hash: sha256:89cdc6ab3c16c9f7ccf3db91d78f09e2495d5cca0fa92e633dcb789a8f9ba046
+reviewed_at: '2026-08-12T08:51:54Z'
+content_hash: sha256:e338b71bf87b2060c22ada33db3a18b46281c980afa8886d57676077e24372c2
 ---
 # Keep the question, so the eval set can stop being written by the documents it grades
 
@@ -206,8 +206,18 @@ which is what ADR-0009 says an absent result means.
 
 1. A tenant with retention off stores nothing new after this ships — verified against a live run,
    not only in tests.
-2. The pilot tenant is switched on **with `notice_shown` pointing at a message the team actually
-   received**, and that message is quoted in the PR body.
+2. The pilot tenant is switched on **with `notice_shown` recording where the team was actually
+   told** — a link if one exists, otherwise something as findable as `2026-08-12 #general 공지`.
+
+   *Amended 2026-08-12, before U4 ran.* The clause originally also required the notice to be
+   quoted in the PR body, on the reasoning that a governance control code cannot verify should at
+   least be reviewable. It does not survive contact: **the person who would quote it and the person
+   who would review it are the same person**, which makes the step ceremony rather than
+   verification. What is actually checkable is already executable — the window is `retain_days`,
+   "who asked is not stored" is a missing column, and the deletion path is `disable`. Quoting the
+   notice added nothing to those and dragged organisational text into a public repository, which
+   this repo has been burned by twice. The generic promises a reader needs stay in §3.3 and §3.4,
+   where they are public-safe; the notice's own wording and location stay inside the organisation.
 3. One export produces a candidate question list, and the first labels authored from real questions
    carry `provenance: from_user_query` — distinguishable forever from `authored_from_doc`, so the
    ceiling can be measured rather than argued about. Those labels are signed under the same
@@ -222,4 +232,4 @@ which is what ADR-0009 says an absent result means.
 | U1 | `search_query_text` + `query_retention`, migration, salted key, no-op writer, best-effort write | `nexus/db`, `migrations/` |
 | U2 | `purge` (first_seen + orphans) · `disable` (transactional) · `/status` surfacing | `nexus/cli.py`, status payload |
 | U3 | `export` + `provenance: from_user_query` accepted by the label gate | `nexus/cli.py`, `ko_eval_labels.py` |
-| U4 | Turn it on for the pilot tenant with the notice recorded | operational, PR body |
+| U4 | Turn it on for the pilot tenant with the notice recorded | operational — the notice goes to the team, `notice_shown` records where |
