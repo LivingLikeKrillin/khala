@@ -244,3 +244,25 @@ def test_nested_sections_keep_the_whole_locator():
     c = _one("리소스 쿼터 > 쿼터 및 클러스터 용량 > 예시")
     assert c.verified is True and c.title == "리소스 쿼터"
     assert c.section == "쿼터 및 클러스터 용량 > 예시"
+
+
+def test_the_prompt_forbids_back_references():
+    """`[출처: 동일 문서]` 는 검증기가 해소할 수 없고, 해소해 주면 안 된다.
+
+    되받는 인용은 그 줄만 읽는 사람에게 아무것도 가리키지 못한다. 검증기를 넓혀 받아 주면
+    자가 답변자에게 아첨하게 되므로, 막는 자리는 프롬프트다.
+
+    **이 검사가 증명하는 것은 규칙이 거기 있다는 것뿐이다.** 규칙이 지켜지는지는 실행에서만
+    보인다(r6 에서 3건, r7 에서 0건 — 변동 수준이라 개선을 실증하지 못했다).
+    """
+    from nexus.llm.prompts import SYSTEM_PROMPT
+
+    assert "되받지 마세요" in SYSTEM_PROMPT
+    for form in ("동일 문서", "상동", "위와 같음"):
+        assert form in SYSTEM_PROMPT, f"금지 형태 {form!r} 를 이름으로 부르지 않으면 모델이 피해 간다"
+
+
+def test_a_back_reference_is_still_unverified():
+    """프롬프트가 실패해도 검증기는 물러서지 않는다 — 이 둘은 서로의 대체재가 아니다."""
+    assert _one("동일 문서").verified is False
+    assert _one("동일").verified is False
