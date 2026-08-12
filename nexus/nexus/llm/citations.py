@@ -91,30 +91,37 @@ def _unique_prefix(cited: str, known: dict[str, str]) -> str | None:
     return hits[0] if len(hits) == 1 else None
 
 
+#: 제목과 섹션을 가르는 자리. 프롬프트는 `제목, 섹션` 을 지시하지만 모델은 `제목 > 섹션` 도 쓴다 —
+#: 근거 헤더가 `[제목] (섹션)` 이라 콤마가 눈앞에 없고, `>` 는 흔한 관례다. 분리자 하나 때문에
+#: **실재하는 문서가 미검증으로 세어지면** 그 손해는 검증기가 만든 것이다: Pack A 3런에서 런당
+#: 5~8건이 이 모양이었고 지어낸 출처는 한 건도 없었다(2026-08-12). Pack B 문서는 짧아 섹션을
+#: 붙일 일이 드물어 드러나지 않았다.
+_SECTION_SEP = re.compile(r"\s*[,>]\s*")
+
+
 def _classify(inner: str, known: dict[str, str]) -> Citation:
     """인용 안쪽 텍스트를 (title, section, verified) 로 분류.
 
-    제목에 콤마가 있을 수 있으므로(Notion 페이지·파일명) 첫 콤마로 순진하게 자르지 않는다:
-    전체를 제목으로 먼저 시도하고, 아니면 콤마 분할점을 뒤에서부터(긴 제목 우선) 훑어
+    제목에 콤마나 `>` 가 있을 수 있으므로(Notion 페이지·파일명) 첫 분리자로 순진하게 자르지
+    않는다: 전체를 제목으로 먼저 시도하고, 아니면 분할점을 **뒤에서부터**(긴 제목 우선) 훑어
     앞부분이 알려진 제목과 정확히 일치하면 verified + 뒷부분을 섹션으로.
     """
     innorm = _norm(inner)
-    if innorm in known:                       # 전체가 제목(섹션 없음, 제목에 콤마 포함 가능)
+    if innorm in known:                       # 전체가 제목(섹션 없음, 제목에 분리자 포함 가능)
         return Citation(title=known[innorm], section="", verified=True)
-    parts = inner.split(",")
-    for i in range(len(parts) - 1, 0, -1):    # 긴 제목 우선(제목 안 콤마 흡수)
-        title_part = ",".join(parts[:i]).strip()
-        section_part = ",".join(parts[i:]).strip()
+
+    cuts = list(_SECTION_SEP.finditer(inner))
+    for m in reversed(cuts):                  # 긴 제목 우선(제목 안 분리자 흡수)
+        title_part, section_part = inner[:m.start()].strip(), inner[m.end():].strip()
         tnorm = _norm(title_part)
         if tnorm in known:
             return Citation(title=known[tnorm], section=section_part, verified=True)
     # 정확 일치가 없을 때만 접두를 본다 — 정확 일치를 접두가 가로채면 안 된다.
     if (full := _unique_prefix(innorm, known)):
         return Citation(title=full, section="", verified=True)
-    for i in range(len(parts) - 1, 0, -1):
-        title_part = ",".join(parts[:i]).strip()
-        if (full := _unique_prefix(_norm(title_part), known)):
-            return Citation(title=full, section=",".join(parts[i:]).strip(), verified=True)
+    for m in reversed(cuts):
+        if (full := _unique_prefix(_norm(inner[:m.start()].strip()), known)):
+            return Citation(title=full, section=inner[m.end():].strip(), verified=True)
     return Citation(title=inner, section="", verified=False)   # packet 에 없는 출처
 
 

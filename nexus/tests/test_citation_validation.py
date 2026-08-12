@@ -196,3 +196,51 @@ def test_text_after_a_bracketed_title_still_scans():
     r = validate_citations("[출처: [파티룸] 디제잉 정책] 중간 문장 [출처: 플레이리스트 정책] 끝",
                            _pkt("[파티룸] 디제잉 정책", "플레이리스트 정책"))
     assert [c.title for c in r.citations] == ["[파티룸] 디제잉 정책", "플레이리스트 정책"]
+
+
+# ── 섹션 분리자 (2026-08-12, Pack A 3런) ─────────────────────────────────────
+#
+# 프롬프트는 `[출처: 제목, 섹션]` 을 지시하고 근거 헤더는 `[제목] (섹션)` 인데, 모델은
+# `[출처: 제목 > 섹션]` 도 쓴다. 검증기는 콤마만 알아서 문자열 전체를 제목으로 읽었고,
+# **실재하는 문서가 미검증으로 세어졌다** — Pack A 런당 5~8건, 지어낸 출처는 0건.
+# Pack B 문서는 짧아 섹션을 붙일 일이 드물어 이 결함이 드러나지 않았다.
+
+_KNOWN = {"리소스 쿼터": "리소스 쿼터", "파드 및 컨테이너 리소스 관리": "파드 및 컨테이너 리소스 관리"}
+
+
+def _one(inner, known=None):
+    from nexus.llm.citations import _classify
+    return _classify(inner, {k.lower(): v for k, v in (known or _KNOWN).items()})
+
+
+def test_a_section_after_an_angle_bracket_still_resolves_the_document():
+    c = _one("리소스 쿼터 > 오브젝트 수 쿼터")
+    assert c.verified is True
+    assert c.title == "리소스 쿼터"
+    assert c.section == "오브젝트 수 쿼터"
+
+
+def test_the_comma_form_the_prompt_asks_for_still_works():
+    c = _one("리소스 쿼터, 오브젝트 수 쿼터")
+    assert (c.verified, c.title, c.section) == (True, "리소스 쿼터", "오브젝트 수 쿼터")
+
+
+def test_a_fabricated_document_is_still_unverified_with_a_section():
+    """분리자를 받아 준다고 없는 문서가 통과하면, 검증이 아니라 형식 검사가 된다."""
+    c = _one("존재하지 않는 문서 > 어떤 섹션")
+    assert c.verified is False
+
+
+def test_a_title_that_contains_the_separator_is_matched_whole():
+    """전체 일치가 분할보다 먼저다 — 제목에 `>` 가 들어간 문서를 쪼개면 안 된다."""
+    known = {"a > b 가이드": "A > B 가이드"}
+    c = _one("a > b 가이드", known)
+    assert (c.verified, c.title, c.section) == (True, "A > B 가이드", "")
+
+
+def test_nested_sections_keep_the_whole_locator():
+    """섹션이 여러 겹이면 **경로 전체**가 섹션으로 남는다 — 중간을 잘라내면 독자가 그 자리로
+    못 돌아간다. (첫 판 단언은 `예시` 만 남을 줄 알았는데, 실제 동작이 더 낫다.)"""
+    c = _one("리소스 쿼터 > 쿼터 및 클러스터 용량 > 예시")
+    assert c.verified is True and c.title == "리소스 쿼터"
+    assert c.section == "쿼터 및 클러스터 용량 > 예시"
