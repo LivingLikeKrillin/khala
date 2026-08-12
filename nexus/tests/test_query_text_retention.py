@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 
 import pytest
@@ -272,3 +273,73 @@ async def test_status_names_orphaned_text(db):
     await db.execute("DELETE FROM query_retention WHERE tenant=$1", TENANT)
     row = next(r for r in await status() if r["tenant"] == TENANT)
     assert row.get("orphan") is True and row["stored"] == 1
+
+
+# ── U3: 내보내기 + provenance 어휘 ───────────────────────────────────────────
+
+async def test_export_writes_the_questions_a_labeller_needs(db, tmp_path):
+    import json
+    from typer.testing import CliRunner
+
+    from nexus.cli import app
+
+    await _enable(db)
+    await retain(TENANT, "자주 묻는 질문")
+    await retain(TENANT, "자주 묻는 질문")
+    await retain(TENANT, "한 번 물은 질문")
+
+    out = tmp_path / "questions.json"
+    # CLI 는 `asyncio.run` 을 쓴다 — 실행 중인 루프 안에서는 못 돈다. 스레드로 돌려서
+    # **CLI 경로 그대로** 잰다(우회해서 내부 함수를 직접 부르면 U2 의 배선 사고를 못 잡는다).
+    # 전역 풀을 먼저 닫는다: 안 닫으면 CLI 가 이 루프에 묶인 풀을 다른 스레드에서 집어
+    # `another operation is in progress` 로 죽는다. CLI 는 자기 풀을 연다.
+    await db.close_pool()
+    res = await asyncio.to_thread(
+        CliRunner().invoke, app,
+        ["query-text", "export", "--tenant", TENANT, "--out", str(out)])
+    assert res.exit_code == 0, res.output
+    rows = json.loads(out.read_text(encoding="utf-8"))
+    assert [r["query"] for r in rows] == ["자주 묻는 질문", "한 번 물은 질문"], "빈도 순이어야 한다"
+    assert rows[0]["seen_count"] == 2
+    assert {"first_seen", "last_seen"} <= set(rows[0])
+
+
+async def test_export_can_skip_one_off_questions(db, tmp_path):
+    import json
+    from typer.testing import CliRunner
+
+    from nexus.cli import app
+
+    await _enable(db)
+    await retain(TENANT, "두 번 물은 질문")
+    await retain(TENANT, "두 번 물은 질문")
+    await retain(TENANT, "한 번만 물은 질문")
+    out = tmp_path / "q.json"
+    await db.close_pool()
+    await asyncio.to_thread(
+        CliRunner().invoke, app,
+        ["query-text", "export", "--tenant", TENANT, "--out", str(out), "--min-count", "2"])
+    rows = json.loads(out.read_text(encoding="utf-8"))
+    assert [r["query"] for r in rows] == ["두 번 물은 질문"]
+
+
+def test_the_label_gate_knows_where_a_query_came_from():
+    """자유 문자열이면 `from_user_query` 와 `from_user_queries` 가 나란히 살 수 있고,
+    그러면 "저술된 질의와 실사용 질의를 영원히 구별한다" 가 오타에 달린 약속이 된다."""
+    import copy
+
+    from scripts.ko_eval_labels import DEFAULT_LABELS, DiskPack, check, load
+    from scripts.ko_eval_pack import DEFAULT_PACK_DIR
+
+    labels = load(DEFAULT_LABELS)
+    pack = DiskPack(DEFAULT_PACK_DIR)
+    assert check(labels, pack) == [], "바닥값이 이미 깨져 있으면 이 검사는 아무것도 안 잰다"
+
+    real = copy.deepcopy(labels)
+    real["queries"][0]["provenance"] = "from_user_query"
+    assert check(real, pack) == [], "실사용 질문에서 온 라벨은 게이트를 통과해야 한다"
+
+    typo = copy.deepcopy(labels)
+    typo["queries"][0]["provenance"] = "from_user_queries"
+    problems = check(typo, pack)
+    assert any("provenance" in p for p in problems), "오타가 조용히 통과하면 구별이 무너진다"

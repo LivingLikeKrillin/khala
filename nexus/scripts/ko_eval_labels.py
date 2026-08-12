@@ -34,6 +34,15 @@ TITLE_MIN_CHARS = 6
 
 REQUIRED_FIELDS = ("id", "query", "stratum", "answerable", "gold", "rationale",
                    "provenance", "authored_by")
+
+#: 질의가 **어디서 왔는가**. 자유 문자열이면 `from_user_query` 와 `from_user_queries` 가 나란히
+#: 존재할 수 있고, 그러면 "저술된 질의와 실사용 질의를 영원히 구별한다"
+#: (SPEC-nexus-query-text-retention §6.3)는 아무도 오타를 안 낸다는 가정이 된다.
+#:
+#:   authored_from_doc  문서를 읽고 지은 질의 — 천장이 붙어 있다(코퍼스가 반드시 답을 갖는다)
+#:   adjudicated        판정 과정에서 고쳐 박은 질의
+#:   from_user_query    사람이 실제로 던진 질문에서 온 질의 — 천장을 낮추는 유일한 재료
+PROVENANCE = ("authored_from_doc", "adjudicated", "from_user_query")
 BANNED_KEY = re.compile(r"token|lexeme|morpheme|term|expected_word", re.IGNORECASE)
 
 DEFAULT_LABELS = Path(__file__).resolve().parents[1] / "tests" / "eval" / "ko" / "labels.yaml"
@@ -205,6 +214,10 @@ def check(labels: dict, pack_dir, *, require_corpus_binding: bool = False) -> li
         if qid in seen_ids:
             problems.append(f"{qid}: 중복 id")
         seen_ids.add(qid)
+
+        if (prov := q.get("provenance")) is not None and prov not in PROVENANCE:
+            problems.append(
+                f"{qid}: 알 수 없는 provenance — {prov!r} (기대값: {', '.join(PROVENANCE)})")
 
         stratum, gold = q.get("stratum"), q.get("gold") or []
         if stratum in counts:

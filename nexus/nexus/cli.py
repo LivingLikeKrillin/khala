@@ -1180,6 +1180,20 @@ def reembed_status(column: str = typer.Option("embedding_1024", "--column"),
 # 그것은 사람이 하는 일이다 — CLI 한 줄로 켜지게 만들면 고지 없는 켜짐이 기본 경로가 된다.
 # 켤 때는 `query_retention` 에 직접 INSERT 하고, 무엇을 가리켰는지 PR 본문에 인용한다(§6.2).
 
+async def _with_pool_closed(go):
+    """명령이 연 풀을 명령이 닫는다.
+
+    `asyncio.run` 이 끝나면 루프는 사라지는데 `nexus.db` 의 전역 풀은 그 루프에 묶인 채 남는다.
+    프로세스가 곧 죽는 CLI 에서는 무해하지만, 같은 프로세스에서 두 번 부르면(테스트가 그렇다)
+    다음 호출이 죽은 루프의 풀을 집는다 — 실제로 그렇게 깨졌다.
+    """
+    from nexus import db
+    try:
+        return await go()
+    finally:
+        await db.close_pool()
+
+
 retention_app = typer.Typer(help="질의 텍스트 보존 — 옵트인·만료·철회 "
                                  "(SPEC-nexus-query-text-retention)")
 app.add_typer(retention_app, name="query-text")
@@ -1206,7 +1220,7 @@ def query_text_status() -> None:
                        f"최고령 {oldest}  보존 {days}일{over}{notice}{tag}")
         return 0
 
-    raise typer.Exit(_run(_go()))
+    raise typer.Exit(_run(_with_pool_closed(_go)))
 
 
 @retention_app.command("purge")
@@ -1225,7 +1239,41 @@ def query_text_purge(
             typer.echo(f"{t}: {n}건 삭제")
         return 0
 
-    raise typer.Exit(_run(_go()))
+    raise typer.Exit(_run(_with_pool_closed(_go)))
+
+
+@retention_app.command("export")
+def query_text_export(
+    tenant: str = typer.Option(..., "--tenant", "-t"),
+    out: Path = typer.Option(..., "--out", help="쓸 파일 경로 — 운영자가 이름을 준다"),
+    min_count: int = typer.Option(1, "--min-count", help="이 횟수 이상 물어본 질문만"),
+) -> None:
+    """보존된 질문을 파일로 내보낸다 — 라벨 저술용.
+
+    **API 로는 나가지 않는다**(§3.5). 읽는 길은 이 명령 하나이고, 쓰는 곳은 운영자가 정한다.
+    나온 파일은 `tests/eval/local/` 처럼 커밋하지 않는 자리에 둔다 — 조직의 질문이다.
+    """
+    import json
+
+    async def _go() -> int:
+        from nexus import db
+        rows = await db.fetch_all(
+            "SELECT query_text, seen_count, first_seen, last_seen "
+            "FROM search_query_text WHERE tenant = $1 AND seen_count >= $2 "
+            "ORDER BY seen_count DESC, last_seen DESC", tenant, min_count)
+        payload = [{"query": r["query_text"], "seen_count": r["seen_count"],
+                    "first_seen": r["first_seen"].isoformat(),
+                    "last_seen": r["last_seen"].isoformat()} for r in rows]
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n",
+                       encoding="utf-8")
+        typer.echo(f"{len(payload)}건 → {out}")
+        if payload:
+            typer.echo("라벨로 옮길 때 provenance: from_user_query 를 쓴다 "
+                       "— 저술된 질의와 섞이면 천장을 잴 수 없다")
+        return 0
+
+    raise typer.Exit(_run(_with_pool_closed(_go)))
 
 
 @retention_app.command("disable")
@@ -1247,7 +1295,7 @@ def query_text_disable(
         typer.echo(f"[{tenant}] 텍스트 {deleted}건 + 옵트인 행 삭제됨")
         return 0
 
-    raise typer.Exit(_run(_go()))
+    raise typer.Exit(_run(_with_pool_closed(_go)))
 
 
 if __name__ == "__main__":
