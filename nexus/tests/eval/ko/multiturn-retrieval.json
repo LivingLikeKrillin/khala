@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-08-13T08:55:28+00:00",
+ "ran_at": "2026-08-13T14:47:28+00:00",
  "threads_revision": 1,
  "labels_revision": 3,
  "tenant": "ko_eval_packa",
@@ -10,28 +10,36 @@
  "partial": true,
  "summary": {
   "standalone": {
-   "found": 3,
-   "mrr": 0.833
+   "found": 2,
+   "mrr": 0.75
   },
   "elliptical": {
-   "found": 3,
-   "mrr": 0.5
+   "found": 2,
+   "mrr": 0.25
   },
   "concat": {
-   "found": 3,
-   "mrr": 0.833
+   "found": 2,
+   "mrr": 0.75
   },
   "drift_concat": {
-   "found": 3,
-   "mrr": 0.833
+   "found": 2,
+   "mrr": 0.75
   },
   "rewritten": {
-   "found": 3,
-   "mrr": 0.833
+   "found": 2,
+   "mrr": 0.25
   },
   "rewritten_fused": {
-   "found": 3,
-   "mrr": 0.833
+   "found": 2,
+   "mrr": 0.25
+  }
+ },
+ "spend": {
+  "calls": 2,
+  "priced_calls": 0,
+  "usd": 0.0,
+  "by_kind": {
+   "rewrite": 2
   }
  },
  "queries": [
@@ -56,14 +64,14 @@
     "hits": 2,
     "rank": 1
    },
-   "rewritten_query": "수평 파드 오토스케일링은 레플리카 수를 무엇을 보고 정해?",
+   "rewritten_query": "그건 레플리카 수를 무엇을 보고 정해?",
    "rewritten": {
-    "hits": 2,
-    "rank": 2
+    "hits": 1,
+    "rank": 4
    },
    "rewritten_fused": {
-    "hits": 2,
-    "rank": 1
+    "hits": 1,
+    "rank": 4
    }
   },
   {
@@ -87,45 +95,14 @@
     "hits": 2,
     "rank": 2
    },
-   "rewritten_query": "Kubernetes CronJob 스케줄 표기법은 어떻게 써?",
-   "rewritten": {
-    "hits": 2,
-    "rank": 1
-   },
-   "rewritten_fused": {
-    "hits": 2,
-    "rank": 2
-   }
-  },
-  {
-   "qid": "q005",
-   "n_gold": 1,
-   "turn1": "EndpointSlice 가 뭐야",
-   "turn2": "그럼 그건 엔드포인트를 어떻게 나눠서 들고 있어?",
-   "standalone": {
-    "hits": 1,
-    "rank": 1
-   },
-   "elliptical": {
-    "hits": 1,
-    "rank": 1
-   },
-   "concat": {
-    "hits": 1,
-    "rank": 1
-   },
-   "drift_concat": {
-    "hits": 1,
-    "rank": 1
-   },
-   "rewritten_query": "EndpointSlice 는 엔드포인트를 어떻게 나눠서 들고 있어?",
+   "rewritten_query": "거기 스케줄 표기법은 어떻게 써?",
    "rewritten": {
     "hits": 1,
-    "rank": 1
+    "rank": 4
    },
    "rewritten_fused": {
     "hits": 1,
-    "rank": 1
+    "rank": 4
    }
   }
  ]

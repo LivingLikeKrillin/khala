@@ -10,7 +10,22 @@
 
 from __future__ import annotations
 
+import pytest
+
 from nexus.providers.llm import LLMService
+
+
+@pytest.fixture(autouse=True)
+def _anthropic_backend(monkeypatch):
+    """이 파일은 **anthropic 백엔드**의 온램프를 잰다 — provider 를 고정한다.
+
+    2026-08-13 에 배포 `.env` 에 `NEXUS_LLM_PROVIDER=claude-code`(무료 브리지)를 넣자 두 검사가
+    빨개졌다. 코드가 깨진 게 아니라 **가정이 새 것**이었다: 브리지는 키가 없어도 `configured`
+    이고, 그게 맞는 동작이다. 검사는 자기가 재는 백엔드를 스스로 세워야 한다 — 안 그러면
+    배포 설정 하나가 스위트를 빨갛게 만들고, 그 빨강이 진짜 신호를 묻는다.
+    """
+    monkeypatch.delenv("NEXUS_LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("NEXUS_LLM_BRIDGE_URL", raising=False)
 
 
 def test_configured_false_when_no_key(monkeypatch):
