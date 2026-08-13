@@ -74,6 +74,10 @@ class SearchResult:
     #: **"아무것도 못 찾았다" 와 "죽었다" 는 다른 사실**이고, 그 둘이 구별되지 않는 것이
     #: 이 코드베이스가 반복해서 찾아낸 결함이다. 호출자에게도 그대로 나간다.
     degraded: list[str] = field(default_factory=list)
+    #: 같은 구별의 세 번째 갈래: 0건이 **볼 것이 없어서**였는가. 테넌트에 문서는 있는데 이
+    #: 등급으로 한 건도 안 보이면 True. `degraded` 에 섞지 않는다 — 다리는 멀쩡했고, 고칠
+    #: 곳이 검색이 아니라 설정이다.
+    no_visible_documents: bool = False
 
 
 async def _bm25_search(
@@ -505,9 +509,42 @@ async def hybrid_search(
     total_ms = int((time.time() - start) * 1000)
     result.timing_ms = {"total_ms": total_ms, "bm25_ms": bm25_ms}
 
+    # 0건일 때만, 그것이 **못 찾은 것**인지 **볼 것이 없던 것**인지 가른다 (§ no_visible_documents).
+    if not result.hits:
+        result.no_visible_documents = await _no_visible_documents(tenant, clearance)
+
     logger.info("hybrid_search_complete",
                 hits=len(result.hits),
                 route=route,
                 total_ms=total_ms)
 
     return result
+
+
+async def _no_visible_documents(tenant: str, clearance: str) -> bool:
+    """이 테넌트에 문서는 있는데 이 등급으로 **한 건도 안 보이는가**.
+
+    0건의 원인 두 가지는 전혀 다른 사실이다: 질의가 안 맞은 것(검색 문제, 사용자가 질문을 바꾸면
+    된다)과 등급/테넌트 설정이 코퍼스 전체를 가린 것(설정 문제, 사용자가 무엇을 물어도 영원히
+    0건이다). 그 둘이 구별되지 않는 동안 슬랙 봇은 후자에 대고 "인덱싱된 문서에서 답을 찾지
+    못했습니다" 라고 답했다 — 뒤진 문서가 하나도 없었으므로 거짓이었고, 팀은 그것을 코퍼스의
+    한계로 읽었을 것이다 (2026-08-13, 봇 principal PUBLIC vs 문서 116건 전부 INTERNAL).
+
+    비용은 0건인 요청에만 붙는 COUNT 두 개다. 검색이 답을 낸 경로에는 아무 것도 더하지 않는다.
+    실패하면 False — **모르는 것을 설정 결함이라고 단정하지 않는다.**
+    """
+    try:
+        row = await db.fetch_one(
+            "SELECT count(*) AS total, "
+            "       count(*) FILTER (WHERE classification <= $2::classification_level) AS visible "
+            "FROM documents "
+            "WHERE tenant = $1 AND status = 'active' AND is_quarantined = false",
+            tenant, clearance)
+    except Exception as e:  # noqa: BLE001 — 진단은 검색을 죽일 수 없다
+        logger.warning("visibility_probe_failed", error=str(e))
+        return False
+    if not row or not row["total"] or row["visible"]:
+        return False
+    logger.error("no_visible_documents",
+                 tenant=tenant, clearance=clearance, documents=row["total"])
+    return True

@@ -115,8 +115,21 @@ async def _call_nexus_api(query: str) -> dict:
         raise NexusCallError(Outcome.OTHER)
 
     payload = data["data"]
+
+    # **생성 실패를 답변으로 내보내지 않는다.** 서버는 LLM 이 죽으면 `answer` 자리에 근거 원문
+    # 덤프를 넣는다(llm/answer.py). 근거가 있으니 아래 분기는 통과하고, 사용자는 실패를 답변으로
+    # 읽는다. 2026-08-13 크레딧 소진 때 실제로 그 덤프가 슬랙으로 나갔다.
+    if payload.get("llm_failed"):
+        logger.error("nexus_llm_generation_failed")
+        raise NexusCallError(Outcome.GENERATION_FAILED)
+
     if not payload.get("evidence_snippets"):
-        # 근거 0건 — 코퍼스가 비었나(EMPTY_CORPUS), 아니면 그냥 못 찾았나(EMPTY_GROUNDING)?
+        # 근거 0건의 세 가지 원인은 서로 다른 사실이고, 고칠 사람도 다르다.
+        if payload.get("no_visible_documents"):
+            # 등급/테넌트 설정 결함 — 사용자가 질문을 바꿔도 영원히 0건이다. 운영자 몫이라
+            # 로그로도 남긴다.
+            logger.error("nexus_no_visible_documents_check_NEXUS_SLACK_CLEARANCE")
+            raise NexusCallError(Outcome.NO_VISIBLE_DOCS)
         raise NexusCallError(
             Outcome.EMPTY_CORPUS if _documents_count() == 0 else Outcome.EMPTY_GROUNDING)
 

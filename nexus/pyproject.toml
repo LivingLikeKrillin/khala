@@ -48,8 +48,15 @@ dev = [
     "ruff>=0.8.0,<1",
 ]
 slack = [
-    "slack-bolt[async]>=1.20.0,<2",
+    # `slack-bolt[async]` was a no-op: slack-bolt declares **no extras** at all
+    # (`Provides-Extra` is empty in 1.30.0), so pip installed the base package and
+    # silently skipped the async stack. The bot imports `slack_bolt.async_app`, which
+    # imports `aiohttp` at module scope — so every start died on ModuleNotFoundError,
+    # reported by the entrypoint as "slack-bolt is not installed" (it was). Depend on
+    # the async runtime explicitly; an extra that does not exist cannot be relied on.
+    "slack-bolt>=1.20.0,<2",
     "slack-sdk>=3.33.0,<4",
+    "aiohttp>=3.9,<4",
 ]
 mcp = [
     # Migrated to the 2.x API: `mcp.server.fastmcp.FastMCP` -> `mcp.server.MCPServer`.

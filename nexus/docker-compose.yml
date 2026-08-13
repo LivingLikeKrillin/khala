@@ -183,6 +183,13 @@ services:
       SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
       # Nexus bearer — nexus auth gen-token 으로 발급한 읽기 전용 principal. auth.slack.clearance 상한.
       NEXUS_SLACK_TOKEN: ${NEXUS_SLACK_TOKEN:-}
+      # **봇에도 같은 변수를 준다.** 유효 clearance 는 min(principal, 요청값)(auth/scope.py)이라
+      # 서버 쪽만 올려도 봇이 PUBLIC 을 보내면 PUBLIC 이다. 이 줄이 빠져 있던 동안 봇은 어떤
+      # 질문에도 hits=0 을 돌려줬고, 그 실패는 200 OK + "찾을 수 없습니다" 라 코퍼스가 답을
+      # 안 가진 것과 구별되지 않았다 — 조용한 실패였다.
+      # 테넌트는 여기 없다 — principal 에서만 온다(auth/scope.py: 요청 테넌트는 무시).
+      # 봇에 NEXUS_SLACK_TENANT 를 주면 아무 일도 안 하면서 무언가 하는 것처럼 보인다.
+      NEXUS_SLACK_CLEARANCE: ${NEXUS_SLACK_CLEARANCE:-PUBLIC}
     depends_on:
       nexus-app:
         condition: service_started

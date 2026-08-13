@@ -378,6 +378,9 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 # 죽은 다리는 호출자에게도 보여야 한다 — 로그에만 있으면 "건강해 보이는" 상태가
                 # 그대로다 (SPEC-nexus-embedding-cutover-seam §4.5).
                 "degraded": result.degraded,
+                # 같은 이유로 0건의 원인도. 이 등급으로 볼 문서가 하나도 없어서 0건이면,
+                # 그것은 검색 실패가 아니라 설정 결함이고 호출자가 그 둘을 구별할 수 있어야 한다.
+                "no_visible_documents": result.no_visible_documents,
             },
         )
     except UnknownRoute as e:
@@ -469,6 +472,11 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 "abstained": answer_result.abstained,
                 "abstain_reason": answer_result.abstain_reason,
                 "degraded": search_result.degraded,
+                # **생성 실패는 답변이 아니다.** 이 플래그가 없는 동안 클라이언트는 둘을 구별할
+                # 수 없었고, 서버가 실패 자리에 넣는 근거 덤프를 답변으로 렌더했다.
+                "llm_failed": answer_result.llm_failed,
+                # 0건이 "못 찾았다" 가 아니라 "이 등급으로 볼 것이 없었다" 였는가.
+                "no_visible_documents": search_result.no_visible_documents,
             },
         )
     except UnknownRoute as e:
