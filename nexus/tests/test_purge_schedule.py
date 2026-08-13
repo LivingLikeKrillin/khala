@@ -155,6 +155,7 @@ async def test_the_app_starts_the_scheduler_on_boot(monkeypatch):
     monkeypatch.setattr(api.db, "close_pool", noop)
     monkeypatch.setattr(api.db, "ensure_search_log", noop)
     monkeypatch.setattr(api, "embedding_service_from_config", lambda *a, **k: None)
+    monkeypatch.setattr("nexus.schema_health.log_pending", noop)
 
     async with api.lifespan(api.app):
         pass
