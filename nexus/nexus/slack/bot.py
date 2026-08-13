@@ -21,6 +21,7 @@ import httpx
 
 from nexus.slack.formatter import format_answer
 from nexus.slack.messages import Outcome, message_for
+from nexus.slack.thread import read_history
 
 logger = logging.getLogger(__name__)
 
@@ -55,27 +56,30 @@ def _transport():  # pragma: no cover - 테스트가 MockTransport 로 override
     return None
 
 
-async def handle_mention(event: dict, say) -> None:
+async def handle_mention(event: dict, say, client=None) -> None:
     """app_mention 이벤트 핸들러."""
     query = _extract_query(event.get("text", ""))
     if not query:
         await say(text="검색할 내용을 입력해주세요. 예: `@nexus 결제 서비스 장애 원인?`")
         return
-    await _answer(query, say, event)
+    await _answer(query, say, event, client)
 
 
-async def handle_dm(event: dict, say) -> None:
+async def handle_dm(event: dict, say, client=None) -> None:
     """DM 메시지 핸들러. 멘션 없이 직접 질문."""
     text = event.get("text", "").strip()
     if not text:
         return
-    await _answer(text, say, event)
+    await _answer(text, say, event, client)
 
 
-async def _answer(query: str, say, event: dict) -> None:
+async def _answer(query: str, say, event: dict, client=None) -> None:
     thread_ts = event.get("thread_ts") or event.get("ts")
+    # 앞선 턴들. 못 읽으면 빈 목록이고, 그러면 오늘과 같은 단발 질의가 된다 —
+    # 이력 하나 때문에 답을 못 주지 않는다 (nexus/slack/thread.py).
+    history = await read_history(client, event) if client is not None else []
     try:
-        answer_data = await _call_nexus_api(query)
+        answer_data = await _call_nexus_api(query, history=history)
         await say(blocks=format_answer(answer_data), thread_ts=thread_ts)
     except NexusCallError as e:
         # 401 은 운영자를 위해 로그로도 남긴다(사용자 메시지와 별개).
@@ -118,7 +122,7 @@ def _blind() -> bool:
         return False
 
 
-async def _call_nexus_api(query: str) -> dict:
+async def _call_nexus_api(query: str, history: list[dict] | None = None) -> dict:
     """Nexus /search/answer 호출. 실패는 NexusCallError(outcome) 로 분류해 올린다."""
     async with httpx.AsyncClient(timeout=60.0, transport=_transport()) as client:
         resp = await client.post(
@@ -127,6 +131,8 @@ async def _call_nexus_api(query: str) -> dict:
             json={
                 "query": query, "top_k": 10, "route": "auto",
                 "classification_max": _CLEARANCE, "tenant": "default",
+                # 서버는 U2 에서 이것을 받아서 버린다(상한만 건다). 자르기는 이미 했다.
+                "history": history or [],
             },
         )
 
