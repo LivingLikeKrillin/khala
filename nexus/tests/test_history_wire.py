@@ -244,7 +244,9 @@ def test_the_answerer_receives_the_rewritten_query_not_the_ellipsis(client, monk
     monkeypatch.setattr("nexus.api.record_search", no_signal)
 
     async def fake_rewrite(query, history, llm_svc, **kw):
-        return "로그인 정책은 어디에 적혀 있어?"
+        # `rewrite()` 는 문자열이 아니라 흔적을 함께 돌려준다(U4) — 비용을 버리지 않기 위해서다.
+        from nexus.search.rewrite import Rewrite
+        return Rewrite(query="로그인 정책은 어디에 적혀 있어?", called=True, changed=True)
     monkeypatch.setattr("nexus.api.rewrite_query", fake_rewrite)
 
     seen = {}

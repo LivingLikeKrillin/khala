@@ -92,6 +92,13 @@ def test_the_signal_object_carries_no_text():
         # 이력의 사실을 일부러 채워 넣기 때문이다). 여기 필요한 것은 "이 행의 top_score 가
         # 몇 채널로 만들어졌나" 뿐이고, 그것은 세는 것으로 답해진다.
         "fusion_channels",
+        # 2026-08-13, SPEC §3.5 (U4). 재작성의 흔적 — **해시·길이·불리언·토큰 수**뿐이다.
+        # 재작성문 본문은 여기 오지 않는다: 원 질문보다 민감하고(§3.2 가 이력의 사실을 일부러
+        # 채워 넣는다), 같은 행의 `query_sha256` 이 `a2a_audit.principal` 과 붙으면 보존
+        # 아키텍처가 소금키로 막아 둔 결합이 되살아난다. 본문이 필요하면 옵트인 경로로만 간다.
+        "rewrite_applied", "rephrased_sha256", "rephrased_len", "rewrite_changed",
+        # 비용은 답변 칸과 **다른 칸**이다 — 섞으면 measured_averages 가 편향된다.
+        "rewrite_prompt_tokens", "rewrite_completion_tokens", "rewrite_cost_usd",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (

@@ -51,6 +51,17 @@ class SearchSignals:
     no_answer: bool
     llm_failed: bool
     latency_ms: int
+    #: 재작성 흔적 (SPEC §3.5, U4). **텍스트는 없다** — 재작성문은 원 질문보다 민감하다
+    #: (§3.2 항목 3 이 이력의 사실을 일부러 채워 넣는다). 해시·길이·바뀌었는가로 탐지한다.
+    rewrite_applied: bool = False
+    rephrased_sha256: str = ""
+    rephrased_len: int = 0
+    rewrite_changed: bool = False
+    #: 재작성 호출의 비용 — **답변 비용과 다른 칸**이다. 같은 칸에 접으면
+    #: `budget.py::measured_averages` 의 "답변 1회 비용" 이 조용히 편향된다. None = 미측정.
+    rewrite_prompt_tokens: int | None = None
+    rewrite_completion_tokens: int | None = None
+    rewrite_cost_usd: float | None = None
     #: 융합에 쓰인 채널 수 (SPEC §4 I6). 1 = 단일 채널(= U3 이전의 모든 행). 채널이 늘면
     #: RRF 점수의 **절대값이 팽창**한다 — 순서는 그대로지만 `top_score` 의 크기가 달라지므로,
     #: 절대 임계값을 쓰는 쪽이 세대를 구분할 수 있어야 한다.
@@ -78,6 +89,7 @@ def extract_signals(
     query: str,
     n_entities: int = 0,
     fusion_channels: int = 1,
+    rewrite=None,
     latency_ms: int = 0,
     n_citations: int | None = None,
     unverified_citations: int | None = None,
@@ -123,6 +135,13 @@ def extract_signals(
         n_graph_edges=n_graph_edges,
         no_answer=len(hits) == 0,
         fusion_channels=fusion_channels,
+        rewrite_applied=bool(rewrite and rewrite.called),
+        rephrased_sha256=rewrite.sha256 if (rewrite and rewrite.changed) else "",
+        rephrased_len=len(rewrite.query) if (rewrite and rewrite.changed) else 0,
+        rewrite_changed=bool(rewrite and rewrite.changed),
+        rewrite_prompt_tokens=getattr(getattr(rewrite, "usage", None), "input_tokens", None),
+        rewrite_completion_tokens=getattr(getattr(rewrite, "usage", None), "output_tokens", None),
+        rewrite_cost_usd=getattr(getattr(rewrite, "usage", None), "cost_usd", None),
         # 근거가 그림 있는 문서에서 왔는가 — 게이트 신호원(migration 011). 문서 단위로 센다:
         # 같은 문서에서 스니펫이 셋 와도 "그림 있는 문서 하나" 다.
         n_image_bearing_docs=len({h.doc_rid for h in hits if getattr(h, "doc_n_images", 0) > 0}),
@@ -271,9 +290,11 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             no_answer, llm_failed, latency_ms, n_citations, unverified_citations,
             prompt_tokens, completion_tokens, cost_usd, n_image_bearing_docs,
             sufficiency, sufficiency_at, sufficiency_judge, evidence_fingerprint,
-            fusion_channels
+            fusion_channels,
+            rewrite_applied, rephrased_sha256, rephrased_len, rewrite_changed,
+            rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-                  $21, now(), $22, $23, $24)
+                  $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -283,12 +304,15 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.prompt_tokens, sig.completion_tokens, sig.cost_usd,
         sig.n_image_bearing_docs,
         sufficiency, judge, fingerprint, sig.fusion_channels,
+        sig.rewrite_applied, sig.rephrased_sha256, sig.rephrased_len, sig.rewrite_changed,
+        sig.rewrite_prompt_tokens, sig.rewrite_completion_tokens, sig.rewrite_cost_usd,
     )
 
 
 async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
                    query_text: str | None = None,
-                   principal: str | None = None) -> None:
+                   principal: str | None = None,
+                   rewritten_text: str | None = None) -> None:
     """search_log에 1행 insert(+선택적 충분성 판정). 실패는 삼킴.
 
     두 개의 지역 try/except 가 있고 **둘 다 필요하다**:
@@ -305,6 +329,11 @@ async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
     # 뒤에 두면 신호 적재가 실패했을 때 보존도 같이 사라지고, 둘은 독립이어야 한다.
     from nexus.search.query_retention import retain
     await retain(sig.tenant, query_text, principal)
+    # 재작성문도 **같은 동의 범위·같은 만료**로 간다(SPEC §3.5). 다만 `kind` 로 갈라 둔다 —
+    # 이 테이블의 존재 이유는 실사용 질문을 모으는 것이고, 기계가 쓴 문장이 구분 없이 섞이면
+    # 그 코퍼스로 만든 평가셋이 자기 재작성기를 채점하게 된다.
+    if rewritten_text:
+        await retain(sig.tenant, rewritten_text, principal, kind="rewritten")
 
     sufficiency, judge_id, fingerprint, took_slot = "uninstrumented", "off", None, False
     try:
@@ -351,7 +380,8 @@ async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
 async def record_search(sig: SearchSignals, *, await_persist: bool = False,
                         judge_input: JudgeInput | None = None,
                         query_text: str | None = None,
-                        principal: str | None = None) -> None:
+                        principal: str | None = None,
+                        rewritten_text: str | None = None) -> None:
     """structlog(항상, 동기) + best-effort DB 적재. 절대 raise 안 함.
 
     서버 경로(api/a2a)는 기본 fire-and-forget(create_task) — 응답 지연에 DB 쓰기 미가산.
@@ -375,9 +405,9 @@ async def record_search(sig: SearchSignals, *, await_persist: bool = False,
     if not db.has_pool():
         return
     if await_persist:
-        await _persist(sig, judge_input, query_text, principal)
+        await _persist(sig, judge_input, query_text, principal, rewritten_text)
     else:
         # Retain a strong reference so the task isn't GC'd before completion (stdlib-recommended pattern).
-        task = asyncio.create_task(_persist(sig, judge_input, query_text, principal))
+        task = asyncio.create_task(_persist(sig, judge_input, query_text, principal, rewritten_text))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
