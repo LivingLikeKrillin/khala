@@ -87,6 +87,11 @@ def test_the_signal_object_carries_no_text():
         "n_citations", "unverified_citations",
         "prompt_tokens", "completion_tokens", "cost_usd",
         "n_image_bearing_docs",
+        # 2026-08-13, SPEC-nexus-multi-turn-retrieval §4 I6. **정수 하나**다 — 융합에 쓰인
+        # 채널 수. 질의 문자열도, 재작성 결과도 담지 않는다(재작성문은 원문보다 더 민감하다:
+        # 이력의 사실을 일부러 채워 넣기 때문이다). 여기 필요한 것은 "이 행의 top_score 가
+        # 몇 채널로 만들어졌나" 뿐이고, 그것은 세는 것으로 답해진다.
+        "fusion_channels",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (

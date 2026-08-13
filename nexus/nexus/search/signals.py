@@ -51,6 +51,10 @@ class SearchSignals:
     no_answer: bool
     llm_failed: bool
     latency_ms: int
+    #: 융합에 쓰인 채널 수 (SPEC §4 I6). 1 = 단일 채널(= U3 이전의 모든 행). 채널이 늘면
+    #: RRF 점수의 **절대값이 팽창**한다 — 순서는 그대로지만 `top_score` 의 크기가 달라지므로,
+    #: 절대 임계값을 쓰는 쪽이 세대를 구분할 수 있어야 한다.
+    fusion_channels: int = 1
     # 인용 지표(SPEC-nexus-search-signal-completeness). None = 미측정(답변 없는 경로) ≠ 0(측정된 0건).
     n_citations: int | None = None
     unverified_citations: int | None = None
@@ -73,6 +77,7 @@ def extract_signals(
     clearance: str | None,
     query: str,
     n_entities: int = 0,
+    fusion_channels: int = 1,
     latency_ms: int = 0,
     n_citations: int | None = None,
     unverified_citations: int | None = None,
@@ -117,6 +122,7 @@ def extract_signals(
         graph_requested=route in _GRAPH_ROUTES,
         n_graph_edges=n_graph_edges,
         no_answer=len(hits) == 0,
+        fusion_channels=fusion_channels,
         # 근거가 그림 있는 문서에서 왔는가 — 게이트 신호원(migration 011). 문서 단위로 센다:
         # 같은 문서에서 스니펫이 셋 와도 "그림 있는 문서 하나" 다.
         n_image_bearing_docs=len({h.doc_rid for h in hits if getattr(h, "doc_n_images", 0) > 0}),
@@ -264,9 +270,10 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             n_snippets, top_score, n_entities, graph_requested, n_graph_edges,
             no_answer, llm_failed, latency_ms, n_citations, unverified_citations,
             prompt_tokens, completion_tokens, cost_usd, n_image_bearing_docs,
-            sufficiency, sufficiency_at, sufficiency_judge, evidence_fingerprint
+            sufficiency, sufficiency_at, sufficiency_judge, evidence_fingerprint,
+            fusion_channels
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-                  $21, now(), $22, $23)
+                  $21, now(), $22, $23, $24)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -275,7 +282,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.n_citations, sig.unverified_citations,
         sig.prompt_tokens, sig.completion_tokens, sig.cost_usd,
         sig.n_image_bearing_docs,
-        sufficiency, judge, fingerprint,
+        sufficiency, judge, fingerprint, sig.fusion_channels,
     )
 
 

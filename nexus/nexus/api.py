@@ -39,6 +39,7 @@ from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.evidence_packet import assemble_packet, format_for_llm
 from nexus.search import history as history_module
 from nexus.search.hybrid import hybrid_search, visibility_counts
+from nexus.search.rewrite import W_ORIGINAL, W_REWRITTEN, rewrite as rewrite_query
 from nexus.search.hybrid import ROUTES as hybrid_routes
 from nexus.search.hybrid import UnknownRoute
 from nexus.search.router import determine_route
@@ -320,6 +321,27 @@ def _validate_route(route: str) -> None:
             detail=f"unknown_route: {route!r}. 가능한 값: auto, {', '.join(sorted(hybrid_routes))}")
 
 
+
+async def _search_channels(req, llm_svc) -> tuple[str, list[tuple[str, float]] | None]:
+    """(검색·라우팅에 쓸 질의, 융합 채널). 이력이 없으면 `(req.query, None)` — 오늘 그대로.
+
+    **재작성이 원문과 같으면 채널을 늘리지 않는다.** 같은 문자열은 같은 순위 목록을 내고,
+    가중 합산은 모든 문서에 같은 배수를 곱할 뿐 순서를 바꾸지 않는다(SPEC §3.3). 늘려 봐야
+    다리를 두 배로 돌리고 절대 점수만 팽창시킨다 — 보수적 재작성의 정상 결과가 "원문과 같음"
+    이므로 이 분기가 흔한 경로다.
+
+    반환하는 첫 값은 **재작성 질의**다: 라우팅과 엔티티 추출이 그것을 쓴다. 생략형 원문에서
+    뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다(§3.3).
+    """
+    history = _history(req.history)
+    if not history:
+        return req.query, None
+    rewritten = await rewrite_query(req.query, history, llm_svc)
+    if rewritten == req.query:
+        return req.query, None
+    return rewritten, [(rewritten, W_REWRITTEN), (req.query, W_ORIGINAL)]
+
+
 @app.post("/search", response_model=NexusResponse)
 async def search(req: SearchRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """Hybrid 검색."""
@@ -338,20 +360,24 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         pool = await db.get_pool()
         graph_repo = PostgresGraphRepository(pool)
 
+        # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
+        # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다 (SPEC §3.3).
+        search_query, channels = await _search_channels(req, LLMService())
+
         # 엔티티 감지
         gazetteer = _load_gazetteer()
         patterns = _build_entity_patterns(gazetteer)
-        detected = find_entities_in_text(req.query, patterns)
+        detected = find_entities_in_text(search_query, patterns)
         entity_rids = [
             entity_rid(req.tenant, e.entity_type, e.name)
             for e in detected
         ]
 
         # 경로 결정
-        route = determine_route(req.query, req.route, [e.name for e in detected])
+        route = determine_route(search_query, req.route, [e.name for e in detected])
 
         result = await hybrid_search(
-            query=req.query,
+            query=search_query,
             tenant=req.tenant,
             clearance=req.classification_max,
             top_k=req.top_k,
@@ -360,6 +386,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
             route=route,
             entity_rids=entity_rids,
             config=config,
+            channels=channels,
         )
 
         # Graph findings + diff_flags 조립
@@ -395,6 +422,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
             result, None, path="search",
             tenant=req.tenant, clearance=req.classification_max, query=req.query,
             n_entities=len(entity_rids),
+            fusion_channels=len(channels or [1]),
             latency_ms=int((time.time() - _t0) * 1000),
         )
         # fire-and-forget; 답변 경로가 아니다 → not_applicable
@@ -439,20 +467,24 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         pool = await db.get_pool()
         graph_repo = PostgresGraphRepository(pool)
 
+        # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
+        # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다 (SPEC §3.3).
+        search_query, channels = await _search_channels(req, llm_svc)
+
         # 엔티티 감지
         gazetteer = _load_gazetteer()
         patterns = _build_entity_patterns(gazetteer)
-        detected = find_entities_in_text(req.query, patterns)
+        detected = find_entities_in_text(search_query, patterns)
         entity_rids = [
             entity_rid(req.tenant, e.entity_type, e.name)
             for e in detected
         ]
 
-        route = determine_route(req.query, req.route, [e.name for e in detected])
+        route = determine_route(search_query, req.route, [e.name for e in detected])
 
         # 검색
         search_result = await hybrid_search(
-            query=req.query,
+            query=search_query,
             tenant=req.tenant,
             clearance=req.classification_max,
             top_k=req.top_k,
@@ -461,6 +493,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             route=route,
             entity_rids=entity_rids,
             config=config,
+            channels=channels,
         )
 
         # Evidence packet 조립
@@ -479,6 +512,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             search_result, answer_result, path="search_answer",
             tenant=req.tenant, clearance=req.classification_max, query=req.query,
             n_entities=len(entity_rids),
+            fusion_channels=len(channels or [1]),
             latency_ms=int((time.time() - _t0) * 1000),
         )
         await record_search(sig, judge_input=JudgeInput(   # 답변이 받은 것과 같은 근거
@@ -845,20 +879,24 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             pool = await db.get_pool()
             graph_repo = PostgresGraphRepository(pool)
 
+            # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
+            # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다 (SPEC §3.3).
+            search_query, channels = await _search_channels(req, llm_svc)
+
             # 엔티티 감지
             gazetteer = _load_gazetteer()
             patterns = _build_entity_patterns(gazetteer)
-            detected = find_entities_in_text(req.query, patterns)
+            detected = find_entities_in_text(search_query, patterns)
             entity_rids = [
                 entity_rid(req.tenant, e.entity_type, e.name)
                 for e in detected
             ]
 
-            route = determine_route(req.query, req.route, [e.name for e in detected])
+            route = determine_route(search_query, req.route, [e.name for e in detected])
 
             # 검색 (검색 완료 시 evidence 먼저 전송)
             search_result = await hybrid_search(
-                query=req.query,
+                query=search_query,
                 tenant=req.tenant,
                 clearance=req.classification_max,
                 top_k=req.top_k,
@@ -867,6 +905,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 route=route,
                 entity_rids=entity_rids,
                 config=config,
+                channels=channels,
             )
 
             packet = assemble_packet(search_result.hits, search_result.graph)
@@ -964,7 +1003,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             sig = extract_signals(
                 search_result, None, path="search_answer_stream",
                 tenant=req.tenant, clearance=req.classification_max, query=req.query,
-                n_entities=len(entity_rids), latency_ms=int((time.time() - t0) * 1000),
+                n_entities=len(entity_rids),
+                fusion_channels=len(channels or [1]),
+            latency_ms=int((time.time() - t0) * 1000),
                 n_citations=len(report.citations) if has_answer else None,
                 unverified_citations=report.unverified_count if has_answer else None,
                 llm_failed=llm_failed,

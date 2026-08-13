@@ -237,20 +237,62 @@ def _rrf_fusion(
 
     top_k 컷은 문서 다양성(_diversify) 이후로 미룬다 — 한 문서가 top-k 를 도배하지 않도록.
     score = Σ 1/(k + rank + 1)
+
+    **채널이 하나인 경우다.** 멀티턴은 질의 변형(재작성/원문)을 채널로 얹는데, 그 융합은
+    `fuse_channels` 가 한다 — 이 함수는 거기에 가중치 1.0 짜리 채널 하나를 넘기는 얇은 겉면이다.
+    구현이 둘이면 갈라지고, 갈라진 융합은 비교가 아니다.
+    """
+    return fuse_channels([ChannelResults(bm25=bm25_results, vector=vector_results, weight=1.0)], k)
+
+
+@dataclass
+class ChannelResults:
+    """한 **채널**(= 질의 변형)이 두 **다리**에서 얻은 순위. 축이 둘이라는 것이 요점이다.
+
+    채널 = 무엇을 물었나(재작성 질의 / 사용자가 실제로 친 문장).
+    다리  = 어떻게 찾았나(BM25 / vector).
+
+    가중은 **채널당 한 번** 걸린다. 다리마다 걸면 1.3 이 2.6 이 된다 (SPEC §3.3).
+    """
+    bm25: list[tuple[str, int]] = field(default_factory=list)
+    vector: list[tuple[str, int]] = field(default_factory=list)
+    weight: float = 1.0
+    #: 진단용 이름(`rewritten` / `original`). 점수에 영향을 주지 않는다.
+    name: str = ""
+
+
+def fuse_channels(channels: list[ChannelResults], k: int = 60) -> list[dict]:
+    """가중 RRF: `score = Σ_channel w_channel · Σ_leg 1/(k + rank + 1)`.
+
+    **채널이 하나이고 가중이 1.0 이면 결과는 예전과 글자 그대로 같다** — 그것이 U2·U3 를 나눠
+    넣은 이유이자 §4 I1 이 요구하는 바다.
+
+    중복 제거의 실제 효과를 오해하지 마라: 두 채널의 질의 문자열이 같으면 두 채널은 같은 순위
+    목록을 내고, 가중 합산은 **모든 문서에 같은 배수**를 곱할 뿐 순서를 바꾸지 않는다. 절대
+    점수만 팽창한다(§3.3, §4 I6).
     """
     scores: dict[str, dict] = {}
 
-    for rid, rank in bm25_results:
+    def _slot(rid: str) -> dict:
         if rid not in scores:
-            scores[rid] = {"rid": rid, "score": 0.0, "bm25_rank": None, "vector_rank": None}
-        scores[rid]["score"] += 1.0 / (k + rank + 1)
-        scores[rid]["bm25_rank"] = rank
+            scores[rid] = {"rid": rid, "score": 0.0, "bm25_rank": None, "vector_rank": None,
+                           "channel_ranks": {}}
+        return scores[rid]
 
-    for rid, rank in vector_results:
-        if rid not in scores:
-            scores[rid] = {"rid": rid, "score": 0.0, "bm25_rank": None, "vector_rank": None}
-        scores[rid]["score"] += 1.0 / (k + rank + 1)
-        scores[rid]["vector_rank"] = rank
+    for ch in channels:
+        for leg, results in (("bm25", ch.bm25), ("vector", ch.vector)):
+            for rid, rank in results:
+                slot = _slot(rid)
+                slot["score"] += ch.weight * (1.0 / (k + rank + 1))
+                # 다리별 순위는 **채널을 통틀어 가장 좋은 것**을 남긴다. 칸이 둘뿐인데 채널이
+                # 늘었으므로, 어느 하나를 고르지 않으면 나중 채널이 앞 채널을 덮는다.
+                key = f"{leg}_rank"
+                if slot[key] is None or rank < slot[key]:
+                    slot[key] = rank
+                # 채널별 순위는 진단으로 따로 남긴다 — 두 칸으로는 네 순위를 표현할 수 없고,
+                # "재작성이 mecab tsvector 텀을 흔드는가"(SPEC §8)는 이 값으로만 답할 수 있다.
+                if ch.name:
+                    slot["channel_ranks"].setdefault(ch.name, {})[leg] = rank
 
     # 동점 키를 **명시**한다. 안정 정렬에 기대면 융합 순서가 이 함수의 입력 구성 순서에
     # 좌우되고, 나중에 heapq.nlargest 나 병렬 병합으로 바꾸는 순간 비결정성이 조용히 돌아온다.
@@ -411,6 +453,7 @@ async def hybrid_search(
     route: str = "hybrid_only",
     entity_rids: list[str] | None = None,
     config: dict | None = None,
+    channels: list[tuple[str, float]] | None = None,
 ) -> SearchResult:
     """3-way Hybrid 검색 실행.
 
@@ -446,30 +489,43 @@ async def hybrid_search(
     # 예전엔 둘 다 무조건 돌면서 route_used 로 "반영됐다" 고 보고했다.
     use_bm25, use_vector = ROUTES[route]
 
-    bm25_results: list[tuple[str, int]] = []
-    vector_results: list[tuple[str, int]] = []
+    # **채널 = 질의 변형.** 기본은 하나(= 오늘) — 그러면 아래 융합이 예전과 글자 그대로 같다.
+    # 멀티턴은 (재작성, 1.3) + (원문, 0.5) 두 채널로 온다 (SPEC §3.3).
+    #
+    # **후보 풀은 채널마다 그대로다.** 다리가 둘에서 넷으로 늘어도 bm25_top_k/vector_top_k 는
+    # 건드리지 않는다. 컷(_diversify/per_doc_cap/top_k)은 융합 **뒤 한 번만** 걸린다 — 채널마다
+    # 걸면 다양성 규칙이 두 번 먹는다.
+    active = channels or [(query, 1.0)]
+    #: 채널 이름은 진단용이다. 점수에 영향을 주지 않는다.
+    names = ["rewritten", "original"] if len(active) > 1 else [""]
 
-    tasks = {}
-    if use_bm25:
-        tasks["bm25"] = asyncio.create_task(_bm25_search(query, tenant, clearance, bm25_top_k))
-    # embedding_svc 가 없으면 벡터 다리는 못 돈다. 그렇다고 BM25 로 슬그머니 바꿔치기하고
-    # route_used='vector_only' 라 보고하지는 않는다 — 빈 결과가 정직하다.
-    if use_vector and embedding_svc:
-        tasks["vector"] = asyncio.create_task(
-            _vector_leg(query, embedding_svc, tenant, clearance, vector_top_k,
-                        column=configured_column(cfg)))
+    tasks: dict[tuple[int, str], asyncio.Task] = {}
+    for i, (text, _w) in enumerate(active):
+        if use_bm25:
+            tasks[(i, "bm25")] = asyncio.create_task(
+                _bm25_search(text, tenant, clearance, bm25_top_k))
+        # embedding_svc 가 없으면 벡터 다리는 못 돈다. 그렇다고 BM25 로 슬그머니 바꿔치기하고
+        # route_used='vector_only' 라 보고하지는 않는다 — 빈 결과가 정직하다.
+        if use_vector and embedding_svc:
+            tasks[(i, "vector")] = asyncio.create_task(
+                _vector_leg(text, embedding_svc, tenant, clearance, vector_top_k,
+                            column=configured_column(cfg)))
 
-    if tasks:
-        done = dict(zip(tasks, await asyncio.gather(*tasks.values())))
-        bm25_results = done.get("bm25", [])
-        vector_results, vector_degraded = done.get("vector", ([], False))
-        if vector_degraded:
+    done = dict(zip(tasks, await asyncio.gather(*tasks.values()))) if tasks else {}
+
+    ch_results: list[ChannelResults] = []
+    for i, (_text, weight) in enumerate(active):
+        vector_results, vector_degraded = done.get((i, "vector"), ([], False))
+        if vector_degraded and "vector" not in result.degraded:
             result.degraded.append("vector")
+        ch_results.append(ChannelResults(
+            bm25=done.get((i, "bm25"), []), vector=vector_results, weight=weight,
+            name=names[i] if i < len(names) else f"ch{i}"))
 
     bm25_ms = int((time.time() - start) * 1000)
 
     # RRF Fusion (전체 병합, 컷은 다양성 이후)
-    fused = _rrf_fusion(bm25_results, vector_results, k=rrf_k)
+    fused = fuse_channels(ch_results, k=rrf_k)
 
     # 메타데이터 보강 (fused 순서 보존)
     enriched = await _enrich_hits(
