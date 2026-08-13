@@ -36,6 +36,7 @@ from nexus.providers.llm import LLMService
 from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.evidence_packet import assemble_packet, format_for_llm
+from nexus.search import history as history_module
 from nexus.search.hybrid import hybrid_search, visibility_counts
 from nexus.search.hybrid import ROUTES as hybrid_routes
 from nexus.search.hybrid import UnknownRoute
@@ -209,8 +210,32 @@ class NexusResponse(BaseModel):
 
 
 # ── Request/Response models ──
+class Turn(BaseModel):
+    """대화 한 턴. 오래된 것부터 나열되며, **마지막 원소는 이번 `query` 가 아니다.**"""
+    role: str
+    content: str
+
+
+def _history(raw: list["Turn"] | None) -> list[history_module.Turn]:
+    """요청의 이력을 정본 규칙(`nexus.search.history`)으로 검증한다.
+
+    **상한 초과는 413 이고 500 이 아니다.** 500 은 "우리 잘못" 이라는 뜻인데, 여기서 잘못한 것은
+    상한보다 많이 보낸 호출자다. 그리고 조용히 자르지 않는다 — 자르면 클라이언트는 자기 맥락의
+    절반이 사라진 것을 관측할 수 없다 (SPEC §3.1).
+    """
+    try:
+        return history_module.parse([t.model_dump() for t in (raw or [])])
+    except history_module.HistoryTooLarge as e:
+        raise HTTPException(status_code=413, detail=str(e)) from None
+    except history_module.MalformedHistory as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
+
+
 class SearchRequest(BaseModel):
     query: str
+    #: 대화 이력 — **U2 에서 서버는 받아서 버린다**(상한 검사만 한다). 검색에 쓰는 것은 U3 다.
+    #: 배관과 행동 변경을 한 PR 에 섞으면 회귀가 어느 쪽에서 왔는지 못 가린다.
+    history: list[Turn] = Field(default_factory=list)
     top_k: int = 10
     route: str = "auto"
     classification_max: str = "INTERNAL"
@@ -221,6 +246,7 @@ class SearchRequest(BaseModel):
 
 class AnswerRequest(BaseModel):
     query: str
+    history: list[Turn] = Field(default_factory=list)   # U2: 받아서 버린다 (SearchRequest 와 같다)
     top_k: int = 10
     route: str = "auto"
     classification_max: str = "INTERNAL"
@@ -300,6 +326,9 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
     _validate_route(req.route)
+    # 이력은 **DB 를 만지기 전에** 검증한다. 상한 초과 요청이 검색을 한 번 돌고 나서 거절되면
+    # 거절이 공짜가 아니게 되고, 그 비용은 상한이 막으려던 바로 그 부하다.
+    _history(req.history)
 
     try:
         _t0 = time.time()
@@ -397,6 +426,9 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
     _validate_route(req.route)
+    # 이력은 **DB 를 만지기 전에** 검증한다. 상한 초과 요청이 검색을 한 번 돌고 나서 거절되면
+    # 거절이 공짜가 아니게 되고, 그 비용은 상한이 막으려던 바로 그 부하다.
+    _history(req.history)
 
     try:
         _t0 = time.time()
@@ -793,8 +825,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
 
-    # 스트림을 열면 헤더가 나가고 400 을 줄 수 없다. 그래서 그 전에 검증한다.
+    # 스트림을 열면 헤더가 나가고 400 을 줄 수 없다. 그래서 그 전에 검증한다 — 이력도 같다.
     _validate_route(req.route)
+    _history(req.history)
 
     async def event_stream():
         import json

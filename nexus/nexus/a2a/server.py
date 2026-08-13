@@ -28,6 +28,7 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
 from nexus.a2a.audit import record_audit
+from nexus.search import history as history_module
 from nexus.a2a.card import build_agent_card
 from nexus.a2a.config import A2AConfig
 from nexus.a2a.external_ingest_skill import (
@@ -81,6 +82,20 @@ def _extract_query(params: dict) -> str:
     message = (params or {}).get("message") or {}
     texts = [p.get("text", "") for p in message.get("parts", []) if p.get("kind") == "text"]
     return "\n".join(t for t in texts if t).strip()
+
+
+def _requested_history(params: dict):
+    """이력은 `message.metadata.history` 로 온다 — tenant/clearance/skill_id 와 같은 자리다.
+
+    **`message.parts` 에 얹지 않는다.** 지금 `_extract_query` 는 text part 를 전부 이어 붙여
+    질의로 쓰므로, 앞턴을 part 로 보내면 그것이 조용히 질의에 섞인다 — U2 의 약속("동작 변화
+    0")을 깨는 것이 바로 그 모양이다. metadata 는 덧붙임이라 기존 호출자에게 아무 일도 없다.
+
+    상한과 거절 규칙은 HTTP 와 **같은 정본**에서 온다(`nexus.search.history`). 두 벌로 적으면
+    갈라지고, 이 리포는 그걸 이미 여러 번 겪었다.
+    """
+    meta = ((params or {}).get("message") or {}).get("metadata") or {}
+    return history_module.parse(meta.get("history"))
 
 
 def _requested_scope(params: dict) -> tuple[str | None, str | None]:
@@ -171,6 +186,17 @@ def mount_a2a(
                        tenant=principal.tenant, clearance=principal.clearance,
                        denied=True, reason="rate_limited", latency_ms=elapsed_ms())
             return _rpc_error(req_id, _RATE_LIMITED, "rate limit exceeded", status=429)
+
+        # 이력 상한 — HTTP 와 **같은 정본**(nexus.search.history). 인증·레이트리밋 뒤에 두는
+        # 이유는 거절 사유의 순서가 곧 방어의 순서이기 때문이다: 신원 없는 요청에 상한 이야기를
+        # 해 줄 필요가 없다. U2 에서 여기 통과한 값은 **쓰이지 않고 버려진다**.
+        try:
+            _requested_history(params)
+        except (history_module.HistoryTooLarge, history_module.MalformedHistory) as e:
+            await record_audit(skill=skill, query=query, principal=principal.name,
+                       tenant=principal.tenant, clearance=principal.clearance,
+                       denied=True, reason="history_rejected", latency_ms=elapsed_ms())
+            return _rpc_error(req_id, _INVALID_PARAMS, f"invalid history: {e}")
 
         # ── Write skill (Phase 3): ingest a governed doc — capability-gated. ──
         if skill == _INGEST_SKILL:

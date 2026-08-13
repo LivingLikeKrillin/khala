@@ -109,6 +109,9 @@ export async function streamAnswer(query, callbacks, opts = {}) {
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify({
       query,
+      // 대화 이력 — 서버는 U2 에서 받아서 버린다(상한만 건다). 자르기는 호출자가 이미 했다
+      // (js/history.js: forRequest). 여기서 조용히 더 자르면 어디서 잘렸는지 알 수 없어진다.
+      history: opts.history || [],
       top_k: opts.top_k || 10,
       route: opts.route || 'auto',
       classification_max: opts.classification_max || 'INTERNAL',
