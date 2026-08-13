@@ -64,19 +64,20 @@ def main() -> None:
     # ── 이벤트 핸들러 등록 ──
 
     @app.event("app_mention")
-    async def on_mention(event, say):
+    async def on_mention(event, say, client):
+        # `client` 는 Bolt 가 선언한 핸들러에만 넘겨준다 — 이것이 스레드 이력을 읽는 손이다.
         from nexus.slack.bot import handle_mention
-        await handle_mention(event, say)
+        await handle_mention(event, say, client)
 
     @app.event("message")
-    async def on_message(event, say):
+    async def on_message(event, say, client):
         # DM만 처리 (채널 메시지는 멘션으로 처리)
         if event.get("channel_type") == "im":
             # Bot 자신의 메시지 무시
             if event.get("bot_id"):
                 return
             from nexus.slack.bot import handle_dm
-            await handle_dm(event, say)
+            await handle_dm(event, say, client)
 
     # ── Socket Mode 시작 ──
 
