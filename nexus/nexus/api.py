@@ -38,7 +38,8 @@ from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.evidence_packet import assemble_packet, format_for_llm
 from nexus.search import history as history_module
-from nexus.search.hybrid import hybrid_search, visibility_counts
+from nexus.search.corpus_scope import visibility_counts
+from nexus.search.hybrid import hybrid_search
 from nexus.search.rewrite import W_ORIGINAL, W_REWRITTEN, rewrite as rewrite_query
 from nexus.search.hybrid import ROUTES as hybrid_routes
 from nexus.search.hybrid import UnknownRoute
@@ -1213,13 +1214,19 @@ async def visibility(principal: Principal = Depends(get_principal)) -> NexusResp
     `visibility_counts` 의 docstring 에 있다(같은 진단을 검색 안에 넣었다가 CI 를 40분 세웠다).
     """
     tenant, clearance = effective_scope(principal, None, None)
-    total, visible = await visibility_counts(tenant, clearance)
+    v = await visibility_counts(tenant, clearance)
     return NexusResponse(data={
         "tenant": tenant,
         "clearance": clearance,
-        "documents_total": total,
-        "documents_visible": visible,
-        "no_visible_documents": total > 0 and visible == 0,
+        "documents_total": v["total"],
+        "documents_visible": v["visible"],
+        # 범위를 묻는 사람에게 **양** 다음으로 필요한 것은 **언제 것인가**다. 정기 적재가 없는
+        # 배포에서 이 값이 몇 주 전이면, 답이 낡았다는 사실이 여기서 처음 보인다.
+        "newest_document_at": v["newest"].isoformat() if v["newest"] else None,
+        # 그리고 **무엇에 대한 것인가**. 숫자만으로는 "내가 뭘 물어봐도 되냐" 에 답이 안 된다.
+        "sources": v["sources"],
+        "sample_titles": v["sample_titles"],
+        "no_visible_documents": v["total"] > 0 and v["visible"] == 0,
     })
 
 

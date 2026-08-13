@@ -129,20 +129,6 @@ class _Row(dict):
     """asyncpg.Record 처럼 __getitem__ 으로 읽히는 최소 대역."""
 
 
-async def test_counts_report_total_and_visible_separately(monkeypatch):
-    async def fake(query, *args):
-        return _Row(total=116, visible=0)
-    monkeypatch.setattr(hybrid.db, "fetch_one", fake)
-    assert await hybrid.visibility_counts("default", "PUBLIC") == (116, 0)
-
-
-async def test_counts_are_zero_when_the_row_is_missing(monkeypatch):
-    async def none(query, *args):
-        return None
-    monkeypatch.setattr(hybrid.db, "fetch_one", none)
-    assert await hybrid.visibility_counts("default", "PUBLIC") == (0, 0)
-
-
 async def test_the_search_function_never_runs_the_visibility_query(monkeypatch):
     """`hybrid_search` 는 이 진단을 부르지 않는다 — 첫 판이 그렇게 했다가 CI 를 40분 세웠다.
 

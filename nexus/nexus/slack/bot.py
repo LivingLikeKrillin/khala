@@ -20,6 +20,7 @@ import re
 import httpx
 
 from nexus.slack.formatter import format_answer
+from nexus.slack.commands import is_scope_command, scope_blocks
 from nexus.slack.messages import Outcome, message_for
 from nexus.slack.thread import read_history
 
@@ -75,6 +76,12 @@ async def handle_dm(event: dict, say, client=None) -> None:
 
 async def _answer(query: str, say, event: dict, client=None) -> None:
     thread_ts = event.get("thread_ts") or event.get("ts")
+    # **자기 자신에 대한 질문은 검색으로 답하지 않는다.** 검색하면 "그 주제를 다루는 문서" 가
+    # 뽑혀 그 산문이 시스템 상태인 것처럼 나간다 (2026-08-13 실측). 완전 일치 명령어만 —
+    # 분류는 하지 않는다 (SPEC-nexus-multi-turn-narration §3.2 가 기각한 설계).
+    if is_scope_command(query):
+        await say(blocks=scope_blocks(_visibility()), thread_ts=thread_ts)
+        return
     # 앞선 턴들. 못 읽으면 빈 목록이고, 그러면 오늘과 같은 단발 질의가 된다 —
     # 이력 하나 때문에 답을 못 주지 않는다 (nexus/slack/thread.py).
     history = await read_history(client, event) if client is not None else []
@@ -107,19 +114,24 @@ def _documents_count() -> int:
         return -1
 
 
-def _blind() -> bool:
-    """**이 봇의 등급으로** 볼 수 있는 문서가 한 건도 없는가 (`/visibility`).
-
-    0건을 받았을 때만 묻는다 — 검색 경로에 얹으면 모든 질의가 이 왕복을 낸다. 실패하면 False:
-    모르는 것을 설정 결함이라고 단정하면 멀쩡한 검색 실패가 운영자 호출이 된다.
-    """
+def _visibility() -> dict:
+    """`/visibility` 응답. 실패하면 빈 dict — 진단이 답변을 막지 않는다."""
     try:
         with httpx.Client(timeout=5.0, transport=_transport()) as client:
             r = client.get(f"{NEXUS_API_URL}/visibility",
                            headers={"Authorization": f"Bearer {NEXUS_SLACK_TOKEN}"})
-        return bool(r.json().get("data", {}).get("no_visible_documents", False))
+        return r.json().get("data", {}) or {}
     except Exception:  # noqa: BLE001
-        return False
+        return {}
+
+
+def _blind() -> bool:
+    """**이 봇의 등급으로** 볼 수 있는 문서가 한 건도 없는가.
+
+    0건을 받았을 때만 묻는다 — 검색 경로에 얹으면 모든 질의가 이 왕복을 낸다. 실패하면 False:
+    모르는 것을 설정 결함이라고 단정하면 멀쩡한 검색 실패가 운영자 호출이 된다.
+    """
+    return bool(_visibility().get("no_visible_documents", False))
 
 
 async def _call_nexus_api(query: str, history: list[dict] | None = None) -> dict:

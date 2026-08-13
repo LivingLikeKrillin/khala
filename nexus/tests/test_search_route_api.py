@@ -81,7 +81,7 @@ def test_search_never_runs_the_visibility_query(client, monkeypatch):
 
     async def tripwire(tenant, clearance):
         ran.append(1)
-        return (0, 0)
+        return {"total": 0, "visible": 0, "newest": None, "sources": {}, "sample_titles": []}
     monkeypatch.setattr("nexus.api.visibility_counts", tripwire)
 
     r = client.post("/search", json={"query": "무엇이든", "route": "keyword_only"},
@@ -98,7 +98,7 @@ def test_visibility_endpoint_separates_empty_from_invisible(client, monkeypatch)
     "문서에서 못 찾았다" 고 답한 것이 이 엔드포인트가 생긴 이유다.
     """
     async def counts(tenant, clearance):
-        return (116, 0)
+        return {"total": 116, "visible": 0, "newest": None, "sources": {}, "sample_titles": []}
     monkeypatch.setattr("nexus.api.visibility_counts", counts)
 
     r = client.get("/visibility", headers={"Authorization": "Bearer " + "x" * 40})
@@ -111,7 +111,7 @@ def test_visibility_endpoint_separates_empty_from_invisible(client, monkeypatch)
 def test_visibility_of_an_empty_corpus_is_not_a_config_defect(client, monkeypatch):
     """문서가 아예 없으면 그것은 설정 결함이 아니라 빈 코퍼스다 — 고칠 사람이 다르다."""
     async def counts(tenant, clearance):
-        return (0, 0)
+        return {"total": 0, "visible": 0, "newest": None, "sources": {}, "sample_titles": []}
     monkeypatch.setattr("nexus.api.visibility_counts", counts)
 
     r = client.get("/visibility", headers={"Authorization": "Bearer " + "x" * 40})
