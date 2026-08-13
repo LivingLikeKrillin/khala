@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -55,6 +57,8 @@ def test_every_search_endpoint_validates_the_route_before_touching_the_db(client
 
 # ── 0건의 원인은 **자기 엔드포인트**가 답한다 (2026-08-13 슬랙 파일럿) ─────────────
 
+@pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"),
+                    reason="NEXUS_TEST_DB_URL 필요 — /search 를 끝까지 태우려면 DB 가 있어야 한다")
 def test_search_never_runs_the_visibility_query(client, monkeypatch):
     """검색 응답 조립은 DB 진단을 하지 않는다.
 
@@ -67,6 +71,11 @@ def test_search_never_runs_the_visibility_query(client, monkeypatch):
     async def empty(*a, **k):
         return SearchResult(hits=[], route_used="keyword_only", timing_ms={"total_ms": 1})
     monkeypatch.setattr("nexus.api.hybrid_search", empty)
+    # 신호 기록은 DB 를 친다. 이 시험이 보는 것은 가시성 진단이 도는지이지 신호 적재가 아니다 —
+    # 유닛 잡에는 DB 가 없고, 스텁하지 않으면 그 500 이 이 단언을 대신 실패시킨다.
+    async def no_signal(*a, **k):
+        return None
+    monkeypatch.setattr("nexus.api.record_search", no_signal)
 
     ran = []
 
