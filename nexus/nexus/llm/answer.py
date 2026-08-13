@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import structlog
 
 from nexus.documents.staleness import annotate_staleness
+from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
@@ -48,6 +49,10 @@ class AnswerResult:
     route_used: str = ""
     timing_ms: dict = field(default_factory=dict)
     llm_failed: bool = False
+    #: **왜** 실패했는가 (`nexus.llm.failure` 의 안정 코드) — 실패했을 때만 채워진다.
+    #: 불리언 하나만으로는 "기다리면 되는 실패" 와 "사람이 결제해야 하는 실패" 가 구별되지
+    #: 않고, 2026-08-13 슬랙 파일럿에서 크레딧 소진에 대고 "잠시 후 다시 시도" 라고 답했다.
+    llm_failure_reason: str | None = None
     # 인용 사후검증(SPEC-nexus-citation-validation): 각 [출처: …] 가 근거 packet 에 실재하는가.
     citations: list[dict] = field(default_factory=list)
     unverified_citations: int = 0
@@ -181,7 +186,10 @@ async def generate_answer(
         ]
         result.unverified_numbers = nreport.unverified_count
     except Exception as e:
-        logger.error("llm_generation_failed", error=str(e))
+        # 예외는 **여기서만** 분류한다. 이 자리를 지나면 남는 것은 문자열뿐이고, 문자열은
+        # 공급자가 바꾼다 (nexus/llm/failure.py).
+        result.llm_failure_reason = classify_failure(e)
+        logger.error("llm_generation_failed", error=str(e), reason=result.llm_failure_reason)
         result.llm_failed = True
         result.answer = (
             "답변을 생성할 수 없습니다. 아래 근거를 직접 확인해주세요.\n\n"

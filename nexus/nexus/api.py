@@ -25,6 +25,7 @@ from nexus.index.graph_extractor import find_entities_in_text, _build_entity_pat
 from nexus.ingest.pipeline import run_ingest
 from nexus.llm.answer import _load_staleness_ttl, generate_answer
 from nexus.documents.staleness import annotate_staleness
+from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
@@ -504,6 +505,9 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # **생성 실패는 답변이 아니다.** 이 플래그가 없는 동안 클라이언트는 둘을 구별할
                 # 수 없었고, 서버가 실패 자리에 넣는 근거 덤프를 답변으로 렌더했다.
                 "llm_failed": answer_result.llm_failed,
+                # 그리고 **왜** 실패했는가. 불리언만으로는 "기다리면 되는 실패" 와 "사람이
+                # 결제해야 하는 실패" 가 같은 문장으로 나간다 (nexus/llm/failure.py).
+                "llm_failure_reason": answer_result.llm_failure_reason,
             },
         )
     except UnknownRoute as e:
@@ -920,6 +924,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 3) LLM 스트리밍 답변 — 청크를 누적해 완료 후 인용을 검증한다.
             answer_parts: list[str] = []
             llm_failed = False
+            llm_failure_reason = None
             usage_out: list = []
             if not packet.snippets:
                 _payload = json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)
@@ -936,8 +941,12 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     async for chunk in llm_svc.stream(SYSTEM_PROMPT, user_prompt, usage_out=usage_out):
                         answer_parts.append(chunk)
                         yield f"event: answer_delta\ndata: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
-                except Exception:
+                except Exception as _e:
                     llm_failed = True
+                    # 스트림도 **왜** 실패했는지 말한다. 비스트림 경로만 사유를 실으면
+                    # 웹은 여전히 크레딧 소진과 일시 장애를 구별하지 못한다 — 웹이
+                    # 쓰는 것이 이 경로다.
+                    llm_failure_reason = classify_failure(_e)
                     _payload = json.dumps(
                         {'text': '답변을 생성할 수 없습니다. 위 근거를 직접 확인해주세요.'}, ensure_ascii=False)
                     yield f"event: answer_delta\ndata: {_payload}\n\n"
@@ -970,6 +979,10 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
 
             done_data = {
                 "timing_ms": search_result.timing_ms,
+                # 실패와 그 사유는 done 에 실린다 — answer_delta 는 사람이 읽는
+                # 글이고, 클라이언트가 분기할 값은 글이 아니라 필드여야 한다.
+                "llm_failed": llm_failed,
+                "llm_failure_reason": llm_failure_reason,
                 "citations": [
                     {"title": c.title, "section": c.section, "verified": c.verified,
                      "provenance_tier": getattr(c, "provenance_tier", "authored")}
