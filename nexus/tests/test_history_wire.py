@@ -217,3 +217,76 @@ def test_a2a_history_does_not_leak_into_the_query():
     _a2a_send(c, text="결제 토픽")
     _a2a_send(c, text="결제 토픽", history=[{"role": "user", "content": "앞턴 내용"}])
     assert seen == ["결제 토픽", "결제 토픽"], f"이력이 질의에 섞였다: {seen}"
+
+
+# ── 답변자도 재작성된 질의를 본다 (SPEC §2·§4 I3) ───────────────────────────────
+#
+# 2026-08-13 라이브에서 잡혔다: 검색은 고쳐졌는데 답변자에게 **생략형 원문**이 갔고, 근거
+# 5건을 손에 쥐고도 "'그건' 이 무엇을 가리키는지 파악하기 어렵습니다" 라고 답했다. 검색만
+# 검사하는 그물은 이 결함을 통과시킨다.
+#
+# 이력을 프롬프트에 넣는 것과 혼동하지 마라 — 들어가는 것은 **질의 하나**다. I3 은 그대로다.
+
+@pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"),
+                    reason="NEXUS_TEST_DB_URL 필요 — 답변 경로를 끝까지 태워야 한다")
+def test_the_answerer_receives_the_rewritten_query_not_the_ellipsis(client, monkeypatch):
+    from nexus.llm.answer import AnswerResult
+    from nexus.search.hybrid import SearchHit, SearchResult
+
+    async def one_hit(*a, **k):
+        return SearchResult(hits=[SearchHit(rid="c1", doc_rid="d1", doc_title="문서",
+                                            chunk_text="근거 본문", score=0.9)],
+                            route_used="keyword_only", timing_ms={"total_ms": 1})
+    monkeypatch.setattr("nexus.api.hybrid_search", one_hit)
+
+    async def no_signal(*a, **k):
+        return None
+    monkeypatch.setattr("nexus.api.record_search", no_signal)
+
+    async def fake_rewrite(query, history, llm_svc, **kw):
+        return "로그인 정책은 어디에 적혀 있어?"
+    monkeypatch.setattr("nexus.api.rewrite_query", fake_rewrite)
+
+    seen = {}
+
+    async def spy_answer(query, packet, **kw):
+        seen["query"] = query
+        return AnswerResult(answer="답", evidence_snippets=[], provenance=[],
+                            route_used="keyword_only")
+    monkeypatch.setattr("nexus.api.generate_answer", spy_answer)
+
+    r = client.post("/search/answer",
+                    json={"query": "그럼 그건 어디에 적혀 있어?", "route": "keyword_only",
+                          "history": _turns(2)},
+                    headers=_AUTH)
+    assert r.status_code == 200, r.text
+    assert seen["query"] == "로그인 정책은 어디에 적혀 있어?", (
+        "답변자가 생략형 원문을 받았다 — 근거를 쥐고도 무엇을 묻는지 모른다고 답하게 된다")
+
+
+@pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"),
+                    reason="NEXUS_TEST_DB_URL 필요")
+def test_without_history_the_answerer_gets_the_query_unchanged(client, monkeypatch):
+    """§4 I1. 이력이 없으면 재작성도 없고, 답변자가 받는 것은 오늘과 같다."""
+    from nexus.llm.answer import AnswerResult
+    from nexus.search.hybrid import SearchResult
+
+    async def empty(*a, **k):
+        return SearchResult(hits=[], route_used="keyword_only", timing_ms={"total_ms": 1})
+    monkeypatch.setattr("nexus.api.hybrid_search", empty)
+
+    async def no_signal(*a, **k):
+        return None
+    monkeypatch.setattr("nexus.api.record_search", no_signal)
+
+    seen = {}
+
+    async def spy_answer(query, packet, **kw):
+        seen["query"] = query
+        return AnswerResult(answer="답", evidence_snippets=[], provenance=[],
+                            route_used="keyword_only")
+    monkeypatch.setattr("nexus.api.generate_answer", spy_answer)
+
+    client.post("/search/answer", json={"query": "로그인 정책", "route": "keyword_only"},
+                headers=_AUTH)
+    assert seen["query"] == "로그인 정책"
