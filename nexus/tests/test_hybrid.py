@@ -1,5 +1,6 @@
 """Hybrid 검색 테스트 — RRF fusion, route 판별, 멀티-엔티티 그래프 병합."""
 
+import pytest
 from nexus.repositories.graph import EdgeResult, ObservedEdgeResult, SubGraph
 from nexus.search import hybrid
 from nexus.search.hybrid import _merge_subgraphs, _rrf_fusion
@@ -166,3 +167,136 @@ async def test_the_search_function_never_runs_the_visibility_query(monkeypatch):
     r = await hybrid.hybrid_search("아무거나", tenant="t", clearance="PUBLIC", route="hybrid_only")
     assert r.hits == []
     assert touched == [], "검색 함수가 DB 진단을 돌렸다 — 스위트를 세우는 그 배선이다"
+
+
+# ── 가중 채널 융합 (SPEC-nexus-multi-turn-retrieval §3.3, U3) ────────────────────
+#
+# 채널 = 무엇을 물었나(재작성/원문). 다리 = 어떻게 찾았나(BM25/vector). 축이 둘이고,
+# 가중은 **채널당 한 번** 걸린다.
+
+from nexus.search.hybrid import ChannelResults, fuse_channels  # noqa: E402
+
+
+def test_one_channel_at_weight_one_is_exactly_the_old_fusion():
+    """§4 I1 의 수치적 근거. 이력이 없으면 채널이 하나고, 그 결과는 예전과 글자 그대로 같다."""
+    bm25 = [("a", 1), ("b", 2)]
+    vector = [("b", 1), ("c", 2)]
+    old = _rrf_fusion(bm25, vector, k=60)
+    new = fuse_channels([ChannelResults(bm25=bm25, vector=vector, weight=1.0)], k=60)
+    assert [(r["rid"], r["score"]) for r in old] == [(r["rid"], r["score"]) for r in new]
+
+
+def test_the_weight_applies_once_per_channel_not_once_per_leg():
+    """1.3 이 2.6 이 되면 안 된다 — 두 다리를 다 타는 채널은 그래도 채널 하나다."""
+    one_leg = fuse_channels([ChannelResults(bm25=[("a", 1)], weight=2.0)], k=60)
+    two_legs = fuse_channels(
+        [ChannelResults(bm25=[("a", 1)], vector=[("a", 1)], weight=2.0)], k=60)
+    unit = 1.0 / 62
+    assert one_leg[0]["score"] == pytest.approx(2.0 * unit)
+    assert two_legs[0]["score"] == pytest.approx(2.0 * (unit + unit))
+
+
+def test_identical_channels_scale_every_score_and_change_no_order():
+    """중복 제거의 실제 효과. "자동으로 강화된다" 는 산술적으로 거짓이다 (§3.3).
+
+    두 채널의 질의가 같으면 순위 목록도 같고, 가중 합산은 **모든 문서에 같은 배수**를 곱한다.
+    관측 가능한 유일한 변화는 절대 점수의 팽창이고, 그것은 §4 I6 이 다룬다.
+    """
+    ranks = [("a", 1), ("b", 2), ("c", 3)]
+    single = fuse_channels([ChannelResults(bm25=ranks, weight=1.0)], k=60)
+    doubled = fuse_channels([ChannelResults(bm25=ranks, weight=1.3),
+                             ChannelResults(bm25=ranks, weight=0.5)], k=60)
+    assert [r["rid"] for r in single] == [r["rid"] for r in doubled]
+    for a, b in zip(single, doubled):
+        assert b["score"] == pytest.approx(a["score"] * 1.8)
+
+
+def test_a_low_weight_channel_still_puts_its_documents_in_the_result():
+    """원 질문 채널이 보장하는 것은 **결과에 존재한다는 것**이지 다수결이 아니다 (§3.3)."""
+    fused = fuse_channels([
+        ChannelResults(bm25=[("rewritten_only", 1)], weight=1.3, name="rewritten"),
+        ChannelResults(bm25=[("original_only", 1)], weight=0.5, name="original"),
+    ], k=60)
+    rids = [r["rid"] for r in fused]
+    assert "original_only" in rids
+    assert rids[0] == "rewritten_only", "가중이 큰 쪽이 앞선다"
+
+
+def test_the_best_rank_per_leg_survives_across_channels():
+    """칸은 둘인데 채널은 넷의 순위를 만든다 — 고르지 않으면 나중 채널이 앞 채널을 덮는다."""
+    fused = fuse_channels([
+        ChannelResults(bm25=[("a", 5)], name="rewritten"),
+        ChannelResults(bm25=[("a", 2)], name="original"),
+    ], k=60)
+    assert fused[0]["bm25_rank"] == 2
+
+
+def test_per_channel_ranks_are_kept_for_diagnosis():
+    """SPEC §8("재작성이 mecab tsvector 텀을 흔드는가")은 이 값으로만 답할 수 있다."""
+    fused = fuse_channels([
+        ChannelResults(bm25=[("a", 1)], vector=[("a", 4)], name="rewritten"),
+        ChannelResults(bm25=[("a", 7)], name="original"),
+    ], k=60)
+    assert fused[0]["channel_ranks"] == {"rewritten": {"bm25": 1, "vector": 4},
+                                         "original": {"bm25": 7}}
+
+
+# ── hybrid_search 가 채널을 실제로 태우는가 (§4 I1·I2) ──────────────────────────
+
+from nexus.search import hybrid as _H  # noqa: E402
+
+
+def _spy_legs(monkeypatch):
+    """다리 호출을 가로채 **어떤 질의가 어느 다리로 갔는지** 본다."""
+    calls = {"bm25": [], "vector": []}
+
+    async def bm25(query, tenant, clearance, top_k=20):
+        calls["bm25"].append(query)
+        return [(f"c-{query}", 1)]
+
+    async def vector(query, svc, tenant, clearance, top_k=20, column=None):
+        calls["vector"].append(query)
+        return [(f"v-{query}", 1)]
+
+    monkeypatch.setattr(_H, "_bm25_search", bm25)
+    monkeypatch.setattr(_H, "_vector_search", vector)
+
+    async def enrich(fused, tenant, max_snippet_chars=300):
+        return [_H.SearchHit(rid=r["rid"], doc_rid="d", score=r["score"]) for r in fused]
+    monkeypatch.setattr(_H, "_enrich_hits", enrich)
+    return calls
+
+
+async def test_without_channels_each_leg_runs_once_on_the_query(monkeypatch):
+    """§4 I1. 이력이 없으면 오늘과 같다 — 질의 하나, 다리 둘, 그게 전부다."""
+    calls = _spy_legs(monkeypatch)
+    await _H.hybrid_search("결제 토픽", embedding_svc=object(), route="hybrid_only")
+    assert calls["bm25"] == ["결제 토픽"] and calls["vector"] == ["결제 토픽"]
+
+
+async def test_both_channels_ride_both_legs(monkeypatch):
+    """§3.3. 원 질문을 vector 에서 빼면 그것은 "언제나 융합에 있다" 가 아니게 된다."""
+    calls = _spy_legs(monkeypatch)
+    await _H.hybrid_search("무시됨", embedding_svc=object(), route="hybrid_only",
+                           channels=[("재작성된 질의", 1.3), ("원문", 0.5)])
+    assert calls["bm25"] == ["재작성된 질의", "원문"]
+    assert calls["vector"] == ["재작성된 질의", "원문"]
+
+
+async def test_the_original_channel_reaches_the_results(monkeypatch):
+    """§4 I2. 재작성이 못 찾은 문서라도 원 질문이 찾았으면 결과에 있어야 한다."""
+    _spy_legs(monkeypatch)
+    r = await _H.hybrid_search("무시됨", embedding_svc=object(), route="hybrid_only",
+                               channels=[("재작성", 1.3), ("원문", 0.5)])
+    rids = [h.rid for h in r.hits]
+    assert "c-원문" in rids and "v-원문" in rids
+
+
+async def test_a_dead_rewriter_leaves_todays_result(monkeypatch):
+    """§4 I2 의 degrade 경로. 재작성이 죽으면 원문 채널 하나만 남고, 그것이 오늘이다."""
+    _spy_legs(monkeypatch)
+    today = await _H.hybrid_search("원문", embedding_svc=object(), route="hybrid_only")
+    degraded = await _H.hybrid_search("원문", embedding_svc=object(), route="hybrid_only",
+                                      channels=[("원문", 1.0)])
+    assert [h.rid for h in today.hits] == [h.rid for h in degraded.hits]
+    assert [h.score for h in today.hits] == [h.score for h in degraded.hits]

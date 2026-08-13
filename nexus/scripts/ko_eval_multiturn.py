@@ -30,6 +30,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from nexus.search.rewrite import W_ORIGINAL, W_REWRITTEN, rewrite  # noqa: E402
 from scripts.ko_eval_labels import ManifestPack, check, expired, load  # noqa: E402
 from scripts.ko_eval_packb import tenant_bodies  # noqa: E402
 
@@ -44,6 +45,13 @@ ARMS = {
     "elliptical": "생략형(오늘의 서버)",
     "concat": "두 턴 이어붙임(싸구려 하한)",
     "drift_concat": "앞 화제 깔린 이어붙임(판정 팔)",
+}
+
+#: 재작성 팔은 **옵트인**이다(`--rewrite`). LLM 을 부르므로 돈이 들고, 같은 입력에 같은 출력이
+#: 안 나온다 — 그래서 SPEC §5.1 은 U3 의 **첫 실행을 성능이 아니라 잡음 측정**으로 못박았다.
+REWRITE_ARMS = {
+    "rewritten": "재작성 단독",
+    "rewritten_fused": "재작성+원문 가중융합(U3)",
 }
 
 
@@ -98,7 +106,7 @@ def gate_reasons(threads: dict, labels: dict) -> list[str]:
 
 
 async def run_arm(query: str, gold: set[str], svc, *, tenant: str, clearance: str,
-                  route: str, top_k: int) -> tuple[int, int | None]:
+                  route: str, top_k: int, channels=None) -> tuple[int, int | None]:
     """(gold 적중 문서 수, 첫 gold 의 문서 순위 | None).
 
     **순위까지 재는 이유**: Recall@10 은 굵은 자다. gold 를 10위 안에 붙들어 두면서 9위로
@@ -107,7 +115,8 @@ async def run_arm(query: str, gold: set[str], svc, *, tenant: str, clearance: st
     from nexus.search import hybrid
 
     r = await hybrid.hybrid_search(query, tenant=tenant, clearance=clearance,
-                                   top_k=top_k, embedding_svc=svc, route=route)
+                                   top_k=top_k, embedding_svc=svc, route=route,
+                                   channels=channels)
     if r.degraded:
         raise SystemExit(f"✗ 다리가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
     seen: list[str] = []
@@ -119,6 +128,15 @@ async def run_arm(query: str, gold: set[str], svc, *, tenant: str, clearance: st
     return len(gold & set(seen)), first
 
 
+def arms_present(rows: list[dict]) -> dict[str, str]:
+    """이 실행에 실제로 있는 팔만 집계·보고한다 — 없는 팔을 0 으로 채우면 거짓 수가 된다."""
+    out = dict(ARMS)
+    for arm, name in REWRITE_ARMS.items():
+        if rows and arm in rows[0]:
+            out[arm] = name
+    return out
+
+
 def summarise(rows: list[dict]) -> dict:
     """팔별 (gold 를 하나라도 올린 질의 수, MRR).
 
@@ -126,7 +144,7 @@ def summarise(rows: list[dict]) -> dict:
     """
     n = len(rows) or 1
     out = {}
-    for arm in ARMS:
+    for arm in arms_present(rows):
         found = sum(1 for r in rows if r[arm]["hits"] > 0)
         mrr = sum(1 / r[arm]["rank"] if r[arm]["rank"] else 0.0 for r in rows) / n
         out[arm] = {"found": found, "mrr": round(mrr, 3)}
@@ -173,6 +191,11 @@ async def _run(args) -> int:
 
     by_id = {q["id"]: q for q in labels["queries"]}
     drift = threads["drift_turn"]
+    llm = None
+    if args.rewrite:
+        from nexus.providers.llm import LLMService
+        llm = LLMService()
+        print(f"  재작성 팔 켬 — LLM 호출이 스레드당 1회 붙는다 (model={llm.model})")
     base = threads.get("baseline") or {}
     svc = embedding_service_from_config()
     rows: list[dict] = []
@@ -198,6 +221,28 @@ async def _run(args) -> int:
                                            clearance=args.clearance, route=args.route,
                                            top_k=args.top_k)
                 row[arm] = {"hits": hits, "rank": rank}
+
+            if llm is not None:
+                # **판정 조건은 흘러간 스레드다** (SPEC §5.2): 앞 화제 한 턴이 깔린 이력에서
+                # 재작성이 싸구려 하한(이어붙임)을 이기는가. 붙어 있는 스레드는 공짜 해법이
+                # 이미 잘하는 조건이라 변별력이 없다.
+                history = [{"role": "user", "content": drift},
+                           {"role": "assistant", "content": "네, 도움이 됐다니 다행입니다."},
+                           {"role": "user", "content": t["turn1"]},
+                           {"role": "assistant", "content": "네, 그 부분을 설명드렸습니다."}]
+                rq = await rewrite(t["turn2"], history, llm)
+                row["rewritten_query"] = rq
+                hits, rank = await run_arm(rq, gold, svc, tenant=args.tenant,
+                                           clearance=args.clearance, route=args.route,
+                                           top_k=args.top_k)
+                row["rewritten"] = {"hits": hits, "rank": rank}
+                # U3 그대로: 재작성 + 원문 두 채널. 재작성이 원문과 같으면 채널을 늘리지
+                # 않는다 — 같은 문자열은 순서를 안 바꾸고 점수만 팽창시킨다 (§3.3).
+                ch = None if rq == t["turn2"] else [(rq, W_REWRITTEN), (t["turn2"], W_ORIGINAL)]
+                hits, rank = await run_arm(rq, gold, svc, tenant=args.tenant,
+                                           clearance=args.clearance, route=args.route,
+                                           top_k=args.top_k, channels=ch)
+                row["rewritten_fused"] = {"hits": hits, "rank": rank}
             rows.append(row)
             print("  ".join([f"{t['qid']:6s}"] + [
                 f"{a[:2]}{row[a]['hits']}/{len(gold)}@{row[a]['rank'] or '-'}" for a in ARMS]))
@@ -224,7 +269,7 @@ async def _run(args) -> int:
         return 1
 
     print(f"\n  (n={n})                             gold 올림   MRR(문서)")
-    for arm, name in ARMS.items():
+    for arm, name in arms_present(rows).items():
         s = summary[arm]
         print(f"    {name:32s} {s['found']:2d}/{n}      {s['mrr']:.3f}")
     gap = summary["standalone"]["found"] - summary["elliptical"]["found"]
@@ -264,6 +309,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--top-k", type=int, default=10, dest="top_k")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--report", type=Path, default=None)
+    ap.add_argument("--rewrite", action="store_true",
+                    help="재작성 팔을 켠다 (LLM 호출·비용). SPEC §5.1: 첫 실행은 성능이 아니라 "
+                         "잡음 측정이다 — 같은 조건 5회를 돌려 폭을 먼저 보고하라")
     args = ap.parse_args(argv)
     import os
     if not os.getenv("DATABASE_URL"):
