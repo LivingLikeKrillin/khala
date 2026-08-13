@@ -1,0 +1,559 @@
+{
+ "ran_at": "2026-08-13T07:38:25+00:00",
+ "threads_revision": 1,
+ "labels_revision": 3,
+ "tenant": "ko_eval_packa",
+ "clearance": "INTERNAL",
+ "route": "hybrid_only",
+ "top_k": 10,
+ "drift_turn": "지난번에 CoreDNS 로 서비스 디스커버리 붙이는 걸 알려줬잖아, 그건 잘 됐어",
+ "partial": false,
+ "summary": {
+  "standalone": {
+   "found": 24,
+   "mrr": 0.938
+  },
+  "elliptical": {
+   "found": 20,
+   "mrr": 0.611
+  },
+  "concat": {
+   "found": 23,
+   "mrr": 0.812
+  },
+  "drift_concat": {
+   "found": 20,
+   "mrr": 0.57
+  }
+ },
+ "queries": [
+  {
+   "qid": "q001",
+   "n_gold": 2,
+   "turn1": "수평 파드 오토스케일링을 켜려면 어떻게 하나",
+   "turn2": "그건 레플리카 수를 무엇을 보고 정해?",
+   "standalone": {
+    "hits": 2,
+    "rank": 2
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 4
+   },
+   "concat": {
+    "hits": 2,
+    "rank": 2
+   },
+   "drift_concat": {
+    "hits": 2,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q004",
+   "n_gold": 2,
+   "turn1": "CronJob 으로 주기 작업을 돌리고 싶어",
+   "turn2": "거기 스케줄 표기법은 어떻게 써?",
+   "standalone": {
+    "hits": 2,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 4
+   },
+   "concat": {
+    "hits": 2,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 2,
+    "rank": 2
+   }
+  },
+  {
+   "qid": "q005",
+   "n_gold": 1,
+   "turn1": "EndpointSlice 가 뭐야",
+   "turn2": "그럼 그건 엔드포인트를 어떻게 나눠서 들고 있어?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q010",
+   "n_gold": 1,
+   "turn1": "스테이트풀셋으로 데이터베이스를 올렸어",
+   "turn2": "개수를 늘리거나 줄이려면?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 2
+   }
+  },
+  {
+   "qid": "q011",
+   "n_gold": 2,
+   "turn1": "데몬셋으로 로그 수집기를 모든 노드에 깔았어",
+   "turn2": "롤링 업데이트하려면 어떤 전략을 써?",
+   "standalone": {
+    "hits": 2,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 2
+   },
+   "concat": {
+    "hits": 2,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q012",
+   "n_gold": 2,
+   "turn1": "네트워크폴리시가 뭐 하는 거야",
+   "turn2": "그걸로 파드 사이 트래픽을 막으려면?",
+   "standalone": {
+    "hits": 2,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 3
+   },
+   "concat": {
+    "hits": 2,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 2,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q014",
+   "n_gold": 1,
+   "turn1": "리소스쿼터에 대해 알려줘",
+   "turn2": "네임스페이스별 사용량을 제한하려면 어떻게 써?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 6
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q015",
+   "n_gold": 2,
+   "turn1": "노드마다 GPU 유무가 달라",
+   "turn2": "특정 노드에만 올리려면 어떻게 해?",
+   "standalone": {
+    "hits": 2,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 2
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 2
+   },
+   "drift_concat": {
+    "hits": 0,
+    "rank": null
+   }
+  },
+  {
+   "qid": "q016",
+   "n_gold": 1,
+   "turn1": "레디스를 클러스터에 올리려고 해",
+   "turn2": "설정을 바꾸려면 뭘 붙여?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 0,
+    "rank": null
+   },
+   "drift_concat": {
+    "hits": 0,
+    "rank": null
+   }
+  },
+  {
+   "qid": "q017",
+   "n_gold": 2,
+   "turn1": "노드에 메모리가 모자라면 무슨 일이 일어나",
+   "turn2": "그러면 어떤 것부터 쫓겨나?",
+   "standalone": {
+    "hits": 1,
+    "rank": 2
+   },
+   "elliptical": {
+    "hits": 0,
+    "rank": null
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 3
+   }
+  },
+  {
+   "qid": "q018",
+   "n_gold": 2,
+   "turn1": "팀마다 네임스페이스를 따로 줬어",
+   "turn2": "메모리 요청량 기본값을 정해두려면?",
+   "standalone": {
+    "hits": 2,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 2,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 2,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q020",
+   "n_gold": 4,
+   "turn1": "잡으로 배치 작업을 돌리고 있어",
+   "turn2": "병렬 처리 개수를 늘리려면?",
+   "standalone": {
+    "hits": 4,
+    "rank": 2
+   },
+   "elliptical": {
+    "hits": 4,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 4,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 2,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q021",
+   "n_gold": 1,
+   "turn1": "파드 안에서 도는 프로그램을 짜고 있어",
+   "turn2": "API 서버로 요청을 보내려면?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q024",
+   "n_gold": 1,
+   "turn1": "볼륨 백업은 어떻게 하는 게 좋아",
+   "turn2": "스냅샷을 떠두려면 어떻게 해?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q025",
+   "n_gold": 1,
+   "turn1": "노드에 taint 를 걸고 싶어",
+   "turn2": "그러면 파드는 어떻게 돼?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 0,
+    "rank": null
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 0,
+    "rank": null
+   }
+  },
+  {
+   "qid": "q026",
+   "n_gold": 1,
+   "turn1": "비밀번호를 파드에 넘기고 싶어",
+   "turn2": "kubectl 로 만들고 값을 확인하려면?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 0,
+    "rank": null
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 4
+   },
+   "drift_concat": {
+    "hits": 0,
+    "rank": null
+   }
+  },
+  {
+   "qid": "q027",
+   "n_gold": 2,
+   "turn1": "kubeadm 으로 클러스터를 만들었어",
+   "turn2": "어떤 순서로 업그레이드해?",
+   "standalone": {
+    "hits": 2,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 2,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 2,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 2,
+    "rank": 1
+   }
+  },
+  {
+   "qid": "q030",
+   "n_gold": 1,
+   "turn1": "livenessProbe 와 readinessProbe 라는 게 있던데 뭐가 달라",
+   "turn2": "그럼 그 둘은 어떻게 나눠 설정해?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 0,
+    "rank": null
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 5
+   }
+  },
+  {
+   "qid": "q031",
+   "n_gold": 2,
+   "turn1": "PV 를 지웠더니 데이터가 같이 날아갔어",
+   "turn2": "반환 정책을 Retain 으로 바꾸려면?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 2,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 2
+   }
+  },
+  {
+   "qid": "q033",
+   "n_gold": 2,
+   "turn1": "스테이트풀 셋 파드 하나가 Terminating 에서 안 넘어가",
+   "turn2": "강제로 지우려면?",
+   "standalone": {
+    "hits": 2,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 2,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 2,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 2,
+    "rank": 2
+   }
+  },
+  {
+   "qid": "q034",
+   "n_gold": 1,
+   "turn1": "데몬 셋을 업데이트했는데 잘못 나갔어",
+   "turn2": "이전 리비전으로 되돌리려면?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 1
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 4
+   }
+  },
+  {
+   "qid": "q036",
+   "n_gold": 1,
+   "turn1": "퍼시스턴트 볼륨을 여러 파드가 같이 쓰고 있어",
+   "turn2": "한 파드 전용으로 바꾸려면?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 3
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 4
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 4
+   }
+  },
+  {
+   "qid": "q038",
+   "n_gold": 3,
+   "turn1": "파드에 로그 전달용 컨테이너를 하나 더 넣고 싶어",
+   "turn2": "사이드 카를 넣는 방법은?",
+   "standalone": {
+    "hits": 3,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 2,
+    "rank": 3
+   },
+   "concat": {
+    "hits": 3,
+    "rank": 2
+   },
+   "drift_concat": {
+    "hits": 3,
+    "rank": 2
+   }
+  },
+  {
+   "qid": "q040",
+   "n_gold": 1,
+   "turn1": "클러스터 용량이 자주 모자라",
+   "turn2": "무엇을 보고 노드를 늘려?",
+   "standalone": {
+    "hits": 1,
+    "rank": 1
+   },
+   "elliptical": {
+    "hits": 1,
+    "rank": 1
+   },
+   "concat": {
+    "hits": 1,
+    "rank": 2
+   },
+   "drift_concat": {
+    "hits": 1,
+    "rank": 7
+   }
+  }
+ ]
+}
