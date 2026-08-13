@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -51,3 +53,71 @@ def test_every_search_endpoint_validates_the_route_before_touching_the_db(client
                     headers={"Authorization": "Bearer " + "x" * 40})
     assert r.status_code == 400, f"{path} → {r.status_code} {r.text[:80]}"
     assert "unknown_route" in r.json()["detail"]
+
+
+# ── 0건의 원인은 **자기 엔드포인트**가 답한다 (2026-08-13 슬랙 파일럿) ─────────────
+
+@pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"),
+                    reason="NEXUS_TEST_DB_URL 필요 — /search 를 끝까지 태우려면 DB 가 있어야 한다")
+def test_search_never_runs_the_visibility_query(client, monkeypatch):
+    """검색 응답 조립은 DB 진단을 하지 않는다.
+
+    이 검사가 지키는 것은 성능이 아니라 **스위트가 도는 것**이다. 같은 진단을 검색 경로에 얹은
+    두 판이 전부 CI 를 매달았다: 죽은 이벤트 루프에 묶인 풀에서 커넥션이 열린 트랜잭션째 남아
+    `documents` 락을 쥐었고, 뒤따르는 TRUNCATE 가 전부 그 뒤에 섰다.
+    """
+    from nexus.search.hybrid import SearchResult
+
+    async def empty(*a, **k):
+        return SearchResult(hits=[], route_used="keyword_only", timing_ms={"total_ms": 1})
+    monkeypatch.setattr("nexus.api.hybrid_search", empty)
+    # 신호 기록은 DB 를 친다. 이 시험이 보는 것은 가시성 진단이 도는지이지 신호 적재가 아니다 —
+    # 유닛 잡에는 DB 가 없고, 스텁하지 않으면 그 500 이 이 단언을 대신 실패시킨다.
+    async def no_signal(*a, **k):
+        return None
+    monkeypatch.setattr("nexus.api.record_search", no_signal)
+
+    ran = []
+
+    async def tripwire(tenant, clearance):
+        ran.append(1)
+        return (0, 0)
+    monkeypatch.setattr("nexus.api.visibility_counts", tripwire)
+
+    r = client.post("/search", json={"query": "무엇이든", "route": "keyword_only"},
+                    headers={"Authorization": "Bearer " + "x" * 40})
+    assert r.status_code == 200, r.text
+    assert ran == [], "검색이 가시성 진단을 돌렸다"
+    assert "no_visible_documents" not in r.json()["data"]
+
+
+def test_visibility_endpoint_separates_empty_from_invisible(client, monkeypatch):
+    """`/visibility` 는 '문서가 없다' 와 '내 등급으로 안 보인다' 를 가른다.
+
+    `/status` 의 `documents_count` 는 전역 수라 이 질문에 답하지 못한다 — 그 수를 보고 봇이
+    "문서에서 못 찾았다" 고 답한 것이 이 엔드포인트가 생긴 이유다.
+    """
+    async def counts(tenant, clearance):
+        return (116, 0)
+    monkeypatch.setattr("nexus.api.visibility_counts", counts)
+
+    r = client.get("/visibility", headers={"Authorization": "Bearer " + "x" * 40})
+    assert r.status_code == 200, r.text
+    d = r.json()["data"]
+    assert d["documents_total"] == 116 and d["documents_visible"] == 0
+    assert d["no_visible_documents"] is True
+
+
+def test_visibility_of_an_empty_corpus_is_not_a_config_defect(client, monkeypatch):
+    """문서가 아예 없으면 그것은 설정 결함이 아니라 빈 코퍼스다 — 고칠 사람이 다르다."""
+    async def counts(tenant, clearance):
+        return (0, 0)
+    monkeypatch.setattr("nexus.api.visibility_counts", counts)
+
+    r = client.get("/visibility", headers={"Authorization": "Bearer " + "x" * 40})
+    assert r.json()["data"]["no_visible_documents"] is False
+
+
+def test_visibility_requires_a_token(client):
+    """열람 가능 문서 수는 **당신의** 범위다 — 무인증으로 남의 코퍼스 크기를 알려주지 않는다."""
+    assert client.get("/visibility").status_code == 401

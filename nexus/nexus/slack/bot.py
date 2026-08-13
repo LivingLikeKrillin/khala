@@ -90,6 +90,21 @@ def _documents_count() -> int:
         return -1
 
 
+def _blind() -> bool:
+    """**이 봇의 등급으로** 볼 수 있는 문서가 한 건도 없는가 (`/visibility`).
+
+    0건을 받았을 때만 묻는다 — 검색 경로에 얹으면 모든 질의가 이 왕복을 낸다. 실패하면 False:
+    모르는 것을 설정 결함이라고 단정하면 멀쩡한 검색 실패가 운영자 호출이 된다.
+    """
+    try:
+        with httpx.Client(timeout=5.0, transport=_transport()) as client:
+            r = client.get(f"{NEXUS_API_URL}/visibility",
+                           headers={"Authorization": f"Bearer {NEXUS_SLACK_TOKEN}"})
+        return bool(r.json().get("data", {}).get("no_visible_documents", False))
+    except Exception:  # noqa: BLE001
+        return False
+
+
 async def _call_nexus_api(query: str) -> dict:
     """Nexus /search/answer 호출. 실패는 NexusCallError(outcome) 로 분류해 올린다."""
     async with httpx.AsyncClient(timeout=60.0, transport=_transport()) as client:
@@ -115,9 +130,24 @@ async def _call_nexus_api(query: str) -> dict:
         raise NexusCallError(Outcome.OTHER)
 
     payload = data["data"]
+
+    # **생성 실패를 답변으로 내보내지 않는다.** 서버는 LLM 이 죽으면 `answer` 자리에 근거 원문
+    # 덤프를 넣는다(llm/answer.py). 근거가 있으니 아래 분기는 통과하고, 사용자는 실패를 답변으로
+    # 읽는다. 2026-08-13 크레딧 소진 때 실제로 그 덤프가 슬랙으로 나갔다.
+    if payload.get("llm_failed"):
+        logger.error("nexus_llm_generation_failed")
+        raise NexusCallError(Outcome.GENERATION_FAILED)
+
     if not payload.get("evidence_snippets"):
-        # 근거 0건 — 코퍼스가 비었나(EMPTY_CORPUS), 아니면 그냥 못 찾았나(EMPTY_GROUNDING)?
-        raise NexusCallError(
-            Outcome.EMPTY_CORPUS if _documents_count() == 0 else Outcome.EMPTY_GROUNDING)
+        # 근거 0건의 세 가지 원인은 서로 다른 사실이고, 고칠 사람도 다르다. 여기서만 서버에
+        # 되묻는다 — 답이 나온 질의에는 이 왕복이 붙지 않는다.
+        if _documents_count() == 0:
+            raise NexusCallError(Outcome.EMPTY_CORPUS)
+        if _blind():
+            # 등급/테넌트 설정 결함 — 사용자가 질문을 바꿔도 영원히 0건이다. 운영자 몫이라
+            # 로그로도 남긴다.
+            logger.error("nexus_no_visible_documents_check_NEXUS_SLACK_CLEARANCE")
+            raise NexusCallError(Outcome.NO_VISIBLE_DOCS)
+        raise NexusCallError(Outcome.EMPTY_GROUNDING)
 
     return payload

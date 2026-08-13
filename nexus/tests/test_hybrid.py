@@ -1,6 +1,7 @@
 """Hybrid 검색 테스트 — RRF fusion, route 판별, 멀티-엔티티 그래프 병합."""
 
 from nexus.repositories.graph import EdgeResult, ObservedEdgeResult, SubGraph
+from nexus.search import hybrid
 from nexus.search.hybrid import _merge_subgraphs, _rrf_fusion
 from nexus.search.router import determine_route
 
@@ -119,3 +120,49 @@ class TestMergeSubgraphs:
         sg2 = _subgraph("order", [], [obs])
         merged = _merge_subgraphs([sg1, sg2])
         assert len(merged.observed_edges) == 1
+
+
+# ── 0건의 원인을 가른다 (2026-08-13 슬랙 파일럿에서 관측) ─────────────────────────
+
+class _Row(dict):
+    """asyncpg.Record 처럼 __getitem__ 으로 읽히는 최소 대역."""
+
+
+async def test_counts_report_total_and_visible_separately(monkeypatch):
+    async def fake(query, *args):
+        return _Row(total=116, visible=0)
+    monkeypatch.setattr(hybrid.db, "fetch_one", fake)
+    assert await hybrid.visibility_counts("default", "PUBLIC") == (116, 0)
+
+
+async def test_counts_are_zero_when_the_row_is_missing(monkeypatch):
+    async def none(query, *args):
+        return None
+    monkeypatch.setattr(hybrid.db, "fetch_one", none)
+    assert await hybrid.visibility_counts("default", "PUBLIC") == (0, 0)
+
+
+async def test_the_search_function_never_runs_the_visibility_query(monkeypatch):
+    """`hybrid_search` 는 이 진단을 부르지 않는다 — 첫 판이 그렇게 했다가 CI 를 40분 세웠다.
+
+    `hybrid_search` 는 DB 없이 도는 단위 테스트 수백 개가 부르는 함수다. 거기에 DB 왕복 하나를
+    얹으면 죽은 이벤트 루프에 묶인 전역 asyncpg 풀을 집고, 커넥션이 열린 트랜잭션째 남아
+    `documents` 에 AccessShareLock 을 쥔다 — 뒤따르는 모든 TRUNCATE 가 그 뒤에 줄을 선다.
+    두 번째 판(응답 조립 + 타임아웃)도 같은 이유로 매달렸다: 붙들고 있던 것은 질의가 아니라
+    커넥션이었다. 그래서 진단은 자기 엔드포인트에만 산다.
+    """
+    touched = []
+
+    async def tripwire(query, *args):
+        touched.append(query)
+        return _Row(total=0, visible=0)
+    monkeypatch.setattr(hybrid.db, "fetch_one", tripwire)
+
+    async def no_hits(*a, **k):
+        return []
+    monkeypatch.setattr(hybrid, "_bm25_search", no_hits)
+    monkeypatch.setattr(hybrid, "_vector_search", no_hits)
+
+    r = await hybrid.hybrid_search("아무거나", tenant="t", clearance="PUBLIC", route="hybrid_only")
+    assert r.hits == []
+    assert touched == [], "검색 함수가 DB 진단을 돌렸다 — 스위트를 세우는 그 배선이다"

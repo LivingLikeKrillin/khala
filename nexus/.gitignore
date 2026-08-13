@@ -5,6 +5,10 @@ __pycache__/
 dist/
 .venv/
 .env
+# `.env` alone does not cover the copies people actually make while debugging
+# (`.env.bak`, `.env.local`, `.env.2026-08-13`). One such backup sat untracked and
+# **unignored** during this session — a secret one `git add -A` away from the history.
+.env.*
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/

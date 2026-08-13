@@ -103,6 +103,7 @@ async def test_empty_grounding_when_no_snippets_but_corpus_exists(monkeypatch):
     _bot_with(monkeypatch, lambda r: httpx.Response(200, json={
         "success": True, "data": {"answer": "", "evidence_snippets": []}}))
     monkeypatch.setattr(bot, "_documents_count", lambda: 20)   # 코퍼스는 있다
+    monkeypatch.setattr(bot, "_blind", lambda: False)          # 보이는 문서도 있다
     with pytest.raises(bot.NexusCallError) as e:
         await bot._call_nexus_api("q")
     assert e.value.outcome is Outcome.EMPTY_GROUNDING
@@ -133,3 +134,41 @@ def test_main_refuses_to_start_without_the_nexus_token(monkeypatch):
 
 def test_mention_is_stripped():
     assert bot._extract_query("<@U12345> 결제 서비스 토픽") == "결제 서비스 토픽"
+
+
+# ── 실패를 답변인 척 내보내지 않는다 (2026-08-13 라이브 파일럿에서 전부 관측) ──────
+#
+# 이 절의 세 불변식은 전부 **실제로 슬랙에서 깨진 것**이다. 봇은 그날까지 한 번도 실행된 적이
+# 없었고(의존성 누락으로 기동조차 못 했다), 뜨자마자 셋이 연달아 나왔다.
+
+async def test_generation_failure_is_not_presented_as_an_answer(monkeypatch):
+    """LLM 이 죽으면 `answer` 자리에는 근거 원문 덤프가 들어온다(llm/answer.py).
+
+    그것을 그대로 올리면 사용자는 **실패를 답변으로 읽는다.** 2026-08-13 크레딧이 소진됐을 때
+    실제로 그 덤프가 슬랙으로 나갔다(그리고 길이 상한에 걸려 터졌다).
+    """
+    _bot_with(monkeypatch, lambda r: httpx.Response(200, json={
+        "success": True, "data": {
+            "answer": "답변을 생성할 수 없습니다. 아래 근거를 직접 확인해주세요.\n\n" + "근거" * 2000,
+            "evidence_snippets": [{"doc_title": "t"}],
+            "llm_failed": True}}))
+    with pytest.raises(bot.NexusCallError) as e:
+        await bot._call_nexus_api("q")
+    assert e.value.outcome is Outcome.GENERATION_FAILED
+
+
+async def test_no_visible_documents_is_not_the_same_as_not_found(monkeypatch):
+    """등급 때문에 **아무 문서도 안 보이는 것**은 검색 실패가 아니라 설정 결함이다.
+
+    2026-08-13: 봇 principal 은 PUBLIC 인데 코퍼스 116건이 전부 INTERNAL 이라 어떤 질문에도
+    0건이었다. 그런데 봇은 "인덱싱된 문서에서 답을 찾지 못했습니다" 라고 답했다 — 문서를 뒤졌다는
+    단언이고, 거짓이었다. 뒤진 문서가 0건이었다.
+    """
+    _bot_with(monkeypatch, lambda r: httpx.Response(200, json={
+        "success": True, "data": {"answer": "", "evidence_snippets": []}}))
+    monkeypatch.setattr(bot, "_documents_count", lambda: 116)   # 코퍼스는 있다
+    monkeypatch.setattr(bot, "_blind", lambda: True)            # 그런데 하나도 안 보인다
+    with pytest.raises(bot.NexusCallError) as e:
+        await bot._call_nexus_api("q")
+    assert e.value.outcome is Outcome.NO_VISIBLE_DOCS
+    assert message_for(Outcome.NO_VISIBLE_DOCS) != message_for(Outcome.EMPTY_GROUNDING)

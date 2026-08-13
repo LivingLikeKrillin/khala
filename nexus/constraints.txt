@@ -264,3 +264,15 @@ watchfiles==1.2.0
     # via uvicorn
 websockets==17.0.1
     # via uvicorn
+
+# ── slack 봇의 async 런타임(`aiohttp`)과 그 전이 의존 ──────────────────────────
+# `task deps:lock` 은 전부 재해석해 무관한 pin 까지 5개 프로젝트에 걸쳐 올린다. 이 변경은
+# aiohttp 하나를 더하는 것이므로 **그 때문에 새로 필요해진 것만** 넣는다. 다음 정기 lock
+# 때 이 블록은 본문으로 흡수된다.
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.3
+aiosignal==1.4.0
+frozenlist==1.8.0
+multidict==6.7.1
+propcache==0.5.2
+yarl==1.24.5

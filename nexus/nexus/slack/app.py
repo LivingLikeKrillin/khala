@@ -37,10 +37,17 @@ def main() -> None:
     try:
         from slack_bolt.async_app import AsyncApp
         from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
-    except ImportError:
+    except ImportError as e:
+        # **없는 모듈의 이름을 그대로 말한다.** 예전 문구는 무조건 "slack-bolt가 설치되지
+        # 않았습니다" 였는데, 실제로 없던 것은 `aiohttp` 였다(slack_bolt.async_app 이 모듈
+        # 최상단에서 그것을 import 한다). slack-bolt 는 멀쩡히 설치돼 있었으므로 그 문구는
+        # 진단을 정확히 반대 방향으로 보냈다 — 있는 것을 없다고 말하는 오류 메시지는
+        # 오류를 숨기는 것보다 나쁘다.
         logger.error(
-            "slack-bolt가 설치되지 않았습니다. "
-            "pip install 'slack-bolt[async]' slack-sdk 로 설치하세요."
+            "Slack 런타임 import 실패: %s. "
+            "이 이미지는 `pip install -e '.[slack]'` 로 빌드돼야 한다 "
+            "(slack-bolt · slack-sdk · aiohttp).",
+            e,
         )
         raise SystemExit(1)
 
