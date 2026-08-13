@@ -22,6 +22,19 @@ if TYPE_CHECKING:  # 런타임 import 불필요(순환 회피) — 속성 접근
 
 log = structlog.get_logger("nexus.search.signals")
 
+
+def _answer_prompt_sha() -> str:
+    """지연 import — 프롬프트 모듈을 신호 모듈이 무조건 끌고 오지 않게."""
+    from nexus.llm.prompt_version import answer_prompt_sha
+
+    return answer_prompt_sha()
+
+
+def _rewrite_prompt_sha() -> str:
+    from nexus.llm.prompt_version import rewrite_prompt_sha
+
+    return rewrite_prompt_sha()
+
 SIGNAL_EVENT = "search.signal"
 # Must stay in sync with route values produced by nexus/search/router.py / hybrid_search `route_used`.
 _GRAPH_ROUTES = ("hybrid_then_graph", "graph_then_hybrid")
@@ -62,6 +75,10 @@ class SearchSignals:
     rewrite_prompt_tokens: int | None = None
     rewrite_completion_tokens: int | None = None
     rewrite_cost_usd: float | None = None
+    #: 어떤 프롬프트가 이 답을 만들었는가. 값은 프롬프트 **텍스트에서 파생**되므로 사람이
+    #: 올릴 것이 없다(nexus/llm/prompt_version.py). 빈 문자열 = 그 프롬프트를 안 썼다.
+    answer_prompt_sha: str = ""
+    rewrite_prompt_sha: str = ""
     #: 융합에 쓰인 채널 수 (SPEC §4 I6). 1 = 단일 채널(= U3 이전의 모든 행). 채널이 늘면
     #: RRF 점수의 **절대값이 팽창**한다 — 순서는 그대로지만 `top_score` 의 크기가 달라지므로,
     #: 절대 임계값을 쓰는 쪽이 세대를 구분할 수 있어야 한다.
@@ -135,6 +152,9 @@ def extract_signals(
         n_graph_edges=n_graph_edges,
         no_answer=len(hits) == 0,
         fusion_channels=fusion_channels,
+        # 답변 경로에서만 답변 프롬프트를 쓴다. 검색 전용 경로에 그 지문을 적으면 거짓이다.
+        answer_prompt_sha=_answer_prompt_sha() if answer is not None else "",
+        rewrite_prompt_sha=_rewrite_prompt_sha() if (rewrite and rewrite.called) else "",
         rewrite_applied=bool(rewrite and rewrite.called),
         rephrased_sha256=rewrite.sha256 if (rewrite and rewrite.changed) else "",
         rephrased_len=len(rewrite.query) if (rewrite and rewrite.changed) else 0,
@@ -292,9 +312,10 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             sufficiency, sufficiency_at, sufficiency_judge, evidence_fingerprint,
             fusion_channels,
             rewrite_applied, rephrased_sha256, rephrased_len, rewrite_changed,
-            rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd
+            rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd,
+            answer_prompt_sha, rewrite_prompt_sha
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-                  $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
+                  $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -306,6 +327,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sufficiency, judge, fingerprint, sig.fusion_channels,
         sig.rewrite_applied, sig.rephrased_sha256, sig.rephrased_len, sig.rewrite_changed,
         sig.rewrite_prompt_tokens, sig.rewrite_completion_tokens, sig.rewrite_cost_usd,
+        sig.answer_prompt_sha, sig.rewrite_prompt_sha,
     )
 
 

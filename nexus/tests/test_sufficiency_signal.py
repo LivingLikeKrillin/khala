@@ -99,6 +99,9 @@ def test_the_signal_object_carries_no_text():
         "rewrite_applied", "rephrased_sha256", "rephrased_len", "rewrite_changed",
         # 비용은 답변 칸과 **다른 칸**이다 — 섞으면 measured_averages 가 편향된다.
         "rewrite_prompt_tokens", "rewrite_completion_tokens", "rewrite_cost_usd",
+        # 2026-08-13. **프롬프트의 지문**이지 프롬프트가 아니다 — 12 hex. 질의도 근거도
+        # 들어가지 않는다(넣으면 모든 행이 서로 달라 아무것도 구분 못 하고, 텍스트가 샌다).
+        "answer_prompt_sha", "rewrite_prompt_sha",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (
