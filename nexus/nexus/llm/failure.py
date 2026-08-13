@@ -26,10 +26,19 @@ REASONS = (QUOTA, AUTH, RATE_LIMIT, UNAVAILABLE, OTHER)
 #: 기다리면 나아지는가. 클라이언트가 이 축을 각자 다시 유도하면 표면마다 답이 갈린다.
 _TRANSIENT = frozenset({RATE_LIMIT, UNAVAILABLE})
 
-#: 크레딧 소진만 상태 코드로 못 가른다 — Anthropic 은 그것을 400 `invalid_request_error` 로
+#: 청구·한도 사건만 상태 코드로 못 가른다 — Anthropic 은 그것을 400 `invalid_request_error` 로
 #: 준다. 그래서 **400 일 때만** 좁게 본문을 본다. 문구가 바뀌면 `other` 로 떨어지고, 그건
 #: 오분류가 아니라 "모른다" 이다 (§`other` 는 재시도 가능으로 치지 않는다).
-_QUOTA_MARKERS = ("credit balance", "insufficient_quota", "billing", "quota")
+#:
+#: `usage limit` 은 2026-08-13 에 **실제로 맞고 나서** 추가했다. 계정에 설정한 월 사용 한도에
+#: 걸린 것이고("You have reached your specified API usage limits. You will regain access on
+#: 2026-09-01"), 크레딧 잔액과는 다른 사건이지만 사용자에게는 같다: **사람이 손대기 전까지
+#: 영원히 실패한다.** 그때 이 목록은 그것을 못 잡아 `other` 로 떨어뜨렸고, 사용자는
+#: "재시도해도 안 됩니다" 대신 일반 오류 문구를 받았을 것이다.
+_QUOTA_MARKERS = (
+    "credit balance", "insufficient_quota", "billing", "quota",
+    "usage limit", "usage limits", "spend limit", "spending limit",
+)
 
 
 def _status_of(exc: BaseException) -> int | None:
