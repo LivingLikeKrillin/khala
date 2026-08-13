@@ -17,7 +17,7 @@ import pytest
 pytestmark = pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"), reason="NEXUS_TEST_DB_URL 필요")
 
 _TENANT = "srckind"
-_PAGE = "ext-notion-742fb34f-38a5-4d5c-bdeb-7d754774a61f.md"
+_PAGE = "ext-notion-1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d.md"
 
 
 @pytest.fixture

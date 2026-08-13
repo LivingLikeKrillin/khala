@@ -9,7 +9,7 @@ from nexus.documents.origin import source_kind_for
 
 
 @pytest.mark.parametrize("uri,kind", [
-    ("default:ext-notion-742fb34f-38a5-4d5c-bdeb-7d754774a61f.md", "wiki"),
+    ("default:ext-notion-1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d.md", "wiki"),
     ("default:ext-notion-not-a-uuid.md", "wiki"),   # id 가 깨져도 출처는 Notion 이다
     ("default:uploads/policy.pdf.md", "file"),
     ("default:docs/API_CONTRACT.md", "git"),
