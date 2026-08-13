@@ -23,12 +23,12 @@ from nexus.auth import AuthConfig, Principal, effective_scope
 from nexus.auth.deps import make_get_principal
 from nexus.index.graph_extractor import find_entities_in_text, _build_entity_patterns, _load_gazetteer
 from nexus.ingest.pipeline import run_ingest
-from nexus.llm.answer import _load_staleness_ttl, generate_answer
+from nexus.llm.answer import _load_staleness_ttl, _shown_query, generate_answer
 from nexus.documents.staleness import annotate_staleness
 from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
-from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
+from nexus.llm.prompts import build_prompts
 from nexus.otel.aggregator import run_otel_aggregation
 from nexus.otel.diff_engine import run_diff
 from nexus.index.vector_index import configured_column
@@ -513,10 +513,18 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
 
         # LLM 답변 생성
         answer_result = await generate_answer(
-            # **재작성된 질의**다 (SPEC §2·§4 I3). 생략형 원문을 그대로 주면 답변자는 근거를
-            # 손에 쥐고도 "무엇을 가리키는지 모르겠다" 고 답한다 — 2026-08-13 라이브에서 실제로
-            # 그랬다. 이력을 프롬프트에 넣는 것과는 다른 일이다: 들어가는 것은 질의 하나다.
+            # **재작성된 질의**다 (검색 SPEC §2·§4 I3). 생략형 원문을 그대로 주면 답변자는
+            # 근거를 손에 쥐고도 "무엇을 가리키는지 모르겠다" 고 답한다 — 2026-08-13 라이브에서
+            # 실제로 그랬다.
             query=search_query,
+            # 그리고 **사용자가 실제로 친 문장**도 함께 (SPEC-nexus-multi-turn-narration §3.1).
+            # 재작성은 "표로 정리해 줘" 같은 조각을 질의에서 뺀다 — 검색 질의로서는 옳지만,
+            # 떼어낸 요청이 아무 데도 안 가면 사용자는 자기가 한 말이 무시된 답을 받는다.
+            #
+            # **이력을 넣는 것과는 여전히 다른 일이다.** 가는 것은 문장 둘이고 둘 다 이번 턴의
+            # 값이다 — 하나는 서버가 쓴 검색 질의, 하나는 요청 본문의 `req.query` 그대로.
+            # 앞 턴의 텍스트는 답변 프롬프트에 들어가지 않는다 (검색 SPEC §4 I3 / 서술 §4 I2).
+            user_query=req.query,
             packet=packet,
             llm_svc=llm_svc,
             route_used=route,
@@ -991,10 +999,13 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 yield f"event: answer_delta\ndata: {_payload}\n\n"
             else:
                 evidence_text = format_for_llm(packet)
-                user_prompt = build_user_prompt(search_query, evidence_text)
+                # 웹이 쓰는 것이 이 경로다 — 비스트림만 고치면 사람이 보는 표면은 그대로
+                # 사용자 문장을 무시한다 (SPEC-nexus-multi-turn-narration §3.1).
+                system_prompt, user_prompt = build_prompts(
+                    search_query, evidence_text, req.query)
 
                 try:
-                    async for chunk in llm_svc.stream(SYSTEM_PROMPT, user_prompt, usage_out=usage_out):
+                    async for chunk in llm_svc.stream(system_prompt, user_prompt, usage_out=usage_out):
                         answer_parts.append(chunk)
                         yield f"event: answer_delta\ndata: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
                 except Exception as _e:
@@ -1011,7 +1022,10 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             full_answer = "".join(answer_parts)
             report = validate_citations(full_answer, packet)
             # evidence_text 는 위 else 분기에서만 잡히므로 여기서 안전하게 재구성(멱등·저비용).
-            nreport = validate_numbers(full_answer, format_for_llm(packet), req.query)
+            # 대조 대상은 **모델이 질의 자리에서 본 것 전부**다. 재작성 질의만 대면 사용자가
+            # 직접 쓴 숫자가, 원문만 대면 재작성이 채운 숫자가 무근거로 찍힌다.
+            nreport = validate_numbers(full_answer, format_for_llm(packet),
+                                       _shown_query(search_query, req.query))
 
             # 신호 기록은 done yield **전**에 — 클라이언트가 끊기면 제너레이터가 마지막 yield 뒤로
             # 재개 안 될 수 있어 '뒤에서' 기록하면 조용히 누락된다(fire-and-forget 이라 지연 없음).

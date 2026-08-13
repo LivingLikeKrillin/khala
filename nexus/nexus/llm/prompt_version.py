@@ -46,10 +46,16 @@ def _source_of(fn) -> str:
 
 
 def answer_prompt_sha() -> str:
-    """답변 생성 프롬프트(시스템 + 사용자 템플릿)의 지문."""
-    from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
+    """답변 생성 프롬프트(시스템 + 역할 규칙 + 사용자 템플릿)의 지문.
 
-    return fingerprint(SYSTEM_PROMPT, _source_of(build_user_prompt))
+    `USER_REQUEST_RULE` 은 재작성이 질의를 바꾼 턴에만 붙는 조각이라 **한 배포에 프롬프트가
+    두 변종**이다. 지문은 그 둘을 가르지 않고 **재료 전체**를 찍는다 — 이 값이 답하는 질문은
+    "어느 변종이 이 답을 만들었나" 가 아니라 "어떤 프롬프트 코드가 배포돼 있었나" 이고,
+    두 변종은 언제나 같이 배포되기 때문이다. 어느 변종이었는지는 요청별 신호가 답할 일이다.
+    """
+    from nexus.llm.prompts import SYSTEM_PROMPT, USER_REQUEST_RULE, build_user_prompt
+
+    return fingerprint(SYSTEM_PROMPT, USER_REQUEST_RULE, _source_of(build_user_prompt))
 
 
 def rewrite_prompt_sha() -> str:
