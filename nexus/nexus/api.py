@@ -36,7 +36,7 @@ from nexus.providers.llm import LLMService
 from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.evidence_packet import assemble_packet, format_for_llm
-from nexus.search.hybrid import hybrid_search
+from nexus.search.hybrid import hybrid_search, visibility_counts
 from nexus.search.hybrid import ROUTES as hybrid_routes
 from nexus.search.hybrid import UnknownRoute
 from nexus.search.router import determine_route
@@ -378,9 +378,6 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 # 죽은 다리는 호출자에게도 보여야 한다 — 로그에만 있으면 "건강해 보이는" 상태가
                 # 그대로다 (SPEC-nexus-embedding-cutover-seam §4.5).
                 "degraded": result.degraded,
-                # 같은 이유로 0건의 원인도. 이 등급으로 볼 문서가 하나도 없어서 0건이면,
-                # 그것은 검색 실패가 아니라 설정 결함이고 호출자가 그 둘을 구별할 수 있어야 한다.
-                "no_visible_documents": result.no_visible_documents,
             },
         )
     except UnknownRoute as e:
@@ -475,8 +472,6 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # **생성 실패는 답변이 아니다.** 이 플래그가 없는 동안 클라이언트는 둘을 구별할
                 # 수 없었고, 서버가 실패 자리에 넣는 근거 덤프를 답변으로 렌더했다.
                 "llm_failed": answer_result.llm_failed,
-                # 0건이 "못 찾았다" 가 아니라 "이 등급으로 볼 것이 없었다" 였는가.
-                "no_visible_documents": search_result.no_visible_documents,
             },
         )
     except UnknownRoute as e:
@@ -1094,6 +1089,33 @@ async def _embed_backend_health(svc) -> tuple[bool, str | None]:
             return resp.status_code == 200, None
     except Exception:       # noqa: BLE001 — 못 붙는 것도 상태다
         return False, None
+
+
+@app.get("/visibility", response_model=NexusResponse)
+async def visibility(principal: Principal = Depends(get_principal)) -> NexusResponse:
+    """**당신이** 볼 수 있는 문서가 몇 건인가 — 0건을 받은 클라이언트가 이유를 물으러 오는 자리.
+
+    `/status` 의 `documents_count` 는 전역 수라 이 질문에 답하지 못한다. 그래서 슬랙 봇은
+    "문서는 116건 있다" 를 보고 "인덱싱된 문서에서 답을 찾지 못했습니다" 라고 답했다 — 실제로는
+    그 등급으로 **한 건도** 볼 수 없었는데도. 세 원인은 고칠 사람이 다르다:
+
+        total == 0                  → 코퍼스가 비었다 (적재 담당)
+        visible == 0 < total        → 등급/테넌트 설정이 전부 가렸다 (운영자)
+        visible > 0                 → 그냥 못 찾았다 (사용자가 질문을 바꾼다)
+
+    범위는 요청이 아니라 **principal** 이 정한다(`effective_scope`) — 이 수가 다른 사람의
+    코퍼스 크기를 말해 주면 안 된다. 검색 경로에는 아무것도 더하지 않는다: 그 이유는
+    `visibility_counts` 의 docstring 에 있다(같은 진단을 검색 안에 넣었다가 CI 를 40분 세웠다).
+    """
+    tenant, clearance = effective_scope(principal, None, None)
+    total, visible = await visibility_counts(tenant, clearance)
+    return NexusResponse(data={
+        "tenant": tenant,
+        "clearance": clearance,
+        "documents_total": total,
+        "documents_visible": visible,
+        "no_visible_documents": total > 0 and visible == 0,
+    })
 
 
 @app.get("/status", response_model=NexusResponse)

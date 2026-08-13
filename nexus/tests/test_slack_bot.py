@@ -103,6 +103,7 @@ async def test_empty_grounding_when_no_snippets_but_corpus_exists(monkeypatch):
     _bot_with(monkeypatch, lambda r: httpx.Response(200, json={
         "success": True, "data": {"answer": "", "evidence_snippets": []}}))
     monkeypatch.setattr(bot, "_documents_count", lambda: 20)   # 코퍼스는 있다
+    monkeypatch.setattr(bot, "_blind", lambda: False)          # 보이는 문서도 있다
     with pytest.raises(bot.NexusCallError) as e:
         await bot._call_nexus_api("q")
     assert e.value.outcome is Outcome.EMPTY_GROUNDING
@@ -164,9 +165,9 @@ async def test_no_visible_documents_is_not_the_same_as_not_found(monkeypatch):
     단언이고, 거짓이었다. 뒤진 문서가 0건이었다.
     """
     _bot_with(monkeypatch, lambda r: httpx.Response(200, json={
-        "success": True, "data": {"answer": "", "evidence_snippets": [],
-                                  "no_visible_documents": True}}))
+        "success": True, "data": {"answer": "", "evidence_snippets": []}}))
     monkeypatch.setattr(bot, "_documents_count", lambda: 116)   # 코퍼스는 있다
+    monkeypatch.setattr(bot, "_blind", lambda: True)            # 그런데 하나도 안 보인다
     with pytest.raises(bot.NexusCallError) as e:
         await bot._call_nexus_api("q")
     assert e.value.outcome is Outcome.NO_VISIBLE_DOCS

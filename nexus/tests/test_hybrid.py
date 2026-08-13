@@ -1,7 +1,5 @@
 """Hybrid 검색 테스트 — RRF fusion, route 판별, 멀티-엔티티 그래프 병합."""
 
-import pytest
-
 from nexus.repositories.graph import EdgeResult, ObservedEdgeResult, SubGraph
 from nexus.search import hybrid
 from nexus.search.hybrid import _merge_subgraphs, _rrf_fusion
@@ -125,48 +123,40 @@ class TestMergeSubgraphs:
 
 
 # ── 0건의 원인을 가른다 (2026-08-13 슬랙 파일럿에서 관측) ─────────────────────────
-#
-# "질의가 안 맞아서 0건" 과 "이 등급으로 볼 문서가 하나도 없어서 0건" 은 다른 사실이고 고칠
-# 사람도 다르다. 그 둘이 섞여 있던 동안 봇은 후자에 대고 "인덱싱된 문서에서 답을 찾지
-# 못했습니다" 라고 답했다 — 뒤진 문서가 0건이었으므로 거짓이다.
 
 class _Row(dict):
     """asyncpg.Record 처럼 __getitem__ 으로 읽히는 최소 대역."""
 
 
-@pytest.mark.parametrize("total,visible,expected", [
-    (0, 0, False),    # 코퍼스가 비었다 — 설정 결함이 아니다 (EMPTY_CORPUS 가 맡는다)
-    (116, 5, False),  # 보이는 문서가 있다 — 그냥 못 찾은 것이다
-    (116, 0, True),   # 문서는 있는데 하나도 안 보인다 — 설정 결함
-])
-async def test_visibility_gap_is_only_the_third_case(monkeypatch, total, visible, expected):
+async def test_counts_report_total_and_visible_separately(monkeypatch):
     async def fake(query, *args):
-        return _Row(total=total, visible=visible)
+        return _Row(total=116, visible=0)
     monkeypatch.setattr(hybrid.db, "fetch_one", fake)
-    assert await hybrid._no_visible_documents("default", "PUBLIC") is expected
+    assert await hybrid.visibility_counts("default", "PUBLIC") == (116, 0)
 
 
-async def test_a_failed_probe_never_claims_a_config_defect(monkeypatch):
-    """진단이 못 돌면 False 다. 모르는 것을 단정하면 멀쩡한 검색 실패가 설정 결함으로 보고된다."""
-    async def boom(query, *args):
-        raise RuntimeError("db down")
-    monkeypatch.setattr(hybrid.db, "fetch_one", boom)
-    assert await hybrid._no_visible_documents("default", "PUBLIC") is False
+async def test_counts_are_zero_when_the_row_is_missing(monkeypatch):
+    async def none(query, *args):
+        return None
+    monkeypatch.setattr(hybrid.db, "fetch_one", none)
+    assert await hybrid.visibility_counts("default", "PUBLIC") == (0, 0)
 
 
-async def test_the_probe_runs_only_when_there_are_no_hits(monkeypatch):
-    """결과가 있는 요청에는 COUNT 두 개를 붙이지 않는다 — 진단 비용은 0건에만 든다.
+async def test_the_search_function_never_runs_the_visibility_query(monkeypatch):
+    """`hybrid_search` 는 이 진단을 부르지 않는다 — 첫 판이 그렇게 했다가 CI 를 40분 세웠다.
 
-    배선을 행동으로 건다: `hybrid_search` 가 이 함수를 **부르는지**를 본다. 예전 결함 넷 중
-    셋이 '함수는 맞는데 아무도 안 부른다' 였다.
+    `hybrid_search` 는 DB 없이 도는 단위 테스트 수백 개가 부르는 함수다. 거기에 DB 왕복 하나를
+    얹으면 죽은 이벤트 루프에 묶인 전역 asyncpg 풀을 집고, 커넥션이 열린 트랜잭션째 남아
+    `documents` 에 AccessShareLock 을 쥔다 — 뒤따르는 모든 TRUNCATE 가 그 뒤에 줄을 선다.
+    두 번째 판(응답 조립 + 타임아웃)도 같은 이유로 매달렸다: 붙들고 있던 것은 질의가 아니라
+    커넥션이었다. 그래서 진단은 자기 엔드포인트에만 산다.
     """
-    calls = []
+    touched = []
 
-    async def spy(tenant, clearance):
-        calls.append((tenant, clearance))
-        return True
-
-    monkeypatch.setattr(hybrid, "_no_visible_documents", spy)
+    async def tripwire(query, *args):
+        touched.append(query)
+        return _Row(total=0, visible=0)
+    monkeypatch.setattr(hybrid.db, "fetch_one", tripwire)
 
     async def no_hits(*a, **k):
         return []
@@ -175,5 +165,4 @@ async def test_the_probe_runs_only_when_there_are_no_hits(monkeypatch):
 
     r = await hybrid.hybrid_search("아무거나", tenant="t", clearance="PUBLIC", route="hybrid_only")
     assert r.hits == []
-    assert calls == [("t", "PUBLIC")], "0건인데 가시성 진단을 안 불렀다"
-    assert r.no_visible_documents is True
+    assert touched == [], "검색 함수가 DB 진단을 돌렸다 — 스위트를 세우는 그 배선이다"
