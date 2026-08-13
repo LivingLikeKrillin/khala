@@ -431,3 +431,37 @@ async def test_status_distinguishes_not_migrated_from_not_enabled(db):
     from nexus.search.query_retention import status as retention_status
 
     assert await retention_status() == [], "테이블은 있고 켠 테넌트가 없으면 빈 목록이다"
+
+
+# ── 사람이 쓴 것과 기계가 쓴 것 (SPEC-nexus-multi-turn-retrieval §3.5, U4) ───────
+
+async def test_a_rewritten_query_is_marked_so_the_eval_corpus_stays_human(db):
+    """이 테이블의 존재 이유는 **실사용 질문**을 모으는 것이다.
+
+    재작성문을 구분 없이 섞으면, 그 코퍼스로 만든 평가셋이 자기 재작성기를 채점하게 된다.
+    동의 범위·만료는 원문과 같다 — 같은 대화에서 나온 같은 사람의 말이므로.
+    """
+    await _enable(db)
+    assert await retain(TENANT, "그건 어디에 적혀 있어?", SURFACE) == "stored"
+    assert await retain(TENANT, "로그인 정책은 어디에 적혀 있어?", SURFACE,
+                        kind="rewritten") == "stored"
+
+    rows = {r["query_text"]: r["kind"] for r in await db.fetch_all(
+        "SELECT query_text, kind FROM search_query_text WHERE tenant=$1", TENANT)}
+    assert rows == {"그건 어디에 적혀 있어?": "user",
+                    "로그인 정책은 어디에 적혀 있어?": "rewritten"}
+
+
+async def test_the_default_kind_is_user_so_existing_rows_stay_true(db):
+    """지금까지 쌓인 행은 전부 사람이 친 것이다 — 기본값이 그것을 말해야 한다."""
+    await _enable(db)
+    await retain(TENANT, "사람이 친 질문", SURFACE)
+    assert (await db.fetch_one(
+        "SELECT kind FROM search_query_text WHERE tenant=$1", TENANT))["kind"] == "user"
+
+
+async def test_a_rewrite_outside_the_allowlist_is_refused_like_any_other_text(db):
+    """재작성문이라고 동의를 우회하지 않는다 — 같은 문이다."""
+    await _enable(db)
+    assert await retain(TENANT, "허용목록 밖", "unknown-surface", kind="rewritten") == "out_of_scope"
+    assert await _count(db) == 0

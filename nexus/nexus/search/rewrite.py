@@ -14,6 +14,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+from dataclasses import dataclass
 
 import structlog
 
@@ -96,29 +98,55 @@ def _clean(text: str) -> str:
     return out
 
 
-async def rewrite(query: str, history, llm_svc, *, timeout_s: float = TIMEOUT_S) -> str:
+@dataclass(frozen=True)
+class Rewrite:
+    """재작성의 결과 **와 그 흔적** (SPEC §3.5, U4).
+
+    문자열만 돌려주던 판은 usage 를 버렸다. 그러면 재작성 호출의 비용이 어디에도 안 남거나,
+    더 나쁘게는 답변 비용 칸에 섞여 `budget.py::measured_averages` 를 편향시킨다.
+    """
+    query: str
+    #: 재작성기를 **불렀는가** (이력이 있었는가). 실패해도 True — 비용은 이미 났을 수 있다.
+    called: bool = False
+    #: 결과가 원문과 **다른가**. 보수적 재작성의 정상 결과는 "같음" 이므로, 이 비율이 갑자기
+    #: 오르면 재작성기가 얌전하지 않게 된 것이다.
+    changed: bool = False
+    #: LLM usage (`nexus.providers.llm.Usage`) | None = 미측정. 0 으로 채우지 않는다.
+    usage: object | None = None
+
+    @property
+    def sha256(self) -> str:
+        """재작성문의 해시. **본문은 신호 테이블에 넣지 않는다** — 원문보다 민감하다."""
+        return hashlib.sha256(self.query.encode("utf-8")).hexdigest()
+
+
+async def rewrite(query: str, history, llm_svc, *, timeout_s: float = TIMEOUT_S) -> Rewrite:
     """이력을 반영한 검색 질의. **어떤 실패에서도 원문을 돌려준다.**
 
     이력이 없으면 LLM 을 부르지 않는다 — 부를 이유도 없고, 부르면 이력 없는 질의의 지연과
     비용이 조용히 늘어난다 (§4 I1).
     """
     if not history:
-        return query
+        return Rewrite(query=query, called=False)
     try:
-        raw = await asyncio.wait_for(
-            llm_svc.generate(SYSTEM_PROMPT, build_user_prompt(query, history), max_tokens=200),
+        result = await asyncio.wait_for(
+            llm_svc.generate_full(SYSTEM_PROMPT, build_user_prompt(query, history),
+                                  max_tokens=200),
             timeout=timeout_s)
     except TimeoutError:
         logger.warning("rewrite_timed_out", timeout_s=timeout_s)
-        return query
+        return Rewrite(query=query, called=True)
     except Exception as e:  # noqa: BLE001 — 재작성 실패가 검색 실패가 되면 안 된다
         logger.warning("rewrite_failed", error=str(e)[:200])
-        return query
+        return Rewrite(query=query, called=True)
 
-    candidate = _clean(raw)
+    usage = getattr(result, "usage", None)
+    candidate = _clean(getattr(result, "text", "") or "")
     if not _acceptable(candidate, query):
         logger.warning("rewrite_rejected", chars=len(candidate or ""), query_chars=len(query))
-        return query
+        # **비용은 났다.** 결과를 버려도 usage 는 들고 나간다 — 버린 호출이 공짜인 척하면
+        # 재작성의 실제 비용이 장부에서 사라진다.
+        return Rewrite(query=query, called=True, usage=usage)
     if candidate != query:
         logger.info("rewrite_applied", chars=len(candidate))
-    return candidate
+    return Rewrite(query=candidate, called=True, changed=candidate != query, usage=usage)

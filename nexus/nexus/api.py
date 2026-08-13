@@ -322,7 +322,7 @@ def _validate_route(route: str) -> None:
 
 
 
-async def _search_channels(req, llm_svc) -> tuple[str, list[tuple[str, float]] | None]:
+async def _search_channels(req, llm_svc):
     """(검색·라우팅에 쓸 질의, 융합 채널). 이력이 없으면 `(req.query, None)` — 오늘 그대로.
 
     **재작성이 원문과 같으면 채널을 늘리지 않는다.** 같은 문자열은 같은 순위 목록을 내고,
@@ -335,11 +335,11 @@ async def _search_channels(req, llm_svc) -> tuple[str, list[tuple[str, float]] |
     """
     history = _history(req.history)
     if not history:
-        return req.query, None
-    rewritten = await rewrite_query(req.query, history, llm_svc)
-    if rewritten == req.query:
-        return req.query, None
-    return rewritten, [(rewritten, W_REWRITTEN), (req.query, W_ORIGINAL)]
+        return req.query, None, None
+    rw = await rewrite_query(req.query, history, llm_svc)
+    if not rw.changed:
+        return req.query, None, rw
+    return rw.query, [(rw.query, W_REWRITTEN), (req.query, W_ORIGINAL)], rw
 
 
 @app.post("/search", response_model=NexusResponse)
@@ -362,7 +362,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
 
         # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
         # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다 (SPEC §3.3).
-        search_query, channels = await _search_channels(req, LLMService())
+        search_query, channels, rw = await _search_channels(req, LLMService())
 
         # 엔티티 감지
         gazetteer = _load_gazetteer()
@@ -423,10 +423,12 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
             tenant=req.tenant, clearance=req.classification_max, query=req.query,
             n_entities=len(entity_rids),
             fusion_channels=len(channels or [1]),
+            rewrite=rw,
             latency_ms=int((time.time() - _t0) * 1000),
         )
         # fire-and-forget; 답변 경로가 아니다 → not_applicable
-        await record_search(sig, query_text=req.query, principal=principal.name)
+        await record_search(sig, query_text=req.query, principal=principal.name,
+            rewritten_text=rw.query if (rw and rw.changed) else None)
         return NexusResponse(
             data={
                 "results": [_search_hit_to_dict(h) for h in result.hits],
@@ -469,7 +471,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
 
         # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
         # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다 (SPEC §3.3).
-        search_query, channels = await _search_channels(req, llm_svc)
+        search_query, channels, rw = await _search_channels(req, llm_svc)
 
         # 엔티티 감지
         gazetteer = _load_gazetteer()
@@ -516,12 +518,14 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             tenant=req.tenant, clearance=req.classification_max, query=req.query,
             n_entities=len(entity_rids),
             fusion_channels=len(channels or [1]),
+            rewrite=rw,
             latency_ms=int((time.time() - _t0) * 1000),
         )
         await record_search(sig, judge_input=JudgeInput(   # 답변이 받은 것과 같은 근거
             query=req.query, evidence=format_for_llm(packet),
             config=_load_config(), llm_svc=llm_svc),
-            query_text=req.query, principal=principal.name)
+            query_text=req.query, principal=principal.name,
+            rewritten_text=rw.query if (rw and rw.changed) else None)
         return NexusResponse(
             data={
                 "answer": answer_result.answer,
@@ -884,7 +888,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
 
             # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
             # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다 (SPEC §3.3).
-            search_query, channels = await _search_channels(req, llm_svc)
+            search_query, channels, rw = await _search_channels(req, llm_svc)
 
             # 엔티티 감지
             gazetteer = _load_gazetteer()
@@ -1008,7 +1012,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 tenant=req.tenant, clearance=req.classification_max, query=req.query,
                 n_entities=len(entity_rids),
                 fusion_channels=len(channels or [1]),
-            latency_ms=int((time.time() - t0) * 1000),
+                rewrite=rw,
+                latency_ms=int((time.time() - t0) * 1000),
                 n_citations=len(report.citations) if has_answer else None,
                 unverified_citations=report.unverified_count if has_answer else None,
                 llm_failed=llm_failed,
@@ -1019,7 +1024,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             await record_search(sig, judge_input=JudgeInput(
                 query=req.query, evidence=evidence_text,
                 config=_load_config(), llm_svc=llm_svc) if has_answer else None,
-                query_text=req.query, principal=principal.name)
+                query_text=req.query, principal=principal.name,
+            rewritten_text=rw.query if (rw and rw.changed) else None)
 
             done_data = {
                 "timing_ms": search_result.timing_ms,

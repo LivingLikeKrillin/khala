@@ -50,13 +50,18 @@ async def _policy(tenant: str) -> tuple[bool, str, list[str]]:
 
 
 async def retain(tenant: str | None, query_text: str | None,
-                 principal: str | None = None) -> str:
+                 principal: str | None = None, *, kind: str = "user") -> str:
     """질문을 보존한다 — 켜져 있고, 고지가 있고, **그 표면이 허용목록에 있을 때만.**
 
     `off`         옵트인 행이 없다. **아무것도 하지 않는다** — 기존 행의 `seen_count` 도 안 건드린다.
     `no_notice`   행은 있는데 `notice_shown` 이 비었다. 거부하고 센다.
     `out_of_scope` 켜져 있지만 이 principal 은 허용목록 밖이다. 고지를 받지 않은 표면이다.
     `stored`      저장했다(신규 또는 재관측).
+
+    `kind` 는 **사람이 친 것과 기계가 쓴 것**을 가른다(`user` / `rewritten`). 이 테이블은
+    실사용 질문을 모으려고 만든 곳이고(SPEC-nexus-query-text-retention: "평가 천장을 낮추는
+    유일한 재료"), 재작성문을 구분 없이 섞으면 그 코퍼스로 만든 평가셋이 **자기 재작성기를
+    채점하게** 된다. 동의 범위·만료는 원문과 같다 — 같은 대화에서 나온 같은 사람의 말이다.
 
     **principal 은 판단에만 쓰이고 저장되지 않는다.** 저장하면 텍스트 옆에 신원이 앉아, 소금 친
     키로 막아 둔 사람-로그가 같은 행에서 부활한다.
@@ -85,12 +90,12 @@ async def retain(tenant: str | None, query_text: str | None,
         # `first_seen` 은 갱신하지 않는다 — 만료가 그것을 기준으로 돌기 때문이다(§3.3).
         await db.execute(
             """
-            INSERT INTO search_query_text (tenant, retention_key, query_text)
-            VALUES ($1, $2, $3)
+            INSERT INTO search_query_text (tenant, retention_key, query_text, kind)
+            VALUES ($1, $2, $3, $4)
             ON CONFLICT (tenant, retention_key) DO UPDATE
                SET last_seen = now(), seen_count = search_query_text.seen_count + 1
             """,
-            tenant, retention_key(tenant, query_text), query_text)
+            tenant, retention_key(tenant, query_text), query_text, kind)
         counters["stored"] += 1
         return "stored"
     except Exception as exc:  # noqa: BLE001 — 원인 무관하게 검색을 살린다
