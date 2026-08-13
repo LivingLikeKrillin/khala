@@ -26,6 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.ko_eval_answer_quality import aggregate, grid, refuses, score_answer  # noqa: E402
+from nexus.llm.dev_spend import Spend, paid_flag_help, require_free  # noqa: E402
 from scripts.ko_eval_labels import ManifestPack, check, expired, load  # noqa: E402
 from nexus.auth.clearance import LEVELS  # noqa: E402
 from scripts.ko_eval_packb import MANIFEST, tenant_bodies  # noqa: E402
@@ -194,6 +195,10 @@ async def _run(args) -> int:
     svc, llm = embedding_service_from_config(), LLMService()
     if args.model:
         llm.model = args.model            # 브리지가 payload 의 model 을 그대로 넘긴다
+    # **질의당 LLM 을 한두 번 부른다.** 유료 백엔드면 여기서 멈춘다 — 2026-08-13 에 하루치
+    # 평가가 유료로 나갔고, 브리지는 그때도 리포에 있었다 (nexus/llm/dev_spend.py).
+    require_free(llm, allow_paid=args.paid, what="답변 품질 실행")
+    spend = Spend()
     pool = await db.get_pool()
     # **팩이 아니라 테넌트의 제목이다.** 팩은 2026-08-07 에 얼린 116건이고 테넌트는 적재마다
     # 자란다. 지난주 들어온 문서를 인용한 정답을 오답으로 세면 SPEC §1.2 가 새 문서에 되살아난다.
@@ -254,6 +259,7 @@ async def _run(args) -> int:
                 return 1
             packet = assemble_packet(result.hits, result.graph)
             ans = await generate_answer(q["query"], packet, llm_svc=llm)
+            spend.add(ans.usage, kind="answer")
             # **첫 실패에서 멈춘다.** 계속 돌면 실패한 실행의 집계가 리포트로 남고, 그것을 나중에
             # '답변 품질' 로 읽게 된다 — 실제로 3건 중 2건이 근거 덤프 덕에 '사실 통과' 로 찍혔다.
             if ans.llm_failed:
@@ -275,6 +281,7 @@ async def _run(args) -> int:
             if args.sufficiency:
                 from nexus.llm.sufficiency import judge
                 v = await judge(q["query"], format_for_llm(packet), llm)
+                spend.add(None, kind="sufficiency")
                 sufficiency[q["id"]] = v.label.value
 
             rows.append({"qid": q["id"], "grounded": s.grounded, "cites_gold": s.cites_gold,
@@ -362,6 +369,9 @@ async def _run(args) -> int:
     local = "eval/local" in args.report.as_posix()
     print(f"\n기록: {args.report}  (답변 본문 — {'커밋하지 않는다' if local else '커밋 가능'})")
     print(f"      {args.runs}  (실행별 누적 — 잡음 폭은 이것으로만 나온다)")
+    # **이 실행이 쓴 것.** 하니스 지출은 search_log 에 안 들어간다(평가 트래픽이 "답변 1회 비용"
+    # 추정기를 오염시키므로) — 그래서 여기서 스스로 말한다.
+    print(f"\n  {spend.summary()}")
     return 0
 
 
@@ -384,6 +394,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--clearance", default="INTERNAL",
                     help="이 등급으로 읽을 수 있는 것만 검색된다. gold 가 이보다 위면 실행이 거부된다")
     ap.add_argument("--model", default="", help="브리지에 넘길 모델. 비우면 백엔드 기본값")
+    ap.add_argument("--paid", action="store_true", help=paid_flag_help())
     ap.add_argument("--controls", action="store_true",
                     help="답변불가 5건도 돌린다 — 기권 탐지기의 **양성 대조군**이다. "
                          "거절하지 않는 대조군은 라벨 재판정 대상이다")

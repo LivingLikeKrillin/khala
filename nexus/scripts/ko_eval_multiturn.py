@@ -30,6 +30,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from nexus.llm.dev_spend import Spend, paid_flag_help, require_free  # noqa: E402
 from nexus.search.rewrite import W_ORIGINAL, W_REWRITTEN, rewrite  # noqa: E402
 from scripts.ko_eval_labels import ManifestPack, check, expired, load  # noqa: E402
 from scripts.ko_eval_packb import tenant_bodies  # noqa: E402
@@ -191,11 +192,13 @@ async def _run(args) -> int:
 
     by_id = {q["id"]: q for q in labels["queries"]}
     drift = threads["drift_turn"]
-    llm = None
+    llm, spend = None, Spend()
     if args.rewrite:
         from nexus.providers.llm import LLMService
         llm = LLMService()
-        print(f"  재작성 팔 켬 — LLM 호출이 스레드당 1회 붙는다 (model={llm.model})")
+        # 유료 백엔드면 여기서 멈춘다 — 잊는 쪽이 비싸다 (nexus/llm/dev_spend.py).
+        require_free(llm, allow_paid=args.paid, what="재작성 팔")
+        print("  재작성 팔 켬 — LLM 호출이 스레드당 1회 붙는다")
     base = threads.get("baseline") or {}
     svc = embedding_service_from_config()
     rows: list[dict] = []
@@ -230,7 +233,9 @@ async def _run(args) -> int:
                            {"role": "assistant", "content": "네, 도움이 됐다니 다행입니다."},
                            {"role": "user", "content": t["turn1"]},
                            {"role": "assistant", "content": "네, 그 부분을 설명드렸습니다."}]
-                rq = await rewrite(t["turn2"], history, llm)
+                rw = await rewrite(t["turn2"], history, llm)
+                spend.add(rw.usage, kind="rewrite")
+                rq = rw.query
                 row["rewritten_query"] = rq
                 hits, rank = await run_arm(rq, gold, svc, tenant=args.tenant,
                                            clearance=args.clearance, route=args.route,
@@ -286,8 +291,10 @@ async def _run(args) -> int:
         "threads_revision": threads["revision"], "labels_revision": labels["revision"],
         "tenant": args.tenant, "clearance": args.clearance, "route": args.route,
         "top_k": args.top_k, "drift_turn": drift, "partial": partial,
-        "summary": summary, "queries": rows,
+        "summary": summary, "spend": spend.as_dict(), "queries": rows,
     }, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    if args.rewrite:
+        print(f"\n  {spend.summary()}")
     print(f"\n기록: {out}  (공개 코퍼스 위의 결과 — 커밋 가능)")
     return 0
 
@@ -309,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--top-k", type=int, default=10, dest="top_k")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--report", type=Path, default=None)
+    ap.add_argument("--paid", action="store_true", help=paid_flag_help())
     ap.add_argument("--rewrite", action="store_true",
                     help="재작성 팔을 켠다 (LLM 호출·비용). SPEC §5.1: 첫 실행은 성능이 아니라 "
                          "잡음 측정이다 — 같은 조건 5회를 돌려 폭을 먼저 보고하라")
