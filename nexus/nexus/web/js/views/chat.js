@@ -5,6 +5,7 @@
 
 import { getStatus, streamAnswer, suggestEntities } from '../api.js';
 import { corpusHint } from '../corpus-hint.js';
+import { forRequest } from '../history.js';
 import { citationReport } from '../citations.js';
 import { trustSignal } from '../doctype-signal.js';
 import { renderMarkdown } from '../components/markdown.js';
@@ -304,6 +305,10 @@ async function submitQuery() {
         showToast(data.error || '스트리밍 에러', 'error');
         updateBubble(bubbleId, fullAnswer || '오류가 발생했습니다.', false);
       },
+    }, {
+      // 이번 질문과 아직 비어 있는 어시스턴트 버블은 **이미 chatHistory 에 들어가 있다**.
+      // forRequest 가 그 둘을 떼고, 상한(턴 수·바이트)까지 맞춰 준다.
+      history: forRequest(chatHistory),
     });
   } catch (err) {
     showToast(err.message, 'error');
