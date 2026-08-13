@@ -501,7 +501,10 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
 
         # LLM 답변 생성
         answer_result = await generate_answer(
-            query=req.query,
+            # **재작성된 질의**다 (SPEC §2·§4 I3). 생략형 원문을 그대로 주면 답변자는 근거를
+            # 손에 쥐고도 "무엇을 가리키는지 모르겠다" 고 답한다 — 2026-08-13 라이브에서 실제로
+            # 그랬다. 이력을 프롬프트에 넣는 것과는 다른 일이다: 들어가는 것은 질의 하나다.
+            query=search_query,
             packet=packet,
             llm_svc=llm_svc,
             route_used=route,
@@ -974,7 +977,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 yield f"event: answer_delta\ndata: {_payload}\n\n"
             else:
                 evidence_text = format_for_llm(packet)
-                user_prompt = build_user_prompt(req.query, evidence_text)
+                user_prompt = build_user_prompt(search_query, evidence_text)
 
                 try:
                     async for chunk in llm_svc.stream(SYSTEM_PROMPT, user_prompt, usage_out=usage_out):
