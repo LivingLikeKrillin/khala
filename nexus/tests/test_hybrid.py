@@ -294,9 +294,8 @@ async def test_the_original_channel_reaches_the_results(monkeypatch):
 
 async def test_a_dead_rewriter_leaves_todays_result(monkeypatch):
     """§4 I2 의 degrade 경로. 재작성이 죽으면 원문 채널 하나만 남고, 그것이 오늘이다."""
-    calls = _spy_legs(monkeypatch)
+    _spy_legs(monkeypatch)
     today = await _H.hybrid_search("원문", embedding_svc=object(), route="hybrid_only")
-    calls["bm25"].clear(); calls["vector"].clear()
     degraded = await _H.hybrid_search("원문", embedding_svc=object(), route="hybrid_only",
                                       channels=[("원문", 1.0)])
     assert [h.rid for h in today.hits] == [h.rid for h in degraded.hits]
