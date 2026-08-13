@@ -177,3 +177,22 @@ def test_no_message_leaks_a_provider_string():
     for o in Outcome:
         m = message_for(o)
         assert "Anthropic" not in m and "credit balance" not in m
+
+
+def test_a_configured_usage_limit_is_quota_not_other():
+    """2026-08-13 에 실제로 온 문장. 잡지 못해 `other` 로 떨어졌고, 사용자는 일반 오류를 받는다.
+
+    크레딧 잔액과 다른 사건이지만 사용자에게는 같다 — **사람이 한도를 올리기 전까지 영원히
+    실패한다.** 재시도하라고 말하면 거짓이 된다.
+    """
+    real = ("Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', "
+            "'message': 'You have reached your specified API usage limits. "
+            "You will regain access on 2026-09-01 at 00:00 UTC.'}}")
+    assert F.classify(_Status(400, real)) == F.QUOTA
+    assert F.is_transient(F.QUOTA) is False
+
+
+def test_the_word_limit_alone_does_not_mean_quota():
+    """`rate limit` 은 429 로 오고 기다리면 풀린다 — 문구만 보고 청구로 몰면 오분류다."""
+    assert F.classify(_Status(400, "context length limit exceeded")) == F.OTHER
+    assert F.classify(_Status(429, "rate limit exceeded")) == F.RATE_LIMIT
