@@ -91,7 +91,13 @@ async def lifespan(app: FastAPI):
     await _bootstrap_gazetteer()
     await db.ensure_search_log()   # ← 추가: 멱등, 기존 DB도 적재 시작
     await _sweep_orphaned_syncs()
+    # 만료된 질문 텍스트를 스스로 지운다. **안 도는 purge 는 증상이 없다** — 공지에 적은 90일이
+    # 사람의 기억에 걸려 있으면 그것은 약속이 아니다 (nexus/search/purge_schedule.py).
+    from nexus.search.purge_schedule import start as start_purge
+    purge_task = start_purge()
     yield
+    if purge_task is not None:
+        purge_task.cancel()
     await db.close_pool()
 
 
