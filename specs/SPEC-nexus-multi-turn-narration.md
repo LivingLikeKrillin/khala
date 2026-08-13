@@ -2,7 +2,7 @@
 id: SPEC-nexus-multi-turn-narration
 type: spec
 title: 'Multi-turn narration: answer the question that was asked about the conversation'
-status: in_review
+status: approved
 date: '2026-08-13T11:20:00Z'
 linked_adrs:
 - ADR-0002
@@ -11,6 +11,9 @@ tags:
 - nexus
 - llm
 - governance
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-08-13T12:05:10Z'
+content_hash: sha256:b9816c29bbb48d61649aa1e68d2a5769512c122b658304c86c46061e4475451e
 ---
 # Multi-turn narration: answer the question that was asked about the conversation
 
@@ -20,11 +23,15 @@ ADR-0008 §3 항목 3: 게이트는 **디렉터가 발화를 선언하고 그 �
 SPEC 이 스스로 논증해 만들어내는 것이 아니다. `SPEC-nexus-multi-turn-retrieval` §0 의 발화는
 **U1~U4(검색)로 범위가 명시**돼 있고 서술은 거기 포함되지 않았다.
 
-> **선언**: *(미기재 — 디렉터가 채우기 전에는 이 SPEC 은 승인될 수 없다)*
+> **선언**: 멀티턴 서술 게이트를 발화한다.
 >
-> - 발화한 게이트:
-> - 선언자·날짜:
-> - 범위:
+> - **발화한 게이트**: 슬랙 파일럿이 곧 돈다. 그 표면에서 사용자가 형식을 요청하면
+>   (`세 줄로`, `표로`) 그 말은 재작성 단계에서 떼어져 **아무 데도 전달되지 않는다** —
+>   사용자는 자기가 한 말이 무시된 답을 받는다. 검색 게이트와 같은 puller 이지만 다른 결함이고,
+>   검색 SPEC §0 의 범위(U1~U4)가 여기를 덮지 않는다.
+> - **선언자·날짜**: LivingLikeKrillin · 2026-08-13
+> - **범위**: 이 SPEC 의 **U1~U2 만**. 서술형 본체(직전 답변을 재료로 쓰는 것)는 §3.2 의
+>   재개 조건 (a)~(d) 를 충족하는 별도 SPEC 몫이고, 이 발화에 포함되지 않는다.
 
 ### 0.1 ADR-0008 §5 backstop — **디렉터가 판정한다**
 
@@ -32,9 +39,15 @@ SPEC 이 스스로 논증해 만들어내는 것이 아니다. `SPEC-nexus-multi
 ADR-0008 은 backstop 의 owner 를 **LivingLikeKrillin** 으로 명시하고, 게이트를 SPEC 이 혼자
 만들 수 없다는 것과 같은 이유로 **불발화 판정도 SPEC 이 혼자 내릴 것이 아니다.**
 
-판단 재료만 적는다: 이 SPEC 은 새 검색 채널·인덱스·토크나이저·커넥터를 더하지 않는다. 다만
-U2 가 **재작성기(검색 경로 코드)의 반환 계약**을 건드린다. 발화 여부는 §0 선언과 함께 디렉터가
-적는다.
+판단 재료: 이 SPEC 은 새 검색 채널·두 번째 인덱스 백엔드·토크나이저/임베딩 변경·커넥터 작업을
+하나도 하지 않는다. **재작성기도 안 건드린다** — 초안은 재작성기가 "떼어낸 요청" 을 함께
+돌려주게 하려 했고 그것이 검색 경로 코드 변경이었으나, 개정판(§3.1)은 사용자 원문을 그대로
+넘기므로 검색 경로에 **한 줄도 닿지 않는다.** 바뀌는 것은 답변 프롬프트가 무엇을 보는가 하나다.
+
+> **판정**: backstop 은 **발화하지 않는다.** 방아쇠 넷 중 어느 것도 해당하지 않고, 검색 스택은
+> 문자 그대로 무변경이다.
+>
+> - **판정자·날짜**: LivingLikeKrillin · 2026-08-13 (ADR-0008 §5 owner)
 
 ## 1. 무엇이 이것을 불렀나
 
