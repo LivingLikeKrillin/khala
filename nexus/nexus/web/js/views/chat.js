@@ -6,6 +6,7 @@
 import { getStatus, streamAnswer, suggestEntities } from '../api.js';
 import { corpusHint } from '../corpus-hint.js';
 import { forRequest } from '../history.js';
+import { failureNotice } from '../llm-failure.js';
 import { citationReport } from '../citations.js';
 import { trustSignal } from '../doctype-signal.js';
 import { renderMarkdown } from '../components/markdown.js';
@@ -295,6 +296,10 @@ async function submitQuery() {
         updateBubble(bubbleId, fullAnswer, true);
       },
       onDone(data) {
+        // 생성 실패는 답변이 아니다. 서버가 분류한 사유(quota/auth/…)로 갈라 말한다 —
+        // "잠시 후 다시" 는 기다리면 나아질 때만 참이다 (js/llm-failure.js).
+        const notice = failureNotice(data);
+        if (notice) showToast(notice, 'error');
         updateBubble(bubbleId, fullAnswer, false);
         renderCitations(bubbleId, citationReport(data.citations));
         // 히스토리 업데이트

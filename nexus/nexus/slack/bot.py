@@ -29,6 +29,19 @@ NEXUS_SLACK_TOKEN = os.getenv("NEXUS_SLACK_TOKEN", "")
 _CLEARANCE = os.getenv("NEXUS_SLACK_CLEARANCE", "PUBLIC")   # 워크스페이스 전원에게 확장하는 신뢰 바닥
 
 
+#: 서버가 분류한 실패 사유 → 사용자에게 할 말. **봇은 공급자 문구를 문자열 매칭하지 않는다** —
+#: 그 문구는 공급자가 바꾸고, 그때 조용히 오분류가 시작된다. 분류는 서버가 예외를 보는 그
+#: 자리에서 한 번만 한다(nexus/llm/failure.py).
+#: 모르는 사유는 매핑하지 않는다 — `GENERATION_FAILED` 로 떨어지고, 그것은 "기다리면 된다"
+#: 라고 말하지 않는다.
+_OUTCOME_BY_REASON = {
+    "quota": Outcome.LLM_QUOTA,
+    "auth": Outcome.LLM_AUTH,
+    "rate_limit": Outcome.LLM_BUSY,
+    "unavailable": Outcome.LLM_BUSY,
+}
+
+
 class NexusCallError(Exception):
     """Nexus 호출이 답을 못 냈다. outcome 이 어느 대상에게 무슨 말을 할지 정한다."""
 
@@ -135,8 +148,9 @@ async def _call_nexus_api(query: str) -> dict:
     # 덤프를 넣는다(llm/answer.py). 근거가 있으니 아래 분기는 통과하고, 사용자는 실패를 답변으로
     # 읽는다. 2026-08-13 크레딧 소진 때 실제로 그 덤프가 슬랙으로 나갔다.
     if payload.get("llm_failed"):
-        logger.error("nexus_llm_generation_failed")
-        raise NexusCallError(Outcome.GENERATION_FAILED)
+        reason = payload.get("llm_failure_reason")
+        logger.error("nexus_llm_generation_failed", extra={"reason": reason})
+        raise NexusCallError(_OUTCOME_BY_REASON.get(reason, Outcome.GENERATION_FAILED))
 
     if not payload.get("evidence_snippets"):
         # 근거 0건의 세 가지 원인은 서로 다른 사실이고, 고칠 사람도 다르다. 여기서만 서버에
