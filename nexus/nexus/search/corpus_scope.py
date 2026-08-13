@@ -54,8 +54,9 @@ async def visibility_counts(tenant: str, clearance: str) -> dict:
     if not out["visible"]:
         return out
 
-    # 출처는 `source_uri` 에서 딴다. `source_kind` 는 노션 문서에도 'git' 이 적혀 있어
-    # 못 믿는다(2026-08-13 실측) — 그 칸을 고치는 것은 별개 작업이고, 여기서는 사실을 말한다.
+    # 출처는 `source_uri` 에서 딴다. `source_kind` 는 2026-08-13 까지 노션 문서에도 'git' 이
+    # 적혀 있었고(migration 022 로 고침), **고친 뒤에도 여기서는 URI 를 본다** — 유도는
+    # `documents/origin.py` 한 곳에서만 한다는 규칙이 저장값과 화면이 갈라지는 것을 막는다.
     rows = await db.fetch_all(
         f"""
         SELECT CASE WHEN source_uri LIKE '%%ext-notion%%' THEN 'notion'

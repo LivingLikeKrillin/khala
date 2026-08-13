@@ -90,6 +90,9 @@ def test_fetch_markdown_builds_frontmatter_and_counts():
     cd = src.fetch_markdown(ref)
     assert "# Basic 정책" in cd.markdown
     fm = cd.frontmatter
+    # ⚠ 이것은 **컨버터가 만든 dict** 다. 이 값이 DB 까지 가는지는 여기서 알 수 없고, 실제로
+    # 2026-08-13 까지 가지 않았다(CSF→임시파일→INSERT 에서 버려짐). 저장된 행은
+    # tests/test_source_kind_db.py 가 본다 — 생산자 검사만으로는 배선이 끊겨도 초록이다.
     assert fm["source_kind"] == "wiki"
     assert fm["origin_url"] == "https://notion.so/pid1"
     assert fm["origin_last_edited"] == "2026-06-06T00:00:00Z"

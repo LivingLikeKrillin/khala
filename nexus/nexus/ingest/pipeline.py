@@ -14,6 +14,7 @@ import structlog
 import yaml
 
 from nexus import db
+from nexus.documents.origin import source_kind_for
 from nexus.ingest.classifier import ClassificationResult, classify
 from nexus.ingest.chunker import ChunkData, chunk_document
 from nexus.ingest.collector import CollectedFile, collect_files
@@ -81,7 +82,7 @@ async def _save_document(
             title, doc_type, language, approved_hash, n_images
         ) VALUES (
             $1, 'document', $2, $3::classification_level, 'indexer',
-            $4, 'git', $5, $5,
+            $4, $14::source_kind, $5, $5,
             $6, $7, 'active',
             $8, $8,
             $9, $10, $11, $12, $13
@@ -101,7 +102,9 @@ async def _save_document(
             approved_hash = EXCLUDED.approved_hash,
             -- 그림 수는 신호원이다 (ADR-0002 게이트 형식, migration 011). 컨버터가 이미 세고
             -- 있었는데 frontmatter 에만 있어서 질의할 수 없었다.
-            n_images = EXCLUDED.n_images
+            n_images = EXCLUDED.n_images,
+            -- 갱신 목록에 없으면 **재적재로도 고쳐지지 않는다.** 이미 들어앉은 108건이 그랬다.
+            source_kind = EXCLUDED.source_kind
         """,
         rid, tenant, classification.classification,
         collected.canonical_uri, collected.content_hash,
@@ -113,6 +116,7 @@ async def _save_document(
         # 컨버터가 세어 frontmatter 에 넣어 둔 값. 없으면 0 — 파일 적재처럼 그림 개념이
         # 없는 경로가 그렇고, 0 은 "그림 없음" 으로 참이다.
         int(collected.frontmatter.get("image_count") or 0),
+        source_kind_for(collected.canonical_uri),
     )
 
     # content_hash가 바뀐 재수집(덮어쓰기)이면 이벤트 1건 기록 → v_entropy_signals 신호원.
@@ -191,7 +195,7 @@ async def _save_chunks(
                 provenance_tier
             ) VALUES (
                 $1, 'chunk', $2, $3::classification_level, 'indexer',
-                $4, 'git', $5,
+                $4, $14::source_kind, $5,
                 false, $12,
                 $6, $6,
                 $7, $8, $9,
@@ -206,6 +210,7 @@ async def _save_chunks(
                 classification = EXCLUDED.classification,
                 updated_at = EXCLUDED.updated_at,
                 status = $12,
+                source_kind = EXCLUDED.source_kind,
                 {_invalidate_derived()}
             """,
             rid, tenant, classification.classification,
@@ -214,6 +219,7 @@ async def _save_chunks(
             parent_rid, chunk.section_path, chunk.chunk_text,
             chunk.chunk_index, [parent_rid], chunk_status,
             getattr(chunk, "provenance_tier", "authored"),
+            source_kind_for(collected.canonical_uri),
         )
         saved += 1
 
