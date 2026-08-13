@@ -84,6 +84,9 @@ async def lifespan(app: FastAPI):
     # 실패하는 대신 아예 뜨지 않아야 한다 (SPEC-nexus-embedding-cutover-seam §4.2).
     embedding_service_from_config(_load_config())
     await db.get_pool()
+    # 스키마가 코드보다 낡았으면 **크게** 말한다. 부팅은 막지 않는다(nexus/schema_health.py).
+    from nexus.schema_health import log_pending
+    await log_pending()
     await _log_embedding_coverage()
     await _bootstrap_gazetteer()
     await db.ensure_search_log()   # ← 추가: 멱등, 기존 DB도 적재 시작
@@ -1275,6 +1278,13 @@ async def status() -> NexusResponse:
             data["embedding_coverage"] = await fetch_coverage_by_tenant()
             data["embedding_waived"] = await fetch_waived_count()
         except Exception:  # noqa: BLE001 — 마이그레이션 전 DB 면 이 필드만 빠진다
+            pass
+        try:
+            # 밀린 마이그레이션 — 기동 로그에만 있으면 아무도 안 읽는다. 018 이 빠진 채로
+            # 하루가 갔고, 그동안 질문 보존이 조용히 죽어 있었다.
+            from nexus.schema_health import pending as pending_migrations
+            data["pending_migrations"] = await pending_migrations()
+        except Exception:  # noqa: BLE001 — 진단이 /status 를 죽일 수 없다
             pass
         try:
             data["documents_count"] = await db.fetch_val(
