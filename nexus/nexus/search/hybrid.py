@@ -567,33 +567,3 @@ async def hybrid_search(
                 total_ms=total_ms)
 
     return result
-
-
-async def visibility_counts(tenant: str, clearance: str) -> tuple[int, int]:
-    """(이 테넌트의 활성 문서 수, 그중 이 등급으로 **보이는** 수).
-
-    0건의 원인 셋은 서로 다른 사실이고 고칠 사람도 다르다: 코퍼스가 빈 것(적재 담당), 질의가 안
-    맞은 것(사용자), 그리고 등급/테넌트 설정이 코퍼스 전체를 가린 것(운영자). 셋째가 둘째로
-    위장하던 동안 슬랙 봇은 "인덱싱된 문서에서 답을 찾지 못했습니다" 라고 답했다 — 뒤진 문서가
-    하나도 없었으므로 거짓이었다 (2026-08-13, 봇 principal PUBLIC vs 문서 116건 전부 INTERNAL).
-
-    **이 함수는 검색 경로에서 부르지 않는다.** 첫 판은 `hybrid_search` 안에 두었고 그것이 CI 를
-    40분 매달았다: `hybrid_search` 는 DB 없이 도는 단위 테스트 수백 개가 부르는 함수인데, 거기에
-    DB 왕복 하나를 얹으면 **죽은 이벤트 루프에 묶인 전역 asyncpg 풀**을 집는다
-    (`tests/test_search_route_api.py` 픽스처가 이 함정을 이미 적어 두었다). 커넥션이 열린
-    트랜잭션째 반납되지 않아 `documents` 에 AccessShareLock 이 남고, 뒤따르는 모든
-    `TRUNCATE documents` 가 그 뒤에 줄을 섰다. 두 번째 판은 API 응답 조립으로 옮기고 타임아웃을
-    걸었는데 **그래도 매달렸다** — 질의는 끝나 있었고 붙들고 있던 것은 커넥션이었기 때문이다.
-
-    그래서 진단은 **자기 엔드포인트**(`GET /visibility`)에만 산다. 답을 못 받은 클라이언트가
-    이유를 물으러 오는 자리이지, 모든 검색이 지나는 자리가 아니다.
-    """
-    row = await db.fetch_one(
-        "SELECT count(*) AS total, "
-        "       count(*) FILTER (WHERE classification <= $2::classification_level) AS visible "
-        "FROM documents "
-        "WHERE tenant = $1 AND status = 'active' AND is_quarantined = false",
-        tenant, clearance)
-    if not row:
-        return 0, 0
-    return int(row["total"] or 0), int(row["visible"] or 0)
