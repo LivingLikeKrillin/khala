@@ -4,6 +4,8 @@ type: spec
 title: Keep the question, so the eval set can stop being written by the documents
   it grades
 status: approved
+retractions:
+- SPEC-nexus-audit-query-hash
 date: '2026-08-12T00:00:00Z'
 linked_adrs:
 - ADR-0002
@@ -83,16 +85,7 @@ principal on the other, joined by the shared hash — the person log the design 
 reconstructable by anyone with read access to both tables.
 
 Salting with the tenant fixes it structurally rather than by promise: the retention key equals no
-hash stored anywhere else, so there is nothing to join on.
-> ⚠ **철회 (2026-08-14)** — SPEC-nexus-audit-query-hash · 서명: LivingLikeKrillin
->
-> 철회 대상 문장(원문 인용):
-> > Salting with the tenant fixes it structurally rather than by promise: the retention key equals no hash stored anywhere else, so there is nothing to join on.
->
-> 인용문 자체는 참이다 — 그 키와 같은 값은 정말 어디에도 없다. 거짓인 것은 거기서 도출된 **더 넓은 안전성 결론**, 즉 "그러므로 텍스트와 신원이 이어지지 않는다" 다. 이 표는 질문을 **평문**으로 담고, `a2a_audit.query_sha256` 은 소금 없는 `sha256(query)` 였다 — 그 평문에서 해시를 다시 계산하면 principal 로 이어진다. 소금은 *키 동등 조인*을 막지 **자기가 저장한 평문에서의 재계산**을 막지 않는다.
->
-> **이 문서의 status 는 바뀌지 않는다.** 여전히 승인된 문서이고, 틀린 것은 그 안의 한 결론이다.
- The join to `search_log` is not lost,
+hash stored anywhere else, so there is nothing to join on. The join to `search_log` is not lost,
 because it was never needed — building an eval set needs the question and how often it was asked,
 not which request served it.
 

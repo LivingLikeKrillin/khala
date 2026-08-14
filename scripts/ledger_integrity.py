@@ -153,6 +153,100 @@ def check_open_items(root: Path, path: Path | None = None) -> list[str]:
     return problems
 
 
+RETRACTIONS = ROOT / "specs" / "retractions.yaml"
+_RETRACTION_REQUIRED = {"target", "retracted_by", "signed_by", "signed_at", "quote", "why"}
+
+
+def _flat(text: str) -> str:
+    """Whitespace folded to single spaces. A quoted sentence wraps differently than it was
+    written, and a retraction that fails only because of a line break teaches people to stop
+    quoting."""
+    return " ".join(text.split())
+
+
+def check_retractions(root: Path, path: Path | None = None) -> list[str]:
+    """A claim inside a signed document can be withdrawn — **from outside the body.**
+
+    The body hash is what the stamp attests, so a footnote inside an approved document breaks
+    it, and re-stamping to fix that makes "edit, then re-stamp" the routine this whole script
+    exists to catch. Retractions therefore live in `specs/retractions.yaml`, the approved body
+    stays frozen at its approved bytes, and what is checked here is that the two halves cannot
+    drift apart:
+
+    * every sidecar entry names a target that exists and is still stamped;
+    * the target's frontmatter points back (`retractions:`) — **an invisible retraction is worse
+      than a broken hash**, which is why this direction is enforced rather than encouraged;
+    * every frontmatter pointer has an entry here, so the badge cannot outlive its reason;
+    * the quoted sentence actually appears in the target. Retracting a sentence the document
+      does not contain retracts nothing, and nothing else would notice.
+
+    `retractions:` is frontmatter, which the body hash does not cover (`content_hash` lives
+    there too) — that is why the pointer can be added to a frozen document at all.
+    """
+    import yaml
+
+    p = path or RETRACTIONS
+    problems: list[str] = []
+
+    entries = []
+    if p.exists():
+        loaded = yaml.safe_load(p.read_text(encoding="utf-8"))
+        if loaded is None:
+            loaded = []
+        if not isinstance(loaded, list):
+            return [f"{p.name}: expected a list of retractions"]
+        entries = loaded
+
+    bodies: dict[str, tuple[str, str]] = {}          # id -> (rel path, body)
+    pointers: dict[str, list[str]] = {}              # id -> frontmatter retractions
+    for fp, a in _artifacts(root):
+        if a is None:
+            continue
+        rel = fp.relative_to(root).as_posix()
+        bodies[a.meta["id"]] = (rel, a.body if a.meta.get("status") in STAMPED else "")
+        if a.meta.get("retractions"):
+            pointers[a.meta["id"]] = list(a.meta["retractions"])
+
+    claimed: set[tuple[str, str]] = set()
+    for i, e in enumerate(entries):
+        if not isinstance(e, dict):
+            problems.append(f"retractions[{i}]: not a mapping")
+            continue
+        missing = _RETRACTION_REQUIRED - set(e)
+        if missing:
+            problems.append(f"retractions[{e.get('target', i)}]: missing {sorted(missing)}")
+            continue
+        target, by = e["target"], e["retracted_by"]
+        claimed.add((target, by))
+
+        if target not in bodies:
+            problems.append(f"retractions[{target}]: no such artifact - retracting nothing")
+            continue
+        rel, body = bodies[target]
+        if not body:
+            problems.append(f"retractions[{target}]: target is not stamped, so there is no "
+                            "signed claim to retract")
+            continue
+        if by not in pointers.get(target, []):
+            problems.append(
+                f"retractions[{target}]: {rel} does not point back - add `retractions: [{by}]` "
+                "to its frontmatter, or a reader of the document never learns of this")
+        flat_body = _flat(body)
+        for fragment in (f.strip() for f in str(e["quote"]).replace("...", "…").split("…")):
+            if fragment and _flat(fragment) not in flat_body:
+                problems.append(
+                    f"retractions[{target}]: the quoted text is not in {rel} - "
+                    f"{fragment[:60]!r}")
+
+    for aid, listed in pointers.items():
+        for by in listed:
+            if (aid, by) not in claimed:
+                problems.append(
+                    f"{aid}: frontmatter claims a retraction by {by} with no entry in "
+                    f"{p.name} - a badge with no reason behind it")
+    return problems
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--root", type=Path, default=ROOT)
@@ -161,8 +255,15 @@ def main(argv: list[str] | None = None) -> int:
                     help="rewrite the manifest from what is currently selected")
     args = ap.parse_args(argv)
 
+    # The report is ✓/✗ and Korean artifact text. On a cp949 console printing it raises, so a
+    # clean run exited non-zero and looked like a finding — the check reporting a failure it did
+    # not have is worse than the check being ugly.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     checked, mismatches, skipped, manifest_failures = check(args.root, args.manifest)
     item_problems = check_open_items(args.root)
+    retraction_problems = check_retractions(args.root)
 
     if args.write_manifest:
         ids = sorted(a.meta["id"] for _, a in _artifacts(args.root)
@@ -185,10 +286,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  MANIFEST {f}")
     for f in item_problems:
         print(f"  OPEN-ITEM {f}")
+    for f in retraction_problems:
+        print(f"  RETRACTION {f}")
 
-    if mismatches or manifest_failures or item_problems:
+    if mismatches or manifest_failures or item_problems or retraction_problems:
         print(f"\n✗ {len(mismatches)} mismatch(es), {len(manifest_failures)} manifest failure(s), "
-              f"{len(item_problems)} open-item problem(s)")
+              f"{len(item_problems)} open-item problem(s), "
+              f"{len(retraction_problems)} retraction problem(s)")
         return 1
     print("✓ every stamped artifact still matches its body")
     return 0
