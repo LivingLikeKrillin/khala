@@ -128,6 +128,10 @@ async def test_the_handler_never_logs_the_slack_user_id(monkeypatch):
     blob = repr(logged) + repr(client.dms)
     assert _USER not in blob, "사용자 id 가 로그·운영자 DM 에 실렸다"
     assert _USER not in repr(FB.store.counters), "카운터에 신원이 섞였다"
+    # I13 — **키도 안 남는다.** 재연결에 필요한 것은 신원이나 스키마 하나가 아니라 **동거**다.
+    # 봇은 같은 요청에서 질의와 principal 을 다루므로, 키를 찍는 로그 한 줄이 그 둘 옆에
+    # 놓이면 투표↔질의 연결이 DB 밖에서 복원된다.
+    assert _KEY not in blob, "answer_key 가 로그에 실렸다"
 
 
 # ── 투표 → 사유 되묻기 ───────────────────────────────────────────────────────
@@ -191,32 +195,15 @@ async def test_a_storage_failure_does_not_escape_the_handler(monkeypatch):
     await FB.on_vote(_payload("fb_up", _KEY), _Client())   # 예외가 안 나가야 한다
 
 
-# ── 운영자 DM (§3.7) ─────────────────────────────────────────────────────────
+# ── §3.7 개정: 아무 데도 안 알린다 ───────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_the_operator_gets_one_dm_per_answer_not_per_click(monkeypatch):
-    """재클릭마다 투표 행은 쌓이지만 DM 은 안 쌓인다. 5명 팀에서 DM 이 이 기능의 **유일한
-    능동 출력**이므로, 소음 한 번으로 채널이 죽으면 기능 전체가 죽는다."""
-    monkeypatch.setattr(FB, "OPERATOR", "U_OP")
-    monkeypatch.setattr(FB, "_dm_sent", set())
+async def test_a_down_vote_notifies_nobody(monkeypatch):
+    """**푸시를 지웠다** (2026-08-14 개정). 자료는 쌓이고 `nexus feedback` 이 주기적으로 뽑는다.
 
-    async def fake_vote(**kw):
-        return _VOTE
-    monkeypatch.setattr(FB.store, "record_vote", fake_vote)
-
-    client = _Client()
-    await FB.on_vote(_payload("fb_down", _KEY), client)
-    await FB.on_vote(_payload("fb_down", _KEY), client)
-
-    assert len(client.dms) == 1, f"DM 이 {len(client.dms)}번 갔다"
-
-
-@pytest.mark.asyncio
-async def test_the_operator_dm_carries_a_link_not_the_content(monkeypatch):
-    """§4 I11 — 본문을 실으면 §3.5 가 거절한 텍스트 저장이 DM 이라는 다른 경로로 되살아난다."""
-    monkeypatch.setattr(FB, "OPERATOR", "U_OP")
-    monkeypatch.setattr(FB, "_dm_sent", set())
-
+    이 검사가 있는 이유: 지운 경로는 조용히 되살아난다. 알림이 다시 필요해지면 §5.3 평가일에
+    실제 비율을 쥐고 **모양부터** 정하는 것이 순서다.
+    """
     async def fake_vote(**kw):
         return _VOTE
     monkeypatch.setattr(FB.store, "record_vote", fake_vote)
@@ -224,23 +211,9 @@ async def test_the_operator_dm_carries_a_link_not_the_content(monkeypatch):
     client = _Client()
     await FB.on_vote(_payload("fb_down", _KEY), client)
 
-    dm = repr(client.dms[0])
-    assert "permalink" in dm or "https://" in dm
-    assert _USER not in dm, "누가 눌렀는지가 운영자에게 갔다"
-
-
-@pytest.mark.asyncio
-async def test_no_operator_configured_means_no_dm_and_no_crash(monkeypatch):
-    monkeypatch.setattr(FB, "OPERATOR", "")
-    monkeypatch.setattr(FB, "_dm_sent", set())
-
-    async def fake_vote(**kw):
-        return _VOTE
-    monkeypatch.setattr(FB.store, "record_vote", fake_vote)
-
-    client = _Client()
-    await FB.on_vote(_payload("fb_down", _KEY), client)
-    assert client.dms == []
+    assert client.dms == [], "👎 가 어딘가로 밀려 나갔다"
+    assert client.opened == [], "퍼머링크를 뽑았다 — 알릴 곳이 없는데 왜"
+    assert not hasattr(FB, "OPERATOR"), "운영자 설정이 남아 있다"
 
 
 # ── 사유 클릭 ─────────────────────────────────────────────────────────────────
@@ -341,3 +314,18 @@ async def test_no_offer_row_without_a_message_handle(monkeypatch):
 
     await bot._answer("질문", say, {"ts": "1"}, client=None)
     assert offers == []
+
+
+@pytest.mark.asyncio
+async def test_the_key_is_not_logged_even_when_storage_fails(monkeypatch):
+    """실패 경로가 진단을 위해 키를 찍기 쉽다 — 거기가 I13 이 깨지는 자리다."""
+    logged: list = []
+    for level in ("info", "warning", "error"):
+        monkeypatch.setattr(FB.logger, level, lambda *a, **k: logged.append((a, k)))
+
+    async def boom(**kw):
+        raise RuntimeError(f"DB 없음 (key={_KEY})")   # 예외 문구에 키가 들어와도
+    monkeypatch.setattr(FB.store, "record_vote", boom)
+
+    await FB.on_vote(_payload("fb_down", _KEY), _Client())
+    assert _KEY not in repr(logged), "실패 로그가 키를 흘렸다"

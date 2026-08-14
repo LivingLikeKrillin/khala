@@ -301,3 +301,39 @@ async def test_pointers_expire_but_the_counts_survive(clean_db):
     assert off["channel_id"] is None and off["message_ts"] is None, "추정 경로가 남았다"
     counts = await F.tally(tenant=_T)
     assert counts["offered"] == 1 and counts["answers_with_votes"] == 1, "집계가 같이 죽었다"
+
+
+# ── 조회 (SPEC §3.7, 2026-08-14 개정 — 푸시 대신 당김) ────────────────────────
+
+@pytest.mark.asyncio
+async def test_the_review_query_returns_reason_and_pointer(clean_db):
+    """조사의 입구는 스레드다. 조회는 **사유 코드와 포인터**를 준다 — 본문은 DB 에 없다."""
+    key = F.issue_key()
+    await F.record_offer(tenant=_T, answer_key=key, channel_id=_CH, message_ts=_TS)
+    vid = await F.record_vote(tenant=_T, answer_key=key, verdict="down",
+                              channel_id=_CH, message_ts=_TS)
+    await F.set_reason(vote_id=vid, reason="ignored_format")
+    await F.record_vote(tenant=_T, answer_key=key, verdict="up",
+                        channel_id=_CH, message_ts=_TS)
+
+    rows = await F.recent_downvotes(tenant=_T, days=30)
+    assert len(rows) == 1, "👍 가 목록에 섞였다"
+    assert rows[0]["reason"] == "ignored_format"
+    assert rows[0]["channel_id"] == _CH and rows[0]["message_ts"] == _TS
+
+
+@pytest.mark.asyncio
+async def test_an_expired_pointer_is_shown_as_missing_not_hidden(clean_db):
+    """숨기면 "조사했으나 재료가 없었다" 와 "그런 신고가 없었다" 가 같아 보인다."""
+    from nexus import db
+
+    key = F.issue_key()
+    await F.record_offer(tenant=_T, answer_key=key, channel_id=_CH, message_ts=_TS)
+    await F.record_vote(tenant=_T, answer_key=key, verdict="down",
+                        channel_id=_CH, message_ts=_TS)
+    await db.execute(
+        "UPDATE answer_offered SET channel_id = NULL, message_ts = NULL "
+        "WHERE tenant = $1 AND answer_key = $2", _T, key)
+
+    rows = await F.recent_downvotes(tenant=_T, days=30)
+    assert len(rows) == 1 and rows[0]["channel_id"] is None
