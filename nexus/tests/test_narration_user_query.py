@@ -96,6 +96,23 @@ def test_the_system_prompt_says_which_sentence_governs_what():
     assert "근거" in tail, "원문이 근거 규칙을 이기지 못한다는 말이 있어야 한다 (I4·I6)"
 
 
+def test_the_rule_says_a_terse_question_is_not_a_request_for_a_terse_answer():
+    """**측정으로 잡은 회귀다** (2026-08-14, 대조군 c002).
+
+    첫 판의 문구는 "사용자가 형식·분량을 요청했다면 지키세요" 였다. 그랬더니 형식 요청이
+    **없는** 생략형 후속(「복원은 어떻게 해?」)에서 모델이 **질문이 짧다는 것 자체를 분량
+    요청으로 읽었다**: 같은 근거 패킷을 쥐고 1468자·인용 6 → 321자·인용 2 로 줄었고,
+    빠진 것은 군더더기가 아니라 DeletionPolicy·CSI driver 주의 같은 질문 안의 내용이었다.
+
+    U2 가 전달하려는 것은 **명시적** 요청이지 생략의 짧음이 아니다. 그 구분을 프롬프트가
+    이름으로 부르지 않으면 모델이 다시 뭉갠다.
+    """
+    tail, _ = P.build_prompts("찾은 질의", _EVIDENCE, user_query="원래 질문")
+    tail = tail[len(P.SYSTEM_PROMPT):]
+    assert "명시" in tail, "'명시적 요청일 때만' 이라는 말이 없다"
+    assert "짧" in tail, "'질문이 짧다는 것은 요청이 아니다' 를 이름으로 부르지 않았다"
+
+
 def test_the_prompt_fingerprint_covers_the_role_rule(monkeypatch):
     """지문은 **모델에게 가는 바이트**에서 파생돼야 한다. 규칙을 상수 하나로 빼 놓고 지문이
     그것을 안 읽으면, 그 문구를 고친 날 기록은 조용히 거짓이 된다."""
