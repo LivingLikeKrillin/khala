@@ -493,15 +493,30 @@ def status() -> None:
             typer.echo(f"\n문서: {docs}  청크: {chunks}  엔티티: {entities}")
             typer.echo(f"설계 edge: {edges}  관측 edge: {obs}  격리: {quarantined}")
 
-            # 임베딩 세대 건전성(SPEC-nexus-embed-generation-drift) — 부분 재임베딩 경고.
-            from nexus.index.embed_health import embed_generation_report, fetch_embed_generations
-            eg = embed_generation_report(await fetch_embed_generations())
-            if eg["generations"]:
+            # 임베딩 세대 건전성 — **출처 표**를 읽는다. 행 라벨(`chunks.embed_model`)은
+            # 컬럼 둘을 한 칸으로 설명해서 균일한 컬럼을 혼합이라 불렀다
+            # (SPEC-nexus-embedding-provenance-grain §1.3).
+            from nexus.index.provenance import fetch_distribution, fetch_mismatch, summarize
+            from nexus.index.vector_index import configured_column
+            _col = configured_column(_load_config())
+            eg = summarize(await fetch_distribution(_col))
+            if eg["generations"] or eg["unknown"]:
                 dist = "  ".join(f"{g['model']}={g['count']}" for g in eg["generations"])
-                typer.echo(f"임베딩 세대: {dist}")
+                typer.echo(f"임베딩 세대({_col}): {dist or '(아는 것 없음)'}")
+                if eg["unknown"]:
+                    # 숨기면 "모른다" 와 "괜찮다" 가 같아 보인다. 이 수가 크면 아래 혼합·불일치
+                    # 감지의 감도가 그만큼 낮다는 뜻이다 (SPEC §3.3·§7).
+                    typer.echo(f"  출처 미상 {eg['unknown']}개 — 재임베딩해야 알게 된다")
                 if eg["mixed"]:
                     models = ", ".join(g["model"] for g in eg["generations"])
                     typer.echo(f"⚠ 혼합 임베딩 세대 {eg['distinct']}종({models}) — 부분 재임베딩일 수 있음")
+                try:
+                    _mm = await fetch_mismatch(_col, tenant=_load_config().get("default_tenant", "default"))
+                    if _mm:
+                        typer.echo(f"⚠ 선언과 다른 세대의 벡터 {_mm}개 — 검색이 선언되지 않은 "
+                                   f"공간에서 돈다")
+                except Exception:  # noqa: BLE001 — 선언 표가 없는 배포
+                    pass
 
             # 임베딩을 포기한 청크 — 벡터 검색에서 빠진 내용의 양이다
             # (SPEC-nexus-kure-embedding-swap §4.5). 0 이 아니면 조용히 넘어가지 않는다.

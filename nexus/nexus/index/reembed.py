@@ -241,8 +241,9 @@ async def cutover_blockers(column: str, summary_failures: int = 0,
     if summary_failures:
         blockers.append(f"waive 되지 않은 실패 {summary_failures}건")
 
-    from nexus.index.embed_health import embed_generation_report, fetch_embed_generations
-    report = embed_generation_report(await fetch_embed_generations(column=col))
+    # 출처 표 기반 (SPEC-nexus-embedding-provenance-grain §3.2).
+    from nexus.index.provenance import fetch_distribution, summarize
+    report = summarize(await fetch_distribution(col))
     if report["mixed"]:
         gens = ", ".join(f"{g['model']}({g['count']})" for g in report["generations"])
         blockers.append(f"{col} 에 세대가 섞여 있다: {gens}")
