@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -78,6 +79,32 @@ def main() -> None:
                 return
             from nexus.slack.bot import handle_dm
             await handle_dm(event, say, client)
+
+    # ── 피드백 버튼 (SPEC-nexus-answer-feedback U2) ──
+    #
+    # `ack()` 를 **먼저** 부른다. Slack 은 3초 안에 응답을 못 받으면 사용자에게 실패로
+    # 보여주는데, 우리 처리는 DB 왕복을 포함한다.
+
+    from nexus.slack.feedback import ACTION_DOWN, ACTION_REASON, ACTION_UP
+
+    @app.action(ACTION_UP)
+    async def on_up(ack, body, client):
+        await ack()
+        from nexus.slack.feedback import on_vote
+        await on_vote(body, client)
+
+    @app.action(ACTION_DOWN)
+    async def on_down(ack, body, client):
+        await ack()
+        from nexus.slack.feedback import on_vote
+        await on_vote(body, client)
+
+    # 사유 버튼은 코드마다 action_id 가 달라 정규식으로 받는다.
+    @app.action(re.compile(rf"^{ACTION_REASON}_"))
+    async def on_reason_click(ack, body, client):
+        await ack()
+        from nexus.slack.feedback import on_reason
+        await on_reason(body, client)
 
     # ── Socket Mode 시작 ──
 

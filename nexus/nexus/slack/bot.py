@@ -20,6 +20,7 @@ import re
 import httpx
 
 from nexus.slack.formatter import format_answer
+from nexus.slack import feedback as fb
 from nexus.slack.commands import is_scope_command, scope_blocks
 from nexus.slack.messages import Outcome, message_for
 from nexus.slack.thread import read_history
@@ -87,7 +88,13 @@ async def _answer(query: str, say, event: dict, client=None) -> None:
     history = await read_history(client, event) if client is not None else []
     try:
         answer_data = await _call_nexus_api(query, history=history)
-        await say(blocks=format_answer(answer_data), thread_ts=thread_ts)
+        # 답변마다 새 키. 버튼은 이 값을 들고 나가고, 투표는 **게시된 그 메시지**에만 묶인다
+        # (SPEC-nexus-answer-feedback §3.2). 키는 게시 전에 필요하고 (채널, ts) 는 게시
+        # 후에야 알 수 있으므로, 제안 행은 게시 뒤에 남긴다.
+        answer_key = fb.store.issue_key()
+        posted = await say(blocks=format_answer(answer_data) + fb.feedback_blocks(answer_key),
+                           thread_ts=thread_ts)
+        await _record_offer(answer_key, posted, event)
     except NexusCallError as e:
         # 401 은 운영자를 위해 로그로도 남긴다(사용자 메시지와 별개).
         if e.outcome is Outcome.BAD_TOKEN:
@@ -96,6 +103,25 @@ async def _answer(query: str, say, event: dict, client=None) -> None:
     except Exception:
         logger.error("nexus_call_unexpected", exc_info=True)
         await say(text=message_for(Outcome.OTHER), thread_ts=thread_ts)
+
+
+async def _record_offer(answer_key: str, posted, event: dict) -> None:
+    """제안 행(분모) 한 줄. **best-effort** — 여기서 예외가 나가면 피드백이 답변을 죽인다.
+
+    `say()` 가 응답을 안 돌려주는 표면도 있다(테스트 더블 등). 그때는 결속할 (채널, ts) 가
+    없으므로 **제안 행을 만들지 않는다** — 결속 없는 행은 I10 이 막으려는 무기명 자격증명을
+    되살린다. 투표가 오면 `record_vote` 가 orphan 으로 받아 표시한다.
+    """
+    try:
+        ts = (posted or {}).get("ts")
+        channel = (posted or {}).get("channel") or event.get("channel")
+        if not ts or not channel:
+            logger.warning("feedback_offer_skipped_no_message_handle")
+            return
+        await fb.store.record_offer(tenant=fb.TENANT, answer_key=answer_key,
+                                    channel_id=channel, message_ts=ts)
+    except Exception:  # noqa: BLE001 — 답변은 이미 나갔다
+        logger.warning("feedback_offer_failed", exc_info=True)
 
 
 def _extract_query(text: str) -> str:
