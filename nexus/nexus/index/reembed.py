@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from nexus import db
+from nexus.index import provenance
 from nexus.index.vector_index import (
     INDEX_NAMES,
     compute_lists,
@@ -174,6 +175,9 @@ async def reembed(embedding_svc, column: str, batch_size: int = 16,
                 f"UPDATE chunks SET {col} = $1::vector, embed_model = $2, updated_at = now() "
                 "WHERE rid = $3",
                 "[" + ",".join(repr(float(v)) for v in vec) + "]", model, rid)
+            # 재임베딩도 출처를 남긴다. 이 경로가 빠지면 **미상을 줄이는 유일한 수단**이
+            # 미상을 새로 만드는 셈이 된다 (SPEC-nexus-embedding-provenance-grain §4 I2).
+            await provenance.record(chunk_rid=rid, column_name=col, model=model)
             summary.embedded += 1
 
         if progress:
