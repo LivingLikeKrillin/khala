@@ -13,10 +13,26 @@ tags:
 - privacy
 - a2a
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-14T08:44:45Z'
-content_hash: sha256:c0fa46d67468c66dc10a9bb7ff5647132f209918d2f6d5f7b26a2f5b1ae71fab
+reviewed_at: '2026-08-14T14:23:00Z'
+content_hash: sha256:5600c8ea7020bc7a0faf4afad1ad499e5992045cc360b278ca95d37f10ddb722
 ---
 # The audit hash re-identifies retained questions, and salt does not fix it
+
+## Backstop record
+
+```yaml
+backstop:
+- row: adr-0008-retrieval-stack
+  reread: performed 2026-08-14 — §0 에 적힌 대로 검색 스택에 한 줄도 닿지 않는다. 바꾸는 것은
+    감사 행의 질의 지문 한 칸이다.
+  clause: none
+  ruling: does-not-fire
+  declared_by: LivingLikeKrillin
+  declared_at: '2026-08-14'
+  reason: >-
+    감사 기록의 컬럼 하나를 그만 쓰는 일은 검색 스택의 확장이 아니다.
+```
+
 
 ## 0. 왜 이 문서에 게이트 절이 없는가
 

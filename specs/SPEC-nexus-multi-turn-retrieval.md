@@ -13,10 +13,30 @@ tags:
 - search
 - eval
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-13T07:46:38Z'
-content_hash: sha256:eb26e00239be4500aa5869b7566d9309172c26844289a6cadd2cb388d20f5702
+reviewed_at: '2026-08-14T14:23:00Z'
+content_hash: sha256:2eff7cf6c09cf146c419a956a01218033d59f0945794fed49a540b66e5e75750
 ---
 # Multi-turn retrieval: keep the question the user actually asked
+
+## Backstop record
+
+```yaml
+backstop:
+- row: adr-0008-retrieval-stack
+  reread: performed 2026-08-13 — §0.1 에 재독 기록이 있다. 재개 조건 (a) 변화 없음(훅은 여전히
+    EE 전용), (b) 한국어 평가셋 존재·서명됨(Pack A rev3), (c) 이 SPEC 이 자체 스택 유지 비용을
+    키운다(채널 +1, 턴당 LLM 호출 +1) — (c) 판단은 앞당기지 않고 비용 항목에 적었다.
+  clause: new-retrieval-channel
+  ruling: fires
+  declared_by: LivingLikeKrillin
+  declared_at: '2026-08-14'
+  reason: >-
+    §3.3 이 **새 검색 채널을 실제로 더한다** — ADR-0008 §5 가 이름으로 든 트리거다. 그래서
+    발화했고, 재독 결과는 **이 작업을 막지 않는다**. 발화했는데 막지 않은 것과 애초에 발화하지
+    않은 것은 다른 기록이므로 `does-not-fire` 로 적지 않는다. 2026-08-13 재독은 수행됐고
+    서명만 빠져 있었다 — 이 서명이 그 자리를 채운다.
+```
+
 
 ## 0. 게이트 — 디렉터가 채운다
 

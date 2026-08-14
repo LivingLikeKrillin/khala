@@ -14,9 +14,28 @@ tags:
 - eval
 - answer-quality
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-12T14:47:44Z'
-content_hash: sha256:f97b028ae2673b159b0fcd44bd60d8ce6f453faa50992c70b1f7678e0cb2f147
+reviewed_at: '2026-08-14T14:23:00Z'
+content_hash: sha256:e06c66d48ca829e83b84f81c52c0f16fa3393ea7c1539d15a1ffa16070c9646e
 ---
+
+## Backstop record
+
+```yaml
+backstop:
+- row: adr-0008-retrieval-stack
+  reread: performed 2026-08-14 — 이 SPEC 은 답변을 **채점하는 자**를 정의한다. 새 검색 채널·
+    두 번째 인덱스 백엔드·토크나이저/임베딩 변경·커넥터 작업 어느 것도 하지 않고, 검색 경로에
+    닿지 않는다.
+  clause: none
+  ruling: does-not-fire
+  declared_by: LivingLikeKrillin
+  declared_at: '2026-08-14'
+  reason: >-
+    측정 도구는 스택의 확장이 아니다. **소급 서명이라는 사실을 적어 둔다** — 이 SPEC 은
+    2026-08-11 에 승인됐고 그때 이 기록이 없었다. 없던 대로 두지 않고 지금 채우되, 판정
+    시점이 사후임을 숨기지 않는다.
+```
+
 
 ## 1. What prompted it
 

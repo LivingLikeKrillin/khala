@@ -12,11 +12,31 @@ tags:
 - defect
 date: '2026-08-05T01:28:06Z'
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-05T03:40:28Z'
-content_hash: sha256:974fbeb9816670ee0ca6f55e4b9425af4760369f9c2ee84d875f88a9f5309c57
+reviewed_at: '2026-08-14T14:22:59Z'
+content_hash: sha256:2635a67caa5d03e0557dde5f6eccfacc0dd058679828a523dc2b5807c0e3705b
 ---
 
 # The over-length guard races the encoder — give it its own tokenizer
+
+## Backstop record
+
+```yaml
+backstop:
+- row: adr-0008-retrieval-stack
+  reread: performed 2026-08-05 — §5 의 예시 중 "a tokenizer or embedding-model change" 에
+    닿는지가 쟁점이었다. 이 SPEC 이 하는 일은 스택이 **이미 적재한** 토크나이저를 깊은 복사해
+    길이검사가 인코더와 한 객체를 공유하지 않게 하는 것이다.
+  clause: none
+  ruling: does-not-fire
+  declared_by: LivingLikeKrillin
+  declared_at: '2026-08-05'
+  reason: >-
+    스택이 이미 적재한 토크나이저의 두 번째 인스턴스는 검색 스택에 아무것도 더하지 않는다.
+    모델도 검색 경로도 그대로이고, 이미 선언된 방향 안의 결함 수리이며 프로덕션 500(부하 시
+    ~0.5%)이 살아 있었다. **이 항목은 2026-08-14 에 옮겨 적은 것이고, 판정 자체는
+    2026-08-05 산문 선언(§1 말미)이다** — 해석을 더하지 않았다.
+```
+
 
 ## 1. Goal
 
