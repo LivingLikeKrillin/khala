@@ -400,8 +400,10 @@ CREATE INDEX idx_claims_tenant_class ON claims (tenant, classification)
 -- ============================================================
 -- a2a_audit — durable A2A audit trail (Phase 3, SPEC §5.6/§19)
 -- ============================================================
--- One row per A2A task (granted AND denied). PII-safe: the raw query is NEVER
--- stored — only its sha256 + length (Nexus principle #3 holds in the audit too).
+-- One row per A2A task (granted AND denied). The raw query is NEVER stored, and since
+-- 2026-08-14 neither is any fingerprint of it: `query_sha256` was recomputable from the
+-- plaintext in `search_query_text`, which walked to `principal` (SPEC-nexus-audit-query-hash).
+-- The column stays for historical rows; new rows leave it NULL.
 -- Best-effort durable mirror of the always-on structlog `a2a.audit` event.
 CREATE TABLE a2a_audit (
     id              BIGSERIAL PRIMARY KEY,
@@ -410,7 +412,7 @@ CREATE TABLE a2a_audit (
     principal       TEXT,
     tenant          TEXT,
     clearance       TEXT,
-    query_sha256    TEXT NOT NULL DEFAULT '',
+    query_sha256    TEXT,               -- 역사적 컬럼. 새 행은 NULL (migration 023)
     query_len       INTEGER NOT NULL DEFAULT 0,
     route           TEXT,
     evidence_count  INTEGER NOT NULL DEFAULT 0,
