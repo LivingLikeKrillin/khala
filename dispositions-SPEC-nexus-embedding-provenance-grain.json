@@ -1,0 +1,68 @@
+[
+ {
+  "issue_id": "I-001",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-002",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-003",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-004",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-005",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-006",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-007",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-008",
+  "disposition": "rejected",
+  "reason": "선언 불일치 수치에 문턱을 달지 않은 것은 의도다. 재본 적 없는 수로 게이트를 만드는 것이 이 리포가 반복한 실수이고, §3.3 과 같은 이유로 **보이게만** 둔다. 게이트가 필요하면 그때 재본 수로 정한다."
+ },
+ {
+  "issue_id": "I-009",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-010",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-011",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-012",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-013",
+  "disposition": "rejected",
+  "reason": "정책 필터 없는 내 카운트가 오도했다. 필터를 걸고 다시 재니 309/309 로 구멍 0 이다 — 그 57행은 inactive·격리라 검색이 안 읽는다. 추론은 옳았고 근거 숫자가 틀렸으며, §1.2 에 그 경위를 적었다."
+ },
+ {
+  "issue_id": "I-014",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-015",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-016",
+  "disposition": "accepted"
+ }
+]
