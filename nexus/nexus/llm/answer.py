@@ -15,7 +15,7 @@ from nexus.documents.staleness import annotate_staleness
 from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
-from nexus.llm.prompts import SYSTEM_PROMPT, build_user_prompt
+from nexus.llm.prompts import build_prompts
 from nexus.providers.llm import LLMService
 from nexus.search.evidence_packet import EvidencePacket, format_for_llm
 
@@ -77,21 +77,36 @@ class AnswerResult:
     abstain_reason: str = ""        # "" | "no_evidence"
 
 
+def _shown_query(query: str, user_query: str | None) -> str:
+    """모델이 **질의 자리에서 실제로 본** 텍스트. 숫자 근거검증의 대조 대상이다.
+
+    검증기는 "LLM 이 본 것에 있는가" 를 묻는다(`nexus/llm/numbers.py`). U2 로 원문이 프롬프트에
+    들어갔는데 이 대조 대상이 재작성 질의뿐이면, **사용자가 직접 쓴 숫자**("상위 25개만")를
+    답변이 되풀이했다는 이유로 무근거 배지가 뜬다. 그것은 검증기의 완화가 아니라 사실 반영이다.
+    """
+    if user_query is None or user_query == query:
+        return query
+    return f"{query}\n{user_query}"
+
+
 async def generate_answer(
     query: str,
     packet: EvidencePacket,
     llm_svc: LLMService,
     route_used: str = "",
     timing_ms: dict | None = None,
+    user_query: str | None = None,
 ) -> AnswerResult:
     """근거 기반 답변 생성.
 
     Args:
-        query: 사용자 질문
+        query: 검색에 사용한 질의 — 멀티턴에서는 재작성된 문장이다
         packet: Evidence packet (snippets + graph + provenance)
         llm_svc: LLMService 인스턴스
         route_used: 사용된 검색 경로
         timing_ms: 검색 타이밍 정보
+        user_query: 사용자가 **실제로 친 문장**(`req.query` 그대로). `query` 와 같거나 None 이면
+            프롬프트는 오늘과 바이트 단위로 같다 (SPEC-nexus-multi-turn-narration §4 I1·I3).
 
     Returns:
         AnswerResult
@@ -160,12 +175,12 @@ async def generate_answer(
         return result
 
     evidence_text = format_for_llm(packet)
-    user_prompt = build_user_prompt(query, evidence_text)
+    system_prompt, user_prompt = build_prompts(query, evidence_text, user_query)
 
     try:
         import time
         llm_start = time.time()
-        llm_result = await llm_svc.generate_full(SYSTEM_PROMPT, user_prompt)
+        llm_result = await llm_svc.generate_full(system_prompt, user_prompt)
         result.answer = llm_result.text
         _u = llm_result.usage
         result.usage = {"input_tokens": _u.input_tokens, "output_tokens": _u.output_tokens,
@@ -180,7 +195,7 @@ async def generate_answer(
         ]
         result.unverified_citations = report.unverified_count
         # 숫자 근거검증 — 답변의 유의미 숫자가 LLM 이 본 것(evidence_text + query)에 실재하는가.
-        nreport = validate_numbers(result.answer, evidence_text, query)
+        nreport = validate_numbers(result.answer, evidence_text, _shown_query(query, user_query))
         result.numbers = [
             {"value": n.value, "grounded": n.grounded} for n in nreport.numbers
         ]
