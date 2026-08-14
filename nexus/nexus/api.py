@@ -1373,11 +1373,18 @@ async def status() -> NexusResponse:
     # 통계
     if data["db_connected"]:
         try:
-            # 세대 커버리지 — 집계 하나 + waiver 하나, 그 이상은 늘리지 않는다 (§2 의 경계).
-            from nexus.index.embed_health import fetch_coverage_by_tenant, fetch_waived_count
+            # 세대 커버리지 — 집계 하나 + waiver 하나 + 거부 이유 하나. 거부는 커버리지가 이미
+            # 세는 구멍의 **이유**라, 그 수를 보여 주면서 이유를 빼는 것이 A7 이 고치는 결함이다.
+            from nexus.index.embed_health import (
+                fetch_coverage_by_tenant, fetch_refusals, fetch_waived_count)
 
             data["embedding_coverage"] = await fetch_coverage_by_tenant()
             data["embedding_waived"] = await fetch_waived_count()
+            _ref = await fetch_refusals(configured_column(_load_config()))
+            data["embedding_refusals"] = {
+                "total": _ref["total"], "distinct": _ref["distinct"],
+                "reasons": [{"reason": r, "count": n} for r, n in _ref["reasons"]],
+            }
         except Exception:  # noqa: BLE001 — 마이그레이션 전 DB 면 이 필드만 빠진다
             pass
         try:
