@@ -29,10 +29,12 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from nexus.llm import prompt_version  # noqa: E402
 from nexus.search.format_compliance import check  # noqa: E402
 from nexus.search.rewrite import TIMEOUT_S as REWRITE_TIMEOUT_S  # noqa: E402
 
 KO_DIR = Path(__file__).resolve().parents[1] / "tests" / "eval" / "ko"
+LOCAL_DIR = KO_DIR.parent / "local"          # gitignore — 생성 텍스트는 커밋하지 않는다
 DEFAULT_CASES = KO_DIR / "format-requests.yaml"
 
 
@@ -81,17 +83,23 @@ async def one_run(cases: dict, *, tenant: str, clearance: str, svc, llm,
     """
     out: dict = {arm: {"format": {}, "control": {}} for arm in arms}
     out["applicable"] = {}
+    #: 답변 원문. **자를 고치면 재채점해야 하는데, 원문이 없으면 3시간을 다시 쓴다.**
+    #: 2026-08-14 에 실제로 그랬다 — 자가 세 문장짜리 답을 9 로 세고 있었고, 그걸 알고도
+    #: 기존 10회를 다시 셀 수가 없었다. 사이드카는 gitignore 되는 곳으로 나간다.
+    out["answers"] = {}
     for case in cases["cases"]:
         first, _ = await answer(case["first"], [], tenant=tenant, clearance=clearance,
                                 svc=svc, llm=llm, rewrite_timeout=rewrite_timeout)
         history = [{"role": "user", "content": case["first"]},
                    {"role": "assistant", "content": first}]
         changed_any = False
+        out["answers"].setdefault(case["id"], {})["first"] = first
         for arm in arms:
             second, changed = await answer(
                 case["followup"], history, tenant=tenant, clearance=clearance,
                 svc=svc, llm=llm, u2=(arm == "u2"), rewrite_timeout=rewrite_timeout)
             changed_any = changed_any or changed
+            out["answers"][case["id"]][arm] = second
             mark = "" if changed else "  ⚠재작성없음"
             if case.get("control"):
                 # 대조군은 형식을 안 잰다. 오늘과 같은 답이 나오는지를 본다 — 길이로 근사한다.
@@ -158,16 +166,42 @@ async def _run(args) -> int:
     else:
         print("\n  이 폭보다 작은 차이는 승리로 세지 않는다 (SPEC §5.1).")
 
+    # 원문은 리포트에서 떼어 사이드카로 보낸다: 커밋되는 리포트가 생성 텍스트로 부풀면
+    # diff 가 읽히지 않고, 원문이 필요한 쪽은 재채점하는 사람뿐이다.
+    answers = [r.pop("answers") for r in runs]
+
     out = args.report or (KO_DIR / f"format-compliance-{'-'.join(arms)}.json")
     out.write_text(json.dumps({
         "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "revision": cases["revision"], "tenant": args.tenant, "runs": args.runs,
         # 계측 설정도 결과의 일부다 — 재작성 타임아웃이 다르면 다른 실험이다.
         "rewrite_timeout_s": args.rewrite_timeout, "rows_without_rewrite": n_skipped,
+        # 어느 자로 잰 값인가. 자를 고치면 이 값이 바뀌고, 옛 리포트와 섞이지 않는다.
+        "ruler_sha": _ruler_sha(),
         "arms": list(arms), "summary": summary, "detail": runs,
     }, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"\n기록: {out}")
+
+    side = LOCAL_DIR / (out.stem + "-answers.json")
+    side.parent.mkdir(parents=True, exist_ok=True)
+    side.write_text(json.dumps({"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                "ruler_sha": _ruler_sha(), "runs": answers},
+                               ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(f"답변 원문(재채점용): {side}")
     return 0
+
+
+def _ruler_sha() -> str:
+    """판정 규칙의 지문. 사람이 번호를 올리지 않아도 남는다(`llm/prompt_version.py` 와 같은 이유).
+
+    자를 고친 날 옛 리포트와 새 리포트가 같은 값처럼 보이면, "지난주보다 나빠졌다" 를
+    조사할 때 무엇이 바뀌었는지 알 방법이 없다. 2026-08-14 에 자를 고쳤다.
+    """
+    import inspect
+
+    from nexus.search import format_compliance as F
+
+    return prompt_version.fingerprint(inspect.getsource(F))
 
 
 def _verdict(summary: dict, runs: list, cases: dict) -> None:
