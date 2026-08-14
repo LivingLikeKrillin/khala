@@ -1,0 +1,44 @@
+# ADR-0008 backstop 기록이 빠진 채 승인된 SPEC 들 — **세어서 보이게 둔 빚.**
+#
+# ADR-0009 는 미결 항목 하나를 **감지 가능한 사건**에 걸어 뒀다:
+#
+#   > A mechanism that detects backstop events, or a declaration made after the fact —
+#   > **The next SPEC that links ADR-0008** — a detectable event (`linked_adrs`)
+#
+# 사건으로 옮긴 판단은 옳았다. 그런데 **그 감지를 아무것도 하지 않았다.** 2026-08-14 전수
+# 확인 결과, 규약이 정해진 2026-08-05 이후 ADR-0008 을 링크한 SPEC 이 여섯이고 `backstop:`
+# 기록을 가진 것은 **0** 이었다. 기록 형식은 `SPEC-nexus-retrieval-backstop-detector`
+# (approved 2026-08-05) 가 이미 정해 뒀고, 정해진 뒤 한 번도 쓰이지 않았다.
+#
+# ── 왜 지금 채우지 않는가 ─────────────────────────────────────────────────────
+#
+# **판정은 디렉터의 것이다.** 그리고 그 SPEC 자신이 기록한 사고가 정확히 이것이다:
+#
+#   > on 2026-08-05, in this session, an agent wrote `declared_by: LivingLikeKrillin`
+#   > for a ruling the director had never made; review caught it
+#
+# 그래서 여기서는 **빠진 자리를 세기만 한다.** 산문으로 판정한 것이 있는 SPEC 도 있고
+# (multi-turn-narration §0.1) 아예 없는 것도 있는데, 산문을 YAML 로 옮기는 것조차
+# "그때 무엇을 판정했는가" 를 내가 해석하는 일이라 하지 않았다.
+#
+# ── 왜 빨간불로 두지 않는가 ───────────────────────────────────────────────────
+#
+# 여섯을 그냥 실패로 두면 검사가 **날 때부터 빨갛고**, 그러면 아무도 안 본다. 이 리포는
+# 이미 그렇게 데였다 — 인덱스 커버리지의 진짜 한 줄이 상시 거짓 경보 739줄에 묻혔다.
+# 빚은 목록으로 보이게 두고, 검사는 **새로 늘지 못하게** 막는다(`closed_at`).
+
+# 이 날짜 이후 SPEC 은 이 목록에 들어올 수 없다. 빚은 줄기만 한다.
+closed_at: '2026-08-14'
+
+undeclared:
+  # 산문 판정 없음
+  - SPEC-nexus-embed-tokenizer-race
+  - SPEC-nexus-answer-quality-ruler
+  - SPEC-nexus-multi-turn-retrieval
+  - SPEC-nexus-audit-query-hash
+  # 산문으로는 서명된 판정이 있다 (§0.1). YAML 기록만 없다
+  - SPEC-nexus-multi-turn-narration
+  - SPEC-nexus-answer-feedback
+
+# 각 항목을 지우는 방법: 그 SPEC 에 `backstop:` 블록을 넣고(필드 다섯: reread · clause ·
+# ruling · declared_by · declared_at · reason) 여기서 이름을 뺀다. 검사가 낡은 목록도 잡는다.
