@@ -189,7 +189,10 @@ CRM 공통 + `title`, `doc_type`, `language`, `content_hash`
 
 ### 4.2 chunks
 
-CRM 공통 + `chunk_text`, `section_path`, `context_prefix`, `search_text` (GENERATED), `embedding` (vector(768)), `tsvector_ko`, `metadata` (JSONB), `embed_model`
+CRM 공통 + `chunk_text`, `section_path`, `context_prefix`, `search_text` (GENERATED), `embedding` (vector(768)), `tsvector_ko`, `metadata` (JSONB)
+
+> 임베딩 출처는 **컬럼별**로 `chunk_vector_provenance` 에 적는다. 옛 `chunks.embed_model` 은
+> 행당 한 칸이라 벡터 컬럼 둘을 설명하지 못했고, 027 이후로는 아무도 쓰지 않는다.
 
 ```sql
 -- search_text: 검색/임베딩에 사용되는 가공된 텍스트

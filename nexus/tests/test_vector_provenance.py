@@ -154,6 +154,13 @@ async def test_the_embed_path_actually_writes_a_row(db, monkeypatch):
         got = await P.for_chunk(_RID)
         assert got.get("embedding_1024") == "test-model", (
             "임베딩 경로가 돌았는데 출처 행이 안 생겼다")
+
+        # …그리고 **옛 행 라벨은 안 쓴다** (§8, 027). 소스에 문자열이 없는 것과 그 컬럼이
+        # 실제로 비어 있는 것은 다르다 — 여기서는 경로를 태운 뒤 값을 본다.
+        label = await db.fetch_val("SELECT embed_model FROM chunks WHERE rid = $1", _RID)
+        assert label is None, (
+            f"쓰기 경로가 행 라벨을 남겼다: {label!r}. 'multilingual-e5-base' 라면 "
+            "마이그레이션 027(DEFAULT 제거)이 이 DB 에 안 붙은 것이다")
     finally:
         await db.execute("DELETE FROM chunks WHERE rid = $1", _RID)
         await db.execute("DELETE FROM documents WHERE rid = 'doc_prov'")
@@ -236,17 +243,28 @@ async def test_unknown_provenance_is_not_a_mismatch(db):
         await db.execute("DELETE FROM index_generation_events WHERE declared_by = 'test'")
 
 
-def test_every_consumer_reads_provenance_not_the_row_label():
-    """`chunks.embed_model` 은 거짓인 채 남는다(§8). 읽는 곳이 옮겨졌는지 확인한다."""
-    import inspect
+@pytest.mark.asyncio
+async def test_the_row_label_is_declared_dead_in_the_schema(db):
+    """§8 의 처분(027): 행 라벨은 **쓰지도 읽지도 않는다.** 스키마가 그렇게 말해야 한다.
 
-    from nexus import api, cli
-    from nexus.index import reembed
+    소스에서 이름을 찾는 검사로는 부족하다 — 그 검사는 함수가 지워지면 통과하지만 DEFAULT 가
+    살아 있으면 새 행이 계속 거짓 라벨을 달고 들어온다(INSERT 는 이 컬럼을 안 적는다).
+    그래서 여기서는 **DB 에 물어본다.**
+    """
+    row = await db.fetch_one(
+        "SELECT column_default, is_nullable FROM information_schema.columns "
+        "WHERE table_name = 'chunks' AND column_name = 'embed_model'")
+    if row is None:
+        pytest.skip("컬럼이 이미 DROP 됐다 — OPEN.md A4 의 다음 회차가 끝난 배포")
 
-    for mod in (cli, api, reembed):
-        src = inspect.getsource(mod)
-        assert "fetch_embed_generations" not in src, (
-            f"{mod.__name__} 가 아직 행 라벨 기반 세대를 읽는다 — 그 값이 거짓인 것이 이 SPEC 이다")
+    assert row["column_default"] is None, (
+        f"DEFAULT 가 살아 있다({row['column_default']}) — 벡터가 없는 청크까지 모델 이름을 "
+        "달고 들어온다. 마이그레이션 027 이 안 붙었다")
+    assert row["is_nullable"] == "YES", "NOT NULL 이면 쓰기를 끊을 수 없다 (027)"
+
+    assert not hasattr(__import__("nexus.index.embed_health", fromlist=["x"]),
+                       "fetch_embed_generations"), (
+        "행 라벨로 세대를 읽는 함수가 되살아났다 — 그 값이 거짓인 것이 이 SPEC 이다")
 
 
 # ── U3: 웨이버는 모델별이다 — **키와 읽기 경로 둘 다** ────────────────────────

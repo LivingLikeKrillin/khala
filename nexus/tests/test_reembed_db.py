@@ -134,8 +134,12 @@ async def test_it_fills_the_null_column_and_records_the_generation(corpus):
 
     n = await db.fetch_val(
         f"SELECT count(*) FROM chunks WHERE tenant=$1 AND {_COLUMN} IS NOT NULL", _TENANT)
+    # 세대는 **이 컬럼의 출처**에서 센다. 옛 행 라벨(`chunks.embed_model`)로 세면 다른 컬럼에
+    # 쓴 모델이 이 판정에 섞여 든다 — 그 라벨은 행당 한 칸이었다 (027 에서 쓰기를 끊었다).
     models = await db.fetch_val(
-        "SELECT count(DISTINCT embed_model) FROM chunks WHERE tenant=$1", _TENANT)
+        "SELECT count(DISTINCT p.model) FROM chunk_vector_provenance p "
+        "JOIN chunks c ON c.rid = p.chunk_rid "
+        "WHERE c.tenant = $1 AND p.column_name = $2", _TENANT, _COLUMN)
     assert n == 5
     assert models == 1, "세대가 섞이면 컷오버 조건이 잡는다"
 

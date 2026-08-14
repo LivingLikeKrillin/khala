@@ -17,7 +17,6 @@ class Chunk(NexusResource):
     context_prefix: str | None = None
     chunk_index: int = 0
     embedding: list[float] | None = None
-    embed_model: str = "multilingual-e5-base"
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
