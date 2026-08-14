@@ -10,6 +10,7 @@ from __future__ import annotations
 import structlog
 
 from nexus import db
+from nexus.index import provenance
 from nexus.index.vector_index import configured_column, resolve_column
 from nexus.providers.embedding import EmbeddingService
 from nexus.utils import get_search_text
@@ -101,6 +102,10 @@ async def index_chunk_embedding(
             """,
             vec_str, embedding_svc.get_model_name(), chunk_rid,
         )
+        # 출처는 **컬럼별**로 (SPEC-nexus-embedding-provenance-grain §3.1). 단건·배치 **둘 다**
+        # 남겨야 한다 — 한쪽만 고치면 그 경로로 쓰인 벡터가 조용히 미상이 된다.
+        await provenance.record(chunk_rid=chunk_rid, column_name=col,
+                                model=embedding_svc.get_model_name())
         # 성공하면 이전 거부 기록을 지운다 — 낡은 거부가 남으면 멀쩡한 청크가 병들어 보인다.
         await clear_refusal(chunk_rid, col)
         return True
@@ -153,6 +158,10 @@ async def index_chunks_embedding(
                     """,
                     vec_str, embedding_svc.get_model_name(), rid,
                 )
+                # 출처는 **컬럼별**로 남긴다 — `embed_model` 은 행당 한 칸이라 다른 컬럼을
+                # 설명하지 못한다 (SPEC-nexus-embedding-provenance-grain §3.1).
+                await provenance.record(chunk_rid=rid, column_name=col,
+                                        model=embedding_svc.get_model_name())
                 # **배치 경로도 거부 기록을 지운다.** 단건 경로만 지우고 있었고, 적재는 배치를
                 # 탄다 — 그래서 고쳐진 청크가 계속 병들어 보였다. 2026-08-08 에 실물에서 그랬다:
                 # 18,854자 청크를 잘라 임베딩까지 성공했는데 `embed_refusals` 행이 그대로 남아
