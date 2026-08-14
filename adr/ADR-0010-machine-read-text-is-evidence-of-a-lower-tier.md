@@ -4,6 +4,9 @@ type: adr
 title: Machine-read text from images is evidence, of a lower tier — and the tier must
   travel with it
 status: accepted
+retractions:
+- SPEC-nexus-vision-reproducibility
+- SPEC-nexus-screenshot-text-extraction
 date: 2026-08-09
 tags:
 - nexus
