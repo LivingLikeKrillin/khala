@@ -21,19 +21,58 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 
-from nexus.feedback import store
+import httpx
 
 logger = logging.getLogger(__name__)
 
-#: 이 봇이 쓰는 테넌트. 워크스페이스·채널 매핑은 두 번째 조직이 붙을 때 정한다 (SPEC §8).
-TENANT = os.getenv("NEXUS_TENANT", "default")
+#: **봇은 DB 에 안 붙는다.** 읽기 전용 principal 토큰 하나만 들고 nexus 에 HTTP 로 말한다 —
+#: 저장 층은 서버 쪽에 있고 테넌트는 그 principal 이 정한다(`effective_scope`). 봇에
+#: `DATABASE_URL` 을 주는 것이 한 줄 더 싸지만, 그러면 등급·격리를 우회해 모든 문서를 읽을 수
+#: 있게 되고 그 토큰을 읽기 전용으로 묶어 둔 이유가 사라진다.
+NEXUS_API_URL = os.getenv("NEXUS_API_URL", "http://localhost:8000")
+NEXUS_SLACK_TOKEN = os.getenv("NEXUS_SLACK_TOKEN", "")
+
+
+class VoteRefused(Exception):
+    """서버가 이 투표를 거절했다(결속 불일치·만료). 409 로 온다."""
+
+
+async def _post(path: str, payload: dict) -> dict:
+    """nexus 로 한 번. 실패는 예외로 올린다 — 호출부가 사용자에게 무엇을 말할지 정한다."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        r = await client.post(f"{NEXUS_API_URL}{path}", json=payload,
+                              headers={"Authorization": f"Bearer {NEXUS_SLACK_TOKEN}"})
+    if r.status_code == 409:
+        raise VoteRefused(r.json().get("detail", "거절됨"))
+    r.raise_for_status()
+    return r.json().get("data", {}) or {}
 
 #: 답변에 붙는 근거 개수의 상한. `formatter` 가 `[:5]` 로 자르므로 블록 수가 그 위로 안 간다 —
 #: I8 의 "최대 개수" 를 이름으로 고정한다(안 그러면 예산 검사가 임의 표본이 된다).
 EVIDENCE_CEILING = 5
 
 ACTION_UP, ACTION_DOWN, ACTION_REASON = "fb_up", "fb_down", "fb_reason"
+
+#: 사유 코드. **서버 스키마의 CHECK 와 같은 목록**이어야 한다 (`nexus/feedback/store.py`).
+#: 여기 두는 이유: 봇은 저장 층을 import 하지 않는다 — import 하면 그 모듈이 `nexus.db` 를
+#: 끌고 오고, 봇 프로세스에 DB 가 있는 것처럼 보이는 코드가 된다(실제로 없다).
+REASONS = ("wrong_evidence", "not_my_question", "ignored_format", "not_found")
+
+
+def issue_key() -> str:
+    """답변 하나에 붙는 불투명 키. 128비트 CSPRNG — 버튼 페이로드로 나가므로 보안 파라미터다."""
+    return secrets.token_urlsafe(16)
+
+
+async def record_offer(*, answer_key: str, channel_id: str, message_ts: str) -> None:
+    """제안 한 줄(분모). **best-effort** — 답변은 이미 나갔고 여기서 예외를 올리지 않는다."""
+    try:
+        await _post("/feedback/offer", {"answer_key": answer_key,
+                                        "channel_id": channel_id, "message_ts": message_ts})
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("feedback offer failed: %s", type(exc).__name__)
 
 #: 버튼 옆 한 줄 = 고지 (§3.6). 문구를 바꾸면 `store.NOTICE_VERSION` 도 올린다 —
 #: 나중에 "그때 무엇을 보여줬나" 에 답할 수 있어야 한다.
@@ -117,10 +156,10 @@ async def on_vote(body: dict, client) -> None:
     verdict = "up" if action["action_id"] == ACTION_UP else "down"
 
     try:
-        vote_id = await store.record_vote(
-            tenant=TENANT, answer_key=answer_key, verdict=verdict,
-            channel_id=channel, message_ts=message_ts)
-    except store.VoteRefused as exc:
+        vote_id = (await _post("/feedback/vote", {
+            "answer_key": answer_key, "verdict": verdict,
+            "channel_id": channel, "message_ts": message_ts}))["vote_id"]
+    except VoteRefused as exc:
         await _say(client, channel, user,
                    f"이 평가는 받을 수 없습니다 ({exc}). 새 질문에 다시 눌러 주세요.")
         return
@@ -146,7 +185,8 @@ async def on_reason(body: dict, client) -> None:
     user = body["user"]["id"]
     try:
         vote_id, reason = body["actions"][0]["value"].split(":", 1)
-        ok = await store.set_reason(vote_id=vote_id, reason=reason)
+        ok = (await _post("/feedback/reason",
+                          {"vote_id": vote_id, "reason": reason}))["applied"]
     except Exception as exc:  # noqa: BLE001 — 같은 이유로 종류만 (I13)
         logger.warning("feedback reason failed: %s", type(exc).__name__)
         await _say(client, channel, user, "사유를 저장하지 못했습니다.")

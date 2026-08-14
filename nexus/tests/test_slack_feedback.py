@@ -89,11 +89,9 @@ def test_the_answer_plus_feedback_still_fits_at_the_evidence_ceiling():
 
 
 def test_the_reason_prompt_offers_exactly_the_four_codes():
-    from nexus.feedback.store import REASONS
-
     blocks = FB.reason_blocks(_VOTE)
     values = [e["value"] for b in blocks if b["type"] == "actions" for e in b["elements"]]
-    assert values == [f"{_VOTE}:{r}" for r in REASONS]
+    assert values == [f"{_VOTE}:{r}" for r in FB.REASONS]
     assert len(values) <= 25
 
 
@@ -115,9 +113,9 @@ async def test_the_handler_never_logs_the_slack_user_id(monkeypatch):
         monkeypatch.setattr(FB.logger, level,
                             lambda *a, **k: logged.append((a, k)))
 
-    async def fake_vote(**kw):
-        return _VOTE
-    monkeypatch.setattr(FB.store, "record_vote", fake_vote)
+    async def fake_post(path, payload):
+        return {"vote_id": _VOTE}
+    monkeypatch.setattr(FB, "_post", fake_post)
 
     client = _Client()
     await FB.on_vote(_payload("fb_down", _KEY), client)
@@ -127,7 +125,7 @@ async def test_the_handler_never_logs_the_slack_user_id(monkeypatch):
     # 남는 것: 로그, 그리고 운영자에게 나가는 DM.
     blob = repr(logged) + repr(client.dms)
     assert _USER not in blob, "사용자 id 가 로그·운영자 DM 에 실렸다"
-    assert _USER not in repr(FB.store.counters), "카운터에 신원이 섞였다"
+
     # I13 — **키도 안 남는다.** 재연결에 필요한 것은 신원이나 스키마 하나가 아니라 **동거**다.
     # 봇은 같은 요청에서 질의와 principal 을 다루므로, 키를 찍는 로그 한 줄이 그 둘 옆에
     # 놓이면 투표↔질의 연결이 DB 밖에서 복원된다.
@@ -142,10 +140,10 @@ async def test_a_down_vote_asks_for_a_reason_in_an_ephemeral(monkeypatch):
     신원 노출이다 (§3.1.1)."""
     seen: dict = {}
 
-    async def fake_vote(**kw):
-        seen.update(kw)
-        return _VOTE
-    monkeypatch.setattr(FB.store, "record_vote", fake_vote)
+    async def fake_post(path, payload):
+        seen.update({"path": path, **payload})
+        return {"vote_id": _VOTE}
+    monkeypatch.setattr(FB, "_post", fake_post)
 
     client = _Client()
     await FB.on_vote(_payload("fb_down", _KEY), client)
@@ -159,9 +157,9 @@ async def test_a_down_vote_asks_for_a_reason_in_an_ephemeral(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_an_up_vote_says_thanks_and_asks_nothing(monkeypatch):
-    async def fake_vote(**kw):
-        return _VOTE
-    monkeypatch.setattr(FB.store, "record_vote", fake_vote)
+    async def fake_post(path, payload):
+        return {"vote_id": _VOTE}
+    monkeypatch.setattr(FB, "_post", fake_post)
 
     client = _Client()
     await FB.on_vote(_payload("fb_up", _KEY), client)
@@ -173,9 +171,9 @@ async def test_an_up_vote_says_thanks_and_asks_nothing(monkeypatch):
 @pytest.mark.asyncio
 async def test_a_refused_vote_tells_the_user(monkeypatch):
     """조용한 무시는 이 리포가 반복 지적한 '초록인데 동작 안 함' 을 사용자 쪽에서 재생산한다."""
-    async def refuse(**kw):
-        raise FB.store.VoteRefused("만료된 키")
-    monkeypatch.setattr(FB.store, "record_vote", refuse)
+    async def refuse(path, payload):
+        raise FB.VoteRefused("만료된 키")
+    monkeypatch.setattr(FB, "_post", refuse)
 
     client = _Client()
     await FB.on_vote(_payload("fb_down", _KEY), client)
@@ -188,9 +186,9 @@ async def test_a_refused_vote_tells_the_user(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_a_storage_failure_does_not_escape_the_handler(monkeypatch):
-    async def boom(**kw):
-        raise RuntimeError("DB 없음")
-    monkeypatch.setattr(FB.store, "record_vote", boom)
+    async def boom(path, payload):
+        raise RuntimeError("서버 없음")
+    monkeypatch.setattr(FB, "_post", boom)
 
     await FB.on_vote(_payload("fb_up", _KEY), _Client())   # 예외가 안 나가야 한다
 
@@ -204,9 +202,9 @@ async def test_a_down_vote_notifies_nobody(monkeypatch):
     이 검사가 있는 이유: 지운 경로는 조용히 되살아난다. 알림이 다시 필요해지면 §5.3 평가일에
     실제 비율을 쥐고 **모양부터** 정하는 것이 순서다.
     """
-    async def fake_vote(**kw):
-        return _VOTE
-    monkeypatch.setattr(FB.store, "record_vote", fake_vote)
+    async def fake_post(path, payload):
+        return {"vote_id": _VOTE}
+    monkeypatch.setattr(FB, "_post", fake_post)
 
     client = _Client()
     await FB.on_vote(_payload("fb_down", _KEY), client)
@@ -222,10 +220,10 @@ async def test_a_down_vote_notifies_nobody(monkeypatch):
 async def test_the_reason_click_updates_that_vote(monkeypatch):
     seen: dict = {}
 
-    async def fake_set(**kw):
-        seen.update(kw)
-        return True
-    monkeypatch.setattr(FB.store, "set_reason", fake_set)
+    async def fake_post(path, payload):
+        seen.update(payload)
+        return {"applied": True}
+    monkeypatch.setattr(FB, "_post", fake_post)
 
     client = _Client()
     await FB.on_reason(_payload("fb_reason", f"{_VOTE}:ignored_format"), client)
@@ -236,9 +234,9 @@ async def test_the_reason_click_updates_that_vote(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_a_rejected_reason_tells_the_user_instead_of_going_quiet(monkeypatch):
-    async def fake_set(**kw):
-        return False
-    monkeypatch.setattr(FB.store, "set_reason", fake_set)
+    async def fake_post(path, payload):
+        return {"applied": False}
+    monkeypatch.setattr(FB, "_post", fake_post)
 
     client = _Client()
     await FB.on_reason(_payload("fb_reason", f"{_VOTE}:not_found"), client)
@@ -265,9 +263,10 @@ async def test_the_bot_attaches_the_buttons_and_records_the_offer(monkeypatch):
 
     offers: list = []
 
-    async def fake_offer(**kw):
-        offers.append(kw)
-    monkeypatch.setattr(FB.store, "record_offer", fake_offer)
+    async def fake_post(path, payload):
+        offers.append({"path": path, **payload})
+        return {}
+    monkeypatch.setattr(FB, "_post", fake_post)
 
     said: dict = {}
 
@@ -305,9 +304,10 @@ async def test_no_offer_row_without_a_message_handle(monkeypatch):
 
     offers: list = []
 
-    async def fake_offer(**kw):
-        offers.append(kw)
-    monkeypatch.setattr(FB.store, "record_offer", fake_offer)
+    async def fake_post(path, payload):
+        offers.append({"path": path, **payload})
+        return {}
+    monkeypatch.setattr(FB, "_post", fake_post)
 
     async def say(**kw):
         return None          # 응답을 안 주는 표면
@@ -323,9 +323,48 @@ async def test_the_key_is_not_logged_even_when_storage_fails(monkeypatch):
     for level in ("info", "warning", "error"):
         monkeypatch.setattr(FB.logger, level, lambda *a, **k: logged.append((a, k)))
 
-    async def boom(**kw):
-        raise RuntimeError(f"DB 없음 (key={_KEY})")   # 예외 문구에 키가 들어와도
-    monkeypatch.setattr(FB.store, "record_vote", boom)
+    async def boom(path, payload):
+        raise RuntimeError(f"서버 오류 (key={_KEY})")   # 예외 문구에 키가 들어와도
+    monkeypatch.setattr(FB, "_post", boom)
 
     await FB.on_vote(_payload("fb_down", _KEY), _Client())
     assert _KEY not in repr(logged), "실패 로그가 키를 흘렸다"
+
+
+# ── 배포 맥락 (2026-08-14 라이브 실패) ────────────────────────────────────────
+#
+# U1·U2 를 초록으로 머지했는데 실사용 첫 클릭이 "평가를 저장하지 못했습니다" 로 죽었다.
+# 저장 층은 DB 를 직접 썼고, **봇 컨테이너에는 DATABASE_URL 이 없다** — 봇은 설계상 nexus 의
+# HTTP 클라이언트이고 읽기 전용 principal 토큰 하나만 든다.
+#
+# 검사가 못 잡은 이유: 저장 층 테스트는 전부 DB 가 있는 컨테이너나 monkeypatch 로 돌았다.
+# **봇의 맥락에서 돌린 검사가 하나도 없었다.** 아래 둘이 그 자리를 메운다.
+
+def test_the_bot_never_reaches_for_the_database():
+    """봇 경로가 `nexus.db` 를 끌고 오면, DB 가 있는 것처럼 보이는 코드가 된다 — 없다."""
+    import inspect
+
+    from nexus.slack import bot
+
+    for mod in (FB, bot):
+        src = inspect.getsource(mod)
+        assert "nexus.feedback" not in src, (
+            f"{mod.__name__} 가 저장 층을 import 한다 — 그 모듈이 `nexus.db` 를 끌고 온다")
+        assert "from nexus import db" not in src
+
+
+def test_every_write_goes_over_http():
+    """봇이 피드백을 남기는 방법은 HTTP 뿐이다."""
+    import inspect
+
+    src = inspect.getsource(FB)
+    assert "_post(" in src
+    for path in ("/feedback/offer", "/feedback/vote", "/feedback/reason"):
+        assert path in src, f"{path} 를 부르지 않는다"
+
+
+def test_the_reason_codes_match_the_server_schema():
+    """목록이 두 벌이면 갈라진다. 봇의 버튼과 서버의 CHECK 제약이 같은 집합이어야 한다."""
+    from nexus.feedback.store import REASONS as SERVER
+
+    assert FB.REASONS == SERVER
