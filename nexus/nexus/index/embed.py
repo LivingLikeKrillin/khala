@@ -96,14 +96,15 @@ async def index_chunk_embedding(
             f"""
             UPDATE chunks
             SET {col} = $1::vector,
-                embed_model = $2,
                 updated_at = now()
-            WHERE rid = $3
+            WHERE rid = $2
             """,
-            vec_str, embedding_svc.get_model_name(), chunk_rid,
+            vec_str, chunk_rid,
         )
         # 출처는 **컬럼별**로 (SPEC-nexus-embedding-provenance-grain §3.1). 단건·배치 **둘 다**
         # 남겨야 한다 — 한쪽만 고치면 그 경로로 쓰인 벡터가 조용히 미상이 된다.
+        # 행 라벨(`chunks.embed_model`)은 더 쓰지 않는다 (027) — 한 칸이 컬럼 둘을 설명할 수
+        # 없어서 거짓이었고, 여기가 그 거짓을 만들던 자리다.
         await provenance.record(chunk_rid=chunk_rid, column_name=col,
                                 model=embedding_svc.get_model_name())
         # 성공하면 이전 거부 기록을 지운다 — 낡은 거부가 남으면 멀쩡한 청크가 병들어 보인다.
@@ -152,14 +153,14 @@ async def index_chunks_embedding(
                     f"""
                     UPDATE chunks
                     SET {col} = $1::vector,
-                        embed_model = $2,
                         updated_at = now()
-                    WHERE rid = $3
+                    WHERE rid = $2
                     """,
-                    vec_str, embedding_svc.get_model_name(), rid,
+                    vec_str, rid,
                 )
-                # 출처는 **컬럼별**로 남긴다 — `embed_model` 은 행당 한 칸이라 다른 컬럼을
-                # 설명하지 못한다 (SPEC-nexus-embedding-provenance-grain §3.1).
+                # 출처는 **컬럼별**로 남긴다 — 옛 행 라벨(`embed_model`)은 행당 한 칸이라 다른
+                # 컬럼을 설명하지 못했고, 그래서 더 쓰지 않는다 (027).
+                # (SPEC-nexus-embedding-provenance-grain §3.1)
                 await provenance.record(chunk_rid=rid, column_name=col,
                                         model=embedding_svc.get_model_name())
                 # **배치 경로도 거부 기록을 지운다.** 단건 경로만 지우고 있었고, 적재는 배치를

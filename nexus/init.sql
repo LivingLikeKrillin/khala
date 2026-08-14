@@ -89,7 +89,9 @@ CREATE TABLE chunks (
     embedding       vector(768),
     tsvector_ko     tsvector,
     chunk_index     INT NOT NULL DEFAULT 0,
-    embed_model     TEXT NOT NULL DEFAULT 'multilingual-e5-base',
+    -- 역사적 컬럼. 아무도 쓰지 않고 아무도 읽지 않는다 (027). 행당 한 칸이라 벡터 컬럼
+    -- 둘을 설명하지 못했다 — 컬럼별 출처의 정본은 chunk_vector_provenance (025).
+    embed_model     TEXT,
     metadata        JSONB DEFAULT '{}',
     CONSTRAINT chk_chunk_rtype CHECK (rtype = 'chunk')
 );

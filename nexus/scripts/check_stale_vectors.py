@@ -72,13 +72,20 @@ async def main() -> int:
     await db.get_pool()
     try:
         col = configured_column()
+        # 라벨은 **이 컬럼의 출처**에서 온다 (`chunk_vector_provenance`). 옛 `chunks.embed_model`
+        # 은 행당 한 칸이라 지금 보고 있는 컬럼의 것이라는 보장이 없었다 — 여기서 그 값으로
+        # 대조군을 골랐으므로, 라벨이 다른 컬럼의 것이면 대조군 자체가 틀린 표본이 된다.
+        # 출처가 없는 행은 '미상' 이다(025 백필). 없는 것을 추측해 채우지 않는다.
         rows = [dict(r) for r in await db.fetch_all(
-            f"SELECT c.rid, c.section_path, c.chunk_text, c.context_prefix, c.embed_model, "
+            f"SELECT c.rid, c.section_path, c.chunk_text, c.context_prefix, "
+            f"       COALESCE(p.model, '(미상)') AS model, "
             f"       c.provenance_tier, c.updated_at, c.{col}::text AS vec "
             f"FROM chunks c JOIN documents d ON d.rid = c.doc_rid "
+            f"LEFT JOIN chunk_vector_provenance p "
+            f"       ON p.chunk_rid = c.rid AND p.column_name = $2 "
             f"WHERE c.tenant = $1 AND c.status = 'active' AND d.status = 'active' "
             f"  AND c.is_quarantined = false AND c.{col} IS NOT NULL "
-            f"ORDER BY c.rid", args.tenant)]
+            f"ORDER BY c.rid", args.tenant, col)]
 
         svc = embedding_service_from_config()
         print(f"  {args.tenant} · {col} · 청크 {len(rows)}개 · {svc.model}", flush=True)
@@ -112,7 +119,7 @@ async def main() -> int:
 
     # 대조군 먼저. 이것이 안 맞으면 아래 숫자는 전부 못 쓴다.
     control = [r for r in done if r["updated_at"].date().isoformat() == "2026-08-10"
-               and r["embed_model"] == "KURE-v1" and r["provenance_tier"] == "machine_read"]
+               and r["model"] == "KURE-v1" and r["provenance_tier"] == "machine_read"]
     if control:
         worst = min(cache[r["rid"]] for r in control)
         print(f"\n  대조군(오늘 reembed 로 다시 채운 machine_read {len(control)}개) 최저 코사인 {worst:.6f}")
@@ -122,18 +129,18 @@ async def main() -> int:
     print(f"\n  낡은 벡터 {len(stale)}/{len(done)}")
     by_label: dict[str, list[int]] = {}
     for r in done:
-        k = r["embed_model"]
+        k = r["model"]
         b = by_label.setdefault(k, [0, 0])
         b[0] += 1
         b[1] += 1 if cache[r["rid"]] < FRESH_COSINE else 0
-    print("\n  라벨별            전체   낡음")
+    print("\n  출처별            전체   낡음")
     for k, (n, s) in sorted(by_label.items()):
         print(f"    {k:18s} {n:5d} {s:6d}")
 
     if stale:
         print("\n  가장 많이 어긋난 것들(코사인 낮은 순)")
         for r in sorted(stale, key=lambda x: cache[x["rid"]])[:8]:
-            print(f"    {cache[r['rid']]:.4f}  {r['embed_model']:16s} {r['rid']}")
+            print(f"    {cache[r['rid']]:.4f}  {r['model']:16s} {r['rid']}")
 
     out = LOCAL / "stale-vectors.json"
     out.write_text(json.dumps(
