@@ -171,6 +171,15 @@ MCP server are byte-for-byte unchanged. Phase 2 is additive (audit) + config (or
 1. **One task ⇒ one audit record**, whether granted or denied. No silent denial.
 2. **Audit is PII-safe.** No raw query, no evidence text, no answer text in the record —
    `query_sha256` + `query_len` only.
+> ⚠ **철회 (2026-08-14)** — SPEC-nexus-audit-query-hash · 서명: LivingLikeKrillin
+>
+> 철회 대상 문장(원문 인용):
+> > Audit is PII-safe. … `query_sha256` + `query_len` only.
+>
+> **해시-only 가 PII-safe 를 뜻하지 않는다.** 짧은 자연어 질의는 엔트로피가 낮아 후보 목록만 있으면 대입으로 확인되고, `search_query_text` 가 그 목록을 평문으로 제공한다. 게다가 이 기록은 `principal` 을 같은 행에 갖는다. 2026-08-14 이후 `query_sha256` 은 **쓰지 않는다**(새 행 NULL, migration 023). 남는 것은 `query_len` 뿐이다.
+>
+> **이 문서의 status 는 바뀌지 않는다.** 여전히 승인된 문서이고, 틀린 것은 그 안의 한 결론이다.
+
 3. **Denied ⇒ no privileged content** anywhere (response or audit).
 4. **Server decides policy.** Reused Phase 0 core; a caller can only narrow scope.
 5. **Off by default.** `NEXUS_A2A_ENABLED` unset ⇒ no routes, no audit, no exposure config.
