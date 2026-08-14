@@ -180,3 +180,70 @@ def test_the_summary_never_invents_a_model():
     assert report["dominant"] == "KURE-v1"
     assert report["unknown"] == 111
     assert "nomic" not in repr(report)
+
+
+# ── U2: 혼합 정의 교체 + 미상·불일치 노출 ─────────────────────────────────────
+
+def test_the_report_keeps_the_shape_its_callers_read():
+    """소비자가 셋이다(`cli`·`api`·`reembed`). 키 하나가 사라지면 그 셋이 조용히 깨진다."""
+    report = P.summarize([("KURE-v1", 200), (None, 111)])
+    for key in ("generations", "mixed", "dominant", "distinct", "unknown", "mismatch"):
+        assert key in report, f"소비자가 읽는 `{key}` 가 없다"
+    assert report["distinct"] == 1, "distinct 는 **아는** 모델 수다 — 미상은 세대가 아니다"
+
+
+@pytest.mark.asyncio
+async def test_mismatch_counts_vectors_that_are_not_the_declared_generation(db):
+    """**이것이 실제로 위험한 신호다** — 선언된 세대가 아닌 벡터가 검색에 섞여 있다.
+
+    혼합(같은 컬럼에 모델 둘)과 다르다: 컬럼이 균일해도 그 하나가 선언과 다르면 위험하다.
+    """
+    await db.execute(
+        "INSERT INTO documents (rid, source_uri, title, tenant, classification, hash) "
+        "VALUES ('doc_prov', 'test://prov', '출처검사', 'default', 'INTERNAL', 'h0') "
+        "ON CONFLICT (rid) DO NOTHING")
+    await db.execute(
+        "INSERT INTO chunks (rid, doc_rid, chunk_text, tenant, classification, chunk_index, "
+        "source_uri) VALUES ($1, 'doc_prov', '본문', 'default', 'INTERNAL', 0, 'test://prov') "
+        "ON CONFLICT (rid) DO NOTHING", _RID)
+    await db.execute(
+        "INSERT INTO index_generation_events (tenant, column_name, model, declared_by) "
+        "VALUES ('default', 'embedding_1024', 'KURE-v1', 'test')")
+    try:
+        await P.record(chunk_rid=_RID, column_name="embedding_1024", model="옛-모델")
+        n = await P.fetch_mismatch("embedding_1024", tenant="default")
+        assert n >= 1, "선언과 다른 모델로 쓰인 벡터를 못 셌다"
+
+        await P.record(chunk_rid=_RID, column_name="embedding_1024", model="KURE-v1")
+        n2 = await P.fetch_mismatch("embedding_1024", tenant="default")
+        assert n2 == n - 1, "선언대로 다시 쓴 뒤에도 불일치로 세고 있다"
+    finally:
+        await db.execute("DELETE FROM chunks WHERE rid = $1", _RID)
+        await db.execute("DELETE FROM documents WHERE rid = 'doc_prov'")
+        await db.execute("DELETE FROM index_generation_events WHERE declared_by = 'test'")
+
+
+@pytest.mark.asyncio
+async def test_unknown_provenance_is_not_a_mismatch(db):
+    """미상은 "선언과 다르다" 가 아니라 "모른다" 다. 섞으면 옛 거짓 경보가 이름만 바꿔 돌아온다."""
+    await db.execute(
+        "INSERT INTO index_generation_events (tenant, column_name, model, declared_by) "
+        "VALUES ('fbnone', 'embedding_1024', 'KURE-v1', 'test')")
+    try:
+        n = await P.fetch_mismatch("embedding_1024", tenant="fbnone")
+        assert n == 0
+    finally:
+        await db.execute("DELETE FROM index_generation_events WHERE declared_by = 'test'")
+
+
+def test_every_consumer_reads_provenance_not_the_row_label():
+    """`chunks.embed_model` 은 거짓인 채 남는다(§8). 읽는 곳이 옮겨졌는지 확인한다."""
+    import inspect
+
+    from nexus import api, cli
+    from nexus.index import reembed
+
+    for mod in (cli, api, reembed):
+        src = inspect.getsource(mod)
+        assert "fetch_embed_generations" not in src, (
+            f"{mod.__name__} 가 아직 행 라벨 기반 세대를 읽는다 — 그 값이 거짓인 것이 이 SPEC 이다")

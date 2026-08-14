@@ -83,6 +83,39 @@ def summarize(distribution: list[tuple[str | None, int]]) -> dict:
     return {
         "generations": [{"model": m, "count": n} for m, n in known],
         "mixed": len(known) > 1,
+        # **아는** 모델의 수다. 미상은 세대가 아니라 공백이므로 여기 안 들어간다.
+        "distinct": len(known),
         "dominant": known[0][0] if known else None,
         "unknown": unknown,
+        # 선언 대조는 테넌트가 있어야 세므로 여기선 자리만 둔다 (`fetch_mismatch`).
+        "mismatch": None,
     }
+
+
+async def fetch_mismatch(column_name: str, *, tenant: str) -> int:
+    """선언된 세대와 **다른 모델**로 쓰인 벡터 수 (SPEC §3.2).
+
+    혼합(같은 컬럼에 아는 모델 둘)과 다른 신호다 — 컬럼이 균일해도 그 하나가 선언과 다르면
+    검색은 선언되지 않은 공간에서 돌고 있다. 그쪽이 실제로 위험하다.
+
+    **미상은 안 센다.** 모르는 것은 "다르다" 가 아니고, 섞으면 옛 거짓 경보가 이름만 바꿔
+    돌아온다. `index_generation_events` 는 append-only 이므로 최신 한 건이 선언이다.
+    """
+    row = await db.fetch_one(
+        """
+        WITH declared AS (
+            SELECT model FROM index_generation_events
+             WHERE tenant = $1 AND column_name = $2
+             ORDER BY id DESC LIMIT 1
+        )
+        SELECT count(*) AS n
+          FROM chunk_vector_provenance p
+          JOIN chunks c ON c.rid = p.chunk_rid
+         WHERE p.column_name = $2 AND c.tenant = $1
+           AND c.status = 'active' AND c.is_quarantined = false
+           AND p.model IS NOT NULL
+           AND p.model IS DISTINCT FROM (SELECT model FROM declared)
+           AND EXISTS (SELECT 1 FROM declared)
+        """,
+        tenant, column_name)
+    return int(row["n"]) if row else 0

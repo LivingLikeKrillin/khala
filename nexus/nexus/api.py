@@ -1408,8 +1408,11 @@ async def status() -> NexusResponse:
             ) or 0
 
             # 임베딩 세대 건전성 — 부분 재임베딩(mixed) 감지(SPEC-nexus-embed-generation-drift).
-            from nexus.index.embed_health import embed_generation_report, fetch_embed_generations
-            data["embed_generations"] = embed_generation_report(await fetch_embed_generations())
+            # 출처 표 기반 (SPEC-nexus-embedding-provenance-grain §3.2). 행 라벨은 컬럼 둘을
+            # 한 칸으로 설명해서 거짓 혼합을 냈다.
+            from nexus.index.provenance import fetch_distribution, summarize
+            data["embed_generations"] = summarize(
+                await fetch_distribution(configured_column(_load_config())))
 
             # last_ingest_at / last_otel_aggregate_at
             data["last_ingest_at"] = await db.fetch_val(
