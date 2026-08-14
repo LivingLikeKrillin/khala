@@ -12,10 +12,28 @@ tags:
 - llm
 - governance
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-13T12:05:10Z'
-content_hash: sha256:b9816c29bbb48d61649aa1e68d2a5769512c122b658304c86c46061e4475451e
+reviewed_at: '2026-08-14T14:22:59Z'
+content_hash: sha256:6596a642f2831feeb490917a9650b58af62ae686f6393fb6329307dd3166f64c
 ---
 # Multi-turn narration: answer the question that was asked about the conversation
+
+## Backstop record
+
+```yaml
+backstop:
+- row: adr-0008-retrieval-stack
+  reread: performed 2026-08-13 — 새 검색 채널·두 번째 인덱스 백엔드·토크나이저/임베딩 변경·
+    커넥터 작업 넷 중 어느 것도 하지 않는다. 재작성기도 안 건드린다(개정판 §3.1 은 사용자
+    원문을 그대로 넘기므로 검색 경로에 한 줄도 닿지 않는다). 바뀌는 것은 답변 프롬프트가
+    무엇을 보는가 하나다.
+  clause: none
+  ruling: does-not-fire
+  declared_by: LivingLikeKrillin
+  declared_at: '2026-08-13'
+  reason: >-
+    §0.1 의 산문 판정(판정자·날짜 명시)을 형식대로 옮긴 것이다. 2026-08-14 전사.
+```
+
 
 ## 0. 게이트 — 디렉터가 채운다
 

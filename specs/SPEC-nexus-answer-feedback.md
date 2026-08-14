@@ -13,10 +13,27 @@ tags:
 - governance
 - evaluation
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-08-14T11:30:55Z'
-content_hash: sha256:932baa63f7cd1ddbcecbc55916311bdc30a2747c8235056a9f12a4b74a3179b2
+reviewed_at: '2026-08-14T14:23:00Z'
+content_hash: sha256:55b8491960f8d332afedaddf79805812fef17d27edbb67217c347b2b4a677e83
 ---
 # Answer feedback: a 👎 is a lead, not a rate
+
+## Backstop record
+
+```yaml
+backstop:
+- row: adr-0008-retrieval-stack
+  reread: performed 2026-08-14 — §0.1 에 적힌 대로 새 검색 채널·인덱스 백엔드·토크나이저/임베딩·
+    커넥터 작업이 하나도 없다. 여는 표면은 인바운드 인터랙션 핸들러·표 둘·읽기 전용 조회이고
+    검색 경로에는 닿지 않는다.
+  clause: none
+  ruling: does-not-fire
+  declared_by: LivingLikeKrillin
+  declared_at: '2026-08-14'
+  reason: >-
+    피드백 수집은 검색 스택을 넓히지 않는다. 같은 날 승인된 SPEC 이라 소급 폭은 없다.
+```
+
 
 ## 0. 게이트 — 디렉터가 채운다
 
