@@ -1,0 +1,69 @@
+[
+ {
+  "issue_id": "I-001",
+  "disposition": "rejected",
+  "reason": "본문 반영됨 — §3.1.1(3) 이 투표 행 id 를 사유 버튼 value 로 되돌려받도록 이미 규정한다."
+ },
+ {
+  "issue_id": "I-002",
+  "disposition": "rejected",
+  "reason": "본문 반영됨 — §5.3 판정 질의가 분자에도 NOT synthesized 조인을 건다."
+ },
+ {
+  "issue_id": "I-003",
+  "disposition": "rejected",
+  "reason": "본문 반영됨 — §3.3 이 id 를 CSPRNG 로 못 박고 bigserial 을 금지한다."
+ },
+ {
+  "issue_id": "I-004",
+  "disposition": "rejected",
+  "reason": "본문 반영됨 — I12 가 포인터 컬럼 90일 만료를 건다."
+ },
+ {
+  "issue_id": "I-005",
+  "disposition": "rejected",
+  "reason": "본문 반영됨 — §3.3 스키마에 verdict/reason CHECK 제약이 있다."
+ },
+ {
+  "issue_id": "I-006",
+  "disposition": "rejected",
+  "reason": "본문 반영됨 — §3.1.1(3) 이 가드 실패 시 ephemeral 고지 + reason_rejected 계수를 규정한다."
+ },
+ {
+  "issue_id": "I-007",
+  "disposition": "rejected",
+  "reason": "본문 반영됨 — §3.5 안 B 채택으로 결속이 들어갔고 §7 이 잔여 위험을 적는다."
+ },
+ {
+  "issue_id": "I-008",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-009",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-010",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-011",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-012",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-013",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-014",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-015",
+  "disposition": "accepted"
+ }
+]

@@ -1,0 +1,62 @@
+[
+ {
+  "issue_id": "I-001",
+  "disposition": "rejected",
+  "reason": "이전 라운드에서 이미 본문에 반영됨(위협 모델 §3.0·잔여 채널 §7·옵션 A 개명) — 재지적."
+ },
+ {
+  "issue_id": "I-002",
+  "disposition": "rejected",
+  "reason": "이전 라운드에서 이미 본문에 반영됨(위협 모델 §3.0·잔여 채널 §7·옵션 A 개명) — 재지적."
+ },
+ {
+  "issue_id": "I-003",
+  "disposition": "rejected",
+  "reason": "이전 라운드에서 이미 본문에 반영됨(위협 모델 §3.0·잔여 채널 §7·옵션 A 개명) — 재지적."
+ },
+ {
+  "issue_id": "I-004",
+  "disposition": "rejected",
+  "reason": "이전 라운드에서 이미 본문에 반영됨(위협 모델 §3.0·잔여 채널 §7·옵션 A 개명) — 재지적."
+ },
+ {
+  "issue_id": "I-005",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-006",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-007",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-008",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-009",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-010",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-011",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-012",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-013",
+  "disposition": "accepted"
+ },
+ {
+  "issue_id": "I-014",
+  "disposition": "accepted"
+ }
+]
