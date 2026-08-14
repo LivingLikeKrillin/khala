@@ -20,6 +20,41 @@ async def fetch_waived_count() -> int:
     return int(await db.fetch_val("SELECT count(*) FROM embed_waivers") or 0)
 
 
+async def fetch_refusals(column: str, *, tenant: str | None = None, limit: int = 3) -> dict:
+    """**왜** 못 넣었는가 — `embed_refusals` 의 이유를 세어서 돌려준다.
+
+    이 표는 2026-08-07 부터 백엔드 메시지를 요약 없이 적어 왔다(`413 max_seq_length(8192)` 처럼
+    곧 처방이 되는 문장). 그런데 **읽는 곳이 코퍼스 뷰 하나뿐이었다.** 적재는 구멍의 크기와
+    `nexus reembed run` 을 안내하고, 그 재시도는 같은 이유로 다시 실패한다 — 수는 "무엇을 할까"
+    에 답하지 않기 때문이다.
+
+    모집단은 커버리지와 **같은 것**이어야 한다. 커버리지가 세는 청크와 거부가 세는 청크가 다르면
+    "구멍 45 · 거부 3" 같은 짝이 안 맞는 한 쌍이 나오고, 읽는 사람은 그 차이를 설명할 방법이 없다.
+    그래서 정책 필터를 그대로 걸고, 부모 문서가 죽은 청크는 양쪽에서 똑같이 빠진다.
+
+    `reasons` 는 많은 순으로 `limit` 개. `distinct` 가 그보다 크면 안 보여준 종류가 있다는 뜻이다.
+    """
+    rows = await db.fetch_all(
+        """
+        SELECT r.reason, count(*) AS n
+          FROM embed_refusals r
+          JOIN chunks c ON c.rid = r.chunk_rid
+         WHERE r.column_name = $1
+           AND ($2::text IS NULL OR c.tenant = $2)
+           AND c.status = 'active' AND c.is_quarantined = false
+           AND EXISTS (SELECT 1 FROM documents d
+                       WHERE d.rid = c.doc_rid AND d.status = 'active')
+         GROUP BY r.reason
+         ORDER BY n DESC, r.reason
+        """,
+        column, tenant)
+    return {
+        "total": sum(r["n"] for r in rows),
+        "distinct": len(rows),
+        "reasons": [(r["reason"], r["n"]) for r in rows[:limit]],
+    }
+
+
 async def fetch_coverage_by_tenant() -> list[dict]:
     """테넌트별 · 다리별 커버리지 (SPEC-nexus-embedding-cutover-seam §4.2,
     SPEC-nexus-index-completeness §3.1).

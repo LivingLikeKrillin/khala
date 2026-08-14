@@ -40,6 +40,10 @@ class IngestResult:
     #: **이것은 편의이지 보장이 아니다** — 프로세스가 죽으면 여기까지 오지 못한다. 보장은
     #: `nexus status` 에 있다 (§2.5). 그래서 "0 건 남았다" 와 "안 쟀다" 를 구분해 둔다.
     coverage: dict | None = None
+    #: 구멍의 **이유** (`embed_refusals` 집계). `None` 은 "못 쟀다".
+    #: 커버리지가 크기를 말하고 이것이 처방을 말한다 — 수만 보여 주면 읽는 사람이 할 수 있는 것은
+    #: 같은 실패를 다시 부르는 것뿐이다.
+    refusals: dict | None = None
 
 
 def _load_config(config_path: str = "config.yaml") -> dict:
@@ -436,18 +440,24 @@ async def run_ingest(
         # 인덱싱 단계가 **예외를 냈든 아니든** 잰다 — 삼켜진 실패의 흔적은 결과가 아니라 상태에
         # 남기 때문이다. 여기서 거부하지는 않는다(§2.4).
         try:
-            from nexus.index.embed_health import fetch_coverage_by_tenant
+            from nexus.index.embed_health import fetch_coverage_by_tenant, fetch_refusals
             from nexus.index.vector_index import configured_column
 
             col = configured_column(config)
             row = next((c for c in await fetch_coverage_by_tenant()
                         if c["tenant"] == tenant), None)
+            # 이유는 구멍이 있든 없든 잰다 — 0 이어야 정상이고, 0 인 것을 본 것과 안 본 것은 다르다.
+            result.refusals = await fetch_refusals(col, tenant=tenant)
             if row is not None:
                 result.coverage = row
                 gap = row["active"] - row[col]
                 if gap:
                     logger.warning("ingest_left_chunks_unindexed", tenant=tenant, column=col,
                                    active=row["active"], embedded=row[col], pending=gap,
+                                   refused=result.refusals["total"],
+                                   # **이유가 처방이다.** 이 줄이 없으면 안내받은 재시도가 같은
+                                   # 자리에서 같은 이유로 다시 실패한다.
+                                   reasons=[r for r, _ in result.refusals["reasons"]],
                                    recover=f"nexus reembed run --tenant {tenant}")
         except Exception as e:      # noqa: BLE001 — 커버리지 조회 실패가 적재를 무르지 않는다
             logger.warning("ingest_coverage_unavailable", error=str(e))

@@ -119,6 +119,20 @@ def ingest(
             if gap:
                 typer.echo(f"\n⚠ 벡터 다리가 못 보는 청크 {gap}건 "
                            f"(활성 {result.coverage['active']} 중 {result.coverage[col]} 인덱싱)")
+                # **이유를 여기서 말한다.** 아래 복구 명령은 이유를 모르면 같은 자리에서 같은
+                # 실패를 다시 부른다 — 그 이유는 `embed_refusals` 에 이미 적혀 있었고, 읽는
+                # 곳이 없었을 뿐이다.
+                ref = result.refusals or {}
+                for reason, n in ref.get("reasons", []):
+                    typer.echo(f"  거부 {n}건: {reason}")
+                hidden = ref.get("distinct", 0) - len(ref.get("reasons", []))
+                if hidden > 0:
+                    typer.echo(f"  … 그 밖의 이유 {hidden}종")
+                if ref.get("total", 0) < gap:
+                    # 거부 기록조차 없는 구멍이다. 적재 큐에 안 들어갔거나 프로세스가 중간에
+                    # 죽은 모양이고, 처방이 다르다.
+                    typer.echo(f"  이유가 기록되지 않은 것 {gap - ref.get('total', 0)}건 "
+                               f"— 임베딩 단계에 도달조차 못 했을 수 있다")
                 typer.echo(f"  복구: nexus reembed run --tenant {tenant}")
 
         if result.errors:
@@ -572,6 +586,21 @@ def status() -> None:
                     typer.echo(
                         f"   └ 벡터 다리가 못 보는 청크 {gap}건 — "
                         f"nexus reembed run --tenant {row_['tenant']}")
+                    # 그 구멍의 **이유**. `embed_refusals` 는 백엔드 메시지를 그대로 갖고 있는데
+                    # 읽는 곳이 코퍼스 뷰 하나뿐이었다 — 그래서 안내받은 재시도가 같은 이유로
+                    # 다시 실패했다 (OPEN.md A7).
+                    from nexus.index.embed_health import fetch_refusals
+                    try:
+                        ref = await fetch_refusals(col, tenant=row_["tenant"])
+                    except Exception:  # noqa: BLE001 — 마이그레이션 전이면 표가 없다
+                        ref = {"total": 0, "distinct": 0, "reasons": []}
+                    for reason, n in ref["reasons"]:
+                        typer.echo(f"      · {n}건: {reason}")
+                    if ref["distinct"] > len(ref["reasons"]):
+                        typer.echo(f"      · … 그 밖의 이유 {ref['distinct'] - len(ref['reasons'])}종")
+                    if ref["total"] < gap:
+                        typer.echo(f"      · 이유가 기록되지 않은 것 {gap - ref['total']}건 "
+                                   f"— 임베딩 단계에 도달조차 못 했을 수 있다")
 
             # 선언되지 않은 테넌트 (SPEC-nexus-generation-of-record §3.5). 선언이 없으면 §3.2 의
             # 가드가 통과시키므로, 고쳐 놓고도 노출된 상태다 — 그 상태를 여기서 지목한다.
