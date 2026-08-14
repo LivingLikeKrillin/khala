@@ -417,6 +417,38 @@ def diff(
 
 
 @app.command()
+def feedback(
+    days: int = typer.Option(30, "--days", help="이 기간의 👎 를 본다 (포인터는 90일에 지워진다)"),
+    tenant: str = typer.Option("default", "--tenant"),
+) -> None:
+    """👎 목록 — 답변 품질 개선 자료 (SPEC-nexus-answer-feedback §3.7).
+
+    **푸시는 없다.** 자료는 쌓이고 이 명령이 주기적으로 뽑는다. 월 1회 권장 — 슬랙 포인터가
+    90일에 지워지므로 그보다 길게 두면 사유 코드만 남고 스레드를 못 연다.
+    """
+
+    async def _run() -> None:
+        from nexus import db
+        from nexus.feedback import store
+
+        counts = await store.tally(tenant=tenant)
+        typer.echo(f"제안 {counts['offered']}건 · 표받은 답변 {counts['answers_with_votes']}건"
+                   f" · 제안없이 온 투표 {counts['synthesized']}건\n")
+        rows = await store.recent_downvotes(tenant=tenant, days=days)
+        if not rows:
+            typer.echo(f"최근 {days}일 👎 없음.")
+        for r in rows:
+            when = r["voted_at"].strftime("%Y-%m-%d")
+            why = r["reason"] or "(사유 미상)"
+            where = (f"{r['channel_id']}/{r['message_ts']}" if r["channel_id"]
+                     else "(포인터 만료 — 스레드를 열 수 없다)")
+            typer.echo(f"  {when}  {why:16s}  {where}")
+        await db.close_pool()
+
+    asyncio.run(_run())
+
+
+@app.command()
 def status() -> None:
     """시스템 상태 확인."""
 

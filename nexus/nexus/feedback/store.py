@@ -205,3 +205,26 @@ async def purge_pointers(*, now: datetime | None = None) -> int:
     if rows:
         log.info("feedback.pointers_purged", count=len(rows))
     return len(rows)
+
+
+async def recent_downvotes(*, tenant: str, days: int = 30, limit: int = 50) -> list[dict]:
+    """👎 목록 — **답변 품질 개선 자료** (SPEC §3.7, 2026-08-14 개정).
+
+    푸시를 지운 자리에 오는 것이 이 조회다. 돌려주는 것은 사유 코드와 **슬랙 포인터**이고,
+    조사의 입구는 그 스레드다 — DB 에는 질의도 답변도 없다.
+
+    ⚠ **포인터는 90일에 지워진다**(I12). 그보다 긴 주기로 돌면 사유 코드 집계만 남고 스레드를
+    못 연다. 그래서 지워진 행은 `channel_id=None` 으로 그대로 돌려준다 — 조회하는 사람이
+    "재료가 없다" 를 볼 수 있어야 한다. 숨기면 "조사했으나 재료가 없었다" 와 "그런 신고가
+    없었다" 가 같아 보인다.
+    """
+    return [dict(r) for r in await db.fetch_all(
+        """
+        SELECT v.id, v.reason, v.voted_at, o.channel_id, o.message_ts, o.synthesized
+          FROM answer_vote v
+          JOIN answer_offered o USING (tenant, answer_key)
+         WHERE v.tenant = $1 AND v.verdict = 'down'
+           AND v.voted_at > now() - make_interval(days => $2)
+         ORDER BY v.voted_at DESC
+         LIMIT $3
+        """, tenant, days, limit)]
