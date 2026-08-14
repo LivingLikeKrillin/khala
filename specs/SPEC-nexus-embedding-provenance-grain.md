@@ -2,7 +2,7 @@
 id: SPEC-nexus-embedding-provenance-grain
 type: spec
 title: 'The generation label is on the wrong grain: one row, two vectors, one lie'
-status: in_review
+status: approved
 date: '2026-08-14T13:00:00Z'
 linked_adrs:
 - ADR-0008
@@ -12,6 +12,9 @@ tags:
 - index
 - embedding
 - integrity
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-08-14T13:30:28Z'
+content_hash: sha256:528fc438cb7c6ee3ed5ec684643286d712bbeb3263064e1a21f0ea7cf2fce7fe
 ---
 # The generation label is on the wrong grain: one row, two vectors, one lie
 
@@ -26,12 +29,16 @@ backstop:
     would materially expand Nexus's retrieval stack" 이다. 이 작업은 임베딩 **컬럼을 만지되
     모델을 바꾸지 않는다** — 라벨의 알갱이를 고친다. material 인지는 판단이다.
   clause: none-claimed
-  ruling: (서명 대기)
-  declared_by: (서명 대기)
-  declared_at: (서명 대기)
+  ruling: does-not-fire
+  declared_by: LivingLikeKrillin
+  declared_at: '2026-08-14'
   reason: >-
-    SPEC 이 스스로 판정하지 않는다. ADR-0009 가 이 자리에서 일어난 사고를 기록해 뒀다 —
-    에이전트가 디렉터가 내린 적 없는 판정에 declared_by 를 적었고 리뷰가 잡았다.
+    §5 가 지키려는 것은 검색 스택을 실질적으로 넓히는 일이다 — 새 검색 채널, 두 번째 인덱스
+    백엔드, 토크나이저·임베딩 모델 교체, 커넥터 확장. 이 작업은 그중 어느 것도 아니다.
+    벡터도 모델도 검색 경로도 그대로이고, "어느 벡터를 무엇이 만들었나" 를 정확히 적을
+    뿐이다. 표 하나와 쓰기 경로 둘이 느는 것은 스택의 확장이 아니라 기존 스택에 대한
+    기록이다. 오히려 §5 가 재독을 요구하는 상황(모델 교체·컷오버)에서 판단 근거를 준다.
+    판정은 세션에서 디렉터가 내렸고 이 필드가 그것을 보고한다 — 그 이상을 증명하지 않는다.
 ```
 
 **ADR-0009 승계 — 이 SPEC 이 걸린 방아쇠 둘.**
@@ -45,7 +52,7 @@ backstop:
 ⚠ 감지기의 한계를 여기 적어 둔다: 그 검사는 **필드의 존재**를 보지 서명의 진위를 보지 않는다.
 위 `(서명 대기)` 도 형식 검사는 통과한다. 서명을 강제하는 것은 arbiter 의 승인 단계다.
 
-**순서 제약**: `ruling` 이 비어 있는 동안 **U1~U3 의 코드는 쓰지 않는다.** ADR-0009 §3(ii) 가
+**순서 제약**: `ruling` 이 비어 있는 동안 **U1~U3 의 코드는 쓰지 않는다** (2026-08-14 채워짐). ADR-0009 §3(ii) 가
 게이트-이후-SPEC 을 일회성 예외로 기록하며 *"Nothing currently prevents recurrence"* 라고
 적었는데, 이 SPEC 이 그 재발의 첫 기회다. 여기서 순서를 문장으로 박아 둔다 — 강제는 arbiter
 게이트가 한다.

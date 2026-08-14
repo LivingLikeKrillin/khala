@@ -14,7 +14,7 @@ issues:
     never checkable and the 167/167 flip was certified by a broken gauge — yet the
     SPEC never states this, does not propose re-verifying the deployment under the
     new grain, and its non-goals ('모델을 바꾸지 않는다') quietly bypass the question.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-002
   category: missing-invariant
@@ -27,7 +27,7 @@ issues:
     ('각 경로를 실행하고 출처 행이 생기는지 본다') only exercises the happy path. Needs a same-transaction
     requirement plus a check that a vector without provenance is itself an error,
     not an unknown.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-003
   category: undefined
@@ -40,7 +40,7 @@ issues:
     마이그레이션 전 행 수'') has no determinate meaning — for the measured data (403 chunk
     rows, 346 non-null 1024 vectors, 352 non-null 768 vectors) the two counts cannot
     be equal under any per-(chunk,column) backfill.'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-004
   category: missing-invariant
@@ -53,7 +53,7 @@ issues:
     count must join `index_generation_events`, whose grain is (tenant, column_name);
     with no tenant on the provenance table the aggregation grain of ''혼합'' and ''불일치''
     is undefined (the measured data spans `default` and `ko_eval_packa`).'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-005
   category: missing-invariant
@@ -64,7 +64,7 @@ issues:
     by the active model, so after the PK change a nomic-era waiver can still exempt
     a chunk under KURE. I5 only asserts that two rows can coexist, which is a schema
     property, not the behaviour that was wrong.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-006
   category: risky-assumption
@@ -75,7 +75,7 @@ issues:
     exempt population in both directions. The SPEC pins search invariance (I6) but
     pins nothing about coverage population or exit-code invariance, which is the surface
     U3 actually moves.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-007
   category: unverifiable-claim
@@ -86,7 +86,7 @@ issues:
     never uses `written_at`: it counts distinct models per column and compares against
     the latest declaration. The recommendation may still be right for the column-churn
     reason, but the stated deciding evidence does not support it.'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-008
   category: untestable-requirement
@@ -97,8 +97,9 @@ issues:
     It is a number with nothing gated on it: precisely the defect ADR-0009 records
     for the post-flip NULL gap (''`nexus reembed status --column embedding` reports
     the count and no gate consumes it'').'
-  status: open
-  disposition_reason: null
+  status: rejected
+  disposition_reason: 선언 불일치 수치에 문턱을 달지 않은 것은 의도다. 재본 적 없는 수로 게이트를 만드는 것이 이 리포가 반복한
+    실수이고, §3.3 과 같은 이유로 **보이게만** 둔다. 게이트가 필요하면 그때 재본 수로 정한다.
 - issue_id: I-009
   category: untestable-requirement
   severity: medium
@@ -108,7 +109,7 @@ issues:
     wrongly. No arm tests the claim that actually matters on real data — that the
     230 KURE rows and the 116 mislabelled rows acquire the correct per-column model
     — so the negative control cannot distinguish 'fixed' from 'everything is unknown'.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-010
   category: adr-contradiction
@@ -119,7 +120,7 @@ issues:
     chose that trigger precisely because backstop events are undetectable; discharging
     the trigger without closing or re-anchoring the item returns it to the undetectable
     state, which is the failure ADR-0009's own open-items table was built to prevent.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-011
   category: risky-assumption
@@ -129,7 +130,7 @@ issues:
     re-embedded stays '미상' indefinitely — so the blind window §7 admits ('코퍼스가 전부
     미상이면 이 감지기는 아무것도 못 잡는다') is unbounded rather than transient. Either a backfill-by-re-embed
     unit or an explicit bound on tolerated '미상' share is missing.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-012
   category: unverifiable-claim
@@ -140,7 +141,7 @@ issues:
     stated as fact but is inference: no per-column write timestamp exists yet (that
     is what §3.1 is being introduced to add), and §2/§3.3 elsewhere insist the provenance
     of those rows is unknowable.'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-013
   category: missing-invariant
@@ -151,8 +152,9 @@ issues:
     vector leg. The SPEC reads its measurement only for the labelling bug and states
     no invariant or check tying provenance/mixed detection to per-column coverage,
     so the new table will report those rows as simply absent rather than as a gap.'
-  status: open
-  disposition_reason: null
+  status: rejected
+  disposition_reason: 정책 필터 없는 내 카운트가 오도했다. 필터를 걸고 다시 재니 309/309 로 구멍 0 이다 — 그 57행은
+    inactive·격리라 검색이 안 읽는다. 추론은 옳았고 근거 숫자가 틀렸으며, §1.2 에 그 경위를 적었다.
 - issue_id: I-014
   category: missing-invariant
   severity: low
@@ -162,7 +164,7 @@ issues:
     those readers, and no invariant forbids new reads of `embed_model` or requires
     remaining readers (status output, web surfaces, `embed_health`) to be listed.
     The lie stays queryable with nothing marking it as such.'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-015
   category: untestable-requirement
@@ -172,7 +174,7 @@ issues:
     states the required behaviour for ingest latency, or for a provenance-write failure
     mid-ingest. An invariant phrased over call arguments cannot fail for either of
     the ways this change could actually affect the query path.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-016
   category: undefined
@@ -183,9 +185,9 @@ issues:
     be implemented or merged before the signature exists. ADR-0009 §3(ii) records
     gate-after-SPEC as a one-time exception with 'Nothing currently prevents recurrence';
     this SPEC is the first opportunity for recurrence and adds no guard.
-  status: open
+  status: accepted
   disposition_reason: null
-approved_by: null
-approved_at: null
+approved_by: LivingLikeKrillin
+approved_at: '2026-08-14T13:30:28Z'
 ---
 
