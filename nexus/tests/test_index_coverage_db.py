@@ -90,7 +90,11 @@ async def test_empty_tsvector_is_as_dark_as_a_null_one(db_pool, db_url):
 
 
 async def test_a_waived_chunk_is_still_a_gap(db_pool, db_url):
-    """§6-3·§3.1c — 웨이버는 청크당 1행이라 세대를 표현하지 못한다. 빼면 진짜 구멍을 가린다.
+    """§6-3·§3.1c — **웨이버를 커버리지에서 빼지 않는다.** 빼면 진짜 구멍을 가린다.
+
+    (2026-08-14: "웨이버는 청크당 1행이라 세대를 표현하지 못한다" 던 원래 이유는
+    `SPEC-nexus-embedding-provenance-grain` §3.4 로 사라졌다 — PK 가 `(chunk_rid, model)` 다.
+    그래도 **빼지 않는다는 결론은 그대로**다: 포기한 내용도 검색에서 빠진 내용이다.)
 
     `clean_db` 는 `embed_waivers` 를 TRUNCATE 하지 않으므로 **여기서 치운다** — 안 치웠더니
     다음 파일의 reembed 시험 둘이 내가 흘린 행 위에서 빨갛게 됐다.
@@ -100,7 +104,7 @@ async def test_a_waived_chunk_is_still_a_gap(db_pool, db_url):
         await con.execute(
             "INSERT INTO embed_waivers (chunk_rid, model, reason, waived_by) "
             "VALUES ('cov_waived','nomic-embed-text','over-length','test') "
-            "ON CONFLICT (chunk_rid) DO NOTHING")
+            "ON CONFLICT (chunk_rid, model) DO NOTHING")
     try:
         assert _row(await _coverage(db_url))["gap_1024"] == 1
     finally:
