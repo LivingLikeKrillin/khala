@@ -69,8 +69,16 @@ class ReembedSummary:
 # ── 조회 (부분 술어는 인덱스와 같은 모양) ────────────────────────────────────
 
 async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
-                       tenant: str | None = None) -> list[tuple[str, str, str]]:
-    """아직 이 세대의 벡터가 없는 활성 청크. waiver 로 빠진 것은 큐에서 제외한다.
+                       tenant: str | None = None,
+                       model: str | None = None) -> list[tuple[str, str, str]]:
+    """아직 이 세대의 벡터가 없는 활성 청크. **이 모델의** waiver 로 빠진 것만 제외한다.
+
+    `model` 을 주면 그 모델의 서명만 면제로 친다. 안 주면 옛 동작(모델 무시) — 호출부가
+    모델을 모를 수 있어 남겨 두지만, 재임베딩 경로는 언제나 준다.
+
+    **모델로 거르지 않으면** nomic 시절 웨이버가 KURE 아래에서도 면제로 잡히고, 그 청크는
+    영영 재임베딩되지 않은 채 검색에서 빠진다 (SPEC-nexus-embedding-provenance-grain §3.4).
+    옛 모델의 서명은 새 모델에 대한 포기가 아니다.
 
     `exclude` 는 **이번 실행에서 이미 실패한 rid** 다. 실패해도 컬럼은 NULL 로 남으므로 다음
     조회에 또 잡히고, 그러면 같은 실패가 요약에 여러 번 쌓인다(실측으로 확인). DB 에 실패 표식을
@@ -82,14 +90,15 @@ async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
         f"""
         SELECT c.rid, c.chunk_text, c.section_path
         FROM chunks c
-        LEFT JOIN embed_waivers w ON w.chunk_rid = c.rid
+        LEFT JOIN embed_waivers w
+               ON w.chunk_rid = c.rid AND ($4::text IS NULL OR w.model = $4)
         WHERE c.status = 'active' AND c.is_quarantined = false
           AND c.{col} IS NULL AND w.chunk_rid IS NULL
           AND NOT (c.rid = ANY($2::text[]))
           AND ($3::text IS NULL OR c.tenant = $3)
         ORDER BY c.rid
         LIMIT $1
-        """, limit, list(exclude or ()), tenant)
+        """, limit, list(exclude or ()), tenant, model)
     return [(r["rid"], r["chunk_text"], r["section_path"]) for r in rows]
 
 
@@ -104,7 +113,7 @@ async def tenants_with_chunks() -> list[str]:
     return [r["tenant"] for r in rows]
 
 
-async def counts(column: str, tenant: str | None = None) -> dict:
+async def counts(column: str, tenant: str | None = None, model: str | None = None) -> dict:
     """컷오버 판정과 진행 보고가 함께 쓰는 숫자. 범위는 재임베딩과 **같아야** 한다."""
     col = resolve_column(column)
     row = await db.fetch_one(
@@ -117,9 +126,10 @@ async def counts(column: str, tenant: str | None = None) -> dict:
                              AND c.{col} IS NULL AND w.chunk_rid IS NOT NULL) AS waived,
           count(*) FILTER (WHERE c.status='active' AND c.is_quarantined=false
                              AND c.{col} IS NULL AND w.chunk_rid IS NULL) AS pending
-        FROM chunks c LEFT JOIN embed_waivers w ON w.chunk_rid = c.rid
+        FROM chunks c LEFT JOIN embed_waivers w
+               ON w.chunk_rid = c.rid AND ($2::text IS NULL OR w.model = $2)
         WHERE ($1::text IS NULL OR c.tenant = $1)
-        """, tenant)
+        """, tenant, model)
     return dict(row)
 
 
@@ -145,7 +155,8 @@ async def reembed(embedding_svc, column: str, batch_size: int = 16,
 
     failed_rids: set[str] = set()
     while True:
-        batch = await pending_rids(col, batch_size, exclude=failed_rids, tenant=tenant)
+        batch = await pending_rids(col, batch_size, exclude=failed_rids, tenant=tenant,
+                                   model=model)
         if not batch:
             break
         texts = [get_search_text(_C(text, section)) for _, text, section in batch]
@@ -193,7 +204,8 @@ async def waive(chunk_rid: str, model: str, reason: str, waived_by: str) -> None
         raise ValueError("waiver 에는 사유와 서명이 필요하다 — 둘 없이 빠진 내용은 사라진 내용이다")
     await db.execute(
         "INSERT INTO embed_waivers (chunk_rid, model, reason, waived_by) VALUES ($1,$2,$3,$4) "
-        "ON CONFLICT (chunk_rid) DO NOTHING", chunk_rid, model, reason.strip(), waived_by.strip())
+        "ON CONFLICT (chunk_rid, model) DO NOTHING",
+        chunk_rid, model, reason.strip(), waived_by.strip())
 
 
 async def waived_rows() -> list[dict]:

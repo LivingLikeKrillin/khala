@@ -247,3 +247,58 @@ def test_every_consumer_reads_provenance_not_the_row_label():
         src = inspect.getsource(mod)
         assert "fetch_embed_generations" not in src, (
             f"{mod.__name__} 가 아직 행 라벨 기반 세대를 읽는다 — 그 값이 거짓인 것이 이 SPEC 이다")
+
+
+# ── U3: 웨이버는 모델별이다 — **키와 읽기 경로 둘 다** ────────────────────────
+
+@pytest.mark.asyncio
+async def test_the_same_chunk_can_be_waived_under_two_models(db):
+    """§4 I5. PK 가 `chunk_rid` 하나면 모델을 바꾼 뒤 다시 포기할 수 없다."""
+    from nexus.index import reembed
+
+    await db.execute("DELETE FROM embed_waivers WHERE chunk_rid = $1", _RID)
+    try:
+        await reembed.waive(_RID, model="nomic-embed-text", reason="너무 길다", waived_by="사람")
+        await reembed.waive(_RID, model="KURE-v1", reason="여전히 길다", waived_by="사람")
+        rows = await db.fetch_all(
+            "SELECT model FROM embed_waivers WHERE chunk_rid = $1 ORDER BY model", _RID)
+        assert [r["model"] for r in rows] == ["KURE-v1", "nomic-embed-text"]
+    finally:
+        await db.execute("DELETE FROM embed_waivers WHERE chunk_rid = $1", _RID)
+
+
+@pytest.mark.asyncio
+async def test_a_waiver_for_another_model_does_not_exempt_this_one(db):
+    """**§4 I7 — 증상이 사는 곳은 읽기 경로다.**
+
+    PK 만 고치면 nomic 시절 웨이버가 KURE 아래에서도 여전히 면제로 잡힌다. 후보 조회가
+    활성 모델로 거르지 않기 때문이다 — 그러면 그 청크는 영영 재임베딩되지 않고, 검색에서
+    빠진 채 "포기됨" 으로만 보인다.
+    """
+    from nexus.index import reembed
+
+    await db.execute(
+        "INSERT INTO documents (rid, source_uri, title, tenant, classification, hash) "
+        "VALUES ('doc_prov', 'test://prov', 'w', 'default', 'INTERNAL', 'h0') "
+        "ON CONFLICT (rid) DO NOTHING")
+    await db.execute(
+        "INSERT INTO chunks (rid, doc_rid, chunk_text, tenant, classification, chunk_index, "
+        "source_uri) VALUES ($1, 'doc_prov', '본문', 'default', 'INTERNAL', 0, 'test://prov') "
+        "ON CONFLICT (rid) DO NOTHING", _RID)
+    await db.execute("UPDATE chunks SET embedding_1024 = NULL WHERE rid = $1", _RID)
+    await db.execute("DELETE FROM embed_waivers WHERE chunk_rid = $1", _RID)
+    try:
+        await reembed.waive(_RID, model="옛-모델", reason="옛 세대에서 포기", waived_by="사람")
+
+        rids = [r[0] for r in await reembed.pending_rids(
+            "embedding_1024", 100, tenant="default", model="KURE-v1")]
+        assert _RID in rids, (
+            "다른 모델의 웨이버가 이 모델의 후보에서 뺐다 — 영영 재임베딩되지 않는다")
+
+        rids2 = [r[0] for r in await reembed.pending_rids(
+            "embedding_1024", 100, tenant="default", model="옛-모델")]
+        assert _RID not in rids2, "같은 모델의 웨이버가 면제로 안 잡혔다 — 서명이 무시됐다"
+    finally:
+        await db.execute("DELETE FROM embed_waivers WHERE chunk_rid = $1", _RID)
+        await db.execute("DELETE FROM chunks WHERE rid = $1", _RID)
+        await db.execute("DELETE FROM documents WHERE rid = 'doc_prov'")
