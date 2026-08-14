@@ -1,7 +1,8 @@
 """A2A audit trail (Phase 2, SPEC §3.1–§3.3, §6).
 
 Every A2A task — granted AND denied — emits exactly one PII-safe ``a2a.audit`` structlog
-record. The raw query text never appears; only ``query_sha256``/``query_len`` do.
+record. The raw query text never appears — and since 2026-08-14 neither does any fingerprint
+of it, only ``query_len`` (SPEC-nexus-audit-query-hash).
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from structlog.testing import capture_logs
 
-from nexus.a2a.audit import AUDIT_EVENT, query_sha256, record_audit
+from nexus.a2a.audit import AUDIT_EVENT, record_audit
 from nexus.a2a.config import A2AConfig
 from nexus.a2a.server import mount_a2a
 from nexus.auth.principal import hash_token
@@ -116,12 +117,17 @@ def test_audit_never_contains_raw_query_text():
     blob = json.dumps(rec, ensure_ascii=False)
     assert secret not in blob
     assert "hunter2" not in blob
-    assert rec["query_sha256"] == hashlib.sha256(secret.encode("utf-8")).hexdigest()
+    # 2026-08-14 뒤집힘 (SPEC-nexus-audit-query-hash): 지문도 남지 않는다. 그 값은
+    # `search_query_text` 의 평문에서 재계산돼 `principal` 로 이어지는 경로였다.
+    assert "query_sha256" not in rec
+    assert hashlib.sha256(secret.encode("utf-8")).hexdigest() not in blob
     assert rec["query_len"] == len(secret)
 
 
-def test_query_sha256_helper_is_stable():
-    assert query_sha256("abc") == hashlib.sha256(b"abc").hexdigest()
+def test_the_hashing_helper_no_longer_exists():
+    """남겨 두면 다음 사람이 다시 쓴다 (SPEC §3.3.2)."""
+    from nexus.a2a import audit as A
+    assert not hasattr(A, "query_sha256")
 
 
 async def test_record_audit_without_pool_is_structlog_only():
@@ -138,5 +144,5 @@ async def test_record_audit_without_pool_is_structlog_only():
     # structlog record is emitted, PII-safe (raw query never present)
     assert rec["skill"] == "retrieve_grounded"
     assert secret not in json.dumps(rec, ensure_ascii=False)
-    assert rec["query_sha256"] == query_sha256(secret)
+    assert "query_sha256" not in rec   # 2026-08-14 뒤집힘 (SPEC-nexus-audit-query-hash)
     assert rec["query_len"] == len(secret)
