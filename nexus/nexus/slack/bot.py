@@ -91,7 +91,7 @@ async def _answer(query: str, say, event: dict, client=None) -> None:
         # 답변마다 새 키. 버튼은 이 값을 들고 나가고, 투표는 **게시된 그 메시지**에만 묶인다
         # (SPEC-nexus-answer-feedback §3.2). 키는 게시 전에 필요하고 (채널, ts) 는 게시
         # 후에야 알 수 있으므로, 제안 행은 게시 뒤에 남긴다.
-        answer_key = fb.store.issue_key()
+        answer_key = fb.issue_key()
         posted = await say(blocks=format_answer(answer_data) + fb.feedback_blocks(answer_key),
                            thread_ts=thread_ts)
         await _record_offer(answer_key, posted, event)
@@ -118,8 +118,7 @@ async def _record_offer(answer_key: str, posted, event: dict) -> None:
         if not ts or not channel:
             logger.warning("feedback_offer_skipped_no_message_handle")
             return
-        await fb.store.record_offer(tenant=fb.TENANT, answer_key=answer_key,
-                                    channel_id=channel, message_ts=ts)
+        await fb.record_offer(answer_key=answer_key, channel_id=channel, message_ts=ts)
     except Exception:  # noqa: BLE001 — 답변은 이미 나갔다
         logger.warning("feedback_offer_failed", exc_info=True)
 

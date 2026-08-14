@@ -460,6 +460,80 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── 답변 피드백 (SPEC-nexus-answer-feedback) ─────────────────────────────────
+#
+# **왜 HTTP 인가.** 저장 층은 DB 를 직접 쓰는데, 슬랙 봇은 nexus 의 **HTTP 클라이언트**이고
+# 읽기 전용 principal 토큰 하나만 든다 — DB 자격증명이 없다. 봇에 `DATABASE_URL` 을 주는
+# 한 줄이 더 싸지만, 그러면 봇이 등급·격리를 우회해 모든 문서를 읽을 수 있게 되고 그 토큰을
+# 읽기 전용으로 묶어 둔 이유가 사라진다. 리포의 구조가 이미 답이다: 기능 → HTTP 엔드포인트
+# → (웹·MCP·CLI).
+#
+# **테넌트는 요청이 아니라 principal 이 정한다** (`effective_scope`) — 남의 테넌트에 표를
+# 넣을 수 있으면 분모가 오염된다.
+
+
+class FeedbackOfferRequest(BaseModel):
+    answer_key: str
+    channel_id: str
+    message_ts: str
+
+
+class FeedbackVoteRequest(BaseModel):
+    answer_key: str
+    verdict: str
+    channel_id: str
+    message_ts: str
+
+
+class FeedbackReasonRequest(BaseModel):
+    vote_id: str
+    reason: str
+
+
+@app.post("/feedback/offer", response_model=NexusResponse)
+async def feedback_offer(req: FeedbackOfferRequest,
+                         principal: Principal = Depends(get_principal)) -> NexusResponse:
+    """버튼을 붙여 답변을 내보냈다는 사실 한 줄(분모). **best-effort — 절대 실패하지 않는다.**"""
+    from nexus.feedback import store
+
+    tenant, _ = effective_scope(principal)
+    await store.record_offer(tenant=tenant, answer_key=req.answer_key,
+                             channel_id=req.channel_id, message_ts=req.message_ts)
+    return NexusResponse(data={"recorded": True})
+
+
+@app.post("/feedback/vote", response_model=NexusResponse)
+async def feedback_vote(req: FeedbackVoteRequest,
+                        principal: Principal = Depends(get_principal)) -> NexusResponse:
+    """투표 한 줄. 결속·만료에 걸리면 **409** — 조용히 성공한 척하지 않는다."""
+    from nexus.feedback import store
+
+    tenant, _ = effective_scope(principal)
+    try:
+        vote_id = await store.record_vote(
+            tenant=tenant, answer_key=req.answer_key, verdict=req.verdict,
+            channel_id=req.channel_id, message_ts=req.message_ts)
+    except store.VoteRefused as e:
+        raise HTTPException(status_code=409, detail=str(e)) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
+    return NexusResponse(data={"vote_id": vote_id})
+
+
+@app.post("/feedback/reason", response_model=NexusResponse)
+async def feedback_reason(req: FeedbackReasonRequest,
+                          principal: Principal = Depends(get_principal)) -> NexusResponse:
+    """사유를 그 투표 행에 적는다. 가드에 걸리면 `applied: false` — 200 이되 거짓말은 안 한다."""
+    from nexus.feedback import store
+
+    effective_scope(principal)          # 인증만 — 사유는 투표 id 로 찾는다
+    try:
+        applied = await store.set_reason(vote_id=req.vote_id, reason=req.reason)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
+    return NexusResponse(data={"applied": applied})
+
+
 @app.post("/search/answer", response_model=NexusResponse)
 async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """검색 + LLM 답변 생성."""
