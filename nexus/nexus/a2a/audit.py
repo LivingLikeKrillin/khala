@@ -6,13 +6,16 @@ a **best-effort durable mirror** into the ``a2a_audit`` table — but only when 
 exists, and never raising, so audit persistence can neither add a connection attempt to the
 unit-test path nor break the request path if the DB is down.
 
-The raw query is never recorded anywhere: only ``query_sha256`` + ``query_len``, so the audit
-trail cannot become a quarantine bypass (Nexus principle #3).
+The raw query is never recorded anywhere. It used to leave a fingerprint —
+``query_sha256`` — and that was not the PII-safe choice it was documented as: this record
+carries ``principal``, and ``search_query_text`` stores the question in plaintext, so
+recomputing ``sha256(plaintext)`` walked straight to a person. A salt would not have fixed it;
+the tenant is a column in this same table (SPEC-nexus-audit-query-hash §1.4, approved
+2026-08-14). What remains is ``query_len``, which is also a deterministic function of the
+query — the criterion is entropy, not determinism, and a length alone recovers nothing.
 """
 
 from __future__ import annotations
-
-import hashlib
 
 import structlog
 
@@ -22,11 +25,6 @@ log = structlog.get_logger("nexus.a2a.audit")
 
 # Stable event name for every cross-agent A2A task record.
 AUDIT_EVENT = "a2a.audit"
-
-
-def query_sha256(query: str) -> str:
-    """sha256 hex of the raw query — the only form that may enter an audit record."""
-    return hashlib.sha256(query.encode("utf-8")).hexdigest()
 
 
 def emit_audit(
@@ -43,14 +41,13 @@ def emit_audit(
     reason: str | None = None,
     latency_ms: int = 0,
 ) -> None:
-    """Emit one ``a2a.audit`` record. The query is hashed here; callers pass it raw."""
+    """Emit one ``a2a.audit`` record. Callers pass the query raw; only its **length** is kept."""
     log.info(
         AUDIT_EVENT,
         skill=skill,
         principal=principal,
         tenant=tenant,
         clearance=clearance,
-        query_sha256=query_sha256(query),
         query_len=len(query),
         route=route,
         evidence_count=evidence_count,
@@ -79,7 +76,8 @@ async def record_audit(
 
     The DB insert runs only when a pool already exists (``db.has_pool()``) — so unit tests with
     no DB never trigger a connection — and any failure is swallowed (the audit trail must never
-    break the request path). The raw ``query`` is hashed before it touches either sink.
+    break the request path). Neither sink receives the query or any value derived from it
+    beyond its length.
     """
     emit_audit(
         skill=skill, query=query, principal=principal, tenant=tenant, clearance=clearance,
@@ -92,11 +90,11 @@ async def record_audit(
         await db.execute(
             """
             INSERT INTO a2a_audit (
-                skill, principal, tenant, clearance, query_sha256, query_len,
+                skill, principal, tenant, clearance, query_len,
                 route, evidence_count, task_state, denied, reason, latency_ms
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             """,
-            skill, principal, tenant, clearance, query_sha256(query), len(query),
+            skill, principal, tenant, clearance, len(query),
             route, evidence_count, task_state, denied, reason, latency_ms,
         )
     except Exception as exc:  # noqa: BLE001 - audit persistence must never break the request
