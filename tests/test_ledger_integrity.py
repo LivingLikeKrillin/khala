@@ -31,10 +31,12 @@ It reports Recall@10 of 0.402 over the pack, with two  spaces above.
 
 
 def _artifact(dirpath: Path, aid: str, status: str, body: str = BODY,
-              stamp: str | None = "auto") -> Path:
+              stamp: str | None = "auto", retractions: list[str] | None = None) -> Path:
     dirpath.mkdir(parents=True, exist_ok=True)
     h = content_hash(body) if stamp == "auto" else stamp
     fm = [f"id: {aid}", "type: spec", f"title: {aid}", f"status: {status}"]
+    for r in retractions or []:
+        fm.append(f"retractions:\n- {r}")
     if h is not None:
         fm.append(f"content_hash: {h}")
     p = dirpath / f"{aid}.md"
@@ -241,6 +243,110 @@ def test_an_open_item_still_must_carry_a_trigger(tmp_path: Path):
 
 def test_duplicate_ids_are_caught(tmp_path: Path):
     assert li.check_open_items(ROOT, _items(tmp_path, _GOOD + _GOOD))
+
+
+# ── retractions live outside the frozen body (OPEN.md H5 / A5) ───────────────
+
+_QUOTE = "It reports Recall@10 of 0.402 over the pack"
+
+
+def _retractions(tmp_path: Path, body: str) -> Path:
+    p = tmp_path / "retractions.yaml"
+    p.write_text(body, encoding="utf-8")
+    return p
+
+
+def _entry(**over) -> str:
+    """Serialised by yaml itself. Hand-rolling the quoting turned a newline in a quote into a
+    literal backslash-n, and the failure looked like the checker's."""
+    import yaml
+
+    e = {"target": "SPEC-a", "retracted_by": "SPEC-b", "signed_by": "someone",
+         "signed_at": "2026-08-15", "quote": _QUOTE, "why": "it was wrong"}
+    e.update(over)
+    return yaml.safe_dump([e], allow_unicode=True, sort_keys=False)
+
+
+def _repo_with_target(repo: Path, *, status="approved", pointer=("SPEC-b",)) -> Path:
+    _artifact(repo / "specs", "SPEC-a", status, retractions=list(pointer))
+    return repo
+
+
+def test_a_well_formed_retraction_passes(repo: Path):
+    """Positive control. Without it the checks below could be passing for the wrong reason."""
+    _repo_with_target(repo)
+    assert li.check_retractions(repo, _retractions(repo, _entry())) == []
+
+
+def test_a_retraction_the_document_does_not_point_back_to_is_flagged(repo: Path):
+    """**The one that matters.** A retraction nobody sees is worse than a broken hash — the
+    reader of the approved document would learn nothing."""
+    _repo_with_target(repo, pointer=())
+    problems = li.check_retractions(repo, _retractions(repo, _entry()))
+    assert problems and "point back" in problems[0]
+
+
+def test_a_pointer_with_no_entry_behind_it_is_flagged(repo: Path):
+    """The other direction: a badge that outlives its reason. Deleting the entry must not
+    quietly leave the document marked as retracted."""
+    _repo_with_target(repo)
+    problems = li.check_retractions(repo, _retractions(repo, "[]"))
+    assert problems and "no entry" in problems[0]
+
+
+def test_quoting_a_sentence_the_document_does_not_contain_is_flagged(repo: Path):
+    """Retracting a sentence that is not there retracts nothing, and nothing else would notice."""
+    _repo_with_target(repo)
+    problems = li.check_retractions(
+        repo, _retractions(repo, _entry(quote="It reports Recall@10 of 0.999")))
+    assert problems and "not in" in problems[0]
+
+
+@pytest.mark.parametrize("quote", [
+    "It reports Recall@10 of 0.402 … with two  spaces above.",     # elided middle
+    "It reports Recall@10\nof 0.402 over the pack",                 # rewrapped by an editor
+])
+def test_an_elided_or_rewrapped_quote_still_matches(repo: Path, quote):
+    """Whitespace and `…` are how people quote. If either failed, the lesson learned would be
+    to stop quoting — and the quote is what makes a retraction locatable."""
+    _repo_with_target(repo)
+    assert li.check_retractions(repo, _retractions(repo, _entry(quote=quote))) == []
+
+
+def test_an_entry_missing_a_field_is_flagged(repo: Path):
+    _repo_with_target(repo)
+    body = "".join(ln for ln in _entry().splitlines(keepends=True)
+                   if not ln.startswith("  signed_by:"))
+    problems = li.check_retractions(repo, _retractions(repo, body))
+    assert problems and "signed_by" in problems[0]
+
+
+def test_retracting_something_that_was_never_signed_is_flagged(repo: Path):
+    """A draft carries no signed claim, so there is nothing to withdraw."""
+    _repo_with_target(repo, status="draft")
+    problems = li.check_retractions(repo, _retractions(repo, _entry()))
+    assert problems and "not stamped" in problems[0]
+
+
+def test_a_missing_sidecar_is_not_a_failure(repo: Path):
+    """Absence of retractions is the normal state. Only a pointer with nothing behind it is."""
+    _artifact(repo / "specs", "SPEC-a", "approved")
+    assert li.check_retractions(repo, repo / "absent.yaml") == []
+
+
+def test_the_real_repository_retractions_are_consistent():
+    assert li.check_retractions(ROOT) == []
+
+
+def test_the_frozen_bodies_carry_no_retraction_footnote():
+    """The regression this replaced: footnotes were added to two approved SPECs, the stamps
+    broke, and master stayed red for fifteen merges (#240-#254). The bodies are frozen; the
+    stamp check above proves they match, and this proves the retraction did not go back in."""
+    for name in ("SPEC-nexus-a2a-external-exposure-audit-phase2",
+                 "SPEC-nexus-query-text-retention"):
+        text = (ROOT / "specs" / f"{name}.md").read_text(encoding="utf-8")
+        _, _, body = text[3:].partition("\n---")
+        assert "철회" not in body, f"{name}: a retraction is back inside the signed body"
 
 
 # ── the normaliser's boundary, enumerated (debt I-012) ───────────────────────

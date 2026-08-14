@@ -79,6 +79,33 @@ tested was never the version we declared.
   Scope by tool when it helps, e.g. `feat(probe): add review grounder`.
 - Keep each PR scoped to a single tool and a single concern where possible.
 
+## Retracting a claim in a signed document
+
+An approved SPEC or accepted ADR is stamped with a hash of its **body**. Later work
+sometimes proves one conclusion inside it wrong. The document does not become
+un-approved for that — what is wrong is a claim, not the decision — so the claim is
+**retracted from outside the body**.
+
+1. Add an entry to [`specs/retractions.yaml`](./specs/retractions.yaml): `target`,
+   `retracted_by` (the SPEC or ADR that overturns it), `signed_by`, `signed_at`, the
+   `quote` of the sentence being withdrawn, and `why`.
+2. Add `retractions: [<retracted_by>]` to the target's **frontmatter**. Frontmatter is
+   not covered by the body hash — `content_hash` lives there itself — so this is the one
+   layer a frozen document can still gain a marker in.
+3. Leave `status` alone. The document is still approved.
+4. **Do not touch the body**, and do not re-stamp.
+
+`scripts/ledger_integrity.py` fails the build if the two halves drift: an entry whose
+target does not point back, a pointer with no entry behind it, or a quote that does not
+appear in the target.
+
+Why: on 2026-08-14 two retractions were written as footnotes *inside* the approved
+bodies. That broke both stamps and `master` stayed red for fifteen merges — every other
+regression in that window hid behind it. Re-stamping would have fixed the red and made
+"edit the body, then re-stamp" the routine, which is the exact motion the stamp exists to
+detect. The rule that keeps this honest is the second one: **a retraction nobody can see
+is worse than a broken hash**, which is why the pointer is enforced rather than suggested.
+
 ## License
 
 The repository is MIT licensed (see [LICENSE](./LICENSE)). The root license

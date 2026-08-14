@@ -1,0 +1,43 @@
+# 승인된 문서의 **사후 철회**. 본문 밖에 산다.
+#
+# **왜 본문이 아닌가.** 승인 도장은 본문 해시다. 각주를 본문에 달면 그 도장이 깨지고,
+# 다시 찍으면 "본문 고치고 도장 다시 찍기" 가 정상 절차가 된다 — 그 동작이야말로
+# `scripts/ledger_integrity.py` 가 잡으려던 바로 그 동작이다. 2026-08-14 에 각주 두 개로
+# master 가 15연속 빨간불이었다(#240~#254). 여기로 옮기면 승인 본문은 승인 시점 바이트로
+# 얼어 있고, 철회는 그 옆에서 서명을 갖는다.
+#
+# **보이지 않는 철회는 깨진 해시보다 나쁘다.** 그래서 대상 문서의 frontmatter 가
+# `retractions:` 로 이 파일을 가리켜야 하고, 양방향 불일치는 CI 빨간불이다. frontmatter 는
+# 본문 해시가 덮지 않는 층이라(그 안에 `content_hash` 자신이 산다) 도장을 건드리지 않는다.
+#
+# **인용문은 실제로 그 문서에 있어야 한다.** 없는 문장을 철회하는 것은 아무것도 철회하지
+# 않는 것이다. 검사가 공백을 정규화해 대조하고, `…` 로 줄인 인용은 조각마다 대조한다.
+#
+# 절차는 CONVENTIONS.md 의 "Retracting a claim in a signed document".
+
+- target: SPEC-nexus-a2a-external-exposure-audit-phase2
+  retracted_by: SPEC-nexus-audit-query-hash
+  signed_by: LivingLikeKrillin
+  signed_at: 2026-08-14
+  quote: "Audit is PII-safe. … `query_sha256` + `query_len` only."
+  why: >-
+    해시-only 가 PII-safe 를 뜻하지 않는다. 짧은 자연어 질의는 엔트로피가 낮아 후보 목록만
+    있으면 대입으로 확인되고, `search_query_text` 가 그 목록을 평문으로 제공한다. 게다가 이
+    기록은 `principal` 을 같은 행에 갖는다. 2026-08-14 이후 `query_sha256` 은 쓰지 않는다
+    (새 행 NULL, migration 023). 남는 것은 `query_len` 뿐이다.
+    이 문서의 status 는 바뀌지 않는다 — 여전히 승인된 문서이고, 틀린 것은 그 안의 한 결론이다.
+
+- target: SPEC-nexus-query-text-retention
+  retracted_by: SPEC-nexus-audit-query-hash
+  signed_by: LivingLikeKrillin
+  signed_at: 2026-08-14
+  quote: >-
+    Salting with the tenant fixes it structurally rather than by promise: the retention key
+    equals no hash stored anywhere else, so there is nothing to join on.
+  why: >-
+    인용문 자체는 참이다 — 그 키와 같은 값은 정말 어디에도 없다. 거짓인 것은 거기서 도출된
+    더 넓은 안전성 결론, 즉 "그러므로 텍스트와 신원이 이어지지 않는다" 다. 이 표는 질문을
+    평문으로 담고, `a2a_audit.query_sha256` 은 소금 없는 `sha256(query)` 였다 — 그 평문에서
+    해시를 다시 계산하면 principal 로 이어진다. 소금은 *키 동등 조인*을 막지 자기가 저장한
+    평문에서의 재계산을 막지 않는다.
+    이 문서의 status 는 바뀌지 않는다 — 여전히 승인된 문서이고, 틀린 것은 그 안의 한 결론이다.
