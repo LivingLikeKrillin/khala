@@ -48,6 +48,7 @@ In short: it turns "tests pass" into "tests actually verify behavior," using sur
 - **Ledger (`probe-ledger.yaml`).** A committed, versioned record of verdicts. Re-runs only re-triage *new* survivors — already-judged equivalents are not re-litigated, removing the recurring noise cost. The ledger is committed alongside source.
 - **Biting real-gaps = the headline.** The report's headline is the count of un-waived `real-gap`s, not a mutation score. Equivalent/low-value and waived real-gaps are demoted but never dropped.
 - **Advisory, not (yet) a gate.** Probe currently reports; it does not block. Enforcement (failing a commit on biting real-gaps) is a later milestone.
+- **Two CLI commands.** The deterministic spine is available by hand: `probe survey` (run mutation, produce the survivor list) and `probe absorb` (fold verdicts into the ledger).
 
 ## Quickstart
 

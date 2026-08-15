@@ -39,5 +39,6 @@ Arbiter는 판단의 순간을 가정하지 않고 **책임질 수 있게** 만�
 - **content-hash 스탬프 + 변조 감지** — 승인이 명세를 hash에 묶고, `status`가 상태와 변조를 보고합니다.
 - **DB 없음** — 모든 상태가 `ARBITER_DOCS` 아래 Markdown과 `ARBITER_ROOT`의 작은 `.arbiter/` 마커에 존재합니다.
 - **선택적 Nexus 발행** — `publish`는 승인 문서를 Nexus 싱크로 보내며, 미설정 시 안전한 no-op입니다.
+- **CLI로도 같은 게이트** — MCP 없이 손으로 돌릴 수 있습니다: `arbiter record` · `status` · `critique` · `approve` · `check-gate`. MCP 서버와 **같은 함수를 호출**하므로 사람이 돌리든 에이전트가 돌리든 판정이 갈리지 않습니다.
 
 설치(`pip install -e ".[dev]"`), `.mcp.json`·`settings.json` 등록, 10개 MCP 도구는 영어 페이지([Arbiter](/tools/arbiter/))를 참고하세요.

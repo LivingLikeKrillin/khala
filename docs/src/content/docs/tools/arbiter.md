@@ -39,6 +39,7 @@ In short: a ledger that makes "who approved what, and why" a recorded, attributa
 - **Content-hash stamping + tamper detection.** Approval binds the spec to a hash; `status` reports state and detects tampering.
 - **No database.** All state lives in Markdown files under `ARBITER_DOCS` plus a small `.arbiter/` marker under `ARBITER_ROOT`.
 - **Optional Nexus publish.** `publish` pushes an approved doc to a configured Nexus sink — a safe no-op when not configured.
+- **The same gate from a CLI.** You do not need MCP to run it: `arbiter record`, `status`, `critique`, `approve`, `check-gate`. The CLI calls the *same functions* the MCP server does, so a human and an agent cannot reach different verdicts on the same spec.
 
 ## Quickstart
 

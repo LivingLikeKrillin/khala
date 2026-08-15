@@ -48,5 +48,6 @@ Probe는 뮤테이션-구동 테스트 품질 하네스입니다. 어드바이�
 - **원장(`probe-ledger.yaml`)** — 커밋되는 판정 기록. 재실행 시 *새* survivor만 재심의하므로 동치 노이즈를 매번 재심의하던 비용이 사라집니다.
 - **무는(unwaived) real-gap = headline** — 리포트의 머리줄은 변이 점수가 아니라 무는 real-gap의 수입니다.
 - **아직은 어드바이저리, 게이트 아님** — 현재는 리포트만 냅니다. 강제(무는 real-gap이 있으면 커밋 실패)는 다음 마일스톤입니다.
+- **CLI 두 명령** — 결정론적인 뼈대를 `probe survey`(변이 실행 → survivor 목록)와 `probe absorb`(판정을 원장에 흡수)로 손에 쥘 수 있습니다.
 
 사전 조건(`pip install cosmic-ray`), `changed_source_modules` → `run_mutation` → survivors → Critic → 리포트 절차는 영어 페이지([Probe](/tools/probe/))를 참고하세요.
