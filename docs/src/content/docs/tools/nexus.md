@@ -1,15 +1,15 @@
 ---
 title: Nexus
-description: RAG + GraphRAG that answers only from citable sources, with confidence and provenance.
+description: Retrieval that answers only from citable sources, with verified citations and provenance.
 ---
 
 Nexus is the ecosystem's knowledge base. It answers questions about your organization's knowledge (documents, policies, configs) and its operational reality (OpenTelemetry traces) **only from evidence it can cite**. Every answer carries a confidence score and a link back to the source chunk or trace it came from.
 
 Ordinary RAG retrieves text and lets the model improvise, so it returns a plausible answer whether or not it has grounds. Nexus works the other way around: the system decides what can be retrieved and whether an answer is supported, and the model only writes over evidence that already exists. If nothing can be cited, Nexus returns no answer.
 
-In short: **enterprise RAG + GraphRAG for grounded retrieval.** It's the context layer for code-review and troubleshooting agents, so they work from real documents and observed telemetry rather than guesses.
+In short: **enterprise retrieval for grounded answers.** It's the context layer for code-review and troubleshooting agents, so they work from real documents and observed telemetry rather than guesses.
 
-<svg class="kh-fig" viewBox="0 0 580 384" role="img" aria-label="A retrieval trace and its answer. For the query 'payment-service dependencies', three retrievers — BM25/mecab-ko, vector/768-d, graph/2-hop — each score candidate sources; RRF fuses them into one ranked list, producing a grounded answer: payment-service depends on ledger and fx-rate, cited to PIPELINE_SPEC.md at confidence 0.92.">
+<svg class="kh-fig" viewBox="0 0 580 384" role="img" aria-label="A retrieval trace and its answer. For the query 'payment-service dependencies', two retrievers — BM25 over Korean morphology and vector search over pgvector — score candidate chunks, and RRF fuses them into one ranked list. A 2-hop graph lookup runs separately: it is not scored and does not affect the ranking, but its edges are attached to the answer. The grounded answer states that payment-service depends on ledger and fx-rate, with a citation verified against the evidence packet.">
 <defs><marker id="nx-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
 <text class="kh-fig-q" x="24" y="22">› payment-service dependencies?</text>
 <text class="kh-fig-h" x="24" y="52">BM25 · MECAB-KO</text>
@@ -19,30 +19,30 @@ In short: **enterprise RAG + GraphRAG for grounded retrieval.** It's the context
 <text class="kh-fig-d" x="30" y="92">API_CONTRACT</text>
 <rect class="kh-fig-track" x="150" y="87" width="100" height="6" rx="3"/>
 <rect class="kh-fig-bar" x="150" y="87" width="44" height="6" rx="3"/>
-<text class="kh-fig-h" x="24" y="122">VECTOR · 768-D</text>
+<text class="kh-fig-h" x="24" y="122">VECTOR · PGVECTOR</text>
 <text class="kh-fig-d" x="30" y="142">PIPELINE_SPEC</text>
 <rect class="kh-fig-track" x="150" y="137" width="100" height="6" rx="3"/>
 <rect class="kh-fig-bar" x="150" y="137" width="74" height="6" rx="3"/>
 <text class="kh-fig-d" x="30" y="162">ledger.svc</text>
 <rect class="kh-fig-track" x="150" y="157" width="100" height="6" rx="3"/>
 <rect class="kh-fig-bar" x="150" y="157" width="58" height="6" rx="3"/>
-<text class="kh-fig-h" x="24" y="192">GRAPH · 2-HOP</text>
-<text class="kh-fig-d" x="30" y="212">payment→fx</text>
-<rect class="kh-fig-track" x="150" y="207" width="100" height="6" rx="3"/>
-<rect class="kh-fig-bar" x="150" y="207" width="66" height="6" rx="3"/>
 <path class="kh-fig-line-acc" d="M250 72 C 296 72, 292 132, 320 132"/>
 <path class="kh-fig-line-acc" d="M250 150 C 296 150, 302 132, 320 132"/>
-<path class="kh-fig-line-acc" d="M250 210 C 296 210, 292 132, 320 132"/>
 <path class="kh-fig-line-acc" d="M320 132 L336 132" marker-end="url(#nx-a)"/>
+<line class="kh-fig-rule" x1="24" y1="186" x2="250" y2="186"/>
+<text class="kh-fig-h" x="24" y="208">GRAPH · 2-HOP</text>
+<text class="kh-fig-d" x="30" y="228">payment→fx · payment→ledger</text>
+<text class="kh-fig-s" x="30" y="246">not scored — attached after fusion</text>
+<path class="kh-fig-line-acc" d="M250 228 C 300 228, 330 236, 330 252" marker-end="url(#nx-a)"/>
 <rect class="kh-fig-panel" x="336" y="44" width="212" height="176" rx="8"/>
-<text class="kh-fig-h" x="354" y="66">RRF · FUSED</text>
+<text class="kh-fig-h" x="354" y="66">RRF · BM25 + VECTOR</text>
 <line class="kh-fig-rule" x1="354" y1="80" x2="530" y2="80"/>
 <text class="kh-fig-rk" x="354" y="102">1</text>
 <text class="kh-fig-d" x="376" y="102">PIPELINE_SPEC.md</text>
 <text class="kh-fig-rk" x="354" y="126">2</text>
 <text class="kh-fig-d" x="376" y="126">ledger.svc</text>
 <text class="kh-fig-rk" x="354" y="150">3</text>
-<text class="kh-fig-d" x="376" y="150">payment→fx</text>
+<text class="kh-fig-d" x="376" y="150">API_CONTRACT.md</text>
 <path class="kh-fig-line-acc" d="M442 220 L442 252" marker-end="url(#nx-a)"/>
 <rect class="kh-fig-panel" x="24" y="252" width="532" height="116" rx="8"/>
 <text class="kh-fig-h" x="42" y="276">GROUNDED ANSWER</text>
@@ -57,11 +57,17 @@ In short: **enterprise RAG + GraphRAG for grounded retrieval.** It's the context
 
 ## Core concepts
 
-- **Hybrid search.** Three retrievers run in parallel and fuse with RRF (Reciprocal Rank Fusion, `k=60`): BM25 over Korean morphology (mecab-ko, so particles and endings are stripped correctly), Vector (768-dimension embeddings via Ollama), and Graph (2-hop entity traversal).
+- **Hybrid search.** Two retrievers run in parallel and fuse with RRF (Reciprocal Rank Fusion, `k=60`): BM25 over Korean morphology (mecab-ko, so particles and endings are stripped correctly) and vector search over pgvector. Fused results are then capped per document so one file cannot flood the answer.
+- **Graph is context, not ranking.** A 2-hop entity traversal runs on graph-enabled routes, but it happens *after* fusion and never contributes to a hit's score. Its edges are returned alongside the answer, not blended into the ranking.
+- **Citations are verified, not trusted.** The model is asked to cite, and then the citations are checked in code against the evidence packet it was actually given. Anything that does not resolve is reported separately as unverified rather than being passed off as a source. Numbers in the answer are checked the same way.
 - **Evidence-driven edges.** No relationship (edge) exists without evidence. Every edge is bound to a source chunk or a trace query reference.
 - **Dual knowledge layer — Designed vs. Observed.** Relationships extracted from design documents (`CALLS`, `PUBLISHES`) live alongside relationships observed in real traces (`CALLS_OBSERVED`, with call counts, error rates, latency).
 - **Design-Observation diff.** Nexus flags `doc_only` (documented but never observed — dead docs), `observed_only` (observed but undocumented — shadow dependencies), and `conflict` (both present but mismatched).
 - **Default-deny security.** PII/secrets (Korean SSN, card numbers, AWS keys, JWTs) are quarantined on detection and never indexed; every query is filtered by classification (`PUBLIC < INTERNAL < RESTRICTED`).
+- **Provenance tier.** A chunk written by a person and a chunk a model read out of a screenshot are not the same kind of evidence. Machine-read text is labelled as such, and the label travels all the way into the prompt, the API response, and the web UI — so an answer never quietly launders an extraction into an authored policy.
+- **Declared index generations.** The embedding model, its dimension, and the vector column move together as one generation, declared append-only in the database. Ingestion is refused before a single document is collected if the running configuration does not match a declared generation — the failure mode this closes is a documented command silently writing into a column nothing searches. The repository default is `nomic-embed-text` (768-d); a KURE-v1 (1024-d) generation is available and selected per deployment.
+- **Staleness is shown, not enforced.** Answers carry a per-snippet age warning against a per-type TTL. It is a label for the reader; it deliberately does not re-rank or exclude anything.
+- **Honest absence.** If nothing can be cited, Nexus does not call the model at all — it returns a fixed statement that it has no evidence, and says so in the response payload.
 - **Index, not storage.** Originals stay in Git and in Tempo. Nexus stores only derived data — chunks, embeddings, graph edges.
 
 ## Quickstart
