@@ -1,7 +1,28 @@
 # Nexus API 계약서
 
-> 모든 엔드포인트의 request/response 스키마를 정의한다.
+> **이 문서는 전체 목록이 아니다.** 핵심 8개 엔드포인트의 request/response 스키마와, 모든 엔드포인트에 공통으로 걸리는 규칙을 정의한다.
 > FastAPI + Pydantic v2 기준. Claude Code는 이 문서를 보고 정확한 Pydantic 모델을 생성해야 한다.
+
+## 무엇이 여기 있고, 무엇이 없나
+
+전수 목록을 손으로 미러링하지 않는다. FastAPI가 이미 생성하므로, **살아 있는 전체 명세는 기동 후 `/docs`(Swagger)와 `/openapi.json`이 정본**이다. 손으로 옮겨 적은 목록은 반드시 코드보다 뒤처지고, 뒤처졌다는 사실조차 조용하다.
+
+이 문서가 지는 책임은 둘이다.
+
+1. **아래 §공통 규칙** — 응답 wrapper, 에러 형식, tenant/classification 필터, rid 규약. 이건 OpenAPI 스키마에 안 나타나고 코드를 읽어야만 알 수 있으므로 여기 산다.
+2. **§1–§8의 핵심 경로** — 검색·적재·그래프·diff·상태. 계약이 까다롭고 외부 소비자가 있는 것들이다.
+
+여기 없지만 존재하는 계열(스키마는 `/docs` 참조):
+
+| 계열 | 대략의 경로 | 다루는 문서 |
+|---|---|---|
+| Notion 소스 콘솔 | `/roots` · `/sync` · `/preview` · `/sync/{run_id}` | — (콘솔 UI가 유일한 소비자) |
+| 문서 생애주기 | `/documents/{rid}` · `/hide` · `/restore` · `/supersede` · `/unsupersede` | — |
+| 답변 피드백 | `/feedback/offer` · `/vote` · `/reason` | [SLACK_BOT.md](SLACK_BOT.md) |
+| 클레임·권위 | `/claims/value` · `/claims/grade-authority` | — (Archon 계열, 코드가 정본) |
+| 운영 | `/health` · `/corpus` · `/visibility` · `/auth/dev-token` | [TEAM_DOGFOOD_DEPLOY.md](TEAM_DOGFOOD_DEPLOY.md) |
+
+> `/auth/dev-token`은 **의도적으로 비-게이트**다(토큰을 받기 전 단계라 게이트를 걸 수 없다). `NEXUS_DEV_TOKEN`이 설정된 로컬 dev에서만 값을 돌려주고, 미설정 시 `token=null`이라 노출이 없다. 따라서 위험은 엔드포인트 자체가 아니라 **외부에 노출된 배포에 그 env를 설정하는 것**이다.
 
 ## 공통 규칙
 
