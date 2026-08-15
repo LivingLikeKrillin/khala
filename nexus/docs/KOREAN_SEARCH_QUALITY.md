@@ -482,6 +482,11 @@ docker run --rm --network host \
 # 탐색 실행 — 키워드 다리 리포트
 python -m scripts.ko_eval_run
 
+# 접두사 A/B (§3.6). 컨테이너 안에서 — Pack B 스냅샷과 라벨을 읽고 버릴 테넌트 둘을 쓴다.
+# --vector 없이는 키워드만(수초), 붙이면 두 팔을 KURE 로 임베딩한다(약 1시간 CPU · 지출 0).
+docker compose exec -T nexus-app python -u -m scripts.a13_context_prefix
+docker compose exec -T nexus-app python -u -m scripts.a13_context_prefix --vector
+
 # 탐색 실행 — mecab vs nori (OpenSearch + analysis-nori 필요, 기동 절차는 scripts/ko_eval_nori.py 참조)
 python -m scripts.ko_eval_compare --report
 
