@@ -1,8 +1,12 @@
 # Nexus — Project Context for Claude Code
 
 > Nexus는 조직 내부 지식(문서/정책/설정)과 운영 사실(OTel trace/metric)을 결합하여,
-> 근거 기반(grounded)으로 검색·추론하는 Enterprise RAG + GraphRAG 시스템이다.
+> 근거 기반(grounded)으로 검색·답변하는 엔터프라이즈 검색 계층이다.
 > 맥락 기반 AI Agent(Code Review / Troubleshooting)의 context provider가 최종 목표다.
+>
+> **이 파일은 코드보다 뒤처지면 위험하다.** 문서는 안 읽으면 그만이지만 이건 매 세션 로드되고,
+> 여기 적힌 틀린 전제 위에서 만들어진 것은 전부 틀린다. 규칙을 고칠 때는 **근거를 함께 적어라** —
+> 근거 없는 규칙은 나중에 아무도 지우지 못해 파일만 부푼다.
 
 ---
 
@@ -10,6 +14,7 @@
 
 1. **Grounded answers only**: 모든 답변은 source chunk 또는 trace 포인터를 근거로 인용. 추측 금지.
 2. **System decides, LLM narrates**: 접근 통제, 분류, 경로 판정은 코드(deterministic). LLM은 요약/설명만.
+   - **인용을 요구하는 것과 인용이 실재하는지 확인하는 것은 다른 일이다.** 프롬프트로 요구한 뒤 `llm/citations.py` 가 evidence packet 과 대조해 **코드로** 판정하고, 해소되지 않는 것은 출처인 척 통과시키지 않고 `unverified_citations` 로 따로 보고한다. 숫자도 `llm/numbers.py` 가 같은 방식으로 검사한다. 이 원칙을 "프롬프트에 잘 적으면 된다" 로 이해하지 말 것.
 3. **Default-deny + Quarantine**: 분류 불확실 또는 PII 감지 → `is_quarantined=true`, 인덱싱 중단. 검색에 절대 포함 금지.
 4. **한국어 first**: 모든 텍스트 파이프라인이 한국어 형태소 특성(조사/어미 결합)을 고려. mecab-ko로 BM25 인덱싱.
 5. **Nexus는 인덱스, 저장소가 아님**: 원본 문서는 Git, 원본 trace는 Tempo. Nexus DB에는 파생 데이터만.
@@ -29,8 +34,14 @@ Phase 2 — 검색 지능화
   Adaptive 검색 깊이 (simple/standard/deep), Cross-Encoder Reranking
 
 Phase 3 — 거버넌스
-  JWT 인증/인가, 감사 추적, tenant 관리 UI
+  감사 추적, tenant 관리 UI
 ```
+
+> ⚠ **인증은 이 로드맵에서 빠졌다 — 이미 만들어졌기 때문이다.** 예전에 "Phase 3: JWT 인증/인가"로
+> 적혀 있었으나 실제로 출하된 것은 JWT 가 아니라 **불투명 bearer 토큰**이고, 설계가 다르다:
+> 토큰 하나 = 고정된 `(tenant, clearance)`, capabilities 기본 비어 있음(읽기 전용), roles 없음.
+> **clearance 는 요청이 고를 수 없다** — 서버가 토큰으로 정한다. 자세한 것은
+> `nexus/auth/principal.py` 와 [docs/UI_INTEGRATION.md §9](./docs/UI_INTEGRATION.md).
 
 핵심 관점: **전체 조직이 하나의 RAG를 공유하는 것은 비효율적이다.**
 팀마다 문서 구조, 용어, 검색 패턴이 다르므로 tenant 기반 맞춤형으로 진화한다.
@@ -42,98 +53,37 @@ Phase 3 — 거버넌스
 - **Language**: Python 3.11+
 - **Framework**: FastAPI (API) + Typer (CLI)
 - **DB**: PostgreSQL 16 + pgvector + tsvector(mecab-ko) + pg_trgm
-- **Embedding**: nomic-embed-text via Ollama (로컬, 768d) → `EmbeddingService` 래퍼
-- **LLM**: Claude Sonnet API → `LLMService` 래퍼
+- **Embedding**: `EmbeddingService` 래퍼를 **반드시** 경유. 세대는 둘 — `nomic-embed-text`(768, ollama, 기본) · `KURE-v1`(1024, sidecar). **차원과 지시문은 설정이 아니라 모델의 사실**이라 `providers/embedding.py` 의 레지스트리에 산다(config.yaml 에 숫자를 또 적으면 세 번째 진실이 생긴다).
+- **LLM**: `LLMService` 래퍼를 **반드시** 경유. 백엔드 이음매는 `NEXUS_LLM_PROVIDER` — `anthropic`(기본, 키 필요) · `claude-code`(dev, 호스트의 Claude Code 를 브리지로. **유료 키 불필요**). dev 실행이 조용히 돈을 쓰지 않게 하는 게 이 이음매의 목적이다.
 - **한국어**: mecab-ko + mecab-ko-dic (Docker 내 설치)
 - **OTel**: OpenTelemetry Collector + Grafana Tempo
 - **Container**: Docker Compose (6개 컨테이너)
 
 ---
 
-## 프로젝트 구조
+## 프로젝트 구조 — 이음매 지도
 
-```
-nexus/
-├── CLAUDE.md                           ← 이 파일
-├── README.md
-├── docker-compose.yml
-├── Dockerfile
-├── pyproject.toml
-├── config.yaml                         ← 경로 규칙, PII 패턴, doc_type 매핑
-├── entities.yaml                       ← Entity gazetteer (수동 정의)
-├── init.sql                            ← DB 스키마 DDL
-├── otel-config.yaml
-├── tempo-config.yaml
-│
-├── docs/                               ← 설계/명세 문서
-│   ├── nexus-mvp-design.md             ← MVP 설계 문서 (마스터)
-│   ├── API_CONTRACT.md                 ← API 계약서
-│   └── PIPELINE_SPEC.md               ← 파이프라인 상세
-│
-├── nexus/
-│   ├── __init__.py
-│   │
-│   ├── models/                         ← CRM 기반 도메인 모델
-│   │   ├── resource.py                 ← NexusResource base class
-│   │   ├── document.py
-│   │   ├── chunk.py
-│   │   ├── entity.py
-│   │   ├── edge.py
-│   │   ├── observed_edge.py
-│   │   └── evidence.py
-│   │
-│   ├── repositories/                   ← 데이터 접근 추상화
-│   │   ├── graph.py                    ← GraphRepository Protocol + PostgresGraphRepository
-│   │   └── __init__.py
-│   │
-│   ├── providers/                      ← 외부 API 래퍼
-│   │   ├── embedding.py                ← EmbeddingService (Ollama 격리)
-│   │   ├── llm.py                      ← LLMService (Claude API 격리)
-│   │   └── __init__.py
-│   │
-│   ├── rid.py                          ← Canonical ID 생성 + canonicalize_entity_name()
-│   ├── utils.py                        ← get_search_text() 등 공용 함수
-│   ├── db.py                           ← PostgreSQL 연결 + 쿼리 헬퍼
-│   │
-│   ├── ingest/
-│   │   ├── collector.py                ← 파일 수집 (glob + hash 변경 감지)
-│   │   ├── scanner.py                  ← PII/Secret 스캐너
-│   │   ├── classifier.py               ← Classification 규칙 엔진
-│   │   ├── chunker.py                  ← doc_type별 Hierarchical Chunking
-│   │   └── pipeline.py                 ← Ingestion orchestrator
-│   │
-│   ├── index/
-│   │   ├── bm25.py                     ← get_search_text() → mecab-ko → tsvector
-│   │   ├── embed.py                    ← get_search_text() → EmbeddingService → pgvector
-│   │   └── graph_extractor.py          ← Entity/relation 추출 + evidence binding
-│   │
-│   ├── search/
-│   │   ├── hybrid.py                   ← BM25 + Vector + Graph 3-way 병렬 + RRF
-│   │   ├── evidence_packet.py          ← Evidence Packet 조립
-│   │   └── router.py                   ← Query route 판별 (규칙 기반)
-│   │
-│   ├── otel/
-│   │   ├── aggregator.py               ← Tempo 쿼리 → CALLS_OBSERVED 생성
-│   │   ├── resolver.py                 ← Service name resolution
-│   │   └── diff_engine.py              ← 설계-관측 diff + quality_flags 태깅
-│   │
-│   ├── llm/
-│   │   ├── answer.py                   ← LLMService 호출 + 근거 기반 답변
-│   │   └── prompts.py                  ← System/user prompt 템플릿
-│   │
-│   ├── api.py                          ← FastAPI 엔드포인트
-│   └── cli.py                          ← Typer CLI
-│
-└── tests/
-    ├── test_bm25_korean.py
-    ├── test_hybrid.py
-    ├── test_graph.py
-    ├── test_otel.py
-    ├── test_diff.py
-    ├── test_quarantine.py
-    ├── test_crm.py
-    └── test_integration.py
-```
+> **전체 파일 트리를 여기 두지 않는다.** 예전에 55행짜리 트리를 손으로 관리했고, 그 사이 실제
+> 패키지 10개(`a2a` `auth` `claims` `documents` `feedback` `mcp` `slack` `sources` `tools` `web`)가
+> 트리에 없는 채로 늘었다. 트리는 반드시 뒤처지고, 뒤처졌다는 사실조차 조용하다.
+> 파일 목록이 필요하면 `ls` 를 쳐라. 여기 남기는 것은 **어디를 거쳐야 하는가**뿐이다.
+
+| 하려는 일 | 반드시 경유할 곳 | 왜 |
+|---|---|---|
+| 그래프 조회 | `repositories/graph.py` (`GraphRepository`) | 직접 SQL 금지 — 백엔드 교체 시 재설계 방지 |
+| 임베딩 생성 | `providers/embedding.py` (`EmbeddingService`) | Ollama·사이드카 직접 호출 금지. 모델별 지시문 정책이 여기 한 곳에 산다 |
+| LLM 호출 | `providers/llm.py` (`LLMService`) | 백엔드 이음매(`NEXUS_LLM_PROVIDER`)가 여기 |
+| 검색/임베딩 텍스트 | `utils.get_search_text()` | `chunk_text` 직접 사용 금지 — Contextual Enrichment 대비 |
+| entity rid | `rid.canonicalize_entity_name()` | 추출기 교체 시 rid 안정성 |
+| 벡터 컬럼 선택 | `index/vector_index.py` (`configured_column`/`VECTOR_COLUMNS`) | 화이트리스트 밖이면 기동 실패 |
+| 적재 (모든 경로) | `ingest/pipeline.py` (`run_ingest`) | CLI·HTTP·A2A·Notion 이 전부 여기로 모이므로 세대 게이트가 한 곳이면 된다 |
+| 출처 등급 표기 | `search/provenance.py` | 프롬프트·응답·MCP·웹이 같은 어휘를 써야 한다. 사본 금지 |
+| clearance 판정 | `auth/clearance.py` | 정본 하나. 사본을 만들면 두 답이 생긴다 |
+
+**검색 경로의 사실 하나** — `search/hybrid.py` 는 **BM25 와 벡터 두 다리**를 RRF(`k=60`)로 융합한다.
+그래프는 3-way 융합에 들어가지 않는다: `_diversify` 와 top-k 컷이 **끝난 뒤** `result.graph` 로
+따로 붙는 보강이고, 히트 점수에 기여하지 않는다. (이 파일은 오랫동안 "3-way 병렬 + RRF" 라고
+적고 있었다.)
 
 ---
 
@@ -256,8 +206,9 @@ def base_filter() -> str:
 ### 에러 처리
 - Ingestion 실패: 해당 문서만 skip, 나머지 계속. 실패 로그
 - PII 감지: 즉시 quarantine. 절대 chunk 생성 금지
-- Embedding 실패: retry 3회 후 skip. embedding=null 저장 (BM25로만 검색)
-- LLM 호출 실패: "답변을 생성할 수 없습니다" + evidence snippet은 그대로 제공
+- Embedding 실패: **삼키지 말고 `index/embed.py:record_refusal()` 로 거부를 행으로 남긴다**(`embed_refusals`). 삼키면 그 청크는 벡터 다리에서 영구히 사라지고 아무도 모른다. 백엔드 메시지는 **요약하지 말고 그대로** 남긴다 — "왜 안 되는지" 가 곧 처방이다(`413 max_seq_length` 는 청킹을 고치라는 말이고, 인코딩 오류는 다른 처방이다). 기계가 낸 사실인 `embed_refusals` 와 사람이 이름을 걸고 포기한 `embed_waivers` 를 **섞지 않는다**. 거부 기록 자체가 실패해도 색인은 계속한다 — 진단이 진단 대상을 죽이면 안 된다.
+- LLM 호출 실패: evidence snippet 은 그대로 제공하고, `llm_failed` 와 **안정적인** `llm_failure_reason`(`llm/failure.py`)을 붙인다. 서술이 없다고 검색 결과까지 버리지 않는다.
+- 근거 0건: **LLM 을 아예 호출하지 않는다.** 고정 문장 + `abstained=True, abstain_reason="no_evidence"`. 근거가 없을 때 모델에게 물어보는 것 자체가 환각을 초대한다.
 - DB 연결 실패: 503. partial result 반환 금지
 
 ### OTel 관련
