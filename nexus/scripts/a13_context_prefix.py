@@ -119,32 +119,87 @@ async def leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegResult:
     return res
 
 
+async def embed_arm(arm: str) -> int:
+    """이 팔의 청크를 **설정된 세대**로 임베딩한다. 인덱스는 안 만든다 — 289행이면 전수 스캔이고,
+    ANN 근사가 두 팔에 서로 다른 잡음을 얹는 것이 이 측정에서 제일 나쁜 일이다."""
+    from nexus.index.embed import index_chunks_embedding
+    from nexus.index.vector_index import configured_column
+    from nexus.providers.embedding import embedding_service_from_config
+
+    col = configured_column()
+    rows = await db.fetch_all(
+        f"SELECT rid, chunk_text, section_path, context_prefix FROM chunks "
+        f"WHERE tenant=$1 AND {col} IS NULL", arm)
+
+    class _C:
+        def __init__(self, r):
+            self.chunk_text = r["chunk_text"]
+            self.section_path = r["section_path"]
+            self.context_prefix = r["context_prefix"]
+
+    svc = embedding_service_from_config()
+    return await index_chunks_embedding([(r["rid"], _C(r)) for r in rows], svc, column=col)
+
+
+async def vector_leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegResult:
+    """**컬럼을 명시해서 부른다.** 안 넘기면 기본 768 컬럼을 읽고, 이 팔은 1024 에 있다 —
+    같은 실수로 "벡터 다리가 죽었다" 를 보고할 뻔한 적이 있다."""
+    from nexus.index.vector_index import configured_column
+    from nexus.providers.embedding import embedding_service_from_config
+    from nexus.search import hybrid
+
+    col, svc = configured_column(), embedding_service_from_config()
+    res = LegResult(leg=f"{arm}:vector")
+    for q in labels["queries"]:
+        if not q.get("answerable"):
+            continue
+        hits = await hybrid._vector_search(q["query"], svc, arm, "INTERNAL", 20, column=col)
+        res.scores.append(score_query(q["id"], collapse_to_documents(hits, chunk_doc), q["gold"]))
+    return res
+
+
+def compare(a: LegResult, b: LegResult, label: str) -> None:
+    """a(후보) vs b(현직). 규칙은 하니스 것 그대로 — 숫자를 보기 전에 정해져 있다."""
+    wins = losses = ties = 0
+    by_id = {s.qid: s for s in b.scores}
+    for sa in a.scores:
+        sb = by_id[sa.qid]
+        if sa.recall != sb.recall:
+            wins, losses = (wins + 1, losses) if sa.recall > sb.recall else (wins, losses + 1)
+        elif sa.rr != sb.rr:
+            wins, losses = (wins + 1, losses) if sa.rr > sb.rr else (wins, losses + 1)
+        else:
+            ties += 1
+    v = verdict(wins, losses, ties, name_a="제목접두사", name_b="현직")
+    print(f"\n  [{label}] 승 {v.wins} · 패 {v.losses} · 무 {v.ties}")
+    print(f"  판정: {v.decision}")
+
+
 async def main() -> int:
     labels = yaml.safe_load(LABELS.read_text(encoding="utf-8"))
+    want_vector = "--vector" in sys.argv
     await db.get_pool()
     try:
-        results = {}
+        results, vec_results = {}, {}
         for arm, mode in ARMS.items():
             cd = await build(arm, mode)
             results[arm] = await leg(labels, arm, cd)
             r = results[arm]
             print(f"  {arm:6s} n={r.n}  Recall@10 {r.recall:.3f}  MRR@10 {r.mrr:.3f}  "
-                  f"미스 {sum(1 for s in r.scores if not s.recall)}")
+                  f"미스 {sum(1 for s in r.scores if not s.recall)}", flush=True)
+            if want_vector:
+                n = await embed_arm(arm)
+                print(f"  {arm:6s} 임베딩 {n}청크", flush=True)
+                vec_results[arm] = await vector_leg(labels, arm, cd)
+                vr = vec_results[arm]
+                print(f"  {arm:6s} [벡터] Recall@10 {vr.recall:.3f}  MRR@10 {vr.mrr:.3f}  "
+                      f"미스 {sum(1 for s in vr.scores if not s.recall)}",
+                      flush=True)
 
+        if want_vector:
+            compare(vec_results["a13_b"], vec_results["a13_a"], "벡터")
         a, b = results["a13_b"], results["a13_a"]      # a = 후보(제목), b = 현직
-        wins = losses = ties = 0
-        by_id = {s.qid: s for s in b.scores}
-        for sa in a.scores:
-            sb = by_id[sa.qid]
-            if sa.recall != sb.recall:
-                wins, losses = (wins + 1, losses) if sa.recall > sb.recall else (wins, losses + 1)
-            elif sa.rr != sb.rr:
-                wins, losses = (wins + 1, losses) if sa.rr > sb.rr else (wins, losses + 1)
-            else:
-                ties += 1
-        v = verdict(wins, losses, ties, name_a="제목접두사", name_b="현직")
-        print(f"\n  승 {v.wins} · 패 {v.losses} · 무 {v.ties}")
-        print(f"  판정: {v.decision}")
+        compare(a, b, "키워드")
     finally:
         for arm in ARMS:
             await db.execute("DELETE FROM chunks WHERE tenant=$1", arm)
