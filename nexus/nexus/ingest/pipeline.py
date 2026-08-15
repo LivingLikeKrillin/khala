@@ -158,6 +158,45 @@ def _invalidate_derived() -> str:
     return ",\n                ".join(parts)
 
 
+async def _bind_code_anchors(chunks, parent_rid: str, tenant: str, config: dict) -> None:
+    """문서가 백틱으로 부른 심볼을 코드 인덱스에 붙인다 (SPEC-nexus-doc-code-anchors §3.3).
+
+    **적재를 절대 실패시키지 않는다.** 앵커는 부가 신호이고, 신호가 본체를 죽이면 안 된다.
+    스캔 기록이 없으면 후보는 전부 `unresolved` 거부로 남고 §3.6 재바인딩이 나중에 줍는다 —
+    그래서 스캔보다 먼저 적재해도 영구 미앵커가 되지 않는다.
+    """
+    repo_path = (config.get("code_source") or {}).get("repo_path", "")
+    if not repo_path:
+        return
+
+    from pathlib import Path
+
+    from nexus.index import anchor_store
+    from nexus.index.anchors import bind, extract_candidates
+    from nexus.rid import chunk_rid
+
+    repo = Path(repo_path).name
+    try:
+        scan = await anchor_store.last_scan(tenant, repo)
+        commit = scan.scan_commit if scan else ""
+
+        for chunk in chunks:
+            candidates = extract_candidates(chunk.chunk_text)
+            if not candidates:
+                continue
+            rid = chunk_rid(parent_rid, chunk.section_path, chunk.chunk_index)
+
+            resolved = {c: await anchor_store.resolve_symbol(tenant, repo, c)
+                        for c in candidates}
+            outcome = bind(candidates, lambda c: resolved[c])
+
+            await anchor_store.save_bindings(
+                tenant, repo, rid, outcome.anchors, outcome.refusals, commit)
+    except Exception as e:  # noqa: BLE001 — 앵커 실패가 적재를 막으면 안 된다
+        logger.warning("code_anchor_bind_failed", doc_rid=parent_rid,
+                       error=type(e).__name__)
+
+
 async def _save_chunks(
     chunks: list[ChunkData],
     parent_rid: str,
@@ -404,6 +443,7 @@ async def run_ingest(
 
             # Save chunks
             saved = await _save_chunks(chunks, parent_rid, collected, classification, tenant)
+            await _bind_code_anchors(chunks, parent_rid, tenant, config)
             result.indexed += 1
             logger.info("document_indexed",
                         path=collected.relative_path,

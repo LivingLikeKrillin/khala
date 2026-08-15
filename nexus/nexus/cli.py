@@ -1381,5 +1381,126 @@ def query_text_disable(
     raise typer.Exit(_run(_with_pool_closed(_go)))
 
 
+code_app = typer.Typer(
+    help="문서↔코드 앵커 — '이 문서 낡았나' 를 판단이 아니라 조인으로 (SPEC-nexus-doc-code-anchors)")
+app.add_typer(code_app, name="code")
+
+
+def _repo_or_die(config_path: str) -> str:
+    """대상 저장소 경로는 **설정에서만** 온다. 리포에 박아두지 않는다."""
+    repo = _load_config(config_path).get("code_source", {}).get("repo_path", "")
+    if not repo:
+        typer.echo("config.code_source.repo_path 가 비어있습니다 "
+                   "(배포별 값이므로 리포에 커밋하지 않습니다).", err=True)
+        raise typer.Exit(1)
+    return repo
+
+
+@code_app.command("scan")
+def code_scan(
+    tenant: str = typer.Option("default", "--tenant"),
+    config_path: str = typer.Option("config.yaml", "--config", "-c"),
+) -> None:
+    """체크아웃을 훑어 심볼 인덱스를 대체한다. LLM 을 부르지 않는다."""
+    from pathlib import Path
+
+    from nexus.index import anchor_store, snapshot
+    from nexus.index.symbols import scan_repo
+
+    repo_path = Path(_repo_or_die(config_path))
+    commit = snapshot.head_commit(repo_path)
+    if commit is None:
+        typer.echo("git 저장소가 아니거나 git 을 실행할 수 없습니다.", err=True)
+        raise typer.Exit(1)
+
+    state = snapshot.check(repo_path, commit)
+    if not state.ok:
+        # 스캔 시점의 더러운 트리는 인덱스 자체를 커밋과 어긋나게 만든다.
+        typer.echo(f"스캔 거부: {state.explain()}", err=True)
+        raise typer.Exit(1)
+
+    result = scan_repo(repo_path)
+
+    async def _go():
+        await anchor_store.replace_scan(tenant, repo_path.name, result, commit)
+
+    _run(_with_pool_closed(_go))
+
+    typer.echo(f"스캔 완료 — 심볼 {len(result.symbols)}개 "
+               f"/ 파일 {result.scanned_files}개 (미파싱 {result.unparsed_files}개) "
+               f"@ {commit[:12]}")
+    if result.unparsed_files:
+        typer.echo("※ 미파싱 분모를 비율 없이 함께 읽으십시오 (SPEC §6.6).")
+
+
+@code_app.command("drift")
+def code_drift(
+    tenant: str = typer.Option("default", "--tenant"),
+    config_path: str = typer.Option("config.yaml", "--config", "-c"),
+) -> None:
+    """앵커를 재바인딩하고 현재 상태를 보고한다. LLM 을 부르지 않는다."""
+    from pathlib import Path
+
+    from nexus.index import anchor_store, snapshot
+    from nexus.index.anchors import AMBIGUOUS_NOW, CHANGED, FRESH, ORPHANED, recheck
+
+    repo_path = Path(_repo_or_die(config_path))
+    repo = repo_path.name
+
+    async def _go():
+        scan = await anchor_store.last_scan(tenant, repo)
+        if scan is None:
+            typer.echo("스캔 기록이 없습니다. 먼저 `nexus code scan`.", err=True)
+            return 1
+
+        state = snapshot.check(repo_path, scan.scan_commit)
+        if not state.ok:
+            # "모름" 은 정답이다. 더러운 트리에서 계산한 fresh 는 아니다.
+            typer.echo(f"unknown — {state.explain()}")
+            typer.echo("드리프트 상태를 보고하지 않습니다.")
+            return 0
+
+        # §3.6 재바인딩: 스캔보다 먼저 적재된 문서가 영구 미앵커로 남지 않게.
+        promoted = 0
+        for chunk_rid, candidate in await anchor_store.unresolved_refusals(tenant, repo):
+            matches = await anchor_store.resolve_symbol(tenant, repo, candidate)
+            if len(matches) == 1:
+                await anchor_store.promote_refusal(
+                    tenant, repo, chunk_rid, candidate, matches[0], scan.scan_commit)
+                promoted += 1
+
+        counts = {FRESH: 0, CHANGED: 0, ORPHANED: 0, AMBIGUOUS_NOW: 0}
+        changed_rows: list[tuple[str, str]] = []
+        for a in await anchor_store.all_anchors(tenant, repo):
+            matches = await anchor_store.resolve_symbol(tenant, repo, a["symbol_name"])
+            st = recheck(a["span_hash"], matches)
+            counts[st] += 1
+            if st in (CHANGED, ORPHANED):
+                changed_rows.append((st, a["symbol_name"]))
+
+        refusals = await anchor_store.refusal_counts(tenant, repo)
+
+        typer.echo(f"스냅샷 정상 @ {scan.scan_commit[:12]} — 심볼 {scan.symbol_count}개 "
+                   f"(미파싱 파일 {scan.unparsed_files}개)")
+        if promoted:
+            typer.echo(f"재바인딩 {promoted}건")
+        typer.echo(f"앵커  fresh {counts[FRESH]} · changed {counts[CHANGED]} · "
+                   f"orphaned {counts[ORPHANED]} · ambiguous_now {counts[AMBIGUOUS_NOW]}")
+        typer.echo(f"거부  unresolved {refusals.get('unresolved', 0)} · "
+                   f"ambiguous {refusals.get('ambiguous', 0)}")
+
+        if changed_rows:
+            typer.echo("")
+            typer.echo("읽어볼 것 — changed 는 결함 목록이 아니라 읽기 목록입니다 "
+                       "(의미 판정은 후속 SPEC):")
+            for st, name in changed_rows[:40]:
+                typer.echo(f"  {st:<10} {name}")
+            if len(changed_rows) > 40:
+                typer.echo(f"  … 외 {len(changed_rows) - 40}건")
+        return 0
+
+    raise typer.Exit(_run(_with_pool_closed(_go)) or 0)
+
+
 if __name__ == "__main__":
     app()
