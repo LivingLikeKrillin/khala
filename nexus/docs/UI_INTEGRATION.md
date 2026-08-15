@@ -1,20 +1,24 @@
-# Nexus 2.0 — UI 연동 규격
+# Nexus — UI 연동 규격
 
 > Web UI / Slack Bot / MCP 클라이언트가 Nexus API를 사용할 때의 연동 규격.
-> 모든 인터페이스는 동일한 FastAPI 백엔드를 공유한다.
+> **모든 인터페이스는 동일한 FastAPI 백엔드를 HTTP로 공유한다** — 이게 이 문서가 지키려는 유일한 불변식이다. 어느 클라이언트도 DB에 직접 붙지 않고, 그래서 셋이 서로 다른 진실을 볼 수 없다.
 
 ---
 
 ## 1. 전체 구조
 
+웹 UI는 **vanilla ESM이고 빌드 스텝이 없다.** React도 Next.js도 쓰지 않는다 — `nexus/web/index.html`이 `/static/js/app.js`를 모듈로 불러오고, 서드파티는 `vendor/`에 받아둔 것(marked · DOMPurify · vis-network)을 그대로 쓴다. 빌드 산출물이 없으므로 **고친 파일이 곧 배포되는 파일**이다.
+
 ```
-┌─────────────────────────────────────────────┐
-│  Web UI (React/Next.js)                     │
-│  ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
-│  │ 검색 채팅  │ │ 그래프 뷰  │ │ 문서 브라우저  │ │
-│  └────┬─────┘ └────┬─────┘ └──────┬───────┘ │
-│       │            │              │          │
-└───────┼────────────┼──────────────┼──────────┘
+┌──────────────────────────────────────────────────────────┐
+│  Web UI — vanilla ESM (nexus/web/js), no build step       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────────┐              │
+│  │ 검색 채팅  │ │ 그래프 뷰  │ │ 문서 브라우저  │              │
+│  └────┬─────┘ └────┬─────┘ └──────┬───────┘              │
+│       │            │              │                       │
+│  표시 계층 모듈: citations · freshness · doctype-signal    │
+│                 llm-failure · corpus-hint · history        │
+└───────┼────────────┼──────────────┼──────────────────────┘
         │            │              │
    SSE Stream    REST GET       REST GET
         │            │              │
@@ -30,6 +34,8 @@
 │  GET  /status                (JSON)          │
 └──────────────────────────────────────────────┘
 ```
+
+표시 계층 모듈이 따로 있는 이유는, **백엔드가 이미 판정한 것을 UI가 다시 판정하지 않기 위해서**다. 인용 검증 결과·최신성·문서 타입·생성 실패 사유는 전부 응답에 실려 오고, 이 모듈들은 그것을 배지와 문구로 옮기기만 한다. UI가 스스로 계산하기 시작하면 같은 질문에 대해 화면과 API가 다른 답을 하게 된다.
 
 ---
 
@@ -337,29 +343,31 @@ UI 헤더/사이드바에 연결 상태를 표시한다.
 
 ---
 
-## 9. 인증/인가 (2.0 계획)
+## 9. 인증/인가
 
-1.0에서는 인증 없이 동작. 2.0에서 다음을 추가한다:
+> 이 절은 예전에 "2.0 계획"으로 JWT + roles 설계를 적어두었다. 실제로 만들어진 것은 다른 물건이고, **UI가 지켜야 할 규칙이 정반대**라 그대로 두면 위험하다.
+
+**불투명 bearer 토큰**을 쓴다. JWT가 아니다. 토큰 안에 읽을 것이 없다.
 
 ```
-Authorization: Bearer <JWT>
-
-JWT payload:
-{
-  "sub": "user-123",
-  "tenant": "default",
-  "clearance": "INTERNAL",   ← classification_max로 자동 매핑
-  "roles": ["viewer", "editor"]
-}
+Authorization: Bearer <opaque-token>
 ```
 
-**clearance 매핑:**
-- `PUBLIC`: 공개 문서만
-- `INTERNAL`: 내부 문서까지 (기본값)
-- `RESTRICTED`: 제한 문서까지
+서버는 `sha256(token)`을 설정의 `auth.principals[].token_sha256`과 **상수 시간**으로 대조해 principal을 찾는다. 토큰이 없거나 모르는 값이면 principal이 없다.
 
-UI는 JWT에서 clearance를 읽어 API 호출 시 `classification_max`에 자동 설정한다.
-편집자 역할(`editor`)만 `/ingest`, `/upload` 호출 가능.
+**하나의 토큰 = 하나의 (tenant, clearance).**
+
+```python
+Principal(name=..., tenant=..., clearance=..., capabilities=())
+```
+
+- **clearance는 토큰에 묶여 있고 요청이 고를 수 없다.** 옛 문서는 "UI가 JWT에서 clearance를 읽어 `classification_max`에 자동 설정한다"고 적었는데, 그건 **클라이언트가 자기 권한을 정하는 모양**이다. 지금 설계는 반대다 — 서버가 토큰으로 정하고, 요청은 그보다 넓게 볼 수 없다.
+- **설정이 잘못돼도 넘치지 않는다.** principal의 clearance는 `floor_public()`을 거치므로, 오설정이 실수로 `PUBLIC` 이상을 주는 일이 없다.
+- **기본은 읽기 전용이다.** `capabilities`는 비어 있는 것이 기본이고(default-deny), 쓰기는 여기 명시된 능력이 있어야 한다. `roles`도 `editor` 역할도 없다 — 그 어휘는 만들어지지 않았다.
+
+**UI가 할 일**: 토큰을 `Authorization` 헤더에 실어 보낸다. 그게 전부다. clearance를 계산하거나 `classification_max`를 채워 넣으려 하지 말 것.
+
+로컬 dev 온램프로 `GET /auth/dev-token`이 있다. `NEXUS_DEV_TOKEN`이 설정된 경우에만 값을 돌려주고, 미설정이면 `token=null`이다.
 
 ---
 
@@ -420,6 +428,8 @@ tenant: "default"
 
 ## 12. 엔드포인트 요약
 
+> **UI가 쓰는 것만 적는다. 전체 목록이 아니다** — 앱이 서빙하는 경로는 이보다 훨씬 많고, 살아 있는 전체 명세는 `/docs`(Swagger)와 `/openapi.json`이다. 손으로 옮겨 적은 목록은 반드시 뒤처지고, 뒤처졌다는 사실조차 조용하다. 소스 콘솔·문서 생애주기·피드백 계열은 [API_CONTRACT.md](API_CONTRACT.md)의 표를 참고할 것.
+
 | Method | Path | 용도 | 응답 타입 |
 |--------|------|------|-----------|
 | POST | `/search` | 하이브리드 검색 | JSON |
@@ -438,57 +448,29 @@ tenant: "default"
 
 ## 13. CORS 설정
 
-개발 환경에서는 모든 origin을 허용한다. 운영 배포 시에는 허용 도메인을 제한해야 한다.
+**`"*"`가 아니다.** §9대로 `Authorization` 헤더를 쓰는 순간 와일드카드 origin은 성립하지 않는다(`allow_credentials=True`와 함께 쓸 수 없고, 써서도 안 된다). origin은 **설정에서 온다**:
 
 ```python
-# 현재 (개발)
-allow_origins=["*"]
-
-# 운영 배포 시
-allow_origins=["https://nexus.internal.company.com"]
+allow_origins=_cors_origins()   # auth.allowed_origins + (A2A 활성 시) 외부 A2A 호출자 origin
+allow_credentials=True
 ```
+
+허용 목록은 `auth.allowed_origins`이고, A2A 표면이 켜져 있으면 외부 A2A 호출자의 origin이 합집합으로 더해진다. 즉 **배포마다 다르며 코드에 박혀 있지 않다** — 새 프런트엔드를 다른 호스트에 올렸는데 요청이 막힌다면 먼저 여기를 본다.
 
 ---
 
-## 14. Slack Bot 연동 (2.0 계획)
+## 14. Slack Bot 연동
 
-Slack Bot은 `/search/answer` 엔드포인트를 호출한다 (비스트리밍).
+**출하됨.** 정본은 [SLACK_BOT.md](SLACK_BOT.md)이고, 여기서는 이 문서의 관심사인 *"같은 API를 공유한다"*만 확인한다.
 
-```
-사용자 → Slack: @nexus 결제 서비스 장애 원인?
-Slack Bot → POST /search/answer { "query": "결제 서비스 장애 원인?" }
-Slack Bot ← NexusResponse { "answer": "...", "evidence_snippets": [...] }
-Slack Bot → Slack: 답변 + 출처 링크
-```
+봇은 다른 클라이언트와 마찬가지로 **HTTP로** Nexus에 붙는다 — DB에 직접 붙지 않는다. 자기 bearer 토큰을 쓰므로 §9의 규칙이 그대로 적용되고, 봇의 clearance가 곧 **워크스페이스 전원에게 확장하는 신뢰의 바닥**이 된다.
 
-**Slack 메시지 포맷:**
-- 답변 본문: Block Kit `section`
-- 출처: Block Kit `context` (문서 링크)
-- 그래프: attachment로 이미지 (서버사이드 렌더링)
+옛 서술 중 만들어지지 않은 것: 그래프를 서버사이드 렌더링한 **이미지 attachment로 보내지 않는다.** 텍스트 라인으로 낸다.
 
 ---
 
-## 15. MCP Server 연동 (2.0 계획)
+## 15. MCP Server 연동
 
-AI Agent가 Nexus를 tool로 사용한다. MCP(Model Context Protocol) 서버는 내부적으로 동일한 FastAPI 엔드포인트를 호출한다.
+**출하됨.** 도구 목록과 스키마의 정본은 [MCP_SERVER.md](MCP_SERVER.md)와 `nexus/mcp/server.py`다. 여기 베껴 적으면 또 뒤처진다 — 옛 서술은 도구가 `nexus_search` 하나인 것처럼 적혀 있었고, 지금은 검색·답변·그래프·문서 생애주기·소스 콘솔·Archon 클레임까지 **20개 가까이** 있다.
 
-```json
-// MCP Tool 정의
-{
-  "name": "nexus_search",
-  "description": "조직 내부 문서와 운영 데이터를 검색하여 근거 기반 답변을 제공합니다.",
-  "input_schema": {
-    "type": "object",
-    "properties": {
-      "query": { "type": "string", "description": "검색 쿼리" },
-      "include_graph": { "type": "boolean", "default": true }
-    },
-    "required": ["query"]
-  }
-}
-```
-
-**Agent 활용 시나리오:**
-1. Code Review Agent → `nexus_search("결제 서비스 API 스펙")` → 설계 문서 기반 리뷰
-2. Troubleshooting Agent → `nexus_search("payment-service 의존성")` → 그래프 + OTel 기반 원인 분석
-3. Onboarding Agent → `nexus_search("신규 입사자 가이드")` → 문서 기반 온보딩 안내
+이 문서의 관심사만 확인한다: **MCP 서버는 내부적으로 같은 FastAPI 엔드포인트를 HTTP로 호출한다.** 즉 웹 UI·Slack 봇·MCP가 서로 다른 진실을 볼 수 없고, §9의 인증 규칙도 셋 다 동일하게 적용된다.
