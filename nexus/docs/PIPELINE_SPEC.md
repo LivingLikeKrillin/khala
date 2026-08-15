@@ -8,12 +8,22 @@
 ## 1. Ingestion Pipeline
 
 ### 개요
-Git repo의 Markdown 문서를 수집하여 Nexus DB에 인덱싱한다.
+Markdown 문서를 수집하여 Nexus DB에 인덱싱한다. 소스는 두 갈래다 — 파일시스템(Git repo)과 Notion. 어느 쪽이든 `run_ingest()` 한 곳으로 모인다.
 
 ### 전체 흐름
 ```
-[Git repo] → Collect → Classify → Quarantine Gate → Chunk → Index(BM25+Vector) → Extract Graph → Store
+[Git repo]  ──────────────────────────┐
+                                      │
+                                      ├→ [세대 게이트] → Collect → Classify → Quarantine Gate
+[Notion] → 이미지 판독 → Markdown ────┘    assert_writable
+             (machine_read)
+
+  → Chunk → Index(BM25 + Vector) → Extract Graph → Store
 ```
+
+**세대 게이트가 맨 앞인 것은 의도다.** `collect`보다 먼저 본다 — "아무것도 쓰기 전에 거부한다"는 문서 한 행도 안 남긴다는 뜻이다. 모든 쓰기 경로(CLI·HTTP·A2A·ingest-notion)가 `run_ingest()`로 모이므로 검사는 이 한 곳이면 된다.
+
+**Notion 경로의 이미지는 적재 시점에 텍스트로 판독된다.** 판독된 텍스트에서 나온 청크는 `provenance_tier='machine_read'`로 표시되고, 그 표시는 프롬프트·API 응답·웹 UI까지 따라간다. 사람이 쓴 청크와 같은 근거로 취급되지 않는다.
 
 ### 1.1 Collect (collector.py)
 
@@ -181,29 +191,45 @@ tsquery: '서비스'
 
 ---
 
-### 1.6 Index - Embedding (embed.py)
+### 1.6 Index - Embedding (index/embed.py + providers/embedding.py)
 
-**Input**: chunk_text (str)
+**Input**: chunk (dict) — 텍스트는 `get_search_text()`를 경유한다. 즉 `chunk_text` 원문이 아니라 `context_prefix` 또는 `[section_path]`가 앞에 붙은 검색용 텍스트다.
 
-**Output**: vector(768) (float array)
+**Output**: 설정된 벡터 컬럼에 UPDATE. 차원은 **모델이 정한다**(아래).
 
 **동작**:
-1. Ollama API 호출: `POST /api/embeddings` model=multilingual-e5-base
-2. input prefix: `"passage: " + chunk_text` (e5 모델의 document encoding 규칙)
-3. 반환된 768차원 벡터를 chunks 테이블의 embedding 컬럼에 UPDATE
+1. `configured_column()`이 이번 세대의 대상 컬럼을 정한다. 화이트리스트는 `index/vector_index.py`의 `VECTOR_COLUMNS`이고, 밖의 값이면 기동에 실패한다.
+2. `EmbeddingService`가 모델별 지시문을 붙여 백엔드를 호출한다. **`index/embed.py`는 Ollama를 직접 부르지 않는다.**
+3. 반환 벡터를 `chunks.<column>`에 UPDATE하고, `chunk_vector_provenance`에 (청크, 컬럼)별 모델 출처를 남긴다.
 
-**검색 시 (query encoding)**:
-- query prefix: `"query: " + query_text` (e5 모델의 query encoding 규칙)
-- 이 prefix 구분이 없으면 검색 품질이 크게 떨어짐. 반드시 적용.
+**모델 레지스트리 — 설정이 아니라 사실이다** (`providers/embedding.py`)
+
+세대는 **모델 · 벡터 컬럼 · 백엔드** 셋이 함께 움직인다. 하나만 움직인 상태는 조용히 틀리므로 기동 시점에 막는다.
+
+| 모델 | 차원 | 백엔드 | 지시문 (document / query) |
+|---|---|---|---|
+| `nomic-embed-text` (기본) | 768 | ollama | `search_document: ` / `search_query: ` |
+| `KURE-v1` | 1024 | sidecar | `("", "")` |
+
+- **차원은 `config.yaml`에 없다.** `MODEL_DIMENSIONS`에 산다 — 설정에 같은 숫자를 또 적으면 세 번째 진실이 생긴다.
+- **지시문도 설정 기본값이 아니다.** 모델 카드에서 온다. `("", "")`은 "미지정"이 아니라 **"이 모델은 지시문을 쓰지 않는다"는 적극적 사실**이고, 둘은 구분된다. 한 모델의 형식을 다른 모델에 씌우면 "그 모델을 잘못 쓴 결과"를 재게 된다.
+
+**기동 시점에 실패하는 것들** — 전부 조용히 틀리는 경로를 막기 위한 것이다.
+
+- `UnknownEmbeddingModel` — 레지스트리에 없는 모델. 조용히 nomic 형식을 물려주면 그 모델을 잘못 쓴다.
+- `ConflictingPrefixConfig` — 지시문 없는 모델에 지시문을 설정했다.
+- `InconsistentEmbeddingGeneration` — 모델·컬럼·백엔드가 한 세대를 안 가리킨다. 빈 컬럼일 때는 0행이라 아무 일도 없다가, 재임베딩으로 행이 차는 순간 pgvector가 `different vector dimensions`를 낸다.
+- `WrongVectorDimensions` — 백엔드가 그 모델의 차원이 아닌 벡터를 돌려줬다. Matryoshka 절단·잘못 띄운 사이드카·헤드가 바뀐 체크포인트가 전부 이 모양으로 온다.
+
+**세대 선언 게이트**: 적재는 `collect`보다도 먼저 `assert_writable()`을 통과해야 한다(§1.0 참조, `index/generation.py`). 실행 중인 해석이 코퍼스의 선언과 다르면 **문서를 한 건도 읽기 전에** 거부한다. 이 게이트가 막는 실패는 *문서화된 명령이 아무도 검색하지 않는 컬럼에 조용히 적재하는 것*이다.
 
 **에러 처리**:
-- Ollama 응답 실패: retry 3회 (exponential backoff: 1s, 2s, 4s)
-- 3회 실패: embedding=null로 저장. BM25로만 검색 가능. 경고 로그
-- Ollama 연결 자체 불가: 전체 embedding 작업 중단. 에러 반환
+- 배치 실패 시 `embedding_batch_failed`를 남기고 **그 배치의 각 청크에 대해 `record_refusal()`로 거부를 행으로 남긴다.** 삼키면 그 청크는 벡터 다리에서 영구히 사라지고 아무도 모른다.
+- 거부 사유는 백엔드 메시지를 **요약하지 않고 그대로** 남긴다. "왜 안 되는지"가 곧 처방이기 때문이다 — `413 max_seq_length(8192)`는 청킹을 고치라는 말이고, 인코딩 오류는 다른 처방이다.
+- `embed_refusals`(기계가 낸 사실)와 `embed_waivers`(사람이 이름을 걸고 포기한 결정)는 **섞지 않는다.**
+- 거부 기록 자체가 실패해도 색인은 계속한다 — 진단이 진단 대상을 죽이면 안 된다.
 
-**배치 처리**:
-- 한 번에 10개 chunk씩 배치 호출 (Ollama가 배치를 지원하면)
-- 지원 안 하면 순차 처리 + asyncio.gather로 병렬화 (동시 5개)
+**배치 처리**: 기본 `batch_size=10`. 타임아웃은 `EMBEDDING_BATCH_TIMEOUT`(기본 600초).
 
 ---
 
@@ -369,6 +395,18 @@ class EvidencePacket:
 4. diff_flags가 있으면 (doc_only, observed_only, conflict) 반드시 언급하세요.
 5. 근거가 없는 질문에는 "현재 인덱싱된 문서에서 관련 정보를 찾을 수 없습니다"라고 답하세요.
 ```
+
+**호출 전 — 정직한 부재**: evidence packet의 snippet이 0건이면 **LLM을 아예 호출하지 않는다.** 고정 문장을 돌려주고 `abstained=True, abstain_reason="no_evidence"`로 표시한다. 근거가 없을 때 모델에게 물어보는 것 자체가 환각을 초대하는 일이다.
+
+### 2.8 호출 이후 — 모델 출력은 검증 대상이다
+
+프롬프트로 인용을 **요구**하는 것과 인용이 **실재하는지 확인**하는 것은 다른 일이다. 규칙 2를 지켰는지는 코드가 판정한다.
+
+- **인용 검증** (`llm/citations.py`) — 답변이 단 인용을 실제로 건네진 evidence packet과 대조한다. 해소되지 않는 것은 출처인 척 통과시키지 않고 `unverified_citations`로 따로 보고한다.
+- **숫자 검증** (`llm/numbers.py`) — 답변 속 숫자를 evidence 및 *모델이 실제로 본 질의*와 대조한다.
+- **최신성 라벨** (`documents/staleness.py`) — 스니펫마다 타입별 TTL 대비 경과를 붙이고 `n_stale`을 센다. 읽는 사람을 위한 라벨이며 **랭킹이나 배제에 관여하지 않는다.**
+- **출처 등급 표기** (`search/provenance.py`) — `machine_read` 청크에는 표시가 붙고, 그 어휘는 프롬프트·응답·MCP·웹에서 한 곳(`provenance.py`)에서만 나온다.
+- **생성 실패는 답변 실패와 다르다** (`llm/failure.py`) — LLM 호출이 실패해도 `llm_failed`와 안정적인 `llm_failure_reason`을 붙여 **근거는 그대로 반환한다.** 서술이 없다고 검색 결과까지 버리지 않는다.
 
 ---
 

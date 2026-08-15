@@ -46,6 +46,15 @@ docs:
   - doc: nexus/docs/PIPELINE_SPEC.md
     sources:
       - nexus/nexus/ingest
+      - nexus/nexus/index/embed.py
+      - nexus/nexus/providers/embedding.py
+      - nexus/nexus/llm/citations.py
+      - nexus/nexus/llm/numbers.py
+
+  - doc: nexus/docs/UI_INTEGRATION.md
+    sources:
+      - nexus/nexus/web/js
+      - nexus/nexus/api.py
 
   - doc: nexus/docs/KOREAN_SEARCH_QUALITY.md
     sources:
