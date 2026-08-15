@@ -1,0 +1,127 @@
+"""앵커 추출·바인딩·재검사 (SPEC-nexus-doc-code-anchors §3.2, §3.3, §3.4).
+
+⚠ 여기 나오는 심볼 이름과 문장은 전부 지어낸 것이다. 대상 저장소의 이름을 픽스처로 쓰지 말 것.
+"""
+
+from __future__ import annotations
+
+from nexus.index.anchors import (
+    AMBIGUOUS_NOW,
+    CHANGED,
+    FRESH,
+    ORPHANED,
+    bind,
+    extract_candidates,
+    recheck,
+)
+
+
+# ---------------------------------------------------------------- 추출
+
+def test_picks_up_backticked_identifiers():
+    text = "재시도는 `WidgetDispatcher` 가 맡고, 상한은 `MAX_ATTEMPTS` 다."
+    assert extract_candidates(text) == ["WidgetDispatcher", "MAX_ATTEMPTS"]
+
+
+def test_ignores_unbackticked_prose():
+    assert extract_candidates("WidgetDispatcher 가 재시도를 맡는다") == []
+
+
+def test_deduplicates_within_a_chunk():
+    text = "`Widget` 은 ... 그리고 `Widget` 은 또한 ..."
+    assert extract_candidates(text) == ["Widget"]
+
+
+def test_rejects_dotted_names_rather_than_guessing_the_last_segment():
+    """마지막 조각만 떼는 것은 추측이고, 추측한 앵커는 영구히 남는다 (§3.2)."""
+    assert extract_candidates("`Widget.dispatch` 를 부른다") == []
+
+
+def test_rejects_reserved_words():
+    """예약어는 선언 이름이 될 수 없다 — 거부 분모를 정직하게 유지한다."""
+    assert extract_candidates("`public` 과 `class` 와 `void`") == []
+
+
+def test_rejects_single_character_tokens():
+    assert extract_candidates("`i` 와 `x` 를 쓴다") == []
+
+
+def test_does_not_extract_paths_endpoints_or_config_keys():
+    """SPEC §2 — Java 심볼 인덱스에 대해 구조적으로 바인딩 불가라 분모만 오염시킨다."""
+    text = "`src/main/java/Widget.java` 와 `/api/v1/widgets` 와 `widget.retry.max`"
+    assert extract_candidates(text) == []
+
+
+# ---------------------------------------------------------------- 바인딩
+
+def _resolver(table: dict[str, list[tuple[str, str, str]]]):
+    return lambda name: table.get(name, [])
+
+
+def test_unique_match_becomes_an_anchor():
+    table = {"WidgetDispatcher": [("WidgetDispatcher", "Widget.java", "h1")]}
+
+    result = bind(["WidgetDispatcher"], _resolver(table))
+
+    assert not result.refusals
+    assert result.anchors[0].file_path == "Widget.java"
+    assert result.anchors[0].span_hash == "h1"
+
+
+def test_zero_matches_is_a_recorded_refusal_not_a_dropped_candidate():
+    """거부를 버리면 재바인딩이 불가능해지고 수율이 실행 순서를 재게 된다 (§3.3)."""
+    result = bind(["Nowhere"], _resolver({}))
+
+    assert not result.anchors
+    assert result.refusals[0].reason == "unresolved"
+    assert result.refusals[0].match_count == 0
+
+
+def test_ambiguous_match_refuses_and_keeps_the_count():
+    """오버로드나 동명이인. 추측해 하나를 고르면 거짓 앵커가 영구히 남는다."""
+    table = {"send": [("send", "A.java", "h1"), ("send", "B.java", "h2")]}
+
+    result = bind(["send"], _resolver(table))
+
+    assert not result.anchors
+    assert result.refusals[0].reason == "ambiguous"
+    assert result.refusals[0].match_count == 2
+
+
+def test_mixed_batch_splits_cleanly():
+    table = {
+        "Alpha": [("Alpha", "A.java", "h1")],
+        "Beta": [("Beta", "B.java", "h2"), ("Beta", "C.java", "h3")],
+    }
+
+    result = bind(["Alpha", "Beta", "Gamma"], _resolver(table))
+
+    assert [a.candidate for a in result.anchors] == ["Alpha"]
+    assert {(r.candidate, r.reason) for r in result.refusals} == {
+        ("Beta", "ambiguous"), ("Gamma", "unresolved")}
+
+
+# ---------------------------------------------------------------- 재검사
+
+def test_same_hash_is_fresh():
+    assert recheck("h1", [("Widget", "Widget.java", "h1")]) == FRESH
+
+
+def test_different_hash_is_changed():
+    assert recheck("h1", [("Widget", "Widget.java", "h2")]) == CHANGED
+
+
+def test_missing_symbol_is_orphaned():
+    assert recheck("h1", []) == ORPHANED
+
+
+def test_symbol_that_became_ambiguous_is_retired_not_repointed():
+    """바인딩 이후 동명 심볼이 생긴 경우. 다시 겨누면 조용히 다른 것을 가리키게 된다."""
+    state = recheck("h1", [("Widget", "A.java", "h1"), ("Widget", "B.java", "h9")])
+
+    assert state == AMBIGUOUS_NOW
+
+
+def test_moved_file_with_identical_text_stays_fresh():
+    """키는 이름이고, 문서가 주장한 것은 텍스트다 (§3.4)."""
+    assert recheck("h1", [("Widget", "moved/Widget.java", "h1")]) == FRESH
