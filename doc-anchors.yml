@@ -1,0 +1,67 @@
+# 문서 → 그 문서가 서술하는 코드.
+#
+# 왜 있나: "이 문서가 낡았나" 를 사람이 176개 커밋을 세어 판정하고 있었다. 앵커를 달면
+# 그 판정이 조인 한 번이 된다 — 심볼/경로가 아직 존재하는가, 그리고 문서가 마지막으로
+# 손봐진 뒤 그 경로들이 몇 번 바뀌었는가. LLM 을 부르지 않는다.
+#
+# 규칙:
+#   - sources 는 저장소 상대 경로. 파일이든 디렉터리든 된다.
+#   - 없는 경로는 orphaned 로 실패한다. 코드가 옮겨갔는데 문서가 안 따라온 것이므로
+#     경로를 고치는 것이 곧 문서를 다시 읽는 계기가 된다.
+#   - 여기 없는 문서는 검사 대상이 아니다. 목록에 올리는 것 자체가 "이 문서는 코드를
+#     서술한다" 는 선언이다. 철학·기여 안내처럼 코드를 서술하지 않는 문서는 올리지 않는다.
+#
+# 검사: python scripts/check_doc_drift.py
+
+docs:
+  - doc: docs/src/content/docs/tools/nexus.md
+    sources: &nexus_public
+      - nexus/nexus/search/hybrid.py
+      - nexus/nexus/search/evidence_packet.py
+      - nexus/nexus/llm/answer.py
+      - nexus/nexus/llm/citations.py
+      - nexus/nexus/search/provenance.py
+      - nexus/nexus/documents/staleness.py
+      - nexus/nexus/index/generation.py
+      - nexus/nexus/index/vector_index.py
+      - nexus/nexus/otel/diff_engine.py
+      - nexus/config.yaml
+      - Taskfile.yml
+
+  - doc: docs/src/content/docs/ko/tools/nexus.md
+    sources: *nexus_public
+
+  - doc: nexus/docs/API_CONTRACT.md
+    sources:
+      - nexus/nexus/api.py
+
+  - doc: nexus/docs/MCP_SERVER.md
+    sources:
+      - nexus/nexus/mcp/server.py
+
+  - doc: nexus/docs/SLACK_BOT.md
+    sources:
+      - nexus/nexus/slack
+
+  - doc: nexus/docs/PIPELINE_SPEC.md
+    sources:
+      - nexus/nexus/ingest
+
+  - doc: nexus/docs/KOREAN_SEARCH_QUALITY.md
+    sources:
+      - nexus/nexus/index/bm25.py
+      - nexus/nexus/providers/embedding.py
+
+  - doc: docs/src/content/docs/tools/arbiter.md
+    sources: &arbiter_public
+      - arbiter/src
+
+  - doc: docs/src/content/docs/ko/tools/arbiter.md
+    sources: *arbiter_public
+
+  - doc: docs/src/content/docs/tools/probe.md
+    sources: &probe_public
+      - probe/src
+
+  - doc: docs/src/content/docs/ko/tools/probe.md
+    sources: *probe_public
