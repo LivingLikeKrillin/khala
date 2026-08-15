@@ -4,6 +4,8 @@ type: spec
 title: The reader must be able to repeat itself — ADR-0010's central invariant is
   false in production, and nothing was checking
 status: approved
+retractions:
+- SPEC-nexus-vision-reader-of-record
 linked_adrs:
 - ADR-0006
 - ADR-0010
