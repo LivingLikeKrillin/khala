@@ -1433,6 +1433,60 @@ def code_scan(
         typer.echo("※ 미파싱 분모를 비율 없이 함께 읽으십시오 (SPEC §6.6).")
 
 
+@code_app.command("bind")
+def code_bind(
+    tenant: str = typer.Option("default", "--tenant"),
+    config_path: str = typer.Option("config.yaml", "--config", "-c"),
+) -> None:
+    """이미 적재된 청크에 앵커를 붙인다 (백필). LLM 을 부르지 않는다.
+
+    적재 시점 바인딩만으로는 기존 코퍼스가 영원히 어둡다 — 재적재하지 않는 한 후보 추출조차
+    되지 않기 때문이다. 스캔을 새로 돌린 뒤에도 이 명령으로 다시 훑는다.
+    """
+    from pathlib import Path
+
+    from nexus.index import anchor_store
+    from nexus.index.anchors import bind, extract_candidates
+
+    repo_path = Path(_repo_or_die(config_path))
+    repo = repo_path.name
+
+    async def _go():
+        scan = await anchor_store.last_scan(tenant, repo)
+        if scan is None:
+            typer.echo("스캔 기록이 없습니다. 먼저 `nexus code scan`.", err=True)
+            return 1
+
+        chunks = await anchor_store.iter_chunk_texts(tenant)
+        cache: dict[str, list] = {}
+        n_chunks = n_cand = n_anchor = 0
+        refused = {"unresolved": 0, "ambiguous": 0}
+
+        for rid, text in chunks:
+            candidates = extract_candidates(text or "")
+            if not candidates:
+                continue
+            n_chunks += 1
+            n_cand += len(candidates)
+            for c in candidates:
+                if c not in cache:
+                    cache[c] = await anchor_store.resolve_symbol(tenant, repo, c)
+            outcome = bind(candidates, lambda c: cache[c])
+            n_anchor += len(outcome.anchors)
+            for r in outcome.refusals:
+                refused[r.reason] += 1
+            await anchor_store.save_bindings(
+                tenant, repo, rid, outcome.anchors, outcome.refusals, scan.scan_commit)
+
+        typer.echo(f"대상 청크 {len(chunks)}개 중 후보를 가진 청크 {n_chunks}개")
+        typer.echo(f"후보 {n_cand}개 → 앵커 {n_anchor}개")
+        typer.echo(f"거부  unresolved {refused['unresolved']} · ambiguous {refused['ambiguous']}")
+        typer.echo("※ 바인딩률은 거부 분할과 함께 읽으십시오 (SPEC §6.1).")
+        return 0
+
+    raise typer.Exit(_run(_with_pool_closed(_go)) or 0)
+
+
 @code_app.command("drift")
 def code_drift(
     tenant: str = typer.Option("default", "--tenant"),

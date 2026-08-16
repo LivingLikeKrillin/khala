@@ -227,3 +227,70 @@ def test_guard_refuses_outside_a_git_repo(tmp_path: Path):
 
     assert not state.ok
     assert state.reason == "no_git"
+
+
+# ------------------------------------------------------------- Python 문법
+
+PY_SAMPLE = '''\
+"""Widget dispatch."""
+
+
+class WidgetDispatcher:
+    MAX_ATTEMPTS = 2
+
+    def dispatch(self, payload):
+        self._send(payload)
+
+    def _send(self, payload):
+        pass
+
+
+def build_sink():
+    return None
+'''
+
+
+def test_extracts_python_classes_and_functions():
+    rows = extract_symbols(PY_SAMPLE, "widget.py")
+    found = {(r.symbol_name, r.symbol_kind) for r in rows}
+    assert ("WidgetDispatcher", "class") in found
+    assert ("dispatch", "function") in found
+    assert ("build_sink", "function") in found
+
+
+def test_grammar_is_chosen_by_extension_not_content():
+    """Java 소스를 .py 로 주면 심볼이 나오지 않아야 한다 — 확장자가 계약이다."""
+    assert extract_symbols(SAMPLE, "Widget.py") == []
+
+
+def test_unknown_extension_yields_nothing():
+    assert extract_symbols(PY_SAMPLE, "notes.txt") == []
+
+
+def test_python_normalisation_matches_java_rules():
+    assert span_hash("def f():\r\n    return 1\r\n") == span_hash("def f():\n    return 1\n")
+
+
+def test_python_rows_also_carry_no_source_text():
+    rows = extract_symbols(PY_SAMPLE, "widget.py")
+    for row in rows:
+        blob = " ".join(str(v) for v in vars(row).values())
+        for token in ["MAX_ATTEMPTS", "payload", "Widget dispatch"]:
+            assert token not in blob
+
+
+def test_scan_walks_both_languages_and_skips_vendor_dirs(tmp_path: Path):
+    """벤더 디렉터리 하나가 인덱스를 남의 코드로 뒤덮으면 유일 해소가 무너진다."""
+    (tmp_path / "Widget.java").write_text(SAMPLE, encoding="utf-8")
+    (tmp_path / "widget.py").write_text(PY_SAMPLE, encoding="utf-8")
+    vendor = tmp_path / "node_modules" / "pkg"
+    vendor.mkdir(parents=True)
+    (vendor / "vendored.py").write_text("class Vendored: pass\n", encoding="utf-8")
+
+    result = scan_repo(tmp_path)
+
+    names = {r.symbol_name for r in result.symbols}
+    assert "WidgetDispatcher" in names          # 두 언어 모두에서 나온다
+    assert "build_sink" in names
+    assert "Vendored" not in names
+    assert result.scanned_files == 2            # 벤더는 분모에도 안 들어간다

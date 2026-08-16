@@ -36,6 +36,7 @@ dependencies = [
     # Archon — 코드 구조 분석(권한 게이트 추출) via AST (무료, CodeQL 대체)
     "tree-sitter>=0.21,<1",
     "tree-sitter-java>=0.21,<1",
+    "tree-sitter-python>=0.21,<1",
 ]
 
 [project.optional-dependencies]
