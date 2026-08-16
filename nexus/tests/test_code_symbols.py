@@ -348,3 +348,47 @@ def test_being_behind_upstream_warns_from_local_refs_only(tmp_path: Path):
 
 def test_a_clean_mainline_checkout_warns_about_nothing(repo: Path):
     assert snapshot.check(repo, _head(repo)).warnings() == []
+
+
+# ------------------------------------- 외부 타입 (드리프트 오탐의 주범)
+
+def test_java_imports_are_collected_as_borrowed_names():
+    from nexus.index.symbols import imported_names
+
+    got = imported_names(
+        "import org.springframework.context.ApplicationEventPublisher;\n"
+        "import static java.util.Objects.requireNonNull;\n"
+        "import java.util.*;\n", ".java")
+
+    assert "ApplicationEventPublisher" in got
+    assert "requireNonNull" in got
+    assert "*" not in got
+
+
+def test_python_imports_are_collected():
+    from nexus.index.symbols import imported_names
+
+    got = imported_names("from pathlib import Path, PurePath\nimport structlog\n", ".py")
+
+    assert {"Path", "PurePath", "structlog"} <= got
+
+
+def test_a_name_that_is_both_declared_and_imported_counts_as_ours(tmp_path: Path):
+    """같은 이름의 자체 클래스가 있으면 그건 우리 것이다 — 외부로 빼면 진짜 드리프트를 놓친다."""
+    (tmp_path / "A.java").write_text(
+        "import com.other.Widget;\nclass Widget { void f() {} }\n", encoding="utf-8")
+
+    result = scan_repo(tmp_path)
+
+    assert "Widget" in {s.symbol_name for s in result.symbols}
+    assert "Widget" not in result.imported_names
+
+
+def test_borrowed_names_are_reported_so_they_are_not_called_missing(tmp_path: Path):
+    """문서가 프레임워크 클래스를 불렀다고 '사라졌다' 고 보고하면 목록이 작업 큐가 못 된다."""
+    (tmp_path / "A.java").write_text(
+        "import org.spring.EventPublisher;\nclass Mine { void f() {} }\n", encoding="utf-8")
+
+    result = scan_repo(tmp_path)
+
+    assert "EventPublisher" in result.imported_names

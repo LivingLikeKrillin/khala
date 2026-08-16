@@ -1497,6 +1497,9 @@ def code_bind(
 def code_drift(
     tenant: str = typer.Option("default", "--tenant"),
     config_path: str = typer.Option("config.yaml", "--config", "-c"),
+    classify_missing: bool = typer.Option(
+        False, "--classify",
+        help="미해소 후보를 external/deleted/never_existed 로 가른다 (git 이력 1회 훑음)"),
 ) -> None:
     """앵커를 재바인딩하고 현재 상태를 보고한다. LLM 을 부르지 않는다."""
     from pathlib import Path
@@ -1551,6 +1554,33 @@ def code_drift(
                    f"orphaned {counts[ORPHANED]} · ambiguous_now {counts[AMBIGUOUS_NOW]}")
         typer.echo(f"거부  unresolved {refusals.get('unresolved', 0)} · "
                    f"ambiguous {refusals.get('ambiguous', 0)}")
+
+        if classify_missing:
+            # 왜 없는지가 처분을 가른다. 프레임워크 클래스를 "사라졌다" 고 올리면
+            # 받는 쪽이 목록 전체를 신뢰하지 않는다.
+            from nexus.index.history import DELETED, EXTERNAL, classify, deletion_map
+            from nexus.index.symbols import scan_repo
+
+            names = sorted({c for _, c in
+                            await anchor_store.unresolved_refusals(tenant, repo)})
+            verdicts = classify(names, imported=scan_repo(repo_path).imported_names,
+                                deletions=deletion_map(repo_path))
+            buckets: dict[str, list] = {}
+            for v in verdicts:
+                buckets.setdefault(v.kind, []).append(v)
+
+            typer.echo("")
+            typer.echo(f"미해소 후보 {len(verdicts)}건 분류:")
+            for kind, label in ((EXTERNAL, "외부 타입 (문서 잘못 아님)"),
+                                (DELETED, "삭제됨 — 드리프트"),
+                                ("never_existed", "이력 없음 — 미구현일 수 있음")):
+                got = buckets.get(kind, [])
+                typer.echo(f"  {label}: {len(got)}건")
+            for v in buckets.get(DELETED, [])[:25]:
+                typer.echo(f"    {v.name:<38} {v.explain()}")
+            more = len(buckets.get(DELETED, [])) - 25
+            if more > 0:
+                typer.echo(f"    … 외 {more}건")
 
         if changed_rows:
             typer.echo("")
