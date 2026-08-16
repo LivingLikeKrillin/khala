@@ -125,3 +125,53 @@ def test_symbol_that_became_ambiguous_is_retired_not_repointed():
 def test_moved_file_with_identical_text_stays_fresh():
     """키는 이름이고, 문서가 주장한 것은 텍스트다 (§3.4)."""
     assert recheck("h1", [("Widget", "moved/Widget.java", "h1")]) == FRESH
+
+
+# ------------------------------------------- 철회된 언급 (취소선)
+#
+# 취소선의 뜻은 하나가 아니다. 실측(문서 1,396개·취소선 112개)에서 이름 철회는 2개뿐이었고
+# 나머지는 위험표·체크리스트의 "해소됨" 표시였다. 그래서 규칙은 **이름만 감싼 취소선**으로
+# 좁다. 처음에 문장째 지웠더니 실재하는 메서드로 유일 해소되던 앵커 하나가 사라졌다.
+
+
+def test_a_struck_through_name_is_not_a_candidate():
+    """마크다운 취소선은 철회다. 고친 사람에게 같은 항목을 다시 올리면 목록이 신뢰를 잃는다."""
+    text = "예시: `WidgetSearchRequest`, ~~`WidgetPageRequest`~~ ⚠️ 후속 미확인"
+
+    assert extract_candidates(text) == ["WidgetSearchRequest"]
+
+
+def test_struck_through_text_does_not_swallow_the_rest_of_the_line():
+    """비탐욕 매칭이 아니면 취소선 하나가 줄 전체를 지운다."""
+    text = "~~`Old`~~ 는 없어졌고 `New` 를 쓰십시오"
+
+    assert extract_candidates(text) == ["New"]
+
+
+def test_a_name_both_struck_and_live_still_counts():
+    """다른 곳에서 여전히 주장되고 있으면 후보다 — 한 번 취소선이 붙었다고 사면되지 않는다."""
+    text = "~~`Widget`~~ 였으나, 실제로는 `Widget` 가 여전히 쓰입니다"
+
+    assert extract_candidates(text) == ["Widget"]
+
+
+def test_unmatched_tildes_do_not_eat_the_document():
+    text = "~~ 열렸지만 안 닫힘 `Widget` 계속"
+
+    assert extract_candidates(text) == ["Widget"]
+
+
+def test_a_struck_sentence_is_a_resolved_concern_not_a_retracted_name():
+    """실제 회귀. 위험표에서 취소선은 '이 우려는 해소됐다' 는 뜻이고, 해소된 우려가 부르는
+    이름은 **실재한다**. 문장째 지웠다가 유일 해소되던 진짜 앵커 하나를 잃었다.
+    """
+    text = "| 12.4 ~~`WidgetEvent`에 `widgetId` 미노출~~ | **해소됨** — 게터 확인 |"
+
+    assert extract_candidates(text) == ["WidgetEvent", "widgetId"]
+
+
+def test_a_struck_sentence_does_not_rescue_a_name_struck_on_its_own():
+    """두 규칙이 한 문서에 같이 있어도 서로 간섭하지 않는다."""
+    text = "~~`Retired`~~ 삭제됨\n| 3.1 ~~`Live` 미노출~~ | 해소됨 |"
+
+    assert extract_candidates(text) == ["Live"]

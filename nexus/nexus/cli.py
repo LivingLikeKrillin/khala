@@ -1400,6 +1400,9 @@ def _repo_or_die(config_path: str) -> str:
 def code_scan(
     tenant: str = typer.Option("default", "--tenant"),
     config_path: str = typer.Option("config.yaml", "--config", "-c"),
+    require_mainline: bool = typer.Option(
+        False, "--require-mainline",
+        help="기본 브랜치가 아니면 거부한다 (경고만으로는 놓친다)"),
 ) -> None:
     """체크아웃을 훑어 심볼 인덱스를 대체한다. LLM 을 부르지 않는다."""
     from pathlib import Path
@@ -1424,6 +1427,12 @@ def code_scan(
     typer.echo(f"대상: {state.context()}")
     for w in state.warnings():
         typer.echo(f"⚠ {w}")
+
+    if require_mainline and state.warnings():
+        # 경고를 읽고도 그냥 넘긴 적이 있다. 3주 된 피처 브랜치를 재고 그 숫자를 보고했고,
+        # 이미 고쳐진 항목 6건이 목록에 올라갔다. 막을 수 있으면 막는 편이 낫다.
+        typer.echo("거부: --require-mainline 인데 위 경고가 있습니다.", err=True)
+        raise typer.Exit(1)
 
     result = scan_repo(repo_path)
 
