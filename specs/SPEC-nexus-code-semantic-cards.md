@@ -214,6 +214,32 @@ development bridge and then generating production cards with a different model c
 instrument that will not be the one running. If both backends are to be used, both are measured and
 reported separately.
 
+### 3.4 The card is never the authority
+
+Added after the critique round, from comparing this design against Toss's published one. Their
+article ends on the rule this SPEC had left out:
+
+> Topic이 답을 만들거나 최신성을 검사할 때는 **카드의 설명만 믿지 않고 현재 코드의 실제 span을
+> 다시 읽어 검증**해요.
+
+The card is a **pointer with a description attached**, not a record of fact. It was written by a
+model at one commit, and the code has been free to move ever since. Two consequences:
+
+**For every consumer, now and later.** Anything that acts on a card — matching, answering, drift
+reporting — re-reads the referenced spans from the checkout before relying on the description. A
+card that cannot be re-read is not evidence. This is a rule the matching SPEC inherits; it is
+written here because this is where cards come into existence and where the temptation to treat
+them as durable begins.
+
+**In this SPEC's scope**, that means a card must remain *re-verifiable* and must announce when it
+has stopped being current. The card carries `span_hash` for exactly this: comparing the stored hash
+against the current one is a lookup, and a card whose spans have changed is **stale** — reported as
+such and not served to any consumer until regenerated. Detecting this needs no model.
+
+Stale is not wrong. It means the description was true of code that has since moved, which is
+precisely the signal this whole direction exists to surface — but it is a signal about the card,
+and it must not be quietly presented as a fact about the code.
+
 ## 4. How this can lie, and what it costs if it does
 
 - **The card describes what the code appears to do.** A generator that misreads an early return or a
@@ -265,14 +291,17 @@ Gates in order. **6.1 blocks the rest.** All are measured with the generator tha
 4. **Cost.** Total spend for a full run over the scanned repository, with the backend declared before
    it starts. Development runs use the keyless path unless a paid run is authorised in advance. Spend
    per produced edge is **not** a gate here — there are no edges until the matching SPEC.
-5. **The lexical path is unharmed.** Re-run its census **pinned to the commit it was measured at**
+5. **Card staleness is detected without a model.** Change one line inside a carded symbol,
+   re-run the staleness check, and confirm the card reports `stale` — with the LLM provider unset
+   and no API key present, so the check cannot be passing by way of a model call.
+6. **The lexical path is unharmed.** Re-run its census **pinned to the commit it was measured at**
    (2026-08-16, 24 anchors / 19 true) against the stored expected set, so ordinary repository churn
    cannot make this pass or fail spuriously.
 
 ## 7. Units
 
 1. Card candidate selection + bounded traversal + generation + rule re-checks, including the source
-   boundary (§3.1–3.2).
+   boundary (§3.1–3.2), and span-hash staleness detection (§3.4).
 2. Reproducibility harness and the five-run measurement (§3.3, §6.1).
 3. Faithfulness sample and the boundary lookup (§6.2, §6.3).
 
