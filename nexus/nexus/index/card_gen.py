@@ -55,7 +55,15 @@ def span_key(span: CardSpan) -> str:
 
 
 def generator_id(model: str) -> str:
-    """카드에 실릴 생성자 신원. 선언과 다른 카드는 읽지 않는다 (§3.2)."""
+    """카드에 실릴 생성자 신원. 선언과 다른 카드는 읽지 않는다 (§3.2).
+
+    **문자열이 아니면 죽는다.** `LLMService` 의 첫 위치 인자는 설정이 아니라 모델 이름인데,
+    호출자가 설정 dict 를 넘기면 `self.model` 이 그 dict 가 되고 그대로 여기까지 온다.
+    그러면 `auth.principals` 를 포함한 설정 전체가 **모든 카드의 generator 필드에 저장된다** —
+    한 번 실제로 그 직전까지 갔다. 저장되는 값이므로 여기서 막는 것이 마지막 기회다.
+    """
+    if not isinstance(model, str) or not model.strip():
+        raise TypeError(f"모델 이름이 문자열이 아닙니다: {type(model).__name__}")
     return f"{model}·{PROMPT_VERSION}·hops{MAX_HOPS}"
 
 
