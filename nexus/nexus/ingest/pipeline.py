@@ -316,6 +316,10 @@ async def _run_vector_indexing(tenant: str, config: dict | None = None) -> int:
         SELECT rid, section_path, chunk_text, context_prefix
         FROM chunks
         WHERE status = 'active' AND tenant = $1 AND {col} IS NULL
+        -- 배치는 제일 긴 글에 맞춰 패딩된다. 길이순으로 뽑아야 한 배치가 고르게 차고, 짧은
+        -- 글들이 긴 글 하나에 끌려가 빈칸으로 계산되지 않는다 (`reembed.pending_rids` 와 같은
+        -- 이유 · 같은 순서). 설계문서 코퍼스에서 잰 낭비가 60% 였다.
+        ORDER BY length(chunk_text), rid
         """,
         tenant,
     )
