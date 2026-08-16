@@ -1419,6 +1419,12 @@ def code_scan(
         typer.echo(f"스캔 거부: {state.explain()}", err=True)
         raise typer.Exit(1)
 
+    # 통과해도 **무엇을 사실로 삼았는지** 는 항상 말한다. 이게 없어서 3주 된 피처 브랜치를
+    # 조용히 스캔하고 그 심볼 수를 보고한 적이 있다.
+    typer.echo(f"대상: {state.context()}")
+    for w in state.warnings():
+        typer.echo(f"⚠ {w}")
+
     result = scan_repo(repo_path)
 
     async def _go():
@@ -1534,8 +1540,11 @@ def code_drift(
 
         refusals = await anchor_store.refusal_counts(tenant, repo)
 
-        typer.echo(f"스냅샷 정상 @ {scan.scan_commit[:12]} — 심볼 {scan.symbol_count}개 "
-                   f"(미파싱 파일 {scan.unparsed_files}개)")
+        typer.echo(f"대상: {state.context()}")
+        for w in state.warnings():
+            typer.echo(f"⚠ {w}")
+        typer.echo(f"심볼 {scan.symbol_count}개 (미파싱 파일 {scan.unparsed_files}개) "
+                   f"@ 스캔 {scan.scan_commit[:12]}")
         if promoted:
             typer.echo(f"재바인딩 {promoted}건")
         typer.echo(f"앵커  fresh {counts[FRESH]} · changed {counts[CHANGED]} · "

@@ -294,3 +294,57 @@ def test_scan_walks_both_languages_and_skips_vendor_dirs(tmp_path: Path):
     assert "build_sink" in names
     assert "Vendored" not in names
     assert result.scanned_files == 2            # 벤더는 분모에도 안 들어간다
+
+
+# ------------------------------------------- 가드가 무엇을 사실로 삼았는지 말하는가
+
+def test_context_names_the_branch_and_the_head_date(repo: Path):
+    """이게 없어서 3주 된 피처 브랜치를 조용히 사실로 보고한 적이 있다."""
+    state = snapshot.check(repo, _head(repo))
+
+    assert "main" in state.context()
+    assert state.branch == "main"
+    assert state.head_date                      # ISO 날짜가 붙는다
+    assert state.head[:12] in state.context()
+
+
+def test_a_non_mainline_branch_warns_but_does_not_block(repo: Path):
+    _git(repo, "checkout", "-q", "-b", "docs/some-feature")
+
+    state = snapshot.check(repo, _head(repo))
+
+    assert state.ok                              # 막지는 않는다 — 일부러 잴 수 있다
+    assert any("기본 브랜치가 아닙니다" in w for w in state.warnings())
+
+
+def test_being_behind_upstream_warns_from_local_refs_only(tmp_path: Path):
+    """업스트림 격차는 **로컬에 저장된** 추적 ref 에서 읽는다 — 네트워크를 쓰지 않는다."""
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    _git(origin, "init", "-q", "-b", "main")
+    _git(origin, "config", "user.email", "t@example.invalid")
+    _git(origin, "config", "user.name", "t")
+    (origin / "A.java").write_text("class A {}\n", encoding="utf-8")
+    _git(origin, "add", "-A")
+    _git(origin, "commit", "-q", "-m", "first")
+
+    clone = tmp_path / "clone"
+    _git(tmp_path, "clone", "-q", str(origin), str(clone))
+    _git(clone, "config", "user.email", "t@example.invalid")
+    _git(clone, "config", "user.name", "t")
+
+    # 원격이 앞서 나간 뒤 fetch — 이후 네트워크 없이도 격차를 안다.
+    (origin / "B.java").write_text("class B {}\n", encoding="utf-8")
+    _git(origin, "add", "-A")
+    _git(origin, "commit", "-q", "-m", "second")
+    _git(clone, "fetch", "-q")
+
+    state = snapshot.check(clone, _head(clone))
+
+    assert state.ok                              # 뒤처짐은 거부 사유가 아니다
+    assert state.behind == 1
+    assert any("뒤입니다" in w for w in state.warnings())
+
+
+def test_a_clean_mainline_checkout_warns_about_nothing(repo: Path):
+    assert snapshot.check(repo, _head(repo)).warnings() == []
