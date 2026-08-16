@@ -128,6 +128,11 @@ def test_moved_file_with_identical_text_stays_fresh():
 
 
 # ------------------------------------------- 철회된 언급 (취소선)
+#
+# 취소선의 뜻은 하나가 아니다. 실측(문서 1,396개·취소선 112개)에서 이름 철회는 2개뿐이었고
+# 나머지는 위험표·체크리스트의 "해소됨" 표시였다. 그래서 규칙은 **이름만 감싼 취소선**으로
+# 좁다. 처음에 문장째 지웠더니 실재하는 메서드로 유일 해소되던 앵커 하나가 사라졌다.
+
 
 def test_a_struck_through_name_is_not_a_candidate():
     """마크다운 취소선은 철회다. 고친 사람에게 같은 항목을 다시 올리면 목록이 신뢰를 잃는다."""
@@ -154,3 +159,19 @@ def test_unmatched_tildes_do_not_eat_the_document():
     text = "~~ 열렸지만 안 닫힘 `Widget` 계속"
 
     assert extract_candidates(text) == ["Widget"]
+
+
+def test_a_struck_sentence_is_a_resolved_concern_not_a_retracted_name():
+    """실제 회귀. 위험표에서 취소선은 '이 우려는 해소됐다' 는 뜻이고, 해소된 우려가 부르는
+    이름은 **실재한다**. 문장째 지웠다가 유일 해소되던 진짜 앵커 하나를 잃었다.
+    """
+    text = "| 12.4 ~~`WidgetEvent`에 `widgetId` 미노출~~ | **해소됨** — 게터 확인 |"
+
+    assert extract_candidates(text) == ["WidgetEvent", "widgetId"]
+
+
+def test_a_struck_sentence_does_not_rescue_a_name_struck_on_its_own():
+    """두 규칙이 한 문서에 같이 있어도 서로 간섭하지 않는다."""
+    text = "~~`Retired`~~ 삭제됨\n| 3.1 ~~`Live` 미노출~~ | 해소됨 |"
+
+    assert extract_candidates(text) == ["Live"]
