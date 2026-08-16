@@ -331,3 +331,16 @@ def test_a_single_run_cannot_be_measured():
 
     with pytest.raises(ValueError):
         term_agreement([("결제",)])
+
+
+def test_generator_id_refuses_a_non_string_model():
+    """`LLMService` 의 첫 인자는 모델 이름이지 설정이 아니다. 설정을 넘긴 적이 있고,
+    그대로 두면 `auth.principals` 를 포함한 설정 전체가 모든 카드에 저장됐을 것이다."""
+    from nexus.index.card_gen import generator_id
+
+    with pytest.raises(TypeError):
+        generator_id({"auth": {"principals": ["secret"]}})
+    with pytest.raises(TypeError):
+        generator_id("")
+    with pytest.raises(TypeError):
+        generator_id(None)
