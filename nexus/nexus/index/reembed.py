@@ -84,6 +84,12 @@ async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
     조회에 또 잡히고, 그러면 같은 실패가 요약에 여러 번 쌓인다(실측으로 확인). DB 에 실패 표식을
     남기지 않는 이유는 그게 waiver 의 자리이기 때문이다 — 실패는 실행의 사실이고, 포기는 사람의
     결정이다.
+
+    **순서는 길이순이다.** 인코더는 배치를 제일 긴 글에 맞춰 패딩하므로, 한 배치 안의 길이
+    편차는 그대로 빈칸 계산이 된다. rid 순(=해시 순)으로 뽑으면 10자짜리 열다섯 개가 12,000자
+    짜리 하나에 끌려간다. 설계문서 코퍼스 1,348청크에서 실제로 계산량이 287만자 대신 718만자
+    였다 — **60%가 패딩**이었고, 길이순으로 바꾸면 99% 가 실제 내용이 된다(2.5배). 재개
+    가능성은 그대로다: 큐는 여전히 "NULL 인 컬럼" 이고 rid 가 동점을 갈라 순서가 결정적이다.
     """
     col = resolve_column(column)
     rows = await db.fetch_all(
@@ -96,7 +102,7 @@ async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
           AND c.{col} IS NULL AND w.chunk_rid IS NULL
           AND NOT (c.rid = ANY($2::text[]))
           AND ($3::text IS NULL OR c.tenant = $3)
-        ORDER BY c.rid
+        ORDER BY length(c.chunk_text), c.rid
         LIMIT $1
         """, limit, list(exclude or ()), tenant, model)
     return [(r["rid"], r["chunk_text"], r["section_path"]) for r in rows]

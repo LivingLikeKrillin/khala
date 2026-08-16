@@ -348,3 +348,54 @@ def test_the_summary_says_what_to_do_about_failures():
     s = ReembedSummary(column=_COLUMN, model="KURE-v1", embedded=3)
     s.failed.append(Failure("c1", "터짐"))
     assert "waive" in s.render(), "무엇을 해야 하는지 말하지 않는 실패 보고는 반쪽이다"
+
+
+# ── 큐 순서 (배치 안의 길이 편차 = 순수 낭비) ────────────────────────────────
+
+
+@pytest.fixture
+async def varied_lengths(db_pool):
+    """길이가 크게 다른 청크들. 삽입 순서는 길이순이 **아니다**."""
+    from nexus import db
+    from nexus.rid import chunk_rid, doc_rid
+
+    db._pool = db_pool
+    tenant = "reembed_len_test"
+    async with db_pool.acquire() as con:
+        await con.execute("DELETE FROM chunks WHERE tenant=$1", tenant)
+        await con.execute("DELETE FROM documents WHERE tenant=$1", tenant)
+        for name, text in [("mid", "가" * 500), ("huge", "나" * 5000),
+                           ("tiny", "다" * 10), ("small", "라" * 100)]:
+            uri = f"{tenant}:{name}.md"
+            drid = doc_rid(uri)
+            await con.execute(
+                "INSERT INTO documents (rid,tenant,source_uri,hash,content_hash,title,status) "
+                "VALUES ($1,$2,$3,'h','h',$4,'active')", drid, tenant, uri, name)
+            await con.execute(
+                "INSERT INTO chunks (rid,tenant,source_uri,doc_rid,chunk_text,section_path,"
+                "chunk_index,status,hash) VALUES ($1,$2,$3,$4,$5,'root',0,'active','h')",
+                chunk_rid(drid, "root", 0), tenant, uri, drid, text)
+    yield tenant
+    async with db_pool.acquire() as con:
+        await con.execute("DELETE FROM chunks WHERE tenant=$1", tenant)
+        await con.execute("DELETE FROM documents WHERE tenant=$1", tenant)
+    db._pool = None
+
+
+async def test_the_queue_comes_out_shortest_first(varied_lengths):
+    """**배치는 제일 긴 글에 맞춰 패딩된다.** 큐가 길이순이 아니면 짧은 글들이 긴 글 하나에
+    끌려가 그만큼을 빈칸으로 계산한다 — 라이브 코퍼스에서 잰 낭비가 60%였다(계산량 287만자 →
+    718만자). 순서만 바꿔도 효율이 40%→99% 로 오른다. 순서는 공짜다.
+    """
+    rows = await pending_rids(_COLUMN, 100, tenant=varied_lengths)
+    lengths = [len(text) for _, text, _ in rows]
+
+    assert lengths == sorted(lengths), f"큐가 길이순이 아니다: {lengths}"
+
+
+async def test_a_batch_holds_texts_of_similar_length(varied_lengths):
+    """큐 순서의 목적은 정렬 자체가 아니라 **한 배치 안의 편차**를 없애는 것이다."""
+    first = await pending_rids(_COLUMN, 2, tenant=varied_lengths)
+    lengths = [len(text) for _, text, _ in first]
+
+    assert max(lengths) <= 500, f"첫 배치에 긴 글이 섞였다: {lengths}"
