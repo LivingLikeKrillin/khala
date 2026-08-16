@@ -15,6 +15,10 @@ from typing import Callable, Iterable
 #: 백틱 안의 토큰. 점이 있으면(`Foo.bar`) 받지 않는다 — 마지막 조각만 떼는 것은 추측이고,
 #: 추측한 앵커는 코퍼스에 영구히 남는다.
 _BACKTICKED = re.compile(r"`([^`\n]{1,120})`")
+#: 취소선(`~~...~~`) 안의 내용. 마크다운에서 취소선은 **철회**를 뜻한다 — 문서가 그 이름을
+#: 더는 주장하지 않는다는 표시다. 그걸 계속 후보로 올리면 문서를 고친 사람에게 같은 항목이
+#: 다시 뜬다. 목록이 신뢰를 잃는 가장 빠른 길이다.
+_STRUCK = re.compile(r"~~.+?~~", re.S)
 _IDENT = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 
 #: 예약어는 선언 이름이 될 수 없으므로 후보가 아니다. 걸러내면 거부 분모가 정직해진다.
@@ -36,9 +40,12 @@ def extract_candidates(text: str) -> list[str]:
     파일 경로·HTTP 엔드포인트·설정 키는 **뽑지 않는다** (SPEC §2). Java 심볼 인덱스에 대해
     파일 경로는 항상 ambiguous, 나머지는 항상 zero 라 구조적으로 바인딩 불가이고, 거부 분모만
     오염시켜 수율 수치를 해석 불가로 만든다.
+
+    **취소선 안의 이름도 뽑지 않는다.** `~~`OldName`~~` 는 문서가 그 이름을 더는 주장하지
+    않는다는 표시다. 고친 사람에게 같은 항목을 다시 올리면 목록 전체가 신뢰를 잃는다.
     """
     seen: dict[str, None] = {}
-    for raw in _BACKTICKED.findall(text):
+    for raw in _BACKTICKED.findall(_STRUCK.sub(" ", text)):
         token = raw.strip()
         if len(token) < _MIN_LEN:
             continue

@@ -125,3 +125,32 @@ def test_symbol_that_became_ambiguous_is_retired_not_repointed():
 def test_moved_file_with_identical_text_stays_fresh():
     """키는 이름이고, 문서가 주장한 것은 텍스트다 (§3.4)."""
     assert recheck("h1", [("Widget", "moved/Widget.java", "h1")]) == FRESH
+
+
+# ------------------------------------------- 철회된 언급 (취소선)
+
+def test_a_struck_through_name_is_not_a_candidate():
+    """마크다운 취소선은 철회다. 고친 사람에게 같은 항목을 다시 올리면 목록이 신뢰를 잃는다."""
+    text = "예시: `WidgetSearchRequest`, ~~`WidgetPageRequest`~~ ⚠️ 후속 미확인"
+
+    assert extract_candidates(text) == ["WidgetSearchRequest"]
+
+
+def test_struck_through_text_does_not_swallow_the_rest_of_the_line():
+    """비탐욕 매칭이 아니면 취소선 하나가 줄 전체를 지운다."""
+    text = "~~`Old`~~ 는 없어졌고 `New` 를 쓰십시오"
+
+    assert extract_candidates(text) == ["New"]
+
+
+def test_a_name_both_struck_and_live_still_counts():
+    """다른 곳에서 여전히 주장되고 있으면 후보다 — 한 번 취소선이 붙었다고 사면되지 않는다."""
+    text = "~~`Widget`~~ 였으나, 실제로는 `Widget` 가 여전히 쓰입니다"
+
+    assert extract_candidates(text) == ["Widget"]
+
+
+def test_unmatched_tildes_do_not_eat_the_document():
+    text = "~~ 열렸지만 안 닫힘 `Widget` 계속"
+
+    assert extract_candidates(text) == ["Widget"]
