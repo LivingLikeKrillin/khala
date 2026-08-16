@@ -16,14 +16,16 @@ from pathlib import Path
 
 import structlog
 import tree_sitter_java
+import tree_sitter_python
 from tree_sitter import Language, Parser
 
 logger = structlog.get_logger(__name__)
 
 _JAVA = Language(tree_sitter_java.language())
+_PYTHON = Language(tree_sitter_python.language())
 
 #: 앵커가 걸릴 만한 선언만. 지역 변수·파라미터는 문서가 부르지 않는다.
-_DECLS: dict[str, str] = {
+_JAVA_DECLS: dict[str, str] = {
     "class_declaration": "class",
     "interface_declaration": "interface",
     "enum_declaration": "enum",
@@ -31,6 +33,25 @@ _DECLS: dict[str, str] = {
     "annotation_type_declaration": "annotation",
     "method_declaration": "method",
     "constructor_declaration": "constructor",
+}
+
+_PYTHON_DECLS: dict[str, str] = {
+    "class_definition": "class",
+    "function_definition": "function",
+}
+
+
+@dataclass(frozen=True)
+class _Grammar:
+    language: Language
+    decls: dict[str, str]
+
+
+#: 확장자 → 문법. 여기 없는 확장자는 스캔 대상이 아니다 — 파서 없는 언어를 세면
+#: 미파싱 분모가 "언어를 지원하지 않는다" 와 "파스에 실패했다" 를 섞어버린다.
+GRAMMARS: dict[str, _Grammar] = {
+    ".java": _Grammar(_JAVA, _JAVA_DECLS),
+    ".py": _Grammar(_PYTHON, _PYTHON_DECLS),
 }
 
 
@@ -69,8 +90,15 @@ def _name_of(node) -> str | None:
 
 
 def extract_symbols(source: str, file_path: str) -> list[SymbolRow]:
-    """한 파일의 심볼. 파스 실패는 예외가 아니라 빈 목록 — 호출자가 미파싱으로 센다."""
-    parser = Parser(_JAVA)
+    """한 파일의 심볼. 파스 실패는 예외가 아니라 빈 목록 — 호출자가 미파싱으로 센다.
+
+    문법은 확장자로 고른다. 모르는 확장자는 빈 목록이다.
+    """
+    grammar = GRAMMARS.get(Path(file_path).suffix.lower())
+    if grammar is None:
+        return []
+
+    parser = Parser(grammar.language)
     src = source.encode("utf-8")
     tree = parser.parse(src)
 
@@ -78,7 +106,7 @@ def extract_symbols(source: str, file_path: str) -> list[SymbolRow]:
     stack = [tree.root_node]
     while stack:
         node = stack.pop()
-        kind = _DECLS.get(node.type)
+        kind = grammar.decls.get(node.type)
         if kind:
             name = _name_of(node)
             if name:
@@ -97,6 +125,18 @@ def extract_symbols(source: str, file_path: str) -> list[SymbolRow]:
     return rows
 
 
+#: 스캔에서 뺄 경로 조각. 없으면 벤더 디렉터리 하나가 인덱스를 남의 코드로 뒤덮고,
+#: 그러면 유일 해소가 무너져 전부 ambiguous 거부가 된다.
+_SKIP_PARTS = frozenset({
+    "node_modules", ".venv", "venv", "site-packages", "build", "dist", "target",
+    "__pycache__", ".git", ".tox", ".mypy_cache", "migrations",
+})
+
+
+def _skip(rel_path: str) -> bool:
+    return any(part in _SKIP_PARTS for part in rel_path.split("/"))
+
+
 @dataclass(frozen=True)
 class ScanResult:
     symbols: list[SymbolRow]
@@ -105,14 +145,16 @@ class ScanResult:
 
 
 def scan_repo(repo_path: Path) -> ScanResult:
-    """저장소의 `*.java` 를 훑는다. 미파싱 파일 수를 함께 돌려준다 — 커버리지를 비율로만
-    보고하면 거짓이 되므로 분모가 필요하다 (SPEC §6.6)."""
+    """저장소에서 `GRAMMARS` 가 아는 확장자를 훑는다. 미파싱 파일 수를 함께 돌려준다 —
+    커버리지를 비율로만 보고하면 거짓이 되므로 분모가 필요하다 (SPEC §6.6)."""
     symbols: list[SymbolRow] = []
     unparsed = 0
     scanned = 0
 
-    for path in sorted(repo_path.rglob("*.java")):
+    for path in sorted(p for ext in GRAMMARS for p in repo_path.rglob(f"*{ext}")):
         rel = path.relative_to(repo_path).as_posix()
+        if _skip(rel):
+            continue
         scanned += 1
         try:
             source = path.read_text(encoding="utf-8")

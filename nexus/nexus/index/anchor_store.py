@@ -121,6 +121,27 @@ async def save_bindings(tenant: str, repo: str, chunk_rid: str,
             )
 
 
+async def iter_chunk_texts(tenant: str) -> list[tuple[str, str]]:
+    """앵커를 붙일 대상 청크. 적재 시점 바인딩만으로는 **기존 코퍼스가 영원히 어둡다** —
+    이미 들어와 있는 청크는 재적재하지 않는 한 후보 추출조차 되지 않기 때문이다.
+
+    정책 필터를 그대로 건다: 격리·비활성 문서에 앵커를 달 이유가 없다.
+    """
+    rows = await db.fetch_all(
+        """
+        SELECT c.rid, c.chunk_text
+          FROM chunks c
+          JOIN documents d ON d.rid = c.doc_rid
+         WHERE c.tenant = $1
+           AND c.is_quarantined = false
+           AND d.is_quarantined = false
+           AND d.status = 'active'
+         ORDER BY c.rid
+        """,
+        tenant)
+    return [(r["rid"], r["chunk_text"]) for r in rows]
+
+
 async def unresolved_refusals(tenant: str, repo: str) -> list[tuple[str, str]]:
     """재바인딩 대상 (§3.6). `ambiguous` 는 재시도하지 않는다 — 모호함이 저절로 풀리는
     경우보다 새로 생기는 경우가 흔하고, 풀렸다면 다음 적재가 잡는다."""
