@@ -36,6 +36,7 @@ from nexus.providers.embedding import embedding_service_from_config
 from nexus.providers.llm import LLMService
 from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
+from nexus.search.anchor_status import summarize as _anchor_summary
 from nexus.search.evidence_packet import assemble_packet, format_for_llm
 from nexus.search import history as history_module
 from nexus.search.corpus_scope import visibility_counts
@@ -583,7 +584,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         )
 
         # Evidence packet 조립
-        packet = assemble_packet(search_result.hits, search_result.graph)
+        packet = await assemble_packet(search_result.hits, search_result.graph, req.tenant)
 
         # LLM 답변 생성
         answer_result = await generate_answer(
@@ -1007,7 +1008,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 channels=channels,
             )
 
-            packet = assemble_packet(search_result.hits, search_result.graph)
+            packet = await assemble_packet(search_result.hits, search_result.graph, req.tenant)
 
             # 1) evidence 이벤트 전송 — 신선도(staleness) 판정 포함
             from datetime import datetime, timezone
@@ -1021,6 +1022,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     "score": s.score,
                     "doc_type": s.doc_type,
                     "provenance_tier": getattr(s, "provenance_tier", "authored"),
+                    # 스트리밍도 같은 사실을 낸다 — 표면마다 다른 근거를 보이면 안 된다.
+                    "code_anchors": _anchor_summary(getattr(s, "code_anchors", [])),
                     "updated_at": s.updated_at,
                 }
                 for s in packet.snippets

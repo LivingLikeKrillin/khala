@@ -47,6 +47,6 @@ class _FakeLLM:
 
 
 async def test_answer_evidence_snippets_include_doc_type():
-    packet = assemble_packet([_hit("RUNBOOK")])
+    packet = await assemble_packet([_hit("RUNBOOK")])
     result = await generate_answer("질문", packet, _FakeLLM())
     assert result.evidence_snippets[0]["doc_type"] == "RUNBOOK"

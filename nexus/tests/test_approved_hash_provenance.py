@@ -22,10 +22,10 @@ def _data_part(artifact: dict) -> dict:
     return [p["data"] for p in artifact["parts"] if p.get("kind") == "data"][0]
 
 
-def test_assemble_packet_carries_approved_hash_from_hit():
+async def test_assemble_packet_carries_approved_hash_from_hit():
     hits = [SearchHit(rid="c1", doc_rid="d1", doc_title="T", source_uri="git://d.md",
                       snippet="x", score=0.9, classification="INTERNAL", approved_hash=_HASH)]
-    packet = assemble_packet(hits)
+    packet = await assemble_packet(hits)
     assert packet.provenance[0].approved_hash == _HASH
 
 
@@ -33,7 +33,7 @@ async def test_generate_answer_provenance_dict_includes_approved_hash():
     hits = [SearchHit(rid="c1", doc_rid="d1", doc_title="T", source_uri="git://d.md",
                       snippet="x", score=0.9, classification="INTERNAL", approved_hash=_HASH)]
     # no snippets path is fine — provenance is built from the packet regardless of the LLM call
-    packet = assemble_packet(hits)
+    packet = await assemble_packet(hits)
     result = await generate_answer(query="q", packet=packet, llm_svc=None, route_used="vector")
     assert result.provenance[0]["approved_hash"] == _HASH
 

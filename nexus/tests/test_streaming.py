@@ -85,9 +85,9 @@ class TestEvidenceForStreaming:
             ),
         ]
 
-    def test_evidence_snippet_serialization(self):
+    async def test_evidence_snippet_serialization(self):
         hits = self._make_hits()
-        packet = assemble_packet(hits)
+        packet = await assemble_packet(hits)
         snippets = [
             {
                 "chunk_rid": s.chunk_rid,
@@ -105,9 +105,9 @@ class TestEvidenceForStreaming:
         serialized = json.dumps(snippets, ensure_ascii=False)
         assert "결제 설계" in serialized
 
-    def test_provenance_serialization(self):
+    async def test_provenance_serialization(self):
         hits = self._make_hits()
-        packet = assemble_packet(hits)
+        packet = await assemble_packet(hits)
         prov = [
             {"doc_rid": p.doc_rid, "source_uri": p.source_uri, "source_version": p.source_version}
             for p in packet.provenance

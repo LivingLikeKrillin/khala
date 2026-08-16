@@ -144,6 +144,21 @@ class EvidenceSnippet(BaseModel):
     source_uri: str
     text: str                           # 관련 chunk 텍스트
     score: float
+    doc_type: str                       # 축-A 타입 (웹 신뢰 배지)
+    provenance_tier: str                # 'authored' | 'machine_read' (ADR-0010)
+    updated_at: str | None              # ISO. staleness 판정 결과가 같이 붙는다
+    code_anchors: dict | None           # 아래 — 앵커가 없는 코퍼스에서는 null
+
+# 이 문단이 부른 코드 이름이 **지금도 코드에 있는가** (SPEC-nexus-doc-code-anchors §3.4).
+# 판정은 서버가 끝내서 보낸다 — 클라이언트가 다시 세면 답이 둘이 된다.
+# 이름은 어긋난 것만 싣는다: fresh 20개를 나열하면 아무도 안 읽는다.
+{
+  "total": 7,                 # 이 청크가 바인딩한 앵커 수 (분모)
+  "fresh": 5,                 # 이름도 텍스트도 그대로
+  "changed": ["Beta"],        # 이름은 있는데 본문이 바뀌었다
+  "orphaned": ["Gamma"],      # 이름이 코드에서 사라졌다
+  "ambiguous_now": []         # 바인딩 뒤 동명이 생겼다 — 다시 겨누지 않는다
+}
 
 class ProvenanceRef(BaseModel):
     doc_rid: str

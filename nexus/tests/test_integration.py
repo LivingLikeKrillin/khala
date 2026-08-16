@@ -56,30 +56,30 @@ class TestGetSearchText:
 
 
 class TestEvidencePacket:
-    def test_assemble_basic(self):
+    async def test_assemble_basic(self):
         hits = [SearchHit(
             rid="c1", doc_rid="d1", doc_title="설계문서",
             section_path="아키텍처", source_uri="docs/design.md",
             snippet="내용", score=0.85, classification="INTERNAL",
         )]
-        packet = assemble_packet(hits)
+        packet = await assemble_packet(hits)
         assert len(packet.snippets) == 1
         assert len(packet.provenance) == 1
 
-    def test_format_for_llm(self):
+    async def test_format_for_llm(self):
         hits = [SearchHit(
             rid="c1", doc_rid="d1", doc_title="설계문서",
             section_path="아키텍처", source_uri="docs/design.md",
             snippet="내용", score=0.85, classification="INTERNAL",
         )]
-        text = format_for_llm(assemble_packet(hits))
+        text = format_for_llm(await assemble_packet(hits))
         assert "근거" in text
         assert "설계문서" in text
 
-    def test_dedup_provenance(self):
+    async def test_dedup_provenance(self):
         hits = [
             SearchHit(rid="c1", doc_rid="d1", doc_title="T", snippet="a", score=0.9, classification="INTERNAL"),
             SearchHit(rid="c2", doc_rid="d1", doc_title="T", snippet="b", score=0.8, classification="INTERNAL"),
         ]
-        packet = assemble_packet(hits)
+        packet = await assemble_packet(hits)
         assert len(packet.provenance) == 1

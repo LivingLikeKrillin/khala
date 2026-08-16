@@ -722,6 +722,23 @@ body { display: flex; flex-direction: column; }
 .trust-badge--tracked  { border-color: #9a6a1f; color: #9a6a1f; }
 .trust-badge--memo     { border-color: var(--hairline-strong); color: var(--ink-500); }
 
+/* 코드 앵커 배지 — 이 근거가 부른 코드 이름이 지금도 코드에 있는가(anchor-signal.js).
+   trust-badge 와 같은 pill 어휘를 쓰되 **다른 축**이라 클래스를 나눈다: 저것은 문서의 등급,
+   이것은 문서와 코드의 어긋남이다. tone 값(ok/drift)과 클래스명이 정확히 일치해야 한다. */
+.anchor-badge {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  color: var(--ink-100);
+  white-space: nowrap;
+  cursor: default;
+}
+.anchor-badge--ok    { border-color: var(--hairline-strong); color: var(--ink-500); }
+.anchor-badge--drift { border-color: var(--danger); color: var(--danger); }
+
 /* 인용 검증 스트립 (SPEC-nexus-web-citation-verification) — 답변이 인용한 출처가 근거에서
    확인됐는지(✓) 아닌지(⚠)를 답변 아래 노출. trust-badge 와 동일한 pill/톤 어휘 재사용. */
 .citation-strip {

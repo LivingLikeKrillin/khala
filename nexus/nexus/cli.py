@@ -288,7 +288,7 @@ def query(
         if answer and result.hits:
             typer.echo("─" * 60)
             typer.echo("답변 생성 중...\n")
-            packet = assemble_packet(result.hits, result.graph)
+            packet = await assemble_packet(result.hits, result.graph, tenant)
             llm_svc = LLMService()
             answer_result = await generate_answer(
                 query=q, packet=packet, llm_svc=llm_svc,
