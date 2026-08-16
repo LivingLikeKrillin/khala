@@ -96,8 +96,10 @@ async def main() -> int:
 
     from nexus.providers.llm import LLMService
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
-    llm = LLMService(cfg)
-    model = getattr(llm, "model", provider)
+    # 첫 인자는 **모델 이름**이지 설정이 아니다. 설정을 넘기면 self.model 이 dict 가 되고,
+    # 그 dict 가 카드의 generator 필드와 브리지 명령줄로 흘러간다 — 2026-08-16 에 실제로 그랬다.
+    llm = LLMService(pricing=(cfg.get("llm") or {}).get("pricing"))
+    model = llm.model
 
     print(f"생성자: {generator_id(model)}  (프롬프트 {PROMPT_VERSION}, 홉 {MAX_HOPS})")
 

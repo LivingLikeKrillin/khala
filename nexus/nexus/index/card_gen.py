@@ -55,7 +55,13 @@ def span_key(span: CardSpan) -> str:
 
 
 def generator_id(model: str) -> str:
-    """카드에 실릴 생성자 신원. 선언과 다른 카드는 읽지 않는다 (§3.2)."""
+    """카드에 실릴 생성자 신원. 선언과 다른 카드는 읽지 않는다 (§3.2).
+
+    문자열이 아니면 죽는다. 한 번은 호출자가 설정 dict 를 모델 자리에 넘겼고, 그대로 두었으면
+    `auth.principals` 를 포함한 설정 전체가 모든 카드의 generator 필드에 실렸다.
+    """
+    if not isinstance(model, str) or not model.strip():
+        raise TypeError(f"모델 이름이 문자열이 아닙니다: {type(model).__name__}")
     return f"{model}·{PROMPT_VERSION}·hops{MAX_HOPS}"
 
 

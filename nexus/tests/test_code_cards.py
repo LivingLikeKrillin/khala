@@ -331,3 +331,13 @@ def test_a_single_run_cannot_be_measured():
 
     with pytest.raises(ValueError):
         term_agreement([("결제",)])
+
+
+def test_generator_id_refuses_a_non_string_model():
+    """설정 dict 를 모델 자리에 넘긴 적이 있다. 그대로 두면 설정 전체가 모든 카드에 실린다."""
+    from nexus.index.card_gen import generator_id
+
+    with pytest.raises(TypeError):
+        generator_id({"auth": {"principals": ["secret"]}})
+    with pytest.raises(TypeError):
+        generator_id("")
