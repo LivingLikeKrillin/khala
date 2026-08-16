@@ -11,6 +11,7 @@ SPEC-nexus-doc-code-anchors §3.1. 여기에 LLM 은 없다. 전부 파스 결�
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -137,17 +138,44 @@ def _skip(rel_path: str) -> bool:
     return any(part in _SKIP_PARTS for part in rel_path.split("/"))
 
 
+#: `import a.b.C;` 의 `C`. 저장소가 **선언하지 않고 빌려 쓰는** 이름을 알아내는 데 쓴다.
+_JAVA_IMPORT = re.compile(r"^\s*import\s+(?:static\s+)?([\w.]+)\s*;", re.M)
+#: `from a.b import C` / `import a.b as C`
+_PY_IMPORT = re.compile(r"^\s*(?:from\s+[\w.]+\s+import\s+([\w, ]+)|import\s+([\w.]+))", re.M)
+
+
+def imported_names(source: str, suffix: str) -> set[str]:
+    """이 파일이 **밖에서 들여온** 이름들. 선언이 아니라 차용이다."""
+    out: set[str] = set()
+    if suffix == ".java":
+        for path in _JAVA_IMPORT.findall(source):
+            last = path.rsplit(".", 1)[-1]
+            if last and last != "*":
+                out.add(last)
+    elif suffix == ".py":
+        for names, mod in _PY_IMPORT.findall(source):
+            if names:
+                out |= {n.strip() for n in names.split(",") if n.strip()}
+            elif mod:
+                out.add(mod.rsplit(".", 1)[-1])
+    return out
+
+
 @dataclass(frozen=True)
 class ScanResult:
     symbols: list[SymbolRow]
     unparsed_files: int
     scanned_files: int
+    #: 저장소가 들여오기만 하고 선언하지 않는 이름. 문서가 이것을 불렀는데 심볼 인덱스에
+    #: 없다고 해서 "사라졌다" 고 보고하면 안 된다 — 애초에 이 저장소 것이 아니었다.
+    imported_names: frozenset[str] = frozenset()
 
 
 def scan_repo(repo_path: Path) -> ScanResult:
     """저장소에서 `GRAMMARS` 가 아는 확장자를 훑는다. 미파싱 파일 수를 함께 돌려준다 —
     커버리지를 비율로만 보고하면 거짓이 되므로 분모가 필요하다 (SPEC §6.6)."""
     symbols: list[SymbolRow] = []
+    imported: set[str] = set()
     unparsed = 0
     scanned = 0
 
@@ -164,9 +192,13 @@ def scan_repo(repo_path: Path) -> ScanResult:
             logger.warning("code_scan_unreadable", file=rel, error=type(e).__name__)
             continue
 
+        imported |= imported_names(source, path.suffix.lower())
         found = extract_symbols(source, rel)
         if not found:
             unparsed += 1
         symbols.extend(found)
 
-    return ScanResult(symbols=symbols, unparsed_files=unparsed, scanned_files=scanned)
+    declared = {s.symbol_name for s in symbols}
+    # 선언도 되고 차용도 되는 이름은 **우리 것**이다 (같은 이름의 자체 클래스가 있다).
+    return ScanResult(symbols=symbols, unparsed_files=unparsed, scanned_files=scanned,
+                      imported_names=frozenset(imported - declared))
