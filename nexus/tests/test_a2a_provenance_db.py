@@ -92,7 +92,7 @@ def test_governed_ingest_persists_and_retrieval_reads_back_the_stamp():
         assert len(hits) == 1
         assert hits[0].approved_hash == _STAMP  # SearchHit carries it from documents.approved_hash
 
-        packet = assemble_packet(hits)
+        packet = await assemble_packet(hits)
         assert packet.provenance[0].approved_hash == _STAMP  # surfaces in provenance → A2A artifact
 
     _run(inner)

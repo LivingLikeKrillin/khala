@@ -342,7 +342,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
         embedding_svc=embedding_svc, graph_repo=graph_repo, route=route,
         entity_rids=entity_rids, config=config,
     )
-    packet = assemble_packet(search_result.hits, search_result.graph)
+    packet = await assemble_packet(search_result.hits, search_result.graph, tenant)
     answer_result = await generate_answer(
         query=query, packet=packet, llm_svc=llm_svc,
         route_used=route, timing_ms=search_result.timing_ms,

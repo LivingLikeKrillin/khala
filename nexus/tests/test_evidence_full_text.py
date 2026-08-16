@@ -31,25 +31,25 @@ def _hit(**kw):
     return SearchHit(**base)
 
 
-def test_the_prompt_gets_the_whole_chunk():
+async def test_the_prompt_gets_the_whole_chunk():
     """**이것이 빠져 있던 것.** 표의 마지막 행이 프롬프트에 있어야 답을 할 수 있다."""
-    packet = assemble_packet([_hit(snippet=_truncate_snippet(TABLE, 300), chunk_text=TABLE)])
+    packet = await assemble_packet([_hit(snippet=_truncate_snippet(TABLE, 300), chunk_text=TABLE)])
     prompt = format_for_llm(packet)
     assert "| Mod | 가능 |" in prompt, "표의 끝이 프롬프트에 없다 — 잘린 채로 나갔다"
 
 
-def test_the_human_preview_stays_short():
+async def test_the_human_preview_stays_short():
     """웹·Slack·API 가 읽는 값은 안 바뀐다 — 화면에 청크 전문을 쏟으면 그건 다른 결함이다."""
     short = _truncate_snippet(TABLE, 300)
-    packet = assemble_packet([_hit(snippet=short, chunk_text=TABLE)])
+    packet = await assemble_packet([_hit(snippet=short, chunk_text=TABLE)])
     s = packet.snippets[0]
     assert s.text == short and len(s.text) <= 320
     assert s.full_text == TABLE
 
 
-def test_a_hit_without_a_full_text_falls_back():
+async def test_a_hit_without_a_full_text_falls_back():
     """옛 호출부(테스트 픽스처 포함)가 chunk_text 를 안 채워도 프롬프트가 비면 안 된다."""
-    packet = assemble_packet([_hit(snippet="짧은 조각")])
+    packet = await assemble_packet([_hit(snippet="짧은 조각")])
     assert packet.snippets[0].full_text == "짧은 조각"
     assert "짧은 조각" in format_for_llm(packet)
 

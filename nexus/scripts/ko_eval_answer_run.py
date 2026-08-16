@@ -257,7 +257,7 @@ async def _run(args) -> int:
             if result.degraded:
                 print(f"✗ 다리가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
                 return 1
-            packet = assemble_packet(result.hits, result.graph)
+            packet = await assemble_packet(result.hits, result.graph)
             ans = await generate_answer(q["query"], packet, llm_svc=llm)
             spend.add(ans.usage, kind="answer")
             # **첫 실패에서 멈춘다.** 계속 돌면 실패한 실행의 집계가 리포트로 남고, 그것을 나중에
@@ -299,7 +299,7 @@ async def _run(args) -> int:
                   if args.controls else []):
             result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance=args.clearance,
                                                 top_k=10, embedding_svc=svc)
-            ans = await generate_answer(q["query"], assemble_packet(result.hits, result.graph),
+            ans = await generate_answer(q["query"], await assemble_packet(result.hits, result.graph),
                                         llm_svc=llm)
             if ans.llm_failed:
                 print(f"✗ {q['id']}: LLM 호출 실패 — 대조군도 결과가 아니다")

@@ -12,6 +12,7 @@ from datetime import datetime
 import structlog
 
 from nexus.repositories.graph import SubGraph
+from nexus.search.anchor_status import AnchorStatus, describe, statuses_for_chunks
 from nexus.search.hybrid import SearchHit
 from nexus.search.provenance import PROMPT_NOTE, needs_note
 
@@ -37,6 +38,9 @@ class EvidenceSnippet:
     #: 이 근거가 어떻게 존재하게 됐는가 (ADR-0010). 프롬프트까지 따라간다 — 답을 쓰는 모델이
     #: 저자가 쓴 문장과 기계가 그림에서 읽은 문장을 구별할 수 있어야 한다.
     provenance_tier: str = "authored"
+    #: 이 문단이 부른 코드 이름들의 **현재 상태**(SPEC-nexus-doc-code-anchors §3.4).
+    #: 앵커가 없는 코퍼스에서는 비어 있고, 그때 프롬프트는 오늘과 바이트 단위로 같다.
+    code_anchors: list[AnchorStatus] = field(default_factory=list)
 
 
 @dataclass
@@ -57,21 +61,31 @@ class EvidencePacket:
     provenance: list[Provenance] = field(default_factory=list)
 
 
-def assemble_packet(
+async def assemble_packet(
     hits: list[SearchHit],
     graph: SubGraph | None = None,
+    tenant: str = "",
 ) -> EvidencePacket:
     """검색 결과에서 evidence packet 조립.
+
+    **네 표면(web API ×2 · A2A · CLI)이 전부 이 함수를 부른다.** 근거에 따라붙는 것은 여기서
+    붙인다 — 표면마다 사본을 만들면 어느 하나가 조용히 빠지고, 사람과 에이전트가 다른 답을
+    받는다.
 
     Args:
         hits: Hybrid 검색 결과
         graph: Graph 조회 결과 (optional)
+        tenant: 앵커 상태 조회 범위. 비면 조회하지 않는다 — 앵커를 안 쓰는 호출부
+            (테스트 픽스처·평가 하니스)가 DB 없이 패킷을 만들 수 있어야 한다.
 
     Returns:
         EvidencePacket
     """
     packet = EvidencePacket(graph=graph)
     seen_docs: set[str] = set()
+    # 쿼리 한 번으로 이번 결과 **전체**의 앵커 상태를 받는다. 스니펫마다 조회하면 그게 바로
+    # `nexus code drift` 를 10분 걸리게 한 N+1 이다.
+    anchors = await statuses_for_chunks(tenant, [h.rid for h in hits])
 
     for hit in hits:
         packet.snippets.append(EvidenceSnippet(
@@ -87,6 +101,7 @@ def assemble_packet(
             doc_type=hit.doc_type,
             updated_at=hit.updated_at,
             provenance_tier=getattr(hit, "provenance_tier", "authored"),
+            code_anchors=anchors.get(hit.rid, []),
         ))
 
         if hit.doc_rid not in seen_docs:
@@ -119,6 +134,12 @@ def format_for_llm(packet: EvidencePacket) -> str:
         # 쓴 문장을 같은 것으로 다루고, 인용은 그 구별을 약속하지 못한다 (ADR-0010 hop 3).
         if needs_note(getattr(s, "provenance_tier", "authored")):
             parts.append(PROMPT_NOTE)
+        # 문서가 부른 코드 이름이 지금도 있는가. **결정론으로 판정한 사실**이고, 모델은 그것을
+        # 서술하기만 한다 — 낡음 여부를 모델에게 추측시키는 순간 그 판정은 근거를 잃는다.
+        # 앵커가 없으면 빈 문자열이라 프롬프트는 오늘과 같다 (평가 팩과의 비교가 안 끊긴다).
+        anchor_line = describe(getattr(s, "code_anchors", []))
+        if anchor_line:
+            parts.append(anchor_line)
         # **프롬프트에는 전문**, 화면에는 `text`(짧은 미리보기). 둘을 한 값으로 묶어 뒀더니
         # 846자 표가 앞 300자만 넘어가 모델이 답을 못 했다 (2026-08-08).
         #

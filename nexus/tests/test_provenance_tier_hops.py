@@ -75,50 +75,50 @@ def test_hop2_the_enrich_query_selects_the_column():
 
 # ── hop 3: evidence packet → 프롬프트 ─────────────────────────────────────────
 
-def test_hop3_the_packet_carries_the_tier():
-    packet = assemble_packet([_machine_hit(), _authored_hit()], None)
+async def test_hop3_the_packet_carries_the_tier():
+    packet = await assemble_packet([_machine_hit(), _authored_hit()], None)
     tiers = {s.doc_title: s.provenance_tier for s in packet.snippets}
     assert tiers["정책 A"] == "machine_read" and tiers["정책 B"] == "authored"
 
 
-def test_hop3_the_prompt_says_which_kind_it_is():
+async def test_hop3_the_prompt_says_which_kind_it_is():
     """답을 쓰는 모델이 구별할 수 있어야 한다. 여기서 빠지면 인용이 그 구별을 약속할 수 없다."""
     from nexus.search.provenance import PROMPT_NOTE
 
-    prompt = format_for_llm(assemble_packet([_machine_hit(), _authored_hit()], None))
+    prompt = format_for_llm(await assemble_packet([_machine_hit(), _authored_hit()], None))
     assert PROMPT_NOTE in prompt
 
 
-def test_hop3_authored_evidence_is_not_marked():
+async def test_hop3_authored_evidence_is_not_marked():
     """기본이 조용해야 표시가 뜻을 갖는다 — 전부에 붙으면 아무것도 구별하지 못한다."""
     from nexus.search.provenance import PROMPT_NOTE
 
-    prompt = format_for_llm(assemble_packet([_authored_hit()], None))
+    prompt = format_for_llm(await assemble_packet([_authored_hit()], None))
     assert PROMPT_NOTE not in prompt
 
 
 # ── hop 4: 인용 ───────────────────────────────────────────────────────────────
 
-def test_hop4_a_citation_to_machine_read_text_says_so():
-    packet = assemble_packet([_machine_hit(), _authored_hit()], None)
+async def test_hop4_a_citation_to_machine_read_text_says_so():
+    packet = await assemble_packet([_machine_hit(), _authored_hit()], None)
     report = validate_citations("답변입니다 [출처: 정책 A]", packet)
     (c,) = report.citations
     assert c.verified and c.provenance_tier == "machine_read"
 
 
-def test_hop4_a_citation_to_authored_text_stays_authored():
-    packet = assemble_packet([_machine_hit(), _authored_hit()], None)
+async def test_hop4_a_citation_to_authored_text_stays_authored():
+    packet = await assemble_packet([_machine_hit(), _authored_hit()], None)
     report = validate_citations("답변입니다 [출처: 정책 B]", packet)
     (c,) = report.citations
     assert c.provenance_tier == "authored"
 
 
-def test_hop4_a_title_carrying_both_kinds_is_mixed():
+async def test_hop4_a_title_carrying_both_kinds_is_mixed():
     """한 문서가 저자 chunk 와 기계 chunk 를 함께 가질 수 있다. 하나를 고르면 거짓이 되므로
     섞였다고 말한다 — 애매함을 감추는 것은 이 등급이 하는 일의 반대다."""
     a = _machine_hit(title="정책 C")
     b = _authored_hit(title="정책 C")
-    report = validate_citations("답변 [출처: 정책 C]", assemble_packet([a, b], None))
+    report = validate_citations("답변 [출처: 정책 C]", await assemble_packet([a, b], None))
     (c,) = report.citations
     assert c.provenance_tier == "mixed"
 
@@ -169,7 +169,7 @@ def test_hop6_both_mcp_tools_use_the_shared_mark():
 
 # ── 통합: 여섯 hop 을 한 줄로 ─────────────────────────────────────────────────
 
-def test_the_tier_survives_from_chunk_to_citation():
+async def test_the_tier_survives_from_chunk_to_citation():
     """hop 1→4 를 실제 값으로 통과시킨다. 파일 grep 이 아니라 값이 흐르는지를 본다."""
     e = vision.Extraction("| 아바타 | 해금 |\n|---|---|\n| A | 1200 |", "m/abc12345", "s" * 64)
     doc = "# 정책 A\n\n앞 문단\n\n" + vision.build_block(e) + "\n"
@@ -184,7 +184,7 @@ def test_the_tier_survives_from_chunk_to_citation():
                     chunk_text=machine[0].chunk_text, score=0.9,
                     classification="INTERNAL",
                     provenance_tier=machine[0].provenance_tier)
-    packet = assemble_packet([hit], None)
+    packet = await assemble_packet([hit], None)
     from nexus.search.provenance import PROMPT_NOTE
 
     assert packet.snippets[0].provenance_tier == "machine_read"   # hop 3
@@ -209,8 +209,8 @@ def test_the_prompt_note_does_not_collide_with_the_citation_syntax():
     assert "그림에서 기계가 읽" in PROMPT_NOTE, "무엇인지는 여전히 말해야 한다"
 
 
-def test_the_prompt_still_marks_machine_read_evidence():
+async def test_the_prompt_still_marks_machine_read_evidence():
     """문법을 바꾸되 기능은 유지한다 — 답을 쓰는 모델이 둘을 구별할 수 있어야 한다."""
-    prompt = format_for_llm(assemble_packet([_machine_hit(), _authored_hit()], None))
+    prompt = format_for_llm(await assemble_packet([_machine_hit(), _authored_hit()], None))
     assert "그림에서 기계가 읽" in prompt
     assert "출처 종류" not in prompt

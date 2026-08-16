@@ -120,6 +120,22 @@ ORPHANED = "orphaned"
 AMBIGUOUS_NOW = "ambiguous_now"
 
 
+def status_from_counts(match_count: int, same_hash_count: int) -> str:
+    """판정 자체는 **수 둘**로 끝난다 — 이름으로 몇 개가 풀리는가, 그중 몇 개가 같은 텍스트인가.
+
+    이 형태로 떼어 둔 이유는 판정하는 곳이 둘이기 때문이다: 앵커 목록을 손에 쥐고 도는
+    재검사(`recheck`)와, 앵커를 하나도 안 들고 SQL 이 센 수만 받는 **요청 경로**
+    (`search/anchor_status.py`). 같은 규칙을 두 번 타이핑하면 CLI 가 `changed` 라고 한 것을
+    답변이 `fresh` 라고 부르는 날이 온다 — 이 리포는 같은 WHERE 를 다시 타이핑한 사본에서
+    이미 데였다.
+    """
+    if match_count == 0:
+        return ORPHANED
+    if match_count > 1:
+        return AMBIGUOUS_NOW
+    return FRESH if same_hash_count else CHANGED
+
+
 def recheck(bound_span_hash: str, matches: list[tuple[str, str, str]]) -> str:
     """저장된 앵커가 지금 어떤 상태인가 (SPEC §3.4).
 
@@ -128,8 +144,5 @@ def recheck(bound_span_hash: str, matches: list[tuple[str, str, str]]) -> str:
 
     같은 텍스트로 파일만 옮긴 심볼은 `fresh` 다 — 키는 이름이고, 문서가 주장한 것은 텍스트다.
     """
-    if not matches:
-        return ORPHANED
-    if len(matches) > 1:
-        return AMBIGUOUS_NOW
-    return FRESH if matches[0][2] == bound_span_hash else CHANGED
+    return status_from_counts(
+        len(matches), sum(1 for m in matches if m[2] == bound_span_hash))

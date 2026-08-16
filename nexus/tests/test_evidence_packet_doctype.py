@@ -13,16 +13,16 @@ def _hit(doc_type="DESIGN"):
     )
 
 
-def test_assemble_packet_propagates_doc_type():
-    packet = assemble_packet([_hit("DESIGN")])
+async def test_assemble_packet_propagates_doc_type():
+    packet = await assemble_packet([_hit("DESIGN")])
     assert packet.snippets[0].doc_type == "DESIGN"
 
 
-def test_format_for_llm_surfaces_doc_type():
-    out = format_for_llm(assemble_packet([_hit("ADR")]))
+async def test_format_for_llm_surfaces_doc_type():
+    out = format_for_llm(await assemble_packet([_hit("ADR")]))
     assert "ADR" in out
 
 
-def test_assemble_packet_handles_missing_doc_type():
-    packet = assemble_packet([_hit("")])
+async def test_assemble_packet_handles_missing_doc_type():
+    packet = await assemble_packet([_hit("")])
     assert packet.snippets[0].doc_type == ""

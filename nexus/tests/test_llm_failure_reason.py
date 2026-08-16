@@ -91,7 +91,7 @@ async def test_generate_answer_records_why_it_failed(monkeypatch):
         async def generate_full(self, *a, **k):
             raise _Status(400, "Your credit balance is too low")
 
-    result = await A.generate_answer("질문", _packet(), llm_svc=_Boom())
+    result = await A.generate_answer("질문", await _packet(), llm_svc=_Boom())
     assert result.llm_failed is True
     assert result.llm_failure_reason == F.QUOTA
 
@@ -107,12 +107,12 @@ async def test_a_successful_answer_has_no_failure_reason(monkeypatch):
         async def generate_full(self, *a, **k):
             return LLMResult(text="답", usage=Usage(1, 1, None, "m"))
 
-    result = await A.generate_answer("질문", _packet(), llm_svc=_Ok())
+    result = await A.generate_answer("질문", await _packet(), llm_svc=_Ok())
     assert result.llm_failed is False
     assert result.llm_failure_reason is None
 
 
-def _packet():
+async def _packet():
     """근거가 **있는** 패킷. 비어 있으면 생성기는 LLM 을 부르기 전에 기권하고(abstained),
     그러면 이 시험은 실패 분류가 아니라 기권 경로를 재게 된다."""
     from nexus.search.evidence_packet import assemble_packet
@@ -121,7 +121,7 @@ def _packet():
     hit = SearchHit(rid="c1", doc_rid="d1", doc_title="문서", section_path="절",
                     source_uri="git://repo:d.md", snippet="근거", chunk_text="근거 본문",
                     score=0.9)
-    return assemble_packet([hit], None)
+    return await assemble_packet([hit], None)
 
 
 # ── 슬랙이 사유별로 다른 말을 하는가 ────────────────────────────────────────────

@@ -17,6 +17,7 @@ from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import build_prompts
 from nexus.providers.llm import LLMService
+from nexus.search.anchor_status import summarize
 from nexus.search.evidence_packet import EvidencePacket, format_for_llm
 
 logger = structlog.get_logger(__name__)
@@ -128,6 +129,9 @@ async def generate_answer(
             "doc_type": s.doc_type,  # 축-A 타입(S3) — 웹 클라이언트 타입 배지용
             # 등급은 응답까지 간다 (ADR-0010 hop 5) — 배지를 달 수 있어야 한다.
             "provenance_tier": getattr(s, "provenance_tier", "authored"),
+            # 이 문단이 부른 코드 이름의 현재 상태. 앵커가 없으면 `None` 이고, 그때 응답은
+            # 오늘과 같은 모양이다. 표현계층이 셈을 다시 하지 않도록 **여기서 요약해** 보낸다.
+            "code_anchors": summarize(getattr(s, "code_anchors", [])),
             "updated_at": s.updated_at,
         }
         for s in packet.snippets

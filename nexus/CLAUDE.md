@@ -68,6 +68,8 @@
 | 벡터 컬럼 선택 | `index/vector_index.py` (`configured_column`/`VECTOR_COLUMNS`) | 화이트리스트 밖이면 기동 실패 |
 | 적재 (모든 경로) | `ingest/pipeline.py` (`run_ingest`) | CLI·HTTP·A2A·Notion 이 전부 여기로 모이므로 세대 게이트가 한 곳이면 된다 |
 | 출처 등급 표기 | `search/provenance.py` | 프롬프트·응답·MCP·웹이 같은 어휘를 써야 한다. 사본 금지 |
+| 근거에 무언가 덧붙이기 | `search/evidence_packet.py` (`assemble_packet`) | 네 표면(web API ×2·A2A·CLI)이 전부 여기로 모인다. 표면마다 붙이면 하나가 조용히 빠진다 |
+| 앵커 상태 판정 | `index/anchors.py` (`status_from_counts`) | 재검사(CLI)와 요청 경로(`search/anchor_status.py`)가 같은 규칙을 써야 한다 |
 | clearance 판정 | `auth/clearance.py` | 정본 하나. 사본을 만들면 두 답이 생긴다 |
 
 **검색 경로의 사실 하나** — `search/hybrid.py` 는 **BM25 와 벡터 두 다리**를 RRF(`k=60`)로 융합한다.

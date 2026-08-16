@@ -19,28 +19,28 @@ def _hit():
     )
 
 
-def test_evidence_presents_readable_title():
-    out = format_for_llm(assemble_packet([_hit()]))
+async def test_evidence_presents_readable_title():
+    out = format_for_llm(await assemble_packet([_hit()]))
     assert "1. 동시성 문제의 본질" in out
 
 
-def test_no_per_snippet_uri_citation_lure():
+async def test_no_per_snippet_uri_citation_lure():
     # per-snippet 에서 source_uri 를 '출처:' 핸들로 제시하지 않는다(LLM UUID 인용 방지).
-    out = format_for_llm(assemble_packet([_hit()]))
+    out = format_for_llm(await assemble_packet([_hit()]))
     assert "출처: default:ext-notion-abc.md" not in out
 
 
-def test_source_uri_retained_for_traceability():
+async def test_source_uri_retained_for_traceability():
     # UUID 는 추적용으로 출처 목록에는 남는다(완전 삭제 아님).
-    out = format_for_llm(assemble_packet([_hit()]))
+    out = format_for_llm(await assemble_packet([_hit()]))
     assert "default:ext-notion-abc.md" in out
 
 
-def test_provenance_carries_title():
-    packet = assemble_packet([_hit()])
+async def test_provenance_carries_title():
+    packet = await assemble_packet([_hit()])
     assert packet.provenance[0].doc_title == "1. 동시성 문제의 본질"
 
 
-def test_provenance_list_is_title_led():
-    out = format_for_llm(assemble_packet([_hit()]))
+async def test_provenance_list_is_title_led():
+    out = format_for_llm(await assemble_packet([_hit()]))
     assert "- 1. 동시성 문제의 본질" in out

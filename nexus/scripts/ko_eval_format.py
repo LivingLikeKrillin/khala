@@ -66,7 +66,7 @@ async def answer(query: str, history, *, tenant: str, clearance: str, svc, llm,
                                    embedding_svc=svc, route="hybrid_only", channels=channels)
     if r.degraded:
         raise SystemExit(f"✗ 다리가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
-    result = await generate_answer(rw.query, assemble_packet(r.hits, r.graph), llm_svc=llm,
+    result = await generate_answer(rw.query, await assemble_packet(r.hits, r.graph), llm_svc=llm,
                                    user_query=query if u2 else None)
     if result.llm_failed:
         raise SystemExit(f"✗ LLM 실패({result.llm_failure_reason}) — 이 숫자는 결과가 아니다")
