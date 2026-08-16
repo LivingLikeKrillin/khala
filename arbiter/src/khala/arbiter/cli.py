@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -119,9 +120,44 @@ def build_cli(root: Path, docs: Path, critic) -> typer.Typer:
     return app
 
 
+#: Git Bash / MSYS 는 `$PWD` 를 `/c/Users/...` 로 준다. Windows 의 Python 은 그것을 풀지
+#: 못하고, 결과는 "아티팩트를 찾을 수 없음" 이라는 **원인과 무관해 보이는** 오류다.
+#: 이 프로젝트는 이 함정으로 이미 한 번 라운드를 날렸다. 도구가 막는다.
+_MSYS_DRIVE = re.compile(r"^/([A-Za-z])/(.*)$")
+
+
+def _resolve_dir(raw: str) -> Path:
+    """MSYS 형태(`/c/...`)를 Windows 형태로 바꾼다.
+
+    `Path("/c/...").exists()` 를 조건으로 쓰면 안 된다 — Windows 는 선행 `/` 를 현재 드라이브의
+    루트로 읽어 그 경로가 **존재한다고 답한다**. 그래서 변환은 raw 의 존재 여부가 아니라
+    **변환형이 존재하는가** 로 판단한다. 진짜 `\\c\\...` 디렉터리가 있을 확률보다 MSYS 경로일
+    확률이 압도적으로 높고, 틀렸을 때의 증상("아티팩트 없음")이 원인과 전혀 닮지 않았다.
+    """
+    if os.name == "nt":
+        m = _MSYS_DRIVE.match(raw)
+        if m:
+            drive, rest = m.groups()
+            converted = Path(f"{drive.upper()}:/{rest}")
+            if converted.exists():
+                return converted
+    return Path(raw)
+
+
 def main() -> None:
-    root = Path(os.environ.get("ARBITER_ROOT", "."))
-    docs = Path(os.environ.get("ARBITER_DOCS", str(root / "docs")))
+    root = _resolve_dir(os.environ.get("ARBITER_ROOT", "."))
+    docs = _resolve_dir(os.environ.get("ARBITER_DOCS", str(root / "docs")))
+
+    # 없는 경로를 안고 들어가면 나중에 "아티팩트 없음" 으로 나타난다. 여기서 이름을 대고 죽는다.
+    for label, path in (("ARBITER_ROOT", root), ("ARBITER_DOCS", docs)):
+        if not path.exists():
+            typer.echo(
+                f"{label} 이 가리키는 경로가 없습니다: {path}\n"
+                "Git Bash 라면 `$PWD` 는 POSIX 경로(`/c/...`)라 Windows 에서 풀리지 않습니다. "
+                "`C:/...` 형태로 주십시오.", err=True)
+            # typer.Exit 는 명령 안에서만 잡힌다. 여기는 main() 이라 SystemExit 로 나간다.
+            raise SystemExit(2)
+
     build_cli(root, docs, make_critic())()
 
 
