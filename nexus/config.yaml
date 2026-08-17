@@ -61,7 +61,21 @@ search:
   vector_top_k: 20
   rrf_k: 60                    # RRF fusion 파라미터
   final_top_k: 10              # 최종 반환 수
-  diversity_per_doc_cap: 3     # top-k 내 한 문서 최대 청크 수(문서 도배 방지, SPEC-nexus-ranking-precision)
+  # top-k 내 한 문서 최대 청크 수(문서 도배 방지, SPEC-nexus-ranking-precision).
+  #
+  # **3 → 5 (2026-08-18, 실측 근거).** 3 은 답이 한 문서의 여러 절에 흩어진 코퍼스에서 정답을
+  # 담은 청크를 잘라냈다: 라이브 정책 코퍼스 8질의 중 2건(로그인 유형별 상한·자동 스킵 규칙)에서
+  # 그 청크가 상위 10에 **아예 못 들어왔고**, 상한 5면 8/8 들어온다. 문서 단위 Recall(8/8)로는
+  # 안 보이는 손실이다 — 정답 문서는 늘 1위였고 빠진 것은 그 안의 절이었다.
+  #
+  # 답변까지 3런씩 재면 정답 6.3/8 → 7.7/8 이고, 상한 3 의 **유일한 지속 실패(3/3)가 사라진다.**
+  # 대가는 상위 10의 평균 문서 수 6.0 → 5.0 이며, 그 손해가 결과로 나타난 적은 없다(정답 문서
+  # 인용은 모든 상한에서 8/8).
+  #
+  # ⚠ 이 자에는 **다양성이 실제로 필요한 질문**(두 번째 문서가 밀려나면 답이 나빠지는 경우)이
+  # 없다. 그런 유형이 라벨에 들어오면 이 값을 다시 재라. CI 리콜 바닥값은 융합 이전 단계
+  # (`_bm25_search`)를 재므로 이 값에 영향받지 않는다.
+  diversity_per_doc_cap: 5
   snippet_max_chars: 300       # 근거 스니펫 최대 길이(문장 경계에서 컷, SPEC-nexus-snippet-boundary-truncation)
   # 어느 임베딩 세대를 읽을지 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버도 롤백도 이 값 하나다.
   # embedding=nomic-embed-text(768) · embedding_1024=KURE-v1(1024). 화이트리스트 밖이면 기동 실패.
@@ -129,7 +143,7 @@ evidence_weights:
 
 # Archon — 도메인 불변식·값 거버넌스 (코드 상수 해석)
 code_source:
-  repo_path: ""   # 대상 코드 checkout 경로 (예: .../sample-app). 비면 값 조회 비활성.
+  repo_path: "/code-src"   # 대상 코드 checkout 경로 (예: .../sample-app). 비면 값 조회 비활성.
 
 # ── Auth (identity layer) ──
 # Binds a bearer token to a fixed (tenant, clearance). Callers can only NARROW scope.
