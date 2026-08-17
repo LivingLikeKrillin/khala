@@ -58,6 +58,12 @@ async def corpus(db_pool):
     """문서 셋: 상한을 채우는 것 · 못 채우는 것 · 너무 큰 것."""
     from nexus import db
 
+    # ⚠ `db._pool` 은 전역이고 `get_pool()` 은 **닫힌 풀도 그대로 돌려준다**. 함수 스코프 풀을
+    # 꽂아 두고 나가면, 이 풀이 닫힌 뒤 다른 테스트가 `pool is closed` 로 죽는다 — CI 에서
+    # 실제로 그렇게 됐다(`test_signals_db`·`test_index_coverage_db`). 그래서 되돌려 놓는다.
+    # 전역을 `None` 으로 비우지는 않는다: 그러면 다음 `get_pool()` 이 기본 `DATABASE_URL`
+    # (=개발 DB)로 새 풀을 열고, disposable 게이트를 지나쳐 버린다.
+    previous_pool = db._pool
     db._pool = db_pool
     async with db_pool.acquire() as con:
         await con.execute("DELETE FROM chunks WHERE tenant=$1", _TENANT)
@@ -82,10 +88,14 @@ async def corpus(db_pool):
         yield
         await con.execute("DELETE FROM chunks WHERE tenant=$1", _TENANT)
         await con.execute("DELETE FROM documents WHERE tenant=$1", _TENANT)
+    db._pool = previous_pool
 
 
 def _cfg(cap: int) -> dict:
-    return {"search": {"diversity_per_doc_cap": cap, "bm25_top_k": 50, "vector_top_k": 50}}
+    # `section_fill` 을 **명시로** 켠다 — 코드 기본값은 꺼짐이고, 그 기본값이 바뀌면
+    # 이 파일이 아니라 `test_rule_is_off_unless_configured` 가 말해 줘야 한다.
+    return {"search": {"diversity_per_doc_cap": cap, "bm25_top_k": 50, "vector_top_k": 50,
+                       "section_fill": True}}
 
 
 async def _search(cap: int, clearance: str = "INTERNAL"):
@@ -148,4 +158,17 @@ async def test_clearance_gate_holds_for_filled_sections(corpus):
 async def test_rule_off_when_cap_disabled(corpus):
     """상한이 0 이하면 규칙을 끈 것 — 전 문서가 채워지는 사고를 막는다."""
     res = await _search(cap=0)
+    assert res.fill == []
+
+
+async def test_rule_is_off_unless_configured(corpus):
+    """설정을 안 준 호출부는 **DB 를 한 번도 더 치지 않는다.**
+
+    기본값이 켜짐이었을 때 단위 시험들이 전에 없던 DB 접촉을 했고, `get_pool()` 이 기본
+    `DATABASE_URL`(=개발 DB)로 새 풀을 여는 바람에 다른 테스트의 이벤트 루프까지 깨졌다.
+    기본값을 되돌리는 변경은 여기서 빨간불이 돼야 한다.
+    """
+    res = await hybrid.hybrid_search(
+        _QUERY, tenant=_TENANT, clearance="INTERNAL", top_k=10,
+        embedding_svc=None, config={"search": {"diversity_per_doc_cap": 2}})
     assert res.fill == []

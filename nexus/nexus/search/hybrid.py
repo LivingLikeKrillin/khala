@@ -581,7 +581,13 @@ async def hybrid_search(
 
     # 상한을 꽉 채운 문서 = 검색이 몰표를 준 문서. 그 안의 **남은 절**을 근거에 채운다.
     # 순위에는 넣지 않는다 (SPEC 근거는 `search/section_fill.py` 머리말).
-    if search_cfg.get("section_fill", True):
+    #
+    # **기본값이 꺼짐인 이유는 취향이 아니다.** 이 규칙은 쿼리를 **하나 더** 쏘고, 그러면 설정을
+    # 안 준 호출부(단위 시험 다수)가 전에는 없던 DB 접촉을 하게 된다. `db.get_pool()` 은 풀이
+    # 없으면 기본 `DATABASE_URL`(=개발 DB)로 새로 열기 때문에, 그 접촉은 조용히 엉뚱한 DB 를
+    # 향하고 다른 테스트의 이벤트 루프까지 망가뜨린다 — 2026-08-18 CI 에서 실제로 그렇게 됐다.
+    # 배포는 config.yaml 로 켠다.
+    if search_cfg.get("section_fill", False):
         result.fill = await _fill_sections(result.hits, tenant, clearance, per_doc_cap)
 
     # Graph 보강 (route에 따라)
