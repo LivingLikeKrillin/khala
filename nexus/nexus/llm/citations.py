@@ -15,6 +15,28 @@ from dataclasses import dataclass, replace
 _OPEN = "[출처:"
 
 
+def _spans(text: str, start_at: int = 0) -> list[tuple[int, int]]:
+    """짝이 맞는 대괄호 구간 `[a, b)` 목록 — 최상위만(안쪽 중첩은 안 낸다).
+
+    닫히지 않은 대괄호는 무시한다. 깨진 인용에 크래시하지 않는다.
+    """
+    out: list[tuple[int, int]] = []
+    i = start_at
+    while (start := text.find("[", i)) != -1:
+        depth, j = 1, start + 1
+        while j < len(text) and depth:
+            if text[j] == "[":
+                depth += 1
+            elif text[j] == "]":
+                depth -= 1
+            j += 1
+        if depth:
+            break
+        out.append((start, j))
+        i = j
+    return out
+
+
 def _inner_citations(text: str) -> list[str]:
     """`[출처: …]` 안쪽 문자열들. **제목에 대괄호가 들어갈 수 있다.**
 
@@ -141,14 +163,53 @@ def _tier_by_title(packet) -> dict[str, str]:
     return {t: (v.pop() if len(v) == 1 else "mixed") for t, v in seen.items()}
 
 
+def _bare_inner_citations(text: str) -> list[str]:
+    """`출처:` 접두사 **없이** 적힌 인용 안쪽 문자열들.
+
+    **왜 이걸 받나.** 2026-08-17 라이브 실측(설계문서 코퍼스 질문 10개)에서 두 답변이
+    `[ADR-003: ID Reference Migration, Decision]` 처럼 접두사를 빼고 적었다. 근거는 멀쩡히
+    붙어 있는데 검증기가 0건으로 세서, 응답과 웹 인용 스트립에 **인용 없는 답변**으로 보였다.
+    그 손해는 모델이 아니라 검증기가 만든 것이다.
+
+    **다만 접두사 없는 대괄호는 인용의 증거가 아니다** — 체크박스(`- [ ]`), 각주(`[1]`),
+    코드(`dict[str]`), 마크다운 링크가 전부 같은 모양이다. 그래서 여기서 뽑은 것은
+    **해소될 때만** 인용으로 센다(`validate_citations` 가 verified 만 남긴다). 안 해소되는 것을
+    미검증으로 세면 지어낸 출처 신호가 산문 잡음에 묻힌다 — 그 신호가 이 모듈의 존재 이유다.
+
+    마크다운 링크(`[텍스트](url)`)는 제목과 같아도 뽑지 않는다. 링크는 인용이 아니고, 세면
+    인용 수가 문서 수를 넘는다.
+    """
+    out: list[str] = []
+    for a, b in _spans(text):
+        inner = text[a + 1:b - 1].strip()
+        if not inner or inner.startswith("출처:"):
+            continue                       # 접두 인용은 _inner_citations 가 이미 가져갔다
+        if text[b:b + 1] == "(":
+            continue                       # 마크다운 링크
+        out.append(inner)
+    return out
+
+
 def validate_citations(answer_text: str, packet) -> CitationReport:
-    """답변의 모든 [출처: …] 를 packet.snippets 제목과 대조. 순수·무예외."""
+    """답변의 인용을 packet.snippets 제목과 대조. 순수·무예외.
+
+    두 형식을 받는다: 프롬프트가 지시하는 `[출처: 제목, 섹션]`, 그리고 모델이 실제로 자주 쓰는
+    접두사 없는 `[제목, 섹션]`. **판정 규칙은 형식마다 다르다** — 접두사가 있으면 해소 실패도
+    보고하고(환각 신호), 없으면 해소된 것만 인용으로 센다(산문의 대괄호를 경보로 만들지 않는다).
+    """
+    text = answer_text or ""
     known = {_norm(s.doc_title): s.doc_title
              for s in getattr(packet, "snippets", []) if getattr(s, "doc_title", "")}
     tiers = _tier_by_title(packet)
-    citations = [
-        replace(c, provenance_tier=tiers.get(c.title, "authored"))
-        for c in (_classify(inner, known) for inner in _inner_citations(answer_text or ""))
-    ]
+
+    citations = [_classify(inner, known) for inner in _inner_citations(text)]
+    seen = {(c.title, c.section) for c in citations}
+    for inner in _bare_inner_citations(text):
+        c = _classify(inner, known)
+        if c.verified and (c.title, c.section) not in seen:
+            seen.add((c.title, c.section))
+            citations.append(c)
+
+    citations = [replace(c, provenance_tier=tiers.get(c.title, "authored")) for c in citations]
     unverified = sum(1 for c in citations if not c.verified)
     return CitationReport(citations=citations, unverified_count=unverified)

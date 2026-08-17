@@ -266,3 +266,64 @@ def test_a_back_reference_is_still_unverified():
     """프롬프트가 실패해도 검증기는 물러서지 않는다 — 이 둘은 서로의 대체재가 아니다."""
     assert _one("동일 문서").verified is False
     assert _one("동일").verified is False
+
+
+# ── 접두사 없는 인용 (2026-08-17 라이브에서 나온 형태) ─────────────────────────
+#
+# 설계문서 코퍼스 10개 질문 실측에서 **2개가 `[출처:` 접두사를 빼고** `[ADR-003: …, Decision]`
+# 처럼 적었다. 근거는 멀쩡히 붙어 있었는데 검증기가 0건으로 세서, 응답과 웹 인용 스트립에
+# **인용 없는 답변**으로 보였다. 검증기가 만든 손해다.
+#
+# 규칙: 접두사 없는 대괄호는 **해소될 때만** 인용이다. 안 해소되면 무시한다 —
+# 산문의 대괄호(체크박스·각주·코드)를 미검증 인용으로 세면 경보가 울리다 못해 무의미해진다.
+
+
+def test_a_citation_without_the_prefix_still_counts_when_it_resolves():
+    rep = validate_citations("ID 참조로 합니다 [ADR-003: ID Reference Migration, Decision].",
+                             _pkt("ADR-003: ID Reference Migration"))
+
+    assert len(rep.citations) == 1
+    assert rep.citations[0].verified
+    assert rep.citations[0].title == "ADR-003: ID Reference Migration"
+    assert rep.citations[0].section == "Decision"
+    assert rep.unverified_count == 0
+
+
+def test_bare_brackets_that_resolve_to_nothing_are_not_citations():
+    """산문의 대괄호를 미검증 인용으로 세면 안 된다 — 지어낸 출처 신호가 잡음에 묻힌다."""
+    rep = validate_citations("- [ ] 할 일\n각주[1] 참고. `dict[str]` 을 쓴다.", _pkt("정책 문서"))
+
+    assert rep.citations == []
+    assert rep.unverified_count == 0
+
+
+def test_an_invented_source_with_the_prefix_is_still_unverified():
+    """접두사를 쓴 인용은 해소되지 않으면 여전히 미검증이다 — 그게 환각 신호의 본체다."""
+    rep = validate_citations("[출처: 존재하지 않는 문서, 어딘가]", _pkt("정책 문서"))
+
+    assert rep.unverified_count == 1
+
+
+def test_a_prefixed_citation_is_not_double_counted_by_the_bare_scan():
+    """제목에 대괄호가 있으면 접두 인용 안쪽에 또 대괄호가 있다. 두 번 세면 안 된다."""
+    rep = validate_citations("[출처: [파티룸] 디제잉 정책, 역할 표]", _pkt("[파티룸] 디제잉 정책"))
+
+    assert len(rep.citations) == 1
+    assert rep.citations[0].verified
+
+
+def test_a_markdown_link_is_not_a_citation():
+    """`[제목](url)` 은 링크다. 링크를 인용으로 세면 인용 수가 문서 수를 넘는다."""
+    rep = validate_citations("자세히는 [정책 문서](https://example.test/doc) 를 보라.",
+                             _pkt("정책 문서"))
+
+    assert rep.citations == []
+
+
+def test_both_forms_in_one_answer_are_counted_once_each():
+    rep = validate_citations(
+        "먼저 [출처: 정책 문서, 1절] 이고, 다음은 [설계 노트, 2절] 이다.",
+        _pkt("정책 문서", "설계 노트"))
+
+    assert [c.title for c in rep.citations] == ["정책 문서", "설계 노트"]
+    assert rep.unverified_count == 0
