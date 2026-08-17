@@ -253,7 +253,7 @@ async def test_the_bot_attaches_the_buttons_and_records_the_offer(monkeypatch):
     버튼을 붙이고, 게시된 메시지에 결속해 제안 행을 남기느냐다."""
     from nexus.slack import bot
 
-    async def fake_api(query, history=None):
+    async def fake_api(query, history=None, token=None):
         return {"answer": "답", "evidence_snippets": []}
     monkeypatch.setattr(bot, "_call_nexus_api", fake_api)
 
@@ -294,7 +294,7 @@ async def test_no_offer_row_without_a_message_handle(monkeypatch):
     것을 되살린다. 투표가 오면 orphan 으로 받아 표시한다."""
     from nexus.slack import bot
 
-    async def fake_api(query, history=None):
+    async def fake_api(query, history=None, token=None):
         return {"answer": "답", "evidence_snippets": []}
     monkeypatch.setattr(bot, "_call_nexus_api", fake_api)
 
