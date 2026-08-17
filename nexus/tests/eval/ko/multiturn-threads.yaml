@@ -47,10 +47,12 @@
 #
 # revision 1 — 2026-08-13 저술. 판정 규칙은 SPEC §5 에 **구현 전에** 등록됐다.
 
+# 재핀 2026-08-17 — 라벨 revision 3 → 4 (미판정 인용 중 not_gold 10건 판정).
+#   gold 는 안 늘었다(§4.5 트리거) — 물려받는 정답 집합은 그대로다.
 revision: 1
 pack: packa-corpus-266
 labels: answer-labels.yaml
-labels_revision: 3
+labels_revision: 4
 drift_turn: 지난번에 CoreDNS 로 서비스 디스커버리 붙이는 걸 알려줬잖아, 그건 잘 됐어
 
 threads:

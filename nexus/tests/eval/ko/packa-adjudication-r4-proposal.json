@@ -3,7 +3,7 @@
  "proposed_by": "agent",
  "proposed_at": "2026-08-17",
  "rule": "must_contain all groups present in the document body (facts_present) — same function as the scorer",
- "signature": "awaiting human — labels file unchanged until then",
+ "signature": "signed 2026-08-17 — not_gold applied; gold_add NOT applied",
  "queries": {
   "q006": {
    "gold_add": [
@@ -129,5 +129,6 @@
    ],
    "not_gold_add": []
   }
- }
+ },
+ "gold_add_status": "blocked by SPEC-nexus-korean-embedding-comparison §4.5 — the blind pool (821 unjudged candidates) must be judged before the gold set grows; these 18 docs came from what the current system retrieved, so promoting them unjudged would bias the ruler toward the incumbent. Answer gold cannot diverge from retrieval gold, so this would also move the retrieval ruler."
 }
