@@ -91,6 +91,7 @@ def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, st
             "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "tag": args.tag, "model": getattr(llm, "model", None), "summary": summary,
             "labels": Path(args.labels).name, "tenant": args.tenant,
+            **run_conditions(args),
             "ok": {s.qid: s.ok for s in scores},
             "sufficiency": sufficiency or None,
             "grid": grid(scores, sufficiency) if sufficiency else None,
@@ -135,6 +136,29 @@ async def unreadable_gold(con, labels: dict, tenant: str, clearance: str) -> dic
     return out
 
 
+def run_conditions(args) -> dict:
+    """이 실행을 **다음 실행과 비교 가능하게** 만드는 조건들.
+
+    2026-08-17 에 r3·r4 와 r5 를 정면 비교할 수 없었다: 리포트에 **등급이 없어서** 옛 실행이
+    어떤 clearance 로 돌았는지 알 방법이 없었다. 그날 첫 실행은 `INTERNAL` 에서 정당하게 거부됐고
+    (gold 3건이 RESTRICTED), `RESTRICTED` 로 다시 돌려 얻은 수를 옛 수와 나란히 놓을 근거가
+    없었다. 같은 날 프롬프트도 바뀌었는데 그 경계 역시 리포트 밖에 있었다.
+
+    **모델 이름만으로는 부족하다.** 답을 만드는 것은 (모델 × 프롬프트 × 등급 × 상한)이고, 그중
+    셋이 기록되지 않으면 "지난주보다 좋아졌다" 는 문장은 검증 불가능한 말이 된다.
+
+    프롬프트 지문은 텍스트에서 파생되므로(`llm/prompt_version.py`) 사람이 올릴 것이 없다 —
+    올리는 규율은 반드시 한 번 깨지고, 깨진 순간 기록이 조용히 거짓이 된다.
+    """
+    from nexus.llm.prompt_version import answer_prompt_sha
+
+    return {
+        "clearance": getattr(args, "clearance", None),
+        "answer_prompt_sha": answer_prompt_sha(),
+        "limit": getattr(args, "limit", None),
+    }
+
+
 def gate_reasons(summary: dict, expired_qids: list[str] | None = None) -> list[str]:
     """총점을 내면 안 되는 이유들. 비어 있어야 실행이 결과가 된다.
 
@@ -161,6 +185,7 @@ def _write_report(args, labels, llm, summary, rows, *, partial: bool,
         {"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
          "labels_revision": labels["revision"], "tenant": args.tenant,
          "tag": args.tag, "llm_model": getattr(llm, "model", None),
+         **run_conditions(args),
          "partial": partial, "expired": expired_qids or [],
          "controls": controls or [], "summary": summary, "queries": rows},
         ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

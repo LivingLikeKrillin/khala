@@ -230,3 +230,50 @@ async def test_the_gate_speaks_the_databases_vocabulary():
     for unknown in ("CONFIDENTIAL", "SECRET", "internal "):   # DB 에 없는 이름은 거부
         with pytest.raises(ValueError):
             await run.unreadable_gold(_Con(_DOCS), _labels(["public.md"]), "t", unknown)
+
+
+# ── 실행 조건이 리포트에 남는가 (2026-08-17) ─────────────────────────────────
+#
+# r3·r4 와 r5 를 정면 비교할 수 없었다. 리포트에 **등급이 없어서** 옛 실행이 어떤 clearance 로
+# 돌았는지 알 수 없었고, 같은 날 프롬프트도 바뀌었는데 그 경계도 파일 밖이었다. 모델 이름만
+# 남기면 "지난주보다 좋아졌다" 가 검증 불가능한 말이 된다.
+
+
+def _args_full(tmp_path):
+    return SimpleNamespace(tag="t", tenant="default", report=tmp_path / "report.json",
+                           clearance="RESTRICTED", limit=40,
+                           labels=Path("answer-labels.yaml"), runs=tmp_path / "runs.jsonl")
+
+
+def test_the_report_records_the_clearance_it_ran_with(tmp_path, monkeypatch):
+    monkeypatch.setattr(run, "LOCAL_DIR", tmp_path)
+    s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
+                     [["100"]], known_titles=TENANT_TITLES)
+    run._write_report(_args_full(tmp_path), {"revision": 9}, SimpleNamespace(model="m"),
+                      _summary(s), [{"qid": "a"}], partial=False)
+
+    written = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
+    assert written["clearance"] == "RESTRICTED"
+    assert written["limit"] == 40
+    assert len(written["answer_prompt_sha"]) >= 8      # 프롬프트 텍스트에서 파생된 지문
+
+
+def test_the_prompt_fingerprint_follows_the_prompt(tmp_path, monkeypatch):
+    """지문이 프롬프트를 실제로 따라가는지 — 상수를 적어 둔 것이면 이 검사가 잡는다."""
+    from nexus.llm import prompts
+
+    before = run.run_conditions(_args_full(tmp_path))["answer_prompt_sha"]
+    monkeypatch.setattr(prompts, "SYSTEM_PROMPT", prompts.SYSTEM_PROMPT + "\n8. 새 규칙")
+    assert run.run_conditions(_args_full(tmp_path))["answer_prompt_sha"] != before
+
+
+def test_the_accumulated_log_carries_the_same_conditions(tmp_path):
+    """누적 로그가 조건을 빼면, 잡음 폭을 재는 그 파일만으로는 회차를 구별할 수 없다."""
+    s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
+                     [["100"]], known_titles=TENANT_TITLES)
+    args = _args_full(tmp_path)
+    run.append_run(args, SimpleNamespace(model="m"), _summary(s), [s], {})
+
+    row = json.loads((tmp_path / "runs.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+    assert row["clearance"] == "RESTRICTED"
+    assert row["answer_prompt_sha"]
