@@ -77,6 +77,7 @@ async def assemble_packet(
     hits: list[SearchHit],
     graph: SubGraph | None = None,
     tenant: str = "",
+    fill: list[SearchHit] | None = None,
 ) -> EvidencePacket:
     """검색 결과에서 evidence packet 조립.
 
@@ -89,20 +90,25 @@ async def assemble_packet(
         graph: Graph 조회 결과 (optional)
         tenant: 앵커 상태 조회 범위. 비면 조회하지 않는다 — 앵커를 안 쓰는 호출부
             (테스트 픽스처·평가 하니스)가 DB 없이 패킷을 만들 수 있어야 한다.
+        fill: 상한을 채운 문서의 남은 절(`SearchResult.fill`). **순위가 아니라 근거**다 —
+            뒤에 문서 순서로 붙는다. 안 주면 오늘과 바이트 단위로 같은 패킷이 나온다.
 
     Returns:
         EvidencePacket
     """
     packet = EvidencePacket(graph=graph)
     seen_docs: set[str] = set()
+    # 채운 절도 근거이므로 앵커·부채·출처를 **같은 규율로** 받는다. 여기서 갈라 두면 어떤
+    # 근거에는 코드 앵커가 붙고 어떤 근거에는 안 붙는 상태가 되고, 그 차이는 화면에 안 보인다.
+    ordered = list(hits) + [f for f in (fill or []) if f.rid not in {h.rid for h in hits}]
     # 쿼리 한 번으로 이번 결과 **전체**의 앵커 상태를 받는다. 스니펫마다 조회하면 그게 바로
     # `nexus code drift` 를 10분 걸리게 한 N+1 이다.
-    anchors = await statuses_for_chunks(tenant, [h.rid for h in hits])
+    anchors = await statuses_for_chunks(tenant, [h.rid for h in ordered])
     # 문서 부채도 같은 규율로 — 쿼리 하나, 없으면 조용하다.
-    debts = await debts_for_docs(tenant, sorted({h.doc_rid for h in hits}))
+    debts = await debts_for_docs(tenant, sorted({h.doc_rid for h in ordered}))
     packet.debts = [debts[r] for r in sorted(debts)]
 
-    for hit in hits:
+    for hit in ordered:
         reading = anchors.get(hit.rid)
         packet.snippets.append(EvidenceSnippet(
             chunk_rid=hit.rid,

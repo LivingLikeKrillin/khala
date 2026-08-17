@@ -195,6 +195,7 @@ def _write_report(args, labels, llm, summary, rows, *, partial: bool,
 
 async def _run(args) -> int:
     from nexus import db
+    from nexus.cli import _load_config
     from nexus.providers.embedding import embedding_service_from_config
     from nexus.providers.llm import LLMService
     from nexus.search import hybrid
@@ -217,7 +218,13 @@ async def _run(args) -> int:
     queries = [q for q in labels["queries"] if q.get("answerable")][:args.limit]
     print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 질의 {len(queries)}건\n")
 
+    # **자는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
+    # 코드 기본값(`diversity_per_doc_cap=3`)으로 돌고, 배포는 config.yaml 의 5 로 돈다 —
+    # 즉 자가 아무도 안 쓰는 설정을 재게 된다 (2026-08-18 발견).
     svc, llm = embedding_service_from_config(), LLMService()
+    search_cfg = _load_config()
+    if args.section_fill:
+        search_cfg.setdefault("search", {})["section_fill"] = args.section_fill == "on"
     if args.model:
         llm.model = args.model            # 브리지가 payload 의 model 을 그대로 넘긴다
     # **질의당 LLM 을 한두 번 부른다.** 유료 백엔드면 여기서 멈춘다 — 2026-08-13 에 하루치
@@ -278,11 +285,11 @@ async def _run(args) -> int:
     try:
         for q in queries:
             result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance=args.clearance,
-                                                top_k=10, embedding_svc=svc)
+                                                top_k=10, embedding_svc=svc, config=search_cfg)
             if result.degraded:
                 print(f"✗ 다리가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
                 return 1
-            packet = await assemble_packet(result.hits, result.graph)
+            packet = await assemble_packet(result.hits, result.graph, fill=result.fill)
             ans = await generate_answer(q["query"], packet, llm_svc=llm)
             spend.add(ans.usage, kind="answer")
             # **첫 실패에서 멈춘다.** 계속 돌면 실패한 실행의 집계가 리포트로 남고, 그것을 나중에
@@ -323,8 +330,10 @@ async def _run(args) -> int:
         for q in ([q for q in labels["queries"] if not q.get("answerable")]
                   if args.controls else []):
             result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance=args.clearance,
-                                                top_k=10, embedding_svc=svc)
-            ans = await generate_answer(q["query"], await assemble_packet(result.hits, result.graph),
+                                                top_k=10, embedding_svc=svc, config=search_cfg)
+            ans = await generate_answer(q["query"],
+                                        await assemble_packet(result.hits, result.graph,
+                                                              fill=result.fill),
                                         llm_svc=llm)
             if ans.llm_failed:
                 print(f"✗ {q['id']}: LLM 호출 실패 — 대조군도 결과가 아니다")
@@ -423,6 +432,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--controls", action="store_true",
                     help="답변불가 5건도 돌린다 — 기권 탐지기의 **양성 대조군**이다. "
                          "거절하지 않는 대조군은 라벨 재판정 대상이다")
+    ap.add_argument("--section-fill", choices=("on", "off"), default="",
+                    help="절 채움 팔 (비우면 배포 설정을 따른다). 팔을 가르는 스위치이지 "
+                         "기본값이 아니다 — config.yaml 을 고치면 도는 앱까지 흔든다")
     ap.add_argument("--sufficiency", action="store_true",
                     help="근거 충분성도 판정한다(질의당 LLM 1회 추가). 이것 없이는 기권이 "
                          "정직한 기권인지 과잉 기권인지, 오답이 생성 결함인지 환각인지 못 가른다")

@@ -76,6 +76,11 @@ search:
   # 없다. 그런 유형이 라벨에 들어오면 이 값을 다시 재라. CI 리콜 바닥값은 융합 이전 단계
   # (`_bm25_search`)를 재므로 이 값에 영향받지 않는다.
   diversity_per_doc_cap: 5
+  # 상한을 꽉 채운 문서의 **남은 절**을 근거에 채운다 (`search/section_fill.py`).
+  # 검색은 '어느 문서' 를 맞히고 '어느 절' 을 틀린다 — 질문과 정답 절이 어휘를 안 나누면 어떤
+  # 랭킹으로도 못 간다. 순위는 안 건드리고 근거만 는다(단일홉 자에서 +22%, 해는 관측 안 됨).
+  # 코드 기본값은 꺼짐이다: 설정 없는 호출부가 DB 를 새로 치지 않게 하려는 것이다.
+  section_fill: true
   snippet_max_chars: 300       # 근거 스니펫 최대 길이(문장 경계에서 컷, SPEC-nexus-snippet-boundary-truncation)
   # 어느 임베딩 세대를 읽을지 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버도 롤백도 이 값 하나다.
   # embedding=nomic-embed-text(768) · embedding_1024=KURE-v1(1024). 화이트리스트 밖이면 기동 실패.

@@ -35,6 +35,7 @@ TENANT = "default"
 
 async def _run(args) -> int:
     from nexus import db
+    from nexus.cli import _load_config
     from nexus.providers.embedding import embedding_service_from_config
     from nexus.search import hybrid
 
@@ -51,7 +52,11 @@ async def _run(args) -> int:
     print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 질의 {len(queries)}건 "
           f"(테넌트 {TENANT}, LLM 미사용)\n")
 
+    # **자는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
+    # 코드 기본값(`diversity_per_doc_cap=3`)으로 돌고, 배포는 config.yaml 의 5 로 돈다 —
+    # 즉 자가 아무도 안 쓰는 설정을 재게 된다 (2026-08-18 발견).
     svc = embedding_service_from_config()
+    search_cfg = _load_config()
     pool = await db.get_pool()
     # **같은 라벨·같은 테넌트를 재므로 같은 만료가 여기에도 걸린다.** 답변 쪽에만 게이트를 달면
     # 만료된 라벨로 잰 숫자가 이 문으로 그대로 나온다(SPEC-nexus-answer-quality-ruler §3.3).
@@ -69,7 +74,7 @@ async def _run(args) -> int:
     try:
         for q in queries:
             result = await hybrid.hybrid_search(q["query"], tenant=TENANT, clearance="INTERNAL",
-                                                top_k=args.top_k, embedding_svc=svc)
+                                                top_k=args.top_k, embedding_svc=svc, config=search_cfg)
             if result.degraded:
                 print(f"✗ 다리가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
                 return 1
