@@ -223,6 +223,8 @@ async def _run(args) -> int:
     # 즉 자가 아무도 안 쓰는 설정을 재게 된다 (2026-08-18 발견).
     svc, llm = embedding_service_from_config(), LLMService()
     search_cfg = _load_config()
+    if args.section_fill:
+        search_cfg.setdefault("search", {})["section_fill"] = args.section_fill == "on"
     if args.model:
         llm.model = args.model            # 브리지가 payload 의 model 을 그대로 넘긴다
     # **질의당 LLM 을 한두 번 부른다.** 유료 백엔드면 여기서 멈춘다 — 2026-08-13 에 하루치
@@ -430,6 +432,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--controls", action="store_true",
                     help="답변불가 5건도 돌린다 — 기권 탐지기의 **양성 대조군**이다. "
                          "거절하지 않는 대조군은 라벨 재판정 대상이다")
+    ap.add_argument("--section-fill", choices=("on", "off"), default="",
+                    help="절 채움 팔 (비우면 배포 설정을 따른다). 팔을 가르는 스위치이지 "
+                         "기본값이 아니다 — config.yaml 을 고치면 도는 앱까지 흔든다")
     ap.add_argument("--sufficiency", action="store_true",
                     help="근거 충분성도 판정한다(질의당 LLM 1회 추가). 이것 없이는 기권이 "
                          "정직한 기권인지 과잉 기권인지, 오답이 생성 결함인지 환각인지 못 가른다")
