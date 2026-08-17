@@ -10,7 +10,10 @@
 
 from __future__ import annotations
 
+import os
 from types import SimpleNamespace
+
+import pytest
 
 from nexus.ingest.vision import marker_line, strip_marker_line
 from nexus.utils import get_search_text
@@ -68,10 +71,6 @@ def test_stripping_is_idempotent_and_safe_on_empty():
 # `get_search_text()` 와 `search_text` 생성 컬럼은 **같은 정의의 두 구현**이다. 갈라지면 색인은
 # 한쪽으로, trigram fallback 은 다른 쪽으로 돌고, 갈라졌다는 사실은 조용하다. 소스 문자열을
 # 비교하는 검사로는 못 잡는다 — 같은 입력을 양쪽에 넣어 **결과를 비교**한다.
-
-import os
-
-import pytest
 
 pytestmark_db = pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"), reason="NEXUS_TEST_DB_URL 필요")
 
