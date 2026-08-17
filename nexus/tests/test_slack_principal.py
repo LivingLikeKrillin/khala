@@ -67,3 +67,50 @@ def test_the_slack_identity_is_not_the_operator_identity(monkeypatch):
     dev = next(p for p in cfg.principals if p["name"] == "local-dev")
     assert bot["token_sha256"] != dev["token_sha256"]
     assert bot["capabilities"] == [] and dev["capabilities"]
+
+
+# ── 두 번째 코퍼스 (2026-08-18) ──────────────────────────────────────────────
+#
+# **테넌트는 토큰이 정한다.** `auth/scope.py` 는 요청의 tenant 를 무시한다(테넌트 격리이자
+# 존재 유출 방지). 그래서 봇이 다른 코퍼스에 물으려면 문자열이 아니라 그 테넌트에 묶인 토큰이
+# 필요하고, 채널마다 코퍼스를 나누는 일은 결국 **토큰을 나누는 일**이다.
+
+
+def _principal(cfg, name):
+    return next((p for p in cfg.principals if p["name"] == name), None)
+
+
+def test_a_second_corpus_becomes_its_own_principal(monkeypatch):
+    monkeypatch.setenv("NEXUS_SLACK_CORPUS_DESIGN", "design-token|design_docs|INTERNAL")
+    cfg = _load(monkeypatch, NEXUS_SLACK_TOKEN="base-token-value-long-enough")
+
+    p = _principal(cfg, "slack-design")
+    assert p is not None
+    assert p["tenant"] == "design_docs"
+    assert p["clearance"] == "INTERNAL"
+    assert p["token_sha256"] == hash_token("design-token")
+    assert p["capabilities"] == []      # 워크스페이스 전원에게 열리는 표면은 읽기 전용이다
+
+
+def test_the_second_corpus_inherits_the_bot_clearance_when_unset(monkeypatch):
+    monkeypatch.setenv("NEXUS_SLACK_CORPUS_DESIGN", "design-token|design_docs")
+    cfg = _load(monkeypatch, NEXUS_SLACK_TOKEN="base-token-value-long-enough",
+                NEXUS_SLACK_CLEARANCE="INTERNAL")
+
+    assert _principal(cfg, "slack-design")["clearance"] == "INTERNAL"
+
+
+def test_a_malformed_corpus_entry_is_skipped_not_fatal(monkeypatch):
+    """오타 하나가 배포 전체를 못 뜨게 하면 안 된다 — 그 코퍼스만 건너뛴다."""
+    monkeypatch.setenv("NEXUS_SLACK_CORPUS_BROKEN", "token-without-a-tenant")
+    monkeypatch.setenv("NEXUS_SLACK_CORPUS_DESIGN", "design-token|design_docs")
+    cfg = _load(monkeypatch, NEXUS_SLACK_TOKEN="base-token-value-long-enough")
+
+    assert _principal(cfg, "slack-broken") is None
+    assert _principal(cfg, "slack-design") is not None
+
+
+def test_no_corpus_env_leaves_todays_principals_untouched(monkeypatch):
+    cfg = _load(monkeypatch, NEXUS_SLACK_TOKEN="base-token-value-long-enough")
+
+    assert [p["name"] for p in cfg.principals] == ["slack-bot"]

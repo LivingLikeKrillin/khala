@@ -96,6 +96,33 @@ class AuthConfig:
                 "capabilities": [],
             })
 
+        # 두 번째 코퍼스: `NEXUS_SLACK_CORPUS_<별칭> = 토큰|테넌트[|등급]`
+        #
+        # **테넌트는 토큰이 정한다** (`auth/scope.py`: 요청의 tenant 는 무시된다 — 테넌트 격리이자
+        # 존재 유출 방지). 그래서 봇이 다른 코퍼스에 물으려면 문자열이 아니라 **그 테넌트에 묶인
+        # 토큰**이 필요하다. 채널마다 코퍼스를 나누는 일이 결국 토큰을 나누는 일인 이유다.
+        #
+        # 위와 같은 규율을 지킨다: 봇이 보내는 그 값에서 서버 principal 이 파생되므로 둘이 어긋날
+        # 수 없고, 능력은 비어 있고(읽기 전용), 등급은 명시하지 않으면 기본 봇과 같은 값이다.
+        # 값이 깨졌으면 **그 코퍼스만 건너뛴다** — 오타 하나가 배포 전체를 못 뜨게 하면 안 된다.
+        for key, raw in os.environ.items():
+            if not key.startswith("NEXUS_SLACK_CORPUS_") or not raw.strip():
+                continue
+            alias = key[len("NEXUS_SLACK_CORPUS_"):].strip().lower()
+            parts = [x.strip() for x in raw.split("|")]
+            if not alias or len(parts) < 2 or not parts[0] or not parts[1]:
+                logger.warning("slack_corpus_env_malformed", key=key)
+                continue
+            from .principal import hash_token
+            principals.append({
+                "name": f"slack-{alias}",
+                "token_sha256": hash_token(parts[0]),
+                "tenant": parts[1],
+                "clearance": (parts[2] if len(parts) > 2 and parts[2]
+                              else os.getenv("NEXUS_SLACK_CLEARANCE", "PUBLIC")),
+                "capabilities": [],
+            })
+
         return cls(
             mode=mode,
             allowed_origins=list(origins),

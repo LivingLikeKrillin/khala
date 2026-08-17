@@ -102,8 +102,8 @@ async def test_500_and_429_classify_as_other(monkeypatch):
 async def test_empty_grounding_when_no_snippets_but_corpus_exists(monkeypatch):
     _bot_with(monkeypatch, lambda r: httpx.Response(200, json={
         "success": True, "data": {"answer": "", "evidence_snippets": []}}))
-    monkeypatch.setattr(bot, "_documents_count", lambda: 20)   # 코퍼스는 있다
-    monkeypatch.setattr(bot, "_blind", lambda: False)          # 보이는 문서도 있다
+    monkeypatch.setattr(bot, "_documents_count", lambda *_: 20)   # 코퍼스는 있다
+    monkeypatch.setattr(bot, "_blind", lambda *_: False)          # 보이는 문서도 있다
     with pytest.raises(bot.NexusCallError) as e:
         await bot._call_nexus_api("q")
     assert e.value.outcome is Outcome.EMPTY_GROUNDING
@@ -112,7 +112,7 @@ async def test_empty_grounding_when_no_snippets_but_corpus_exists(monkeypatch):
 async def test_empty_corpus_when_no_documents(monkeypatch):
     _bot_with(monkeypatch, lambda r: httpx.Response(200, json={
         "success": True, "data": {"answer": "", "evidence_snippets": []}}))
-    monkeypatch.setattr(bot, "_documents_count", lambda: 0)    # 코퍼스가 없다
+    monkeypatch.setattr(bot, "_documents_count", lambda *_: 0)    # 코퍼스가 없다
     with pytest.raises(bot.NexusCallError) as e:
         await bot._call_nexus_api("q")
     assert e.value.outcome is Outcome.EMPTY_CORPUS
@@ -166,8 +166,8 @@ async def test_no_visible_documents_is_not_the_same_as_not_found(monkeypatch):
     """
     _bot_with(monkeypatch, lambda r: httpx.Response(200, json={
         "success": True, "data": {"answer": "", "evidence_snippets": []}}))
-    monkeypatch.setattr(bot, "_documents_count", lambda: 116)   # 코퍼스는 있다
-    monkeypatch.setattr(bot, "_blind", lambda: True)            # 그런데 하나도 안 보인다
+    monkeypatch.setattr(bot, "_documents_count", lambda *_: 116)   # 코퍼스는 있다
+    monkeypatch.setattr(bot, "_blind", lambda *_: True)            # 그런데 하나도 안 보인다
     with pytest.raises(bot.NexusCallError) as e:
         await bot._call_nexus_api("q")
     assert e.value.outcome is Outcome.NO_VISIBLE_DOCS
