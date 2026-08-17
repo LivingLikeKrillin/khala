@@ -1023,7 +1023,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     "doc_type": s.doc_type,
                     "provenance_tier": getattr(s, "provenance_tier", "authored"),
                     # 스트리밍도 같은 사실을 낸다 — 표면마다 다른 근거를 보이면 안 된다.
-                    "code_anchors": _anchor_summary(getattr(s, "code_anchors", [])),
+                    "code_anchors": _anchor_summary(getattr(s, "code_anchors", []),
+                                                    getattr(s, "code_deleted", [])),
                     "updated_at": s.updated_at,
                 }
                 for s in packet.snippets

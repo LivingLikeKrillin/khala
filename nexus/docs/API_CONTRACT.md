@@ -157,7 +157,11 @@ class EvidenceSnippet(BaseModel):
   "fresh": 5,                 # 이름도 텍스트도 그대로
   "changed": ["Beta"],        # 이름은 있는데 본문이 바뀌었다
   "orphaned": ["Gamma"],      # 이름이 코드에서 사라졌다
-  "ambiguous_now": []         # 바인딩 뒤 동명이 생겼다 — 다시 겨누지 않는다
+  "ambiguous_now": [],        # 바인딩 뒤 동명이 생겼다 — 다시 겨누지 않는다
+  # 문서가 부르는데 **지워진** 이름. 바인딩된 적이 없으므로 `total` 에 안 들어간다.
+  # 외부 타입·미구현은 여기 오지 않는다 (git 이력으로 가른다, 마이그레이션 029).
+  "deleted": [{"name": "AvatarBodyRequest", "date": "2026-02-21",
+               "commit": "abc1234", "subject": "refactor: unify DTO naming"}]
 }
 
 class ProvenanceRef(BaseModel):
