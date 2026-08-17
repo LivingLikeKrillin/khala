@@ -1,0 +1,133 @@
+{
+ "proposed_revision": 4,
+ "proposed_by": "agent",
+ "proposed_at": "2026-08-17",
+ "rule": "must_contain all groups present in the document body (facts_present) — same function as the scorer",
+ "signature": "awaiting human — labels file unchanged until then",
+ "queries": {
+  "q006": {
+   "gold_add": [
+    "tasks/administer-cluster/kubeadm/kubeadm-certs.md"
+   ],
+   "not_gold_add": []
+  },
+  "q007": {
+   "gold_add": [],
+   "not_gold_add": [
+    "concepts/services-networking/ingress.md"
+   ]
+  },
+  "q008": {
+   "gold_add": [],
+   "not_gold_add": [
+    "tasks/administer-cluster/change-pv-reclaim-policy.md",
+    "tasks/configure-pod-container/configure-persistent-volume-storage.md"
+   ]
+  },
+  "q009": {
+   "gold_add": [
+    "concepts/storage/storage-classes.md",
+    "tutorials/stateful-application/mysql-wordpress-persistent-volume.md"
+   ],
+   "not_gold_add": []
+  },
+  "q010": {
+   "gold_add": [
+    "tasks/run-application/run-replicated-stateful-application.md"
+   ],
+   "not_gold_add": []
+  },
+  "q013": {
+   "gold_add": [
+    "tutorials/security/cluster-level-pss.md"
+   ],
+   "not_gold_add": []
+  },
+  "q014": {
+   "gold_add": [
+    "concepts/configuration/manage-resources-containers.md",
+    "concepts/policy/limit-range.md",
+    "concepts/security/multi-tenancy.md",
+    "tasks/administer-cluster/limit-storage-consumption.md",
+    "tasks/administer-cluster/manage-resources/quota-memory-cpu-namespace.md"
+   ],
+   "not_gold_add": []
+  },
+  "q016": {
+   "gold_add": [],
+   "not_gold_add": [
+    "concepts/configuration/configmap.md"
+   ]
+  },
+  "q019": {
+   "gold_add": [
+    "tasks/inject-data-application/distribute-credentials-secure.md",
+    "tasks/inject-data-application/environment-variable-expose-pod-information.md"
+   ],
+   "not_gold_add": []
+  },
+  "q020": {
+   "gold_add": [],
+   "not_gold_add": [
+    "concepts/workloads/controllers/cron-jobs.md"
+   ]
+  },
+  "q021": {
+   "gold_add": [
+    "tasks/access-application-cluster/access-cluster.md"
+   ],
+   "not_gold_add": []
+  },
+  "q022": {
+   "gold_add": [],
+   "not_gold_add": [
+    "concepts/overview/working-with-objects/namespaces.md"
+   ]
+  },
+  "q024": {
+   "gold_add": [
+    "concepts/storage/volume-snapshot-classes.md"
+   ],
+   "not_gold_add": []
+  },
+  "q025": {
+   "gold_add": [],
+   "not_gold_add": [
+    "concepts/architecture/nodes.md"
+   ]
+  },
+  "q027": {
+   "gold_add": [
+    "tasks/administer-cluster/kubeadm/kubeadm-certs.md"
+   ],
+   "not_gold_add": []
+  },
+  "q029": {
+   "gold_add": [
+    "tutorials/services/connect-applications-service.md"
+   ],
+   "not_gold_add": [
+    "concepts/configuration/overview.md",
+    "tasks/debug/debug-application/debug-service.md"
+   ]
+  },
+  "q030": {
+   "gold_add": [],
+   "not_gold_add": [
+    "concepts/configuration/liveness-readiness-startup-probes.md"
+   ]
+  },
+  "q035": {
+   "gold_add": [
+    "tutorials/configuration/configure-redis-using-configmap.md"
+   ],
+   "not_gold_add": []
+  },
+  "q039": {
+   "gold_add": [
+    "concepts/services-networking/ingress.md"
+   ],
+   "not_gold_add": []
+  }
+ }
+}
