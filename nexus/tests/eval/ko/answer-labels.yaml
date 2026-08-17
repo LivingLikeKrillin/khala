@@ -74,6 +74,7 @@
 
 revision: 4
 pack: packa-corpus-266
+strata_design: ko-morphology   # 5층×8건 균형 검사를 받는다 (SPEC-nexus-korean-embedding-comparison)
 corpus:
   tenant: ko_eval_packa
   signed_at: 2026-08-17  # revision 4 판정 결속

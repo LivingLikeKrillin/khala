@@ -12,6 +12,7 @@ from datetime import datetime
 import structlog
 
 from nexus.repositories.graph import SubGraph
+from nexus.search.doc_debt import DocDebt, debts_for_docs
 from nexus.search.anchor_status import (
     AnchorStatus,
     DeletedMention,
@@ -67,6 +68,9 @@ class EvidencePacket:
     snippets: list[EvidenceSnippet] = field(default_factory=list)
     graph: SubGraph | None = None
     provenance: list[Provenance] = field(default_factory=list)
+    #: 근거 문서에 붙은 **결정론적** 갱신 부채(supersede·제목 중복). 의미적 모순은 여기 없다 —
+    #: 그건 답변자가 서술할 뿐 시스템이 보증하지 않는다 (`search/doc_debt.py`).
+    debts: list[DocDebt] = field(default_factory=list)
 
 
 async def assemble_packet(
@@ -94,6 +98,9 @@ async def assemble_packet(
     # 쿼리 한 번으로 이번 결과 **전체**의 앵커 상태를 받는다. 스니펫마다 조회하면 그게 바로
     # `nexus code drift` 를 10분 걸리게 한 N+1 이다.
     anchors = await statuses_for_chunks(tenant, [h.rid for h in hits])
+    # 문서 부채도 같은 규율로 — 쿼리 하나, 없으면 조용하다.
+    debts = await debts_for_docs(tenant, sorted({h.doc_rid for h in hits}))
+    packet.debts = [debts[r] for r in sorted(debts)]
 
     for hit in hits:
         reading = anchors.get(hit.rid)

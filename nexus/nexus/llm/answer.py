@@ -18,6 +18,7 @@ from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import build_prompts
 from nexus.providers.llm import LLMService
 from nexus.search.anchor_status import summarize
+from nexus.search.doc_debt import summarize as summarize_debt
 from nexus.search.evidence_packet import EvidencePacket, format_for_llm
 
 logger = structlog.get_logger(__name__)
@@ -45,6 +46,8 @@ class AnswerResult:
     """답변 결과."""
     answer: str = ""
     evidence_snippets: list[dict] = field(default_factory=list)
+    #: 근거 문서에 붙은 결정론적 부채(supersede·제목 중복). 없으면 None.
+    doc_debts: list[dict] | None = None
     graph_findings: dict | None = None
     provenance: list[dict] = field(default_factory=list)
     route_used: str = ""
@@ -161,6 +164,9 @@ async def generate_answer(
                 for o in packet.graph.observed_edges
             ],
         }
+
+    # 근거 문서 부채 — 응답까지 간다(표현계층이 배지를 달 수 있어야 한다).
+    result.doc_debts = summarize_debt(getattr(packet, "debts", []))
 
     # Provenance (source_version 포함)
     result.provenance = [
