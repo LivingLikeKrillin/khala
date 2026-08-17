@@ -584,7 +584,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         )
 
         # Evidence packet 조립
-        packet = await assemble_packet(search_result.hits, search_result.graph, req.tenant)
+        packet = await assemble_packet(search_result.hits, search_result.graph, req.tenant,
+                                       fill=search_result.fill)
 
         # LLM 답변 생성
         answer_result = await generate_answer(
@@ -1008,7 +1009,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 channels=channels,
             )
 
-            packet = await assemble_packet(search_result.hits, search_result.graph, req.tenant)
+            packet = await assemble_packet(search_result.hits, search_result.graph, req.tenant,
+                                           fill=search_result.fill)
 
             # 1) evidence 이벤트 전송 — 신선도(staleness) 판정 포함
             from datetime import datetime, timezone

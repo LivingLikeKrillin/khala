@@ -74,6 +74,9 @@ class SearchResult:
     #: **"아무것도 못 찾았다" 와 "죽었다" 는 다른 사실**이고, 그 둘이 구별되지 않는 것이
     #: 이 코드베이스가 반복해서 찾아낸 결함이다. 호출자에게도 그대로 나간다.
     degraded: list[str] = field(default_factory=list)
+    #: 상한을 꽉 채운 문서의 **남은 절**(`search/section_fill.py`). 근거로만 가고 **순위에는
+    #: 안 들어간다** — 사람이 보는 목록·Recall·Top-1 은 이 필드가 있든 없든 같다.
+    fill: list[SearchHit] = field(default_factory=list)
 
 
 async def _bm25_search(
@@ -443,6 +446,47 @@ async def _enrich_hits(
     return hits
 
 
+async def _fill_sections(
+    hits: list[SearchHit], tenant: str, clearance: str, per_doc_cap: int,
+) -> list[SearchHit]:
+    """상한을 채운 문서의 남은 절 → `SearchHit`. 실패는 삼키되 **조용하지 않게**.
+
+    채움은 보강이다. 이게 죽었다고 검색 결과까지 버리면, 있던 답도 못 준다.
+    """
+    from nexus.search.section_fill import fill_for_docs, saturated_docs
+
+    docs = saturated_docs(hits, per_doc_cap)
+    if not docs:
+        return []
+    try:
+        rows = await fill_for_docs(tenant, clearance, docs, {h.rid for h in hits})
+    except Exception as e:  # noqa: BLE001 — 보강 실패가 검색을 죽이면 안 된다
+        logger.warning("section_fill_failed", error=str(e), docs=len(docs))
+        return []
+
+    return [SearchHit(
+        rid=r["rid"],
+        doc_rid=r["doc_rid"],
+        doc_title=r["doc_title"] or "",
+        section_path=r["section_path"],
+        source_uri=r["source_uri"],
+        source_version=r["source_version"] or "",
+        # 미리보기는 검색 결과와 같은 규칙으로 자른다. 이 절들은 사람 목록에 안 나가지만,
+        # 스니펫이 비어 있으면 옛 호출부가 `text` 로 떨어질 때 근거가 통째로 빈다.
+        snippet=_truncate_snippet(r["chunk_text"], 300),
+        chunk_text=r["chunk_text"],
+        doc_n_images=r["n_images"] or 0,
+        provenance_tier=r["provenance_tier"] or "authored",
+        # **점수는 0 이다.** 이 절들은 순위 경쟁을 하지 않았고, 점수를 지어내면 다음 사람이
+        # 그걸 랭킹 신호로 읽는다.
+        score=0.0,
+        classification=r["classification"],
+        approved_hash=r["approved_hash"] or "",
+        doc_type=r["doc_type"] or "",
+        updated_at=r["updated_at"],
+    ) for r in rows]
+
+
 async def hybrid_search(
     query: str,
     tenant: str = "default",
@@ -534,6 +578,11 @@ async def hybrid_search(
     # 문서 다양성 + top_k 컷 — 한 문서가 결과를 도배하지 않게.
     per_doc_cap = search_cfg.get("diversity_per_doc_cap", 3)
     result.hits = _diversify(enriched, top_k, per_doc_cap)
+
+    # 상한을 꽉 채운 문서 = 검색이 몰표를 준 문서. 그 안의 **남은 절**을 근거에 채운다.
+    # 순위에는 넣지 않는다 (SPEC 근거는 `search/section_fill.py` 머리말).
+    if search_cfg.get("section_fill", True):
+        result.fill = await _fill_sections(result.hits, tenant, clearance, per_doc_cap)
 
     # Graph 보강 (route에 따라)
     if graph_repo and entity_rids and route in ("hybrid_then_graph", "graph_then_hybrid"):
