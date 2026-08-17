@@ -349,3 +349,48 @@ def test_a_judged_document_with_no_signed_hash_fails(labels):
     del bound["corpus"]["bodies"][dropped]
     assert any("서명된 본문 해시가 없다" in p
                for p in check(bound, DEFAULT_PACK_DIR, require_corpus_binding=True))
+
+
+# ── 층 검사는 선언한 팩에만 (2026-08-18) ────────────────────────────────────
+#
+# 5층×8건 균형은 **한국어 형태소 비교 설계**의 규칙이다(SPEC-nexus-korean-embedding-comparison).
+# 라이브 코퍼스의 답변 회귀용 라벨처럼 다른 목적의 자를 그 틀에 밀어 넣으면 `stratum` 이 뜻을
+# 잃는다 — 없는 성질을 적어야 통과하기 때문이다. 그래서 **선언으로 켠다.**
+
+
+def _pack(**over):
+    q = {"id": "x1", "query": "질문", "stratum": "policy", "answerable": True,
+         "gold": ["a.md"], "rationale": "왜", "must_contain": [["토큰"]],
+         "provenance": "authored_from_doc", "authored_by": "agent",
+         "reviewed_by": "사람", "reviewed_revision": 1}
+    d = {"revision": 1, "pack": "p", "queries": [q]}
+    d.update(over)
+    return d
+
+
+class _Corpus:
+    def has(self, rel): return True
+    def title(self, rel): return "제목"
+
+
+def test_a_pack_without_the_declaration_is_not_held_to_the_strata_balance():
+    problems = check(_pack(), _Corpus())
+
+    assert not [p for p in problems if "층" in p], problems
+
+
+def test_a_pack_that_declares_the_design_is_held_to_it():
+    problems = check(_pack(strata_design="ko-morphology"), _Corpus())
+
+    assert [p for p in problems if "층" in p], "선언했는데 균형 검사가 안 걸렸다"
+
+
+def test_the_shipped_ko_packs_still_declare_it():
+    """실수로 선언이 빠지면 그 팩의 균형 검사가 조용히 꺼진다 — 그게 이 검사의 이유다."""
+    import pathlib
+
+    import yaml
+
+    for name in ("answer-labels.yaml", "labels.yaml"):
+        p = pathlib.Path(__file__).resolve().parents[1] / "tests" / "eval" / "ko" / name
+        assert yaml.safe_load(p.read_text(encoding="utf-8")).get("strata_design") == "ko-morphology", name

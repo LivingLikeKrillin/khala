@@ -11,6 +11,7 @@
 # provenance: adjudicated 로 추가되고 revision 이 올라간다 — 그때 바닥값도 같이 다시 박는다.
 revision: 2
 pack: ko-k8s-2026-08-01
+strata_design: ko-morphology   # 5층×8건 균형 검사를 받는다 (SPEC-nexus-korean-embedding-comparison)
 
 queries:
   # ── loanword — 외래어 표기 변이 (한쪽은 라틴 표기, 다른 쪽은 한글 음차) ──────────

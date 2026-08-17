@@ -28,6 +28,8 @@ from pathlib import Path
 import yaml
 
 STRATA = ("loanword", "compound", "particle", "mixed", "spacing")
+#: 층 균형 검사를 켜는 선언값. 이 값을 적은 라벨만 5층×8건 규칙을 받는다.
+STRATA_DESIGN = "ko-morphology"
 UNANSWERABLE = "unanswerable"
 PER_STRATUM = 8
 TITLE_MIN_CHARS = 6
@@ -205,6 +207,13 @@ def check(labels: dict, pack_dir, *, require_corpus_binding: bool = False) -> li
 
     seen_ids: set[str] = set()
     counts = dict.fromkeys(STRATA, 0)
+    # 층 균형은 **한국어 형태소 비교 설계의 규칙**이지 모든 라벨의 규칙이 아니다
+    # (SPEC-nexus-korean-embedding-comparison). 라이브 코퍼스의 답변 회귀용 라벨처럼 다른 목적의
+    # 자를 그 틀에 밀어 넣으면 `stratum` 이 뜻을 잃는다 — 없는 성질을 적어야 통과하니까.
+    #
+    # **선언으로 켠다. 추론하지 않는다.** "층 이름이 있으면 켠다" 같은 규칙은 오타 하나로 검사가
+    # 조용히 꺼지는 길이고, 이 리포는 조용히 꺼진 검사에 여러 번 데였다.
+    strata_design = labels.get("strata_design") == STRATA_DESIGN
 
     for q in queries:
         qid = q.get("id", "?")
@@ -223,7 +232,7 @@ def check(labels: dict, pack_dir, *, require_corpus_binding: bool = False) -> li
         if stratum in counts:
             if q.get("answerable"):
                 counts[stratum] += 1
-        elif stratum != UNANSWERABLE:
+        elif stratum != UNANSWERABLE and strata_design:
             problems.append(f"{qid}: 알 수 없는 층 — {stratum}")
 
         if q.get("answerable"):
@@ -273,8 +282,9 @@ def check(labels: dict, pack_dir, *, require_corpus_binding: bool = False) -> li
             if title and len(_norm(title)) >= TITLE_MIN_CHARS and _norm(title) in query_text:
                 problems.append(f"{qid}: 질의가 정답 문서의 제목을 그대로 품고 있다 — {title!r}")
 
-    for stratum, n in counts.items():
-        if n != PER_STRATUM:
-            problems.append(f"층 {stratum}: 답변가능 {n}건 (정확히 {PER_STRATUM}건이어야 한다)")
+    if strata_design:
+        for stratum, n in counts.items():
+            if n != PER_STRATUM:
+                problems.append(f"층 {stratum}: 답변가능 {n}건 (정확히 {PER_STRATUM}건이어야 한다)")
 
     return problems
