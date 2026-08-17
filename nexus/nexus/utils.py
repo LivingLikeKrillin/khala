@@ -31,5 +31,10 @@ def get_search_text(chunk: "Chunk") -> str:
     Returns:
         검색/임베딩에 사용할 가공된 텍스트
     """
+    from nexus.ingest.vision import strip_marker_line
+
     prefix = chunk.context_prefix or f"[{chunk.section_path}]"
-    return f"{prefix} {chunk.chunk_text}"
+    # 그림 추출 마커는 **기계용 손잡이**다(인용→원본 그림 왕복이 `chunk_text` 에서 파싱한다).
+    # 색인에 넣을 이유가 없고, 넣으면 `derived`·`gemini`·`img`·해시가 토큰이 된다.
+    body = strip_marker_line(chunk.chunk_text).strip()
+    return f"{prefix} {body}"

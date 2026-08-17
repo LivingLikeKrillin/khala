@@ -234,6 +234,20 @@ HANDLE_CHARS = 16
 _MARKER_LINE = re.compile(r"^!\[\]\(\)\{:[^}\n]*derived=vision[^}\n]*\}$", re.MULTILINE)
 
 
+def strip_marker_line(text: str) -> str:
+    """마커 한 줄을 **색인용 텍스트에서만** 걷어낸다. `chunk_text` 는 건드리지 않는다.
+
+    마커는 인용에서 원본 그림으로 되돌아가는 손잡이라(`vision_source.py` 가 파싱한다) 본문에
+    남아야 한다. 그런데 그 줄이 **검색 색인에도 들어가고 있었다**: 라이브 정책 코퍼스 309청크
+    중 41개(13.3%)가 `derived` · `gemini` · `flash` · `img` · 16자 해시를 토큰으로 싣는다.
+
+    그 값이 실제로 무엇을 망쳤는지 실측됐다 — 1홉 근거의 어휘로 질의를 넓히려 했더니 가장 흔한
+    토큰이 그 마커 조각들이었고, 확장어가 `['flash', '내용', 'derived']` 로 뽑혀 실험이 통째로
+    막혔다. 사람이 읽는 `> (그림에서 읽은 내용)` 줄은 뜻이 있으므로 **남긴다.**
+    """
+    return _MARKER_LINE.sub("", text or "")
+
+
 def marker_line(text: str) -> str:
     """이 텍스트가 이고 있는 마커 한 줄. 없으면 빈 문자열."""
     m = _MARKER_LINE.search(text or "")
