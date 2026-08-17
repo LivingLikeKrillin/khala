@@ -344,3 +344,30 @@ def test_generator_id_refuses_a_non_string_model():
         generator_id("")
     with pytest.raises(TypeError):
         generator_id(None)
+
+
+# ---------------------------------------------------------------- 재현성 하니스의 모집단
+#
+# 세 팔을 돌려서야 알았다: 무작위 표본 12개 중 10개가 테스트 코드였고, `setUp` 을 업무 용어로
+# 서술하라는 요구에는 안정된 답이 없다(일치도 0.017). 그 표본으로 잰 재현성은 생성기가 아니라
+# 모집단을 잰 것이다. 그래서 경로 판정을 검사로 박는다 — 이 규칙이 조용히 틀리면 다음 측정이
+# 또 테스트를 잰다. (전말: docs/CODE_CARD_REPRODUCIBILITY.md)
+
+
+def test_test_paths_are_excluded_from_the_card_population():
+    from scripts.card_reproducibility import is_test_path
+
+    assert is_test_path("src/test/java/app/FooTest.java")
+    assert is_test_path("src/test/java/app/Helper.java")      # 테스트 디렉터리면 이름 무관
+    assert is_test_path("app/FooTests.java")
+    assert is_test_path("app/FooIT.java")
+    assert is_test_path("nexus/tests/test_thing.py")
+
+
+def test_production_code_that_merely_mentions_test_is_not_excluded():
+    """`TestFixtures` 는 프로덕션 경로의 프로덕션 코드다. 이름으로 싸잡으면 모집단이 줄어든다."""
+    from scripts.card_reproducibility import is_test_path
+
+    assert not is_test_path("src/main/java/app/TestFixtures.java")
+    assert not is_test_path("src/main/java/app/LatestPolicy.java")
+    assert not is_test_path("src/main/java/app/Foo.java")
