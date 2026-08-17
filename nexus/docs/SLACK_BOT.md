@@ -1,9 +1,9 @@
 # Nexus Slack Bot 설정 가이드
 
-> Slack에서 `@nexus`로 멘션하거나 DM으로 질문하면, Nexus의 하이브리드 검색 + LLM 답변을 Slack 메시지로 받을 수 있습니다.
+> Slack에서 `@khala`로 멘션하거나 DM으로 질문하면, Nexus의 하이브리드 검색 + LLM 답변을 Slack 메시지로 받을 수 있습니다.
 >
 > 팀을 Nexus 로 끌어오는 가장 마찰 없는 온램프다 — 새 URL·새 UI 로 보내는 대신, 하루 종일 열어두는
-> 채널에서 `@nexus <질문>` 하면 된다. Socket Mode 라 inbound 포트·도메인·터널이 필요 없고, 터널/Access
+> 채널에서 `@khala <질문>` 하면 된다. Socket Mode 라 inbound 포트·도메인·터널이 필요 없고, 터널/Access
 > 작업과 독립적으로 먼저 띄울 수 있다.
 
 ---
@@ -18,7 +18,7 @@
 
 | Scope | 용도 |
 |-------|------|
-| `app_mentions:read` | @nexus 멘션 감지 |
+| `app_mentions:read` | @khala 멘션 감지 |
 | `chat:write` | 채널/DM에 메시지 전송 |
 | `im:history` | DM 메시지 읽기 |
 | `im:read` | DM 채널 접근 |
@@ -36,7 +36,7 @@ App-Level Token을 생성한다 (scope: `connections:write`). 이 토큰이 `SLA
 **Event Subscriptions** → **Enable Events** (Socket Mode 사용 시 Request URL 불필요)
 
 **Subscribe to bot events**에서 추가:
-- `app_mention` — 채널에서 @nexus 멘션
+- `app_mention` — 채널에서 @khala 멘션
 - `message.im` — DM 메시지
 
 ### 1.4 워크스페이스에 설치
@@ -158,11 +158,11 @@ nexus.slack.app ERROR NEXUS_SLACK_TOKEN 환경 변수가 필요합니다 — 봇
 ### 채널에서 멘션
 
 ```
-@nexus 결제 서비스가 발행하는 토픽이 뭐야?
+@khala 결제 서비스가 발행하는 토픽이 뭐야?
 ```
 
 ```
-@nexus payment-service와 notification-service의 관계는?
+@khala payment-service와 notification-service의 관계는?
 ```
 
 ### DM으로 직접 질문
@@ -308,5 +308,5 @@ nexus/slack/
 - `NEXUS_API_URL` 환경 변수가 올바른지 확인
 
 ### 답변이 "검색할 내용을 입력해주세요"
-- `@nexus` 뒤에 실제 질문을 포함해야 함
-- `@nexus`만 보내면 안내 메시지가 표시됨
+- `@khala` 뒤에 실제 질문을 포함해야 함
+- `@khala`만 보내면 안내 메시지가 표시됨

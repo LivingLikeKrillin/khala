@@ -1,6 +1,6 @@
 """Slack Bot — Nexus 검색/답변 연동. SPEC-nexus-slack-bot §4.2·§4.3.
 
-Slack의 @nexus 멘션 또는 DM에 반응해 /search/answer 를 호출하고 Block Kit 으로 응답한다.
+Slack의 @khala 멘션 또는 DM에 반응해 /search/answer 를 호출하고 Block Kit 으로 응답한다.
 
 인증(§4.2): 모든 호출에 Authorization: Bearer <NEXUS_SLACK_TOKEN>. 봇은 하나의 읽기 전용
 서비스 principal 로 붙는다. 토큰이 없으면 app.main() 이 시동을 거부한다(여기서 401 루프가 아니라).
@@ -62,7 +62,7 @@ async def handle_mention(event: dict, say, client=None) -> None:
     """app_mention 이벤트 핸들러."""
     query = _extract_query(event.get("text", ""))
     if not query:
-        await say(text="검색할 내용을 입력해주세요. 예: `@nexus 결제 서비스 장애 원인?`")
+        await say(text="검색할 내용을 입력해주세요. 예: `@khala 결제 서비스 장애 원인?`")
         return
     await _answer(query, say, event, client)
 
