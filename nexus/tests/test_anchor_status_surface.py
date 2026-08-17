@@ -27,6 +27,7 @@ from nexus.index.anchors import (
 )
 from nexus.search.anchor_status import (
     AnchorStatus,
+    DeletedMention,
     describe,
     statuses_for_chunks,
     summarize,
@@ -133,6 +134,14 @@ async def test_prompt_carries_the_anchor_line_when_anchors_exist():
 
 # ------------------------------------------------- 요청 경로의 모양
 
+def _row(chunk_rid, name, *, kind="anchor", n_match=1, n_same=1,
+         date="", commit="", subject=""):
+    """쿼리가 돌려주는 행 하나. 앵커 가지와 삭제 가지가 **같은 모양**으로 온다(UNION ALL)."""
+    return {"chunk_rid": chunk_rid, "name": name, "kind": kind,
+            "n_match": n_match, "n_same": n_same,
+            "deleted_date": date, "deleted_commit": commit, "subject": subject}
+
+
 class _Counter:
     """`db.fetch_all` 을 세는 가짜. 앵커 수가 늘어도 쿼리 수는 1이어야 한다."""
 
@@ -146,7 +155,7 @@ class _Counter:
 
 async def test_one_query_regardless_of_how_many_anchors(monkeypatch):
     rows = [
-        {"chunk_rid": "c1", "candidate": f"Sym{i}", "n_match": 1, "n_same": 1}
+        _row("c1", f"Sym{i}")
         for i in range(50)
     ]
     fake = _Counter(rows)
@@ -155,7 +164,7 @@ async def test_one_query_regardless_of_how_many_anchors(monkeypatch):
     out = await statuses_for_chunks("t", ["c1", "c2", "c3"])
 
     assert fake.calls == 1
-    assert len(out["c1"]) == 50
+    assert len(out["c1"].anchors) == 50
 
 
 async def test_no_chunks_touches_no_database(monkeypatch):
@@ -176,17 +185,98 @@ async def test_a_failed_lookup_does_not_take_the_search_down(monkeypatch):
     packet = await assemble_packet([_hit()], tenant="t")
 
     assert packet.snippets[0].code_anchors == []
+    assert packet.snippets[0].code_deleted == []
     assert "본문" in format_for_llm(packet)
+
+
+# ------------------------------------------------- 지워진 이름 (②b)
+#
+# 문서가 부르는데 코드에 없는 이름의 이유는 셋이고 처분이 다르다: 외부 타입(문서 잘못 아님) ·
+# 미구현(설계 문서에선 정상) · **지워짐**(드리프트). 라이브 실측 비율은 99 : 1,354 : 63 이었다.
+# 셋을 안 가르고 다 올리면 목록이 신뢰를 잃는다 — 그래서 여기 오는 것은 세 번째뿐이다.
+
+
+def _gone(name="Avatar", date="2026-02-19"):
+    return DeletedMention(name, date, "abc1234", "refactor: merge domain models")
+
+
+def test_a_deleted_name_is_not_counted_in_the_anchor_denominator():
+    """분모는 '걸린 참조' 를 센다. 걸 곳이 사라진 이름을 섞으면 5/7 이 무엇의 5인지 모른다."""
+    out = summarize([AnchorStatus("Alpha", FRESH)], [_gone()])
+
+    assert out["total"] == 1 and out["fresh"] == 1
+    assert [d["name"] for d in out["deleted"]] == ["Avatar"]
+
+
+def test_a_chunk_with_only_deleted_names_still_reports():
+    """앵커가 0개라고 침묵하면 안 된다 — 지워진 이름만 부르는 문단이 정확히 최악의 경우다."""
+    out = summarize([], [_gone()])
+
+    assert out is not None and out["total"] == 0
+    assert len(out["deleted"]) == 1
+
+
+def test_the_description_carries_the_date_because_that_is_what_makes_it_actionable():
+    line = describe([], [_gone(date="2026-02-19")])
+
+    assert "Avatar" in line
+    assert "2026-02-19" in line
+
+
+def test_the_description_lists_anchors_and_deleted_names_in_one_line():
+    line = describe([AnchorStatus("Alpha", FRESH)], [_gone()])
+
+    assert "1개 중 1개" in line
+    assert "Avatar" in line
+
+
+def test_deleted_names_are_capped_like_the_others():
+    line = describe([], [_gone(name=f"Gone{i}") for i in range(12)])
+
+    assert "Gone0" in line
+    assert "Gone11" not in line
+    assert "외 " in line
+
+
+async def test_the_prompt_stays_silent_when_nothing_was_deleted():
+    packet = await assemble_packet([_hit()])
+
+    assert "지워진" not in format_for_llm(packet)
+
+
+async def test_the_prompt_names_the_deleted_symbol(monkeypatch):
+    rows = [_row("chunk:1", "Avatar", kind="deleted", n_match=0, n_same=0,
+                 date="2026-02-19", commit="abc1234", subject="refactor: drop avatar module")]
+    monkeypatch.setattr("nexus.search.anchor_status.db.fetch_all", _Counter(rows))
+
+    packet = await assemble_packet([_hit()], tenant="t")
+    out = format_for_llm(packet)
+
+    assert "Avatar" in out and "2026-02-19" in out
+
+
+async def test_one_query_still_answers_both_facts(monkeypatch):
+    """앵커 상태와 지워진 이름이 **한 쿼리**로 온다 — UNION ALL 로 묶은 이유가 이것이다."""
+    rows = [_row("c1", "Alpha"),
+            _row("c1", "Avatar", kind="deleted", n_match=0, n_same=0, date="2026-02-19")]
+    fake = _Counter(rows)
+    monkeypatch.setattr("nexus.search.anchor_status.db.fetch_all", fake)
+
+    out = await statuses_for_chunks("t", ["c1"])
+
+    assert fake.calls == 1
+    assert [a.name for a in out["c1"].anchors] == ["Alpha"]
+    assert [d.name for d in out["c1"].deleted] == ["Avatar"]
 
 
 async def test_statuses_are_keyed_back_to_their_chunk(monkeypatch):
     rows = [
-        {"chunk_rid": "c1", "candidate": "Alpha", "n_match": 1, "n_same": 1},
-        {"chunk_rid": "c2", "candidate": "Beta", "n_match": 0, "n_same": 0},
+        _row("c1", "Alpha"),
+        _row("c2", "Beta", n_match=0, n_same=0),
     ]
     monkeypatch.setattr("nexus.search.anchor_status.db.fetch_all", _Counter(rows))
 
     out = await statuses_for_chunks("t", ["c1", "c2"])
 
-    assert out["c1"] == [AnchorStatus("Alpha", FRESH)]
-    assert out["c2"] == [AnchorStatus("Beta", ORPHANED)]
+    assert out["c1"].anchors == [AnchorStatus("Alpha", FRESH)]
+    assert out["c2"].anchors == [AnchorStatus("Beta", ORPHANED)]

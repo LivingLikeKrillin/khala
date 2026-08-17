@@ -38,6 +38,7 @@ async def corpus(db_pool):
     db._pool = db_pool
     async with db_pool.acquire() as con:
         await con.execute("DELETE FROM code_symbols WHERE tenant=$1", _TENANT)
+        await con.execute("DELETE FROM code_deleted_symbols WHERE tenant=$1", _TENANT)
         await con.execute("DELETE FROM chunks WHERE tenant=$1", _TENANT)
         await con.execute("DELETE FROM documents WHERE tenant=$1", _TENANT)
 
@@ -68,6 +69,25 @@ async def corpus(db_pool):
                 "VALUES ($1,$2,$3,'class',$4,$5,$5,$6,'c0ffee')",
                 _TENANT, _REPO, path, name, line, digest)
 
+        # 거부 — 바인딩되지 못한 이름들. `Zeta` 는 git 이 지워졌다고 알고,
+        # `Theta` 는 이력에 없으며(미구현일 수 있다), `Iota` 는 동명이 여럿이라 못 골랐다.
+        for chunk, cand, reason in [
+            (rids["c2"], "Zeta", "unresolved"),
+            (rids["c2"], "Theta", "unresolved"),
+            (rids["c2"], "Iota", "ambiguous"),
+        ]:
+            await con.execute(
+                "INSERT INTO doc_code_refusals (chunk_rid,tenant,repo,candidate,reason) "
+                "VALUES ($1,$2,$3,$4,$5)", chunk, _TENANT, _REPO, cand, reason)
+
+        # git 이 아는 삭제. `Iota` 도 한때 지워졌지만 지금은 ambiguous 거부라 **오면 안 된다**.
+        for name in ("Zeta", "Iota"):
+            await con.execute(
+                "INSERT INTO code_deleted_symbols (tenant,repo,symbol_name,deleted_commit,"
+                "deleted_date,subject,file_path,scan_commit) "
+                "VALUES ($1,$2,$3,'abc1234','2026-02-19','refactor: drop it',$4,'c0ffee')",
+                _TENANT, _REPO, name, f"{name}.java")
+
         # 문서가 바인딩해 둔 것 — `Beta` 는 그때의 해시가 다르고 `Gamma` 는 사라졌다.
         for chunk, cand, digest in [
             (rids["c1"], "Alpha", "hash-alpha"),
@@ -82,6 +102,7 @@ async def corpus(db_pool):
     yield rids
     async with db_pool.acquire() as con:
         await con.execute("DELETE FROM code_symbols WHERE tenant=$1", _TENANT)
+        await con.execute("DELETE FROM code_deleted_symbols WHERE tenant=$1", _TENANT)
         await con.execute("DELETE FROM chunks WHERE tenant=$1", _TENANT)
         await con.execute("DELETE FROM documents WHERE tenant=$1", _TENANT)
     db._pool = None
@@ -90,12 +111,12 @@ async def corpus(db_pool):
 async def test_the_set_query_tells_the_four_states_apart(corpus):
     out = await statuses_for_chunks(_TENANT, list(corpus.values()))
 
-    assert {a.name: a.status for a in out[corpus["c1"]]} == {
+    assert {a.name: a.status for a in out[corpus["c1"]].anchors} == {
         "Alpha": FRESH,        # 같은 이름 · 같은 텍스트
         "Beta": CHANGED,       # 같은 이름 · 다른 텍스트
         "Gamma": ORPHANED,     # 이름이 사라졌다
     }
-    assert {a.name: a.status for a in out[corpus["c2"]]} == {
+    assert {a.name: a.status for a in out[corpus["c2"]].anchors} == {
         "Delta": AMBIGUOUS_NOW,   # 바인딩 뒤 동명이 생겼다 — 다시 겨누지 않는다
     }
 
@@ -111,3 +132,29 @@ async def test_another_tenants_anchors_do_not_leak(corpus):
     out = await statuses_for_chunks("someone_else", list(corpus.values()))
 
     assert out == {}
+
+
+async def test_a_deleted_name_arrives_with_its_commit_and_date(corpus):
+    """이름만으로는 문서를 못 고친다. 언제·왜 지워졌는지가 붙어야 처분이 된다."""
+    out = await statuses_for_chunks(_TENANT, list(corpus.values()))
+
+    gone = out[corpus["c2"]].deleted
+
+    assert [d.name for d in gone] == ["Zeta"]
+    assert gone[0].date == "2026-02-19"
+    assert gone[0].commit == "abc1234"
+    assert "drop it" in gone[0].subject
+
+
+async def test_names_that_never_existed_stay_silent(corpus):
+    """설계 문서는 아직 안 만든 것을 부른다. 그걸 드리프트라 부르면 목록이 신뢰를 잃는다."""
+    out = await statuses_for_chunks(_TENANT, list(corpus.values()))
+
+    assert "Theta" not in [d.name for d in out[corpus["c2"]].deleted]
+
+
+async def test_an_ambiguous_refusal_is_not_reported_as_deleted(corpus):
+    """동명이 여럿이라 못 고른 것이지 사라진 것이 아니다 — git 이력에 삭제가 있어도 그렇다."""
+    out = await statuses_for_chunks(_TENANT, list(corpus.values()))
+
+    assert "Iota" not in [d.name for d in out[corpus["c2"]].deleted]

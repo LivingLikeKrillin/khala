@@ -1408,6 +1408,7 @@ def code_scan(
     from pathlib import Path
 
     from nexus.index import anchor_store, snapshot
+    from nexus.index.history import DELETED, classify, deletion_map
     from nexus.index.symbols import scan_repo
 
     repo_path = Path(_repo_or_die(config_path))
@@ -1436,14 +1437,26 @@ def code_scan(
 
     result = scan_repo(repo_path)
 
+    # **지워진 이름은 지금 같이 저장한다.** 문서가 부르는데 코드에 없는 이름의 이유는 셋인데
+    # (외부 타입·미구현·삭제됨) 그중 삭제됨만이 읽는 사람에게 조치를 요구하고, 그 판정에는
+    # git 이력이 필요하다. 여기서 한 번 훑어 두면 요청 경로는 조인만 하면 된다 —
+    # 답변마다 git 을 부를 수는 없다. 훑기는 `git log --diff-filter=D` **한 번**이다.
+    deletions = deletion_map(repo_path)
+    deleted = [v for v in classify(sorted(deletions), imported=result.imported_names,
+                                   deletions=deletions)
+               if v.kind == DELETED]
+
     async def _go():
         await anchor_store.replace_scan(tenant, repo_path.name, result, commit)
+        return await anchor_store.replace_deletions(tenant, repo_path.name, deleted, commit)
 
-    _run(_with_pool_closed(_go))
+    n_deleted = _run(_with_pool_closed(_go))
 
     typer.echo(f"스캔 완료 — 심볼 {len(result.symbols)}개 "
                f"/ 파일 {result.scanned_files}개 (미파싱 {result.unparsed_files}개) "
                f"@ {commit[:12]}")
+    typer.echo(f"지워진 이름 {n_deleted}개 기록 — 문서가 이 이름을 부르면 답변이 "
+               f"삭제 날짜와 함께 말합니다.")
     if result.unparsed_files:
         typer.echo("※ 미파싱 분모를 비율 없이 함께 읽으십시오 (SPEC §6.6).")
 
@@ -1585,11 +1598,18 @@ def code_drift(
                                 ("never_existed", "이력 없음 — 미구현일 수 있음")):
                 got = buckets.get(kind, [])
                 typer.echo(f"  {label}: {len(got)}건")
-            for v in buckets.get(DELETED, [])[:25]:
-                typer.echo(f"    {v.name:<38} {v.explain()}")
-            more = len(buckets.get(DELETED, [])) - 25
-            if more > 0:
-                typer.echo(f"    … 외 {more}건")
+
+            # **목록은 자기 표제 아래 놓는다.** 세 수를 먼저 다 찍고 목록을 이어 붙였더니,
+            # 63건짜리 삭제 목록이 바로 위 "이력 없음 1,354건" 라벨에 붙어 보였다. 읽는 사람이
+            # 오해하면 그건 출력 결함이지 사소한 서식 문제가 아니다.
+            gone = buckets.get(DELETED, [])
+            if gone:
+                typer.echo("")
+                typer.echo(f"삭제됨 {len(gone)}건 — 문서가 아직 부르는 이름:")
+                for v in gone[:25]:
+                    typer.echo(f"    {v.name:<38} {v.explain()}")
+                if len(gone) > 25:
+                    typer.echo(f"    … 외 {len(gone) - 25}건")
 
         if changed_rows:
             typer.echo("")

@@ -60,6 +60,40 @@ async def replace_scan(tenant: str, repo: str, result: ScanResult, commit: str) 
                 symbols=len(rows), unparsed=result.unparsed_files)
 
 
+async def replace_deletions(tenant: str, repo: str, verdicts, commit: str) -> int:
+    """지워진 이름들의 판정으로 (tenant, repo) 를 **대체**한다 (마이그레이션 029).
+
+    누적하지 않는 이유는 `replace_scan` 과 같다: 되살아난 이름이 영원히 "삭제됨" 으로 남는다.
+
+    `verdicts` 는 `index/history.py:classify` 가 낸 것 중 `DELETED` 인 것들이다 — 그 함수가
+    외부 타입을 먼저 걸러 내므로, 프레임워크가 주는 이름이 여기 섞이지 않는다.
+    """
+    rows = [
+        (tenant, repo, v.name, v.deletion.commit, v.deletion.date,
+         v.deletion.subject, v.deletion.path, commit)
+        for v in verdicts if v.deletion is not None
+    ]
+
+    pool = await db.get_pool()
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            "DELETE FROM code_deleted_symbols WHERE tenant = $1 AND repo = $2", tenant, repo)
+        if rows:
+            await conn.executemany(
+                """
+                INSERT INTO code_deleted_symbols
+                    (tenant, repo, symbol_name, deleted_commit, deleted_date,
+                     subject, file_path, scan_commit)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                ON CONFLICT DO NOTHING
+                """,
+                rows,
+            )
+
+    logger.info("code_deletions_stored", tenant=tenant, repo=repo, names=len(rows))
+    return len(rows)
+
+
 @dataclass(frozen=True)
 class ScanRecord:
     scan_commit: str

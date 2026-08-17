@@ -12,7 +12,12 @@ from datetime import datetime
 import structlog
 
 from nexus.repositories.graph import SubGraph
-from nexus.search.anchor_status import AnchorStatus, describe, statuses_for_chunks
+from nexus.search.anchor_status import (
+    AnchorStatus,
+    DeletedMention,
+    describe,
+    statuses_for_chunks,
+)
 from nexus.search.hybrid import SearchHit
 from nexus.search.provenance import PROMPT_NOTE, needs_note
 
@@ -41,6 +46,9 @@ class EvidenceSnippet:
     #: 이 문단이 부른 코드 이름들의 **현재 상태**(SPEC-nexus-doc-code-anchors §3.4).
     #: 앵커가 없는 코퍼스에서는 비어 있고, 그때 프롬프트는 오늘과 바이트 단위로 같다.
     code_anchors: list[AnchorStatus] = field(default_factory=list)
+    #: 이 문단이 부르는데 **코드에서 지워진** 이름들(마이그레이션 029). 앵커와 나란히 두되
+    #: 섞지 않는다 — 하나는 걸린 참조, 하나는 걸 곳이 사라진 참조다.
+    code_deleted: list[DeletedMention] = field(default_factory=list)
 
 
 @dataclass
@@ -88,6 +96,7 @@ async def assemble_packet(
     anchors = await statuses_for_chunks(tenant, [h.rid for h in hits])
 
     for hit in hits:
+        reading = anchors.get(hit.rid)
         packet.snippets.append(EvidenceSnippet(
             chunk_rid=hit.rid,
             doc_rid=hit.doc_rid,
@@ -101,7 +110,8 @@ async def assemble_packet(
             doc_type=hit.doc_type,
             updated_at=hit.updated_at,
             provenance_tier=getattr(hit, "provenance_tier", "authored"),
-            code_anchors=anchors.get(hit.rid, []),
+            code_anchors=reading.anchors if reading else [],
+            code_deleted=reading.deleted if reading else [],
         ))
 
         if hit.doc_rid not in seen_docs:
@@ -137,7 +147,8 @@ def format_for_llm(packet: EvidencePacket) -> str:
         # 문서가 부른 코드 이름이 지금도 있는가. **결정론으로 판정한 사실**이고, 모델은 그것을
         # 서술하기만 한다 — 낡음 여부를 모델에게 추측시키는 순간 그 판정은 근거를 잃는다.
         # 앵커가 없으면 빈 문자열이라 프롬프트는 오늘과 같다 (평가 팩과의 비교가 안 끊긴다).
-        anchor_line = describe(getattr(s, "code_anchors", []))
+        anchor_line = describe(getattr(s, "code_anchors", []),
+                               getattr(s, "code_deleted", []))
         if anchor_line:
             parts.append(anchor_line)
         # **프롬프트에는 전문**, 화면에는 `text`(짧은 미리보기). 둘을 한 값으로 묶어 뒀더니

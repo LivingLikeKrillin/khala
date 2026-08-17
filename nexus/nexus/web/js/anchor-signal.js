@@ -26,13 +26,29 @@ function joinNames(names) {
  * @returns {?{label:string, tone:'ok'|'drift', note:string}} 배지를 숨기려면 null.
  */
 export function anchorSignal(summary) {
-  if (!summary || !summary.total) return null;
+  if (!summary) return null;
 
   const changed = summary.changed || [];
   const orphaned = summary.orphaned || [];
   const ambiguous = summary.ambiguous_now || [];
+  const deleted = summary.deleted || [];
   const drifted = changed.length + orphaned.length + ambiguous.length;
 
+  if (!summary.total && !deleted.length) return null;
+
+  const parts = [];
+  // 지워진 이름이 먼저다 — 날짜와 사유가 붙어 있어 유일하게 바로 처분할 수 있는 항목이다.
+  if (deleted.length) {
+    parts.push(`지워진 이름: ${joinNames(deleted.map(d => `${d.name}(${d.date} 삭제)`))}`);
+  }
+  if (orphaned.length) parts.push(`코드에 없음: ${joinNames(orphaned)}`);
+  if (changed.length) parts.push(`내용이 바뀜: ${joinNames(changed)}`);
+  if (ambiguous.length) parts.push(`같은 이름이 여럿: ${joinNames(ambiguous)}`);
+
+  if (deleted.length) {
+    // 분모를 붙이지 않는다 — 지워진 이름은 바인딩된 적이 없어 total 의 일부가 아니다.
+    return { label: `지워진 이름 ${deleted.length}개`, tone: 'drift', note: parts.join(' · ') };
+  }
   if (drifted === 0) {
     return {
       label: `코드 ${summary.total}개 일치`,
@@ -40,15 +56,5 @@ export function anchorSignal(summary) {
       note: `이 근거가 부른 코드 이름 ${summary.total}개가 모두 현재 코드에 그대로 있습니다`,
     };
   }
-
-  const parts = [];
-  if (orphaned.length) parts.push(`코드에 없음: ${joinNames(orphaned)}`);
-  if (changed.length) parts.push(`내용이 바뀜: ${joinNames(changed)}`);
-  if (ambiguous.length) parts.push(`같은 이름이 여럿: ${joinNames(ambiguous)}`);
-
-  return {
-    label: `코드 ${drifted}/${summary.total} 어긋남`,
-    tone: 'drift',
-    note: parts.join(' · '),
-  };
+  return { label: `코드 ${drifted}/${summary.total} 어긋남`, tone: 'drift', note: parts.join(' · ') };
 }

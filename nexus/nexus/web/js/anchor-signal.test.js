@@ -49,3 +49,34 @@ describe('anchorSignal', () => {
     expect(anchorSignal({ total: 2, fresh: 2 }).tone).toBe('ok');
   });
 });
+
+describe('anchorSignal — 지워진 이름', () => {
+  const gone = (name, date) => ({ name, date, commit: 'abc1234', subject: 'refactor: drop it' });
+
+  it('앵커가 없어도 지워진 이름만으로 배지가 뜬다 — 그게 최악의 문단이다', () => {
+    const sig = anchorSignal({ total: 0, fresh: 0, deleted: [gone('Avatar', '2026-02-19')] });
+
+    expect(sig.tone).toBe('drift');
+    expect(sig.label).toContain('1개');
+    expect(sig.note).toContain('2026-02-19');
+  });
+
+  it('분모를 붙이지 않는다 — 지워진 이름은 바인딩된 적이 없어 total 의 일부가 아니다', () => {
+    const sig = anchorSignal({ total: 5, fresh: 5, deleted: [gone('Avatar', '2026-02-19')] });
+
+    expect(sig.label).not.toContain('/5');
+  });
+
+  it('지워진 이름이 툴팁 맨 앞에 온다 — 유일하게 바로 처분할 수 있는 항목', () => {
+    const sig = anchorSignal({
+      total: 3, fresh: 2, changed: ['Beta'], deleted: [gone('Avatar', '2026-02-19')],
+    });
+
+    expect(sig.note.indexOf('Avatar')).toBeLessThan(sig.note.indexOf('Beta'));
+  });
+
+  it('deleted 가 없으면 예전과 똑같이 군다', () => {
+    expect(anchorSignal({ total: 2, fresh: 2, deleted: [] }).tone).toBe('ok');
+    expect(anchorSignal({ total: 0, fresh: 0, deleted: [] })).toBe(null);
+  });
+});
