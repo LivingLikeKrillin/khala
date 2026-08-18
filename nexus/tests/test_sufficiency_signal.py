@@ -102,6 +102,13 @@ def test_the_signal_object_carries_no_text():
         # 2026-08-13. **프롬프트의 지문**이지 프롬프트가 아니다 — 12 hex. 질의도 근거도
         # 들어가지 않는다(넣으면 모든 행이 서로 달라 아무것도 구분 못 하고, 텍스트가 샌다).
         "answer_prompt_sha", "rewrite_prompt_sha",
+        # 2026-08-18, migration 032. **부동소수 둘**이다 — 근거가 얼마나 잘 맞았는가의 크기
+        # (벡터 코사인 거리 · BM25 `ts_rank_cd`). 질의도 근거 본문도 담지 않는다. 이 값이
+        # 필요한 이유는 문턱(`search/confidence.py`)이 지어낸 질문 17개에서 나왔고, 다시 잴
+        # 재료가 **실사용 질문의 크기**뿐인데 그것이 매 요청 버려지고 있었기 때문이다.
+        # 불리언(`weak`)이 아니라 크기인 것도 의도다 — 불리언은 문턱이 옮겨가면 지나간 행의
+        # 뜻을 조용히 바꾼다.
+        "top_distance", "top_bm25",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (
