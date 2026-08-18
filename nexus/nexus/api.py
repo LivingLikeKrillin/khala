@@ -1390,6 +1390,10 @@ async def status() -> NexusResponse:
             # 커버리지의 사각지대 — 청크가 0건인 문서는 저 집계의 모집단에 없다(그래서 100% 로
             # 보인다). 사람 표면(`nexus status`)에만 두면 에이전트는 같은 코퍼스를 건강하다고 읽는다.
             data["unreachable_documents"] = await fetch_unreachable_documents()
+            # 코드 인덱스의 신원도 같이 낸다 — 사람 표면에만 두면 에이전트는 같은 코퍼스를
+            # "어느 커밋 기준인지 모른 채" 읽는다 (표면 동등).
+            from nexus.index.anchor_store import code_index_health
+            data["code_index"] = await code_index_health()
             data["embedding_waived"] = await fetch_waived_count()
             _ref = await fetch_refusals(configured_column(_load_config()))
             data["embedding_refusals"] = {
