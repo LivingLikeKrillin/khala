@@ -125,13 +125,19 @@ def test_symbol_row_has_no_text_like_field():
 # ---------------------------------------------------------------- 스캔
 
 def test_scan_counts_unparsed_files_as_a_denominator(tmp_path: Path):
+    """읽히지만 **선언이 안 나오는** 파일은 `no_symbol_files` 다 (migration 033 이 가른 쪽).
+
+    옛 `unparsed_files` 는 이것과 *읽기 실패* 를 한 칸에 셌다. 이 파일은 읽히므로 여기서
+    세어지는 것이 맞고, 그래서 이 수에는 경보를 걸지 않는다.
+    """
     (tmp_path / "Good.java").write_text(SAMPLE, encoding="utf-8")
     (tmp_path / "Bad.java").write_text("}{ nope", encoding="utf-8")
 
     result = scan_repo(tmp_path)
 
     assert result.scanned_files == 2
-    assert result.unparsed_files == 1
+    assert result.no_symbol_files == 1
+    assert result.unreadable_files == 0
     assert any(r.symbol_name == "WidgetDispatcher" for r in result.symbols)
 
 

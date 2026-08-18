@@ -164,8 +164,14 @@ def imported_names(source: str, suffix: str) -> set[str]:
 @dataclass(frozen=True)
 class ScanResult:
     symbols: list[SymbolRow]
-    unparsed_files: int
-    scanned_files: int
+    #: **읽지 못한 파일** — 인덱스의 진짜 구멍이다. 그 파일의 심볼은 통째로 없으므로 문서가
+    #: 그 이름을 부르면 `orphaned`(코드에 없는 이름)로 읽힌다. 거짓 드리프트의 원인.
+    unreadable_files: int = 0
+    #: **선언이 하나도 없는 파일** (`__init__.py`, 스크립트). 평범한 사실이지 구멍이 아니다.
+    #: 예전에는 위와 한 칸에 뭉쳐 있었고, 뭉쳐 있는 동안 이 수에는 경보를 걸 수 없었다 —
+    #: 걸면 정상 상태에서 영원히 울린다.
+    no_symbol_files: int = 0
+    scanned_files: int = 0
     #: 저장소가 들여오기만 하고 선언하지 않는 이름. 문서가 이것을 불렀는데 심볼 인덱스에
     #: 없다고 해서 "사라졌다" 고 보고하면 안 된다 — 애초에 이 저장소 것이 아니었다.
     imported_names: frozenset[str] = frozenset()
@@ -176,7 +182,8 @@ def scan_repo(repo_path: Path) -> ScanResult:
     커버리지를 비율로만 보고하면 거짓이 되므로 분모가 필요하다 (SPEC §6.6)."""
     symbols: list[SymbolRow] = []
     imported: set[str] = set()
-    unparsed = 0
+    unreadable = 0
+    no_symbols = 0
     scanned = 0
 
     for path in sorted(p for ext in GRAMMARS for p in repo_path.rglob(f"*{ext}")):
@@ -187,7 +194,7 @@ def scan_repo(repo_path: Path) -> ScanResult:
         try:
             source = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError) as e:
-            unparsed += 1
+            unreadable += 1
             # 파일 경로는 대상 저장소의 내용이다. 로그에 남기되 본문은 절대 남기지 않는다.
             logger.warning("code_scan_unreadable", file=rel, error=type(e).__name__)
             continue
@@ -195,10 +202,11 @@ def scan_repo(repo_path: Path) -> ScanResult:
         imported |= imported_names(source, path.suffix.lower())
         found = extract_symbols(source, rel)
         if not found:
-            unparsed += 1
+            no_symbols += 1
         symbols.extend(found)
 
     declared = {s.symbol_name for s in symbols}
     # 선언도 되고 차용도 되는 이름은 **우리 것**이다 (같은 이름의 자체 클래스가 있다).
-    return ScanResult(symbols=symbols, unparsed_files=unparsed, scanned_files=scanned,
+    return ScanResult(symbols=symbols, unreadable_files=unreadable,
+                      no_symbol_files=no_symbols, scanned_files=scanned,
                       imported_names=frozenset(imported - declared))

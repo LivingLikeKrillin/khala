@@ -634,6 +634,29 @@ def status() -> None:
                         typer.echo(f"      · 이유가 기록되지 않은 것 {gap - ref['total']}건 "
                                    f"— 임베딩 단계에 도달조차 못 했을 수 있다")
 
+            # 코드 인덱스의 신원 — 문서↔코드 판정이 **어느 커밋 기준인지**. 이 줄이 없는 동안
+            # 심볼 10,659개·앵커 2,674개가 라이브에 앉아 있었고, 그 판정이 언제의 코드에
+            # 대한 것인지 볼 방법이 없었다. 스캔이 없는 테넌트에는 한 줄도 안 찍는다.
+            from nexus.index.anchor_store import code_index_health
+            try:
+                code_rows = await code_index_health()
+            except Exception:      # noqa: BLE001 — 마이그레이션 전이면 컬럼이 없다
+                code_rows = []
+            for c in code_rows:
+                when = c["scanned_at"].date().isoformat() if c["scanned_at"] else "-"
+                typer.echo(
+                    f"  코드 인덱스 {c['tenant']:<16} {c['repo']} @{(c['scan_commit'] or '')[:12]} "
+                    f"· 심볼 {c['symbol_count']:>5} · 앵커 {c['anchors']:>5} "
+                    f"· 지워진 이름 {c['deleted_names']:>4} · 스캔 {when}")
+                # ⚠ 는 **읽지 못한 파일에만** 건다. 선언 0 파일은 정상이라 경보를 걸면 영원히
+                # 울린다 — 두 사실을 한 칸에 뭉쳐 세던 것이 migration 033 이 가른 것이다.
+                if c["unreadable_files"]:
+                    typer.echo(
+                        f"   └ ⚠ 읽지 못한 파일 {c['unreadable_files']}건 — 그 파일의 심볼은 "
+                        f"통째로 없다. 문서가 그 이름을 부르면 **없는 이름**으로 판정된다")
+                elif c["unreadable_files"] is None:
+                    typer.echo("   └ 이 스캔은 가르기 전이다 — 다시 스캔하면 채워진다")
+
             # 어떤 다리도 읽을 수 없는 문서 (SPEC-nexus-index-completeness §3.1 의 사각지대).
             # 위 커버리지는 **청크**를 세므로 청크가 0건인 문서는 모집단 밖이다 — 그래서
             # 유령 문서는 커버리지 100% 로 보인다. 그래서 `coverage` 가 아니라 이 함수의 행을
@@ -1502,12 +1525,17 @@ def code_scan(
     n_deleted = _run(_with_pool_closed(_go))
 
     typer.echo(f"스캔 완료 — 심볼 {len(result.symbols)}개 "
-               f"/ 파일 {result.scanned_files}개 (미파싱 {result.unparsed_files}개) "
-               f"@ {commit[:12]}")
+               f"/ 파일 {result.scanned_files}개 "
+               f"(선언 0: {result.no_symbol_files}개) @ {commit[:12]}")
     typer.echo(f"지워진 이름 {n_deleted}개 기록 — 문서가 이 이름을 부르면 답변이 "
                f"삭제 날짜와 함께 말합니다.")
-    if result.unparsed_files:
-        typer.echo("※ 미파싱 분모를 비율 없이 함께 읽으십시오 (SPEC §6.6).")
+    # **읽지 못한 파일만** 경고다 (migration 033). 선언이 없는 파일(`__init__.py`·스크립트)은
+    # 평범한 사실이고, 둘을 한 칸에 세던 동안에는 여기에 경고를 걸 수 없었다 — 걸면 정상
+    # 상태에서 영원히 울린다. 읽기 실패는 다르다: 그 파일의 심볼이 통째로 빠지므로 문서가
+    # 그 이름을 부르면 **코드에 없는 이름**으로 판정된다(거짓 드리프트).
+    if result.unreadable_files:
+        typer.echo(f"⚠ 읽지 못한 파일 {result.unreadable_files}개 — 그 파일의 심볼은 "
+                   f"인덱스에 없습니다. 문서가 그 이름을 부르면 없는 이름으로 판정됩니다.")
 
 
 @code_app.command("bind")

@@ -45,19 +45,53 @@ async def replace_scan(tenant: str, repo: str, result: ScanResult, commit: str) 
             )
         await conn.execute(
             """
-            INSERT INTO code_scans (tenant, repo, scan_commit, symbol_count, unparsed_files)
-            VALUES ($1,$2,$3,$4,$5)
+            INSERT INTO code_scans (tenant, repo, scan_commit, symbol_count, unparsed_files,
+                                    unreadable_files, no_symbol_files)
+            VALUES ($1,$2,$3,$4,$5,$6,$7)
             ON CONFLICT (tenant, repo) DO UPDATE
                SET scan_commit = EXCLUDED.scan_commit,
                    symbol_count = EXCLUDED.symbol_count,
                    unparsed_files = EXCLUDED.unparsed_files,
+                   unreadable_files = EXCLUDED.unreadable_files,
+                   no_symbol_files = EXCLUDED.no_symbol_files,
                    scanned_at = now()
             """,
-            tenant, repo, commit, len(rows), result.unparsed_files,
+            # 옛 칸(`unparsed_files`)에는 **합**을 그대로 넣는다. 읽는 곳이 아직 남아 있고,
+            # 뜻이 바뀐 칸을 조용히 두면 옛 독자가 다른 값을 읽는다 (migration 033).
+            tenant, repo, commit, len(rows),
+            result.unreadable_files + result.no_symbol_files,
+            result.unreadable_files, result.no_symbol_files,
         )
 
-    logger.info("code_scan_stored", tenant=tenant, repo=repo,
-                symbols=len(rows), unparsed=result.unparsed_files)
+    logger.info("code_scan_stored", tenant=tenant, repo=repo, symbols=len(rows),
+                unreadable=result.unreadable_files, no_symbols=result.no_symbol_files)
+
+
+async def code_index_health(tenant: str | None = None) -> list[dict]:
+    """코드 인덱스의 **신원과 구멍** — 테넌트·리포별 한 줄 (SPEC-nexus-doc-code-anchors).
+
+    문서↔코드 판정("이 문단이 부른 이름이 지금도 있다")은 **어느 커밋을 사실로 삼았는가**에
+    통째로 매달려 있다. 그런데 그 커밋도, 그 인덱스의 구멍도 `nexus status` 에 한 줄도 없었다 —
+    심볼 10,659개가 라이브에 앉은 채로. 이 리포가 올해만 세 번 지불한 모양이다:
+    **감지기는 있었고 전달이 없었다.**
+
+    집계 쿼리 **하나**다. 리포마다 따로 치기 시작하면 "필드 하나 더" 가 곧 팬아웃이 된다.
+    """
+    rows = await db.fetch_all(
+        """
+        SELECT s.tenant, s.repo, s.scan_commit, s.symbol_count,
+               s.unreadable_files, s.no_symbol_files, s.scanned_at,
+               (SELECT count(*) FROM doc_code_anchors a
+                 WHERE a.tenant = s.tenant AND a.repo = s.repo)      AS anchors,
+               (SELECT count(*) FROM code_deleted_symbols d
+                 WHERE d.tenant = s.tenant AND d.repo = s.repo)      AS deleted_names
+        FROM code_scans s
+        WHERE ($1::text IS NULL OR s.tenant = $1)
+        ORDER BY s.tenant, s.repo
+        """,
+        tenant,
+    )
+    return [dict(r) for r in rows]
 
 
 async def replace_deletions(tenant: str, repo: str, verdicts, commit: str) -> int:

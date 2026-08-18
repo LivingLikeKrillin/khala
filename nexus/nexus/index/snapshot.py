@@ -31,6 +31,9 @@ class SnapshotState:
     head_date: str = ""
     behind: int = 0      # 로컬에 저장된 원격 추적 ref 기준 — **마지막 fetch 시점의 사실**
     ahead: int = 0
+    #: `git status` 는 수정됨이라 하는데 내용은 같고 **줄바꿈만 다른** 파일 수.
+    #: 통과시키되 조용히 넘기지 않는다 — 왜 통과했는지 말해야 다음 사람이 안 헤맨다.
+    eol_only_files: int = 0
 
     def context(self) -> str:
         """무엇을 사실로 삼았는지. 통과했더라도 **항상** 함께 출력한다."""
@@ -51,6 +54,11 @@ class SnapshotState:
                        "원격은 확인하지 않습니다 — `git pull` 은 당신 몫입니다.")
         if self.ahead:
             out.append(f"업스트림보다 {self.ahead}커밋 앞입니다 — 푸시되지 않은 작업 위에서 재고 있습니다.")
+        if self.eol_only_files:
+            out.append(
+                f"줄바꿈만 다른 파일 {self.eol_only_files}건 — 내용은 같아서 통과시켰습니다. "
+                "같은 체크아웃을 윈도 호스트와 컨테이너가 다르게 보면 이렇게 됩니다"
+                "(호스트 autocrlf). 심볼과 span hash 는 작업 트리 바이트를 읽으므로 영향이 없습니다.")
         return out
 
     def explain(self) -> str:
@@ -66,6 +74,41 @@ class SnapshotState:
                 f"스캔 커밋({self.scan_commit[:12]})과 HEAD({self.head[:12]})가 갈라졌다."),
             "no_git": "git 저장소가 아니거나 git 을 실행할 수 없다.",
         }.get(self.reason, self.reason)
+
+
+def _count_lines(text: str) -> int:
+    return len([ln for ln in text.splitlines() if ln.strip()])
+
+
+def _eol_only(repo: Path, porcelain: str) -> bool:
+    """`git status` 가 더럽다고 한 것이 **줄바꿈 차이뿐인가**.
+
+    라이브에서 이것 때문에 문서화된 명령이 항상 실패했다: 호스트(`autocrlf`)는 깨끗하다 하고
+    같은 체크아웃을 컨테이너는 1,421개 수정됨으로 봤다. 내용은 바이트로 같았고
+    (`git diff --ignore-cr-at-eol` 이 빈 결과), 심볼 추출·span hash 는 **작업 트리 바이트**를
+    읽으므로 어느 쪽에서 스캔해도 값이 같다. 그런데 스캔이 거부됐다.
+
+    **가드를 무르게 만들지 않는다.** 두 조건을 모두 요구한다:
+
+    * porcelain 의 모든 줄이 ` M `(작업 트리 수정)이어야 한다 — 추가·삭제·추적 안 되는 파일이
+      하나라도 있으면 그건 진짜 변경이고, `git diff` 는 그것들을 보지도 못한다.
+    * `git diff --ignore-cr-at-eol` 이 **빈 결과**여야 한다.
+
+    비싼 검사(큰 바인드 마운트에서 분 단위)라 **거부 직전에만** 부른다 — 어차피 멈출 참이었고,
+    그 시간으로 틀린 거부가 옳은 통과로 바뀐다.
+    """
+    # ⚠ `_git` 이 stdout 을 strip 하므로 porcelain 의 **첫 칸(스테이지 상태)이 날아간다.**
+    #    그래서 " M"(작업 트리 수정)과 "M "(스테이지됨)을 여기서 구별할 수 없다 — 스테이지
+    #    여부는 `--cached --quiet` 로 따로 묻는다. (처음엔 `startswith(" M ")` 로 썼고,
+    #    그 검사는 **무엇에도 걸리지 않는 죽은 조건**이었다.)
+    lines = [ln.strip() for ln in porcelain.splitlines() if ln.strip()]
+    if not lines or any(not ln.startswith("M ") for ln in lines):
+        return False
+    if _git(repo, "diff", "--cached", "--quiet")[0] != 0:
+        return False        # 스테이지된 변경은 줄바꿈 얘기가 아니다
+    # ⚠ `--name-only` 는 무시 규칙을 적용하지 않는다(파일 이름은 그대로 나온다).
+    #    판정은 **종료 코드**로 받는다: `--quiet` 는 차이가 없으면 0.
+    return _git(repo, "diff", "--ignore-cr-at-eol", "--quiet")[0] == 0
 
 
 #: 정본으로 볼 만한 브랜치 이름. 여기 없으면 경고할 뿐 막지는 않는다 — 피처 브랜치를
@@ -112,8 +155,9 @@ def check(repo: Path, scan_commit: str) -> SnapshotState:
     code, dirty = _git(repo, "status", "--porcelain")
     if code != 0:
         return SnapshotState(False, "no_git", head=head, scan_commit=scan_commit, **extra)
-    if dirty:
+    if dirty and not _eol_only(repo, dirty):
         return SnapshotState(False, "dirty", head=head, scan_commit=scan_commit, **extra)
+    eol_only = bool(dirty)
 
     # symbolic-ref 는 detached 에서 0 이 아닌 코드를 낸다.
     code, _ = _git(repo, "symbolic-ref", "-q", "HEAD")
@@ -121,12 +165,16 @@ def check(repo: Path, scan_commit: str) -> SnapshotState:
         return SnapshotState(False, "detached", head=head, scan_commit=scan_commit, **extra)
 
     if scan_commit == head:
-        return SnapshotState(True, "clean", head=head, scan_commit=scan_commit, **extra)
+        return SnapshotState(True, "eol_only" if eol_only else "clean",
+                             head=head, scan_commit=scan_commit,
+                             eol_only_files=_count_lines(dirty), **extra)
 
     # 스캔이 HEAD 의 조상이면 정상(그 사이 커밋은 §3.4 가 changed/orphaned 로 잡는다).
     code, _ = _git(repo, "merge-base", "--is-ancestor", scan_commit, head)
     if code == 0:
-        return SnapshotState(True, "clean", head=head, scan_commit=scan_commit, **extra)
+        return SnapshotState(True, "eol_only" if eol_only else "clean",
+                             head=head, scan_commit=scan_commit,
+                             eol_only_files=_count_lines(dirty), **extra)
 
     code, _ = _git(repo, "merge-base", "--is-ancestor", head, scan_commit)
     reason = "scan_ahead_of_head" if code == 0 else "scan_diverged"
