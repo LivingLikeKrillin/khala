@@ -90,6 +90,14 @@ class SearchSignals:
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     cost_usd: float | None = None
+    #: 근거가 **얼마나 잘 맞았는가**의 크기 (`search/confidence.py`). RRF 가 지워 버리는 값이라
+    #: 다리에서 되살려 여기까지 들고 온다. **불리언(`weak`)을 남기지 않는다** — 그 값은 오늘의
+    #: 문턱으로 계산된 것이고, 문턱을 옮기면 지나간 행의 뜻이 조용히 바뀐다. 거리와 점수는
+    #: 문턱과 무관한 사실이다. 지금 문턱은 지어낸 질문 17개에서 나왔고, 다시 잴 재료는
+    #: **실사용 질문**뿐인데 그것이 매 요청마다 버려지고 있었다.
+    #: None = 그 다리가 안 돌았다(못 잼) ≠ 0(재서 낮음).
+    top_distance: float | None = None
+    top_bm25: float | None = None
     #: 근거가 나온 문서 중 그림을 가진 것의 수 (migration 011). ADR-0002 가 요구하는 게이트
     #: 형식 — "관측된 기록된 비율이 설정 임계를 롤링 윈도에서 넘을 때" — 의 관측 쪽이다.
     #: **기능이 아니라 세는 일이다.** 이 값으로 무엇을 짓지 않는다.
@@ -147,6 +155,10 @@ def extract_signals(
         query_len=len(query),
         n_snippets=len(hits),
         top_score=hits[0].score if hits else None,
+        # `SearchResult` 는 늘 `confidence` 를 갖지만(기본 팩토리), 이 함수는 덕타이핑 더블도
+        # 받는다. getattr 로 없는 경우를 None 으로 접는다 — 신호 하나가 신호 전체를 죽이면 안 된다.
+        top_distance=getattr(getattr(result, "confidence", None), "top_distance", None),
+        top_bm25=getattr(getattr(result, "confidence", None), "top_bm25", None),
         n_entities=n_entities,
         graph_requested=route in _GRAPH_ROUTES,
         n_graph_edges=n_graph_edges,
@@ -313,9 +325,11 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             fusion_channels,
             rewrite_applied, rephrased_sha256, rephrased_len, rewrite_changed,
             rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd,
-            answer_prompt_sha, rewrite_prompt_sha
+            answer_prompt_sha, rewrite_prompt_sha,
+            top_distance, top_bm25
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-                  $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
+                  $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
+                  $34, $35)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -328,6 +342,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.rewrite_applied, sig.rephrased_sha256, sig.rephrased_len, sig.rewrite_changed,
         sig.rewrite_prompt_tokens, sig.rewrite_completion_tokens, sig.rewrite_cost_usd,
         sig.answer_prompt_sha, sig.rewrite_prompt_sha,
+        sig.top_distance, sig.top_bm25,
     )
 
 
