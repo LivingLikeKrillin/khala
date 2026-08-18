@@ -290,7 +290,8 @@ async def _run(args) -> int:
                 print(f"✗ 다리가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
                 return 1
             packet = await assemble_packet(result.hits, result.graph, fill=result.fill)
-            ans = await generate_answer(q["query"], packet, llm_svc=llm)
+            ans = await generate_answer(q["query"], packet, llm_svc=llm,
+                                        confidence=result.confidence)
             spend.add(ans.usage, kind="answer")
             # **첫 실패에서 멈춘다.** 계속 돌면 실패한 실행의 집계가 리포트로 남고, 그것을 나중에
             # '답변 품질' 로 읽게 된다 — 실제로 3건 중 2건이 근거 덤프 덕에 '사실 통과' 로 찍혔다.

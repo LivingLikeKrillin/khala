@@ -149,7 +149,7 @@ async def test_the_keyword_leg_alone_finds_the_gold_document(corpus, query, gold
     """AND 였을 때 이 질의들 대부분이 0건을 반환했다 (SPEC §3.1)."""
     from nexus.search import hybrid
 
-    hits = await hybrid._bm25_search(query, _TENANT, "INTERNAL", 20)
+    hits, _top = await hybrid._bm25_search(query, _TENANT, "INTERNAL", 20)
     assert hits, f"'{query}' — 키워드 다리가 아무것도 반환하지 않았다 ('{lexeme}' 는 문서에 있다)"
     assert any(r == f"chunk_{gold}" for r, _ in hits), f"'{query}' → {gold} 를 못 찾았다"
 
@@ -159,7 +159,7 @@ async def test_the_keyword_leg_holds_its_recall_floor(corpus):
 
     misses, rr = 0, 0.0
     for query, gold, _ in QUERIES:
-        hits = await hybrid._bm25_search(query, _TENANT, "INTERNAL", 20)
+        hits, _top = await hybrid._bm25_search(query, _TENANT, "INTERNAL", 20)
         rank = next((i + 1 for i, (r, _) in enumerate(hits) if r == f"chunk_{gold}"), None)
         misses += rank is None
         rr += 1 / rank if rank else 0
@@ -177,7 +177,7 @@ async def test_and_semantics_would_break_this_suite(corpus):
     try:
         misses = 0
         for query, gold, _ in QUERIES:
-            hits = await hybrid._bm25_search(query, _TENANT, "INTERNAL", 20)
+            hits, _top = await hybrid._bm25_search(query, _TENANT, "INTERNAL", 20)
             misses += not any(r == f"chunk_{gold}" for r, _ in hits)
     finally:
         hybrid.tokens_to_tsquery = original

@@ -146,7 +146,8 @@ async def test_the_search_function_never_runs_the_visibility_query(monkeypatch):
     monkeypatch.setattr(hybrid.db, "fetch_one", tripwire)
 
     async def no_hits(*a, **k):
-        return []
+        # 다리 계약 = (결과, 1위 원점수). 빈 결과의 원점수는 None 이다 (0.0 이 아니다).
+        return [], None
     monkeypatch.setattr(hybrid, "_bm25_search", no_hits)
     monkeypatch.setattr(hybrid, "_vector_search", no_hits)
 
@@ -238,11 +239,11 @@ def _spy_legs(monkeypatch):
 
     async def bm25(query, tenant, clearance, top_k=20):
         calls["bm25"].append(query)
-        return [(f"c-{query}", 1)]
+        return [(f"c-{query}", 1)], 3.0
 
     async def vector(query, svc, tenant, clearance, top_k=20, column=None):
         calls["vector"].append(query)
-        return [(f"v-{query}", 1)]
+        return [(f"v-{query}", 1)], 0.2
 
     monkeypatch.setattr(_H, "_bm25_search", bm25)
     monkeypatch.setattr(_H, "_vector_search", vector)

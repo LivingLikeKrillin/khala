@@ -57,7 +57,7 @@ async def test_fusion_promotes_the_document_both_legs_agree_on(monkeypatch):
     chunk_doc = {"ck0": "kw_only.md", "shared": "both.md", "cv0": "vec_only.md"}
 
     async def fake_bm25(query, tenant, clearance, top_k):
-        return [("ck0", 1), ("shared", 2)]
+        return [("ck0", 1), ("shared", 2)], 3.0
 
     async def fake_vector(query):
         return [("cv0", 1), ("shared", 2)]
@@ -80,7 +80,7 @@ async def test_without_a_vector_leg_only_keyword_runs(monkeypatch):
     from nexus.search import hybrid
 
     async def fake_bm25(query, tenant, clearance, top_k):
-        return [("ck0", 1)]
+        return [("ck0", 1)], 3.0
 
     monkeypatch.setattr(hybrid, "_bm25_search", fake_bm25)
     legs = await run_legs(_labels(2), "t", {"ck0": "d0.md"}, vector_search=None)
@@ -93,7 +93,7 @@ async def test_unanswerable_queries_stay_out_of_every_leg(monkeypatch):
     from nexus.search import hybrid
 
     async def fake_bm25(query, tenant, clearance, top_k):
-        return [("ck0", 1)]
+        return [("ck0", 1)], 3.0
 
     async def fake_vector(query):
         return [("ck0", 1)]
