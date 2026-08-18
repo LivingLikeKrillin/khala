@@ -82,8 +82,10 @@ async def test_an_embedding_backend_failure_degrades_the_leg_instead_of_vanishin
     """예전엔 여기서 빈 리스트를 조용히 냈다 — '못 찾았다' 와 '죽었다' 가 같은 모양이었다."""
     from nexus.search.hybrid import _vector_leg
 
-    hits, degraded = await _vector_leg("결제", _Svc(error), "default", "INTERNAL", 10, None)
+    hits, degraded, distance = await _vector_leg("결제", _Svc(error), "default", "INTERNAL", 10, None)
     assert (hits, degraded) == ([], True)
+    # 죽은 다리의 거리는 **없다**. 0.0 이면 "완벽히 맞았다" 로 읽혀 약한 근거 판정이 뒤집힌다.
+    assert distance is None
 
 
 @pytest.mark.asyncio
@@ -95,8 +97,9 @@ async def test_a_working_leg_is_not_marked_degraded(monkeypatch):
         return [{"rid": "chunk_a", "distance": 0.1}]
 
     monkeypatch.setattr(hybrid.db, "fetch_all", _fake_fetch_all)
-    hits, degraded = await hybrid._vector_leg("결제", _Svc(), "default", "INTERNAL", 10, None)
+    hits, degraded, distance = await hybrid._vector_leg("결제", _Svc(), "default", "INTERNAL", 10, None)
     assert hits == [("chunk_a", 1)] and degraded is False
+    assert distance == 0.1          # 정렬에 쓰고 버리던 크기가 실제로 올라온다
 
 
 @pytest.mark.asyncio

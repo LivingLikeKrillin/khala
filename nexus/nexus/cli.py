@@ -294,6 +294,7 @@ def query(
             answer_result = await generate_answer(
                 query=q, packet=packet, llm_svc=llm_svc,
                 route_used=route_used, timing_ms=result.timing_ms,
+                confidence=result.confidence,
             )
             typer.echo(answer_result.answer)
             typer.echo(f"\n({answer_result.timing_ms.get('llm_ms', '?')}ms)")

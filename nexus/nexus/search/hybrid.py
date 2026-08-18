@@ -14,6 +14,7 @@ import structlog
 
 from nexus import db
 from nexus.index.bm25 import active_tokenizer, tokens_to_tsquery
+from nexus.search.confidence import Confidence
 from nexus.index.vector_index import (
     UnknownVectorColumn,
     configured_column,
@@ -77,6 +78,9 @@ class SearchResult:
     #: 상한을 꽉 채운 문서의 **남은 절**(`search/section_fill.py`). 근거로만 가고 **순위에는
     #: 안 들어간다** — 사람이 보는 목록·Recall·Top-1 은 이 필드가 있든 없든 같다.
     fill: list[SearchHit] = field(default_factory=list)
+    #: 이번 검색이 얼마나 **잘 맞았는가**(`search/confidence.py`). 융합이 지우는 신호라 다리에서
+    #: 직접 들고 온다. **랭킹에 쓰지 않는다** — 서술 계약에만 쓴다.
+    confidence: Confidence = field(default_factory=Confidence)
 
 
 async def _bm25_search(
@@ -84,13 +88,18 @@ async def _bm25_search(
     tenant: str,
     clearance: str,
     top_k: int = 20,
-) -> list[tuple[str, int]]:
-    """BM25 검색. (chunk_rid, rank) 반환."""
+) -> tuple[list[tuple[str, int]], float | None]:
+    """BM25 검색. `((chunk_rid, rank) 목록, 1위 원점수)`.
+
+    **원점수를 같이 돌려주는 이유**: 융합(RRF)은 순위만 쓰므로 "얼마나 잘 맞았는가" 가
+    사라진다. 그 크기는 여기서 이미 계산해 정렬에까지 썼는데 버려지고 있었다
+    (`search/confidence.py` 머리말의 실측). 융합에 들어가는 첫 값은 예전과 같다.
+    """
     tokens = active_tokenizer().tokenize(query)
     tsquery = tokens_to_tsquery(tokens)
 
     if not tsquery:
-        return []
+        return [], None
 
     rows = await db.fetch_all(
         """
@@ -112,7 +121,8 @@ async def _bm25_search(
         tsquery, tenant, clearance, top_k,
     )
 
-    return [(r["rid"], i + 1) for i, r in enumerate(rows)]
+    return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
+            float(rows[0]["rank_score"]) if rows else None)
 
 
 async def _vector_search(
@@ -122,8 +132,8 @@ async def _vector_search(
     clearance: str,
     top_k: int = 20,
     column: str | None = None,
-) -> list[tuple[str, int]]:
-    """Vector 검색. (chunk_rid, rank) 반환.
+) -> tuple[list[tuple[str, int]], float | None]:
+    """Vector 검색. `((chunk_rid, rank) 목록, 1위 코사인 거리)`.
 
     `column` 은 어느 임베딩 세대를 읽을지다 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버와
     롤백이 이 값 하나로 이뤄지므로, **화이트리스트를 통과한 이름만** SQL 에 닿는다.
@@ -152,7 +162,8 @@ async def _vector_search(
         vec_str, tenant, clearance, top_k,
     )
 
-    return [(r["rid"], i + 1) for i, r in enumerate(rows)]
+    return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
+            float(rows[0]["distance"]) if rows else None)
 
 
 #: 검색이 가진 다리들. `SearchResult.degraded` 에 들어갈 수 있는 값은 여기가 정본이다.
@@ -188,13 +199,17 @@ async def _vector_leg(
     clearance: str,
     top_k: int,
     column: str | None,
-) -> tuple[list[tuple[str, int]], bool]:
-    """(결과, degraded). **빈 결과와 죽은 다리를 구분해서 돌려준다.**
+) -> tuple[list[tuple[str, int]], bool, float | None]:
+    """(결과, degraded, 1위 거리). **빈 결과와 죽은 다리를 구분해서 돌려준다.**
 
     예전엔 임베딩 실패를 조용히 삼켜 빈 리스트를 냈고 SQL 실패는 500 으로 나갔다 — 둘 다 틀렸다.
+
+    죽은 다리의 거리는 `None` 이다. **0.0 으로 채우지 않는다** — 그러면 "완벽하게 맞았다" 로
+    읽히고, 못 잰 것과 재서 좋은 것이 같은 값이 된다.
     """
     try:
-        return await _vector_search(query, embedding_svc, tenant, clearance, top_k, column), False
+        hits, dist = await _vector_search(query, embedding_svc, tenant, clearance, top_k, column)
+        return hits, False, dist
     except Exception as e:                      # noqa: BLE001 — 분류가 이 함수의 일이다
         if isinstance(e, (UnknownVectorColumn,)):
             raise                               # 설정 오타는 우리 잘못이고, 조용히 degrade 할 수 없다
@@ -202,7 +217,7 @@ async def _vector_leg(
             logger.error("vector_leg_degraded", column=resolve_column(column),
                          error_type=type(e).__name__,
                          sqlstate=getattr(e, "sqlstate", None), error=str(e)[:200])
-            return [], True
+            return [], True, None
         raise
 
 
@@ -558,13 +573,20 @@ async def hybrid_search(
     done = dict(zip(tasks, await asyncio.gather(*tasks.values()))) if tasks else {}
 
     ch_results: list[ChannelResults] = []
+    #: 적합도는 **첫 채널**(= 사용자가 물은 것)로 잰다. 재작성 채널까지 섞으면 "무엇에 대한
+    #: 적합도인가" 가 흐려진다 — 재작성이 잘 맞은 것과 질문이 잘 맞은 것은 다른 사실이다.
+    top_distance = top_bm25 = None
     for i, (_text, weight) in enumerate(active):
-        vector_results, vector_degraded = done.get((i, "vector"), ([], False))
+        vector_results, vector_degraded, vector_top = done.get((i, "vector"), ([], False, None))
         if vector_degraded and "vector" not in result.degraded:
             result.degraded.append("vector")
+        bm25_results, bm25_top = done.get((i, "bm25"), ([], None))
+        if i == 0:
+            top_distance, top_bm25 = vector_top, bm25_top
         ch_results.append(ChannelResults(
-            bm25=done.get((i, "bm25"), []), vector=vector_results, weight=weight,
+            bm25=bm25_results, vector=vector_results, weight=weight,
             name=names[i] if i < len(names) else f"ch{i}"))
+    result.confidence = Confidence(top_distance=top_distance, top_bm25=top_bm25)
 
     bm25_ms = int((time.time() - start) * 1000)
 

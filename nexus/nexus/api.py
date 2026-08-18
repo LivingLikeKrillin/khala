@@ -605,6 +605,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             llm_svc=llm_svc,
             route_used=route,
             timing_ms=search_result.timing_ms,
+            confidence=search_result.confidence,
         )
 
         sig = extract_signals(

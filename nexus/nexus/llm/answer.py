@@ -79,6 +79,9 @@ class AnswerResult:
     # 내리고 있던 판단 하나뿐이다.
     abstained: bool = False
     abstain_reason: str = ""        # "" | "no_evidence"
+    #: 근거는 있었지만 **잘 맞지 않았다**. 기권이 아니다 — 답은 나가되 짧게 물러난다.
+    #: 표면이 사용자에게 알릴 수 있도록 결과에 남긴다(`search/confidence.py`).
+    weak_evidence: bool = False
 
 
 def _shown_query(query: str, user_query: str | None) -> str:
@@ -100,6 +103,7 @@ async def generate_answer(
     route_used: str = "",
     timing_ms: dict | None = None,
     user_query: str | None = None,
+    confidence=None,
 ) -> AnswerResult:
     """근거 기반 답변 생성.
 
@@ -111,6 +115,8 @@ async def generate_answer(
         timing_ms: 검색 타이밍 정보
         user_query: 사용자가 **실제로 친 문장**(`req.query` 그대로). `query` 와 같거나 None 이면
             프롬프트는 오늘과 바이트 단위로 같다 (SPEC-nexus-multi-turn-narration §4 I1·I3).
+        confidence: `SearchResult.confidence`. 약하면 **서술 계약**이 바뀐다 — 짧게, 범위 밖임을
+            먼저. 안 주거나 약하지 않으면 프롬프트는 오늘과 바이트 단위로 같다.
 
     Returns:
         AnswerResult
@@ -186,7 +192,10 @@ async def generate_answer(
         return result
 
     evidence_text = format_for_llm(packet)
-    system_prompt, user_prompt = build_prompts(query, evidence_text, user_query)
+    # 적합도는 **막는 판정이 아니라 서술 계약**이다. 근거 0건만 답을 막는다(위).
+    result.weak_evidence = bool(confidence is not None and confidence.weak)
+    system_prompt, user_prompt = build_prompts(query, evidence_text, user_query,
+                                               weak_evidence=result.weak_evidence)
 
     try:
         import time

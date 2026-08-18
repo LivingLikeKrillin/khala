@@ -22,12 +22,12 @@ def legs(monkeypatch):
 
     async def fake_bm25(query, tenant, clearance, top_k=20):
         calls["bm25"] += 1
-        return [("chunk_a", 1)]
+        return [("chunk_a", 1)], 3.0
 
     async def fake_vector(query, svc, tenant, clearance, top_k=20, column=None):
         calls["vector"] += 1
         calls["vector_column"] = column      # 어느 세대를 읽었는지도 센다 (SPEC-nexus-kure-embedding-swap §4.2)
-        return [("chunk_b", 1)]
+        return [("chunk_b", 1)], 0.2
 
     async def fake_enrich(fused, tenant, max_snippet_chars=300):
         return []

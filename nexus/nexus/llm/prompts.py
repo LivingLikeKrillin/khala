@@ -69,9 +69,36 @@ USER_REQUEST_RULE = """
 """
 
 
-def build_system_prompt(with_user_request: bool = False) -> str:
-    """시스템 프롬프트. 두 문장이 갈 때만 역할 구분 규칙이 붙는다."""
-    return SYSTEM_PROMPT + USER_REQUEST_RULE if with_user_request else SYSTEM_PROMPT
+#: 근거 적합도가 낮을 때만 붙는 규칙. **답을 막지 않는다** — 분량과 순서를 바꾼다.
+#:
+#: 사용자가 본 것(2026-08-18 재현): 도구 이름의 유래를 물었는데 시스템이 근거 10개를 채워
+#: 기술 스택 표와 API 응답 구조를 길게 답했다. 환각이 아니라 **엉뚱한 것을 성실하게 답한 것**이고,
+#: `grounded` 도 인용 검증도 전부 통과한다. 자로는 안 보이고 사람만 아는 결함이었다.
+WEAK_EVIDENCE_RULE = """
+
+## 이번 검색은 근거 적합도가 낮습니다
+
+시스템이 이번 질문에 대해 **잘 맞는 근거를 찾지 못했다고 판정**했습니다(질문과 문서의 어휘도,
+의미도 멀었습니다). 이럴 때 지켜야 할 것:
+
+1. **첫 문장에서 그 사실을 말하세요.** "이 질문에 대한 내용은 검색된 문서에 없는 것으로
+   보입니다" 같이. 답을 지어내지 않는 것만으로는 부족합니다 — 사용자는 자기 질문이 이 시스템의
+   범위 밖인지 알아야 합니다.
+2. **짧게 끝내세요.** 근거에 있는 다른 주제를 길게 설명하지 마세요. 관련이 있어 보이는 문서가
+   있으면 **제목만** 한 줄로 알리고, 그 내용을 요약하지 마세요.
+3. 질문의 일부라도 근거가 답한다면 **그 부분만** 답하고, 나머지는 없다고 말하세요.
+
+**분량을 채우려고 근거에 있는 아무 내용이나 끌어오지 마세요.** 그것이 이 규칙이 막으려는
+바로 그 실패입니다."""
+
+
+def build_system_prompt(with_user_request: bool = False, weak_evidence: bool = False) -> str:
+    """시스템 프롬프트. 두 문장이 갈 때 역할 구분 규칙이, 근거가 약할 때 물러남 규칙이 붙는다.
+
+    **둘 다 기본은 꺼짐이고, 꺼져 있으면 문자열은 오늘과 바이트 단위로 같다.**
+    """
+    out = SYSTEM_PROMPT + USER_REQUEST_RULE if with_user_request else SYSTEM_PROMPT
+    return out + WEAK_EVIDENCE_RULE if weak_evidence else out
 
 
 def build_user_prompt(query: str, evidence_text: str, user_query: str | None = None) -> str:
@@ -102,7 +129,8 @@ def build_user_prompt(query: str, evidence_text: str, user_query: str | None = N
 
 
 def build_prompts(
-    query: str, evidence_text: str, user_query: str | None = None
+    query: str, evidence_text: str, user_query: str | None = None,
+    weak_evidence: bool = False,
 ) -> tuple[str, str]:
     """(시스템, 사용자) 프롬프트 한 쌍.
 
@@ -110,6 +138,6 @@ def build_prompts(
     배선이 가능해지고, 그 조합은 테스트가 초록인 채로 프로덕션에서 조용히 틀린다.
     """
     return (
-        build_system_prompt(user_query is not None and user_query != query),
+        build_system_prompt(user_query is not None and user_query != query, weak_evidence),
         build_user_prompt(query, evidence_text, user_query),
     )

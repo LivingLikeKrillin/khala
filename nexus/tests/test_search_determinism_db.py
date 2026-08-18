@@ -73,7 +73,7 @@ async def reloads(db_pool):
     for _ in range(_RELOADS):
         async with db_pool.acquire() as con:
             await _load(con, _TENANT)
-        runs.append({q: await hybrid._bm25_search(q, _TENANT, "INTERNAL", 20) for q in _QUERIES})
+        runs.append({q: (await hybrid._bm25_search(q, _TENANT, "INTERNAL", 20))[0] for q in _QUERIES})
 
     yield runs
 
@@ -161,7 +161,7 @@ async def test_the_vector_leg_reload_behaviour_is_measured_not_assumed(db_pool):
             await con.execute(
                 "UPDATE chunks SET embedding = $1::vector WHERE tenant=$2",
                 "[" + ",".join(["0.1"] * 768) + "]", _TENANT)
-        orders.append(await hybrid._vector_search("파드", _Fixed(), _TENANT, "INTERNAL", 20))
+        orders.append((await hybrid._vector_search("파드", _Fixed(), _TENANT, "INTERNAL", 20))[0])
 
     async with db_pool.acquire() as con:
         await con.execute("DELETE FROM chunks WHERE tenant=$1", _TENANT)

@@ -347,6 +347,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
     answer_result = await generate_answer(
         query=query, packet=packet, llm_svc=llm_svc,
         route_used=route, timing_ms=search_result.timing_ms,
+        confidence=search_result.confidence,
     )
     from nexus.search.signals import JudgeInput, extract_signals, record_search
     sig = extract_signals(

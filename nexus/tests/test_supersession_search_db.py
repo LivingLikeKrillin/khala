@@ -97,7 +97,7 @@ def test_superseded_document_chunk_excluded_from_bm25_candidates():
         b_status = await db.fetch_val("SELECT status FROM chunks WHERE rid = $1", _CHUNK_B)
         assert b_status == "active"
 
-        results = await _bm25_search(_TERM, _TENANT, "INTERNAL", top_k=20)
+        results, _top = await _bm25_search(_TERM, _TENANT, "INTERNAL", top_k=20)
         rids = {rid for rid, _rank in results}
 
         assert _CHUNK_A in rids, "active document's chunk must be a candidate"
