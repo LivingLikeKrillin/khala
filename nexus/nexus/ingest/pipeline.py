@@ -247,6 +247,13 @@ async def _save_chunks(
             )
             ON CONFLICT (rid) DO UPDATE SET
                 chunk_text = EXCLUDED.chunk_text,
+                -- **세대 키**. `revive()`·`unsupersede()` 는 "현재 세대만 되살린다" 를
+                -- `chunks.hash = documents.content_hash` 로 표현하고, 그 등식의 근거로
+                -- "pipeline 이 같은 값으로 둘 다 쓴다" 를 든다. 여기 이 줄이 없는 동안
+                -- **문서만 앞으로 갔다** — 한 번이라도 편집·재적재된 문서는 그 뒤의
+                -- soft_delete → revive 에서 청크를 0건 되살리고, 목록에는 보이는데 어떤
+                -- 다리도 못 읽는 유령이 됐다(라이브 `default` 의 SLACK_BOT.md).
+                hash = EXCLUDED.hash,
                 -- 등급은 텍스트를 따라간다. 재적재로 저자 텍스트가 들어온 자리에 옛 등급이
                 -- 남으면 그 chunk 는 자기 내용에 대해 거짓말을 한다.
                 provenance_tier = EXCLUDED.provenance_tier,

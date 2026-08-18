@@ -116,6 +116,45 @@ async def fetch_coverage_by_tenant() -> list[dict]:
     ]
 
 
+async def fetch_unreachable_documents(limit_examples: int = 3) -> list[dict]:
+    """**어떤 다리도 읽을 수 없는 active 문서** — 테넌트별 개수와 예시.
+
+    `fetch_coverage_by_tenant()` 의 사각지대다. 그 함수의 모집단은 *청크*라, 읽을 수 있는
+    청크가 **0건인 문서**는 분모에도 분자에도 안 들어간다 → 커버리지 100% 로 건강하게 보인다.
+    같은 논리를 한 층 위에 적용한 것이 이 함수다: 컬럼이 비면 벡터 다리가 0행을 내듯,
+    청크가 없으면 **모든** 다리가 그 문서에 대해 0행을 낸다.
+
+    격리 문서는 뺀다 — 청크가 없는 것이 **의도**이고, 이미 `nexus status` 가 따로 센다.
+    빼지 않으면 정상 상태가 매번 울려 경보가 무의미해진다.
+
+    라이브에서 이 함수가 처음 지목한 것: `default:SLACK_BOT.md`(청크 12개 전부 soft_deleted,
+    세대 키 불일치로 revive 가 하나도 못 살림) — 팀이 묻는 코퍼스에 있던 유령이다.
+    """
+    rows = await db.fetch_all(
+        """
+        SELECT d.tenant,
+               count(*) AS unreachable,
+               (array_agg(d.source_uri ORDER BY d.updated_at DESC))[1:$1] AS examples
+        FROM documents d
+        WHERE d.status = 'active'
+          AND d.is_quarantined = false
+          AND NOT EXISTS (
+              SELECT 1 FROM chunks c
+              WHERE c.doc_rid = d.rid
+                AND c.status = 'active'
+                AND c.is_quarantined = false
+          )
+        GROUP BY d.tenant
+        ORDER BY d.tenant
+        """,
+        limit_examples,
+    )
+    return [
+        {"tenant": r["tenant"], "unreachable": r["unreachable"], "examples": list(r["examples"])}
+        for r in rows
+    ]
+
+
 def exempt_tenants(config: dict | None = None) -> set[str]:
     """벡터를 **일부러** 안 만드는 테넌트 (SPEC-nexus-index-completeness §3.3).
 

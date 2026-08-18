@@ -1383,9 +1383,13 @@ async def status() -> NexusResponse:
             # 세대 커버리지 — 집계 하나 + waiver 하나 + 거부 이유 하나. 거부는 커버리지가 이미
             # 세는 구멍의 **이유**라, 그 수를 보여 주면서 이유를 빼는 것이 A7 이 고치는 결함이다.
             from nexus.index.embed_health import (
-                fetch_coverage_by_tenant, fetch_refusals, fetch_waived_count)
+                fetch_coverage_by_tenant, fetch_refusals, fetch_unreachable_documents,
+                fetch_waived_count)
 
             data["embedding_coverage"] = await fetch_coverage_by_tenant()
+            # 커버리지의 사각지대 — 청크가 0건인 문서는 저 집계의 모집단에 없다(그래서 100% 로
+            # 보인다). 사람 표면(`nexus status`)에만 두면 에이전트는 같은 코퍼스를 건강하다고 읽는다.
+            data["unreachable_documents"] = await fetch_unreachable_documents()
             data["embedding_waived"] = await fetch_waived_count()
             _ref = await fetch_refusals(configured_column(_load_config()))
             data["embedding_refusals"] = {
