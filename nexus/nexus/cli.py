@@ -604,6 +604,23 @@ def status() -> None:
                         typer.echo(f"      · 이유가 기록되지 않은 것 {gap - ref['total']}건 "
                                    f"— 임베딩 단계에 도달조차 못 했을 수 있다")
 
+            # 어떤 다리도 읽을 수 없는 문서 (SPEC-nexus-index-completeness §3.1 의 사각지대).
+            # 위 커버리지는 **청크**를 세므로 청크가 0건인 문서는 모집단 밖이다 — 그래서
+            # 유령 문서는 커버리지 100% 로 보인다. 그래서 `coverage` 가 아니라 이 함수의 행을
+            # 직접 돈다: 문서가 전부 유령인 테넌트는 커버리지에 줄 자체가 없다.
+            from nexus.index.embed_health import fetch_unreachable_documents
+            try:
+                ghosts = await fetch_unreachable_documents()
+            except Exception:      # noqa: BLE001 — 마이그레이션 전이면 표가 없다
+                ghosts = []
+            for g in ghosts:
+                typer.echo(
+                    f"⚠ 읽을 수 없는 문서 {g['tenant']:<16} {g['unreachable']}건 — active 인데 "
+                    f"살아 있는 청크가 0건이다. 목록·개수에는 보이고 검색에는 영영 안 나온다")
+                for uri in g["examples"]:
+                    typer.echo(f"   · {uri}")
+                typer.echo(f"   └ nexus ingest --force --tenant {g['tenant']} 로 다시 청킹하라")
+
             # 선언되지 않은 테넌트 (SPEC-nexus-generation-of-record §3.5). 선언이 없으면 §3.2 의
             # 가드가 통과시키므로, 고쳐 놓고도 노출된 상태다 — 그 상태를 여기서 지목한다.
             # 그림 판독기의 재현율 (SPEC-nexus-vision-reproducibility §2.3). 컬럼을 만들어 두고
