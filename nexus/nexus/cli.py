@@ -66,6 +66,36 @@ def _load_config(config_path: str = "config.yaml") -> dict:
         return yaml.safe_load(f) or {}
 
 
+@app.command("ops-map")
+def ops_map(
+    repo: str = typer.Argument(..., help="대상 코드 리포 체크아웃 경로"),
+    out: str = typer.Option(..., "--out", "-o", help="생성한 마크다운을 쓸 폴더"),
+) -> None:
+    """설정 파일에서 **운영 지도** 문서를 만든다 (로그 필드 스키마 · 배포 토폴로지).
+
+    적재는 하지 않는다 — 만든 폴더를 `nexus ingest` 에 넘겨라. 쓰기 경로를 하나로 두는 것이
+    세대 게이트가 한 곳이면 되는 이유이고, 사람이 **넣기 전에 읽어 볼 기회**이기도 하다.
+
+    실시간 수치는 담지 않는다(적재 순간 낡는다). 담는 것은 *이름*이다.
+    """
+    from pathlib import Path
+
+    from nexus.ingest.sources.ops_map import generate
+
+    docs = generate(Path(repo))
+    if not docs:
+        typer.echo("아는 운영 설정을 못 찾았다 (logback / docker-compose). 만든 문서 없음.")
+        raise typer.Exit(0)
+
+    out_dir = Path(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for d in docs:
+        (out_dir / d.name).write_text(d.body, encoding="utf-8")
+        typer.echo(f"  {d.name}  ({len(d.body):,}자)  {d.title}")
+    typer.echo(f"\n{len(docs)}건 생성 → {out_dir}")
+    typer.echo(f"적재: nexus ingest {out_dir} --tenant <tenant>")
+
+
 @app.command()
 def ingest(
     path: str = typer.Argument(..., help="인덱싱할 문서 폴더 경로"),
