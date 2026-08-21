@@ -64,7 +64,7 @@ The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.m
 
 | Tool | One-liner | Directory |
 |---|---|---|
-| **Nexus** | Enterprise RAG + GraphRAG — grounds answers in your docs and OTel telemetry. | [`./nexus`](./nexus) |
+| **Nexus** | Hybrid retrieval over your docs and OTel telemetry — every answer carries citations that are verified in code. | [`./nexus`](./nexus) |
 | **Archon** | Authority window over domain invariants — reads values from code constants at query time. Ships inside Nexus. | [`./nexus/nexus/claims`](./nexus/nexus/claims) |
 | **Observer** | Platform-aware PR analyzer — PR scope, API spec lint/diff, review checklists; consumes Nexus. | [`./observer`](./observer) |
 | **Arbiter** | ADR/SDD governance MCP — reviewable, traceable decision records; publishes to Nexus. | [`./arbiter`](./arbiter) |
@@ -94,6 +94,32 @@ task models    # 최초 1회 임베딩 모델 — 또는: docker compose exec ne
 - **문서 넣기:** 좌측 **업로드**, 또는 `docker compose exec nexus-app nexus ingest ./docs`
 - **업데이트:** `git pull` 후 `task update` — 이미지 재빌드·재기동 + DB 마이그레이션 적용([nexus/migrations](nexus/migrations/README.md))
 - **정지:** `task down` (또는 `docker compose down`)
+
+## How this repository is kept honest
+
+A system whose promise is calibration has to hold itself to the same standard, so the
+guards below are not process decoration — each one exists because something went wrong
+first, and each is enforced on every push rather than remembered.
+
+| Guard | What it refuses | Why it exists |
+|---|---|---|
+| **Doc-to-code anchors** — [`doc-anchors.yml`](./doc-anchors.yml) | A document whose anchored source paths no longer exist | "Is this page stale?" was being judged by counting commits by hand. Anchors turn it into one join. |
+| **Disposable-database marker** | A test run against a database that has not declared itself scratch | The suite truncates tables. Pointed at the development database once, it took the corpus with it. |
+| **Fingerprint scanner** | A push carrying identifying details — files, commit messages, and PR bodies alike | Details scrubbed before the repo went public came back through ordinary work a month later. |
+| **Declared index generations** | Ingestion whose resolved embedding generation differs from the corpus's declared one | A documented command, run from the host, wrote vectors into a column no query reads. Nothing failed. |
+| **Pre-registered verdict rules** | A ruler edited after seeing the score it produced | Evaluation labels are signed, and the rule that decides the verdict is written down before the run. |
+
+Roughly 1,900 test functions run across 17 CI jobs, including a job that runs the
+database-backed suite against a real Postgres with migrations applied — added after the
+discovery that those tests had never executed at all. Governance artifacts (10 ADRs,
+49 SPECs) are stamped and checked for integrity in CI.
+
+**[→ Engineering log](https://livinglikekrillin.github.io/khala/engineering-log/)** — a dated
+record of thirteen defects, how each surfaced, and what changed. It is the most useful
+page here for judging the project, because it is the one that reports what was wrong.
+
+Open items are counted rather than described, in [OPEN.md](./OPEN.md), so that it is
+possible to tell whether they are going up or down.
 
 ## Documentation
 

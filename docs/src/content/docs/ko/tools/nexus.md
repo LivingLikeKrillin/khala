@@ -70,6 +70,51 @@ Nexus는 에코시스템의 지식 베이스입니다. 조직 내부 지식(문�
 - **정직한 부재** — 인용할 것이 없으면 모델을 아예 호출하지 않습니다. 근거가 없다는 고정 문장을 돌려주고, 응답 페이로드에도 그렇게 표시합니다.
 - **저장소가 아니라 인덱스** — 원본은 Git과 Tempo에 있고, Nexus에는 파생 데이터(chunks·embeddings·graph edges)만 저장됩니다.
 
+### 순위가 매겨진 뒤, 당신이 읽는 답이 되기까지
+
+랭킹은 보이는 절반이다. 답을 믿을 만한가를 정하는 나머지 절반은 그 뒤에 있다: **한 곳**에서 독자가 근거를 판단하는 데 필요한 것을 전부 붙이고, **한 번**의 검증 패스가 모델의 출력을 실제로 건네진 근거에 대조한다.
+
+<svg class="kh-fig" viewBox="0 0 580 332" role="img" aria-label="순위가 매겨진 히트에서 검증된 답변까지의 파이프라인. 히트가 단일 근거 패킷 조립점으로 들어가고, 거기서 스니펫·출처 등급·신선도·코드 앵커·문서 부채·채운 절이 붙는다. 그다음 근거 적합도 검사가 온다: 두 검색 다리가 모두 약하면 답을 막는 대신 서술 계약이 바뀌어 범위를 밝힌 짧은 답이 된다. 모델이 서술한 뒤, 코드가 모든 인용이 패킷에 해소되는지와 모든 숫자가 근거에 있는지를 검사한다. 해소되지 않은 인용은 따로 보고된다.">
+  <rect class="kh-fig-box" x="205" y="14" width="170" height="26" rx="3"/>
+  <text class="kh-fig-d" x="290" y="27" text-anchor="middle">순위 히트 · 문서당 상한</text>
+  <path class="kh-fig-line" d="M290 40 L290 58"/>
+
+  <rect class="kh-fig-surface" x="110" y="58" width="360" height="72" rx="3"/>
+  <text class="kh-fig-h" x="116" y="50">EVIDENCE PACKET · 조립은 한 곳</text>
+  <text class="kh-fig-d" x="126" y="78">스니펫</text>
+  <text class="kh-fig-d" x="126" y="97">출처 등급</text>
+  <text class="kh-fig-d" x="126" y="116">신선도</text>
+  <text class="kh-fig-d" x="306" y="78">코드 앵커</text>
+  <text class="kh-fig-d" x="306" y="97">문서 부채</text>
+  <text class="kh-fig-d" x="306" y="116">채운 절</text>
+  <path class="kh-fig-line" d="M290 130 L290 148"/>
+
+  <rect class="kh-fig-box-acc" x="210" y="148" width="160" height="26" rx="3"/>
+  <text class="kh-fig-rk" x="290" y="161" text-anchor="middle">근거 적합도?</text>
+  <path class="kh-fig-line-acc" d="M370 161 L392 161"/>
+  <text class="kh-fig-s" x="398" y="155">두 다리 다 약하면 →</text>
+  <text class="kh-fig-s" x="398" y="168">범위를 밝히고 짧게</text>
+  <path class="kh-fig-line" d="M290 174 L290 192"/>
+
+  <rect class="kh-fig-box" x="235" y="192" width="110" height="26" rx="3"/>
+  <text class="kh-fig-d" x="290" y="205" text-anchor="middle">모델이 서술</text>
+  <path class="kh-fig-line" d="M290 218 L290 236"/>
+
+  <rect class="kh-fig-surface" x="140" y="236" width="300" height="52" rx="3"/>
+  <text class="kh-fig-h" x="146" y="228">VERIFY IN CODE · 프롬프트가 아니라</text>
+  <text class="kh-fig-d" x="156" y="255">모든 인용이 패킷에 해소되는가</text>
+  <text class="kh-fig-d" x="156" y="274">모든 숫자가 근거에 있는가</text>
+  <path class="kh-fig-line-acc" d="M290 288 L290 306"/>
+
+  <rect class="kh-fig-box-acc" x="180" y="306" width="220" height="26" rx="3"/>
+  <text class="kh-fig-rk" x="290" y="319" text-anchor="middle">답변 + 미해소는 따로 보고</text>
+</svg>
+
+이 단계의 두 성질은 그대로 적어 둘 값이 있다. 둘 다 결함을 치르고 산 것이기 때문이다:
+
+- **모든 것이 한 곳에서 붙는다.** 네 표면이 이 패킷을 소비한다 — HTTP 엔드포인트 둘, 에이전트 프로토콜, CLI. 표면마다 따로 붙이던 시절에는 그중 하나가 조용히 빠졌고, 같은 질문에 사람과 에이전트가 다른 답을 받았다.
+- **약한 근거는 서술을 바꾸지 답을 막지 않는다.** 적합도 판정은 **두** 다리가 모두 약할 때만 발동하고, 효과는 스스로 범위를 밝히는 짧은 답이다. 막는 설계였다면 틀린 문턱의 대가가 삼켜진 답이 되지만, 이렇게 묶으면 대가가 간결함이 된다. 문턱을 정한 측정과 그 한계는 [엔지니어링 로그](/ko/engineering-log/)에 있다.
+
 ## 빠른 시작
 
 Docker Compose 스택으로 돕니다. 기본은 **핵심 컨테이너**(PostgreSQL + Ollama + FastAPI 앱)만 뜨고, OTel 관측 파이프라인은 옵트인입니다. 아래 `task` 한 줄은 내부 `docker compose` 명령을 감쌉니다(원시 명령 병기).

@@ -70,6 +70,51 @@ In short: **enterprise retrieval for grounded answers.** It's the context layer 
 - **Honest absence.** If nothing can be cited, Nexus does not call the model at all — it returns a fixed statement that it has no evidence, and says so in the response payload.
 - **Index, not storage.** Originals stay in Git and in Tempo. Nexus stores only derived data — chunks, embeddings, graph edges.
 
+### What happens between the ranked list and the answer you read
+
+Ranking is the visible half. The half that decides whether an answer is trustworthy happens after it: one assembly point attaches everything the reader needs to judge the evidence, and one verification pass checks the model's output against the evidence it was actually handed.
+
+<svg class="kh-fig" viewBox="0 0 580 332" role="img" aria-label="The pipeline from ranked hits to a verified answer. Ranked hits feed a single evidence packet assembly point, which attaches the snippet, provenance tier, staleness, code anchors, document debt and filled sections. An evidence-fit check follows: when both retrieval legs are weak, the narration contract changes to a shorter, scoped answer rather than blocking it. The model then narrates, and a verification pass in code checks that every citation resolves against the packet and every number appears in it. The answer is returned with any unresolved citations reported separately.">
+  <rect class="kh-fig-box" x="205" y="14" width="170" height="26" rx="3"/>
+  <text class="kh-fig-d" x="290" y="27" text-anchor="middle">ranked hits · capped per doc</text>
+  <path class="kh-fig-line" d="M290 40 L290 58"/>
+
+  <rect class="kh-fig-surface" x="110" y="58" width="360" height="72" rx="3"/>
+  <text class="kh-fig-h" x="116" y="50">EVIDENCE PACKET · one assembly point</text>
+  <text class="kh-fig-d" x="126" y="78">snippet</text>
+  <text class="kh-fig-d" x="126" y="97">provenance tier</text>
+  <text class="kh-fig-d" x="126" y="116">staleness</text>
+  <text class="kh-fig-d" x="306" y="78">code anchors</text>
+  <text class="kh-fig-d" x="306" y="97">document debt</text>
+  <text class="kh-fig-d" x="306" y="116">filled sections</text>
+  <path class="kh-fig-line" d="M290 130 L290 148"/>
+
+  <rect class="kh-fig-box-acc" x="210" y="148" width="160" height="26" rx="3"/>
+  <text class="kh-fig-rk" x="290" y="161" text-anchor="middle">evidence fit?</text>
+  <path class="kh-fig-line-acc" d="M370 161 L392 161"/>
+  <text class="kh-fig-s" x="398" y="155">both legs weak →</text>
+  <text class="kh-fig-s" x="398" y="168">say so, answer short</text>
+  <path class="kh-fig-line" d="M290 174 L290 192"/>
+
+  <rect class="kh-fig-box" x="235" y="192" width="110" height="26" rx="3"/>
+  <text class="kh-fig-d" x="290" y="205" text-anchor="middle">model narrates</text>
+  <path class="kh-fig-line" d="M290 218 L290 236"/>
+
+  <rect class="kh-fig-surface" x="140" y="236" width="300" height="52" rx="3"/>
+  <text class="kh-fig-h" x="146" y="228">VERIFY IN CODE · not in the prompt</text>
+  <text class="kh-fig-d" x="156" y="255">every citation resolves against the packet</text>
+  <text class="kh-fig-d" x="156" y="274">every number appears in the evidence</text>
+  <path class="kh-fig-line-acc" d="M290 288 L290 306"/>
+
+  <rect class="kh-fig-box-acc" x="180" y="306" width="220" height="26" rx="3"/>
+  <text class="kh-fig-rk" x="290" y="319" text-anchor="middle">answer + unresolved reported separately</text>
+</svg>
+
+Two properties of this stage are worth stating plainly, because both were bought with defects:
+
+- **Everything attaches at one point.** Four surfaces consume the packet — two HTTP endpoints, the agent protocol, and the CLI. When something was attached per-surface instead, one of them silently missed it and a person and an agent got different answers to the same question.
+- **Weak evidence changes the narration, it does not block it.** The fit check fires only when *both* retrieval legs are weak, and its effect is a shorter answer that states its own scope. A blocking design would make a wrong threshold cost a withheld answer; this way it costs brevity. See the [engineering log](/engineering-log/) for the measurement behind the thresholds and their known limits.
+
 ## Quickstart
 
 Nexus runs as a Docker Compose stack. By default only the **core** containers start (PostgreSQL + Ollama + the FastAPI app); the OTel observability pipeline is opt-in. The `task` one-liners below wrap the underlying `docker compose` commands — each step shows the raw equivalent too.

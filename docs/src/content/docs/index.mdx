@@ -16,30 +16,31 @@ template: splash
       </div>
     </div>
     <div class="kh-hero-art">
-      <svg class="kh-dia" viewBox="0 0 500 200" role="img" aria-label="A query fans out to three retrievers run in parallel — BM25 (mecab-ko), vector (768-d), and graph (2-hop) — which fuse via RRF (k=60) into a grounded answer.">
-        <rect class="kh-dia-grp" x="114" y="14" width="150" height="170" rx="4"/>
-        <text class="kh-dia-glbl" x="120" y="9">HYBRID RETRIEVAL</text>
-        <path class="kh-dia-line-acc" d="M78 99 L114 99"/>
-        <path class="kh-dia-line" d="M114 99 L121 99 L121 43 L128 43 M114 99 L128 99 M114 99 L121 99 L121 155 L128 155"/>
-        <path class="kh-dia-line" d="M250 43 L257 43 L257 99 L264 99 M250 99 L264 99 M250 155 L257 155 L257 99 L264 99"/>
-        <path class="kh-dia-line-acc" d="M264 99 L298 99"/>
-        <path class="kh-dia-line-acc" d="M376 99 L410 99"/>
-        <rect class="kh-dia-box-acc" x="8" y="80" width="70" height="38" rx="4"/>
-        <text class="kh-dia-t-acc" x="43" y="103" text-anchor="middle">query</text>
-        <rect class="kh-dia-box" x="128" y="28" width="122" height="30" rx="4"/>
-        <text class="kh-dia-t" x="136" y="47">BM25</text>
-        <text class="kh-dia-s" x="242" y="47" text-anchor="end">mecab-ko</text>
-        <rect class="kh-dia-box" x="128" y="84" width="122" height="30" rx="4"/>
-        <text class="kh-dia-t" x="136" y="103">vector</text>
-        <text class="kh-dia-s" x="242" y="103" text-anchor="end">768-d</text>
-        <rect class="kh-dia-box" x="128" y="140" width="122" height="30" rx="4"/>
-        <text class="kh-dia-t" x="136" y="159">graph</text>
-        <text class="kh-dia-s" x="242" y="159" text-anchor="end">2-hop</text>
-        <text class="kh-dia-lbl" x="268" y="92">FUSE</text>
-        <rect class="kh-dia-box" x="298" y="80" width="78" height="38" rx="4"/>
-        <text class="kh-dia-t" x="337" y="103" text-anchor="middle">RRF · k=60</text>
-        <rect class="kh-dia-box-acc" x="410" y="80" width="82" height="38" rx="4"/>
-        <text class="kh-dia-t-acc" x="451" y="103" text-anchor="middle">answer</text>
+      <svg class="kh-dia" viewBox="0 0 500 200" role="img" aria-label="A query fans out to two retrievers run in parallel — BM25 over mecab-ko tokens and vector search over pgvector — which fuse via RRF (k=60) into a cited answer. Graph neighbours are attached afterwards as enrichment and never contribute to the ranking.">
+        <rect class="kh-dia-grp" x="92" y="24" width="150" height="112" rx="4"/>
+        <text class="kh-dia-glbl" x="98" y="19">HYBRID RETRIEVAL</text>
+        <path class="kh-dia-line-acc" d="M68 96 L92 96"/>
+        <path class="kh-dia-line" d="M92 96 L98 96 L98 55 L104 55 M92 96 L98 96 L98 119 L104 119"/>
+        <path class="kh-dia-line" d="M230 55 L236 55 L236 96 L242 96 M230 119 L236 119 L236 96"/>
+        <path class="kh-dia-line-acc" d="M242 96 L282 96"/>
+        <path class="kh-dia-line-acc" d="M362 96 L414 96"/>
+        <path class="kh-dia-grp" d="M388 96 L388 146"/>
+        <rect class="kh-dia-box-acc" x="6" y="78" width="62" height="36" rx="4"/>
+        <text class="kh-dia-t-acc" x="37" y="100" text-anchor="middle">query</text>
+        <rect class="kh-dia-box" x="104" y="40" width="126" height="30" rx="4"/>
+        <text class="kh-dia-t" x="112" y="59">BM25</text>
+        <text class="kh-dia-s" x="222" y="59" text-anchor="end">mecab-ko</text>
+        <rect class="kh-dia-box" x="104" y="104" width="126" height="30" rx="4"/>
+        <text class="kh-dia-t" x="112" y="123">vector</text>
+        <text class="kh-dia-s" x="222" y="123" text-anchor="end">pgvector</text>
+        <text class="kh-dia-lbl" x="246" y="90">FUSE</text>
+        <rect class="kh-dia-box" x="282" y="78" width="80" height="36" rx="4"/>
+        <text class="kh-dia-t" x="322" y="100" text-anchor="middle">RRF · k=60</text>
+        <rect class="kh-dia-box-acc" x="414" y="78" width="80" height="36" rx="4"/>
+        <text class="kh-dia-t-acc" x="454" y="100" text-anchor="middle">answer</text>
+        <rect class="kh-dia-box" x="344" y="146" width="88" height="28" rx="4"/>
+        <text class="kh-dia-t" x="388" y="164" text-anchor="middle">graph</text>
+        <text class="kh-dia-s" x="388" y="188" text-anchor="middle">enrichment · not ranked</text>
       </svg>
     </div>
   </div>
@@ -139,7 +140,7 @@ template: splash
 
 <div class="kh-tools">
   <a class="kh-tile" href="/tools/nexus/">
-    <span class="kh-tile-kind">RAG · GraphRAG</span>
+    <span class="kh-tile-kind">Hybrid retrieval · cited answers</span>
     <h3>Nexus</h3>
     <p>Answers from your docs and telemetry, each with a citation.</p>
     <span class="kh-arrow">→</span>

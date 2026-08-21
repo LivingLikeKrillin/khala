@@ -114,6 +114,7 @@ export default defineConfig({
             { label: 'Philosophy', translations: { ko: '철학' }, slug: 'philosophy' },
             { label: 'Getting Started', translations: { ko: '시작하기' }, slug: 'start' },
             { label: 'Ecosystem', translations: { ko: '생태계' }, slug: 'ecosystem' },
+            { label: 'Engineering log', translations: { ko: '엔지니어링 로그' }, slug: 'engineering-log' },
           ],
         },
         {
