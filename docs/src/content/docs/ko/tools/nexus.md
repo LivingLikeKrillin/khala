@@ -66,6 +66,11 @@ Nexus는 에코시스템의 지식 베이스입니다. 조직 내부 지식(문�
 - **Default-deny 보안** — PII/시크릿 감지 시 즉시 quarantine, 인덱싱에서 제외하고 검색 결과에 절대 포함하지 않습니다. 모든 쿼리는 분류(`PUBLIC < INTERNAL < RESTRICTED`)로 필터링됩니다.
 - **출처 등급(provenance tier)** — 사람이 쓴 청크와 모델이 스크린샷에서 읽어낸 청크는 같은 종류의 근거가 아닙니다. 기계 판독 텍스트는 그렇게 표시되고, 그 표시가 프롬프트·API 응답·웹 UI까지 그대로 따라갑니다. 추출물이 조용히 저술된 정책 행세를 하지 못하게 하는 장치입니다.
 - **선언된 인덱스 세대** — 임베딩 모델·차원·벡터 컬럼은 하나의 세대로 함께 움직이며 DB에 append-only로 선언됩니다. 실행 중인 설정이 선언된 세대와 다르면 **문서를 한 건도 수집하기 전에** 적재가 거부됩니다. 이 게이트가 막는 실패는 *문서화된 명령이 아무도 검색하지 않는 컬럼에 조용히 적재하는 것*입니다. 리포 기본값은 `nomic-embed-text`(768차원)이고, KURE-v1(1024차원) 세대를 배포별로 선택할 수 있습니다.
+- **절 채움 — 검색은 문서를 고르고, 그다음 그 문서를 채운다** — 검색은 두 가지를 판정한다: *어느 문서인가*, 그리고 *그 안의 어느 절인가*. 실측 결과 앞은 신뢰할 만하고 뒤는 아니었다 — 질문과 정답 절이 어휘를 **하나도** 공유하지 않을 수 있고, 그러면 어떤 랭킹으로도 그 절에 도달하지 못한다. 그래서 한 문서가 문서당 상한을 꽉 채우면, 같은 문서의 남은 절을 **랭킹이 아니라 근거에** 더한다. Recall·1위는 바이트 단위로 동일하고 패킷만 커진다. 배포 설정에서는 켜져 있고 코드 기본값은 꺼짐이다 — 설정 없이 부르는 호출부가 DB 를 새로 건드리지 않게 하려는 것이다.
+- **근거 적합도 — 시스템이 "제대로 못 찾았다"를 스스로 안다** — RRF 는 `1/(k + 순위)` 로 점수를 내므로 **순위를 담고 크기를 버린다.** 그래서 잘 맞은 질의와 코퍼스 밖 질의가 구별되지 않았다. 두 검색 다리는 정렬하려고 크기를 이미 계산하고 있었고, 이제 그것을 버리지 않는다. **둘 다** 약하면 서술 계약이 바뀐다 — 답변이 첫머리에 질문이 근거 범위 밖임을 말하고 짧게 끝낸다. **막지는 않는다**: 문턱이 틀렸을 때의 대가가 삼켜진 답이 아니라 간결함이 되도록 묶은 것이다.
+- **문서 부채가 근거를 따라온다** — 인용된 문서가 대체(supersede)됐거나, 같은 제목의 활성 문서가 또 있어서 `[출처: 제목]` 인용이 **어느 쪽인지 못 가리키면** 답변이 그것을 안다. 결정론적으로 저장된 것만 여기 온다. 문서 간 **의미적 모순은 일부러 판정하지 않는다** — 그러려면 심판 모델이 필요하고 그 길의 근거는 나쁘다. 시스템은 모순을 서술할 수는 있어도 보증하지 않는다.
+- **코드 앵커 — 문서가 부른 이름이 지금 코드에 있는가** — 적재가 청크마다 백틱 심볼을 코드 인덱스에 바인딩한다. 답변 시점에 패킷은 인용된 문단이 부른 이름 중 몇 개가 아직 존재하고 어느 것이 사라졌는지를 **앵커마다 조회하지 않고 집합 쿼리 하나로** 보고한다. `FooService` 가 삭제된 뒤에도 `FooService` 라고 말하는 문서가 조용히 권위를 갖는 일이 없어진다.
+- **후속 질문은 보수적으로 고쳐 쓰거나, 아예 안 고친다** — "그럼 그건 언제부터야?" 에는 내용어가 없다. 대화 이력이 있으면 질의를 재작성하되 **허용된 변형은 넷뿐**이고(지시대명사 채우기·서식 요청 제거·사용자가 준 사실 채우기·소스 범위 제거), 원 질문은 **항상 별도 채널로 남겨** 재작성이 틀려도 바닥이 있다. 이력이 없으면 모델을 아예 부르지 않는다.
 - **최신성은 보여주되 강제하지 않습니다** — 답변은 스니펫마다 타입별 TTL 대비 경과 경고를 답니다. 읽는 사람을 위한 라벨이며, **의도적으로** 랭킹이나 배제에 관여하지 않습니다.
 - **정직한 부재** — 인용할 것이 없으면 모델을 아예 호출하지 않습니다. 근거가 없다는 고정 문장을 돌려주고, 응답 페이로드에도 그렇게 표시합니다.
 - **저장소가 아니라 인덱스** — 원본은 Git과 Tempo에 있고, Nexus에는 파생 데이터(chunks·embeddings·graph edges)만 저장됩니다.
@@ -74,40 +79,43 @@ Nexus는 에코시스템의 지식 베이스입니다. 조직 내부 지식(문�
 
 랭킹은 보이는 절반이다. 답을 믿을 만한가를 정하는 나머지 절반은 그 뒤에 있다: **한 곳**에서 독자가 근거를 판단하는 데 필요한 것을 전부 붙이고, **한 번**의 검증 패스가 모델의 출력을 실제로 건네진 근거에 대조한다.
 
-<svg class="kh-fig" viewBox="0 0 580 332" role="img" aria-label="순위가 매겨진 히트에서 검증된 답변까지의 파이프라인. 히트가 단일 근거 패킷 조립점으로 들어가고, 거기서 스니펫·출처 등급·신선도·코드 앵커·문서 부채·채운 절이 붙는다. 그다음 근거 적합도 검사가 온다: 두 검색 다리가 모두 약하면 답을 막는 대신 서술 계약이 바뀌어 범위를 밝힌 짧은 답이 된다. 모델이 서술한 뒤, 코드가 모든 인용이 패킷에 해소되는지와 모든 숫자가 근거에 있는지를 검사한다. 해소되지 않은 인용은 따로 보고된다.">
-  <rect class="kh-fig-box" x="205" y="14" width="170" height="26" rx="3"/>
+<svg class="kh-fig" viewBox="0 0 580 358" role="img" aria-label="순위가 매겨진 히트에서 검증된 답변까지의 파이프라인. 히트가 단일 근거 패킷 조립점으로 들어가고, 거기서 스니펫·출처 등급·신선도·코드 앵커·문서 부채·채운 절이 붙는다. 그다음 근거 적합도 검사가 온다: 두 검색 다리가 모두 약하면 답을 막는 대신 서술 계약이 바뀌어 범위를 밝힌 짧은 답이 된다. 모델이 서술한 뒤, 코드가 모든 인용이 패킷에 해소되는지와 모든 숫자가 근거에 있는지를 검사한다. 해소되지 않은 인용은 숨기지 않고 따로 보고된다.">
+  <rect class="kh-fig-box" x="195" y="14" width="190" height="26" rx="3"/>
   <text class="kh-fig-d" x="290" y="27" text-anchor="middle">순위 히트 · 문서당 상한</text>
-  <path class="kh-fig-line" d="M290 40 L290 58"/>
+  <path class="kh-fig-line" d="M290 40 L290 62"/>
 
-  <rect class="kh-fig-surface" x="110" y="58" width="360" height="72" rx="3"/>
-  <text class="kh-fig-h" x="116" y="50">EVIDENCE PACKET · 조립은 한 곳</text>
-  <text class="kh-fig-d" x="126" y="78">스니펫</text>
-  <text class="kh-fig-d" x="126" y="97">출처 등급</text>
-  <text class="kh-fig-d" x="126" y="116">신선도</text>
-  <text class="kh-fig-d" x="306" y="78">코드 앵커</text>
-  <text class="kh-fig-d" x="306" y="97">문서 부채</text>
-  <text class="kh-fig-d" x="306" y="116">채운 절</text>
-  <path class="kh-fig-line" d="M290 130 L290 148"/>
+  <text class="kh-fig-h" x="110" y="52">EVIDENCE PACKET</text>
+  <text class="kh-fig-s" x="470" y="52" text-anchor="end">패킷 하나, 표면 넷</text>
+  <rect class="kh-fig-surface" x="110" y="62" width="360" height="72" rx="3"/>
+  <text class="kh-fig-d" x="126" y="82">스니펫</text>
+  <text class="kh-fig-d" x="126" y="101">출처 등급</text>
+  <text class="kh-fig-d" x="126" y="120">신선도</text>
+  <text class="kh-fig-d" x="306" y="82">코드 앵커</text>
+  <text class="kh-fig-d" x="306" y="101">문서 부채</text>
+  <text class="kh-fig-d" x="306" y="120">채운 절</text>
+  <path class="kh-fig-line" d="M290 134 L290 154"/>
 
-  <rect class="kh-fig-box-acc" x="210" y="148" width="160" height="26" rx="3"/>
-  <text class="kh-fig-rk" x="290" y="161" text-anchor="middle">근거 적합도?</text>
-  <path class="kh-fig-line-acc" d="M370 161 L392 161"/>
-  <text class="kh-fig-s" x="398" y="155">두 다리 다 약하면 →</text>
-  <text class="kh-fig-s" x="398" y="168">범위를 밝히고 짧게</text>
-  <path class="kh-fig-line" d="M290 174 L290 192"/>
+  <rect class="kh-fig-box-acc" x="210" y="154" width="160" height="26" rx="3"/>
+  <text class="kh-fig-rk" x="290" y="167" text-anchor="middle">근거 적합도?</text>
+  <path class="kh-fig-line-acc" d="M370 167 L392 167"/>
+  <text class="kh-fig-s" x="398" y="161">두 다리 다 약하면:</text>
+  <text class="kh-fig-s" x="398" y="174">밝히고 짧게</text>
+  <path class="kh-fig-line" d="M290 180 L290 200"/>
 
-  <rect class="kh-fig-box" x="235" y="192" width="110" height="26" rx="3"/>
-  <text class="kh-fig-d" x="290" y="205" text-anchor="middle">모델이 서술</text>
-  <path class="kh-fig-line" d="M290 218 L290 236"/>
+  <rect class="kh-fig-box" x="225" y="200" width="130" height="26" rx="3"/>
+  <text class="kh-fig-d" x="290" y="213" text-anchor="middle">모델이 서술</text>
+  <path class="kh-fig-line" d="M290 226 L290 248"/>
 
-  <rect class="kh-fig-surface" x="140" y="236" width="300" height="52" rx="3"/>
-  <text class="kh-fig-h" x="146" y="228">VERIFY IN CODE · 프롬프트가 아니라</text>
-  <text class="kh-fig-d" x="156" y="255">모든 인용이 패킷에 해소되는가</text>
-  <text class="kh-fig-d" x="156" y="274">모든 숫자가 근거에 있는가</text>
-  <path class="kh-fig-line-acc" d="M290 288 L290 306"/>
+  <text class="kh-fig-h" x="140" y="238">VERIFY IN CODE</text>
+  <text class="kh-fig-s" x="440" y="238" text-anchor="end">프롬프트가 아니라 코드가</text>
+  <rect class="kh-fig-surface" x="140" y="248" width="300" height="52" rx="3"/>
+  <text class="kh-fig-d" x="156" y="267">모든 인용이 패킷에 해소되는가</text>
+  <text class="kh-fig-d" x="156" y="286">모든 숫자가 근거에 있는가</text>
+  <path class="kh-fig-line-acc" d="M290 300 L290 318"/>
 
-  <rect class="kh-fig-box-acc" x="180" y="306" width="220" height="26" rx="3"/>
-  <text class="kh-fig-rk" x="290" y="319" text-anchor="middle">답변 + 미해소는 따로 보고</text>
+  <rect class="kh-fig-box-acc" x="205" y="318" width="170" height="26" rx="3"/>
+  <text class="kh-fig-rk" x="290" y="331" text-anchor="middle">답변 + 인용</text>
+  <text class="kh-fig-s" x="290" y="352" text-anchor="middle">해소되지 않은 인용은 숨기지 않고 따로 보고된다</text>
 </svg>
 
 이 단계의 두 성질은 그대로 적어 둘 값이 있다. 둘 다 결함을 치르고 산 것이기 때문이다:
