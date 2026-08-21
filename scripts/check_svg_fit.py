@@ -18,7 +18,9 @@
       인자가 없으면 docs/ 아래 전부.
 """
 
-import re, sys, glob
+import glob
+import re
+import sys
 from xml.etree import ElementTree
 
 MONO = 0.6           # JetBrains Mono advance (실측)
@@ -72,7 +74,8 @@ def audit(path):
         try:
             root = ElementTree.fromstring(svg)
         except ElementTree.ParseError as e:
-            out.append((path, "PARSE", str(e), 0, 0)); continue
+            out.append((path, "PARSE", str(e), 0, 0))
+            continue
         vb = [float(x) for x in root.get("viewBox").split()]
         rects = []
         for r in root.findall("rect"):
@@ -114,10 +117,9 @@ def audit(path):
     return out
 
 
-import glob as _glob
 files = sys.argv[1:] or sorted(
-    _glob.glob("docs/src/content/docs/**/*.md", recursive=True)
-    + _glob.glob("docs/src/content/docs/**/*.mdx", recursive=True))
+    glob.glob("docs/src/content/docs/**/*.md", recursive=True)
+    + glob.glob("docs/src/content/docs/**/*.mdx", recursive=True))
 bad = []
 for f in files:
     bad += audit(f)
