@@ -466,6 +466,11 @@ jobs:
         # npm ci, not npm install — every other Node job already installs from its lockfile,
         # and `npm install` is free to resolve something newer and rewrite the lock in place.
         run: npm ci
+      # 그림 안의 텍스트가 자기 박스를 넘는지. 빌드는 이걸 안 잡는다 — SVG 는 넘쳐도
+      # 유효하다. 2026-08-21 에 라벨이 13px 삐져나간 그림이 배포까지 갔고, 알려 준 것은
+      # CI 가 아니라 사람이었다. 폰트가 모노스페이스라 브라우저 없이 판정된다.
+      - name: Figure text fits its boxes
+        run: python scripts/check_svg_fit.py
       - name: Build site
         working-directory: docs
         run: npm run build
