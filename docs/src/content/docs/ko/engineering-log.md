@@ -13,9 +13,7 @@ description: 이 시스템이 무엇을 틀렸고, 그 결함이 어떻게 드�
 
 <svg class="kh-fig" viewBox="0 0 580 214" role="img" aria-label="2026년 7월부터 8월까지의 타임라인, 세 개의 레인. 'CI·가드' 레인에 4건, '측정' 레인에 6건, '사람' 레인에 3건이 있다. 8월로 갈수록 밀도가 급격히 올라간다. 사람 레인의 마지막 항목이 모든 자동 검사를 통과했던 근거 적합도 결함이다.">
   <text class="kh-fig-h" x="0" y="14">WHAT SURFACED IT</text>
-
   <line class="kh-fig-rule" x1="112" y1="34" x2="560" y2="34"/>
-
   <text class="kh-fig-s" x="0" y="60">CI · 가드</text>
   <line class="kh-fig-line" x1="112" y1="60" x2="560" y2="60"/>
   <circle class="kh-fig-verified" cx="189" cy="60" r="3.5"/>
@@ -23,7 +21,6 @@ description: 이 시스템이 무엇을 틀렸고, 그 결함이 어떻게 드�
   <circle class="kh-fig-verified" cx="445" cy="60" r="3.5"/>
   <circle class="kh-fig-verified" cx="548" cy="60" r="3.5"/>
   <text class="kh-fig-rk" x="568" y="60" text-anchor="end">4</text>
-
   <text class="kh-fig-s" x="0" y="108">측정</text>
   <line class="kh-fig-line" x1="112" y1="108" x2="560" y2="108"/>
   <circle class="kh-fig-verified" cx="403" cy="108" r="3.5"/>
@@ -33,7 +30,6 @@ description: 이 시스템이 무엇을 틀렸고, 그 결함이 어떻게 드�
   <circle class="kh-fig-verified" cx="480" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="522" cy="108" r="3.5"/>
   <text class="kh-fig-rk" x="568" y="108" text-anchor="end">6</text>
-
   <text class="kh-fig-s" x="0" y="156">사람</text>
   <line class="kh-fig-line" x1="112" y1="156" x2="560" y2="156"/>
   <circle class="kh-fig-verified" cx="197" cy="156" r="3.5"/>
@@ -42,7 +38,6 @@ description: 이 시스템이 무엇을 틀렸고, 그 결함이 어떻게 드�
   <path class="kh-fig-line-acc" d="M524 163 L524 178 L470 178"/>
   <text class="kh-fig-d" x="464" y="178" text-anchor="end">모든 자동 검사를 통과했다</text>
   <text class="kh-fig-rk" x="568" y="156" text-anchor="end">3</text>
-
   <line class="kh-fig-rule" x1="112" y1="196" x2="560" y2="196"/>
   <text class="kh-fig-s" x="112" y="207">JUL</text>
   <text class="kh-fig-s" x="378" y="207">AUG</text>

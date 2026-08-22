@@ -469,11 +469,14 @@ jobs:
       # 그림 안의 텍스트가 자기 박스를 넘는지. 빌드는 이걸 안 잡는다 — SVG 는 넘쳐도
       # 유효하다. 2026-08-21 에 라벨이 13px 삐져나간 그림이 배포까지 갔고, 알려 준 것은
       # CI 가 아니라 사람이었다. 폰트가 모노스페이스라 브라우저 없이 판정된다.
-      - name: Figure text fits its boxes
-        run: python scripts/check_svg_fit.py
       - name: Build site
         working-directory: docs
         run: npm run build
+      # **빌드 뒤에 돈다.** 소스만 보는 검사는 2026-08-22 에 그림 넷이 깨진 채 배포되는 것을
+      # 못 막았다 — 소스는 완벽했고 깨진 것은 마크다운 변환이었다(빈 줄이 HTML 블록을 끊는다).
+      # 이제 산출물도 함께 본다: 잘린 svg 는 dist 에서만 보인다.
+      - name: Figures fit, and survive the build
+        run: python scripts/check_svg_fit.py
       - name: Type check
         working-directory: docs
         run: npm run check

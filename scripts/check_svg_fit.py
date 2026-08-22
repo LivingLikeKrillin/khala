@@ -117,12 +117,57 @@ def audit(path):
     return out
 
 
+def blank_lines_in_svg(path):
+    """`.md` 안의 SVG 에 빈 줄이 있으면 **마크다운이 거기서 HTML 블록을 끝낸다.**
+
+    2026-08-22 에 이것으로 그림 넷이 통째로 깨진 채 배포됐다. 브라우저가 받은 것은
+    `</svg><p>` 로 잘린 조각과 `<p>` 안에 떨어진 죽은 SVG 요소들이었다. 같은 파일의 옛
+    그림은 멀쩡했는데, 그건 빈 줄 없이 한 덩어리로 쓰여 있었기 때문이다 — 규칙을 몰라서
+    지켜지던 것이라 다음 사람도 똑같이 밟는다. 그래서 검사로 만든다.
+
+    `.mdx` 는 JSX 로 파싱되므로 이 규칙이 적용되지 않는다.
+    """
+    if not path.endswith(".md"):
+        return []
+    src = open(path, encoding="utf-8").read()
+    out = []
+    for m in re.finditer(r"<svg\b.*?</svg>", src, re.S):
+        n = len(re.findall(r"\n[ \t]*\n", m.group(0)))
+        if n:
+            out.append((path, "BLANK-LINE-IN-SVG",
+                        f"빈 줄 {n}개 — 마크다운이 여기서 HTML 블록을 끊는다", "", ""))
+    return out
+
+
+def audit_built(dist="docs/dist"):
+    """**소스가 멀쩡한 것과 독자가 받는 것이 멀쩡한 것은 다른 사실이다.**
+
+    위 검사들은 전부 소스를 읽는다. 그림이 깨진 그날 소스는 완벽했다 — 깨진 것은 변환이었다.
+    빌드 산출물이 있으면 여기서 그것을 본다: 그림이 닫히자마자 `<p>` 가 오고 그 안에 `<text`
+    가 있으면, 그 그림은 잘린 것이다.
+    """
+    import os
+    if not os.path.isdir(dist):
+        return []
+    out = []
+    for html in sorted(glob.glob(dist + "/**/*.html", recursive=True)):
+        h = open(html, encoding="utf-8", errors="replace").read()
+        for m in re.finditer(r'<svg[^>]*class="(?:kh-fig|kh-dia)"[^>]*>.*?</svg>', h, re.S):
+            tail = h[m.end():m.end() + 200].lstrip()
+            if tail.startswith("<p>") and "<text" in tail:
+                out.append((html, "TRUNCATED-IN-BUILD",
+                            "svg 가 잘리고 나머지가 <p> 로 떨어졌다", "", ""))
+    return out
+
+
 files = sys.argv[1:] or sorted(
     glob.glob("docs/src/content/docs/**/*.md", recursive=True)
     + glob.glob("docs/src/content/docs/**/*.mdx", recursive=True))
 bad = []
 for f in files:
+    bad += blank_lines_in_svg(f)
     bad += audit(f)
+bad += audit_built()
 for b in bad:
     print("  ".join(str(x) for x in b))
 print(f"\n검사한 파일 {len(files)}개 · 문제 {len(bad)}건")

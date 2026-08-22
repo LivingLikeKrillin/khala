@@ -83,7 +83,6 @@ Nexus는 에코시스템의 지식 베이스입니다. 조직 내부 지식(문�
   <rect class="kh-fig-box" x="195" y="14" width="190" height="26" rx="3"/>
   <text class="kh-fig-d" x="290" y="27" text-anchor="middle">순위 히트 · 문서당 상한</text>
   <path class="kh-fig-line" d="M290 40 L290 62"/>
-
   <text class="kh-fig-h" x="110" y="52">EVIDENCE PACKET</text>
   <text class="kh-fig-s" x="470" y="52" text-anchor="end">패킷 하나, 표면 넷</text>
   <rect class="kh-fig-surface" x="110" y="62" width="360" height="72" rx="3"/>
@@ -94,25 +93,21 @@ Nexus는 에코시스템의 지식 베이스입니다. 조직 내부 지식(문�
   <text class="kh-fig-d" x="306" y="101">문서 부채</text>
   <text class="kh-fig-d" x="306" y="120">채운 절</text>
   <path class="kh-fig-line" d="M290 134 L290 154"/>
-
   <rect class="kh-fig-box-acc" x="210" y="154" width="160" height="26" rx="3"/>
   <text class="kh-fig-rk" x="290" y="167" text-anchor="middle">근거 적합도?</text>
   <path class="kh-fig-line-acc" d="M370 167 L392 167"/>
   <text class="kh-fig-s" x="398" y="161">두 다리 다 약하면:</text>
   <text class="kh-fig-s" x="398" y="174">밝히고 짧게</text>
   <path class="kh-fig-line" d="M290 180 L290 200"/>
-
   <rect class="kh-fig-box" x="225" y="200" width="130" height="26" rx="3"/>
   <text class="kh-fig-d" x="290" y="213" text-anchor="middle">모델이 서술</text>
   <path class="kh-fig-line" d="M290 226 L290 248"/>
-
   <text class="kh-fig-h" x="140" y="238">VERIFY IN CODE</text>
   <text class="kh-fig-s" x="440" y="238" text-anchor="end">프롬프트가 아니라 코드가</text>
   <rect class="kh-fig-surface" x="140" y="248" width="300" height="52" rx="3"/>
   <text class="kh-fig-d" x="156" y="267">모든 인용이 패킷에 해소되는가</text>
   <text class="kh-fig-d" x="156" y="286">모든 숫자가 근거에 있는가</text>
   <path class="kh-fig-line-acc" d="M290 300 L290 318"/>
-
   <rect class="kh-fig-box-acc" x="205" y="318" width="170" height="26" rx="3"/>
   <text class="kh-fig-rk" x="290" y="331" text-anchor="middle">답변 + 인용</text>
   <text class="kh-fig-s" x="290" y="352" text-anchor="middle">해소되지 않은 인용은 숨기지 않고 따로 보고된다</text>
