@@ -38,8 +38,44 @@ def is_scope_command(text: str) -> bool:
 _SOURCE_LABEL = {"notion": "Notion", "git": "Git 저장소", "other": "기타"}
 
 
-def scope_blocks(vis: dict) -> list[dict]:
+#: 명령어("코퍼스") 응답의 첫 줄.
+LEAD_COMMAND = "*답변 근거는 {src} 입니다.* 검색 결과가 아니라 시스템 상태입니다."
+#: 근거를 하나도 못 잡았을 때의 첫 줄. **같은 카드, 다른 말문**이다 —
+#: 카드를 하나 더 만들면 코퍼스가 바뀌는 날 한쪽만 낡는다.
+LEAD_MISS = "*이 질문은 제가 가진 문서 밖입니다.* 대신 제가 아는 것은 {src} 입니다."
+
+
+def scope_note(vis: dict) -> str:
+    """한 줄짜리 꼬리표. 근거는 잡혔지만 **잘 안 맞을 때** 쓴다.
+
+    그때는 근거 문서 제목이 **이미 화면에 있다**(`formatter.format_answer` 가 최대 5건을
+    그린다). 그 위에 카드를 펼치면 같은 말을 두 번 하는 것이고, 빠진 것은 하나뿐이다 —
+    *이 코퍼스가 대체 무엇을 담고 있나*. 그래서 한 줄만 준다.
+
+    값이 없으면 빈 문자열(= 아무것도 안 붙인다). 진단 실패가 답변을 어지럽히지 않는다.
+    """
+    visible = vis.get("documents_visible") or 0
+    if not visible:
+        return ""
+    src = _sources_phrase(vis)
+    newest = (vis.get("newest_document_at") or "")[:10]
+    tail = f" · {newest} 까지" if newest else ""
+    return f"제가 가진 것은 {src}{tail} 입니다. 그 밖의 것은 모릅니다."
+
+
+def _sources_phrase(vis: dict) -> str:
+    """"Notion 108건" 같은 구절. 출처도 개수도 **코퍼스 자신에서** 온다."""
+    sources = vis.get("sources") or {}
+    if not sources:
+        return f"문서 {vis.get('documents_visible') or 0}건"
+    return " · ".join(f"{_SOURCE_LABEL.get(k, k)} {n}건" for k, n in sources.items())
+
+
+def scope_blocks(vis: dict, *, lead: str = "") -> list[dict]:
     """`/visibility` 응답 → 슬랙 블록.
+
+    `lead` 는 첫 줄만 바꾼다(기본 = 명령어 응답). 본문은 **한 벌뿐**이다 — 부르는 자리가
+    늘어난다고 카드를 복제하지 않는다.
 
     **팀원의 질문에 답한다.** "코퍼스 범위가 어떻게 돼?" 를 물은 사람이 알고 싶은 것은
     *"내가 뭘 물어봐도 되냐"* 이지 문서 개수가 아니다. 첫 판은 테넌트 이름과 열람 등급을 앞에
@@ -55,7 +91,6 @@ def scope_blocks(vis: dict) -> list[dict]:
     visible = vis.get("documents_visible") or 0
     total = vis.get("documents_total") or 0
     newest = (vis.get("newest_document_at") or "")[:10]
-    sources = vis.get("sources") or {}
     titles = vis.get("sample_titles") or []
 
     if not visible:
@@ -64,11 +99,7 @@ def scope_blocks(vis: dict) -> list[dict]:
                  f"이 봇의 열람 등급으로 보이는 문서가 0건입니다"
                  f"{f' (전체 {total}건 중)' if total else ''} — 운영자에게 알리세요."}}]
 
-    src = " · ".join(f"{_SOURCE_LABEL.get(k, k)} {n}건" for k, n in sources.items())
-    lines = [
-        f"*답변 근거는 {src} 입니다.* 검색 결과가 아니라 시스템 상태입니다.",
-        "",
-    ]
+    lines = [(lead or LEAD_COMMAND).format(src=_sources_phrase(vis)), ""]
     if titles:
         lines.append("이런 문서들입니다:")
         lines += [f"  • {t}" for t in titles[:5]]

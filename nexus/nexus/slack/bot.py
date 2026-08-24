@@ -21,7 +21,7 @@ import httpx
 
 from nexus.slack.formatter import format_answer
 from nexus.slack import feedback as fb
-from nexus.slack.commands import is_scope_command, scope_blocks
+from nexus.slack.commands import LEAD_MISS, is_scope_command, scope_blocks, scope_note
 from nexus.slack.messages import Outcome, message_for
 from nexus.slack.thread import read_history
 
@@ -46,11 +46,16 @@ _OUTCOME_BY_REASON = {
 
 
 class NexusCallError(Exception):
-    """Nexus 호출이 답을 못 냈다. outcome 이 어느 대상에게 무슨 말을 할지 정한다."""
+    """Nexus 호출이 답을 못 냈다. outcome 이 어느 대상에게 무슨 말을 할지 정한다.
 
-    def __init__(self, outcome: Outcome):
+    `vis` 는 **그 판단을 내리며 이미 읽은** 코퍼스 상태다. 실패 문장 뒤에 "내가 아는 것은
+    이런 것들" 을 붙이려면 이 값이 필요한데, 다시 물으면 같은 왕복을 두 번 내는 사본이 된다.
+    """
+
+    def __init__(self, outcome: Outcome, vis: dict | None = None):
         super().__init__(outcome.value)
         self.outcome = outcome
+        self.vis = vis or {}
 
 
 def _transport():  # pragma: no cover - 테스트가 MockTransport 로 override
@@ -93,17 +98,62 @@ async def _answer(query: str, say, event: dict, client=None) -> None:
         # (SPEC-nexus-answer-feedback §3.2). 키는 게시 전에 필요하고 (채널, ts) 는 게시
         # 후에야 알 수 있으므로, 제안 행은 게시 뒤에 남긴다.
         answer_key = fb.issue_key()
-        posted = await say(blocks=format_answer(answer_data) + fb.feedback_blocks(answer_key),
+        posted = await say(blocks=(format_answer(answer_data)
+                                   + _fit_note(answer_data, token)
+                                   + fb.feedback_blocks(answer_key)),
                            thread_ts=thread_ts)
         await _record_offer(answer_key, posted, event)
     except NexusCallError as e:
         # 401 은 운영자를 위해 로그로도 남긴다(사용자 메시지와 별개).
         if e.outcome is Outcome.BAD_TOKEN:
             logger.error("nexus_auth_failed_check_NEXUS_SLACK_TOKEN")
-        await say(text=message_for(e.outcome), thread_ts=thread_ts)
+        text = message_for(e.outcome)
+        tail = _known_corpus_card(e)
+        if tail:
+            await say(text=text, blocks=[_section(text), *tail], thread_ts=thread_ts)
+        else:
+            await say(text=text, thread_ts=thread_ts)
     except Exception:
         logger.error("nexus_call_unexpected", exc_info=True)
         await say(text=message_for(Outcome.OTHER), thread_ts=thread_ts)
+
+
+def _section(text: str) -> dict:
+    """평문 한 덩이. 블록을 붙이려면 원래 문장도 블록이어야 한다."""
+    return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
+
+
+def _known_corpus_card(err: NexusCallError) -> list[dict]:
+    """*"못 찾았습니다"* 뒤에 **내가 아는 것**을 붙인다.
+
+    2026-08-14 에 이 봇이 받은 실사용 투표는 둘뿐이고 **둘 다 👎 `not_found`** 였다. 시스템은
+    옳게 답했다 — 그 사실이 코퍼스에 없었으니까. 사용자가 받은 것은 막다른 문장 하나였고,
+    그 뒤로 질문이 오지 않았다. 카드는 그 자리를 **방향 안내**로 바꾼다.
+
+    **`EMPTY_GROUNDING` 에만 붙인다.** 코퍼스가 비었거나(EMPTY_CORPUS) 등급 때문에 아무것도
+    안 보이는(NO_VISIBLE_DOCS) 것은 **운영자 몫**이고, 그때 "제가 아는 것은…" 을 펼치면 0건을
+    자랑하는 카드가 된다. 진단이 실패해 `vis` 가 비었으면 아무것도 붙이지 않는다.
+    """
+    if err.outcome is not Outcome.EMPTY_GROUNDING or not err.vis:
+        return []
+    return scope_blocks(err.vis, lead=LEAD_MISS)
+
+
+def _fit_note(payload: dict, token: str | None) -> list[dict]:
+    """근거는 잡혔지만 **잘 맞지 않을 때**의 한 줄(`weak_evidence`, search/confidence.py).
+
+    여기서 카드를 펼치지 않는 이유: 이 경우엔 근거 문서 제목이 이미 답변 아래 그려져 있다
+    (`formatter.format_answer`). 빠진 것은 *이 코퍼스가 무엇을 담고 있나* 하나뿐이다.
+
+    **막지 않는다.** 문턱은 표본 13개짜리 가설이므로(`FAR_DISTANCE`), 오탐의 대가가 잘못된
+    침묵이 아니라 군더더기 한 줄이어야 한다. 왕복도 발동했을 때만 낸다.
+    """
+    if not payload.get("weak_evidence"):
+        return []
+    note = scope_note(_visibility(token))
+    if not note:
+        return []
+    return [{"type": "context", "elements": [{"type": "mrkdwn", "text": note}]}]
 
 
 async def _record_offer(answer_key: str, posted, event: dict) -> None:
@@ -200,13 +250,14 @@ def _visibility(token: str | None = None) -> dict:
         return {}
 
 
-def _blind(token: str | None = None) -> bool:
+def _blind(vis: dict) -> bool:
     """**이 봇의 등급으로** 볼 수 있는 문서가 한 건도 없는가.
 
-    0건을 받았을 때만 묻는다 — 검색 경로에 얹으면 모든 질의가 이 왕복을 낸다. 실패하면 False:
-    모르는 것을 설정 결함이라고 단정하면 멀쩡한 검색 실패가 운영자 호출이 된다.
+    이미 읽은 `/visibility` 응답을 받는다 — 안에서 다시 부르면 같은 왕복이 두 번 나가고,
+    두 호출이 서로 다른 순간의 코퍼스를 볼 수 있다. 값이 없으면 False: 모르는 것을 설정
+    결함이라고 단정하면 멀쩡한 검색 실패가 운영자 호출이 된다.
     """
-    return bool(_visibility(token).get("no_visible_documents", False))
+    return bool(vis.get("no_visible_documents", False))
 
 
 async def _call_nexus_api(query: str, history: list[dict] | None = None,
@@ -253,11 +304,14 @@ async def _call_nexus_api(query: str, history: list[dict] | None = None,
         # 되묻는다 — 답이 나온 질의에는 이 왕복이 붙지 않는다.
         if _documents_count(token) == 0:
             raise NexusCallError(Outcome.EMPTY_CORPUS)
-        if _blind(token):
+        vis = _visibility(token)
+        if _blind(vis):
             # 등급/테넌트 설정 결함 — 사용자가 질문을 바꿔도 영원히 0건이다. 운영자 몫이라
             # 로그로도 남긴다.
             logger.error("nexus_no_visible_documents_check_NEXUS_SLACK_CLEARANCE")
             raise NexusCallError(Outcome.NO_VISIBLE_DOCS)
-        raise NexusCallError(Outcome.EMPTY_GROUNDING)
+        # 사용자 몫의 0건 — 질문을 바꾸면 답이 나올 수 있다. 그러려면 **무엇을 물을 수 있는지**
+        # 를 알아야 하므로 방금 읽은 코퍼스 상태를 같이 올린다.
+        raise NexusCallError(Outcome.EMPTY_GROUNDING, vis=vis)
 
     return payload

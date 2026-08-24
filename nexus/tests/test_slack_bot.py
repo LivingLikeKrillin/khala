@@ -103,7 +103,10 @@ async def test_empty_grounding_when_no_snippets_but_corpus_exists(monkeypatch):
     _bot_with(monkeypatch, lambda r: httpx.Response(200, json={
         "success": True, "data": {"answer": "", "evidence_snippets": []}}))
     monkeypatch.setattr(bot, "_documents_count", lambda *_: 20)   # 코퍼스는 있다
-    monkeypatch.setattr(bot, "_blind", lambda *_: False)          # 보이는 문서도 있다
+    # **`_blind` 를 가로채지 않는다.** 스텁으로 바꾸면 진짜 판정이 이 검사 밖으로 나간다 —
+    # 대신 그 판정이 읽는 것(`/visibility` 응답)을 준다.
+    monkeypatch.setattr(bot, "_visibility", lambda *_: {"no_visible_documents": False,
+                                                        "documents_visible": 20})
     with pytest.raises(bot.NexusCallError) as e:
         await bot._call_nexus_api("q")
     assert e.value.outcome is Outcome.EMPTY_GROUNDING
