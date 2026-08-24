@@ -20,3 +20,6 @@ __pycache__/
 # Korean eval Pack B — a frozen export of a live tenant (internal documents; never commit).
 # SPEC-nexus-korean-retrieval-eval §4.1 defines it as local-only for exactly this reason.
 nexus/tests/eval/local/
+
+# `task ingest:self` 의 임시 스테이징 — 정본은 docs/ 와 adr/ 에 있다
+nexus/.self-docs/
