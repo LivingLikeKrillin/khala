@@ -112,6 +112,23 @@ tasks:
     cmds:
       - docker compose -f docker-compose.yml exec -T nexus-app python -m nexus.cli ingest-notion --roots "{{.ROOTS}}" {{.FLAGS}}
 
+  # 팀이 실제로 물은 것: *"왜 서비스이름이 칼라인거지?"* (2026-08-14). 그때 봇은 👎 not_found 를
+  # 받았다 — 코퍼스의 47% 가 이미 khala 자기 문서인데도. 적재 경로가 `nexus/docs/` 폴더
+  # 하나여서, **이름과 목적을 설명하는 문서만** 그 밖에 있었기 때문이다.
+  # **사본을 리포에 남기지 않는다.** 실행 시점에 정본에서 복사하고 끝나면 지운다 — 미러링된
+  # 사본은 정본이 바뀌는 날부터 거짓말을 시작한다. 파일명이 고정이라 재실행은 멱등하다.
+  ingest:self:
+    desc: "khala 자기 문서(철학·컴포넌트 작명) 적재 — 팀 코퍼스에 '이 도구가 뭐냐'의 답을 넣는다"
+    dir: nexus
+    vars:
+      TENANT: '{{.TENANT | default "default"}}'
+    cmds:
+      - rm -rf .self-docs && mkdir -p .self-docs
+      - defer: rm -rf .self-docs
+      - cp ../docs/src/content/docs/ko/philosophy.md .self-docs/khala-philosophy.md
+      - cp ../adr/ADR-0005-component-naming-rename-and-forward-mapping.md .self-docs/khala-component-naming.md
+      - docker compose -f docker-compose.yml exec -T nexus-app python -m nexus.cli ingest /app/.self-docs --tenant "{{.TENANT}}"
+
   # ---- aggregate ----------------------------------------------------------
   test:
     desc: Run all subproject test suites (nexus, observer, arbiter, probe, docs)
