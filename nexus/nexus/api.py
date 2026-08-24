@@ -637,6 +637,10 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 기권은 코드가 내린 판단이다. 답변 문장을 문자열 대조해서 알아내지 않는다.
                 "abstained": answer_result.abstained,
                 "abstain_reason": answer_result.abstain_reason,
+                # 근거는 있었지만 **잘 맞지 않았다**(search/confidence.py). 이 값이 응답에 없는
+                # 동안 표면들은 "잘 찾았다" 와 "제일 덜 나쁜 걸 골랐다" 를 구별할 수 없었고,
+                # 서버는 프롬프트만 바꾸고 그 사실을 혼자 알고 있었다.
+                "weak_evidence": answer_result.weak_evidence,
                 "degraded": search_result.degraded,
                 # **생성 실패는 답변이 아니다.** 이 플래그가 없는 동안 클라이언트는 둘을 구별할
                 # 수 없었고, 서버가 실패 자리에 넣는 근거 덤프를 답변으로 렌더했다.
