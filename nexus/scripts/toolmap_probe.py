@@ -28,9 +28,14 @@ CLEARANCE = "INTERNAL"           # 봇과 같은 등급
 HERE = Path(__file__).resolve().parents[1] / "tests" / "eval" / "toolmap"
 
 
-def _questions() -> list[dict]:
-    data = yaml.safe_load((HERE / "questions.yaml").read_text(encoding="utf-8"))
-    return data["questions"]
+def _load_set(path: Path) -> dict:
+    """질문 세트. **판정 규칙은 세트가 선언한다** — 명령행 플래그로 고르게 두면 어느 규칙으로
+    잰 숫자인지가 실행 기록 밖에 남고, 그때부터 재현이 사람 기억에 걸린다."""
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    rule = data.get("rule", "sequential")
+    if rule not in ("sequential", "comparison"):
+        raise SystemExit(f"모르는 규칙: {rule}")
+    return data
 
 
 def _tool_of(hit) -> str:
@@ -66,19 +71,28 @@ async def drop() -> int:
     return 0
 
 
-async def run(top_k: int = 10) -> int:
-    """두 다리를 각각 재고, 사전등록된 규칙으로 고른다."""
+async def run(qpath: Path, top_k: int = 10) -> int:
+    """두 다리를 각각 재고, **세트가 선언한** 규칙으로 고른다.
+
+    `sequential` (1회차): 문서가 약할 때만 도구를 본다.
+    `comparison` (2회차): 둘 다 약하면 미선택, 아니면 **더 가까운 팔**. 여유값 없음(margin=0)
+        — 자유 파라미터를 하나도 만들지 않기 위해서다. 거리만 판정에 쓰고 BM25 는 기록만 한다.
+    """
     from nexus import db
     from nexus.api import _load_config
     from nexus.providers.embedding import embedding_service_from_config
     from nexus.search import hybrid
+
+    qset = _load_set(qpath)
+    rule = qset.get("rule", "sequential")
+    print(f"세트 {qpath.name} · 규칙 {rule} ·  질문 {len(qset['questions'])}건 (LLM 미사용)")
 
     svc = embedding_service_from_config()
     cfg = _load_config()
     await db.get_pool()
 
     rows = []
-    for q in _questions():
+    for q in qset["questions"]:
         arms = {}
         for name, tenant in (("docs", DOCS_TENANT), ("tools", PROBE_TENANT)):
             r = await hybrid.hybrid_search(q["q"], tenant=tenant, clearance=CLEARANCE,
@@ -93,7 +107,16 @@ async def run(top_k: int = 10) -> int:
         top_hit = arms["tools"].hits[0] if arms["tools"].hits else None
 
         # 사전등록된 규칙 그대로. 여기서 새 문턱을 만들지 않는다.
-        if not docs_weak:
+        d_docs = arms["docs"].confidence.top_distance
+        d_tools = arms["tools"].confidence.top_distance
+        if rule == "comparison":
+            if docs_weak and tools_weak:
+                chose = "none"
+            elif top_hit and d_tools is not None and d_docs is not None and d_tools < d_docs:
+                chose = f"tool:{_tool_of(top_hit)}"
+            else:
+                chose = "docs"
+        elif not docs_weak:
             chose = "docs"
         elif not tools_weak and top_hit:
             chose = f"tool:{_tool_of(top_hit)}"
@@ -118,8 +141,9 @@ async def run(top_k: int = 10) -> int:
     n_mis = sum(r["misfire"] for r in rows)
     print(f"\n  일치 {n_ok}/{len(rows)}  ·  오선택 {n_mis}  "
           f"(오선택 1건 이상이면 이 형태 그대로는 방아쇠로 못 쓴다 — 사전등록 규칙 1)")
-    out = HERE / "result.json"
-    out.write_text(json.dumps({"rows": rows, "ok": n_ok, "misfire": n_mis},
+    out = HERE / f"result-{qpath.stem}.json"
+    out.write_text(json.dumps({"set": qpath.name, "rule": rule,
+                               "rows": rows, "ok": n_ok, "misfire": n_mis},
                               ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"기록: {out}")
     await db.close_pool()
@@ -136,6 +160,8 @@ def main(argv=None) -> int:
     ap.add_argument("--run", action="store_true", help="판정 (LLM 0회)")
     ap.add_argument("--drop", action="store_true", help="실험 테넌트 삭제")
     ap.add_argument("--top-k", type=int, default=10)
+    ap.add_argument("--questions", type=Path, default=HERE / "questions.yaml",
+                    help="질문 세트. 판정 규칙은 그 파일이 선언한다")
     args = ap.parse_args(argv)
 
     if args.build:
@@ -143,7 +169,7 @@ def main(argv=None) -> int:
     if args.drop:
         return asyncio.run(drop())
     if args.run:
-        return asyncio.run(run(args.top_k))
+        return asyncio.run(run(args.questions, args.top_k))
     ap.print_help()
     return 1
 
