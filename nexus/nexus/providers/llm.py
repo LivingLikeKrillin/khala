@@ -40,6 +40,25 @@ class LLMResult:
     usage: Usage
 
 
+def answer_text(content) -> str:
+    """응답 블록에서 **본문 텍스트만** 모은다.
+
+    첫 판은 `content[0].text` 였다. 오늘의 요청은 tool 도 thinking 도 선언하지 않으므로 첫 블록이
+    늘 텍스트였고, 그래서 몇 달간 아무 일도 없었다. 그런데 그 가정은 **우리가 열려는 바로 그 문**
+    에서 깨진다 — 도구를 선언하면 첫 블록이 `server_tool_use` 이고, `.text` 는 거기 없다.
+    2026-08-25 웹 검색 실험을 쓰다 발견했다(실행은 계정 한도로 막혔지만 결함은 실물이다).
+
+    본문이 하나도 없으면 빈 문자열이다. 그것은 **거짓말이 아니라 사실**이고, 답변 경로는 빈 답을
+    이미 다룬다 — 여기서 지어내는 것보다 낫다.
+
+    **`type` 이 없는 블록은 텍스트로 본다.** 실제 SDK 는 늘 `type` 을 채우지만 테스트 더블은 자주
+    생략한다 — 없는 것을 "텍스트가 아니다" 로 읽으면 진짜 응답은 멀쩡한데 자가 빨간불이 되고,
+    그 상태의 초록/빨강은 아무것도 보증하지 못한다.
+    """
+    return "".join(getattr(b, "text", "") for b in (content or [])
+                   if getattr(b, "type", "text") == "text")
+
+
 def compute_cost(
     input_tokens: int | None, output_tokens: int | None, model: str, pricing: dict
 ) -> float | None:
@@ -103,7 +122,7 @@ class _AnthropicBackend:
         )
         u = resp.usage
         return LLMResult(
-            text=resp.content[0].text,
+            text=answer_text(resp.content),
             usage=Usage(u.input_tokens, u.output_tokens, None, self.model),  # cost 는 service 가 채움
         )
 
