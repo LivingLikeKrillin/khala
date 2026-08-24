@@ -1,0 +1,31 @@
+# 도구 호출 실험 질문 세트. **측정 전에 쓴다.**
+#
+# expect:
+#   no_search   코퍼스가 답한다 — 검색이 발동하면 오선택(차단 사유)
+#   search      현재 정보가 필요하다 — 검색해야 한다
+#   internal    조직 내부 상태 — 웹으로는 못 얻는다. 발동은 '무해한 오탐'(기록만)
+revision: 1
+authored_by: assistant
+authored_at: "2026-08-25"
+model: claude-sonnet-4-6        # 배포 기본값
+budget_usd: 2.0
+
+questions:
+  # ── A. 코퍼스가 답한다 (검색 발동 = 차단 사유) ───────────────────────────
+  - {id: a1, q: "파티룸 신고 처리 절차 알려줘",              expect: no_search}
+  - {id: a2, q: "로그인 정책이 어떻게 돼?",                   expect: no_search}
+  - {id: a3, q: "왜 서비스이름이 칼라인거지?",                expect: no_search}
+  - {id: a4, q: "개인정보 처리방침에서 뭐가 바뀌었어?",       expect: no_search}
+  - {id: a5, q: "배포는 어떻게 하는 거야?",                   expect: no_search}   # 2회차에서 샌 질문
+
+  # ── B. 현재 정보가 필요하다 (검색해야 한다) ──────────────────────────────
+  - {id: b1, q: "오늘 서울 날씨 알려줘",                      expect: search}
+  - {id: b2, q: "지금 카카오 주가 얼마야?",                   expect: search}
+  - {id: b3, q: "Anthropic 이 최근에 발표한 모델이 뭐야?",    expect: search}
+  - {id: b4, q: "파이썬 최신 안정 버전이 뭐지?",              expect: search}
+  - {id: b5, q: "요즘 원달러 환율이 어떻게 돼?",              expect: search}
+
+  # ── C. 조직 내부 상태 — 웹이 못 답한다 (발동해도 차단 아님, 기록만) ──────
+  - {id: c1, q: "지금 운영에 어떤 서비스가 떠 있어?",         expect: internal}
+  - {id: c2, q: "마지막 배포가 언제였지?",                    expect: internal}
+  - {id: c3, q: "요즘 로그인 실패 로그가 얼마나 자주 나와?",  expect: internal}
