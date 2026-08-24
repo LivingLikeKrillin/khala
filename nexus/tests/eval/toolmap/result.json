@@ -1,0 +1,201 @@
+{
+  "rows": [
+    {
+      "id": "t1",
+      "expect": "tool:deploy-status",
+      "chose": "docs",
+      "ok": false,
+      "misfire": false,
+      "docs": [
+        0.4601511406718325,
+        1.0
+      ],
+      "tools": [
+        0.30832823192094794,
+        0.4000000059604645
+      ]
+    },
+    {
+      "id": "t2",
+      "expect": "tool:deploy-status",
+      "chose": "tool:deploy-status",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.4985742867842733,
+        0.6000000238418579
+      ],
+      "tools": [
+        0.4240776724838514,
+        0.699999988079071
+      ]
+    },
+    {
+      "id": "t3",
+      "expect": "tool:log-query",
+      "chose": "docs",
+      "ok": false,
+      "misfire": false,
+      "docs": [
+        0.4746980101230095,
+        0.9000000357627869
+      ],
+      "tools": [
+        0.39162341406205703,
+        0.4000000059604645
+      ]
+    },
+    {
+      "id": "t4",
+      "expect": "tool:log-query",
+      "chose": "docs",
+      "ok": false,
+      "misfire": false,
+      "docs": [
+        0.45923538627518834,
+        1.2000000476837158
+      ],
+      "tools": [
+        0.354054766410021,
+        0.20000000298023224
+      ]
+    },
+    {
+      "id": "t5",
+      "expect": "tool:deploy-history",
+      "chose": "tool:deploy-history",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.531980540516312,
+        0.4000000059604645
+      ],
+      "tools": [
+        0.3439473695817745,
+        0.6000000238418579
+      ]
+    },
+    {
+      "id": "t6",
+      "expect": "tool:deploy-history",
+      "chose": "tool:deploy-history",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.5412511751798665,
+        0.5
+      ],
+      "tools": [
+        0.4528950239011593,
+        0.699999988079071
+      ]
+    },
+    {
+      "id": "d1",
+      "expect": "docs",
+      "chose": "docs",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.3959954144957404,
+        3.1000001430511475
+      ],
+      "tools": [
+        0.6289604306221008,
+        0.0
+      ]
+    },
+    {
+      "id": "d2",
+      "expect": "docs",
+      "chose": "docs",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.3493186027217733,
+        1.3000000715255737
+      ],
+      "tools": [
+        0.5593944752577252,
+        0.10000000149011612
+      ]
+    },
+    {
+      "id": "d3",
+      "expect": "docs",
+      "chose": "none",
+      "ok": false,
+      "misfire": false,
+      "docs": [
+        0.5588971674442291,
+        1.0
+      ],
+      "tools": [
+        0.5818365812301636,
+        0.30000001192092896
+      ]
+    },
+    {
+      "id": "d4",
+      "expect": "docs",
+      "chose": "docs",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.41257650702279725,
+        1.3000000715255737
+      ],
+      "tools": [
+        0.5761360985989387,
+        0.0
+      ]
+    },
+    {
+      "id": "n1",
+      "expect": "none",
+      "chose": "none",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.6078170900235819,
+        0.0
+      ],
+      "tools": [
+        0.6177563526920824,
+        0.0
+      ]
+    },
+    {
+      "id": "n2",
+      "expect": "none",
+      "chose": "none",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.5759092731638055,
+        0.10000000149011612
+      ],
+      "tools": [
+        0.6593976325335198,
+        0.0
+      ]
+    },
+    {
+      "id": "n3",
+      "expect": "none",
+      "chose": "none",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.545069331518488,
+        0.0
+      ],
+      "tools": [
+        0.5748929292091185,
+        0.0
+      ]
+    }
+  ],
+  "ok": 9,
+  "misfire": 0
+}
