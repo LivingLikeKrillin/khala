@@ -94,6 +94,12 @@ async def _bm25_search(
     **원점수를 같이 돌려주는 이유**: 융합(RRF)은 순위만 쓰므로 "얼마나 잘 맞았는가" 가
     사라진다. 그 크기는 여기서 이미 계산해 정렬에까지 썼는데 버려지고 있었다
     (`search/confidence.py` 머리말의 실측). 융합에 들어가는 첫 값은 예전과 같다.
+
+    **`None` 과 `0.0` 은 다른 사실이다.** `None` 은 *다리가 안 돌았다* — 토크나이저가 텀을
+    하나도 못 만들어 질의 자체가 없었다. `0.0` 은 *돌았는데 아무것도 못 잡았다* 이고, 그것은
+    "코퍼스 밖" 의 가장 강한 증거다. 둘을 같은 `None` 으로 뭉개던 동안 그 강한 증거가
+    `Confidence.weak` 에서 **못 잰 것**으로 읽혀 신호가 안 켜졌다 — 2026-08-24 라이브에서
+    *"오늘 서울 날씨 알려줘"* 가 거리 0.608(멀다)인데도 약함 판정을 못 받았다.
     """
     tokens = active_tokenizer().tokenize(query)
     tsquery = tokens_to_tsquery(tokens)
@@ -121,8 +127,9 @@ async def _bm25_search(
         tsquery, tenant, clearance, top_k,
     )
 
+    # 매칭 0건은 **재서 0점**이다(위 참조). 안 잰 것이 아니다.
     return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
-            float(rows[0]["rank_score"]) if rows else None)
+            float(rows[0]["rank_score"]) if rows else 0.0)
 
 
 async def _vector_search(
