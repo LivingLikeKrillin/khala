@@ -1,0 +1,263 @@
+{
+  "set": "questions-r2.yaml",
+  "rule": "comparison",
+  "rows": [
+    {
+      "id": "a1",
+      "expect": "tool:deploy-status",
+      "chose": "tool:deploy-status",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.4252655252656017,
+        1.2000000476837158
+      ],
+      "tools": [
+        0.32875857736940883,
+        0.699999988079071
+      ]
+    },
+    {
+      "id": "a2",
+      "expect": "tool:deploy-status",
+      "chose": "docs",
+      "ok": false,
+      "misfire": false,
+      "docs": [
+        0.4039863703258998,
+        0.6000000238418579
+      ],
+      "tools": [
+        0.4186329072306424,
+        0.4000000059604645
+      ]
+    },
+    {
+      "id": "a3",
+      "expect": "tool:log-query",
+      "chose": "tool:log-query",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.4888750910758972,
+        0.9000000357627869
+      ],
+      "tools": [
+        0.45550886061734697,
+        0.5
+      ]
+    },
+    {
+      "id": "a4",
+      "expect": "tool:log-query",
+      "chose": "none",
+      "ok": false,
+      "misfire": false,
+      "docs": [
+        0.5768133356086405,
+        0.10000000149011612
+      ],
+      "tools": [
+        0.5402928268734908,
+        0.30000001192092896
+      ]
+    },
+    {
+      "id": "a5",
+      "expect": "tool:deploy-history",
+      "chose": "tool:deploy-history",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.4351967313768418,
+        0.9000000357627869
+      ],
+      "tools": [
+        0.40282288772923314,
+        0.30000001192092896
+      ]
+    },
+    {
+      "id": "a6",
+      "expect": "tool:deploy-history",
+      "chose": "tool:deploy-history",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.45453596115112305,
+        0.699999988079071
+      ],
+      "tools": [
+        0.4386804438423836,
+        0.4000000059604645
+      ]
+    },
+    {
+      "id": "b1",
+      "expect": "docs",
+      "chose": "tool:deploy-history",
+      "ok": false,
+      "misfire": true,
+      "docs": [
+        0.439910888671875,
+        0.699999988079071
+      ],
+      "tools": [
+        0.40951770544052124,
+        0.5
+      ]
+    },
+    {
+      "id": "b2",
+      "expect": "docs",
+      "chose": "docs",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.3274496002525318,
+        0.5
+      ],
+      "tools": [
+        0.3445669001857161,
+        0.4000000059604645
+      ]
+    },
+    {
+      "id": "b3",
+      "expect": "docs",
+      "chose": "docs",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.31637076637919026,
+        0.9000000357627869
+      ],
+      "tools": [
+        0.48998109966460146,
+        0.6000000238418579
+      ]
+    },
+    {
+      "id": "b4",
+      "expect": "docs",
+      "chose": "tool:deploy-history",
+      "ok": false,
+      "misfire": true,
+      "docs": [
+        0.45474159717559814,
+        1.100000023841858
+      ],
+      "tools": [
+        0.4027860760688782,
+        0.5
+      ]
+    },
+    {
+      "id": "b5",
+      "expect": "docs",
+      "chose": "docs",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.35588450957720896,
+        0.6000000238418579
+      ],
+      "tools": [
+        0.5572452178901143,
+        0.0
+      ]
+    },
+    {
+      "id": "c1",
+      "expect": "docs",
+      "chose": "docs",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.2967560710456316,
+        4.200000286102295
+      ],
+      "tools": [
+        0.6176865880991991,
+        0.0
+      ]
+    },
+    {
+      "id": "c2",
+      "expect": "docs",
+      "chose": "docs",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.31323109190278575,
+        2.5
+      ],
+      "tools": [
+        0.6273609470079629,
+        0.0
+      ]
+    },
+    {
+      "id": "c3",
+      "expect": "docs",
+      "chose": "docs",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.43598309540849256,
+        0.699999988079071
+      ],
+      "tools": [
+        0.5331910232787707,
+        0.20000000298023224
+      ]
+    },
+    {
+      "id": "d1",
+      "expect": "none",
+      "chose": "none",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.6183100711292064,
+        0.0
+      ],
+      "tools": [
+        0.6201793408180042,
+        0.0
+      ]
+    },
+    {
+      "id": "d2",
+      "expect": "none",
+      "chose": "none",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.5780820124769809,
+        0.0
+      ],
+      "tools": [
+        0.6458917154637489,
+        0.0
+      ]
+    },
+    {
+      "id": "d3",
+      "expect": "none",
+      "chose": "none",
+      "ok": true,
+      "misfire": false,
+      "docs": [
+        0.5702835493772829,
+        0.30000001192092896
+      ],
+      "tools": [
+        0.6787687827257374,
+        0.10000000149011612
+      ]
+    }
+  ],
+  "ok": 13,
+  "misfire": 2
+}
