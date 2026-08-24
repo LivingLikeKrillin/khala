@@ -1,4 +1,6 @@
 {
+  "set": "questions.yaml",
+  "rule": "sequential",
   "rows": [
     {
       "id": "t1",
