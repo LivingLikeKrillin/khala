@@ -7,7 +7,7 @@ description: The calibration thesis behind Khala.
 
 ## The link
 
-In the lore that gives this ecosystem its name, the Khala is the psychic link that joins a people into one mind without erasing the individual. Here it means something more concrete: the shared layer that lets a set of independent tools speak with one calibrated voice. Khala isn't a tool you run. It's the link the tools share: where grounded knowledge lives, and the discipline that keeps each tool honest about what it does and doesn't know.
+Khala is a name borrowed from StarCraft. Among the Protoss, the Khala is the psychic link that joins a people into one mind without erasing the individual. It isn't the only name borrowed — Nexus, Archon, Arbiter, Adept, Probe, and Observer all come from that same faction, and each keeps the role it played there. Here it means something more concrete: the shared layer that lets a set of independent tools speak with one calibrated voice. Khala isn't a tool you run. It's the link the tools share: where grounded knowledge lives, and the discipline that keeps each tool honest about what it does and doesn't know.
 
 This matters now because large language models are extraordinarily fluent and extraordinarily willing: they answer anything, in confident prose, whether or not they have grounds to. That fluency changes how teams build software, and it opens two distinct failure modes that no single tool can close on its own. Khala exists to defend against both.
 
