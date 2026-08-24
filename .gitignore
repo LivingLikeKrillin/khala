@@ -23,3 +23,6 @@ nexus/tests/eval/local/
 
 # `task ingest:self` 의 임시 스테이징 — 정본은 docs/ 와 adr/ 에 있다
 nexus/.self-docs/
+
+# 도구 프로브의 중간 산출(프롬프트·답변 본문) — 커밋하지 않는다
+nexus/.probe/

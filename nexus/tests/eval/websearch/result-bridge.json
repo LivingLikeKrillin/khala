@@ -1,0 +1,50 @@
+{
+  "backend": "claude-code-bridge",
+  "rows": [
+    {
+      "id": "b1",
+      "expect": "search",
+      "searched": true,
+      "tools": [
+        "ToolSearch",
+        "WebSearch"
+      ],
+      "ok": true,
+      "misfire": false,
+      "harmless": false,
+      "citations": 1,
+      "unverified": 1,
+      "cited": [
+        "웹|False"
+      ],
+      "weak": true,
+      "cost_usd": 0.37020049999999993
+    },
+    {
+      "id": "b3",
+      "expect": "search",
+      "searched": true,
+      "tools": [
+        "ToolSearch",
+        "WebSearch",
+        "WebSearch"
+      ],
+      "ok": true,
+      "misfire": false,
+      "harmless": false,
+      "citations": 4,
+      "unverified": 4,
+      "cited": [
+        "웹|False",
+        "웹|False",
+        "웹|False",
+        "웹|False"
+      ],
+      "weak": true,
+      "cost_usd": 0.5183855
+    }
+  ],
+  "misfire": 0,
+  "reported_usd": 0.89,
+  "note": "답변 본문과 인용 원문은 리포 밖(.probe/)에만 있다 — 답변이 조직 문서 제목을 그대로 인용하므로 공개 리포에 담지 않는다."
+}
