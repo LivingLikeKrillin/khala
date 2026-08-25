@@ -30,6 +30,9 @@ class ConvertedDoc:
     images: list = field(default_factory=list)
     #: 이 본문의 비전 마커를 우리가 썼는가. 청커가 마커를 신뢰할지 결정한다 (ADR-0010 §3).
     vision_extracted: bool = False
+    #: 순회 중 **읽지 못한** 하위 블록 `{block_id, type, error}`. 본문에는 그 자리에 표식이
+    #: 남는다. 비어 있지 않다는 것은 이 문서가 **부분 본문**이라는 뜻이다.
+    holes: list = field(default_factory=list)
 
 
 @runtime_checkable

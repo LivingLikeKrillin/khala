@@ -1001,7 +1001,7 @@ def ingest_notion(
         help="Notion 에서 사라진 페이지를 soft_delete 하고 되살아난 페이지를 revive 한다",
     ),
     dry_run: bool = typer.Option(
-        False, "--dry-run", help="--reconcile 의 계획만 출력하고 DB 는 건드리지 않는다",
+        False, "--dry-run", help="계획만 출력하고 DB 를 건드리지 않는다 (적재도 하지 않는다)",
     ),
     force: bool = typer.Option(
         False, "--force", help="prune 비율이 임계치를 넘어도 강행한다 (--roots 를 먼저 확인하세요)",
@@ -1029,15 +1029,18 @@ def ingest_notion(
     # 009 가 예고한 "조용한 오독" 이 그것이고, `--reconcile` 과 만나면 남의 워크스페이스 문서를
     # 사라진 것으로 판정한다. HTTP 표면은 `group_by_token()` 으로 이미 갈라 걷고 있었고
     # (`sources/api.py`), CLI 만 `--token-env` 하나를 전부에 적용하고 있었다.
-    if (dry_run or force) and not reconcile:
-        typer.echo("--dry-run / --force 는 --reconcile 과 함께 써야 의미가 있습니다")
+    # `--dry-run` 은 이제 **적재까지** 마른다. 그래서 `--reconcile` 없이도 의미가 있다:
+    # "지금 돌리면 무엇이 들어오나" 를 쓰기 없이 보는 것. `--force` 는 여전히 재조정 전용이다.
+    if force and not reconcile:
+        typer.echo("--force 는 --reconcile 과 함께 써야 의미가 있습니다")
         raise typer.Exit(code=1)
     reconcile_fn = (
         make_reconcile_fn(threshold=threshold, force=force, dry_run=dry_run)
         if reconcile else None
     )
 
-    totals = {"ingested": 0, "idempotent": 0, "empty": 0, "skipped": 0}
+    totals = {"ingested": 0, "idempotent": 0, "empty": 0, "skipped": 0,
+              "holes": 0, "would_ingest": 0}
     watermarks: list[str] = []
     report = None
 
@@ -1091,7 +1094,8 @@ def ingest_notion(
             # 안 고쳐진다).
             report = await import_notion(
                 source, tenant, _default_external_ingest_fn,
-                since=since or None, reconcile_fn=reconcile_fn, force=force)
+                since=since or None, reconcile_fn=reconcile_fn, force=force,
+                dry_run=dry_run)
             for k in totals:
                 totals[k] += getattr(report, k, 0) or 0
             if report.watermark:
@@ -1101,18 +1105,29 @@ def ingest_notion(
 
     # **watermark 는 그룹들의 최소값이다.** 다음 증분 실행의 `--since` 로 쓰이므로, 최대값을
     # 내면 뒤처진 그룹의 변경분을 건너뛴다. 최소값은 이미 본 것을 다시 볼 뿐이고 그건 멱등이다.
-    typer.echo(
-        f"ingested={totals['ingested']} idempotent={totals['idempotent']} "
-        f"empty={totals['empty']} skipped={totals['skipped']} "
-        f"watermark={min(watermarks) if watermarks else ''}"
-    )
+    if dry_run:
+        typer.echo(
+            f"would_ingest={totals['would_ingest']} empty={totals['empty']} "
+            f"skipped={totals['skipped']} holes={totals['holes']} "
+            f"watermark={min(watermarks) if watermarks else ''}"
+        )
+    else:
+        typer.echo(
+            f"ingested={totals['ingested']} idempotent={totals['idempotent']} "
+            f"empty={totals['empty']} skipped={totals['skipped']} "
+            f"holes={totals['holes']} watermark={min(watermarks) if watermarks else ''}"
+        )
+    if totals["holes"]:
+        # 부분 본문은 **성공한 적재**로 세어지므로, 여기서 말하지 않으면 아무도 모른다.
+        typer.echo(f"⚠ 읽지 못한 하위 블록 {totals['holes']}개 — 그만큼의 문서가 부분 본문입니다"
+                   " (본문의 '읽지 못한 블록' 표식을 보세요)")
     if reconcile:
         typer.echo(f"pruned={report.pruned} revived={report.revived}")
         if report.refused:
             typer.echo(f"재조정 거부됨: {report.reason}")
             raise typer.Exit(code=2)
-        if dry_run:
-            typer.echo("dry-run — DB 는 변경되지 않았습니다")
+    if dry_run:
+        typer.echo("dry-run — DB 는 변경되지 않았습니다")
 
 
 def _asyncio_run(coro_fn):

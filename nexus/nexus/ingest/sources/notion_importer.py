@@ -12,8 +12,12 @@ import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
+import structlog
+
 from nexus.ingest.sources.base import ConvertedDoc
 from nexus.ingest.sources.notion_reconcile import notion_doc_rid, notion_doc_uri
+
+log = structlog.get_logger(__name__)
 
 # 제목 첫 토큰 → 축-A 타입(결정론적 휴리스틱; LLM 미사용 — nexus 규율). 미매치 NOTE.
 _KEYWORD_TO_TYPE = {
@@ -84,6 +88,11 @@ class ImportReport:
     reason: str = ""
     #: 그림에서 읽어 본문에 넣은 장수 (SPEC-nexus-screenshot-text-extraction).
     images_extracted: int = 0
+    #: 읽지 못한 하위 블록의 총 개수. **0 이 아니면 그만큼의 문서가 부분 본문이다.**
+    #: 예전에는 이런 블록 하나가 페이지를 통째로 `skipped` 로 만들었다.
+    holes: int = 0
+    #: `dry_run` 에서 "적재했을" 페이지 수. 실제 적재는 하지 않았다.
+    would_ingest: int = 0
 
 
 async def _fill_images(conv, tenant: str, source_uri: str = "") -> tuple[str, int]:
@@ -127,6 +136,7 @@ async def import_notion(
     since: str | None = None,
     reconcile_fn: ReconcileFn | None = None,
     force: bool = False,
+    dry_run: bool = False,
 ) -> ImportReport:
     """live_index 페이지를 fetch→csf→ingest. since 이후 변경분만(증분). per-page skip.
 
@@ -154,11 +164,17 @@ async def import_notion(
             if since and le <= since:
                 continue
             conv = source.fetch_markdown(ref)
+            if conv.holes:
+                # 조용히 넘어가지 않는다 — 부분 본문은 사실이고, 사실은 세어져야 한다.
+                report.holes += len(conv.holes)
+                log.warning("notion.partial_body", page_id=page_id, holes=len(conv.holes),
+                            kinds=sorted({h.get("type", "") for h in conv.holes}))
             # ── 2패스: 그림 자리를 추출 블록으로 채운다 ────────────────────────
             # 순회(동기)와 추출(HTTP+LLM, 비동기)을 갈라 둔 이음매다. 꺼져 있으면 자리 표식만
             # 지우고 예전 `![]()` 로 돌아간다 — 추출이 안 도는 배포에서 본문이 표식으로
             # 오염되면 청커가 거기서 갈린다.
-            if conv.images:
+            # **dry_run 은 여기를 지난다** — 추출은 공급자 호출이자 `vision_extractions` 쓰기다.
+            if conv.images and not dry_run:
                 # 참조는 **여기서** 실린다: 이 걷기만이 블록 id 와 문서 uri 를 동시에 들고
                 # 있다 (SPEC-nexus-vision-source-ref §2.1). 저장 시점에 없으면 영원히 없다.
                 conv.markdown, n_extracted = await _fill_images(
@@ -169,6 +185,13 @@ async def import_notion(
             if not conv.markdown.strip():
                 report.empty += 1
                 report.results.append({"page_id": page_id, "skipped": "empty body"})
+                continue
+            if dry_run:
+                # **아무것도 쓰지 않는다.** 도움말이 "DB 는 건드리지 않는다" 라고 적혀 있는데
+                # 예전에는 재조정 계획만 말랐고 **적재는 그대로 썼다**. 계획을 보려던 사람이
+                # 라이브 코퍼스에 쓰게 된다.
+                report.would_ingest += 1
+                report.results.append({"page_id": page_id, "dry_run": True})
                 continue
             # force 를 여기서 흘리지 않으면 (tenant, source_uri, content_hash) dedup 이 이기고,
             # 본문이 안 바뀐 페이지는 제목·메타데이터 수정이 있어도 영원히 idempotent 다.

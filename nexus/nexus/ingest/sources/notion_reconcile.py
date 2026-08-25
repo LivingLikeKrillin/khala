@@ -157,7 +157,10 @@ def make_reconcile_fn(
     async def _reconcile(
         tenant: str, walked_roots: set[str], live_by_rid: dict[str, list[str]]
     ) -> ReconcileOutcome:
-        await backfill_source_roots(tenant, walked_roots, live_by_rid)
+        if not dry_run:
+            # `backfill_source_roots` 는 **쓴다**(prov_inputs 갱신). dry-run 이 DB 를 건드리지
+            # 않는다고 적혀 있으므로 여기도 지난다.
+            await backfill_source_roots(tenant, walked_roots, live_by_rid)
         live_rids = set(live_by_rid)
         scope = await fetch_notion_scope(tenant, walked_roots)
         plan = plan_reconcile(scope, live_rids, threshold=threshold, force=force)
