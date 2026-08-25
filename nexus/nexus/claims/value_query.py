@@ -38,9 +38,13 @@ class ValueQueryService:
                 continue
             r = self.resolver.resolve(c.value_source)
             if not r.found:
+                # 해석기가 **왜** 못 냈는지를 그대로 전한다. "심볼이 없다"(claim 을 고쳐라)와
+                # "모호해서 답하지 않았다"(한정자를 붙여라)와 "코드 경로가 없다"(배포를 고쳐라)는
+                # 처방이 전부 다르다. 한 문장으로 뭉개면 읽는 사람이 어디를 볼지 모른다.
                 out.append(
                     ValueAnswer(c.claim_id, c.statement, None, c.value_source,
-                                "low", False, note="소스 심볼을 코드에서 찾지 못함")
+                                "low", False,
+                                note=r.reason or "소스 심볼을 코드에서 찾지 못함")
                 )
                 continue
             drifted = bool(c.value_symbol_hash) and c.value_symbol_hash != r.symbol_hash

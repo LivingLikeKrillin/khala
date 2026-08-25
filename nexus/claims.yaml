@@ -1,6 +1,9 @@
 # Archon 도메인 claim 시드 (예시 앱(sample-app)의 코드 상수)
 # `nexus claim-seed claims.yaml` — config.code_source.repo_path를 sample-app으로 설정 후.
 # value_source는 대상 코드의 static final 상수. 조회 시점에 현재값을 재읽기.
+# **한정자(`Class.`)는 장식이 아니다** — 그 타입을 선언한 파일에서만 찾는다. 한정자 없이
+# 적었는데 같은 이름이 여러 곳에 다른 값으로 있으면 해석기는 답하지 않고 좁히라고 말한다.
+# 테스트 소스와 빌드 산출물은 값의 출처가 아니다(제외).
 - claim_id: basic-max-projects
   kind: invariant
   concepts: [Basic, 프로젝트]
