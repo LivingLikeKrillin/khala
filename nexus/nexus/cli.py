@@ -950,20 +950,42 @@ def sources_health(tenant: str = typer.Option("default", "--tenant", "-t")) -> N
 
 
 @app.command("entropy-signals")
-def entropy_signals() -> None:
-    """공존 잔차 신호(재수집 덮어쓰기·정확중복·제목충돌·supersession)를 표시.
+def entropy_signals(
+    tenant: str = typer.Option("", "--tenant", "-t", help="이 테넌트만. 비우면 전부"),
+    total_only: bool = typer.Option(False, "--total", help="합계 한 줄만"),
+) -> None:
+    """공존 잔차 신호를 **테넌트별로** 표시.
 
-    migration 001의 v_entropy_signals 뷰를 읽어 4개 신호를 출력. 전역 스냅샷
-    (뷰에 tenant 컬럼 없음 — Slice 2에서 tenant/최근-윈도우 그룹핑 추가).
+    신호 다섯: 재수집 덮어쓰기 · 정확중복쌍 · 제목충돌 · supersession · 신원없는청크
+    (마이그레이션 001 + 034).
+
+    **왜 테넌트별인가.** 이 수는 ADR-0006 이 지정한 demand-pull 방아쇠이고, 여러 SPEC 처분이
+    여기에 걸려 보류돼 있다. 그런데 전역 집계는 버릴 평가 테넌트(`ko_eval_*`·`merge_probe`)를
+    같이 세고 **테넌트를 가로지르는 쌍까지** 셌다 — 2026-08-25 실측에서 전역 정확중복 61,425 대
+    라이브 `default` 0. 무엇을 만들지 정하는 숫자가 그렇게 오염돼 있었다.
     """
 
     async def _do() -> None:
         from nexus import db
 
-        row = await db.fetch_one("SELECT * FROM v_entropy_signals")
-        for k, v in dict(row).items():
-            typer.echo(f"{k}: {v}")
-        await db.close_pool()
+        keys = ("reingest_overwrite_events", "exact_dup_pairs", "title_stem_collisions",
+                "supersessions", "identityless_chunks")
+        try:
+            if not total_only:
+                rows = await db.fetch_all(
+                    "SELECT * FROM v_entropy_signals_by_tenant "
+                    "WHERE ($1 = '' OR tenant = $1) ORDER BY tenant", tenant)
+                if not rows:
+                    typer.echo(f"테넌트 없음: {tenant}" if tenant else "테넌트 없음")
+                for r in rows:
+                    d = dict(r)
+                    typer.echo(f"[{d['tenant']}] " + "  ".join(f"{k}: {d[k]}" for k in keys))
+            if total_only or not tenant:
+                # 합계는 **테넌트별 뷰의 합**이다(034). 가로지르는 쌍은 여기에도 안 들어온다.
+                total = dict(await db.fetch_one("SELECT * FROM v_entropy_signals"))
+                typer.echo("[합계] " + "  ".join(f"{k}: {total[k]}" for k in keys))
+        finally:
+            await db.close_pool()
 
     _run(_do())
 
