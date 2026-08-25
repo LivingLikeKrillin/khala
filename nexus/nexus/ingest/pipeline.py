@@ -20,6 +20,7 @@ from nexus.ingest.chunker import ChunkData, chunk_document
 from nexus.ingest.collector import CollectedFile, collect_files
 from nexus.ingest.title import derive_title
 from nexus.rid import chunk_rid, doc_rid
+from nexus.utils import context_prefix_for
 
 logger = structlog.get_logger(__name__)
 
@@ -151,7 +152,12 @@ def _invalidate_derived() -> str:
     """
     from nexus.index.vector_index import VECTOR_COLUMNS
 
-    changed = "chunks.chunk_text IS DISTINCT FROM EXCLUDED.chunk_text"
+    # **`search_text` 의 입력이 둘이다.** `chunk_text` 와 `context_prefix`(A13 컷오버,
+    # 2026-08-26). 접두사만 바뀐 청크를 여기서 안 잡으면 재임베딩 큐(`WHERE <컬럼> IS NULL`)
+    # 에 안 들어가고 **옛 접두사로 만든 벡터로 검색된다** — 이 함수가 이미 한 번 겪은 버그의
+    # 두 번째 입력판이다.
+    changed = ("chunks.chunk_text IS DISTINCT FROM EXCLUDED.chunk_text"
+               " OR chunks.context_prefix IS DISTINCT FROM EXCLUDED.context_prefix")
     parts = [f"{col} = CASE WHEN {changed} THEN NULL ELSE chunks.{col} END"
              for col in sorted(VECTOR_COLUMNS)]
     parts.append(f"tsvector_ko = CASE WHEN {changed} THEN NULL ELSE chunks.tsvector_ko END")
@@ -212,8 +218,12 @@ async def _save_chunks(
     active로 되살아나 '죽은 문서 아래 살아있는 청크'라는 엔트로피 분열을 만들지 않는다.
     """
     # 부모 문서가 active가 아니면 새/upsert 청크도 살리지 않는다.
-    parent = await db.fetch_one("SELECT status FROM documents WHERE rid = $1", parent_rid)
+    parent = await db.fetch_one(
+        "SELECT status, title FROM documents WHERE rid = $1", parent_rid)
     chunk_status = "active" if (parent is not None and parent["status"] == "active") else "superseded"
+    # 제목은 **색인 접두사의 재료**다 (A13 컷오버). 정본 규칙은 `utils.context_prefix_for`
+    # 하나이고, 실험 팔도 같은 함수를 썼다.
+    doc_title = (parent["title"] if parent is not None else "") or ""
 
     # 기존 청크 soft_delete
     await db.execute(
@@ -235,7 +245,7 @@ async def _save_chunks(
                 created_at, updated_at,
                 doc_rid, section_path, chunk_text,
                 chunk_index, prov_pipeline, prov_inputs,
-                provenance_tier
+                provenance_tier, context_prefix
             ) VALUES (
                 $1, 'chunk', $2, $3::classification_level, 'indexer',
                 $4, $14::source_kind, $5,
@@ -243,10 +253,11 @@ async def _save_chunks(
                 $6, $6,
                 $7, $8, $9,
                 $10, 'indexer-v1', $11,
-                $13::provenance_tier
+                $13::provenance_tier, $15
             )
             ON CONFLICT (rid) DO UPDATE SET
                 chunk_text = EXCLUDED.chunk_text,
+                context_prefix = EXCLUDED.context_prefix,
                 -- **세대 키**. `revive()`·`unsupersede()` 는 "현재 세대만 되살린다" 를
                 -- `chunks.hash = documents.content_hash` 로 표현하고, 그 등식의 근거로
                 -- "pipeline 이 같은 값으로 둘 다 쓴다" 를 든다. 여기 이 줄이 없는 동안
@@ -270,6 +281,7 @@ async def _save_chunks(
             chunk.chunk_index, [parent_rid], chunk_status,
             getattr(chunk, "provenance_tier", "authored"),
             source_kind_for(collected.canonical_uri),
+            context_prefix_for(doc_title, chunk.section_path),
         )
         saved += 1
 
