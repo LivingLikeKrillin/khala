@@ -97,8 +97,35 @@ def image_slot(block_id: str) -> str:
     return f"<!-- khala:vision:slot:{block_id} -->"
 
 
+#: 읽지 못한 하위 블록 자리에 남기는 표식. **본문에 남긴다** — 조용히 지우면 잘린 정책이
+#: 완전한 정책처럼 보이고, 그 위에서 답하는 쪽은 무엇이 빠졌는지 알 방법이 없다.
+#: 블록 id 는 여기 안 넣는다(코퍼스에 남는 텍스트다). 진단용 id 는 `hole_sink` 와 로그에 있다.
+HOLE_NOTE = "> (읽지 못한 블록: {kind} — 원본이 이 integration 에 공유되지 않았습니다)"
+
+
+def _children(children_of, block: dict, hole_sink: list | None) -> list[dict] | None:
+    """자식 블록을 가져온다. 못 가져오면 `None` 을 돌려주고 구멍으로 기록한다.
+
+    **왜 삼키지 않고 가르나.** `synced_block` 의 원본이 이 integration 에 공유돼 있지 않으면
+    Notion 이 404 를 낸다. 예전에는 그 예외가 변환기를 뚫고 올라가 `import_notion` 의
+    per-page `except` 에 잡혔고, **블록 하나 때문에 페이지가 통째로 버려진 뒤 `skipped` 숫자
+    뒤에 묻혔다**(2026-08-25 실측: 조직 정책 문서 4건이 전부 이 이유로 코퍼스에 없었다).
+
+    빈 리스트로 갈음하지 않는 이유도 같다 — 그러면 "자식이 없다" 와 "못 읽었다" 가 같은 값이
+    되고, 그 둘을 가르지 못하는 순간 손실이 다시 조용해진다.
+    """
+    try:
+        return children_of(block["id"])
+    except Exception as exc:  # noqa: BLE001 — 원인 무관하게 나머지 본문을 살린다
+        if hole_sink is not None:
+            hole_sink.append({"block_id": block.get("id", ""),
+                              "type": block.get("type", ""), "error": str(exc)})
+        return None
+
+
 def blocks_to_markdown(blocks: list[dict], children_of=None,
-                       image_sink: list | None = None) -> tuple[str, int]:
+                       image_sink: list | None = None,
+                       hole_sink: list | None = None) -> tuple[str, int]:
     """Notion 블록 리스트 → (markdown, image_count).
 
     `children_of(block_id) -> list[dict]` 를 주면 자식이 있는 블록(표·토글·동기화 블록)을
@@ -108,6 +135,9 @@ def blocks_to_markdown(blocks: list[dict], children_of=None,
     표식을 남긴다. **URL 을 여기서만 잡을 수 있다** — Notion 이 주는 서명 링크는 한 시간이면
     죽으므로, 순회 중에 안 챙기면 나중에 다시 물어야 한다. sink 를 안 주면 예전 그대로
     `![]()` 를 쓴다(추출이 꺼진 배포·기존 테스트).
+
+    `hole_sink` 를 주면 **읽지 못한 하위 블록**을 `{block_id, type, error}` 로 담는다. 그 자리
+    본문에는 `HOLE_NOTE` 가 남고 **나머지 페이지는 살아남는다**. 안 주면 구멍은 표식만 남긴다.
     """
     lines: list[str] = []
     image_count = 0
@@ -162,15 +192,21 @@ def blocks_to_markdown(blocks: list[dict], children_of=None,
             else:
                 lines.append(f"![{alt}]()" if alt else "![]()")
         elif bt == "table" and children_of is not None:
-            lines.extend(_table_rows_to_md(children_of(b["id"])))
+            kids = _children(children_of, b, hole_sink)
+            lines.extend(_table_rows_to_md(kids) if kids is not None
+                         else [HOLE_NOTE.format(kind="표")])
         elif bt in ("toggle", "synced_block", "column_list", "column") and children_of is not None:
             # 접힌 것도 본문이다. 토글 안에 규칙을 넣어 두는 문서가 흔하다.
             if rich:
                 lines.append(_rich_to_md(rich))
-            sub, sub_images = blocks_to_markdown(children_of(b["id"]), children_of, image_sink)
-            image_count += sub_images
-            if sub.strip():
-                lines.append(sub.strip())
+            kids = _children(children_of, b, hole_sink)
+            if kids is None:
+                lines.append(HOLE_NOTE.format(kind=bt))
+            else:
+                sub, sub_images = blocks_to_markdown(kids, children_of, image_sink, hole_sink)
+                image_count += sub_images
+                if sub.strip():
+                    lines.append(sub.strip())
         else:
             # 미지원 블록: 텍스트가 있으면 살리고, 없으면 무시 (무손실).
             # `file`/`video`/`pdf`/`embed`/`bookmark` 는 `rich_text` 가 없고 `caption` 에 글이

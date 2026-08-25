@@ -146,6 +146,7 @@ task ingest:self
 ```bash
 # 먼저 계획만 본다 — DB는 건드리지 않는다
 task ingest:notion ROOTS="<pageId1>,<pageId2>" FLAGS="--reconcile --dry-run"
+# --dry-run 은 **아무것도 쓰지 않는다**(적재·그림추출·prov_inputs 갱신 전부 건너뛴다).
 
 # 확인했으면 적용: 사라진 페이지 soft_delete + 되살아난 페이지 revive
 task ingest:notion ROOTS="<pageId1>,<pageId2>" FLAGS="--reconcile"

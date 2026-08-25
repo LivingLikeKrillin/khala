@@ -304,7 +304,8 @@ Response includes evidence snippets with source URIs and provenance.
 nexus ingest ./docs                         # 문서 인덱싱
 nexus ingest ./docs --force                 # 전체 재인덱싱 (hash 무시)
 nexus ingest-notion --roots "id1,id2"       # Notion 트리 적재 (NOTION_TOKEN 필요)
-nexus ingest-notion --roots "..." --reconcile --dry-run   # 삭제 반영 계획만 확인
+nexus ingest-notion --roots "..." --dry-run             # 계획만 — 적재도 재조정도 쓰지 않는다
+nexus ingest-notion --roots "..." --reconcile --dry-run   # 위 + 삭제 반영 계획까지
 nexus ingest-notion --roots "..." --reconcile             # soft_delete + revive 적용
 # ↑ root 를 웹 소스 콘솔에 등록해 두었다면 CLI 대신 그 화면에서 동기화하는 편이 낫다.
 #   미리보기 → 확인 → 적용 흐름이 붙어 있다.
