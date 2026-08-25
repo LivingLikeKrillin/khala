@@ -42,9 +42,22 @@ from scripts.ko_eval_harness import (  # noqa: E402
     LegResult, collapse_to_documents, score_query, verdict,
 )
 
+#: 기본은 2026-08-15 1회차와 같다 — 그 판정을 재현할 수 있어야 하므로 바꾸지 않는다.
+#: 2회차(2026-08-26)는 `--source default --labels <파일>` 로 **다른 코퍼스·다른 라벨**에 같은
+#: 자를 댄다. 사본을 만들지 않는 이유: 두 벌이 되는 순간 규칙이 갈라지고, 어느 쪽 숫자인지가
+#: 실행 기록 밖에 남는다.
 SOURCE = "ko_eval_packb"
 ARMS = {"a13_a": None, "a13_b": "title"}
 LABELS = Path("/app/tests/eval/local/packb-labels.yaml")
+
+
+def _arg(flag: str, default):
+    """`--flag 값`. argparse 를 안 쓰는 것은 기존 `--vector` 플래그 관례를 그대로 두기 위해서다."""
+    if flag in sys.argv:
+        i = sys.argv.index(flag)
+        if i + 1 < len(sys.argv):
+            return sys.argv[i + 1]
+    return default
 
 
 def prefix_for(title: str, section_path: str) -> str:
@@ -114,7 +127,9 @@ async def leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegResult:
     for q in labels["queries"]:
         if not q.get("answerable"):
             continue
-        hits = await hybrid._bm25_search(q["query"], arm, "INTERNAL", 20)
+        # **다리는 `(순위목록, 1위 원점수)` 를 돌려준다** — PR #292 가 원점수를 되살리면서
+        # 모양이 바뀌었고, 그 뒤로 이 하니스를 아무도 안 돌려서 조용히 썩어 있었다.
+        hits, _top = await hybrid._bm25_search(q["query"], arm, "INTERNAL", 20)
         res.scores.append(score_query(q["id"], collapse_to_documents(hits, chunk_doc), q["gold"]))
     return res
 
@@ -153,7 +168,7 @@ async def vector_leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegRe
     for q in labels["queries"]:
         if not q.get("answerable"):
             continue
-        hits = await hybrid._vector_search(q["query"], svc, arm, "INTERNAL", 20, column=col)
+        hits, _top = await hybrid._vector_search(q["query"], svc, arm, "INTERNAL", 20, column=col)
         res.scores.append(score_query(q["id"], collapse_to_documents(hits, chunk_doc), q["gold"]))
     return res
 
@@ -176,8 +191,13 @@ def compare(a: LegResult, b: LegResult, label: str) -> None:
 
 
 async def main() -> int:
-    labels = yaml.safe_load(LABELS.read_text(encoding="utf-8"))
+    global SOURCE
+    SOURCE = _arg("--source", SOURCE)
+    labels_path = Path(_arg("--labels", str(LABELS)))
+    labels = yaml.safe_load(labels_path.read_text(encoding="utf-8"))
     want_vector = "--vector" in sys.argv
+    print(f"원본 {SOURCE} · 라벨 {labels_path.name} "
+          f"({sum(1 for q in labels['queries'] if q.get('answerable'))}문항)", flush=True)
     await db.get_pool()
     try:
         results, vec_results = {}, {}
@@ -196,10 +216,24 @@ async def main() -> int:
                       f"미스 {sum(1 for s in vr.scores if not s.recall)}",
                       flush=True)
 
-        if want_vector:
-            compare(vec_results["a13_b"], vec_results["a13_a"], "벡터")
-        a, b = results["a13_b"], results["a13_a"]      # a = 후보(제목), b = 현직
-        compare(a, b, "키워드")
+        # **종류별로 따로 센다** (2회차 README 규칙 3). 처치가 겨누는 곳(`fragment`)과
+        # 이미 잘 되는 곳(`control`)을 합쳐 세면, 한쪽의 이득이 다른 쪽의 손해를 덮는다.
+        kinds: dict[str, str] = {q["id"]: q.get("kind", "all") for q in labels["queries"]}
+
+        def _subset(res: LegResult, kind: str) -> LegResult:
+            out = LegResult(leg=f"{res.leg}:{kind}")
+            out.scores = [s for s in res.scores if kinds.get(s.qid) == kind]
+            return out
+
+        groups = sorted({k for k in kinds.values() if k != "all"})
+        for label, ra, rb in ([("벡터", vec_results["a13_b"], vec_results["a13_a"])] if want_vector
+                              else []) + [("키워드", results["a13_b"], results["a13_a"])]:
+            compare(ra, rb, f"{label} · 전체")
+            for kind in groups:
+                sa, sb = _subset(ra, kind), _subset(rb, kind)
+                if sa.scores:
+                    print(f"    ({kind}: 후보 Recall@10 {sa.recall:.3f} / 현직 {sb.recall:.3f})")
+                    compare(sa, sb, f"{label} · {kind}")
     finally:
         for arm in ARMS:
             await db.execute("DELETE FROM chunks WHERE tenant=$1", arm)
