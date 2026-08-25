@@ -318,7 +318,8 @@ nexus graph payment-service                 # 그래프 조회
 nexus graph payment-service -h 2            # 2-hop 그래프
 nexus diff                                  # 설계-관측 diff
 nexus status                                # 시스템 상태
-nexus entropy-signals                       # 공존 잔차 신호 (재수집 덮어쓰기·중복·제목충돌)
+nexus entropy-signals                      # 공존 잔차 신호 — 테넌트별 5개
+nexus entropy-signals --tenant default     # 라이브 코퍼스만 (전역은 평가 테넌트가 삼킨다)
 
 # ── 도메인 값 (Archon) ──
 nexus claim-seed claims.yaml                # 도메인 claim 적재

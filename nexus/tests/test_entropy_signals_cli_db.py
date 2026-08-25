@@ -83,7 +83,11 @@ async def _seed_entropy_state() -> None:
 
 
 def test_view_reflects_seeded_entropy_state():
-    """v_entropy_signals exposes exactly 4 keys and reflects the seeded positive signals."""
+    """v_entropy_signals exposes exactly 5 keys and reflects the seeded positive signals.
+
+    5번째(`identityless_chunks`)는 마이그레이션 034 가 더했다 — 계약을 **의도적으로** 넓힌
+    것이므로 여기 목록도 같이 넓힌다. 목록을 안 고치면 새 신호가 조용히 안 실려도 초록이다.
+    """
     from nexus import db
 
     async def inner():
@@ -96,6 +100,7 @@ def test_view_reflects_seeded_entropy_state():
             "exact_dup_pairs",
             "title_stem_collisions",
             "supersessions",
+            "identityless_chunks",
         }
         assert signals["supersessions"] >= 1
         assert signals["exact_dup_pairs"] >= 1
@@ -141,5 +146,10 @@ def test_entropy_signals_cli_prints_four_signals(monkeypatch):
         "exact_dup_pairs",
         "title_stem_collisions",
         "supersessions",
+        "identityless_chunks",
     ):
         assert key in result.output
+    # 씨앗은 `acme` 테넌트에 있다 — 테넌트 줄이 실제로 나와야 한다(034). 합계만 내면
+    # 고친 것이 화면에 도달하지 않은 것이고, 그 상태로도 위 검사는 통과한다.
+    assert f"[{_TENANT}]" in result.output
+    assert "[합계]" in result.output
