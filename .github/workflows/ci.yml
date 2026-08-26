@@ -270,7 +270,7 @@ jobs:
             -e NEXUS_REQUIRE_MECAB=1 \
             -v "$PWD:/app" -w /app \
             nexus-app:ci python -m pytest -q \
-              tests/test_search_recall.py tests/test_recall_suite_runs.py tests/test_ko_eval_run_db.py \n              tests/test_tokenizer_candidates.py
+              tests/test_search_recall.py tests/test_recall_suite_runs.py tests/test_ko_eval_run_db.py tests/test_tokenizer_candidates.py
 
   observer:
     name: observer (vitest)
