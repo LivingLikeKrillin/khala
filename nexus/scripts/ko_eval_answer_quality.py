@@ -178,14 +178,29 @@ def verdict_segments(answer_text: str) -> list[str]:
             if not _is_break(s) and _VERDICT_OPENER.search(_norm(s))]
 
 
-def asserts_facts(must_contain: list[list[str]] | None, answer_text: str) -> list[bool]:
-    """각 항목이 **선두 또는 결론에서** 주장됐는가. `facts_present` 와 같은 AND/OR 규칙.
+def asserts_value(surfaces: list[str] | None, answer_text: str) -> bool:
+    """**하나의 값**이 선두 또는 결론에서 주장됐는가. `surfaces` 는 그 값의 표기 후보(OR).
 
-    `facts_present(must_contain, answer_text)` 가 *"어딘가에 있다"* 를 재는 자리에서, 이것은
-    *"답으로 내세웠다"* 를 잰다. 둘 다 필요하다 — 전자는 부재 회귀 그물이고, 후자는 개선 게이지다.
+    `facts_present` 가 *"어딘가에 있다"* 를 재는 자리에서 이것은 *"답으로 내세웠다"* 를 잰다.
+    둘 다 필요하다 — 전자는 부재 회귀 그물이고, 후자는 개선 게이지다.
+
+    ⚠ **`must_contain` 에 쓰지 마라.** 인자가 `list[list[str]]` 이 아니라 `list[str]` 인 것은
+    실수가 아니다. 이 자는 *"질문이 물은 값 하나를 답으로 확정했는가"* 만 재고, 여러 항목을
+    AND 로 요구하는 라벨에는 뜻이 없다 — 2026-08-18 정책 8문항에 걸어 봤더니 세 형태로
+    틀렸다:
+
+        p02  "로그인 방식별 개수" 처럼 **나열을 요구하는 질문**은 표가 곧 답이다.
+             이 자는 표를 '늘어놓기' 로 보므로 옳은 답을 떨어뜨린다.
+        p07  요구 항목이 **부차 조건**("충돌을 언급할 것")이면 그것은 결론 자리에 안 온다.
+        p08  `파티 개설` 을 요구하는데 답변은 `파티를 개설` 이라 쓴다 — 표기 문제이지
+             확정 문제가 아니다.
+
+    즉 이 자의 정의역은 **단일 값 질문**이다. 그 밖에서 나온 숫자는 품질이 아니다.
     """
+    if not surfaces:
+        return False
     said = " ".join(lead_segments(answer_text) + verdict_segments(answer_text))
-    return facts_present(must_contain, said)
+    return all(facts_present([list(surfaces)], said))
 
 
 @dataclass

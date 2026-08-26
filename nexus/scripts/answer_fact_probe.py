@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import yaml  # noqa: E402
 
 from nexus import db  # noqa: E402
-from scripts.ko_eval_answer_quality import asserts_facts, facts_present  # noqa: E402
+from scripts.ko_eval_answer_quality import asserts_value, facts_present  # noqa: E402
 
 TENANT = "default"
 CLEARANCE = "INTERNAL"
@@ -80,7 +80,7 @@ async def main() -> int:
             expect = q.get("expect") or []
             ok = any(_norm(e) in nt for e in expect)
             # 2판 — **주장했는가**. 같은 값을 담고도 결론을 안 낸 답변을 1판은 통과시킨다.
-            said = all(asserts_facts([expect], text)) if expect else False
+            said = asserts_value(expect, text)
             # 두 정규화(쉼표 제거 vs 공백 축약)가 갈리는 자리를 드러내 둔다.
             mentioned = all(facts_present([expect], text)) if expect else False
             dis = [d for d in (q.get("distractor") or []) if _norm(d) in nt]

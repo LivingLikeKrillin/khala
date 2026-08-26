@@ -16,13 +16,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from scripts.ko_eval_answer_quality import (  # noqa: E402
-    asserts_facts,
+    asserts_value,
     facts_present,
     lead_segments,
     verdict_segments,
 )
 
 MUST = [["14일"]]
+SURFACES = ["14일"]
 
 #: 결론지은 답변 — 값이 **선두**에 선다.
 CONCLUDED = """**회의실은 최대 14일 전부터 예약할 수 있습니다.**
@@ -57,8 +58,8 @@ def test_the_pair_is_split():
     """**가장 중요한 대조군.** 부분일치는 둘 다 통과시킨다 — 그것이 1판의 결함이었다."""
     assert all(facts_present(MUST, CONCLUDED)) is True
     assert all(facts_present(MUST, HEDGED)) is True          # 1판: 구별 못 함
-    assert all(asserts_facts(MUST, CONCLUDED)) is True
-    assert all(asserts_facts(MUST, HEDGED)) is False         # 2판: 갈린다
+    assert (asserts_value(SURFACES, CONCLUDED)) is True
+    assert (asserts_value(SURFACES, HEDGED)) is False         # 2판: 갈린다
 
 
 def test_a_verdict_at_the_end_counts_even_when_the_lead_defers():
@@ -75,7 +76,7 @@ def test_a_verdict_at_the_end_counts_even_when_the_lead_defers():
 따라서 규정의 **14일**이 현행 기준이고, 안내문의 30일은 폐기된 값입니다.
 """
     assert all(facts_present(MUST, text)) is True
-    assert all(asserts_facts(MUST, text)) is True
+    assert (asserts_value(SURFACES, text)) is True
 
 
 def test_a_value_quoted_as_the_previous_policy_is_not_an_assertion():
@@ -93,7 +94,7 @@ def test_a_value_quoted_as_the_previous_policy_is_not_an_assertion():
 **요약**: 개정 이후 기준은 **30일 전**입니다.
 """
     assert all(facts_present(MUST, text)) is True
-    assert all(asserts_facts(MUST, text)) is False
+    assert (asserts_value(SURFACES, text)) is False
 
 
 def test_a_table_row_alone_is_not_an_assertion():
@@ -105,14 +106,14 @@ def test_a_table_row_alone_is_not_an_assertion():
 | 규정 | 14일 |
 """
     assert all(facts_present(MUST, text)) is True
-    assert all(asserts_facts(MUST, text)) is False
+    assert (asserts_value(SURFACES, text)) is False
 
 
 def test_a_lead_heading_does_not_end_the_lead():
     """`## 답변` 으로 여는 답변의 선두는 그 다음 산문이다 — 헤딩은 전환이 아니라 머리말이다."""
     text = "## 답변\n\n최대 **14일** 전부터 예약할 수 있습니다.\n\n---\n\n| 출처 | 값 |\n|---|---|\n"
     assert lead_segments(text)
-    assert all(asserts_facts(MUST, text)) is True
+    assert (asserts_value(SURFACES, text)) is True
 
 
 def test_the_hole_this_ruler_admits_to():
@@ -120,9 +121,30 @@ def test_the_hole_this_ruler_admits_to():
     다음 판이 이것을 고치면 이 테스트가 먼저 빨간불이 되어 알려 준다."""
     text = "여러 근거가 있습니다.\n\n따라서 **14일**일 가능성이 있습니다.\n"
     assert verdict_segments(text)
-    assert all(asserts_facts(MUST, text)) is True     # ⚠ 통과한다. 알고 있다.
+    assert (asserts_value(SURFACES, text)) is True     # ⚠ 통과한다. 알고 있다.
 
 
 def test_an_empty_answer_asserts_nothing():
-    assert all(asserts_facts(MUST, "")) is False
+    assert (asserts_value(SURFACES, "")) is False
     assert lead_segments("") == []
+
+
+def test_a_question_that_asks_for_a_breakdown_is_outside_this_ruler():
+    """**정의역 밖을 실물로 박아 둔다.** 나열을 요구하는 질문에서는 표가 곧 답이다 —
+    이 자는 표를 '늘어놓기' 로 보므로 옳은 답을 떨어뜨린다. 규칙을 늘려 표를 받아들이면
+    `HEDGED` 가 같이 통과하므로(값이 표에 있다) **고칠 것이 아니라 안 쓸 자리**다.
+    2026-08-18 정책 8문항(홀드아웃)에 걸어 보고 알았다."""
+    text = """로그인 방식에 따른 한도는 다음과 같습니다.
+
+| 로그인 방식 | 생성 가능 수 |
+|---|---|
+| 비로그인 | 불가 |
+| 지갑 연동 | 최대 10개 |
+"""
+    assert all(facts_present([["10개"]], text)) is True
+    assert asserts_value(["10개"], text) is False     # ⚠ 오탐. 이 자의 질문이 아니다.
+
+
+def test_the_ruler_takes_one_value_not_a_must_contain():
+    """서명이 곧 정의역이다 — `list[list[str]]` 을 받으면 조용히 틀린 답을 낸다."""
+    assert asserts_value([], "무엇이든") is False
