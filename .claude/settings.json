@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec nexus-app python -m nexus.cli query *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/knowledge_access.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
