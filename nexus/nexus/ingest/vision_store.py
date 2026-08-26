@@ -135,7 +135,7 @@ async def _fetch_bytes(url: str) -> tuple[bytes, str]:
 
 
 async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict,
-               source_uri: str = "") -> tuple[str, str]:
+               source_uri: str = "", spend=None) -> tuple[str, str]:
     """이미지 하나 → (slot, 본문에 넣을 markdown)."""
     block_id, url = image["block_id"], image.get("url") or ""
     slot = f"<!-- khala:vision:slot:{block_id} -->"
@@ -170,7 +170,12 @@ async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict,
         return slot, vision.build_block(vision.Extraction(
             stored["text"] or "", identity, sha, truncated=bool(stored.get("truncated"))))
 
-    e = await vision.read_image(data, media_type, llm_svc)
+    # **캐시 적중은 여기 안 온다** — 위에서 이미 돌아갔다. 그러니 이 줄에 닿은 것은 전부
+    # 공급자로 나간 호출이고, 장부에 오르는 것도 그것뿐이다.
+    usage: list | None = [] if spend is not None else None
+    e = await vision.read_image(data, media_type, llm_svc, usage_out=usage)
+    for u in (usage or []):
+        spend.add(u, kind="vision")
     e = replace(e, block_id=block_id, source_uri=source_uri)
     if not e.ok:
         await save(tenant, e)
@@ -196,11 +201,14 @@ async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict,
 
 async def apply(markdown: str, images: list[dict], *, tenant: str, llm_svc,
                 pii_patterns: dict | None = None,
-                source_uri: str = "") -> tuple[str, int]:
+                source_uri: str = "", spend=None) -> tuple[str, int]:
     """2패스의 두 번째. 자리 표식을 추출 블록으로 바꾼다. → (markdown, 추출된 장수)
 
     한 번에 몇 장씩 읽는지는 제한한다 — 44장을 동시에 던지면 공급자 rate limit 에 걸리고,
     직렬로 읽으면 첫 실행이 길어진다.
+
+    `spend`(`llm.dev_spend.Spend`)를 주면 **공급자로 나간 판독마다** 한 건씩 오른다. 캐시 적중과
+    가져오기 실패는 오르지 않는다 — 그 둘은 호출이 아니다.
     """
     if not images:
         return markdown, 0
@@ -215,7 +223,7 @@ async def apply(markdown: str, images: list[dict], *, tenant: str, llm_svc,
 
     async def _guarded(im):
         async with sem:
-            return await _one(im, tenant, llm_svc, pii_patterns or {}, source_uri)
+            return await _one(im, tenant, llm_svc, pii_patterns or {}, source_uri, spend)
 
     results = await asyncio.gather(*(_guarded(im) for im in todo), return_exceptions=True)
 

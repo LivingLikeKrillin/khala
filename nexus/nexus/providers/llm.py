@@ -127,7 +127,8 @@ class _AnthropicBackend:
         )
 
     async def vision_extract(
-        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int
+        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int,
+        usage_out: list | None = None,
     ) -> str:
         """이미지 1장 → 텍스트. **tool 정의 없음, 경로 없음, 이미지 1개** (ADR-0010 §6).
 
@@ -143,6 +144,10 @@ class _AnthropicBackend:
             ]}],
         )
         text = resp.content[0].text if resp.content else ""
+        if usage_out is not None:
+            u = getattr(resp, "usage", None)
+            usage_out.append(Usage(getattr(u, "input_tokens", None),
+                                   getattr(u, "output_tokens", None), None, self.model))
         # **stop_reason 을 함께 돌려준다.** 이걸 버리면 max_tokens 에서 잘린 응답이 완결된 추출과
         # 구별되지 않는다 — 조밀한 명세표가 절반만 담긴 채 "완전한 추출" 로 여섯 hop 을 통과한다.
         return text, getattr(resp, "stop_reason", None)
@@ -191,7 +196,8 @@ class _ClaudeCodeBackend:
         return LLMResult(text=resp.json()["text"], usage=Usage(None, None, None, self.model))
 
     async def vision_extract(
-        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int
+        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int,
+        usage_out: list | None = None,
     ) -> tuple[str, str | None]:
         """이미지 1장 → 텍스트. **키 없이, 문은 다 닫힌 채로.**
 
@@ -211,6 +217,9 @@ class _ClaudeCodeBackend:
                       "media_type": media_type, "model": self.model},
             )
         resp.raise_for_status()
+        if usage_out is not None:
+            # 브리지는 토큰을 안 준다 → 토큰 미상. **호출은 세되 값은 지어내지 않는다.**
+            usage_out.append(Usage(None, None, None, self.model))
         return resp.json()["text"], None
 
     async def stream(
@@ -247,7 +256,8 @@ class _GeminiBackend:
             "Gemini 백엔드는 그림 판독 전용이다 — 답변 생성은 NEXUS_LLM_PROVIDER 가 정한다")
 
     async def vision_extract(
-        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int
+        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int,
+        usage_out: list | None = None,
     ) -> tuple[str, str | None]:
         """이미지 1장 → (텍스트, 절단 사유).
 
@@ -271,6 +281,14 @@ class _GeminiBackend:
         if resp.status_code != 200:
             raise RuntimeError(f"Gemini {resp.status_code}: {resp.text[:300]}")
         data = resp.json()
+        if usage_out is not None:
+            # `usageMetadata` 는 **사고 토큰을 출력에서 뺀 채** 준다. 빼고 세면 가장 비싼 부분을
+            # 안 세게 된다 — `thinkingLevel: minimal` 이어도 0 이 아니다.
+            m = data.get("usageMetadata") or {}
+            out = m.get("candidatesTokenCount")
+            if out is not None:
+                out += m.get("thoughtsTokenCount") or 0
+            usage_out.append(Usage(m.get("promptTokenCount"), out, None, self.model))
         text, stop = "", None
         for cand in data.get("candidates", []):
             stop = cand.get("finishReason") or stop
@@ -329,7 +347,8 @@ class LLMService:
         return (await self.generate_full(system_prompt, user_message, max_tokens)).text
 
     async def vision_extract(
-        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int = 2048
+        self, system_prompt: str, image_b64: str, media_type: str, max_tokens: int = 2048,
+        usage_out: list | None = None,
     ) -> str:
         """그림에서 텍스트를 읽는다 (SPEC-nexus-screenshot-text-extraction §4.2).
 
@@ -340,7 +359,19 @@ class LLMService:
         if fn is None:
             raise NotImplementedError(
                 f"{type(self._backend).__name__} 는 이미지를 받지 못한다.")
-        return await fn(system_prompt, image_b64, media_type, max_tokens)
+        if usage_out is None:
+            return await fn(system_prompt, image_b64, media_type, max_tokens)
+        # 답변 경로(`stream`)와 **같은 모양**으로 값을 채운다: 백엔드는 토큰만 주고 값은 여기서
+        # 매긴다. 판독 모델이 단가표에 없으면 `cost_usd` 는 None 이다 — 그 None 이 "공짜였다" 가
+        # 아니라 **"값을 모른다"** 를 뜻하고, 그 구분을 `Spend.priced` 가 들고 간다.
+        sink: list = []
+        try:
+            return await fn(system_prompt, image_b64, media_type, max_tokens, sink)
+        finally:
+            if sink:
+                u = sink[0]
+                usage_out.append(replace(u, cost_usd=compute_cost(
+                    u.input_tokens, u.output_tokens, self.model, self._pricing)))
 
     async def stream(
         self, system_prompt: str, user_message: str, max_tokens: int = 4096,

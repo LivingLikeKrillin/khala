@@ -83,10 +83,12 @@ async def _seed_entropy_state() -> None:
 
 
 def test_view_reflects_seeded_entropy_state():
-    """v_entropy_signals exposes exactly 5 keys and reflects the seeded positive signals.
+    """v_entropy_signals exposes exactly 6 keys and reflects the seeded positive signals.
 
-    5번째(`identityless_chunks`)는 마이그레이션 034 가 더했다 — 계약을 **의도적으로** 넓힌
-    것이므로 여기 목록도 같이 넓힌다. 목록을 안 고치면 새 신호가 조용히 안 실려도 초록이다.
+    5번째(`identityless_chunks`)는 마이그레이션 034 가, 6번째(`reingest_overwrite_docs`)는
+    035 가 더했다 — 계약을 **의도적으로** 넓힌 것이므로 여기 목록도 같이 넓힌다. 목록을 안
+    고치면 새 신호가 조용히 안 실려도 초록이다. (`==` 인 것도 그 이유다: 컬럼이 소리 없이
+    생기거나 사라지면 여기서 걸린다 — 실제로 035 를 이 검사가 잡았다.)
     """
     from nexus import db
 
@@ -97,6 +99,7 @@ def test_view_reflects_seeded_entropy_state():
         signals = dict(row)
         assert set(signals) == {
             "reingest_overwrite_events",
+            "reingest_overwrite_docs",
             "exact_dup_pairs",
             "title_stem_collisions",
             "supersessions",
@@ -105,6 +108,8 @@ def test_view_reflects_seeded_entropy_state():
         assert signals["supersessions"] >= 1
         assert signals["exact_dup_pairs"] >= 1
         assert signals["reingest_overwrite_events"] >= 1
+        # 분모는 분자를 못 넘는다 — 넘으면 DISTINCT 가 엉뚱한 것을 세고 있다는 뜻이다.
+        assert 1 <= signals["reingest_overwrite_docs"] <= signals["reingest_overwrite_events"]
 
     _run(inner)
 

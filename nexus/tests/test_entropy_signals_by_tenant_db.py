@@ -79,6 +79,47 @@ async def _by_tenant() -> dict[str, dict]:
     return {r["tenant"]: dict(r) for r in rows}
 
 
+# ── 분모: 이벤트 수는 문서 수가 아니다 (035) ──────────────────────────────────────
+
+def test_repeated_overwrites_of_one_document_are_one_document():
+    """**이 신호의 남은 오염이 여기 있었다.** 2026-08-26 라이브 `default`: 이벤트 53 · 문서 18,
+    그중 38건이 사흘에 몰려 있었다 — 코퍼스가 흔들린 것이 아니라 **같은 열여덟 개를 우리가 다시
+    적재한** 수다. 이벤트만 읽으면 방아쇠가 부풀려진 수를 읽는다."""
+    async def inner():
+        from nexus import db
+
+        for old, new in (("h1", "h2"), ("h2", "h3"), ("h3", "h4")):
+            await db.execute(
+                "INSERT INTO doc_reingest_events (rid, tenant, old_content_hash, "
+                "new_content_hash) VALUES ($1, $2, $3, $4)", "doc_churn", _A, old, new)
+        await db.execute(
+            "INSERT INTO doc_reingest_events (rid, tenant, old_content_hash, "
+            "new_content_hash) VALUES ($1, $2, $3, $4)", "doc_other", _A, "h1", "h2")
+        sig = await _by_tenant()
+        assert sig[_A]["reingest_overwrite_events"] == 4
+        assert sig[_A]["reingest_overwrite_docs"] == 2
+
+    _run(inner)
+
+
+def test_the_document_count_stays_inside_its_tenant():
+    """rid 는 테넌트 안에서만 뜻을 가진다 — 그래서 전역 합이 곧 문서 수다."""
+    async def inner():
+        from nexus import db
+
+        for tenant in (_A, _B):
+            await db.execute(
+                "INSERT INTO doc_reingest_events (rid, tenant, old_content_hash, "
+                "new_content_hash) VALUES ($1, $2, $3, $4)", "doc_same_rid", tenant, "a", "b")
+        sig = await _by_tenant()
+        assert sig[_A]["reingest_overwrite_docs"] == 1
+        assert sig[_B]["reingest_overwrite_docs"] == 1
+        total = dict(await db.fetch_one("SELECT * FROM v_entropy_signals"))
+        assert total["reingest_overwrite_docs"] >= 2
+
+    _run(inner)
+
+
 # ── 대조군: 테넌트를 가로지르는 중복은 공존이 아니다 ────────────────────────────────
 
 def test_cross_tenant_duplicate_is_not_counted():
