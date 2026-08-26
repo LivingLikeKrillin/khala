@@ -129,6 +129,23 @@ tasks:
       - cp ../adr/ADR-0005-component-naming-rename-and-forward-mapping.md .self-docs/khala-component-naming.md
       - docker compose -f docker-compose.yml exec -T nexus-app python -m nexus.cli ingest /app/.self-docs --tenant "{{.TENANT}}"
 
+  # 에이전트가 조직 지식을 꺼내는 문. **이 문은 두 달간 0회 쓰였다** — 없어서가 아니라
+  # 부를 방법이 없어서였다(루트 CLAUDE.md 부재 · `.mcp.json` 은 사라진 모듈을 가리킴 ·
+  # 컨테이너에 mcp 미설치). 그동안 에이전트는 같은 답을 psql·grep 으로 얻었고, 그건 인용도
+  # 등급도 없는 답이다.
+  #
+  # 테넌트가 둘이라는 것이 이 명령의 핵심이다:
+  #   default      제품 정책(파티룸·플레이리스트·로그인…) — 사람이 슬랙에서 닿는 코퍼스
+  #   design_docs  팀 설계·PR 구현 계획·ADR·리팩터링 플랜 — **청크 1519, default 의 3배**
+  # 슬랙 봇은 토큰 하나 = 테넌트 하나라 후자를 못 본다. CLI 는 본다.
+  ask:
+    desc: '조직 지식 질의 — task ask -- "질문" [TENANT=design_docs] [NOANSWER=1]'
+    dir: nexus
+    vars:
+      TENANT: '{{.TENANT | default "default"}}'
+    cmds:
+      - docker compose -f docker-compose.yml exec -T nexus-app python -m nexus.cli query "{{.CLI_ARGS}}" --tenant "{{.TENANT}}" {{if .NOANSWER}}--no-answer{{end}}
+
   # ---- aggregate ----------------------------------------------------------
   test:
     desc: Run all subproject test suites (nexus, observer, arbiter, probe, docs)

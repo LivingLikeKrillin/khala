@@ -102,6 +102,11 @@ jobs:
       - name: That scan has teeth (controls, including ones that must NOT fire)
         run: python -m pytest tests/test_fingerprint_scan.py -q
 
+      # 에이전트가 조직 지식을 khala 로 꺼냈는지 우회했는지 세는 분류기. 양방향 대조군이
+      # 있어야 뜻이 있다 — 우회를 못 세면 비율이 언제나 1.0 이 된다.
+      - name: The agent-door counter classifies both directions
+        run: python -m pytest tests/test_knowledge_access.py -q
+
   lint:
     name: lint (ruff)
     runs-on: ubuntu-latest
