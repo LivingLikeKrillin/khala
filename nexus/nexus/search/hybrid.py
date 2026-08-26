@@ -497,15 +497,34 @@ async def _fill_sections(
 
     채움은 보강이다. 이게 죽었다고 검색 결과까지 버리면, 있던 답도 못 준다.
     """
-    from nexus.search.section_fill import fill_for_docs, saturated_docs
+    from nexus.search.section_fill import (
+        fill_for_docs,
+        fill_for_sections,
+        hit_sections,
+        saturated_docs,
+    )
 
     docs = saturated_docs(hits, per_doc_cap)
-    if not docs:
-        return []
+    exclude = {h.rid for h in hits}
     try:
-        rows = await fill_for_docs(tenant, clearance, docs, {h.rid for h in hits})
+        rows = await fill_for_docs(tenant, clearance, docs, exclude) if docs else []
+
+        # **상한을 넘는 문서는 방아쇠가 다르다.** `fill_for_docs` 가 그 문서를 통째로 빼므로,
+        # 포화를 기다리면 그 부류는 **영영 아무 맥락도 못 받는다**. 그리고 포화는 오히려 덜
+        # 걸린다 — A13 컷오버로 파편이 패킷 자리를 나눠 가지면서 큰 정책 문서의 몫이 상한 아래로
+        # 내려갔다(2026-08-26 실측: 3/5). 그래서 큰 문서에서는 **히트가 앉은 절**을 포화와
+        # 무관하게 완성한다. 절을 고르는 것이 아니라 검색이 이미 고른 절이다.
+        #
+        # 그날 이것이 없어서 생긴 일: 어떤 표가 낡았다고 알리는 문단이 그 표와 같은 절에
+        # 있었는데(chunk 2·6) 문서가 32청크라 빠졌고, 답변이 낡은 숫자를 정본으로 읽었다.
+        sections = hit_sections(hits)
+        if sections:
+            rows += await fill_for_sections(
+                tenant, clearance, sections, exclude | {r["rid"] for r in rows})
     except Exception as e:  # noqa: BLE001 — 보강 실패가 검색을 죽이면 안 된다
         logger.warning("section_fill_failed", error=str(e), docs=len(docs))
+        return []
+    if not rows:
         return []
 
     return [SearchHit(
