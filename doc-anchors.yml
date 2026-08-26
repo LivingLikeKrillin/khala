@@ -52,6 +52,7 @@ docs:
   # 실제 패키지 10개가 트리에 없는 채로 늘어 있었다.
   - doc: nexus/CLAUDE.md
     sources:
+      - nexus/scripts/ko_eval_answer_quality.py
       - nexus/nexus/search/hybrid.py
       - nexus/nexus/providers/embedding.py
       - nexus/nexus/providers/llm.py
@@ -104,3 +105,13 @@ docs:
 
   - doc: docs/src/content/docs/ko/tools/probe.md
     sources: *probe_public
+
+  # 답변 채점 규칙은 **자를 서술하는 문서**다 — 그 자가 무엇을 통과시키는지가 여기 적혀 있고,
+  # 규칙이 코드에서 움직이면 이 문서가 먼저 거짓말을 한다. 1판이 정확히 그렇게 낡았다:
+  # "부분일치로 본다" 는 서술은 맞았지만 그 서술이 가리키는 한계를 아무도 안 읽었다.
+  - doc: nexus/tests/eval/answer-facts/README.md
+    sources:
+      - nexus/scripts/ko_eval_answer_quality.py
+      - nexus/scripts/answer_fact_probe.py
+      - nexus/nexus/llm/prompts.py
+      - nexus/nexus/search/section_fill.py

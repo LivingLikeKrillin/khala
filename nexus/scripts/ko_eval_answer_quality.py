@@ -125,6 +125,84 @@ def facts_present(must_contain: list[list[str]] | None, text: str) -> list[bool]
     return [any(_norm(alt) in body for alt in group) for group in (must_contain or [])]
 
 
+#: **언급과 주장은 다르다.** 2026-08-26 에 이 구분이 없어서 자가 천장에 붙었다.
+#:
+#: 같은 질문에 두 답변이 나왔다. 하나는 *"…4,000점입니다"* 로 열고 낡은 값을 기각했고, 다른
+#: 하나는 표에 `개별 문서 | 4,000점` 이라고 **적어 놓고** *"확인 전까지는 어느 수치도 단정할 수
+#: 없습니다"* 로 닫았다. 부분일치 채점기는 **둘 다 통과시킨다** — 값이 텍스트에 있기 때문이다.
+#: 그래서 절 채움(#318)을 껐다 켜도 15/15 가 그대로였다: 자가 처치를 못 봤다.
+#:
+#: 여기서 재는 것은 **답변이 그 값을 자기 답으로 내세웠는가**다. 두 자리만 본다:
+#:
+#:   선두   시스템 프롬프트가 요구하는 자리 — "핵심 답변을 먼저 제시하세요"
+#:   결론   접속 부사가 여는 마무리 — "따라서 …", "요약: …"
+#:
+#: **왜 두 자리인가.** 선두만 보는 판을 30건에 걸었더니 결론에서 값을 확정하는 답변
+#: (선두는 *"근거들 사이에 충돌이 있으며"* 로 열고 끝에서 *"따라서 …10점이 정본"*)을 떨어뜨렸다.
+#: 반대로 결론만 보면 선두에서 답하고 끝에 참고를 붙이는 답변을 놓친다. 둘의 합집합이 30건
+#: 손라벨과 일치했다 — 그 실측은 `tests/eval/answer-facts/README.md` 에 있다.
+#:
+#: ⚠ **이것도 어휘 규칙이다.** *"따라서 4,000점일 가능성이 있습니다"* 는 통과한다. 이 자는
+#: **자리**를 재지 확신을 재지 않는다. 뚫리는 문구는 테스트에 실물로 박아 둔다.
+_VERDICT_OPENER = re.compile(r"(따라서|그러므로|결론적으로|정리하면|요약|최종적으로|즉,)")
+
+
+def _is_break(seg: str) -> bool:
+    """표·인용·구분선·헤딩 — **산문이 끊기는 자리**. 근거를 늘어놓는 부분이 여기서 시작한다."""
+    t = seg.strip()
+    return bool(t) and (t.startswith("|") or t.startswith(">") or t.startswith("#")
+                        or bool(re.fullmatch(r"[-*_=\s]{3,}", t)))
+
+
+def lead_segments(answer_text: str) -> list[str]:
+    """**선두** — 앞머리 헤딩을 건너뛴 뒤, 첫 구조 전환(표·인용·구분선·헤딩)까지의 산문.
+
+    답변 형식 계약이 이 자리를 정한다(`llm/prompts.py`: "핵심 답변을 먼저 제시하세요").
+    구조 전환 뒤부터는 근거를 **늘어놓는** 자리이고, 늘어놓기는 주장이 아니다.
+    """
+    out: list[str] = []
+    for seg in segments(answer_text):
+        if not seg.strip():
+            continue
+        if _is_break(seg):
+            if out:            # 산문이 시작된 뒤의 전환 = 선두 끝
+                break
+            continue           # 앞머리 헤딩·구분선은 건너뛴다
+        out.append(seg)
+    return out
+
+
+def verdict_segments(answer_text: str) -> list[str]:
+    """**결론** — 접속 부사가 여는 세그먼트. 표 행·인용문은 결론이 아니다."""
+    return [s for s in segments(answer_text)
+            if not _is_break(s) and _VERDICT_OPENER.search(_norm(s))]
+
+
+def asserts_value(surfaces: list[str] | None, answer_text: str) -> bool:
+    """**하나의 값**이 선두 또는 결론에서 주장됐는가. `surfaces` 는 그 값의 표기 후보(OR).
+
+    `facts_present` 가 *"어딘가에 있다"* 를 재는 자리에서 이것은 *"답으로 내세웠다"* 를 잰다.
+    둘 다 필요하다 — 전자는 부재 회귀 그물이고, 후자는 개선 게이지다.
+
+    ⚠ **`must_contain` 에 쓰지 마라.** 인자가 `list[list[str]]` 이 아니라 `list[str]` 인 것은
+    실수가 아니다. 이 자는 *"질문이 물은 값 하나를 답으로 확정했는가"* 만 재고, 여러 항목을
+    AND 로 요구하는 라벨에는 뜻이 없다 — 2026-08-18 정책 8문항에 걸어 봤더니 세 형태로
+    틀렸다:
+
+        p02  "로그인 방식별 개수" 처럼 **나열을 요구하는 질문**은 표가 곧 답이다.
+             이 자는 표를 '늘어놓기' 로 보므로 옳은 답을 떨어뜨린다.
+        p07  요구 항목이 **부차 조건**("충돌을 언급할 것")이면 그것은 결론 자리에 안 온다.
+        p08  `파티 개설` 을 요구하는데 답변은 `파티를 개설` 이라 쓴다 — 표기 문제이지
+             확정 문제가 아니다.
+
+    즉 이 자의 정의역은 **단일 값 질문**이다. 그 밖에서 나온 숫자는 품질이 아니다.
+    """
+    if not surfaces:
+        return False
+    said = " ".join(lead_segments(answer_text) + verdict_segments(answer_text))
+    return all(facts_present([list(surfaces)], said))
+
+
 @dataclass
 class AnswerScore:
     qid: str
