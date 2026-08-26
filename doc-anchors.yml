@@ -52,6 +52,7 @@ docs:
   # 실제 패키지 10개가 트리에 없는 채로 늘어 있었다.
   - doc: nexus/CLAUDE.md
     sources:
+      - nexus/scripts/ko_eval_answer_quality.py
       - nexus/nexus/search/hybrid.py
       - nexus/nexus/providers/embedding.py
       - nexus/nexus/providers/llm.py
