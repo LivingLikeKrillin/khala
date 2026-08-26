@@ -83,6 +83,26 @@ class SearchResult:
     confidence: Confidence = field(default_factory=Confidence)
 
 
+#: `ts_rank_cd` 의 **길이 정규화 비트마스크**. `1` = 점수를 `1 + log(문서 길이)` 로 나눈다.
+#:
+#: 오래 `0`(정규화 없음)이었고, 커버 밀도는 매치 수에 비례하므로 **긴 청크가 이겼다.**
+#: 2026-08-26 실측: 질의 하나에 매칭 140건인데 1위가 1,228자짜리(점수 4.700)이고 정답인
+#: 19자짜리 행은 **48위**(0.400)였다 — 못 찾은 게 아니라 `bm25_top_k`(20) 밖으로 밀렸고,
+#: 그래서 RRF 에 한쪽 다리 점수만 들고 들어가 융합에서 탈락했다.
+#:
+#: 다섯 후보를 **제품 경로**(hybrid Recall@10)로 쟀다 —
+#: `tests/eval/bm25-normalization/README.md`. 사전등록한 바는 "파편이 오르고 대조군이 안
+#: 떨어질 것" 이었고, `1` 과 `16` 이 통과, `2`(길이로 나눔)는 파편에 제일 좋았지만 **대조군
+#: Recall 을 1.000 → 0.917 로 떨어뜨려 기각**됐다. `1` 과 `16` 은 그 표본에서 구별되지 않았다.
+#:
+#: ⚠ **유의성은 주장하지 않는다**: 5승 0패 28무로 방향은 안 뒤집혔지만 불일치쌍이 문턱(6)에
+#: 하나 모자란다. 그리고 코퍼스 하나에서 쟀다. 되돌리려면 이 값을 `0` 으로 두면 된다.
+#:
+#: `SPEC-nexus-ranking-precision` §4.1 은 정규화 없는 `ts_rank_cd` 를 골랐다. 이 값은 그
+#: 결정의 개정이고, 근거는 `SPEC-nexus-bm25-length-normalization` 에 있다.
+BM25_LENGTH_NORMALIZATION = 1
+
+
 async def _bm25_search(
     query: str,
     tenant: str,
@@ -109,7 +129,9 @@ async def _bm25_search(
 
     rows = await db.fetch_all(
         """
-        SELECT c.rid, ts_rank_cd(c.tsvector_ko, to_tsquery('simple', $1)) as rank_score
+        SELECT c.rid,
+               ts_rank_cd(c.tsvector_ko, to_tsquery('simple', $1),
+                          $5) as rank_score
         FROM chunks c
         WHERE c.tsvector_ko @@ to_tsquery('simple', $1)
           AND c.tenant = $2
@@ -124,7 +146,7 @@ async def _bm25_search(
         ORDER BY rank_score DESC, c.rid ASC
         LIMIT $4
         """,
-        tsquery, tenant, clearance, top_k,
+        tsquery, tenant, clearance, top_k, BM25_LENGTH_NORMALIZATION,
     )
 
     # 매칭 0건은 **재서 0점**이다(위 참조). 안 잰 것이 아니다.
