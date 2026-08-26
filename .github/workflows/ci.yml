@@ -257,6 +257,12 @@ jobs:
         # own five-document fixture; test_ko_eval_run_db measures the 265-document Korean pack
         # against floors pinned to a pack and label revision. Different corpora, different floors,
         # no precedence between them (SPEC-nexus-korean-retrieval-eval §3).
+        #
+        # test_tokenizer_candidates is here for the same reason: its assertions about morphemes
+        # are `skipif(no mecab)`, and the unit job has no mecab — so on that job they are not a
+        # weaker check, they are **no check at all**. The assertion that candidate tokenizers
+        # only ever *add* tokens is what would have caught the alignment bug that silently threw
+        # away five morphemes and made a whole measurement void (2026-08-26).
         run: |
           docker run --rm --network host \
             -e NEXUS_TEST_DB_URL=postgresql://nexus:nexus@localhost:5432/nexus_test \
@@ -264,7 +270,7 @@ jobs:
             -e NEXUS_REQUIRE_MECAB=1 \
             -v "$PWD:/app" -w /app \
             nexus-app:ci python -m pytest -q \
-              tests/test_search_recall.py tests/test_recall_suite_runs.py tests/test_ko_eval_run_db.py
+              tests/test_search_recall.py tests/test_recall_suite_runs.py tests/test_ko_eval_run_db.py tests/test_tokenizer_candidates.py
 
   observer:
     name: observer (vitest)
