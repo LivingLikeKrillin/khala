@@ -70,7 +70,7 @@ class ReembedSummary:
 
 async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
                        tenant: str | None = None,
-                       model: str | None = None) -> list[tuple[str, str, str]]:
+                       model: str | None = None) -> list[tuple[str, str, str, str | None]]:
     """아직 이 세대의 벡터가 없는 활성 청크. **이 모델의** waiver 로 빠진 것만 제외한다.
 
     `model` 을 주면 그 모델의 서명만 면제로 친다. 안 주면 옛 동작(모델 무시) — 호출부가
@@ -94,7 +94,7 @@ async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
     col = resolve_column(column)
     rows = await db.fetch_all(
         f"""
-        SELECT c.rid, c.chunk_text, c.section_path
+        SELECT c.rid, c.chunk_text, c.section_path, c.context_prefix
         FROM chunks c
         LEFT JOIN embed_waivers w
                ON w.chunk_rid = c.rid AND ($4::text IS NULL OR w.model = $4)
@@ -105,7 +105,8 @@ async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
         ORDER BY length(c.chunk_text), c.rid
         LIMIT $1
         """, limit, list(exclude or ()), tenant, model)
-    return [(r["rid"], r["chunk_text"], r["section_path"]) for r in rows]
+    return [(r["rid"], r["chunk_text"], r["section_path"], r["context_prefix"])
+            for r in rows]
 
 
 async def tenants_with_chunks() -> list[str]:
@@ -156,8 +157,14 @@ async def reembed(embedding_svc, column: str, batch_size: int = 16,
     summary = ReembedSummary(column=col, model=model)
 
     class _C:
-        def __init__(self, text, section):
-            self.chunk_text, self.section_path, self.context_prefix = text, section, None
+        """⚠ `context_prefix` 를 **실어야 한다.** 예전에는 `None` 을 박아 뒀고, 코퍼스 전체가
+        NULL 이던 동안에는 우연히 맞았다. A13 컷오버가 접두사를 채우자 그 가정이 거짓이 됐고,
+        재임베딩은 **옛 텍스트**(`[section_path]`)로 벡터를 만들었다 — BM25 에는 제목이 있고
+        벡터에는 없는 반쪽 상태. 실측으로 잡혔다: 같은 코퍼스에서 벡터 다리 파편 Recall 이
+        실험(0.889)과 라이브(0.444)로 갈렸다."""
+
+        def __init__(self, text, section, prefix):
+            self.chunk_text, self.section_path, self.context_prefix = text, section, prefix
 
     failed_rids: set[str] = set()
     while True:
@@ -165,8 +172,9 @@ async def reembed(embedding_svc, column: str, batch_size: int = 16,
                                    model=model)
         if not batch:
             break
-        texts = [get_search_text(_C(text, section)) for _, text, section in batch]
-        rids = [rid for rid, _, _ in batch]
+        texts = [get_search_text(_C(text, section, prefix))
+                 for _, text, section, prefix in batch]
+        rids = [rid for rid, _, _, _ in batch]
         try:
             vectors = await embedding_svc.embed_documents(texts)
         except Exception as e:                      # noqa: BLE001 — 배치가 통째로 실패할 수도 있다

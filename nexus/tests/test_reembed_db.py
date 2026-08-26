@@ -306,7 +306,7 @@ async def test_a_waived_chunk_leaves_the_queue_but_stays_on_the_record(corpus):
     await reembed_here(_Svc(fail_on={"POISON"}), _COLUMN, batch_size=5)
     await waive(corpus["bad"], "KURE-v1", "8k 토큰 초과, 분할 불가", "LivingLikeKrillin")
 
-    assert corpus["bad"] not in [r for r, _, _ in await pending_rids(_COLUMN, 100, tenant=_TENANT)]
+    assert corpus["bad"] not in [r for r, _, _, _ in await pending_rids(_COLUMN, 100, tenant=_TENANT)]
     c = await counts(_COLUMN, _TENANT)
     assert c["waived"] == 1 and c["pending"] == 0
     row = (await waived_rows())[0]
@@ -388,7 +388,7 @@ async def test_the_queue_comes_out_shortest_first(varied_lengths):
     718만자). 순서만 바꿔도 효율이 40%→99% 로 오른다. 순서는 공짜다.
     """
     rows = await pending_rids(_COLUMN, 100, tenant=varied_lengths)
-    lengths = [len(text) for _, text, _ in rows]
+    lengths = [len(text) for _, text, _, _ in rows]
 
     assert lengths == sorted(lengths), f"큐가 길이순이 아니다: {lengths}"
 
@@ -396,6 +396,45 @@ async def test_the_queue_comes_out_shortest_first(varied_lengths):
 async def test_a_batch_holds_texts_of_similar_length(varied_lengths):
     """큐 순서의 목적은 정렬 자체가 아니라 **한 배치 안의 편차**를 없애는 것이다."""
     first = await pending_rids(_COLUMN, 2, tenant=varied_lengths)
-    lengths = [len(text) for _, text, _ in first]
+    lengths = [len(text) for _, text, _, _ in first]
 
     assert max(lengths) <= 500, f"첫 배치에 긴 글이 섞였다: {lengths}"
+
+
+async def test_reembed_uses_the_same_text_the_index_path_would(db_pool):
+    """재임베딩은 **색인 경로와 같은 텍스트**로 벡터를 만들어야 한다.
+
+    ⚠ 2026-08-26 라이브에서 어긋났다. `_C` 가 `context_prefix = None` 을 박아 뒀고, 코퍼스
+    전체가 NULL 이던 동안에는 우연히 맞았다. A13 컷오버가 접두사를 채우자 그 가정이 거짓이 되어
+    **BM25 에는 제목이 있고 벡터에는 없는** 반쪽 상태가 됐다 — 같은 코퍼스에서 벡터 다리 파편
+    Recall 이 실험(0.889)과 라이브(0.444)로 갈려서 잡혔다.
+
+    큐가 접두사를 실어 오는지를 여기서 못박는다. 접두사가 색인 텍스트의 **두 번째 입력**이므로,
+    한쪽만 아는 경로가 있으면 그 경로는 조용히 옛 텍스트의 벡터를 만든다.
+    """
+    from nexus import db
+    from nexus.utils import get_search_text
+
+    db._pool = db_pool
+    async with db_pool.acquire() as con:
+        await con.execute("DELETE FROM chunks WHERE tenant=$1", _TENANT)
+        await con.execute("DELETE FROM documents WHERE tenant=$1", _TENANT)
+        await con.execute(
+            "INSERT INTO documents (rid, tenant, source_uri, hash, title, status) "
+            "VALUES ('doc_pfx', $1, 'seed:pfx.md', 'h', '접두사 문서', 'active')", _TENANT)
+        await con.execute(
+            "INSERT INTO chunks (rid, tenant, source_uri, doc_rid, section_path, chunk_text, "
+            "context_prefix, status) VALUES ('chunk_pfx', $1, 'seed:pfx.md', 'doc_pfx', 'root', "
+            "'본문', '[접두사 문서]', 'active')", _TENANT)
+
+    rows = await pending_rids(_COLUMN, 100, tenant=_TENANT)
+    row = next(r for r in rows if r[0] == "chunk_pfx")
+    assert len(row) == 4, "큐가 접두사를 안 실어 온다"
+    _rid, text, section, prefix = row
+    assert prefix == "[접두사 문서]"
+
+    class _C:
+        chunk_text, section_path, context_prefix = text, section, prefix
+
+    assert get_search_text(_C()).startswith("[접두사 문서] "), \
+        "재임베딩 텍스트가 색인 텍스트와 다르다 — 옛 벡터가 만들어진다"
