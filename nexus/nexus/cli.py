@@ -968,8 +968,10 @@ def entropy_signals(
     async def _do() -> None:
         from nexus import db
 
-        keys = ("reingest_overwrite_events", "exact_dup_pairs", "title_stem_collisions",
-                "supersessions", "identityless_chunks")
+        # `…_docs` 는 `…_events` 의 **분모**다. 나란히 있어야 53 이 혼자 읽히지 않는다
+        # (2026-08-26 라이브: 이벤트 53 · 문서 18 — 같은 열여덟을 다시 적재한 수였다).
+        keys = ("reingest_overwrite_events", "reingest_overwrite_docs", "exact_dup_pairs",
+                "title_stem_collisions", "supersessions", "identityless_chunks")
         try:
             if not total_only:
                 rows = await db.fetch_all(
