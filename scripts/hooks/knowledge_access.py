@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -38,12 +39,71 @@ _VIA_KHALA = re.compile(
 _BYPASS = re.compile(r"psql\b.*\bnexus\b|nexus-db\b|/code-src\b")
 
 
-def classify(cmd: str) -> str | None:
+#: 배포가 팀 코드 트리를 어디에 두는지. `/code-src` 마운트의 **원본**이다.
+_TREE_KEY = "CODE_SRC_PATH"
+_ENV_FILE = Path(__file__).resolve().parents[2] / "nexus" / ".env"
+
+
+def host_code_tree(env_file: Path | None = None) -> str | None:
+    """팀 코드 트리의 **호스트 경로**.
+
+    이 리포는 public 이라 경로를 박아 넣을 수 없고(조직명·개인 경로가 들어간다), 배포마다
+    다르다. 그래서 배포가 **이미 갖고 있는 값**을 읽는다 — `nexus/.env` 의 `CODE_SRC_PATH`
+    는 컨테이너 `/code-src` 마운트가 가리키는 바로 그 경로다.
+
+    트리를 안 붙인 배포도 있다. 그때는 **그 축을 안 세는 것**이지 죽는 게 아니다.
+    """
+    if env_file is None:
+        from_env = os.environ.get(_TREE_KEY, "").strip()
+        if from_env:
+            return from_env
+        env_file = _ENV_FILE
+    try:
+        lines = env_file.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        line = line.strip()
+        if line.startswith(_TREE_KEY + "="):
+            return line.split("=", 1)[1].strip().strip('"').strip("'") or None
+    return None
+
+
+def _subject(tool_input: dict) -> str:
+    """무엇을 대고 분류하는가. **우회는 셸을 안 지나도 일어난다** — Grep·Read 도 트리를 연다.
+
+    검색 **패턴**은 일부러 안 읽는다. 리포 안에서 `nexus.cli query` 라는 문자열을 찾는 것은
+    문을 지난 게 아닌데, 패턴을 읽으면 그게 분자로 들어가 비율이 좋은 쪽으로 거짓이 된다.
+    읽는 것은 명령과 **경로**뿐이다.
+    """
+    return (tool_input.get("command")
+            or tool_input.get("file_path")
+            or tool_input.get("path")
+            or "")
+
+
+def _same_tree(cmd: str, tree: str) -> bool:
+    """명령이 그 트리를 건드리는가. 호스트가 Windows 라 슬래시도 대소문자도 섞여 온다."""
+    def norm(t: str) -> str:
+        return t.replace("\\", "/").lower()
+
+    return norm(tree) in norm(cmd)
+
+
+def classify(cmd: str, code_src: str | None = None) -> str | None:
+    """`code_src` = **호스트에서의** 팀 코드 트리 경로.
+
+    `_BYPASS` 의 `/code-src` 는 컨테이너 마운트 지점이다 — 에이전트는 호스트에서 도니까
+    그것만으로는 이 계수기가 잡으려던 우회를 못 본다. 경로는 배포마다 다르고 이 리포는
+    public 이라 박아 넣을 수 없다 → 설정에서 온다(`_host_code_tree`).
+    """
     if not cmd:
         return None
     if _VIA_KHALA.search(cmd):
         return "khala"
     if _BYPASS.search(cmd):
+        return "bypass"
+    if code_src and _same_tree(cmd, code_src):
         return "bypass"
     return None
 
@@ -85,8 +145,8 @@ def main() -> int:
         payload = json.load(sys.stdin)
     except Exception:
         return 0
-    cmd = ((payload.get("tool_input") or {}).get("command")) or ""
-    kind = classify(cmd)
+    cmd = _subject(payload.get("tool_input") or {})
+    kind = classify(cmd, code_src=host_code_tree())
     if kind is None:
         return 0
     LOG.parent.mkdir(parents=True, exist_ok=True)
