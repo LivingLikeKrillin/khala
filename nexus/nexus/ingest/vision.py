@@ -258,20 +258,37 @@ def image_handle(sha: str) -> str:
     return (sha or "")[:HANDLE_CHARS].lower()
 
 
-async def read_image(data: bytes, media_type: str, llm_svc) -> Extraction:
+async def read_image(data: bytes, media_type: str, llm_svc,
+                     usage_out: list | None = None) -> Extraction:
     """이미지 1장 → 텍스트. 툴 없음, 파일시스템 없음, 이미지 1장.
 
     `llm_svc` 는 `vision_extract(system, image_b64, media_type, max_tokens)` 를 제공해야 한다.
     답변 경로의 `generate` 를 재사용하지 않는 이유는, 그쪽은 텍스트 프롬프트 계약이고 여기서
     필요한 것은 이미지 블록 하나짜리 요청이기 때문이다.
+
+    **`usage_out` 은 호출당 정확히 한 줄이다** — 성공하면 `Usage`, 실패하거나 백엔드가 토큰을
+    안 주면 `None`. 실패를 안 세면 "몇 장을 공급자에 보냈나" 를 아무도 못 센다.
+    이 인자가 있는 이유: 2026-08-25 재적재에서 판독 39건이 발생했는데 **금액이 어디에도 안
+    남았고**, 그날 보고한 "지출 0" 은 세는 곳이 없어서 나온 수였다.
     """
     sha = image_sha256(data)
+    sink: list = []
+    b64 = base64.b64encode(data).decode("ascii")
     try:
-        raw = await llm_svc.vision_extract(
-            SYSTEM, base64.b64encode(data).decode("ascii"), media_type, MAX_OUTPUT_TOKENS)
+        # **장부를 안 달면 호출은 오늘과 글자 그대로 같다.** `usage_out=None` 을 늘 넘기면
+        # 그 인자를 모르는 판독기(테스트 더블·옛 백엔드)가 `TypeError` 를 내는데, 그 예외는
+        # 아래 `except` 가 삼켜 **판독 실패로 둔갑한다** — 조용히 그림이 안 읽히는 배포다.
+        raw = await (llm_svc.vision_extract(SYSTEM, b64, media_type, MAX_OUTPUT_TOKENS,
+                                            usage_out=sink)
+                     if usage_out is not None else
+                     llm_svc.vision_extract(SYSTEM, b64, media_type, MAX_OUTPUT_TOKENS))
     except Exception as exc:  # noqa: BLE001 — 한 장의 실패가 문서 전체를 막으면 안 된다
+        if usage_out is not None:
+            usage_out.append(sink[0] if sink else None)
         log.warning("vision.extract_failed", sha=sha[:12], error=str(exc))
         return Extraction("", extractor_identity(), sha, error=str(exc)[:500])
+    if usage_out is not None:
+        usage_out.append(sink[0] if sink else None)
 
     # 백엔드는 (text, stop_reason) 을 준다. 옛 계약(문자열)도 받아 준다 — 다만 그때는
     # 토큰 절단을 알 길이 없으므로 그렇게 기록한다.

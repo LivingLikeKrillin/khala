@@ -93,9 +93,12 @@ class ImportReport:
     holes: int = 0
     #: `dry_run` 에서 "적재했을" 페이지 수. 실제 적재는 하지 않았다.
     would_ingest: int = 0
+    #: 이 실행이 **공급자로 보낸 그림 판독**과 그 값(`llm/dev_spend.py` 의 `Spend.as_dict()`).
+    #: 2026-08-25 재적재는 39건을 보내고도 이 칸이 없어서 "지출 0" 으로 보고됐다.
+    vision_spend: dict = field(default_factory=dict)
 
 
-async def _fill_images(conv, tenant: str, source_uri: str = "") -> tuple[str, int]:
+async def _fill_images(conv, tenant: str, source_uri: str = "", spend=None) -> tuple[str, int]:
     """그림 자리 표식을 추출 블록으로 바꾼다. 꺼져 있으면 표식만 지운다.
 
     **기본은 꺼짐.** 켜는 것은 원문 질의가 아니라 **문서 이미지**가 공급자로 나가는 것을
@@ -117,7 +120,7 @@ async def _fill_images(conv, tenant: str, source_uri: str = "") -> tuple[str, in
     cfg = _load_config()
     return await vision_store.apply(
         conv.markdown, conv.images, tenant=tenant, llm_svc=vision_service(),
-        pii_patterns=(cfg.get("pii_patterns") or {}), source_uri=source_uri)
+        pii_patterns=(cfg.get("pii_patterns") or {}), source_uri=source_uri, spend=spend)
 
 
 # IngestFn: (csf, tenant, *, force) -> outcome(awaitable). 프로덕션은 _default_external_ingest_fn.
@@ -153,6 +156,9 @@ async def import_notion(
         walked_roots |= roots
 
     report = ImportReport()
+    # 판독 장부. **이 실행 하나짜리**다 — 전역에 두면 두 실행이 서로의 값을 읽는다.
+    from nexus.llm.dev_spend import Spend
+    vision_spend = Spend()
     max_seen = since or ""
 
     for page_id in sorted(index):
@@ -178,7 +184,7 @@ async def import_notion(
                 # 참조는 **여기서** 실린다: 이 걷기만이 블록 id 와 문서 uri 를 동시에 들고
                 # 있다 (SPEC-nexus-vision-source-ref §2.1). 저장 시점에 없으면 영원히 없다.
                 conv.markdown, n_extracted = await _fill_images(
-                    conv, tenant, notion_doc_uri(tenant, page_id))
+                    conv, tenant, notion_doc_uri(tenant, page_id), vision_spend)
                 conv.vision_extracted = n_extracted > 0
                 report.images_extracted += n_extracted
             # 빈 본문(블록 없는 컨테이너/DB행)은 인덱스 오염 — 적재 안 함(라이브 검증 신호).
@@ -218,4 +224,7 @@ async def import_notion(
         report.revived = outcome.revived
         report.refused = outcome.refused
         report.reason = outcome.reason
+    report.vision_spend = vision_spend.as_dict()
+    if vision_spend.calls:
+        log.info("vision.spend", **report.vision_spend)
     return report

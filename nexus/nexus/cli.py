@@ -1041,6 +1041,9 @@ def ingest_notion(
 
     totals = {"ingested": 0, "idempotent": 0, "empty": 0, "skipped": 0,
               "holes": 0, "would_ingest": 0}
+    # 이 실행이 공급자로 보낸 그림 판독. **그룹마다 리포트가 하나씩 오므로 여기서 합친다.**
+    from nexus.llm.dev_spend import Spend
+    vision_spend = Spend()
     watermarks: list[str] = []
     report = None
 
@@ -1098,6 +1101,12 @@ def ingest_notion(
                 dry_run=dry_run)
             for k in totals:
                 totals[k] += getattr(report, k, 0) or 0
+            vs = getattr(report, "vision_spend", None) or {}
+            vision_spend.calls += vs.get("calls", 0)
+            vision_spend.priced += vs.get("priced_calls", 0)
+            vision_spend.usd += vs.get("usd", 0.0)
+            for kind, n in (vs.get("by_kind") or {}).items():
+                vision_spend.by_kind[kind] = vision_spend.by_kind.get(kind, 0) + n
             if report.watermark:
                 watermarks.append(report.watermark)
 
@@ -1117,6 +1126,15 @@ def ingest_notion(
             f"empty={totals['empty']} skipped={totals['skipped']} "
             f"holes={totals['holes']} watermark={min(watermarks) if watermarks else ''}"
         )
+    # **판독은 돈이 나가는 유일한 경로다** — 그런데 2026-08-25 재적재는 39건을 보내고도
+    # 아무 데도 안 적어서 "지출 0" 으로 보고됐다. 0 건이면 조용하고, 1건이라도 있으면 말한다.
+    if vision_spend.calls:
+        typer.echo(f"그림 판독: {vision_spend.summary()}")
+        if not vision_spend.priced:
+            from nexus.ingest.vision import vision_model
+            typer.echo(f"  ⚠ 값을 모릅니다 — `{vision_model()}` 가 config.yaml 의 llm.pricing 에"
+                       " 없습니다. 호출 수는 실측이고, 단가를 넣으면 금액이 나옵니다"
+                       " (단가를 지어내지 않으므로 그때까지 값은 비어 있습니다)")
     if totals["holes"]:
         # 부분 본문은 **성공한 적재**로 세어지므로, 여기서 말하지 않으면 아무도 모른다.
         typer.echo(f"⚠ 읽지 못한 하위 블록 {totals['holes']}개 — 그만큼의 문서가 부분 본문입니다"
