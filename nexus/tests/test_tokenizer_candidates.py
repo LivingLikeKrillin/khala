@@ -11,7 +11,10 @@
 
 from __future__ import annotations
 
+import pytest
+
 from nexus.index.bm25 import (
+    _get_mecab,
     MecabTokenizer,
     ProtectedTermTokenizer,
     SurfaceFormTokenizer,
@@ -20,6 +23,14 @@ from nexus.index.bm25 import (
     use_tokenizer,
 )
 
+#: mecab 이 없으면 토크나이저는 공백 분해로 떨어지고, 형태소에 대한 단언은 **아무것도 재지
+#: 않는다**(CI 의 unit 잡에 mecab 이 없어 첫 판이 빈 목록을 받고 빨간불이 났다).
+#: 그렇다고 파일 전체를 건너뛰지는 않는다 — 기본값·이음매 검사는 mecab 과 무관하고, 그 둘이
+#: CI 에서 안 도는 것이 더 나쁘다.
+needs_mecab = pytest.mark.skipif(
+    _get_mecab() is None,
+    reason="mecab-ko 없음 — 형태소 동작은 프로덕션 토크나이저에서만 잰다")
+
 
 def test_the_default_is_still_mecab():
     """실험이 남아 있어도 배포되는 것은 mecab 이다. 기본값이 조용히 바뀌면 이 검사가 죽는다."""
@@ -27,6 +38,7 @@ def test_the_default_is_still_mecab():
     assert isinstance(active_tokenizer(), MecabTokenizer)
 
 
+@needs_mecab
 def test_candidates_never_lose_a_morpheme():
     """후보는 **더하기만** 한다 — 현직이 낸 토큰은 전부 들어 있어야 한다.
 
@@ -48,6 +60,7 @@ def test_candidates_never_lose_a_morpheme():
                 assert tok in got, f"{cand.id}: {text!r} 에서 {tok!r} 가 사라졌다 → {got}"
 
 
+@needs_mecab
 def test_protected_tokenizer_adds_only_listed_terms():
     """지정 보호는 **목록에 있는 것만** 더한다. 그것이 무차별 판과 갈리는 지점이다."""
     base = MecabTokenizer()
@@ -57,6 +70,7 @@ def test_protected_tokenizer_adds_only_listed_terms():
     assert added == ["파티룸"], added
 
 
+@needs_mecab
 def test_compound_names_finds_names_not_inflections():
     """유도기는 **이름**을 뽑고 활용형은 안 뽑는다.
 
