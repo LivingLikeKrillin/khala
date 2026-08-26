@@ -9,9 +9,9 @@ This page is safe to hand-write, which most of the documentation here is not. Ev
 
 ## Who caught what
 
-Thirteen entries below, sorted by what actually surfaced the defect. The shape matters more than the count: automated checks caught the infrastructure problems, measurement caught the data problems, and the single most consequential defect — the one that had passed every automated check for weeks — was caught by one sentence from a person.
+Sixteen entries below, sorted by what actually surfaced the defect. The shape matters more than the count: automated checks caught the infrastructure problems, measurement caught the data problems, and the single most consequential defect — the one that had passed every automated check for weeks — was caught by one sentence from a person. The three most recent were all found the same way: by checking a claim against the thing it describes, which is why the measurement lane keeps growing.
 
-<svg class="kh-fig" viewBox="0 0 580 214" role="img" aria-label="A timeline from July to August 2026 with three lanes. The 'CI and guards' lane holds four defects, the 'measurement' lane holds six, and the 'a person' lane holds three. Density increases sharply through August. The final entry in the person lane, in August, is the evidence-fit defect that every automated check had passed.">
+<svg class="kh-fig" viewBox="0 0 580 214" role="img" aria-label="A timeline from July to August 2026 with three lanes. The 'CI and guards' lane holds four defects, the 'measurement' lane holds nine, and the 'a person' lane holds three. Density increases sharply through August, with three measurement entries clustered at the end of the month. The final entry in the person lane is the evidence-fit defect that every automated check had passed.">
   <text class="kh-fig-h" x="0" y="14">WHAT SURFACED IT</text>
   <line class="kh-fig-rule" x1="112" y1="34" x2="560" y2="34"/>
   <text class="kh-fig-s" x="0" y="60">CI &amp; guards</text>
@@ -29,7 +29,10 @@ Thirteen entries below, sorted by what actually surfaced the defect. The shape m
   <circle class="kh-fig-verified" cx="471" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="480" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="522" cy="108" r="3.5"/>
-  <text class="kh-fig-rk" x="568" y="108" text-anchor="end">6</text>
+  <circle class="kh-fig-verified" cx="538" cy="108" r="3.5"/>
+  <circle class="kh-fig-verified" cx="547" cy="108" r="3.5"/>
+  <circle class="kh-fig-verified" cx="556" cy="108" r="3.5"/>
+  <text class="kh-fig-rk" x="568" y="108" text-anchor="end">9</text>
   <text class="kh-fig-s" x="0" y="156">a person</text>
   <line class="kh-fig-line" x1="112" y1="156" x2="560" y2="156"/>
   <circle class="kh-fig-verified" cx="197" cy="156" r="3.5"/>
@@ -153,6 +156,58 @@ That exact error had already been found and corrected six days earlier — in th
 
 Both language versions were corrected and both are now anchored. The generalisation is uncomfortable and worth keeping: a net protects exactly what is registered with it, and the pages most likely to be omitted are the ones that feel like marketing rather than documentation — which are also the ones most people read.
 
+### Fifteen out of fifteen, with the change switched off
+**2026-08-26** · `feat(nexus): the answer-fact ruler measured mention, not assertion — split them`
+
+A new ruler was written to measure something retrieval metrics cannot see: whether the answer actually contains the value the question asks for. It read 15 out of 15. Then the retrieval change it had been built to evaluate was switched off, and it still read 15 out of 15.
+
+Both facts had one cause. A substring test cannot distinguish a value that is claimed from a value that is merely listed. The failing answer wrote `4,000` into a table of what each source says, then closed with "until this is confirmed, no figure can be asserted." The ruler counted that as correct.
+
+The replacement asks where the value stands. Either in the lead, meaning the prose before the first table, quote or heading, which is the place the system's own prompt reserves for the answer. Or in a verdict segment, one opened by a conclusive connective. Everything else is laying evidence out.
+
+Three rounds per arm, majority per question, noise band read before any test:
+
+| | with the change | without it | band | gap |
+|---|---|---|---|---|
+| substring | 15 · 15 · 15 | 15 · 15 · 15 | 0 | **0** |
+| assertion | 14 · 13 · 14 | 9 · 9 · 10 | 1 | **5** |
+
+The gap clears the noise. The sign test still does not run: five discordant pairs against a pre-registered minimum of six. All five point one way and none the other, and the claim stops there. More rounds cannot fix it, because discordant pairs are a property of the question set rather than of the sampling.
+
+The rule it left behind is now applied before measuring anything: **ask whether the ruler can see the treatment before reading its score.** A ruler pinned at 1.000 is not a strong result. It is an absent one. The same pass turned up a second defect in the substring version, which accepts a value that appears only inside a quotation of a superseded policy while the answer concludes something else entirely.
+
+### The instrument was counting our own re-runs
+**2026-08-26** · `fix(nexus): the re-ingest signal counted our own re-runs — give it a denominator`
+
+One of the entropy signals counts re-ingest overwrites: documents whose content changed under an existing identity. An accepted architecture decision designates it a demand-pull trigger, and several deferred items are gated on it, so this number decides what gets built.
+
+The day before, that view had been repaired. It aggregated globally, so throwaway evaluation tenants were drowning the live signal: 61,425 duplicate pairs globally against 0 in the live corpus. Splitting it per tenant was the repair.
+
+It was half the repair. The live number reads 53 events, spread across **18 documents**, 38 of them inside three days, in a corpus of 126. Those three days are days the ingestion pipeline was being changed and re-run. The signal was measuring how often we re-ingested the same eighteen documents, not how much the corpus was churning.
+
+The correction adds a denominator instead of redefining the metric. The accepted decision record defines the signal as events, and quietly changing what that column means would put an approved document and the code out of step. Whoever read 53 alone now reads 53 across 18.
+
+What it does not fix is stated in the migration itself. Our re-ingest and a genuine edit both change the content hash, so the two cannot be separated from stored data. Separating them means recording the cause at write time, which is a specification, not a migration.
+
+The uncomfortable part is the sequence. The person who split that view per tenant and the person who missed the second layer are the same, one day apart. **Cleaning half of an instrument makes the other half look clean.**
+
+### The only path that spends money had no ledger
+**2026-08-26** · `feat(nexus): book what the screenshot reader spends — the only path that costs money had no ledger`
+
+An ingestion run was reported as costing nothing. It had sent 39 images to a vision provider.
+
+The report was not a lie. It was an **absence**. A spend module existed and was wired into two evaluation scripts, the paths that had once burned a day of paid API calls, and into nothing on the ingestion path. So the figure came from counting by hand, and the hand count missed the pages the loop had died on, which were exactly the pages that generated the calls.
+
+The reads are now booked the way the answer path already books its own: token usage returned from each backend, priced once from the same rate table, accumulated per run, printed when the run ends. Three distinctions are kept apart on purpose, because collapsing any of them produces a number that reads as reassurance:
+
+- a cache hit is not a call, and counting it inflates the spend
+- a failure is a call, and not counting it breaks "how many did we send", which is the exact figure that was wrong
+- an unknown price is not a free one, so the run names the model that has no rate rather than inventing one
+
+Wiring it surfaced a latent failure worth recording. Passing the new argument unconditionally makes any reader that does not accept it raise a type error, and the extraction path catches every exception per image, so that error would have been swallowed as a read failure. Images would have silently stopped being read while every counter reported a clean run. With no ledger attached the call is now byte-identical to before, and a test pins that property.
+
+**A number produced by hand is not a measurement.** It has no failure mode that anyone can see.
+
 ---
 
 ## What the log adds up to
@@ -161,6 +216,6 @@ Both language versions were corrected and both are now anchored. The generalisat
 
 **The same shape kept recurring: the detector existed, the delivery did not.** Coverage was computed and never shown. Document-to-code anchors were written for weeks with nothing reading them. Refusal reasons were recorded where only one view could see them. The current rule is that a check on the detector alone is not enough — the test has to run the surface a person actually looks at, and it has to be deliberately broken once to prove it goes red.
 
-**The instrument was wrong more often than the system.** That is not a complaint about the instrument; it is the reason the instrument is treated as a first-class artifact here, with signed labels, pre-registered verdict rules, and a standing prohibition on editing a ruler after seeing the score it produced.
+**The instrument was wrong more often than the system.** That is not a complaint about the instrument; it is the reason the instrument is treated as a first-class artifact here, with signed labels, pre-registered verdict rules, and a standing prohibition on editing a ruler after seeing the score it produced. The sharpest case is the most recent: a ruler that read a perfect score and could not see the change it had been written to evaluate, and an entropy signal that was counting our own re-ingests one day after being repaired for a different contamination. Both were found by checking a claim against the thing it describes, which is cheap and is now done on a schedule rather than when something feels wrong.
 
 *This page is a record, not a status board. For what is currently open, see [OPEN.md](https://github.com/LivingLikeKrillin/khala/blob/master/OPEN.md), which counts unresolved items so that it is possible to tell whether they are going up or down.*
