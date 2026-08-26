@@ -1,9 +1,10 @@
 # Arbiter Index
 
-## 🔴 미검토 (1)
+## 🔴 미검토 (2)
 
 | id | title | approved_by | date | linked_adrs |
 |---|---|---|---|---|
+| SPEC-nexus-bm25-length-normalization | Length normalisation for the keyword leg — an amendment to the cover-density choice |  |  | ADR-0004, ADR-0006 |
 | SPEC-specledger-a2a-publish-phase3 | Phase 3 — specledger publish to Nexus as an A2A task |  | 2026-06-18 | ADR-0001 |
 
 ## 🟡 검토중 (2)
