@@ -35,22 +35,55 @@ class CollectedFile:
     vision_extracted: bool = False
 
 
+@dataclass(frozen=True)
+class Collection:
+    """수집 결과 — 변경분 파일과, **패턴이 무엇을 봤는지**.
+
+    셋이 다른 사건이다: 패턴이 **찾은 것** · 그중 **바뀐 것** · **안 바뀐 것**. 반환값이
+    변경분 목록 하나였을 때는 요약 줄이 이 셋을 한 숫자로 덮었고, 2026-08-28 에 내가
+    "적재가 파일 9개를 조용히 빠뜨렸다" 고 오진했다 — 실제로는 안 바뀌어서 안 들어간 것이다.
+    """
+
+    files: list[CollectedFile] = field(default_factory=list)
+    found: int = 0
+    unchanged: int = 0
+
+    @property
+    def changed(self) -> int:
+        return len(self.files)
+
+    def __len__(self) -> int:
+        return len(self.files)
+
+    def __iter__(self):
+        return iter(self.files)
+
+
 async def collect_files(
     docs_path: str,
     glob_pattern: str = "**/*.md",
     force: bool = False,
     tenant: str = "default",
-) -> list[CollectedFile]:
-    """문서 폴더에서 파일 수집. 변경된 파일만 반환 (force 시 전체)."""
+) -> Collection:
+    """문서 폴더에서 파일 수집. 변경된 파일만 반환 (force 시 전체).
+
+    반환값은 목록처럼 순회·`len()` 되지만, **패턴이 찾은 수**와 **안 바뀐 수**를 같이 들고
+    온다 — 요약이 "못 봤다" 와 "안 바뀌었다" 를 가를 수 있어야 하기 때문이다.
+    """
     base = Path(docs_path).resolve()
     if not base.is_dir():
         raise FileNotFoundError(f"문서 경로를 찾을 수 없습니다: {docs_path}")
 
     collected: list[CollectedFile] = []
+    #: 패턴이 **찾은** 파일 수와 그중 **안 바뀐** 수. 반환값(변경분)만으로는 둘을 못 가른다 —
+    #: 2026-08-28 에 내가 "적재가 9개를 조용히 빠뜨렸다" 고 오진한 원인이 이 자리다. 실제로는
+    #: 안 바뀌어서 안 들어간 것이었고, 요약 줄은 그 둘을 같은 숫자로 덮고 있었다.
+    found = unchanged = 0
 
     for file_path in sorted(base.glob(glob_pattern)):
         if not file_path.is_file():
             continue
+        found += 1
 
         try:
             raw_content = file_path.read_text(encoding="utf-8")
@@ -85,6 +118,7 @@ async def collect_files(
                 )
                 if existing_hash == content_hash:
                     logger.debug("file_unchanged", path=relative)
+                    unchanged += 1
                     continue
             except Exception:
                 pass  # DB 미연결 시 전부 수집
@@ -103,5 +137,6 @@ async def collect_files(
             vision_extracted=bool(fm.get("vision_extracted", False)),
         ))
 
-    logger.info("files_collected", total=len(collected), path=str(base))
-    return collected
+    logger.info("files_collected", found=found, changed=len(collected),
+                unchanged=unchanged, path=str(base))
+    return Collection(files=collected, found=found, unchanged=unchanged)
