@@ -16,6 +16,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -S -E \"${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/terms_guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
