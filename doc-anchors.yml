@@ -106,7 +106,7 @@ docs:
   - doc: docs/src/content/docs/ko/tools/probe.md
     sources: *probe_public
 
-  # 답변 채점 규칙은 **자를 서술하는 문서**다 — 그 자가 무엇을 통과시키는지가 여기 적혀 있고,
+  # 답변 채점 규칙은 **채점기를 서술하는 문서**다 — 그것이 무엇을 통과시키는지가 여기 적혀 있고,
   # 규칙이 코드에서 움직이면 이 문서가 먼저 거짓말을 한다. 1판이 정확히 그렇게 낡았다:
   # "부분일치로 본다" 는 서술은 맞았지만 그 서술이 가리키는 한계를 아무도 안 읽었다.
   - doc: nexus/tests/eval/answer-facts/README.md
@@ -115,3 +115,10 @@ docs:
       - nexus/scripts/answer_fact_probe.py
       - nexus/nexus/llm/prompts.py
       - nexus/nexus/search/section_fill.py
+
+  # 용어집은 산문이자 **검사기의 입력**이다 — 「걷어낸 말」 표의 3열 형식이 파서와의 계약이라,
+  # 형식이 바뀌면 검사가 조용히 아무것도 안 읽는다. 그 결합을 여기 박는다.
+  - doc: GLOSSARY.md
+    sources:
+      - scripts/check_terms.py
+      - tests/test_check_terms.py
