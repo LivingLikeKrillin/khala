@@ -124,3 +124,22 @@ def classify(
     result.doc_type = _detect_doc_type(relative_path, frontmatter)
 
     return result
+
+
+def quarantined_chunk_indexes(chunks, pii_patterns: dict) -> set[int]:
+    """PII 가 **실제로 들어 있는 청크**의 인덱스.
+
+    **왜 문서가 아니라 청크인가.** 2026-08-28 라이브 실측: 148KB 짜리 설계 plan 이 통째로
+    사라져 있었다(2026-08-16 부터, 청크 0건 = 유령). 원인은 자바 테스트의 16자리 사용자 ID
+    아홉 개 중 **하나가 우연히 Luhn 을 통과**한 것이었다. 같은 날 다른 문서 하나는 *JWT 를
+    가리는 것을 검증하는 테스트 문서*라서 예시 토큰에 걸렸다.
+
+    한 조각 때문에 문서를 통째로 버리면, 걸린 조각이 오검출일 때 **팀 지식이 조용히 사라진다.**
+    걸린 조각만 빼면 비밀은 여전히 색인되지 않으면서 나머지 본문은 산다. 청크 텍스트를 그대로
+    검사하므로, 경계에 걸쳐 잘린 비밀은 어느 쪽에도 온전히 남지 않는다.
+    """
+    if not pii_patterns:
+        return set()
+    from nexus.ingest.scanner import scan_content
+    return {i for i, c in enumerate(chunks)
+            if scan_content(c.chunk_text, pii_patterns).has_pii}

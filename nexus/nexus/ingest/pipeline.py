@@ -15,7 +15,11 @@ import yaml
 
 from nexus import db
 from nexus.documents.origin import source_kind_for
-from nexus.ingest.classifier import ClassificationResult, classify
+from nexus.ingest.classifier import (
+    ClassificationResult,
+    classify,
+    quarantined_chunk_indexes,
+)
 from nexus.ingest.chunker import ChunkData, chunk_document
 from nexus.ingest.collector import CollectedFile, collect_files
 from nexus.ingest.title import derive_title
@@ -32,6 +36,8 @@ class IngestResult:
     indexed: int = 0
     skipped: int = 0
     quarantined: int = 0
+    #: 문서는 살아 있고 **조각만** 빠진 수. 문서 격리(위)와 다른 사건이다.
+    quarantined_chunks: int = 0
     failed: int = 0
     errors: list[dict] = field(default_factory=list)
     bm25_indexed: int = 0
@@ -209,8 +215,12 @@ async def _save_chunks(
     collected: CollectedFile,
     classification: ClassificationResult,
     tenant: str,
+    quarantined_idx: set[int] | None = None,
 ) -> int:
     """청크를 DB에 저장. 기존 청크 soft_delete 후 새로 삽입.
+
+    ``quarantined_idx`` 에 든 인덱스는 ``is_quarantined=true`` 로 앉는다 — 검색·앵커·
+    커버리지가 전부 그 열로 거른다. 나머지 청크는 평소대로 산다.
 
     청크 상태는 저장 시점의 부모 문서 상태를 따른다: 문서가 active면 청크도 active,
     문서가 non-active(superseded/soft_deleted)면 청크도 superseded로 기록한다.
@@ -232,7 +242,15 @@ async def _save_chunks(
     )
 
     saved = 0
-    for chunk in chunks:
+    bad = quarantined_idx or set()
+    # **격리된 조각의 원문은 저장하지 않는다.** 문서 단위 격리는 청크를 아예 안 만들었으므로
+    # 비밀이 DB 에 안 들어갔다. 조각 단위로 바꾸면서 그 성질을 잃으면, 오검출을 살리려다
+    # 진짜 비밀을 테이블에 앉히게 된다. 자리는 남기되(회계·재적재 대조용) 내용은 표식뿐이다.
+    reason = classification.quarantine_reason or "PII detected"
+    withheld = f"[격리됨 — {reason}. 원문은 저장하지 않는다]"
+    # **위치로 고른다.** `chunk.chunk_index` 는 절마다 0 부터 다시 세므로 문서 안에서
+    # 고유하지 않다 — 그것으로 맞추면 엉뚱한 조각이 빠진다.
+    for pos, chunk in enumerate(chunks):
         rid = chunk_rid(parent_rid, chunk.section_path, chunk.chunk_index)
         now = datetime.now(timezone.utc)
 
@@ -249,7 +267,7 @@ async def _save_chunks(
             ) VALUES (
                 $1, 'chunk', $2, $3::classification_level, 'indexer',
                 $4, $14::source_kind, $5,
-                false, $12,
+                $16, $12,
                 $6, $6,
                 $7, $8, $9,
                 $10, 'indexer-v1', $11,
@@ -265,6 +283,9 @@ async def _save_chunks(
                 -- soft_delete → revive 에서 청크를 0건 되살리고, 목록에는 보이는데 어떤
                 -- 다리도 못 읽는 유령이 됐다(라이브 `default` 의 SLACK_BOT.md).
                 hash = EXCLUDED.hash,
+                -- 격리도 텍스트를 따라간다. 갱신 목록에 없으면 첫 적재 값에 영원히 갇히고,
+                -- 오검출을 고쳐도 그 조각이 안 돌아온다(이 파일이 이미 데인 자리다).
+                is_quarantined = EXCLUDED.is_quarantined,
                 -- 등급은 텍스트를 따라간다. 재적재로 저자 텍스트가 들어온 자리에 옛 등급이
                 -- 남으면 그 chunk 는 자기 내용에 대해 거짓말을 한다.
                 provenance_tier = EXCLUDED.provenance_tier,
@@ -277,11 +298,13 @@ async def _save_chunks(
             rid, tenant, classification.classification,
             collected.canonical_uri, collected.content_hash,
             now,
-            parent_rid, chunk.section_path, chunk.chunk_text,
+            parent_rid, chunk.section_path,
+            withheld if pos in bad else chunk.chunk_text,
             chunk.chunk_index, [parent_rid], chunk_status,
             getattr(chunk, "provenance_tier", "authored"),
             source_kind_for(collected.canonical_uri),
             context_prefix_for(doc_title, chunk.section_path),
+            pos in bad,
         )
         saved += 1
 
@@ -442,30 +465,45 @@ async def run_ingest(
                 config,
             )
 
-            # Save document metadata (approved_hash: governance stamp for this run's docs)
-            parent_rid = await _save_document(collected, classification, tenant, approved_hash)
-
-            # Quarantine Gate
-            if classification.is_quarantined:
-                result.quarantined += 1
-                logger.warning("document_quarantined",
-                               path=collected.relative_path,
-                               reason=classification.quarantine_reason)
-                continue
-
             # Chunk
+            # **청킹이 문서 저장보다 먼저 온다.** 격리 판정이 청크를 봐야 하기 때문이다 —
+            # 문서 격리는 이제 "PII 가 하나라도 있다" 가 아니라 "성한 청크가 하나도 없다" 다.
             # 마커 신뢰는 **수집 경로가 선언**한다. 파일시스템 문서와 외부 spec 페이로드는
             # Notion 컨버터를 거치지 않으므로, 컨버터에서만 정화하면 그 경로의 저자 산문이
             # machine_read 로 찍힌다 — 모함이 반대 방향으로 일어난다.
             chunks = chunk_document(
                 collected.content, classification.language, config,
                 trust_vision_markers=getattr(collected, "vision_extracted", False))
+
+            # Quarantine Gate — **조각 단위로 뺀다.** 문서를 통째로 버리는 것은 성한 청크가
+            # 하나도 없을 때뿐이다. 라이브에서 한 조각의 오검출이 148KB 문서를 지웠다.
+            bad = (quarantined_chunk_indexes(chunks, config.get("pii_patterns", {}))
+                   if classification.is_quarantined else set())
+            whole_document = classification.is_quarantined and (
+                not chunks or len(bad) == len(chunks))
+            classification.is_quarantined = whole_document
+
+            # Save document metadata (approved_hash: governance stamp for this run's docs)
+            parent_rid = await _save_document(collected, classification, tenant, approved_hash)
+
+            if whole_document:
+                result.quarantined += 1
+                logger.warning("document_quarantined",
+                               path=collected.relative_path,
+                               reason=classification.quarantine_reason)
+                continue
+            if bad:
+                result.quarantined_chunks += len(bad)
+                logger.warning("chunks_quarantined",
+                               path=collected.relative_path, chunks=len(bad),
+                               of=len(chunks), reason=classification.quarantine_reason)
             if not chunks:
                 result.skipped += 1
                 continue
 
             # Save chunks
-            saved = await _save_chunks(chunks, parent_rid, collected, classification, tenant)
+            saved = await _save_chunks(chunks, parent_rid, collected, classification, tenant,
+                                       quarantined_idx=bad)
             await _bind_code_anchors(chunks, parent_rid, tenant, config)
             result.indexed += 1
             logger.info("document_indexed",
