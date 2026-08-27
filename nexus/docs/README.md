@@ -6,4 +6,4 @@
 - `UI_INTEGRATION.md` — Web UI 연동 규격
 - `SLACK_BOT.md` — Slack Bot 설정 가이드
 - `MCP_SERVER.md` — MCP Server 설정 가이드
-- `KOREAN_SEARCH_QUALITY.md` — 한국어 검색 품질: 평가셋(코퍼스·라벨·판정 규칙)과 그 자가 잡아낸 프로덕션 결함들, 각각의 적용 방법
+- `KOREAN_SEARCH_QUALITY.md` — 한국어 검색 품질: 평가셋(코퍼스·라벨·판정 규칙)과 그 평가 하니스가 잡아낸 프로덕션 결함들, 각각의 적용 방법

@@ -46,3 +46,9 @@ docker exec nexus-app python -m nexus.cli query "질문" --tenant design_docs --
   `python scripts/fingerprint_scan.py` 가 `git add` 뒤에 검사한다.
 - **개발 실행에 돈을 쓰지 않는다.** LLM 은 키리스 브리지로 돈다(`NEXUS_LLM_PROVIDER=claude-code`).
   유료 백엔드로 재야 하면 먼저 말하고 허락을 받는다.
+- ⭐ **용어를 지어내지 않는다.** 한국어 번역을 **발명해야 할 것 같으면 원어를 써라.** 실측
+  2026-08-27: 산문 230파일에 내가 뜻을 지어낸 말이 다섯 개 있었고(`자` 만 136회·21파일), 전부
+  같은 자리에서 났다 — 개념은 사람이 판단하는 것이라 한국어를 쓰려 했는데 마땅한 말이 없었다.
+  정본은 `GLOSSARY.md`, 규칙은 `CONVENTIONS.md` §Terminology, 검사는
+  `python scripts/check_terms.py`(새로 추가된 줄만 본다).
+  **문서만이 아니라 보고·대화에도 적용된다** — 사용자가 걸린 것이 문서가 아니라 내 문장이었다.
