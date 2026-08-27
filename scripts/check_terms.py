@@ -43,6 +43,11 @@ EXEMPT_FILES = ("GLOSSARY.md",)
 DATED = re.compile(r"(^|/)\d{4}-\d{2}-\d{2}[-.]")
 
 _CODE_SPAN = re.compile(r"`[^`]*`")
+_EMPHASIS = re.compile(r"[*_~]+")
+
+#: 그림에서 기계로 읽어 낸 원문. 조직 문서의 말이지 이 리포가 쓴 문장이 아니다 —
+#: 마이그레이션 030 도 같은 표시를 보고 검색 색인에서 걷어낸다.
+_MACHINE_READ = "derived=vision"
 _KO = "[가-힣]"
 
 #: 낱말 뒤에 붙을 수 있는 조사. 이것만 허용하고, **조사 뒤에 글자가 더 오면 합성어**로 본다.
@@ -103,9 +108,12 @@ def check_line(path: str, line: str, banned: dict[str, str]) -> list[tuple[str, 
       · **코드 스팬** — `SPEC-…-ruler.md` 같은 식별자·파일명은 산문이 아니고, 오히려
         인용해야 할 때가 있다
     """
-    if is_archival(path):
+    if is_archival(path) or _MACHINE_READ in line:
         return []
     prose = _CODE_SPAN.sub(" ", line)
+    # 강조 표시는 낱말의 일부가 아니다. 걷어내지 않으면 `**6812**자` 의 '자' 앞 글자가 `*` 라
+    # 숫자 경계를 빠져나가고, 단위가 조어로 잡힌다(실물 9곳).
+    prose = _EMPHASIS.sub("", prose)
     hits = []
     for word, replacement in banned.items():
         # 낱말 경계. 앞에 한글이 붙었으면 합성어이고('사용자'·'숫자'), **숫자·영문이 붙었으면

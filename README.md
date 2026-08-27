@@ -129,4 +129,7 @@ Full ecosystem reference, philosophy, and per-tool guides live at the docs site:
 ## Conventions & license
 
 - Contribution flow, naming, versioning, and terminology rules: [CONVENTIONS.md](./CONVENTIONS.md).
+- What each thing is called, and why: [GLOSSARY.md](./GLOSSARY.md). It is the record of
+  the words this repo retired and the ones it deliberately kept, and it is what
+  `scripts/check_terms.py` reads.
 - Licensed under the [MIT License](./LICENSE).

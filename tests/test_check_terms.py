@@ -81,6 +81,24 @@ def test_a_counter_word_is_not_the_coined_term():
                                       {"자": "평가 하니스"}) == [], line
 
 
+def test_emphasis_between_a_number_and_its_counter_is_not_prose():
+    """⛔ 마크다운 강조가 숫자와 단위 사이에 끼면 경계 검사가 뚫린다 —
+    `본문 10735자 → **6812**자` 에서 뒤쪽 '자' 앞 글자는 `*` 다. 실물에서 9곳 나왔다."""
+    line = "- 청크 3 → **10** · 본문 10735자 → **6812**자"
+    assert check_terms.check_line("nexus/tests/eval/x/README.md", line,
+                                  {"자": "평가 하니스"}) == []
+
+
+def test_machine_read_image_text_is_not_our_prose():
+    """그림에서 읽어 낸 원문은 **조직 문서의 말**이지 이 리포가 쓴 문장이 아니다 — 고칠
+    대상도 아니다. 시스템이 이미 그렇게 다룬다: 마이그레이션 030 은 이 표시가 붙은 텍스트를
+    검색 색인에서 걷어낸다. 재서명 워크시트마다 이런 블록이 들어오므로 미리 막는다."""
+    line = ("  > ![](){: derived=vision extractor=gemini-3.6-flash/06e83390 } "
+            "> 본문 10735자, 이 자를 옮긴다")
+    assert check_terms.check_line("nexus/tests/eval/local/x-worksheet.md", line,
+                                  {"자": "평가 하니스"}) == []
+
+
 def test_archival_paths_are_exempt():
     """과거는 그대로 둔다 — 컴포넌트 개명 때 정한 규칙과 같다."""
     line = "이 자가 통과시켰다"
