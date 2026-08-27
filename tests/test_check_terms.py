@@ -153,10 +153,24 @@ def test_archival_paths_are_exempt():
         "specs/SPEC-nexus-answer-quality-ruler.md",
         "adr/ADR-0010-x.md",
         ".reviews/SPEC-x.md",
-        "docs/src/content/docs/ko/engineering-log.md",
         "nexus/tests/eval/reports/2026-08-04-ann-vs-exact.md",
     ):
         assert check_terms.check_line(path, line, banned) == [], path
+
+
+def test_the_public_engineering_log_is_not_archival():
+    """⚠ 한때 면제였고 2026-08-27 에 걷어냈다.
+
+    「기록물은 그대로」 의 기제는 둘이다 — 승인 문서는 고치면 **도장이 깨지고**, 결정 기록은
+    **그때 정한 것**을 말한다. 공개 로그는 둘 다 아니다: 서명이 없고, 결정 기록도 아니고,
+    바깥 사람이 읽으라고 쓴 서사다. 그 독자가 정확히 이 리포의 조어를 해독 못 하는 사람이라,
+    여기를 면제하면 정책이 가장 필요한 자리를 비우게 된다.
+    """
+    for path in ("docs/src/content/docs/ko/engineering-log.md",
+                 "docs/src/content/docs/engineering-log.md"):
+        assert not check_terms.is_archival(path), path
+        assert check_terms.check_line(path, "이 자가 통과시켰다",
+                                      {"자": "채점기"}) != [], path
 
 
 def test_the_glossary_may_name_the_words_it_bans():

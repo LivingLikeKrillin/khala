@@ -33,12 +33,15 @@ PROSE = (".md",)
 #: 그때 그 말로 쓰인 기록물 — 손대지 않으므로 검사도 하지 않는다.
 ARCHIVAL_PREFIXES = ("specs/", ".reviews/", "adr/", ".superpowers/")
 ARCHIVAL_FILES = (
-    "docs/src/content/docs/ko/engineering-log.md",
-    "docs/src/content/docs/engineering-log.md",
     # 승인된 SPEC 의 제목을 그대로 옮긴 등록부다. 게다가 `arbiter/.../ledger.py` 가 **생성**하므로
     # 손으로 고쳐도 다음 실행에 덮인다 — 여기 말은 그 SPEC 들의 것이다.
     "INDEX.md",
 )
+# ⚠ 공개 엔지니어링 로그는 여기 **없다.** 한때 있었고, 2026-08-27 에 걷어냈다:
+# 「기록물은 그대로」 규칙의 기제는 둘인데(승인 문서는 고치면 도장이 깨진다 · 결정 기록은
+# 그때 정한 것을 말한다) 그 로그는 **둘 다 아니다.** 서명이 없고, 결정 기록도 아니고,
+# 바깥 사람이 읽으라고 쓴 서사다 — 그리고 그 독자가 바로 이 리포의 조어를 해독 못 하는 사람이다.
+# 인용된 커밋 제목만은 그대로 둔다(코드 스팬이라 이 검사가 알아서 지나간다).
 #: 사전은 자기가 금지한 말을 적어야 한다.
 EXEMPT_FILES = ("GLOSSARY.md",)
 

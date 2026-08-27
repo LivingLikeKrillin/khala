@@ -103,32 +103,32 @@ A corpus now **declares its generation in the database, append-only**, and inges
 ### The number existed, and nobody was ever shown it
 **2026-08-11** · `fix(nexus): the coverage number existed, and no one was ever shown it`
 
-Index coverage — how many chunks each retrieval leg can actually see — had been computed correctly all along. It was written to the API start-up log, where no human looks. The command people actually type showed nothing, and a gap of 51 chunks sat open for a day.
+Index coverage — how many chunks each retrieval path can actually see — had been computed correctly all along. It was written to the API start-up log, where no human looks. The command people actually type showed nothing, and a gap of 51 chunks sat open for a day.
 
 This is the most frequently repeated shape in this log, and it has now appeared four separate times: **the detector exists, the delivery does not**. The rule that came out of it is that a signal is worth zero until something a person or an agent actually reads is showing it, and that a check on the detector alone stays green when the delivery is deleted — so the test has to run the surface.
 
 ### Half the failures were mine
 **2026-08-12** · `feat(nexus): measure a second corpus, and find out half the failures are mine`
 
-Running the evaluation against a second corpus split the failures cleanly: some were the system's, and the rest were defects in the ruler itself — a label pointing at a document that did not contain the answer, an abstention detector that a fourth phrasing walked straight through, a citation format the verifier could not resolve.
+Running the evaluation against a second corpus split the failures cleanly: some were the system's, and the rest were defects in the grader itself — a label pointing at a document that did not contain the answer, an abstention detector that a fourth phrasing walked straight through, a citation format the verifier could not resolve.
 
 The abstention detector is the instructive one. It had been a list of known refusal phrasings, and the next run produced a phrasing that was not on the list, so an honest refusal was scored as a hallucination. A list of observed strings is not a detector. It was replaced with a **structural** rule: a refusal names the evidence and negates it, which does not depend on having seen the sentence before.
 
-### The ruler ran out of scale
+### The grader could no longer tell systems apart
 **2026-08-13**
 
 Both evaluation packs reached their ceiling. The scores had gone up over the preceding week — and every point of that gain traced back to fixing the instrument. Retrieval and generation had not been touched.
 
 The two packs were reclassified as **regression nets**, not quality evidence, and the repository stopped citing their totals as a measure of how good the system is. A measure that cannot separate two systems is not measuring them.
 
-### The ruler passed a defect it was structurally unable to see
+### The grader passed a defect it was structurally unable to see
 **2026-08-18** · `feat(nexus): tell the user when the evidence does not fit the question`
 
 The automated score said 7.7 out of 8. The team it was deployed to was not using it. Asked why, one person said the answers felt *off* — and that sentence opened a defect that every automated check had passed for weeks.
 
 Reproduced: asked where a tool's name came from, the system filled all ten evidence slots and answered at length with a technology table and an API response shape. Not a hallucination. The citations resolved, the grounding check passed, the fact check passed. **No available measurement could see it.**
 
-The cause was in the fusion step. Reciprocal rank fusion scores a result by `1/(k + rank)`, so it carries *rank* and discards *magnitude* — and both retrieval legs had already computed magnitude to sort by, then thrown it away on return. Restored, the two populations separate cleanly:
+The cause was in the fusion step. Reciprocal rank fusion scores a result by `1/(k + rank)`, so it carries *rank* and discards *magnitude* — and both retrieval paths had already computed magnitude to sort by, then thrown it away on return. Restored, the two populations separate cleanly:
 
 | | vector distance | keyword score |
 |---|---|---|
@@ -140,10 +140,10 @@ Weak evidence does not block an answer — it changes the narration contract, so
 
 A correction belongs with this entry: two of the six questions written to represent *topic present, answer absent* turned out to be answerable, and the system answered them correctly with citations. The absence check had been run with the author's vocabulary rather than the corpus's. Re-split, the reading is stronger — but the lesson is that **an absence proved with your own words is not an absence**.
 
-### A document that no retrieval leg could read
+### A document that no retrieval path could read
 **2026-08-18** · `fix(nexus): keep a chunk's generation key with the document it belongs to`
 
-Reviving a soft-deleted document restores "only the current generation" of its chunks, decided by comparing a key on the chunk against the document's content hash. Re-ingestion updated the document's hash and never moved the chunk's. So any document that had been edited once carried chunks stuck in the past, and a later delete-then-revive stood the document back up with **zero readable chunks** — listed, counted, and reported healthy while no retrieval leg could read a word of it.
+Reviving a soft-deleted document restores "only the current generation" of its chunks, decided by comparing a key on the chunk against the document's content hash. Re-ingestion updated the document's hash and never moved the chunk's. So any document that had been edited once carried chunks stuck in the past, and a later delete-then-revive stood the document back up with **zero readable chunks** — listed, counted, and reported healthy while no retrieval path could read a word of it.
 
 The live corpus the team queries had one, with eight more waiting on the same trigger, which is not a human command but a scheduled reconciliation job. The blind spot that hid it is worth naming: coverage is computed over *chunks*, so a document with none is outside the population entirely and reports as fully covered.
 
@@ -159,9 +159,9 @@ Both language versions were corrected and both are now anchored. The generalisat
 ### Fifteen out of fifteen, with the change switched off
 **2026-08-26** · `feat(nexus): the answer-fact ruler measured mention, not assertion — split them`
 
-A new ruler was written to measure something retrieval metrics cannot see: whether the answer actually contains the value the question asks for. It read 15 out of 15. Then the retrieval change it had been built to evaluate was switched off, and it still read 15 out of 15.
+A new grader was written to measure something retrieval metrics cannot see: whether the answer actually contains the value the question asks for. It read 15 out of 15. Then the retrieval change it had been built to evaluate was switched off, and it still read 15 out of 15.
 
-Both facts had one cause. A substring test cannot distinguish a value that is claimed from a value that is merely listed. The failing answer wrote `4,000` into a table of what each source says, then closed with "until this is confirmed, no figure can be asserted." The ruler counted that as correct.
+Both facts had one cause. A substring test cannot distinguish a value that is claimed from a value that is merely listed. The failing answer wrote `4,000` into a table of what each source says, then closed with "until this is confirmed, no figure can be asserted." The grader counted that as correct.
 
 The replacement asks where the value stands. Either in the lead, meaning the prose before the first table, quote or heading, which is the place the system's own prompt reserves for the answer. Or in a verdict segment, one opened by a conclusive connective. Everything else is laying evidence out.
 
@@ -174,7 +174,7 @@ Three rounds per arm, majority per question, noise band read before any test:
 
 The gap clears the noise. The sign test still does not run: five discordant pairs against a pre-registered minimum of six. All five point one way and none the other, and the claim stops there. More rounds cannot fix it, because discordant pairs are a property of the question set rather than of the sampling.
 
-The rule it left behind is now applied before measuring anything: **ask whether the ruler can see the treatment before reading its score.** A ruler pinned at 1.000 is not a strong result. It is an absent one. The same pass turned up a second defect in the substring version, which accepts a value that appears only inside a quotation of a superseded policy while the answer concludes something else entirely.
+The rule it left behind is now applied before measuring anything: **ask whether the grader can see the treatment before reading its score.** A grader pinned at 1.000 is not a strong result. It is an absent one. The same pass turned up a second defect in the substring version, which accepts a value that appears only inside a quotation of a superseded policy while the answer concludes something else entirely.
 
 ### The instrument was counting our own re-runs
 **2026-08-26** · `fix(nexus): the re-ingest signal counted our own re-runs — give it a denominator`
@@ -216,6 +216,6 @@ Wiring it surfaced a latent failure worth recording. Passing the new argument un
 
 **The same shape kept recurring: the detector existed, the delivery did not.** Coverage was computed and never shown. Document-to-code anchors were written for weeks with nothing reading them. Refusal reasons were recorded where only one view could see them. The current rule is that a check on the detector alone is not enough — the test has to run the surface a person actually looks at, and it has to be deliberately broken once to prove it goes red.
 
-**The instrument was wrong more often than the system.** That is not a complaint about the instrument; it is the reason the instrument is treated as a first-class artifact here, with signed labels, pre-registered verdict rules, and a standing prohibition on editing a ruler after seeing the score it produced. The sharpest case is the most recent: a ruler that read a perfect score and could not see the change it had been written to evaluate, and an entropy signal that was counting our own re-ingests one day after being repaired for a different contamination. Both were found by checking a claim against the thing it describes, which is cheap and is now done on a schedule rather than when something feels wrong.
+**The instrument was wrong more often than the system.** That is not a complaint about the instrument; it is the reason the instrument is treated as a first-class artifact here, with signed labels, pre-registered verdict rules, and a standing prohibition on editing a grader after seeing the score it produced. The sharpest case is the most recent: a grader that read a perfect score and could not see the change it had been written to evaluate, and an entropy signal that was counting our own re-ingests one day after being repaired for a different contamination. Both were found by checking a claim against the thing it describes, which is cheap and is now done on a schedule rather than when something feels wrong.
 
 *This page is a record, not a status board. For what is currently open, see [OPEN.md](https://github.com/LivingLikeKrillin/khala/blob/master/OPEN.md), which counts unresolved items so that it is possible to tell whether they are going up or down.*
