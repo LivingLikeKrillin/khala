@@ -110,6 +110,41 @@ def test_an_interpolated_count_is_a_counter_too():
         assert check_terms.check_line("nexus/x.md", line, {"자": "평가 하니스"}) == [], line
 
 
+def test_an_english_term_is_caught_regardless_of_case():
+    """공개 문서는 영문 페이지가 짝으로 있다. 문장 첫머리의 대문자를 놓치면 한쪽만 고쳐지고,
+    그게 이 항목이 생긴 이유다 — 한국어만 고쳐서 ko/en 이 갈렸다."""
+    banned = {"retrieval leg": "retrieval path"}
+    for line in ("Retrieval legs fuse by rank.", "both retrieval legs are weak"):
+        hits = [w for w, _ in check_terms.check_line("docs/x.md", line, banned)]
+        assert hits == ["retrieval leg"], line
+
+
+def test_the_generated_spec_register_is_archival():
+    """`INDEX.md` 는 승인 SPEC 의 제목을 옮긴 등록부이고 `arbiter` 가 **생성**한다 —
+    손으로 고쳐도 다음 실행에 덮이고, 그 말은 그 SPEC 들의 것이다."""
+    assert check_terms.is_archival("INDEX.md")
+
+
+def test_a_hyphenated_or_suffixed_name_is_an_identifier_not_prose():
+    """⛔ `SPEC-nexus-answer-quality-ruler` 는 **승인된 문서의 이름**이고 `ruler_sha` 는
+    필드 이름이다. 이름을 고치면 가리키는 것이 사라진다 — 실물에서 15곳이 이 모양이었다."""
+    banned = {"ruler": "grader"}
+    for line in (
+        "판정 규칙은 SPEC-nexus-answer-quality-ruler §3.2 에 있다",
+        '"ruler_sha": _ruler_sha(),',
+        "from tests.test_answer_assertion_ruler import x",
+    ):
+        assert check_terms.check_line("nexus/x.md", line, banned) == [], line
+
+
+def test_the_english_word_still_fires_in_ordinary_prose():
+    """대조군 — 이름을 빼느라 산문까지 놓치면 이 항목은 없는 것과 같다."""
+    banned = {"ruler": "grader"}
+    for line in ("Two independent rulers share this job",
+                 "a later ruler may reopen it"):
+        assert [w for w, _ in check_terms.check_line("nexus/x.md", line, banned)] == ["ruler"], line
+
+
 def test_archival_paths_are_exempt():
     """과거는 그대로 둔다 — 컴포넌트 개명 때 정한 규칙과 같다."""
     line = "이 자가 통과시켰다"

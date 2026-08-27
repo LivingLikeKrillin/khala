@@ -107,7 +107,7 @@ first, and each is enforced on every push rather than remembered.
 | **Disposable-database marker** | A test run against a database that has not declared itself scratch | The suite truncates tables. Pointed at the development database once, it took the corpus with it. |
 | **Fingerprint scanner** | A push carrying identifying details — files, commit messages, and PR bodies alike | Details scrubbed before the repo went public came back through ordinary work a month later. |
 | **Declared index generations** | Ingestion whose resolved embedding generation differs from the corpus's declared one | A documented command, run from the host, wrote vectors into a column no query reads. Nothing failed. |
-| **Pre-registered verdict rules** | A ruler edited after seeing the score it produced | Evaluation labels are signed, and the rule that decides the verdict is written down before the run. |
+| **Pre-registered verdict rules** | An evaluation harness edited after seeing the score it produced | Evaluation labels are signed, and the rule that decides the verdict is written down before the run. |
 
 Roughly 1,900 test functions run across 17 CI jobs, including a job that runs the
 database-backed suite against a real Postgres with migrations applied — added after the

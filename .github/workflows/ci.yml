@@ -226,7 +226,7 @@ jobs:
     name: nexus (search recall, mecab)
     runs-on: ubuntu-latest
     # The recall suite measures the keyword leg, and the keyword leg is mecab-ko. Without the
-    # Korean tokenizer `tokenize_korean` falls back to splitting on spaces — a different ruler,
+    # Korean tokenizer `tokenize_korean` falls back to splitting on spaces — a different measure,
     # and a floor measured with it guards nothing. mecab-ko is built from source in the image,
     # so the suite runs inside the image. `NEXUS_REQUIRE_MECAB=1` turns a silent skip into a
     # red build, which is the whole lesson: a test that quietly does not run is not a test.
@@ -271,7 +271,7 @@ jobs:
         run: docker build -t nexus-app:ci .
       - name: Run the recall and Korean-eval suites inside the image
         working-directory: nexus
-        # Two independent rulers share this job because they share one requirement (mecab-ko in
+        # Two independent evaluation harnesses share this job because they share one requirement (mecab-ko in
         # the image). test_search_recall guards the keyword leg against the AND regression on its
         # own five-document fixture; test_ko_eval_run_db measures the 265-document Korean pack
         # against floors pinned to a pack and label revision. Different corpora, different floors,
