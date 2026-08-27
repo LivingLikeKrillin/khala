@@ -61,8 +61,8 @@ def test_a_fenced_block_is_not_my_prose():
     message = "\n".join([
         "고친 결과다:",
         "```",
-        "-  이 자가 재는 것",
-        "+  이 테스트가 재는 것",
+        "-  이 자가 측정하는 것",
+        "+  이 테스트가 측정하는 것",
         "```",
         "끝.",
     ])
@@ -71,7 +71,7 @@ def test_a_fenced_block_is_not_my_prose():
 
 def test_a_quoted_line_is_someone_elses_words():
     """인용은 기록물과 같은 규칙이다 — 남이 그때 쓴 말을 내가 고쳐 옮기면 인용이 아니다."""
-    assert terms_guard.offenders("> 이 자가 무엇을 재나\n\n그 말은 이제 안 쓴다.", BANNED) == []
+    assert terms_guard.offenders("> 이 자가 무엇을 측정하나\n\n그 말은 이제 안 쓴다.", BANNED) == []
 
 
 def test_compounds_and_units_still_pass():

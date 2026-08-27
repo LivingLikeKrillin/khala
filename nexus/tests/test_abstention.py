@@ -1,10 +1,10 @@
 """기권 — 코드가 내리는 판단인가, 문장에서 읽어낸 것인가.
 
 `KOREAN_SEARCH_QUALITY.md` §2.3 은 답변불가 라벨 5건이 "어떤 집계에도 안 들어간다" 고 적고
-이유를 "Nexus 에 기권 기제가 없어 잴 것이 없다" 로 남겼다. 기제는 사실 **있었다** — 근거가 하나도
+이유를 "Nexus 에 기권 기제가 없어 측정할 것이 없다" 로 남겼다. 기제는 사실 **있었다** — 근거가 하나도
 없으면 LLM 을 부르지 않고 정해진 문장을 돌려준다. 없던 것은 **기계가 읽을 수 있는 형태**였다.
 
-여기서 재는 두 가지:
+여기서 측정하는 두 가지:
 
 1. 기권이 `abstained` 로 나온다 — 답변 문장을 한국어로 대조하지 않고.
 2. **문장이 바뀌어도 플래그가 산다.** 문자열에 기대는 순간 그 문구를 다듬는 커밋 하나가 조용히
@@ -64,7 +64,7 @@ def test_a_fresh_result_does_not_claim_abstention():
 
 
 def test_the_unanswerable_labels_are_counted_apart_from_the_forty():
-    """§4.3 의 분모는 답변가능 40 이고 그건 그대로다. 답변불가는 다른 것을 잰다."""
+    """§4.3 의 분모는 답변가능 40 이고 그건 그대로다. 답변불가는 다른 것을 측정한다."""
     unanswerable = [{"id": "u1"}, {"id": "u2"}, {"id": "u3"}, {"id": "u4"}, {"id": "u5"}]
     r = score_abstention({"u1": True, "u3": True}, unanswerable)
     assert (r.total, r.abstained) == (5, 2)

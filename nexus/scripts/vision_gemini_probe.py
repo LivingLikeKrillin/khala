@@ -46,7 +46,7 @@ ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:gene
 #:
 #: **이건 비용 절감이 아니라 통제다.** 첫 실행에서 Gemini 에만 사고 토큰 58,838개가 붙었고
 #: Claude 쪽 두 독자에게는 없었다. "같은 프롬프트·temperature 0" 이라고 적어 놓고 한 독자에게만
-#: 추론 예산을 준 셈이라, 그 차이를 독자 충실도로 돌리는 근거가 약해진다. 끄고 다시 재서
+#: 추론 예산을 준 셈이라, 그 차이를 독자 충실도로 돌리는 근거가 약해진다. 끄고 다시 측정해서
 #: 결론이 유지되는지 본다. (부수적으로 비용의 69%가 사라진다.)
 THINKING = os.getenv("GEMINI_THINKING", "on").strip().lower()
 

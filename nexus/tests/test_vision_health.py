@@ -96,13 +96,13 @@ def test_variation_endpoints():
 
 
 def test_variation_ignores_text_with_no_identifiers():
-    """그림에 글자가 없는 경우다. 잴 것이 없는 것은 불안정이 아니다."""
+    """그림에 글자가 없는 경우다. 측정할 것이 없는 것은 불안정이 아니다."""
     assert variation("", "") == 0.0
     assert variation("디제잉", "포인트") == 0.0
 
 
 def test_unmeasured_is_not_a_pass():
-    """NULL 은 '괜찮다' 가 아니라 '아무도 안 쟀다' 다 — 지금 44행의 상태."""
+    """NULL 은 '괜찮다' 가 아니라 '아무도 안 측정했다' 다 — 지금 44행의 상태."""
     assert passes(None) is False
     assert passes(0.0) is True
     assert passes(MAX_VARIATION) is True

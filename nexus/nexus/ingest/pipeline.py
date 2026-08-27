@@ -37,11 +37,11 @@ class IngestResult:
     bm25_indexed: int = 0
     vector_indexed: int = 0
     edges_created: int = 0
-    #: 적재 뒤 이 테넌트의 커버리지 (SPEC-nexus-index-completeness §3.4). `None` 은 "못 쟀다".
+    #: 적재 뒤 이 테넌트의 커버리지 (SPEC-nexus-index-completeness §3.4). `None` 은 "못 측정했다".
     #: **이것은 편의이지 보장이 아니다** — 프로세스가 죽으면 여기까지 오지 못한다. 보장은
-    #: `nexus status` 에 있다 (§2.5). 그래서 "0 건 남았다" 와 "안 쟀다" 를 구분해 둔다.
+    #: `nexus status` 에 있다 (§2.5). 그래서 "0 건 남았다" 와 "안 측정했다" 를 구분해 둔다.
     coverage: dict | None = None
-    #: 구멍의 **이유** (`embed_refusals` 집계). `None` 은 "못 쟀다".
+    #: 구멍의 **이유** (`embed_refusals` 집계). `None` 은 "못 측정했다".
     #: 커버리지가 크기를 말하고 이것이 처방을 말한다 — 수만 보여 주면 읽는 사람이 할 수 있는 것은
     #: 같은 실패를 다시 부르는 것뿐이다.
     refusals: dict | None = None
@@ -337,7 +337,7 @@ async def _run_vector_indexing(tenant: str, config: dict | None = None) -> int:
         WHERE status = 'active' AND tenant = $1 AND {col} IS NULL
         -- 배치는 제일 긴 글에 맞춰 패딩된다. 길이순으로 뽑아야 한 배치가 고르게 차고, 짧은
         -- 글들이 긴 글 하나에 끌려가 빈칸으로 계산되지 않는다 (`reembed.pending_rids` 와 같은
-        -- 이유 · 같은 순서). 설계문서 코퍼스에서 잰 낭비가 60% 였다.
+        -- 이유 · 같은 순서). 설계문서 코퍼스에서 측정한 낭비가 60% 였다.
         ORDER BY length(chunk_text), rid
         """,
         tenant,
@@ -500,7 +500,7 @@ async def run_ingest(
             logger.error("vector_indexing_failed", error=str(e))
 
         # 3b. 이 적재가 무엇을 남겼는가 (SPEC-nexus-index-completeness §3.4).
-        # 인덱싱 단계가 **예외를 냈든 아니든** 잰다 — 삼켜진 실패의 흔적은 결과가 아니라 상태에
+        # 인덱싱 단계가 **예외를 냈든 아니든** 측정한다 — 삼켜진 실패의 흔적은 결과가 아니라 상태에
         # 남기 때문이다. 여기서 거부하지는 않는다(§2.4).
         try:
             from nexus.index.embed_health import fetch_coverage_by_tenant, fetch_refusals
@@ -509,7 +509,7 @@ async def run_ingest(
             col = configured_column(config)
             row = next((c for c in await fetch_coverage_by_tenant()
                         if c["tenant"] == tenant), None)
-            # 이유는 구멍이 있든 없든 잰다 — 0 이어야 정상이고, 0 인 것을 본 것과 안 본 것은 다르다.
+            # 이유는 구멍이 있든 없든 측정한다 — 0 이어야 정상이고, 0 인 것을 본 것과 안 본 것은 다르다.
             result.refusals = await fetch_refusals(col, tenant=tenant)
             if row is not None:
                 result.coverage = row

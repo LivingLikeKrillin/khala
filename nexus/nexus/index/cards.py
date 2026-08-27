@@ -225,7 +225,7 @@ def card_state(card: Card, current: dict[tuple[str, str], str]) -> str:
 class Agreement:
     """여러 실행 사이의 일치도. **점추정이 아니라 분포로 보고한다** (§6.1).
 
-    2회는 구간 없는 한 숫자를 준다. 스크린샷 판독기 때 잡음 폭을 재지 않고 SPEC 을 네 개
+    2회는 구간 없는 한 숫자를 준다. 스크린샷 판독기 때 잡음 폭을 측정하지 않고 SPEC 을 네 개
     썼다가 근거 32건이 전부 잡음이었던 일이 있다 — 그래서 여기서는 쌍을 전부 본다.
     """
     mean: float
@@ -249,7 +249,7 @@ def term_agreement(runs: list[tuple[str, ...]]) -> Agreement:
     """같은 심볼에 대한 여러 실행의 `domain_terms` 일치도.
 
     비교 전에 소문자·공백 정규화만 한다. 그 이상(동의어 병합 등)을 하면 생성기의 흔들림을
-    측정 코드가 가려버린다 — 재려는 것이 바로 그 흔들림이다.
+    측정 코드가 가려버린다 — 측정하려는 것이 바로 그 흔들림이다.
     """
     norm = [{t.strip().lower() for t in r if t.strip()} for r in runs]
     scores = [
@@ -258,6 +258,6 @@ def term_agreement(runs: list[tuple[str, ...]]) -> Agreement:
         for j in range(i + 1, len(norm))
     ]
     if not scores:
-        raise ValueError("일치도를 재려면 실행이 둘 이상이어야 한다")
+        raise ValueError("일치도를 측정하려면 실행이 둘 이상이어야 한다")
     return Agreement(mean=sum(scores) / len(scores), low=min(scores),
                      high=max(scores), pairs=len(scores))

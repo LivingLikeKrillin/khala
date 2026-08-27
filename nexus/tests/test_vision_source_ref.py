@@ -1,6 +1,6 @@
 """인용에서 원본 그림으로 — SPEC-nexus-vision-source-ref (DB 없이 도는 부분).
 
-여기서 재는 것은 **문법과 거절**이다: writer 가 만든 마커를 parser 가 읽는가, 참조 없는 추출이
+여기서 측정하는 것은 **문법과 거절**이다: writer 가 만든 마커를 parser 가 읽는가, 참조 없는 추출이
 저장을 통과하는가, 큰 블록이 쪼개졌을 때 조각들이 식별자를 잃지 않는가.
 
 마커 문자열을 손으로 타이핑하지 않는다. `build_block()` 이 만든 것을 읽는다 — 손으로 쓰면
@@ -94,7 +94,7 @@ def test_two_chunks_split_from_one_block_carry_the_same_handle():
     long_text = "\n".join(f"| 항목{i} | 값{i} | 설명이 제법 긴 줄이다 {i} |" for i in range(400))
     chunks = chunk_document(_block(long_text), language="ko", trust_vision_markers=True)
     machine = [c for c in chunks if c.provenance_tier == "machine_read"]
-    assert len(machine) >= 2, "쪼개지지 않았다 — 이 시험이 재려던 상태가 아니다"
+    assert len(machine) >= 2, "쪼개지지 않았다 — 이 시험이 측정하려던 상태가 아니다"
 
     handles = [(vision_source.parse_marker(c.chunk_text) or {}).get("img") for c in machine]
     assert all(h == _SHA[:16] for h in handles), (

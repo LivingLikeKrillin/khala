@@ -1,7 +1,7 @@
-"""멀티턴 검색 평가 하니스 — 후속 질문이 검색을 어디서 잃는지 잰다 (SPEC-nexus-multi-turn-retrieval §3.4).
+"""멀티턴 검색 평가 하니스 — 후속 질문이 검색을 어디서 잃는지 측정한다 (SPEC-nexus-multi-turn-retrieval §3.4).
 
-**절대점수를 재지 않는다.** 두 코퍼스가 답변 품질 천장에 닿았으므로(memory:
-khala-answer-quality-harness) 그 수는 아무것도 말하지 않는다. 여기서 재는 것은 **같은 정보
+**절대점수를 측정하지 않는다.** 두 코퍼스가 답변 품질 천장에 닿았으므로(memory:
+khala-answer-quality-harness) 그 수는 아무것도 말하지 않는다. 여기서 측정하는 것은 **같은 정보
 요구의 두 표현 사이 격차**이고, 상한은 라벨의 원 질의가 이미 정해 준다.
 
 실험군 넷을 항상 같이 돌린다:
@@ -110,7 +110,7 @@ async def run_arm(query: str, gold: set[str], svc, *, tenant: str, clearance: st
                   route: str, top_k: int, channels=None) -> tuple[int, int | None]:
     """(gold 적중 문서 수, 첫 gold 의 문서 순위 | None).
 
-    **순위까지 재는 이유**: Recall@10 은 굵은 자다. gold 를 10위 안에 붙들어 두면서 9위로
+    **순위까지 측정하는 이유**: Recall@10 은 굵은 자다. gold 를 10위 안에 붙들어 두면서 9위로
     밀어냈다면 Recall 로는 무승부지만 근거 패킷은 순위로 잘린다.
     """
     from nexus.search import hybrid
@@ -187,7 +187,7 @@ async def _run(args) -> int:
 
     signed_tenant = (labels.get("corpus") or {}).get("tenant")
     if signed_tenant != args.tenant:
-        print(f"✗ 라벨은 테넌트 {signed_tenant!r} 에 서명됐는데 재는 것은 {args.tenant!r} 이다")
+        print(f"✗ 라벨은 테넌트 {signed_tenant!r} 에 서명됐는데 측정하는 것은 {args.tenant!r} 이다")
         return 1
 
     by_id = {q["id"]: q for q in labels["queries"]}
@@ -207,7 +207,7 @@ async def _run(args) -> int:
         pool = await db.get_pool()
         async with pool.acquire() as con:
             live = await tenant_bodies(con, args.tenant)
-        # 라벨이 서명된 본문과 지금 재는 본문이 같은가. 다르면 그 질의의 gold 는 사라진
+        # 라벨이 서명된 본문과 지금 측정하는 본문이 같은가. 다르면 그 질의의 gold 는 사라진
         # 텍스트에 대한 주장이다.
         if stale := expired(labels, {k: v["sha"] for k, v in live.items()}):
             print(f"✗ 만료된 라벨 {len(stale)}건 — 사람이 다시 읽고 서명해야 한다: "
@@ -310,7 +310,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--labels", type=Path, default=DEFAULT_LABELS)
     ap.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     ap.add_argument("--tenant", default="ko_eval_packa",
-                    help="재는 테넌트(라벨의 서명 테넌트와 같아야 한다)")
+                    help="측정하는 테넌트(라벨의 서명 테넌트와 같아야 한다)")
     ap.add_argument("--clearance", default="INTERNAL")
     ap.add_argument("--route", default="hybrid_only")
     ap.add_argument("--top-k", type=int, default=10, dest="top_k")

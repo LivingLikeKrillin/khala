@@ -253,7 +253,7 @@ def test_the_revision_check_only_applies_to_agent_authored_labels(labels):
 # ── 라벨은 서명된 본문에 묶인다 (SPEC-nexus-answer-quality-ruler §3.3) ────────
 #
 # **이 게이트가 없어서 이틀치 판독이 만료된 라벨 위에 얹혀 있었다.** 옛 게이트는 gold 가
-# 매니페스트에 *존재하는지*만 봤고, 실행은 라이브 테넌트를 쟀다. 그 사이 116문서 중 8건의 본문이
+# 매니페스트에 *존재하는지*만 봤고, 실행은 라이브 테넌트를 측정했다. 그 사이 116문서 중 8건의 본문이
 # 바뀌었고 — 그 8건이 답변가능 40건 중 21건의 gold 였다.
 
 
@@ -306,7 +306,7 @@ def test_the_signed_form_in_the_spec_matches_what_the_run_computes(labels):
     """서명 파일은 `sha256:<hex>`, 실행이 넘기는 것은 맨 `<hex>` — 둘은 같은 값이어야 한다.
 
     **이 테스트가 없어서 채점기를 실제로 서명하는 순간 40질의가 전부 만료됐다.** 옛 테스트들은 서명
-    쪽과 라이브 쪽을 같은 가짜 문자열로 만들어 비교해, 두 형식이 만나는 지점을 한 번도 재지
+    쪽과 라이브 쪽을 같은 가짜 문자열로 만들어 비교해, 두 형식이 만나는 지점을 한 번도 측정하지
     않았다. 여기서는 양쪽을 **다른 형식으로** 준다.
     """
     from scripts.ko_eval_labels import expired
@@ -334,7 +334,7 @@ def test_a_disappeared_document_expires_its_query(labels):
 
 
 def test_a_live_run_needs_the_labels_to_say_what_they_were_signed_against(labels):
-    """테넌트를 재는 실행은 결속을 요구한다. 얼어 있는 디스크 팩(Pack A)은 매니페스트 해시
+    """테넌트를 측정하는 실행은 결속을 요구한다. 얼어 있는 디스크 팩(Pack A)은 매니페스트 해시
     가드가 같은 일을 하므로 요구하지 않는다 — 움직이는 것은 테넌트다."""
     unbound = check(labels, DEFAULT_PACK_DIR, require_corpus_binding=True)
     assert any("corpus.tenant 없음" in p for p in unbound)

@@ -77,7 +77,7 @@ def test_front_matter_without_title_just_disappears():
 
 
 def test_text_attribute_survives_the_shortcode():
-    """`text=` 를 버리면 외래어 층이 재려는 어휘 자체가 사라진다 (SPEC §4.1 규칙 1)."""
+    """`text=` 를 버리면 외래어 층이 측정하려는 어휘 자체가 사라진다 (SPEC §4.1 규칙 1)."""
     assert strip_shortcodes('{{< glossary_tooltip text="파드" term_id="pod" >}}는 최소 단위다') \
         == "파드는 최소 단위다"
 

@@ -33,7 +33,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-# 코퍼스와 질의는 리콜 스위트에서 **가져온다**. 복붙하면 조용히 갈라지고, 그러면 두 평가 하니스로 잰
+# 코퍼스와 질의는 리콜 스위트에서 **가져온다**. 복붙하면 조용히 갈라지고, 그러면 두 평가 하니스로 측정한
 # 숫자가 되어 재현이라는 말이 성립하지 않는다.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests.test_search_recall import (  # noqa: E402

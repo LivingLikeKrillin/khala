@@ -7,7 +7,7 @@
 1. 이벤트 루프의 코드가 **모델의** 토크나이저를 부르지 않는다
 2. 워커 스레드가 **사본을** 부르지 않는다
 
-여기서는 둘 다 잰다. 경합 자체를 타이밍으로 재는 시험은 넣지 않는다 — 그런 시험은 흔들리다 결국
+여기서는 둘 다 측정한다. 경합 자체를 타이밍으로 측정하는 시험은 넣지 않는다 — 그런 시험은 흔들리다 결국
 지워지고, 경합의 근거는 SPEC §1 의 마이크로벤치(양성 대조군 포함)가 댄다.
 """
 
@@ -183,7 +183,7 @@ def test_an_unmakeable_copy_leaves_the_service_not_ready_and_embed_503(sidecar):
 
 
 def test_over_length_input_still_gets_413(sidecar):
-    """계약은 그대로다. **개수를 세는 부분**은 여기서 못 잰다(가짜 토크나이저) — 실서비스 검사로 뺀다."""
+    """계약은 그대로다. **개수를 세는 부분**은 여기서 못 측정한다(가짜 토크나이저) — 실서비스 검사로 뺀다."""
     mod, _, _ = sidecar(max_seq_length=10)
     with pytest.raises(HTTPException) as e:
         asyncio.run(mod.embed(mod.EmbedRequest(texts=["이 입력은 열 토큰을 넘는다"])))

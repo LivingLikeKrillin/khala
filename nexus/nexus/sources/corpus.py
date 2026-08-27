@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-# Pack B 트리거는 **두 조건**이다. 하나만 세면 통과하고도 못 잰다.
+# Pack B 트리거는 **두 조건**이다. 하나만 세면 통과하고도 못 측정한다.
 #
 #  · 문서 수 — 창(상위 10문서) 대비 무작위 랭커 바닥값을 0.10 이하로. 116문서면 0.086.
 #    이것은 **창 경쟁**의 조건이다: 짧은 문서도 top-10 자리를 두고 겨루므로 다 센다.
@@ -31,7 +31,7 @@ PACK_B_MIN_DOCUMENTS = 100
 PACK_B_SUBSTANTIVE_CHARS = 800
 
 # **이 수는 보고용이지 게이트가 아니다.** 한때 게이트였고(2026-08-07 오전, "≥ 60"), 그 60 은
-# 재보지 않고 만든 어림수였다. 근거로 든 것은 "gold 후보가 19건뿐이면 두 실험군이 같은 소수 문서를
+# 측정해 보지 않고 만든 어림수였다. 근거로 든 것은 "gold 후보가 19건뿐이면 두 실험군이 같은 소수 문서를
 # 두고 겨뤄 무승부가 쌓인다" 였는데, 같은 날 오후에 라벨 없이 그것을 재보니 반대가 나왔다:
 # 상위10에 뜬 서로 다른 문서가 48건, 순위표가 갈리는 질의 12/30, 그중 8건이 2~3위에서 갈렸다.
 #
@@ -85,7 +85,7 @@ async def _unembedded(con, tenant: str) -> dict:
 
 
 async def corpus_status(con, tenant: str = "default") -> dict:
-    """활성 코퍼스의 구성과, 잴 수 있을 만큼 큰지."""
+    """활성 코퍼스의 구성과, 측정할 수 있을 만큼 큰지."""
     docs = await con.fetchval(
         "SELECT count(*) FROM documents WHERE tenant=$1 AND status='active'", tenant) or 0
     chunks = await con.fetchval(
@@ -143,8 +143,8 @@ async def corpus_status(con, tenant: str = "default") -> dict:
             "ready": docs >= PACK_B_MIN_DOCUMENTS,
             "why": ("창이 상위 10문서라, 코퍼스가 그보다 크지 않으면 두 실험군이 거의 무승부가 되고 "
                     "판정 규칙이 '검정력 부족' 을 돌려준다 (KOREAN_SEARCH_QUALITY.md §6.1)."),
-            "second_gate": ("코퍼스 크기만으로는 잴 수 있는지 알 수 없다. 두 토크나이저가 이 "
-                            "코퍼스에서 실제로 다른 순위를 내는지는 라벨 없이 잴 수 있고, 그것이 "
+            "second_gate": ("코퍼스 크기만으로는 측정할 수 있는지 알 수 없다. 두 토크나이저가 이 "
+                            "코퍼스에서 실제로 다른 순위를 내는지는 라벨 없이 측정할 수 있고, 그것이 "
                             "검정력을 예고한다 — scripts/ko_eval_packb_disagreement.py (§6.3). "
                             f"실질 문서({PACK_B_SUBSTANTIVE_CHARS}자 이상) {substantive}건은 "
                             "참고 수치이지 문턱이 아니다."),

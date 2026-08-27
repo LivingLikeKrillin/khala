@@ -127,7 +127,7 @@ def test_the_ingest_command_actually_prints_the_reason(tmp_path, monkeypatch):
     이 리포는 "신호는 있는데 전달이 없다" 로 이미 한 번 하루를 잃었다.
 
     동기 테스트인 이유: CLI 는 자기 이벤트 루프를 연다(`asyncio.run`). 비동기 테스트 안에서
-    부르면 루프가 겹쳐 죽고, 그 실패는 이 검사가 재려는 것과 아무 상관이 없다.
+    부르면 루프가 겹쳐 죽고, 그 실패는 이 검사가 측정하려는 것과 아무 상관이 없다.
     """
     import asyncio
 

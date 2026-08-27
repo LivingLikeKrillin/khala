@@ -1,7 +1,7 @@
 """답변 품질 채점기에 이가 있는가.
 
 채점기가 무엇이든 통과시키면 "답변 품질 100%" 라는 숫자가 나오고, 그 숫자는 아무것도 안 지킨다.
-그래서 여기서 재는 것은 대부분 **통과하면 안 되는 입력**이다.
+그래서 여기서 측정하는 것은 대부분 **통과하면 안 되는 입력**이다.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ def test_citing_the_wrong_document_is_grounded_but_not_gold():
 
 
 def test_retrieval_can_be_right_while_the_answer_is_wrong():
-    """정답 문서를 인용하고도 숫자를 틀리는 경우 — 검색만 재면 안 보이는 실패다."""
+    """정답 문서를 인용하고도 숫자를 틀리는 경우 — 검색만 측정하면 안 보이는 실패다."""
     s = score_answer("q", "최대 50 곡까지 담을 수 있습니다 [출처: 플레이리스트 정책]",
                      [_cite("플레이리스트 정책")], GOLD, [["100"]])
     assert (s.grounded, s.cites_gold) == (True, True)
@@ -56,7 +56,7 @@ def test_retrieval_can_be_right_while_the_answer_is_wrong():
 
 
 def test_a_fact_may_be_written_more_than_one_way():
-    """항목 안은 후보 중 하나면 된다 — 아니면 답변의 표현을 재게 된다."""
+    """항목 안은 후보 중 하나면 된다 — 아니면 답변의 표현을 측정하게 된다."""
     for surface in ("100곡", "100 곡", "100개의 트랙"):
         s = score_answer("q", f"{surface} [출처: 플레이리스트 정책]",
                          [_cite("플레이리스트 정책")], GOLD, [["100"], ["곡", "트랙"]])
@@ -85,9 +85,9 @@ def test_an_english_identifier_keeps_its_case():
 
 
 def test_an_unmeasurable_query_is_not_counted_as_passing():
-    """`must_contain` 이 없으면 '통과' 가 아니라 **잴 것이 없다** — 집계가 그 둘을 나눠야 한다."""
+    """`must_contain` 이 없으면 '통과' 가 아니라 **측정할 것이 없다** — 집계가 그 둘을 나눠야 한다."""
     s = score_answer("q", "무언가 [출처: 플레이리스트 정책]", [_cite("플레이리스트 정책")], GOLD, [])
-    assert s.has_facts is False, "빈 조건을 all() 이 참으로 만들면 안 잰 질의가 만점이 된다"
+    assert s.has_facts is False, "빈 조건을 all() 이 참으로 만들면 안 측정한 질의가 만점이 된다"
     a = aggregate([s])
     assert a["facts_measurable"] == 0 and a["facts_present"] == 0
 
@@ -128,5 +128,5 @@ def test_a_failed_call_is_not_hidden_in_the_aggregate():
     dead = score_answer("b", "…근거 덤프에 100 이 들어 있다…", [], GOLD, [["100"]], llm_failed=True)
     a = aggregate([good, dead])
     assert a["llm_failed"] == 1, "실패 건수가 안 보이면 0% 를 '품질' 로 읽게 된다"
-    assert a["facts_measurable"] == 1, "실패한 건은 잰 것이 아니다"
+    assert a["facts_measurable"] == 1, "실패한 건은 측정한 것이 아니다"
     assert a["facts_present"] == 1 and a["all_three"] == 1

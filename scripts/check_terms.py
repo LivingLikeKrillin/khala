@@ -101,8 +101,12 @@ def load_banned(glossary: Path = GLOSSARY) -> dict[str, str]:
         if len(cells) < 2 or cells[0] in ("쓰지 않는 말", ""):
             continue
         word, replacement = cells[0], cells[1]
-        if word:
-            banned[word] = replacement
+        # 한 낱말이 굴절형을 여럿 갖는다(`재` · `쟀다` · `잰`…). 개념 하나에 표 한 줄을
+        # 유지하려고 **첫 칸만** `·` 로 나눈다 — 목록이 코드로 새는 게 아니라, 표가 여전히
+        # 정본이고 여기는 그 표를 읽는 규칙일 뿐이다.
+        for form in (f.strip() for f in word.split("·")):
+            if form:
+                banned[form] = replacement
     return banned
 
 

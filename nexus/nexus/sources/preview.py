@@ -96,7 +96,7 @@ def preview_root(source, root_id: str, sample_titles: int = 10) -> RootPreview:
 
 
 def preview_roots(source_factory, root_ids: list[str]) -> dict:
-    """여러 루트를 각각 재고 합계를 낸다.
+    """여러 루트를 각각 측정하고 합계를 낸다.
 
     루트마다 새 source 를 만든다 — `live_ids()` 가 자기 roots 를 걷기 때문이고, 합쳐 걸으면
     어느 루트가 무엇을 줬는지 알 수 없어 고르는 데 못 쓴다.

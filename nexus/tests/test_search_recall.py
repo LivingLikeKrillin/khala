@@ -25,11 +25,11 @@ def _has_mecab() -> bool:
 
 
 # 이 스위트는 **mecab-ko 가 있어야만 의미가 있다.** 없으면 `tokenize_korean` 이 공백 분리로
-# 내려앉고, 그건 프로덕션이 쓰는 토크나이저가 아니다 — 다른 평가 하니스로 잰 숫자는 바닥값이 아니다.
+# 내려앉고, 그건 프로덕션이 쓰는 토크나이저가 아니다 — 다른 평가 하니스로 측정한 숫자는 바닥값이 아니다.
 # mecab 은 Dockerfile 에서 소스 빌드된다. 그래서 CI 는 이 파일을 **이미지 안에서** 돌린다.
 pytestmark = [
     pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"), reason="NEXUS_TEST_DB_URL 필요"),
-    pytest.mark.skipif(not _has_mecab(), reason="mecab-ko 없음 — 프로덕션 토크나이저가 아니면 재지 않는다"),
+    pytest.mark.skipif(not _has_mecab(), reason="mecab-ko 없음 — 프로덕션 토크나이저가 아니면 측정하지 않는다"),
 ]
 
 _TENANT = "recall_fixture"
@@ -138,7 +138,7 @@ async def test_the_label_gate_fires_on_an_ambiguous_reference(corpus):
 # ── 키워드 다리 (이 단언이 몇 년간 없었다) ────────────────────────────────────
 
 async def test_the_expected_lexeme_actually_survives_tokenisation(corpus):
-    """기대 어휘가 mecab 을 통과하지 못하면, 재현율 테스트는 엉뚱한 것을 재게 된다."""
+    """기대 어휘가 mecab 을 통과하지 못하면, 재현율 테스트는 엉뚱한 것을 측정하게 된다."""
     for query, gold, lexeme in QUERIES:
         assert lexeme in tokenize_korean(query), f"'{query}' 의 토큰에 '{lexeme}' 이 없다"
         assert lexeme in tokenize_korean(DOCS[gold]), f"'{gold}' 문서 토큰에 '{lexeme}' 이 없다"

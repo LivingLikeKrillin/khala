@@ -42,7 +42,7 @@ def test_an_explicit_empty_string_means_no_prefix_and_is_not_absence():
 
 
 def test_giving_a_prefix_to_a_model_that_documents_none_fails_at_startup():
-    """이게 그 교란의 재유입 경로다 — 조용히 받아들이면 KURE 를 잘못 쓴 결과를 재게 된다."""
+    """이게 그 교란의 재유입 경로다 — 조용히 받아들이면 KURE 를 잘못 쓴 결과를 측정하게 된다."""
     with pytest.raises(ConflictingPrefixConfig):
         resolve_prefixes("KURE-v1", "search_document: ", "search_query: ")
 

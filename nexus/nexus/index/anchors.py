@@ -94,7 +94,7 @@ def bind(candidates: Iterable[str], resolve: Resolver) -> BindResult:
     """유일 해소만 엣지로. 0건과 다건은 **행으로 남는 거부**다.
 
     거부를 버리면 재바인딩이 불가능해지고(§3.6), 스캔보다 먼저 적재된 문서는 영구히 미앵커로
-    남아 수율 수치가 코퍼스가 아니라 실행 순서를 재게 된다.
+    남아 수율 수치가 코퍼스가 아니라 실행 순서를 측정하게 된다.
     """
     anchors: list[Anchor] = []
     refusals: list[Refusal] = []

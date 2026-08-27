@@ -45,10 +45,10 @@ class SearchHit:
     #: **LLM 근거용 청크 전문.** 사람 미리보기와 갈라 둔다: 300자는 화면엔 알맞지만 프롬프트엔
     #: 답을 잘라먹는 값이다. 2026-08-08 에 846자짜리 권한 표가 앞 300자만 넘어가, 모델이
     #: "표가 중간에 잘려 있다" 고 정확히 말하고 답을 못 했다. 검색은 그 청크를 1위로 뽑았고
-    #: 문서 단위 Recall@10 은 1.000 이었다 — 검색만 재는 자에는 안 보이던 구간이다.
+    #: 문서 단위 Recall@10 은 1.000 이었다 — 검색만 측정하는 자에는 안 보이던 구간이다.
     chunk_text: str = ""
     #: 이 청크가 속한 문서가 담은 이미지 수. 신호원이지 랭킹 입력이 아니다 — 그림에 갇힌
-    #: 내용 때문에 답을 못 내는 비율을 재려면 근거가 어디서 왔는지 알아야 한다 (migration 011).
+    #: 내용 때문에 답을 못 내는 비율을 측정하려면 근거가 어디서 왔는지 알아야 한다 (migration 011).
     doc_n_images: int = 0
     #: 이 텍스트가 어떻게 존재하게 됐는가 (ADR-0010). 'authored' | 'machine_read'.
     #: **여섯 hop 전부를 통과해야 한다** — 어느 한 곳에서 벗겨지면 읽는 사람이 둘을 구별할 수
@@ -90,13 +90,13 @@ class SearchResult:
 #: 19자짜리 행은 **48위**(0.400)였다 — 못 찾은 게 아니라 `bm25_top_k`(20) 밖으로 밀렸고,
 #: 그래서 RRF 에 한쪽 다리 점수만 들고 들어가 융합에서 탈락했다.
 #:
-#: 다섯 후보를 **제품 경로**(hybrid Recall@10)로 쟀다 —
+#: 다섯 후보를 **제품 경로**(hybrid Recall@10)로 측정했다 —
 #: `tests/eval/bm25-normalization/README.md`. 사전등록한 바는 "파편이 오르고 대조군이 안
 #: 떨어질 것" 이었고, `1` 과 `16` 이 통과, `2`(길이로 나눔)는 파편에 제일 좋았지만 **대조군
 #: Recall 을 1.000 → 0.917 로 떨어뜨려 기각**됐다. `1` 과 `16` 은 그 표본에서 구별되지 않았다.
 #:
 #: ⚠ **유의성은 주장하지 않는다**: 5승 0패 28무로 방향은 안 뒤집혔지만 불일치쌍이 문턱(6)에
-#: 하나 모자란다. 그리고 코퍼스 하나에서 쟀다. 되돌리려면 이 값을 `0` 으로 두면 된다.
+#: 하나 모자란다. 그리고 코퍼스 하나에서 측정했다. 되돌리려면 이 값을 `0` 으로 두면 된다.
 #:
 #: `SPEC-nexus-ranking-precision` §4.1 은 정규화 없는 `ts_rank_cd` 를 골랐다. 이 값은 그
 #: 결정의 개정이고, 근거는 `SPEC-nexus-bm25-length-normalization` 에 있다.
@@ -118,7 +118,7 @@ async def _bm25_search(
     **`None` 과 `0.0` 은 다른 사실이다.** `None` 은 *다리가 안 돌았다* — 토크나이저가 텀을
     하나도 못 만들어 질의 자체가 없었다. `0.0` 은 *돌았는데 아무것도 못 잡았다* 이고, 그것은
     "코퍼스 밖" 의 가장 강한 증거다. 둘을 같은 `None` 으로 뭉개던 동안 그 강한 증거가
-    `Confidence.weak` 에서 **못 잰 것**으로 읽혀 신호가 안 켜졌다 — 2026-08-24 라이브에서
+    `Confidence.weak` 에서 **못 측정한 것**으로 읽혀 신호가 안 켜졌다 — 2026-08-24 라이브에서
     *"오늘 서울 날씨 알려줘"* 가 거리 0.608(멀다)인데도 약함 판정을 못 받았다.
     """
     tokens = active_tokenizer().tokenize(query)
@@ -149,7 +149,7 @@ async def _bm25_search(
         tsquery, tenant, clearance, top_k, BM25_LENGTH_NORMALIZATION,
     )
 
-    # 매칭 0건은 **재서 0점**이다(위 참조). 안 잰 것이 아니다.
+    # 매칭 0건은 **측정해서 0점**이다(위 참조). 안 측정한 것이 아니다.
     return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
             float(rows[0]["rank_score"]) if rows else 0.0)
 
@@ -234,7 +234,7 @@ async def _vector_leg(
     예전엔 임베딩 실패를 조용히 삼켜 빈 리스트를 냈고 SQL 실패는 500 으로 나갔다 — 둘 다 틀렸다.
 
     죽은 다리의 거리는 `None` 이다. **0.0 으로 채우지 않는다** — 그러면 "완벽하게 맞았다" 로
-    읽히고, 못 잰 것과 재서 좋은 것이 같은 값이 된다.
+    읽히고, 못 측정한 것과 측정해서 좋은 것이 같은 값이 된다.
     """
     try:
         hits, dist = await _vector_search(query, embedding_svc, tenant, clearance, top_k, column)
@@ -621,7 +621,7 @@ async def hybrid_search(
     done = dict(zip(tasks, await asyncio.gather(*tasks.values()))) if tasks else {}
 
     ch_results: list[ChannelResults] = []
-    #: 적합도는 **첫 채널**(= 사용자가 물은 것)로 잰다. 재작성 채널까지 섞으면 "무엇에 대한
+    #: 적합도는 **첫 채널**(= 사용자가 물은 것)로 측정한다. 재작성 채널까지 섞으면 "무엇에 대한
     #: 적합도인가" 가 흐려진다 — 재작성이 잘 맞은 것과 질문이 잘 맞은 것은 다른 사실이다.
     top_distance = top_bm25 = None
     for i, (_text, weight) in enumerate(active):

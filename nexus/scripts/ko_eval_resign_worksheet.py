@@ -5,7 +5,7 @@ gold·not_gold 를 확인하는 사람의 행위" 로 정의한다. 그런데 �
 **무엇이 바뀌었는지** 보여 주는 도구가 없으면, 실제로 일어나는 일은 계산된 `corpus:` 블록을 통째로
 붙여넣는 것이다 — §4 가 이름을 붙여 둔 실패("읽지 않고 재서명하도록 훈련시킨다") 그 자체다.
 
-그래서 이 스크립트는 해시를 **주지 않는다**. 얼린 스냅샷 테넌트(`ko_eval_packb`)와 지금 재는
+그래서 이 스크립트는 해시를 **주지 않는다**. 얼린 스냅샷 테넌트(`ko_eval_packb`)와 지금 측정하는
 테넌트의 **본문을 청크 단위로 대조**해서 들어온 텍스트·나간 텍스트를 보여 주고, 각 질의의
 `must_contain` 요구가 **지금 본문에서 여전히 성립하는지**를 기계적으로 표시한다. 서명용 블록은
 맨 끝 부록에 있고, 그 앞을 읽어야 도달한다.
@@ -139,7 +139,7 @@ async def _run(args) -> int:
     w(f"- 생성: {datetime.now(timezone.utc).isoformat(timespec='seconds')}")
     w(f"- 라벨 revision **{labels['revision']}** · 팩 `{manifest['pack']}` "
       f"(얼린 시각 {manifest['frozen_at']})")
-    w(f"- 재는 테넌트 `{args.tenant}` · 대조하는 스냅샷 테넌트 `{args.snapshot}`")
+    w(f"- 측정하는 테넌트 `{args.tenant}` · 대조하는 스냅샷 테넌트 `{args.snapshot}`")
     w(f"- 판정된 문서 **{len(judged)}**건 중 본문이 달라진 것 **{len(drifted)}**건 "
       f"→ 만료되는 질의 **{len(stale_qids)} / {len(queries)}**")
     w("")
@@ -285,7 +285,7 @@ async def _run(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--tenant", default="default", help="지금 재는 테넌트")
+    p.add_argument("--tenant", default="default", help="지금 측정하는 테넌트")
     p.add_argument("--snapshot", default="ko_eval_packb", help="얼린 스냅샷 테넌트")
     return asyncio.run(_run(p.parse_args(argv)))
 

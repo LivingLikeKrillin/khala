@@ -5,7 +5,7 @@ Pack B 라벨은 gitignore 라 CI 가 볼 수 없고, 그래서 지금까지 "�
 사람이 한 번 확인하고 기억하는 사실이었다. 여기서는 검사가 그 자리를 대신한다 — 요구를 고치는
 사람은 그 요구가 여전히 문서에서 성립함을 같이 증명해야 한다.
 
-**대조군을 함께 건다.** 요구가 무엇에 대해서도 통과한다면 검사는 아무것도 재지 않는다.
+**대조군을 함께 건다.** 요구가 무엇에 대해서도 통과한다면 검사는 아무것도 측정하지 않는다.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ def test_the_label_file_passes_its_own_gate(labels):
 
 
 def test_every_answerable_query_says_what_the_answer_must_contain(labels):
-    """`must_contain` 이 없으면 `has_facts` 가 잴 것이 없다 — 검색 라벨과 같아진다."""
+    """`must_contain` 이 없으면 `has_facts` 가 측정할 것이 없다 — 검색 라벨과 같아진다."""
     missing = [q["id"] for q in answerable(labels) if not q.get("must_contain")]
     assert missing == []
 
@@ -131,7 +131,7 @@ def test_the_binding_names_the_tenant_it_was_signed_against(labels):
 
 
 def test_the_manifest_covers_the_whole_pack_not_just_the_gold(manifest):
-    """경쟁 문서가 빠지면 `cites_gold` 와 미판정 판정이 쉬워진다 — 재는 대상이 바뀐다."""
+    """경쟁 문서가 빠지면 `cites_gold` 와 미판정 판정이 쉬워진다 — 측정하는 대상이 바뀐다."""
     assert manifest["documents"] > 200
 
 
@@ -141,7 +141,7 @@ def test_the_manifest_covers_the_whole_pack_not_just_the_gold(manifest):
 # CI 가 도는 것은 **키워드 다리 회귀**(`test_ko_eval_run_db.py`, mecab 강제)이고, 그것은
 # `labels.yaml` 을 읽는다. 답변 라벨은 별도 파일이다.
 #
-# 그래서 두 파일이 어긋나는 순간 CI 의 바닥값은 답변 세트가 재는 것을 더 이상 안 덮는다 —
+# 그래서 두 파일이 어긋나는 순간 CI 의 바닥값은 답변 세트가 측정하는 것을 더 이상 안 덮는다 —
 # 그리고 답변 하니스가 CI 에 없으니 **아무도 모른다**. 그 침묵을 이 검사가 깬다.
 
 RETRIEVAL_LABELS = ROOT / "tests" / "eval" / "ko" / "labels.yaml"
@@ -168,7 +168,7 @@ def test_the_answer_set_inherits_the_retrieval_set(labels, retrieval_labels):
 def test_what_the_answer_set_adds_is_only_judgement(labels, retrieval_labels):
     """답변 라벨이 더하는 것은 **판단**뿐이다 — 요구·음성판정·결속. 질의 자체는 안 건드린다.
 
-    이 경계가 무너지면 두 세트가 서로 다른 질문을 재면서 같은 이름으로 불리게 된다.
+    이 경계가 무너지면 두 세트가 서로 다른 질문을 측정하면서 같은 이름으로 불리게 된다.
     """
     extra = set()
     for q in labels["queries"]:

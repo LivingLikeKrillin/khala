@@ -5,7 +5,7 @@ Recall@10 이 0.700~0.775 로 갈렸다. 원인은 `ORDER BY rank_score DESC` �
 동점 안 순서가 물리적 행 순서를 따라간 것이다.
 
 여기 테스트는 **같은 테넌트에 세 번 재적재**한다. 테넌트를 바꾸면 rid 가 테넌트를 품고 있어
-순서가 **정당하게** 달라지므로, 두 테넌트 비교는 이 결함을 재는 평가 하니스가 못 된다.
+순서가 **정당하게** 달라지므로, 두 테넌트 비교는 이 결함을 측정하는 평가 하니스가 못 된다.
 
 경험적 절반(재적재 일치)은 결함을 잡은 바로 그 방식이고, 구조적 절반(ORDER BY 가 기본키로 끝난다)
 은 흔들릴 수 없는 쪽이다. 둘 다 둔다.
@@ -119,7 +119,7 @@ async def test_the_scored_match_set_is_unchanged_by_the_tie_break(reloads):
     """이 SPEC 은 동점 순서만 바꾼다 — **한계 아래의** (rid, score) 집합은 그대로여야 한다.
 
     잘린 집합은 불변이 아니다(동점이 LIMIT 경계를 걸치면 살아남는 쪽이 바뀐다). 그래서 한계를
-    매칭 행 수보다 크게 두고 잰다 — 실제로 성립하는 불변식만 단언한다.
+    매칭 행 수보다 크게 두고 측정한다 — 실제로 성립하는 불변식만 단언한다.
     """
     from nexus import db
     from nexus.index.bm25 import active_tokenizer, tokens_to_tsquery

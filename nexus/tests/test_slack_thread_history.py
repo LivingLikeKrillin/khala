@@ -105,7 +105,7 @@ def test_the_caps_come_from_the_server_not_a_copy():
 
     # **바이트 상한이 이 검사의 하중을 진다.** 8192 는 인터닝되지 않으므로, 두 모듈이 각자
     # 계산했다면 `is` 가 거짓이다. 반면 MAX_TURNS(=8)는 작은 정수라 인터닝돼서 사본이어도
-    # `is` 를 통과한다 — 그 자리에 identity 를 쓰면 아무것도 재지 않는 검사가 된다.
+    # `is` 를 통과한다 — 그 자리에 identity 를 쓰면 아무것도 측정하지 않는 검사가 된다.
     assert T.MAX_BYTES is H.MAX_BYTES
     assert T.MAX_TURNS == H.MAX_TURNS
 

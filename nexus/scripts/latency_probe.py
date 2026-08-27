@@ -1,7 +1,7 @@
 """컷오버가 지불해야 하는 지연 측정 (SPEC-nexus-embedding-cutover-seam §4.7).
 
 교체 SPEC §4.1 은 자기 표를 스스로 철회했다 — KURE 수치는 **in-process** 라이브러리 호출이었고
-프로덕션 경로는 사이드카다. 그래서 "어떤 컷오버 결정보다 먼저 그 경로 위에서 다시 잰다" 고 적혔고,
+프로덕션 경로는 사이드카다. 그래서 "어떤 컷오버 결정보다 먼저 그 경로 위에서 다시 측정한다" 고 적혔고,
 §4.6 은 `/search` end-to-end p50/p95 를 before/after 로 요구했다. 둘 다 없었다. 이 스크립트가 그
 빚이다.
 
@@ -10,7 +10,7 @@
 고르는 것이다.
 
 **보고서에는 코퍼스 내용이 들어가지 않는다.** 질의는 리포에 커밋된 고정 세트에서만 오고, 렌더러는
-집계 레코드의 필드만 찍는다 — 질의 문자열에서 보고서로 가는 경로가 없다(테스트가 그 형태를 잰다).
+집계 레코드의 필드만 찍는다 — 질의 문자열에서 보고서로 가는 경로가 없다(테스트가 그 형태를 측정한다).
 
 사용:
     python -m scripts.latency_probe embed  --model KURE-v1 --backend sidecar
@@ -105,7 +105,7 @@ async def _generation() -> dict:
 
 
 async def measure_embed(model: str, backend: str, n: int, warmups: int) -> Measurement:
-    """질의 임베딩 지연 — **양쪽 다 HTTP 경계 너머로** 잰다 (§4.1 이 철회한 표의 자리)."""
+    """질의 임베딩 지연 — **양쪽 다 HTTP 경계 너머로** 측정한다 (§4.1 이 철회한 표의 자리)."""
     from nexus.providers.embedding import MODEL_DIMENSIONS, EmbeddingService
 
     svc = EmbeddingService(model=model, backend=backend, dimensions=MODEL_DIMENSIONS[model])
@@ -162,7 +162,7 @@ async def _drive(worker, total: int, concurrency: int, warmups: int) -> tuple[li
     """동시성 `concurrency` 를 **유지하며** `total` 건을 흘린다. (표본, 오류, 초당완료).
 
     배치로 나눠 `gather` 하면 각 배치의 꼬리가 다음 배치를 기다리게 되어 **실제보다 낮은 동시성**을
-    재게 된다. 그래서 워커를 상주시키고 공용 카운터에서 일감을 꺼낸다 — 하나가 끝나면 곧바로 다음이
+    측정하게 된다. 그래서 워커를 상주시키고 공용 카운터에서 일감을 꺼낸다 — 하나가 끝나면 곧바로 다음이
     들어가므로 관측 창 내내 부하가 유지된다.
     """
     counter = {"i": 0}
@@ -319,7 +319,7 @@ def render_report(before: Measurement, after: Measurement,
         "- **모델 탓이라고 말하지 않는다.** flip 에서 모델·백엔드·HTTP 홉·새로 만든 인덱스가 함께",
         "  바뀐다. 그 묶음이 곧 프로덕션이 돌릴 것이라 예산 판정에는 맞지만, 원인 귀속에는 못 쓴다.",
         "- **다른 규모를 예측하지 않는다.** 이 코퍼스에서 `lists=1` 이면 인덱스는 사실상 전수 스캔이고",
-        "  고정 오버헤드가 지배한다. 큰 코퍼스는 다시 재고 자기 규칙을 다시 등록한다.",
+        "  고정 오버헤드가 지배한다. 큰 코퍼스는 다시 측정하고 자기 규칙을 다시 등록한다.",
     ]
     return "\n".join(lines) + "\n"
 

@@ -22,7 +22,7 @@ def test_a_long_single_line_does_not_pass_as_three_sentences():
     one_line = "로그인 정책은 " + "매우 " * 200 + "복잡합니다."
     assert "\n" not in one_line
     assert F.sentence_count(one_line) == 1          # 줄로 세면 1 → 통과했을 것
-    # 문장으로 세도 1 이니 통과한다 — 길이는 "세 줄로" 의 요구가 아니다. 그것은 `shorter` 가 잰다.
+    # 문장으로 세도 1 이니 통과한다 — 길이는 "세 줄로" 의 요구가 아니다. 그것은 `shorter` 가 측정한다.
     assert F.check("three_sentences", one_line) is True
 
 

@@ -199,7 +199,7 @@ async def test_nothing_is_flagged_when_the_clearance_covers_the_corpus():
 
 
 async def test_a_lower_clearance_flags_more():
-    """등급은 재는 조건이다 — 낮추면 더 많은 gold 가 사라진다."""
+    """등급은 측정하는 조건이다 — 낮추면 더 많은 gold 가 사라진다."""
     blind = await run.unreadable_gold(_Con(_DOCS), _labels(["normal.md"]), "t", "PUBLIC")
     assert "q1" in blind
 
@@ -268,7 +268,7 @@ def test_the_prompt_fingerprint_follows_the_prompt(tmp_path, monkeypatch):
 
 
 def test_the_accumulated_log_carries_the_same_conditions(tmp_path):
-    """누적 로그가 조건을 빼면, 잡음 폭을 재는 그 파일만으로는 회차를 구별할 수 없다."""
+    """누적 로그가 조건을 빼면, 잡음 폭을 측정하는 그 파일만으로는 회차를 구별할 수 없다."""
     s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
                      [["100"]], known_titles=TENANT_TITLES)
     args = _args_full(tmp_path)

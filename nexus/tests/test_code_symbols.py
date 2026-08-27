@@ -319,7 +319,7 @@ def test_a_non_mainline_branch_warns_but_does_not_block(repo: Path):
 
     state = snapshot.check(repo, _head(repo))
 
-    assert state.ok                              # 막지는 않는다 — 일부러 잴 수 있다
+    assert state.ok                              # 막지는 않는다 — 일부러 측정할 수 있다
     assert any("기본 브랜치가 아닙니다" in w for w in state.warnings())
 
 

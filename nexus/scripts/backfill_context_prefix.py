@@ -87,7 +87,7 @@ def main(argv=None) -> int:
 
     if (any(args.tenant.startswith(p) for p in PINNED_PREFIXES)
             and not args.i_know_this_is_a_pinned_eval_pack):
-        print(f"⛔ {args.tenant} 는 고정된 평가 팩이다 — 접두사를 넣으면 그 위에서 잰 숫자들이 "
+        print(f"⛔ {args.tenant} 는 고정된 평가 팩이다 — 접두사를 넣으면 그 위에서 측정한 숫자들이 "
               "재현 불가가 된다. 정말이면 --i-know-this-is-a-pinned-eval-pack.")
         return 2
 

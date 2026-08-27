@@ -50,7 +50,7 @@ def test_a_term_added_to_the_glossary_is_enforced(tmp_path):
 # ── 판정 ──────────────────────────────────────────────────────────────────
 
 def test_a_coined_term_in_a_living_doc_is_a_violation():
-    hits = check_terms.check_line("nexus/docs/GUIDE.md", "이 자가 무엇을 재는지 적어라",
+    hits = check_terms.check_line("nexus/docs/GUIDE.md", "이 자가 무엇을 측정하는지 적어라",
                                   {"자": "평가 하니스"})
     assert [h[0] for h in hits] == ["자"]
 
@@ -228,6 +228,6 @@ def test_only_prose_files_are_checked():
         "diff --git a/x.py b/x.py",
         "+++ b/x.py",
         "@@ -0,0 +1 @@",
-        "+# 이 자가 잰다",
+        "+# 이 자가 측정한다",
     ])
     assert check_terms.added_lines(diff) == []

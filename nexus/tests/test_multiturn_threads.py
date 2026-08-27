@@ -4,7 +4,7 @@
 재현할 수 있고, 그 말은 **검사가 사람의 기억을 대신할 수 있다**는 뜻이다.
 
 여기서 지키는 것은 DB 없이 확인 가능한 것뿐이다. 실제 수(실험군 넷의 Recall/MRR)는
-`scripts/ko_eval_multiturn.py` 가 재고, 그 실행은 자기 대조군으로 스스로를 검사한다.
+`scripts/ko_eval_multiturn.py` 가 측정하고, 그 실행은 자기 대조군으로 스스로를 검사한다.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def test_gold_is_inherited_never_re_authored(threads):
         assert set(t) == {"qid", "turn1", "turn2"}, f"{t['qid']}: 스레드에 gold 를 적지 마라"
 
 
-# ── 평가 하니스가 재려는 것을 실제로 재는가 ─────────────────────────────────────────────
+# ── 평가 하니스가 측정하려는 것을 실제로 측정하는가 ─────────────────────────────────────────────
 
 def test_the_follow_up_drops_something_the_query_had(threads, labels):
     """turn2 는 원 질의에서 **무언가를 떨어뜨려야** 한다. 안 그러면 생략형 실험군 = 독립형 팔이다.
@@ -137,5 +137,5 @@ def test_the_committed_baseline_is_the_one_the_runner_checks(threads):
         assert set(base[arm]) == {"found", "mrr"}
     # 기록된 격차가 이 평가 하니스의 존재 이유다. 사라지면 SPEC 을 다시 읽어야 한다.
     assert base["standalone"]["found"] > base["elliptical"]["found"]
-    # 그리고 싸구려 하한은 판정 실험군에서 무너진다 — 그래서 재작성을 재는 것이다.
+    # 그리고 싸구려 하한은 판정 실험군에서 무너진다 — 그래서 재작성을 측정하는 것이다.
     assert base["drift_concat"]["mrr"] < base["concat"]["mrr"]

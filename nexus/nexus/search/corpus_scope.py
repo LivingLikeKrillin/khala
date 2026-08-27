@@ -38,7 +38,7 @@ async def visibility_counts(tenant: str, clearance: str) -> dict:
         f"""
         SELECT count(*) AS total,
                count(*) FILTER (WHERE {visible}) AS visible,
-               -- 신선도는 **보이는 것 중에서** 잰다. 전체에서 재면 못 읽는 문서의 갱신일이
+               -- 신선도는 **보이는 것 중에서** 측정한다. 전체에서 측정하면 못 읽는 문서의 갱신일이
                -- "최신" 으로 보고돼, 사용자가 볼 수 없는 것의 신선도를 믿게 된다.
                max(updated_at) FILTER (WHERE {visible}) AS newest_visible
           FROM documents

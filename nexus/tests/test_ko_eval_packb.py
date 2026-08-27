@@ -3,7 +3,7 @@
 §4.1 이 라이브 테넌트를 실격시킨 이유는 **움직이기 때문**이다. 그래서 Pack B 는 이름 붙인 시점의
 스냅샷이어야 하고, **매니페스트가 검증되지 않는 실행은 결과가 아니다.**
 
-여기서 재는 것은 "검증이 통과한다" 가 아니라 **"검증이 실패할 수 있다"** 이다. 통과만 확인하는
+여기서 측정하는 것은 "검증이 통과한다" 가 아니라 **"검증이 실패할 수 있다"** 이다. 통과만 확인하는
 검사는 이 리포가 반복해서 잡아낸 무효 대조군이다.
 """
 
@@ -90,8 +90,8 @@ def test_the_manifest_records_what_each_document_weighs():
 def test_the_manifest_still_records_body_size():
     """본문 길이는 게이트가 아니지만 **코퍼스 구성**을 아는 유일한 길이다.
 
-    2026-08-07 오전에 이것이 게이트였다("실질 문서 ≥ 60"). 그 60 은 재보지 않고 만든 어림수였고,
-    근거였던 "gold 가 19건뿐이면 무승부만 쌓인다" 는 같은 날 오후에 **라벨 없이 재서 반증됐다**
+    2026-08-07 오전에 이것이 게이트였다("실질 문서 ≥ 60"). 그 60 은 측정해 보지 않고 만든 어림수였고,
+    근거였던 "gold 가 19건뿐이면 무승부만 쌓인다" 는 같은 날 오후에 **라벨 없이 측정해서 반증됐다**
     (§6.3). 게이트는 순위가 갈리는 자리로 옮겼다. 수치는 남긴다 — 116문서 중 19건만 본문이 있다는
     사실은 게이트와 무관하게 알아야 한다.
     """
@@ -104,7 +104,7 @@ def test_the_manifest_still_records_body_size():
 
 
 def test_the_gate_is_the_measured_disagreement_not_a_document_count():
-    """게이트가 무엇을 재는지 못박는다.
+    """게이트가 무엇을 측정하는지 못박는다.
 
     검정력을 예고하는 것은 문서 수가 아니라 **두 실험군의 순위가 갈리는 자리**다. 문서 수는 구하기
     쉬운 양이었고, 갈리는 자리는 한 번 더 물어야 나오는 양이었다 — §6.2 가 지적한 실수를 그
@@ -119,7 +119,7 @@ def test_the_gate_is_the_measured_disagreement_not_a_document_count():
 
     import nexus.sources.corpus as corpus
     assert not hasattr(corpus, "PACK_B_MIN_SUBSTANTIVE"), \
-        "재보지 않은 문서 수 문턱이 되살아났다 — §6.3 을 읽어라"
+        "측정해 보지 않은 문서 수 문턱이 되살아났다 — §6.3 을 읽어라"
 
 
 @pytest.mark.skipif(not (LOCAL_DIR / "packb-disagreement.json").exists(),
