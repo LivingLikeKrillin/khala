@@ -2,7 +2,7 @@
 
 **왜 있나.** 2026-08-26 에 확인한 것: khala 의 모든 문(슬랙·A2A·MCP)이 두 달간 0에 가까웠고,
 그 사이 이 리포에서 조직 지식을 실제로 꺼내 쓴 소비자는 **에이전트 하나**였다. 그런데 그
-에이전트는 `psql` 과 `grep` 으로 갔다. 문이 있는데 안 쓴 게 아니라 **부를 방법이 없었다.**
+에이전트는 코퍼스 DB 와 `grep` 으로 갔다. 문이 있는데 안 쓴 게 아니라 **부를 방법이 없었다.**
 
 문을 열었으면(`CLAUDE.md` 의 계약) 그 다음 질문은 하나다 — **실제로 그 문으로 가는가.**
 그것을 자기 보고로 세면 자기 채점이 된다. 그래서 도구 호출을 그대로 센다.
@@ -14,37 +14,60 @@
 
 ⚠ **명령 원문을 남기지 않는다.** 질의문에는 조직 어휘가 들어간다(이 리포는 public 이다).
 남기는 것은 분류와 12자 해시뿐이고, 기록 파일 자체도 gitignore 된다.
+
+**값싸야 한다.** 이 훅은 **모든** 도구 호출 앞에 선다. 실측(2026-08-27): 실제 일은 0 ms 에
+가깝고 값은 전부 파이썬 부팅과 import 였다 — `pathlib` 하나가 30 ms, `json` 22 ms. 그래서
+무거운 것은 전부 **셀 일이 있다고 판명된 뒤에** 부른다(`might_be_an_access`). 90 ms → 24 ms.
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
-import os
-import re
 import sys
-from datetime import datetime, timezone
-from pathlib import Path
 
-LOG = Path(__file__).resolve().parents[2] / ".khala" / "knowledge-access.jsonl"
-
-#: khala 를 통해 간 것. CLI·MCP·HTTP 어느 문이든 이 이름을 지난다.
-_VIA_KHALA = re.compile(
-    r"nexus\.cli\s+query|nexus\s+query|nexus_search|nexus_answer|/search/answer")
-
-#: 우회 — 조직 지식을 **직접** 뒤진 것.
-#:   · 조직 코퍼스가 사는 DB 를 psql 로 친다
-#:   · 팀 코드 트리(`/code-src`)나 파트너 리포를 뒤진다
-#: khala 자신의 코드·테스트를 뒤지는 것은 우회가 아니다 — 그건 `grep` 이 정확한 자리다.
-_BYPASS = re.compile(r"psql\b.*\bnexus\b|nexus-db\b|/code-src\b")
-
+#: 기록 파일. 문자열로 둔다 — `pathlib` 를 부르는 값(30 ms)이 이 훅 전체보다 크다.
+_HERE = sys.modules[__name__].__file__ or __file__
+LOG = None  # 아래에서 채운다 (테스트는 이 이름을 갈아 끼운다)
 
 #: 배포가 팀 코드 트리를 어디에 두는지. `/code-src` 마운트의 **원본**이다.
 _TREE_KEY = "CODE_SRC_PATH"
-_ENV_FILE = Path(__file__).resolve().parents[2] / "nexus" / ".env"
+
+#: 값싼 선별에 쓰는 표식. **넉넉한 상위집합**이다 — 거짓 양성은 느릴 뿐이지만,
+#: 거짓 음성은 정밀 분류기를 아예 안 부르게 만든다 = 조용히 안 세어진다.
+_MARKERS = ("nexus.cli", "nexus query", "nexus_search", "nexus_answer",
+            "/search/answer", "psql", "nexus-db", "/code-src")
 
 
-def host_code_tree(env_file: Path | None = None) -> str | None:
+def _root() -> str:
+    import os
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_HERE))))
+
+
+def _log_path():
+    if LOG is not None:
+        return LOG
+    import os
+    return os.path.join(_root(), ".khala", "knowledge-access.jsonl")
+
+
+def _squash(text: str) -> str:
+    """슬래시를 지우고 소문자로. 원문은 아직 JSON 이라 Windows 경로의 역슬래시가
+    `\\\\` 로 이스케이프돼 있다 — 방향도 겹침도 여기서 없앤다."""
+    return text.replace("\\", "").replace("/", "").lower()
+
+
+def might_be_an_access(raw: str, tree: str | None) -> bool:
+    """**디코드하기 전에** 한 번 거른다. 대부분의 호출은 여기서 끝난다.
+
+    이 선별은 정확할 필요가 없다 — 정확한 판정은 뒤의 `classify` 가 한다. 여기서 필요한
+    성질은 하나뿐이다: **진짜 접근을 놓치지 않을 것.**
+    """
+    squashed = _squash(raw)
+    if any(_squash(m) in squashed for m in _MARKERS):
+        return True
+    return bool(tree) and _squash(tree) in squashed
+
+
+def host_code_tree(env_file=None) -> str | None:
     """팀 코드 트리의 **호스트 경로**.
 
     이 리포는 public 이라 경로를 박아 넣을 수 없고(조직명·개인 경로가 들어간다), 배포마다
@@ -54,12 +77,14 @@ def host_code_tree(env_file: Path | None = None) -> str | None:
     트리를 안 붙인 배포도 있다. 그때는 **그 축을 안 세는 것**이지 죽는 게 아니다.
     """
     if env_file is None:
+        import os
         from_env = os.environ.get(_TREE_KEY, "").strip()
         if from_env:
             return from_env
-        env_file = _ENV_FILE
+        env_file = os.path.join(_root(), "nexus", ".env")
     try:
-        lines = env_file.read_text(encoding="utf-8").splitlines()
+        with open(env_file, encoding="utf-8") as f:
+            lines = f.read().splitlines()
     except OSError:
         return None
     for line in lines:
@@ -72,8 +97,8 @@ def host_code_tree(env_file: Path | None = None) -> str | None:
 def _subject(tool_input: dict) -> str:
     """무엇을 대고 분류하는가. **우회는 셸을 안 지나도 일어난다** — Grep·Read 도 트리를 연다.
 
-    검색 **패턴**은 일부러 안 읽는다. 리포 안에서 `nexus.cli query` 라는 문자열을 찾는 것은
-    문을 지난 게 아닌데, 패턴을 읽으면 그게 분자로 들어가 비율이 좋은 쪽으로 거짓이 된다.
+    검색 **패턴**은 일부러 안 읽는다. 리포 안에서 문 이름을 **문자열로 찾는 것**은 문을
+    지난 게 아닌데, 패턴을 읽으면 그게 분자로 들어가 비율이 좋은 쪽으로 거짓이 된다.
     읽는 것은 명령과 **경로**뿐이다.
     """
     return (tool_input.get("command")
@@ -93,15 +118,21 @@ def _same_tree(cmd: str, tree: str) -> bool:
 def classify(cmd: str, code_src: str | None = None) -> str | None:
     """`code_src` = **호스트에서의** 팀 코드 트리 경로.
 
-    `_BYPASS` 의 `/code-src` 는 컨테이너 마운트 지점이다 — 에이전트는 호스트에서 도니까
+    우회 패턴의 `/code-src` 는 컨테이너 마운트 지점이다 — 에이전트는 호스트에서 도니까
     그것만으로는 이 계수기가 잡으려던 우회를 못 본다. 경로는 배포마다 다르고 이 리포는
-    public 이라 박아 넣을 수 없다 → 설정에서 온다(`_host_code_tree`).
+    public 이라 박아 넣을 수 없다 → 설정에서 온다(`host_code_tree`).
     """
     if not cmd:
         return None
-    if _VIA_KHALA.search(cmd):
+    import re
+
+    #: khala 를 통해 간 것. CLI·MCP·HTTP 어느 문이든 이 이름을 지난다.
+    if re.search(r"nexus\.cli\s+query|nexus\s+query|nexus_search|nexus_answer|/search/answer",
+                 cmd):
         return "khala"
-    if _BYPASS.search(cmd):
+    #: 우회 — 조직 지식을 **직접** 뒤진 것. 코퍼스가 사는 DB 를 직접 치거나, 팀 코드
+    #: 트리를 뒤지거나. khala 자신의 코드를 뒤지는 것은 우회가 아니다 — `grep` 의 자리다.
+    if re.search(r"psql\b.*\bnexus\b|nexus-db\b|/code-src\b", cmd):
         return "bypass"
     if code_src and _same_tree(cmd, code_src):
         return "bypass"
@@ -121,10 +152,15 @@ def report() -> int:
 
     **분모가 작으면 비율을 말하지 않는다** — 3건에서 나온 0.33 은 수가 아니다.
     """
-    if not LOG.exists():
+    import json
+    import os
+
+    path = _log_path()
+    if not os.path.exists(path):
         _say("기록 없음 — 훅이 아직 한 번도 안 걸렸다 (또는 조직 지식을 안 꺼냈다)")
         return 0
-    rows = [json.loads(ln) for ln in LOG.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    with open(path, encoding="utf-8") as f:
+        rows = [json.loads(ln) for ln in f.read().splitlines() if ln.strip()]
     khala = sum(1 for r in rows if r["kind"] == "khala")
     bypass = sum(1 for r in rows if r["kind"] == "bypass")
     n = khala + bypass
@@ -141,16 +177,27 @@ def report() -> int:
 def main() -> int:
     if "--report" in sys.argv[1:]:
         return report()
+    raw = sys.stdin.read()
+    tree = host_code_tree()
+    if not might_be_an_access(raw, tree):
+        return 0
+
+    import hashlib
+    import json
+    import os
+    from datetime import datetime, timezone
+
     try:
-        payload = json.load(sys.stdin)
+        payload = json.loads(raw)
     except Exception:
         return 0
     cmd = _subject(payload.get("tool_input") or {})
-    kind = classify(cmd, code_src=host_code_tree())
+    kind = classify(cmd, code_src=tree)
     if kind is None:
         return 0
-    LOG.parent.mkdir(parents=True, exist_ok=True)
-    with LOG.open("a", encoding="utf-8") as f:
+    path = _log_path()
+    os.makedirs(os.path.dirname(str(path)), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps({
             "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "kind": kind,

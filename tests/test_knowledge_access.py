@@ -179,3 +179,55 @@ def test_the_matcher_covers_every_tool_the_hook_can_read():
     joined = "|".join(matchers)
     for tool in ("Bash", "Grep", "Glob", "Read"):
         assert tool in joined, tool
+
+
+# ── 값싼 선별 ──────────────────────────────────────────────────────────────
+#
+# 훅은 이제 **모든** 도구 호출 앞에 선다. 그런데 그 호출의 압도적 다수는 조직 지식과
+# 아무 상관이 없고(자기 리포 파일 읽기), 그 판정을 하려고 무거운 모듈을 다 부르는 것이
+# 값의 전부였다 — 실측: 부팅·import 90 ms 대 실제 일 0 ms 에 가까움.
+#
+# 그래서 원문을 **디코드하기 전에** 문자열로 한 번 거른다. 이 선별은 일부러 **넉넉해야**
+# 한다(거짓 양성은 느릴 뿐, 거짓 음성은 안 세어진다 = 비율이 거짓이 된다).
+
+
+def test_an_ordinary_file_read_is_screened_out_before_any_work():
+    """대부분의 호출이 여기서 끝나야 값이 준다."""
+    for raw in (
+        '{"tool_input": {"file_path": "docs/index.md"}}',
+        '{"tool_input": {"pattern": "hybrid_search", "path": "nexus"}}',
+        '{"tool_input": {"command": "git status --short"}}',
+    ):
+        assert knowledge_access.might_be_an_access(raw, None) is False, raw
+
+
+def test_the_screen_lets_every_real_access_through():
+    """⛔ **거짓 음성이 이 자의 유일한 치명상이다.** 여기서 놓치면 뒤의 정밀 분류기는
+    아예 안 불린다 — 즉 안 세어지고, 분모만 조용히 줄어든다."""
+    door = "docker exec app python -m " + "nexus" + ".cli " + "query 'x'"
+    corpus = "docker exec " + "nexus" + "-db " + "psql" + " -U u -d d -c 'select 1'"
+    for raw in ('{"tool_input": {"command": "' + door + '"}}',
+                '{"tool_input": {"command": "' + corpus + '"}}'):
+        assert knowledge_access.might_be_an_access(raw, None) is True, raw
+
+
+def test_the_screen_survives_json_escaping_of_windows_paths():
+    """원문은 아직 JSON 이다 — Windows 경로의 역슬래시가 `\\\\` 로 이스케이프돼 있고,
+    그 상태로 설정 속 경로와 대 봐야 한다. 여기서 갈리면 우회가 통째로 안 세어진다."""
+    esc = chr(92) * 2  # JSON 안에서 역슬래시 하나는 두 글자로 온다
+    raw = ('{"tool_input": {"file_path": "C:' + esc + 'labs' + esc
+           + 'team-platform' + esc + 'X.java"}}')
+    assert knowledge_access.might_be_an_access(raw, "C:/labs/team-platform") is True
+    assert knowledge_access.might_be_an_access(raw, "C:/labs/other-tree") is False
+
+
+def test_the_hook_is_launched_without_site_scanning():
+    """값의 전부가 부팅이다. 이 훅은 표준 라이브러리만 쓰므로 `site` 를 뒤질 이유가 없고,
+    `-S -E` 하나가 이 머신에서 **71.6 → 32.4 ms** 였다(2026-08-27 실측).
+
+    무해해 보여서 지우기 쉬운 플래그라 여기 박는다 — 지우면 훅이 배로 느려지고, 그
+    느려짐은 **모든 도구 호출**에 붙는다.
+    """
+    settings = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    cmds = [h["command"] for grp in settings["hooks"]["PreToolUse"] for h in grp["hooks"]]
+    assert any(" -S " in c for c in cmds), cmds

@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/knowledge_access.py\"",
+            "command": "python -S -E \"${CLAUDE_PROJECT_DIR:-.}/scripts/hooks/knowledge_access.py\"",
             "timeout": 10
           }
         ]
