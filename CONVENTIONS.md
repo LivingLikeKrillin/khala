@@ -14,6 +14,35 @@ across the ecosystem.
 Do not use "Khala" to mean the knowledge base, and do not use "Nexus" to mean the
 ecosystem. When in doubt: Khala is the alliance, Nexus is a member.
 
+### Which language a term is written in
+
+`GLOSSARY.md` is the record of what each thing is called and why. It is also what
+`scripts/check_terms.py` reads — there is no second list. Three rules decide new terms:
+
+1. **Things the machine handles keep their original name.** `embedding`, `chunk`,
+   `corpus`, `tenant`, `RRF`, `Recall@10`. The repo already does this: 토큰 228 uses,
+   청크 173, 코퍼스 135, 임베딩 73 — all transliterated, none translated.
+2. **Things a person judges are written in Korean — but only where the field already
+   has a Korean word.** 대조군, 표본, 유의수준, 천장 효과 come from statistics; they were
+   not invented here.
+3. ⭐ **If you would have to invent the translation, don't translate.** Rule 2 not
+   finding a word is the signal to fall back to rule 1.
+
+Rule 3 exists because of measurement, not taste. A sweep of 230 prose files on 2026-08-27
+found thirteen physical-object words doing technical work. Five carried meanings invented
+here, standing in for terms the field already had — `자` alone appeared 136 times across
+21 files and had reached an approved SPEC filename. Two more were real terms rendered as
+body parts (`arm` → `팔`, `trigger` → `방아쇠`), which is rule 2 applied without checking what
+practitioners actually say.
+
+The invented five were all born the same way: the concept belonged to rule 2, no Korean
+word existed, and one got made up. Inventing a word feels like precision and reads as
+jargon to everyone else.
+
+Records keep the words of their time: approved SPECs, ADRs, the public engineering log,
+and dated measurement reports are not rewritten. This is the same rule the component
+rename followed.
+
 ## Naming
 
 - **A lowercase top-level directory is a tool.** `nexus/`, `observer/`,

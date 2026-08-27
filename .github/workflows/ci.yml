@@ -107,6 +107,20 @@ jobs:
       - name: The agent-door counter classifies both directions
         run: python -m pytest tests/test_knowledge_access.py -q
 
+      # 걷어낸 말이 새 산문으로 다시 들어오는지. **추가된 줄만** 본다: 정책이 "앞으로만"
+      # (기록물은 그때 그 말로 남긴다)이라 검사 범위를 정책에 맞춘 것이고, 그래야 '자' 같은
+      # 흔한 글자에 예외를 수십 개 달지 않는다 — 예외가 수십 개인 검사는 곧 꺼진다.
+      # 금지 목록은 GLOSSARY.md 가 정본이고 검사기는 그것을 읽는다(사본 없음).
+      - name: No retired term in newly written prose
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch --quiet origin "$BASE"
+          python scripts/check_terms.py --base "origin/$BASE"
+      - name: That check has teeth (word boundaries, archival exemption, diff parsing)
+        run: python -m pytest tests/test_check_terms.py -q
+
   lint:
     name: lint (ruff)
     runs-on: ubuntu-latest
