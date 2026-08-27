@@ -54,7 +54,7 @@ async def main(limit: int = 3) -> int:
         "WHERE tenant = $1 AND status = 'active' AND provenance_tier = 'machine_read' "
         "ORDER BY rid LIMIT $2", tenant, limit)
     if not rows:
-        print("활성 machine_read 청크가 없다 — 잴 것이 없다")
+        print("활성 machine_read 청크가 없다 — 측정할 것이 없다")
         return 1
 
     ok = 0

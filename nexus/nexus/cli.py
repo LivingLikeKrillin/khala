@@ -592,7 +592,7 @@ def status() -> None:
                 if r.get("orphan"):
                     typer.echo("  ⚠ 옵트인 행 없이 남은 텍스트 — 철회가 절반만 됐다")
 
-            # 인덱스 커버리지 (SPEC-nexus-index-completeness §3.2). 이 값은 이미 재고 있었지만
+            # 인덱스 커버리지 (SPEC-nexus-index-completeness §3.2). 이 값은 이미 측정하고 있었지만
             # **API 기동 로그에만** 있었다 — 사람이 치는 건 이 명령이다. 51개 청크가 벡터 다리에서
             # 빠진 채 하루를 지나간 이유가 그 간극이었다.
             from nexus.index.embed_health import exempt_tenants, fetch_coverage_by_tenant
@@ -692,7 +692,7 @@ def status() -> None:
                     if vh["unmeasured"]:
                         typer.echo(
                             f"   └ ⚠ 재현율 미측정 추출 {vh['unmeasured']}건 — 이 판독기가 같은 "
-                            f"그림을 두 번 읽어 같은 값을 내는지 아무도 안 쟀다")
+                            f"그림을 두 번 읽어 같은 값을 내는지 아무도 안 측정했다")
                     if vh["above_threshold"]:
                         typer.echo(
                             f"   └ ⚠ 재현율이 문턱({MAX_VARIATION:.0%})을 넘는 추출 "
@@ -1482,7 +1482,7 @@ def query_text_export(
         typer.echo(f"{len(payload)}건 → {out}")
         if payload:
             typer.echo("라벨로 옮길 때 provenance: from_user_query 를 쓴다 "
-                       "— 저술된 질의와 섞이면 천장을 잴 수 없다")
+                       "— 저술된 질의와 섞이면 천장을 측정할 수 없다")
         return 0
 
     raise typer.Exit(_run(_with_pool_closed(_go)))
@@ -1559,7 +1559,7 @@ def code_scan(
         typer.echo(f"⚠ {w}")
 
     if require_mainline and state.warnings():
-        # 경고를 읽고도 그냥 넘긴 적이 있다. 3주 된 피처 브랜치를 재고 그 숫자를 보고했고,
+        # 경고를 읽고도 그냥 넘긴 적이 있다. 3주 된 피처 브랜치를 측정하고 그 숫자를 보고했고,
         # 이미 고쳐진 항목 6건이 목록에 올라갔다. 막을 수 있으면 막는 편이 낫다.
         typer.echo("거부: --require-mainline 인데 위 경고가 있습니다.", err=True)
         raise typer.Exit(1)

@@ -1,8 +1,8 @@
-"""답변 사실 채점 — **답이 옳은가**를 잰다. Recall 이 못 보는 자리.
+"""답변 사실 채점 — **답이 옳은가**를 측정한다. Recall 이 못 보는 자리.
 
 규칙은 측정 전에 `tests/eval/answer-facts/README.md` 에 박혔다.
 
-검색 평가 하니스(`Recall@10`)는 *정답 문서가 왔는가* 만 잰다. 2026-08-26 에 그 한계가 끝까지 드러났다 —
+검색 평가 하니스(`Recall@10`)는 *정답 문서가 왔는가* 만 측정한다. 2026-08-26 에 그 한계가 끝까지 드러났다 —
 Recall 이 **오르는 동안 답변이 나빠졌다**(정답 숫자는 왔는데 낡은 숫자를 무효화하는 문장이 안
 와서, 답변이 낡은 값을 정본으로 읽었다). 여기서는 답변 텍스트에 **그 값이 나오는가**를 본다.
 
@@ -29,6 +29,9 @@ import yaml  # noqa: E402
 from nexus import db  # noqa: E402
 from scripts.ko_eval_answer_quality import asserts_value, facts_present  # noqa: E402
 
+#: 기본 코퍼스. `--tenant` 로 바꿀 수 있다 — 합친 코퍼스(`merge_probe`)와 견주려면
+#: **같은 라벨·같은 채점기**로 양쪽을 돌려야 하기 때문이다. 채점은 답변 텍스트만 보므로
+#: 테넌트가 달라도 판정 규칙은 그대로다.
 TENANT = "default"
 CLEARANCE = "INTERNAL"
 
@@ -41,6 +44,8 @@ def _norm(s: str) -> str:
 async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--labels", required=True)
+    ap.add_argument("--tenant", default=TENANT,
+                    help="어느 코퍼스에 물을 것인가 (기본: default)")
     ap.add_argument("--out", default="")
     ap.add_argument("--only", default="", help="쉼표로 구분한 id — 그것만 돈다")
     ap.add_argument("--fill", choices=("on", "off"), default="",
@@ -70,9 +75,9 @@ async def main() -> int:
         print(f"  절 채움: {cfg.get('search', {}).get('section_fill')}", flush=True)
         rows, answers = [], []
         for q in queries:
-            r = await hybrid.hybrid_search(q["query"], tenant=TENANT, clearance=CLEARANCE,
+            r = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance=CLEARANCE,
                                            top_k=10, embedding_svc=svc, config=cfg)
-            packet = await assemble_packet(r.hits, r.graph, tenant=TENANT, fill=r.fill)
+            packet = await assemble_packet(r.hits, r.graph, tenant=args.tenant, fill=r.fill)
             ans = await generate_answer(q["query"], packet, LLMService(),
                                         confidence=r.confidence)
             text = getattr(ans, "answer", None) or getattr(ans, "text", "") or str(ans)

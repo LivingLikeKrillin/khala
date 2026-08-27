@@ -10,8 +10,8 @@ Pack A 는 같은 종류의 공개 대역이라 그 조건을 닫지 못한다.
 **형식은 SPEC 문구와 다르다 — 이탈로 기록한다.** §4.1 은 "문서 rid·제목·본문을 디스크에" 라고
 적었는데, Nexus 는 원칙 5번("인덱스이지 저장소가 아님")에 따라 **원문을 갖고 있지 않다**. 본문은
 `chunks.chunk_text` 뿐이다. 그래서 디스크 파일로 내보내면 `load_pack` 이 **다시 청킹**하게 되어
-재는 대상이 미묘하게 어긋난다. 대신 **테넌트 스냅샷**을 쓴다: 청크를 그대로 복사하므로 색인된
-것을 정확히 그대로 재고, §4.1 이 실격시킨 이유(움직인다)는 그대로 해소한다.
+측정하는 대상이 미묘하게 어긋난다. 대신 **테넌트 스냅샷**을 쓴다: 청크를 그대로 복사하므로 색인된
+것을 정확히 그대로 측정하고, §4.1 이 실격시킨 이유(움직인다)는 그대로 해소한다.
 
 rid 는 리포 관례대로 **스냅샷 테넌트를 품어** 새로 만든다 — 전역 PK 이기도 하고, 동점 정렬 키가
 테넌트를 품는다는 성질에 결정성 테스트가 기대고 있다.
@@ -37,7 +37,7 @@ MANIFEST = LOCAL_DIR / "packb-manifest.json"
 SNAPSHOT_TENANT = "ko_eval_packb"
 
 
-#: 탐침 결과 파일 — 라벨 없이 잰 "두 실험군이 다른 순위를 내는가".
+#: 탐침 결과 파일 — 라벨 없이 측정한 "두 실험군이 다른 순위를 내는가".
 PROBE = LOCAL_DIR / "packb-disagreement.json"
 
 #: 상위 3위 안에서 갈리는 질의의 최소 건수. 판정 규칙의 `MIN_DISCORDANT = 6` 과 같은 수를 쓴다 —
@@ -104,7 +104,7 @@ async def _collect(con, tenant: str) -> dict[str, dict]:
 async def tenant_bodies(con, tenant: str) -> dict[str, dict]:
     """`{문서키: {sha, chunks, chars, machine_read}}` — **지금** 그 테넌트에 있는 본문.
 
-    해시는 매니페스트와 **같은 함수**다. 갈라지면 라벨 서명과 팩 서명이 다른 것을 재게 된다.
+    해시는 매니페스트와 **같은 함수**다. 갈라지면 라벨 서명과 팩 서명이 다른 것을 측정하게 된다.
     `machine_read` 를 같이 내는 이유는 재서명하는 사람이 자기가 무엇에 서명하는지 봐야 하기
     때문이다 — ADR-0010 §2 는 기계가 읽은 텍스트를 저술 텍스트와 같이 취급하지 말라고 한다.
     """
@@ -182,7 +182,7 @@ async def cmd_freeze(args) -> int:
                             encoding="utf-8", newline="\n")
         print(f"✓ 얼렸다: 문서 {len(manifest_docs)} · 청크 {n_chunks} → 테넌트 {SNAPSHOT_TENANT}")
         print(f"  매니페스트: {MANIFEST}")
-        # 얼린 직후에 두 조건을 알려준다 — "얼렸다" 를 "잴 수 있다" 로 읽는 것을 막는다.
+        # 얼린 직후에 두 조건을 알려준다 — "얼렸다" 를 "측정할 수 있다" 로 읽는 것을 막는다.
         from nexus.sources.corpus import PACK_B_MIN_SUBSTANTIVE, PACK_B_SUBSTANTIVE_CHARS
         n_sub = sum(1 for d in manifest_docs if d["body_chars"] >= PACK_B_SUBSTANTIVE_CHARS)
         print(f"  실질 문서(본문 {PACK_B_SUBSTANTIVE_CHARS}자 이상) {n_sub} / 최소 "
@@ -233,10 +233,10 @@ async def cmd_verify(_args) -> int:
 
 
 async def cmd_status(_args) -> int:
-    """얼린 코퍼스가 자로서 작동할 수 있는지 — **두 조건**을 잰다.
+    """얼린 코퍼스가 자로서 작동할 수 있는지 — **두 조건**을 측정한다.
 
     문서 수만 세다 걸린 적이 있다(2026-08-07): 116문서를 채웠는데 본문 800자 이상이 19건이었고,
-    나머지는 개정 이력 행이었다. 바닥값은 통과인데 gold 로 쓸 문서가 없어서 못 잰다.
+    나머지는 개정 이력 행이었다. 바닥값은 통과인데 gold 로 쓸 문서가 없어서 못 측정한다.
     """
     from nexus import db
     from nexus.sources.corpus import PACK_B_SUBSTANTIVE_CHARS
@@ -268,7 +268,7 @@ async def cmd_status(_args) -> int:
           f"  → {'통과' if ok_floor else '검정력 부족이 예상된다'}")
     print("      Pack A 는 0.038. 0.10 을 넘으면 두 실험군이 바닥 위에 붙어 무승부만 쌓인다.")
 
-    # [2] 는 **측정한 문턱**이다. 한때 여기 "실질 문서 ≥ 60" 이 있었는데 그 60 은 재보지 않고
+    # [2] 는 **측정한 문턱**이다. 한때 여기 "실질 문서 ≥ 60" 이 있었는데 그 60 은 측정해 보지 않고
     # 만든 어림수였고, 같은 날 라벨 없이 재보니 그 근거가 반증됐다(§6.3). 검정력을 예고하는 양은
     # 문서 수가 아니라 **두 실험군의 순위가 갈리는 자리**다.
     probe = _load_probe()
@@ -285,7 +285,7 @@ async def cmd_status(_args) -> int:
           "문턱이 아니라 코퍼스 구성 정보다")
 
     ok_probe = bool(probe) and probe["shallow"] >= SHALLOW_MIN
-    print("  → " + ("잴 수 있다" if ok_floor and ok_probe else
+    print("  → " + ("측정할 수 있다" if ok_floor and ok_probe else
                     "아직 아니다 — 탐침을 돌려 승패가 생길 자리가 있는지부터 보라"))
     print("     (필요조건이다. 순위가 갈려도 둘 다 gold 를 잡으면 무승부이고, '검정력 부족' 은 "
           "여전히 나올 수 있다 — 그때 의무는 ADR-0009 대로 열린 채 남는다.)")

@@ -176,7 +176,7 @@ async def test_a_broken_retention_write_does_not_raise(db, monkeypatch):
 # ── U2: 만료·철회·노출 ────────────────────────────────────────────────────────
 
 async def _age(db, tenant, days):
-    """행을 과거로 민다 — 시간을 기다리지 않고 만료를 재기 위해."""
+    """행을 과거로 민다 — 시간을 기다리지 않고 만료를 측정하기 위해."""
     await db.execute(
         "UPDATE search_query_text SET first_seen = now() - make_interval(days => $2) "
         "WHERE tenant = $1", tenant, days)
@@ -218,7 +218,7 @@ async def test_purge_treats_orphaned_text_as_expired(db):
     await _enable(db)
     await retain(TENANT, "철회 뒤 남은 질문", SURFACE)
     await db.execute("DELETE FROM query_retention WHERE tenant=$1", TENANT)
-    assert await _count(db) == 1, "여기서 이미 사라지면 이 검사는 아무것도 안 잰다"
+    assert await _count(db) == 1, "여기서 이미 사라지면 이 검사는 아무것도 안 측정한다"
     assert await purge() == {TENANT: 1}
     assert await _count(db) == 0
 
@@ -295,7 +295,7 @@ async def test_export_writes_the_questions_a_labeller_needs(db, tmp_path):
 
     out = tmp_path / "questions.json"
     # CLI 는 `asyncio.run` 을 쓴다 — 실행 중인 루프 안에서는 못 돈다. 스레드로 돌려서
-    # **CLI 경로 그대로** 잰다(우회해서 내부 함수를 직접 부르면 U2 의 배선 사고를 못 잡는다).
+    # **CLI 경로 그대로** 측정한다(우회해서 내부 함수를 직접 부르면 U2 의 배선 사고를 못 잡는다).
     # 전역 풀을 먼저 닫는다: 안 닫으면 CLI 가 이 루프에 묶인 풀을 다른 스레드에서 집어
     # `another operation is in progress` 로 죽는다. CLI 는 자기 풀을 연다.
     await db.close_pool()
@@ -338,7 +338,7 @@ def test_the_label_gate_knows_where_a_query_came_from():
 
     labels = load(DEFAULT_LABELS)
     pack = DiskPack(DEFAULT_PACK_DIR)
-    assert check(labels, pack) == [], "바닥값이 이미 깨져 있으면 이 검사는 아무것도 안 잰다"
+    assert check(labels, pack) == [], "바닥값이 이미 깨져 있으면 이 검사는 아무것도 안 측정한다"
 
     real = copy.deepcopy(labels)
     real["queries"][0]["provenance"] = "from_user_query"

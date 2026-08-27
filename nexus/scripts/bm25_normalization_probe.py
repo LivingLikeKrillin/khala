@@ -3,10 +3,10 @@
 규칙은 측정 전에 `tests/eval/bm25-normalization/README.md` 에 박혔다.
 
 **제품 경로를 1차 지표로 쓴다.** A13 평가 하니스는 다리별로 쟀는데 제품은 RRF 융합 + 다양화 + top_k
-컷을 쓴다 — 그래서 "재서 이겼는데 답이 안 바뀌는" 자리가 나왔다. 여기서는 `hybrid_search()`
+컷을 쓴다 — 그래서 "측정해서 이겼는데 답이 안 바뀌는" 자리가 나왔다. 여기서는 `hybrid_search()`
 의 Recall@10 이 판정이고 다리 점수는 참고다.
 
-`_bm25_search` 를 **감싸서** 인자를 주입한다(프로덕션 SQL 을 고치지 않는다 — 재는 동안 배포
+`_bm25_search` 를 **감싸서** 인자를 주입한다(프로덕션 SQL 을 고치지 않는다 — 측정하는 동안 배포
 코드가 바뀌면 무엇을 쟀는지가 흐려진다).
 
     docker exec nexus-app python -m scripts.bm25_normalization_probe \

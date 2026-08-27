@@ -7,7 +7,7 @@
 - 세대는 **한 곳**(팩토리)에서 결정된다 — 여섯 곳이 각자 기본값을 만들면 설정은 장식이다
 - 배포는 **env 로** 움직인다 — 이 배포는 `config.yaml` 을 git 워킹트리에서 읽는다(§1.9)
 - **셋 중 하나만 움직이면 구성 자체가 거부된다** — 모델·컬럼·백엔드는 함께만 유효하다
-- 차원은 모델의 사실이지만 **재기 전까지는 가정**이다 — 백엔드가 돌려준 벡터를 실제로 센다
+- 차원은 모델의 사실이지만 **측정하기 전까지는 가정**이다 — 백엔드가 돌려준 벡터를 실제로 센다
 """
 
 from __future__ import annotations
@@ -187,7 +187,7 @@ def test_no_production_path_constructs_the_service_with_defaults():
         f"기본값으로 만드는 곳: {offenders}")
 
 
-# ── 차원은 재기 전까지 가정이다 ──────────────────────────────────────────────
+# ── 차원은 측정하기 전까지 가정이다 ──────────────────────────────────────────────
 
 
 def _sidecar_returning(monkeypatch, vector: list[float]) -> None:
@@ -220,7 +220,7 @@ def _sidecar_returning(monkeypatch, vector: list[float]) -> None:
 
 @pytest.mark.asyncio
 async def test_a_vector_of_the_wrong_length_is_refused_at_the_boundary(monkeypatch):
-    """Matryoshka 절단·잘못 띄운 사이드카·바뀐 헤드는 전부 여기로 온다. 안 재면 pgvector 가 낸다."""
+    """Matryoshka 절단·잘못 띄운 사이드카·바뀐 헤드는 전부 여기로 온다. 안 측정하면 pgvector 가 낸다."""
     _sidecar_returning(monkeypatch, [0.1] * 768)
     svc = EmbeddingService(model="KURE-v1", backend="sidecar", dimensions=1024)
     with pytest.raises(WrongVectorDimensions) as e:

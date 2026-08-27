@@ -53,7 +53,7 @@ class SnapshotState:
             out.append(f"업스트림보다 {self.behind}커밋 뒤입니다(마지막 fetch 기준). "
                        "원격은 확인하지 않습니다 — `git pull` 은 당신 몫입니다.")
         if self.ahead:
-            out.append(f"업스트림보다 {self.ahead}커밋 앞입니다 — 푸시되지 않은 작업 위에서 재고 있습니다.")
+            out.append(f"업스트림보다 {self.ahead}커밋 앞입니다 — 푸시되지 않은 작업 위에서 측정하고 있습니다.")
         if self.eol_only_files:
             out.append(
                 f"줄바꿈만 다른 파일 {self.eol_only_files}건 — 내용은 같아서 통과시켰습니다. "
@@ -112,7 +112,7 @@ def _eol_only(repo: Path, porcelain: str) -> bool:
 
 
 #: 정본으로 볼 만한 브랜치 이름. 여기 없으면 경고할 뿐 막지는 않는다 — 피처 브랜치를
-#: 일부러 재는 경우가 있고, 그건 말해주기만 하면 되는 일이다.
+#: 일부러 측정하는 경우가 있고, 그건 말해주기만 하면 되는 일이다.
 _MAINLINE = frozenset({"main", "master", "develop", "development"})
 
 

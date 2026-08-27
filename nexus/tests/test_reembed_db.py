@@ -384,7 +384,7 @@ async def varied_lengths(db_pool):
 
 async def test_the_queue_comes_out_shortest_first(varied_lengths):
     """**배치는 제일 긴 글에 맞춰 패딩된다.** 큐가 길이순이 아니면 짧은 글들이 긴 글 하나에
-    끌려가 그만큼을 빈칸으로 계산한다 — 라이브 코퍼스에서 잰 낭비가 60%였다(계산량 287만자 →
+    끌려가 그만큼을 빈칸으로 계산한다 — 라이브 코퍼스에서 측정한 낭비가 60%였다(계산량 287만자 →
     718만자). 순서만 바꿔도 효율이 40%→99% 로 오른다. 순서는 공짜다.
     """
     rows = await pending_rids(_COLUMN, 100, tenant=varied_lengths)

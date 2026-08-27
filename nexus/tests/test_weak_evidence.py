@@ -28,7 +28,7 @@ def test_both_legs_must_be_weak():
 
 
 def test_a_dead_leg_is_not_evidence_of_weakness():
-    """못 잰 것과 재서 낮은 것은 다른 사실이다. 이 혼동이 이 리포의 반복 결함이었다."""
+    """못 측정한 것과 측정해서 낮은 것은 다른 사실이다. 이 혼동이 이 리포의 반복 결함이었다."""
     assert not Confidence(top_distance=None, top_bm25=0.1).weak
     assert not Confidence(top_distance=0.9, top_bm25=None).weak
     assert not Confidence().weak

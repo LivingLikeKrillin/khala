@@ -57,7 +57,7 @@ def require_free(llm, *, allow_paid: bool = False, what: str = "이 실행") -> 
         "    nexus/.env: NEXUS_LLM_PROVIDER=claude-code\n"
         "                NEXUS_LLM_BRIDGE_URL=http://host.docker.internal:8900\n"
         "                NEXUS_LLM_BRIDGE_TOKEN=<브리지와 같은 값>\n"
-        "  프로덕션 백엔드로 재야 하는 실행이면 --paid 를 명시하라(그리고 비용을 예상하라).")
+        "  프로덕션 백엔드로 측정해야 하는 실행이면 --paid 를 명시하라(그리고 비용을 예상하라).")
 
 
 @dataclass

@@ -70,8 +70,8 @@ async def test_partial_failure_reports_exactly_what_it_left_behind(clean, tmp_pa
     await _write_docs(tmp_path, 25)
     result = await run_ingest(str(tmp_path), force=True, tenant=_TENANT, skip_graph=True)
 
-    assert svc.calls > 1, "배치가 하나뿐이면 부분 실패를 재는 시험이 아니다"
-    assert result.coverage is not None, "인덱싱이 터져도 커버리지는 재야 한다"
+    assert svc.calls > 1, "배치가 하나뿐이면 부분 실패를 측정하는 시험이 아니다"
+    assert result.coverage is not None, "인덱싱이 터져도 커버리지는 측정해야 한다"
     active, embedded = result.coverage["active"], result.coverage[_COL]
     assert 0 < embedded < active, "일부만 채워진 상태여야 한다"
     assert embedded == svc.served

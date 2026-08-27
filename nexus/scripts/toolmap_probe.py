@@ -1,7 +1,7 @@
 """도구 선택 층 드라이런 — *"어느 도구가 필요한가"* 를 검색으로 풀 수 있는가.
 
 **도구를 부르지 않는다.** 실행 층(MCP 클라이언트·인용·등급)은 0줄이고, 이 실험은 그 앞
-단계만 잰다. 전문은 `tests/eval/toolmap/README.md` — 판정 규칙은 **측정 전에** 거기 박혔다.
+단계만 측정한다. 전문은 `tests/eval/toolmap/README.md` — 판정 규칙은 **측정 전에** 거기 박혔다.
 
     docker exec nexus-app python scripts/toolmap_probe.py --build
     docker exec nexus-app python scripts/toolmap_probe.py --run
@@ -30,7 +30,7 @@ HERE = Path(__file__).resolve().parents[1] / "tests" / "eval" / "toolmap"
 
 def _load_set(path: Path) -> dict:
     """질문 세트. **판정 규칙은 세트가 선언한다** — 명령행 플래그로 고르게 두면 어느 규칙으로
-    잰 숫자인지가 실행 기록 밖에 남고, 그때부터 재현이 사람 기억에 걸린다."""
+    측정한 숫자인지가 실행 기록 밖에 남고, 그때부터 재현이 사람 기억에 걸린다."""
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     rule = data.get("rule", "sequential")
     if rule not in ("sequential", "comparison"):
@@ -72,7 +72,7 @@ async def drop() -> int:
 
 
 async def run(qpath: Path, top_k: int = 10) -> int:
-    """두 다리를 각각 재고, **세트가 선언한** 규칙으로 고른다.
+    """두 다리를 각각 측정하고, **세트가 선언한** 규칙으로 고른다.
 
     `sequential` (1회차): 문서가 약할 때만 도구를 본다.
     `comparison` (2회차): 둘 다 약하면 미선택, 아니면 **더 가까운 실험군**. 여유값 없음(margin=0)

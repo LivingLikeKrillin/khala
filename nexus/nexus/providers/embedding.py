@@ -5,7 +5,7 @@ API 를 직접 호출하지 말 것.
 
 **지시문 형식은 모델마다 다르고, 그 정책은 여기 한 곳에 산다** (SPEC-nexus-kure-embedding-swap
 §4.3). nomic 은 `search_document: `/`search_query: ` 를 요구하고, KURE-v1 의 카드에는 지시문이
-없다. 한쪽 형식을 다른 쪽에 씌우면 "그 모델을 잘못 쓴 결과" 를 재게 된다 — 한국어 임베딩 비교가
+없다. 한쪽 형식을 다른 쪽에 씌우면 "그 모델을 잘못 쓴 결과" 를 측정하게 된다 — 한국어 임베딩 비교가
 제거한 교란을 프로덕션에서 되살리는 길이다. 그래서 모순되는 설정은 **기동 시점에 실패**한다.
 
 사용법:
@@ -67,7 +67,7 @@ class InconsistentEmbeddingGeneration(ValueError):
 class WrongVectorDimensions(ValueError):
     """백엔드가 이 모델의 차원이 아닌 벡터를 돌려줬다.
 
-    `MODEL_DIMENSIONS` 는 **재기 전까지 가정**이다. Matryoshka 절단, 잘못 띄운 사이드카, 헤드가
+    `MODEL_DIMENSIONS` 는 **측정하기 전까지 가정**이다. Matryoshka 절단, 잘못 띄운 사이드카, 헤드가
     바뀐 체크포인트가 전부 이 모양으로 온다 — 안 세면 pgvector 오류나 조용한 랭킹 저하로 나타난다.
     """
 
@@ -93,7 +93,7 @@ def resolve_prefixes(model: str, document_prefix=_UNSET, query_prefix=_UNSET) ->
         raise ConflictingPrefixConfig(
             f"{model!r} 의 카드에는 지시문이 없는데 설정이 지시문을 준다 "
             f"(document={doc!r}, query={query!r}). 다른 모델의 형식을 씌우면 그 모델을 잘못 쓴 "
-            "결과를 재게 된다.")
+            "결과를 측정하게 된다.")
     return doc, query
 
 

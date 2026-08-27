@@ -115,7 +115,7 @@ def _split_oversize(para: str, target_tokens: int, language: str) -> list[str]:
         width = max(1, -(-len(line) // pieces))
         return [line[i:i + width] for i in range(0, len(line), width)]
 
-    # **내보낼 텍스트를 잰다.** 줄별 추정을 더하면 실제와 어긋난다 — `_estimate_tokens` 가 매번
+    # **내보낼 텍스트를 측정한다.** 줄별 추정을 더하면 실제와 어긋난다 — `_estimate_tokens` 가 매번
     # 내림하므로 합이 이어붙인 텍스트보다 작게 나오고(3줄에 18 vs 20), 그 차이만큼 상한을 넘긴
     # 조각이 통과한다. 실제로 통과했고 테스트가 잡았다.
     out: list[str] = []

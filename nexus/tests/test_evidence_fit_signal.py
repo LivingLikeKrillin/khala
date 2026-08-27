@@ -2,13 +2,13 @@
 
 문턱(`FAR_DISTANCE`·`WEAK_BM25`)은 지어낸 질문 17개로 정해졌다. 진짜 기준은 실사용 질문에서만
 나오는데, 지금은 그 질문이 어떤 거리·어떤 키워드 점수로 답해졌는지 **아무 데도 안 남는다** —
-즉 문턱을 다시 잴 재료가 매 요청마다 버려진다.
+즉 문턱을 다시 측정할 재료가 매 요청마다 버려진다.
 
 **불리언이 아니라 크기를 남긴다.** `weak` 는 오늘의 문턱으로 계산된 값이라, 문턱을 옮기면
 지나간 행의 뜻이 조용히 바뀐다. 거리와 점수는 문턱과 무관한 사실이다.
 
 **죽은 다리는 `None` 이다.** 0.0 으로 채우면 거리 0 = "완벽히 맞았다", BM25 0 = "전혀 못 맞췄다"
-로 읽혀 두 방향으로 거짓말한다. 못 잰 것과 재서 낮은 것은 다른 사실이다.
+로 읽혀 두 방향으로 거짓말한다. 못 측정한 것과 측정해서 낮은 것은 다른 사실이다.
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ def test_a_dead_leg_stays_unmeasured():
     sig = extract_signals(
         _Result(hits=[_Hit()], confidence=Confidence(top_distance=None, top_bm25=1.1)),
         None, path="search", tenant="t", clearance="INTERNAL", query="q")
-    assert sig.top_distance is None, "못 잰 것을 0 으로 적으면 '완벽히 맞았다' 로 읽힌다"
+    assert sig.top_distance is None, "못 측정한 것을 0 으로 적으면 '완벽히 맞았다' 로 읽힌다"
     assert sig.top_bm25 == pytest.approx(1.1)
 
 
@@ -92,13 +92,13 @@ async def test_the_magnitudes_land_in_search_log(db_pool):
         db._pool = None
 
 
-# ── 못 잰 것과 재서 0점 (2026-08-24 라이브에서 잡힘) ──────────────────────────
+# ── 못 측정한 것과 측정해서 0점 (2026-08-24 라이브에서 잡힘) ──────────────────────────
 
 async def test_a_keyword_leg_that_matched_nothing_reports_zero_not_unknown(monkeypatch):
     """*"오늘 서울 날씨 알려줘"* 는 거리 0.608(멀다)인데도 약함 판정을 못 받았다.
 
     키워드 다리가 **돌았고 한 행도 못 잡은** 것을 `None` 으로 돌려줬고, `Confidence.weak` 은
-    `None` 을 *못 잰 것*으로 읽어(그건 옳다) 판정을 접었다. 코퍼스 밖의 가장 강한 증거가
+    `None` 을 *못 측정한 것*으로 읽어(그건 옳다) 판정을 접었다. 코퍼스 밖의 가장 강한 증거가
     그 뭉침 속에서 사라진 것이다.
     """
     from nexus.search import hybrid

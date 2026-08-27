@@ -105,7 +105,7 @@ async def record_vote(*, tenant: str, answer_key: str, verdict: str,
     제안 행이 없으면 **`synthesized=true` 로 만들어 넣고 투표를 받는다.** 제안 쓰기는
     best-effort 인데 투표를 FK 로 막으면, 시스템이 불안정할 때 정확히 그때의 투표만 통째로
     사라진다. 그 행은 분모에서 빠지고(§5.3) 만료 판정에서도 빠진다 — `offered_at` 이 발급
-    시각이 아니라 투표 시각이라 잴 기준이 없기 때문이다. 그 구멍을 숨기지 않는다.
+    시각이 아니라 투표 시각이라 측정할 기준이 없기 때문이다. 그 구멍을 숨기지 않는다.
     """
     if verdict not in ("up", "down"):
         raise ValueError(f"알 수 없는 verdict: {verdict!r}")

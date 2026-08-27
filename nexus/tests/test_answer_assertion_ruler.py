@@ -117,7 +117,7 @@ def test_a_lead_heading_does_not_end_the_lead():
 
 
 def test_the_hole_this_ruler_admits_to():
-    """**이 채점기는 자리를 재지 확신을 재지 않는다.** 뚫리는 문구를 실물로 박아 둔다 —
+    """**이 채점기는 자리를 측정하지 확신을 측정하지 않는다.** 뚫리는 문구를 실물로 박아 둔다 —
     다음 판이 이것을 고치면 이 테스트가 먼저 빨간불이 되어 알려 준다."""
     text = "여러 근거가 있습니다.\n\n따라서 **14일**일 가능성이 있습니다.\n"
     assert verdict_segments(text)

@@ -10,8 +10,8 @@
 `vision_store.save()` 의 우연한 `ON CONFLICT DO NOTHING` 하나뿐이고, 여기서는 저장 함수를
 아예 부르지 않는다.
 
-`record` 는 **잰 행에만** 쓴다. 재지 않은 행은 NULL 로 남는다 — 외삽해서 채우면 재지 않은 것을
-잰 것처럼 적게 되고, 그것이 이 SPEC 이 고치려는 실수다.
+`record` 는 **측정한 행에만** 쓴다. 측정하지 않은 행은 NULL 로 남는다 — 외삽해서 채우면 측정하지 않은 것을
+측정한 것처럼 적게 되고, 그것이 이 SPEC 이 고치려는 실수다.
 
     docker exec nexus-app python -u scripts/vision_reproducibility.py measure --arm gemini
     docker exec nexus-app python -u scripts/vision_reproducibility.py record  --arm gemini
@@ -73,7 +73,7 @@ async def measure(arm: str) -> dict:
 
 
 async def record(arm: str, tenant: str) -> int:
-    """측정값을 **잰 행에만** 적는다. 어느 그림을 쟀는지는 measure 가 남긴 파일이 안다."""
+    """측정값을 **측정한 행에만** 적는다. 어느 그림을 쟀는지는 measure 가 남긴 파일이 안다."""
     report = json.loads((LOCAL / f"reproducibility-{arm}.json").read_text(encoding="utf-8"))
     identity = report["identity"]
     if not identity:
@@ -97,7 +97,7 @@ async def record(arm: str, tenant: str) -> int:
             written += 1 if n else 0
     finally:
         await db.close_pool()
-    print(f"  {written}행에 재현율 {rate:.1%} 기록 · 나머지는 NULL(안 잰 것)로 남는다")
+    print(f"  {written}행에 재현율 {rate:.1%} 기록 · 나머지는 NULL(안 측정한 것)로 남는다")
     return 0
 
 

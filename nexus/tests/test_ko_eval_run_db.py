@@ -10,7 +10,7 @@
   상수가 아니라 **같은 실행의 기준선**과 비교하므로, 바닥값이 흔들리는 동안에도 이빨은 살아 있다.
 
 이 스위트는 mecab-ko 가 있어야 의미가 있다(프로덕션 토크나이저). 없으면 공백 분리로 내려앉고,
-다른 평가 하니스로 잰 숫자는 바닥값이 아니다 — CI 는 이미지 안에서 돌린다.
+다른 평가 하니스로 측정한 숫자는 바닥값이 아니다 — CI 는 이미지 안에서 돌린다.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from nexus.index.bm25 import _get_mecab
 pytestmark = [
     pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"), reason="NEXUS_TEST_DB_URL 필요"),
     pytest.mark.skipif(_get_mecab() is None,
-                       reason="mecab-ko 없음 — 프로덕션 토크나이저가 아니면 재지 않는다"),
+                       reason="mecab-ko 없음 — 프로덕션 토크나이저가 아니면 측정하지 않는다"),
 ]
 
 _TENANT = "ko_eval"
@@ -41,12 +41,12 @@ _TENANT = "ko_eval"
 #: 절대 하한이 그때 울렸고, 조사 결과 키워드 다리의 동점 정렬에 전순서 키가 없다는 프로덕션 결함이
 #: 나왔다(SPEC-nexus-deterministic-retrieval-order). 그게 고쳐진 뒤에야 여기 숫자가 의미를 갖는다.
 #:
-#: 남은 미스 4건은 고장이 아니라 **재려던 실패 유형 그 자체**다: q002·q003 은 문서가 `AppArmor`·
+#: 남은 미스 4건은 고장이 아니라 **측정하려던 실패 유형 그 자체**다: q002·q003 은 문서가 `AppArmor`·
 #: `Konnectivity` 라 쓴 것을 질의가 음차로 부르고, q025 는 `taint`(단수) 대 `Taints`(복수),
 #: q032 는 `sysctl` 이 본문에서 코드 블록에 갇혀 있다. 층별로도 갈린다(spacing 0.917 vs mixed 0.625).
 #:
 #: 바닥값은 실측에서 부동소수 흔들림만큼만 아래에 둔다. 올리면 진보이고, 내리면 같은 커밋에서
-#: 이유를 말해야 한다. **라벨 리비전이 바뀌면(풀 판정으로 gold 가 늘면) 같은 커밋에서 다시 잰다.**
+#: 이유를 말해야 한다. **라벨 리비전이 바뀌면(풀 판정으로 gold 가 늘면) 같은 커밋에서 다시 측정한다.**
 FLOORS_PACK = "ko-k8s-2026-08-01"
 FLOORS_LABEL_REVISION = 2
 FLOORS_MEASURED = "2026-08-03"

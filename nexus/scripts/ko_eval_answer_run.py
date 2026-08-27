@@ -1,6 +1,6 @@
-"""답변 품질을 실제로 재는 실행기 — 검색이 아니라 **답**을 본다.
+"""답변 품질을 실제로 측정하는 실행기 — 검색이 아니라 **답**을 본다.
 
-이 리포는 검색을 엄격하게 재 왔고 답변은 한 번도 안 쟀다. 이것이 그 첫 실행이다.
+이 리포는 검색을 엄격하게 측정해 왔고 답변은 한 번도 안 측정했다. 이것이 그 첫 실행이다.
 
 **관문을 먼저 통과해야 결과로 친다** (`ko_eval_packb_run.py` 와 같은 이유): 라벨 게이트가
 막으면 숫자를 내지 않는다. 관문이 뒤에 있으면 숫자를 보고 평가 하니스를 고치게 된다.
@@ -113,7 +113,7 @@ async def unreadable_gold(con, labels: dict, tenant: str, clearance: str) -> dic
     **시스템이 정책을 지킨 것을 평가 하니스가 검색 실패로 적고 있었다.**
 
     라벨은 못 읽는 문서를 gold 로 가질 수 없다 — 그런 질의는 통과가 불가능하고, 불가능한
-    질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을 재는 수다.
+    질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을 측정하는 수다.
     """
     if clearance not in LEVELS:
         raise ValueError(f"알 수 없는 clearance: {clearance!r} (아는 등급: {', '.join(LEVELS)})")
@@ -211,7 +211,7 @@ async def _run(args) -> int:
     # 말해 주지 않으므로, 만료도 통과도 판정할 수 없다.
     signed_tenant = (labels.get("corpus") or {}).get("tenant")
     if signed_tenant != args.tenant:
-        print(f"✗ 라벨은 테넌트 {signed_tenant!r} 에 서명됐는데 재는 것은 {args.tenant!r} 이다")
+        print(f"✗ 라벨은 테넌트 {signed_tenant!r} 에 서명됐는데 측정하는 것은 {args.tenant!r} 이다")
         return 1
 
     titles = {d["key"]: d["title"] for d in json.loads(args.manifest.read_text(encoding="utf-8"))["docs"]}
@@ -220,7 +220,7 @@ async def _run(args) -> int:
 
     # **평가 하니스는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
     # 코드 기본값(`diversity_per_doc_cap=3`)으로 돌고, 배포는 config.yaml 의 5 로 돈다 —
-    # 즉 평가 하니스가 아무도 안 쓰는 설정을 재게 된다 (2026-08-18 발견).
+    # 즉 평가 하니스가 아무도 안 쓰는 설정을 측정하게 된다 (2026-08-18 발견).
     svc, llm = embedding_service_from_config(), LLMService()
     search_cfg = _load_config()
     if args.section_fill:
@@ -243,7 +243,7 @@ async def _run(args) -> int:
 
     # ── 이 등급으로 읽을 수 없는 gold ────────────────────────────────────────
     # 측정 **이전에** 막는다. 통과 불가능한 질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을
-    # 재는 수이고, 그 실패는 랭킹 결함처럼 보인다.
+    # 측정하는 수이고, 그 실패는 랭킹 결함처럼 보인다.
     if blind:
         impossible = {q: d for q, d in blind.items() if "**통과 불가능**" in d}
         print(f"⚠ 이 등급({args.clearance})으로 읽을 수 없는 gold — 질의 {len(blind)}건")
@@ -253,12 +253,12 @@ async def _run(args) -> int:
         if impossible:
             print(f"\n✗ 그중 {len(impossible)}건은 gold 를 **전부** 못 읽어 통과가 불가능하다: "
                   f"{', '.join(impossible)}")
-            print("  불가능한 질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을 재는 수다.")
+            print("  불가능한 질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을 측정하는 수다.")
             print("  고치는 법: --clearance 를 올리거나(예: RESTRICTED), 라벨의 gold 를 바꿔라.\n")
             return 1
         print("  남은 gold 로 통과할 수 있어 실행은 계속한다 — 다만 그 라벨은 절반이 죽어 있다.\n")
 
-    # ── 라벨이 서명된 본문과 지금 재는 본문이 같은가 ──────────────────────────
+    # ── 라벨이 서명된 본문과 지금 측정하는 본문이 같은가 ──────────────────────────
     stale = expired(labels, {k: v["sha"] for k, v in live.items()})
     if stale:
         signed = (labels.get("corpus") or {}).get("bodies") or {}
@@ -376,7 +376,7 @@ async def _run(args) -> int:
         return 1
 
     print(f"\n  정답 {o['correct']}   오답 {o['incorrect']}   기권 {o['abstained']}"
-          f"   (잴 수 없음 {o['unmeasurable']})")
+          f"   (측정할 수 없음 {o['unmeasurable']})")
     if o["abstained"]:
         print(f"    기권: {', '.join(a['abstained_qids'])}")
     if o["incorrect"]:
@@ -423,8 +423,8 @@ def main(argv: list[str] | None = None) -> int:
     # 같은 수가 나오나" 를 물을 수 없고, 물을 수 없는 질문은 한계가 아니라 사각이 된다.
     ap.add_argument("--labels", type=Path, default=DEFAULT_LABELS, help="라벨 파일")
     ap.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST, help="팩 매니페스트")
-    ap.add_argument("--tenant", default="default", help="재는 테넌트(라벨의 서명 테넌트와 같아야 한다)")
-    # 등급은 **재는 조건**이지 상수가 아니다. 하드코딩돼 있던 동안, 그 등급으로 못 읽는 문서를
+    ap.add_argument("--tenant", default="default", help="측정하는 테넌트(라벨의 서명 테넌트와 같아야 한다)")
+    # 등급은 **측정하는 조건**이지 상수가 아니다. 하드코딩돼 있던 동안, 그 등급으로 못 읽는 문서를
     # gold 로 가진 질의는 어떤 질의문으로도 통과할 수 없었고 평가 하니스는 그것을 "검색 실패" 로 적었다.
     ap.add_argument("--clearance", default="INTERNAL",
                     help="이 등급으로 읽을 수 있는 것만 검색된다. gold 가 이보다 위면 실행이 거부된다")

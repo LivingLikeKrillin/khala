@@ -69,7 +69,7 @@ def test_unique_match_becomes_an_anchor():
 
 
 def test_zero_matches_is_a_recorded_refusal_not_a_dropped_candidate():
-    """거부를 버리면 재바인딩이 불가능해지고 수율이 실행 순서를 재게 된다 (§3.3)."""
+    """거부를 버리면 재바인딩이 불가능해지고 수율이 실행 순서를 측정하게 된다 (§3.3)."""
     result = bind(["Nowhere"], _resolver({}))
 
     assert not result.anchors

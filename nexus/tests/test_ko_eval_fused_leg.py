@@ -36,7 +36,7 @@ def test_the_harness_calls_the_production_fusion_rather_than_its_own():
 
 
 def test_the_fusion_parameter_matches_production_config():
-    """`config.yaml search.rrf_k` 와 다른 k 로 융합하면 프로덕션과 다른 것을 재게 된다."""
+    """`config.yaml search.rrf_k` 와 다른 k 로 융합하면 프로덕션과 다른 것을 측정하게 된다."""
     import yaml
 
     cfg = yaml.safe_load(

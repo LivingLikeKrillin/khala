@@ -114,7 +114,7 @@ async def test_a_successful_answer_has_no_failure_reason(monkeypatch):
 
 async def _packet():
     """근거가 **있는** 패킷. 비어 있으면 생성기는 LLM 을 부르기 전에 기권하고(abstained),
-    그러면 이 시험은 실패 분류가 아니라 기권 경로를 재게 된다."""
+    그러면 이 시험은 실패 분류가 아니라 기권 경로를 측정하게 된다."""
     from nexus.search.evidence_packet import assemble_packet
     from nexus.search.hybrid import SearchHit
 

@@ -44,7 +44,7 @@ from scripts.vision_gemini_probe import MODEL, gemini_read  # noqa: E402
 LOCAL = Path("/app/tests/eval/local")
 # 실험군마다 캐시를 가른다. 사고 켠 판독과 끈 판독을 한 파일에 섞으면 무엇을 비교했는지 모른다.
 _ARM = ("" if os.getenv("GEMINI_THINKING", "on").strip().lower() != "off" else "-nothink")
-# 같은 설정을 두 번 돌려 **실행 간 변동**을 재기 위한 꼬리표. 잡음 폭을 모르면 독자 간 차이가
+# 같은 설정을 두 번 돌려 **실행 간 변동**을 측정하기 위한 꼬리표. 잡음 폭을 모르면 독자 간 차이가
 # 신호인지 알 수 없다 — 2026-08-11 에 그걸 모른 채 네 번 결론을 냈다.
 _ARM += os.getenv("CROSSCHECK_RUN", "")
 CACHE = LOCAL / f"crosscheck-gemini{_ARM}.json"
@@ -57,7 +57,7 @@ _HANGUL = re.compile(r"[가-힣]{2,}")
 
 
 def normalize(text: str) -> str:
-    """서식 차이를 접는다. **내용 차이는 접지 않는다** — 그것이 재려는 것이다."""
+    """서식 차이를 접는다. **내용 차이는 접지 않는다** — 그것이 측정하려는 것이다."""
     t = unicodedata.normalize("NFKC", text or "")
     t = t.replace("−", "-").replace("–", "-").replace("—", "-")
     out = []

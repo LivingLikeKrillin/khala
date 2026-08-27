@@ -111,7 +111,7 @@ def test_the_runner_actually_appends_to_the_accumulating_file(tmp_path):
     lines = [json.loads(x) for x in runs.read_text(encoding="utf-8").splitlines() if x.strip()]
     assert [x["tag"] for x in lines] == ["r1", "r2"], "append 가 아니면 회차가 서로를 지운다"
     assert lines[0]["ok"] == {"q1": True}, "질의별 ok 가 없으면 다수결을 못 낸다"
-    assert lines[1]["grid"], "충분성을 잰 회차는 격자가 남아야 한다 — 콘솔은 사라진다"
+    assert lines[1]["grid"], "충분성을 측정한 회차는 격자가 남아야 한다 — 콘솔은 사라진다"
 
 
 def test_the_runner_is_wired_to_the_appender():

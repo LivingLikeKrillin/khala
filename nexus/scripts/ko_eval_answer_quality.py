@@ -1,13 +1,13 @@
 """답변 품질 — **LLM 심판 없이** 결정론으로 채점한다.
 
-이 리포는 검색을 엄격하게 재 왔고 **답변은 한 번도 안 쟀다.** 있는 것은 결정론적 가드 셋뿐이다
+이 리포는 검색을 엄격하게 측정해 왔고 **답변은 한 번도 안 측정했다.** 있는 것은 결정론적 가드 셋뿐이다
 (인용 사후검증·숫자 근거검증·근거 신선도). 셋 다 답변이 근거를 **벗어났는지**를 보지, 답이
 **맞는지**를 보지 않는다.
 
-여기서 재는 세 가지. 전부 코드가 판단한다 — 답이 좋은지를 LLM 에게 물으면 그 LLM 의 취향을 재게
+여기서 측정하는 세 가지. 전부 코드가 판단한다 — 답이 좋은지를 LLM 에게 물으면 그 LLM 의 취향을 측정하게
 되고, 그 취향은 우리 라벨보다 검증이 덜 된 것이다.
 
-| 재는 것 | 방법 | 실패가 뜻하는 것 |
+| 측정하는 것 | 방법 | 실패가 뜻하는 것 |
 |---|---|---|
 | `grounded` | 인용이 하나 이상 있고 전부 근거 packet 안의 문서다 | 출처를 지어냈다 |
 | `cites_gold` | 인용 중 하나가 **정답 문서**를 가리킨다 | 엉뚱한 문서로 답했다 |
@@ -19,7 +19,7 @@
 
 `must_contain` 의 모양: **모든 항목**이 만족돼야 하고, 각 항목은 **표기 후보 중 하나**만 나오면
 된다. `[["100"], ["곡", "트랙"]]` = 100 이 있어야 하고, 곡 또는 트랙이 있어야 한다. 한국어 답변은
-표기가 흔들리므로 후보를 허용하지 않으면 표현을 재게 된다.
+표기가 흔들리므로 후보를 허용하지 않으면 표현을 측정하게 된다.
 """
 
 from __future__ import annotations
@@ -75,7 +75,7 @@ def refusal_segments(answer_text: str) -> list[str]:
 
 
 def refuses(answer_text: str) -> bool:
-    """답변 어딘가에서 근거를 지목하며 부정했는가. 대조군(답변불가 5건)이 재는 값이다."""
+    """답변 어딘가에서 근거를 지목하며 부정했는가. 대조군(답변불가 5건)이 측정하는 값이다."""
     return bool(refusal_segments(answer_text))
 
 
@@ -132,7 +132,7 @@ def facts_present(must_contain: list[list[str]] | None, text: str) -> list[bool]
 #: 없습니다"* 로 닫았다. 부분일치 채점기는 **둘 다 통과시킨다** — 값이 텍스트에 있기 때문이다.
 #: 그래서 절 채움(#318)을 껐다 켜도 15/15 가 그대로였다: 채점기가 처치를 못 봤다.
 #:
-#: 여기서 재는 것은 **답변이 그 값을 자기 답으로 내세웠는가**다. 두 자리만 본다:
+#: 여기서 측정하는 것은 **답변이 그 값을 자기 답으로 내세웠는가**다. 두 자리만 본다:
 #:
 #:   선두   시스템 프롬프트가 요구하는 자리 — "핵심 답변을 먼저 제시하세요"
 #:   결론   접속 부사가 여는 마무리 — "따라서 …", "요약: …"
@@ -143,7 +143,7 @@ def facts_present(must_contain: list[list[str]] | None, text: str) -> list[bool]
 #: 손라벨과 일치했다 — 그 실측은 `tests/eval/answer-facts/README.md` 에 있다.
 #:
 #: ⚠ **이것도 어휘 규칙이다.** *"따라서 4,000점일 가능성이 있습니다"* 는 통과한다. 이 채점기는
-#: **자리**를 재지 확신을 재지 않는다. 뚫리는 문구는 테스트에 실물로 박아 둔다.
+#: **자리**를 측정하지 확신을 측정하지 않는다. 뚫리는 문구는 테스트에 실물로 박아 둔다.
 _VERDICT_OPENER = re.compile(r"(따라서|그러므로|결론적으로|정리하면|요약|최종적으로|즉,)")
 
 
@@ -181,11 +181,11 @@ def verdict_segments(answer_text: str) -> list[str]:
 def asserts_value(surfaces: list[str] | None, answer_text: str) -> bool:
     """**하나의 값**이 선두 또는 결론에서 주장됐는가. `surfaces` 는 그 값의 표기 후보(OR).
 
-    `facts_present` 가 *"어딘가에 있다"* 를 재는 자리에서 이것은 *"답으로 내세웠다"* 를 잰다.
+    `facts_present` 가 *"어딘가에 있다"* 를 측정하는 자리에서 이것은 *"답으로 내세웠다"* 를 측정한다.
     둘 다 필요하다 — 전자는 부재 회귀 그물이고, 후자는 개선 게이지다.
 
     ⚠ **`must_contain` 에 쓰지 마라.** 인자가 `list[list[str]]` 이 아니라 `list[str]` 인 것은
-    실수가 아니다. 이 채점기는 *"질문이 물은 값 하나를 답으로 확정했는가"* 만 재고, 여러 항목을
+    실수가 아니다. 이 채점기는 *"질문이 물은 값 하나를 답으로 확정했는가"* 만 측정하고, 여러 항목을
     AND 로 요구하는 라벨에는 뜻이 없다 — 2026-08-18 정책 8문항에 걸어 봤더니 세 형태로
     틀렸다:
 
@@ -211,7 +211,7 @@ class AnswerScore:
     facts: list[bool] = field(default_factory=list)
     abstained: bool = False
     #: 답변 어딘가에서 근거를 지목하며 부정했는가. 기권과 **다르다** — 답을 다 하면서 한 항목을
-    #: 좁힌 답변도 참이다. 대조군(답변불가)이 재는 값이 이것이다.
+    #: 좁힌 답변도 참이다. 대조군(답변불가)이 측정하는 값이 이것이다.
     refused: bool = False
     llm_failed: bool = False
     n_citations: int = 0
@@ -222,7 +222,7 @@ class AnswerScore:
 
     @property
     def has_facts(self) -> bool:
-        """`must_contain` 이 비어 있으면 참이 아니라 **잴 것이 없다** — 그 구분은 집계가 한다.
+        """`must_contain` 이 비어 있으면 참이 아니라 **측정할 것이 없다** — 그 구분은 집계가 한다.
 
         **LLM 이 실패했으면 무조건 거짓이다.** 실패 시 답변 자리에 들어가는 것은 근거 원문 덤프라,
         요구한 사실이 거기 **당연히** 있다 — 그 문서에서 뽑은 사실이니까. 2026-08-08 에 실제로
@@ -286,7 +286,7 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
                  known_titles: set[str] | None = None) -> AnswerScore:
     """한 질의의 답변을 채점한다. 순수 함수 — DB 도 네트워크도 안 탄다.
 
-    `known_titles` 는 **재고 있는 테넌트**의 문서 제목이다. 팩이 아니라 테넌트인 이유: 팩은
+    `known_titles` 는 **측정하고 있는 테넌트**의 문서 제목이다. 팩이 아니라 테넌트인 이유: 팩은
     2026-08-07 에 얼린 116건이고 테넌트는 적재마다 자란다. 지난주에 들어온 문서를 인용했다고
     정답을 오답으로 세면 SPEC §1.2 의 결함이 새 문서에 대해 그대로 되살아난다.
     안 주면 해소할 방법이 없다는 뜻이므로 미판정 판정도 하지 않는다(옛 동작 그대로).
@@ -330,7 +330,7 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
 
 
 def aggregate(scores: list[AnswerScore]) -> dict:
-    """집계. **잴 수 없었던 것과 실패한 것을 섞지 않는다.**"""
+    """집계. **측정할 수 없었던 것과 실패한 것을 섞지 않는다.**"""
     n = len(scores)
     measurable = [s for s in scores if s.facts and not s.llm_failed]
     failed_llm = [s for s in scores if s.llm_failed]

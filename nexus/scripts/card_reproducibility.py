@@ -45,7 +45,7 @@ from nexus.index.symbols import scan_repo  # noqa: E402
 
 #: 테스트 코드 경로. 카드는 **업무 행동**을 서술해 정책·설계 문서와 맞추기 위한 것이고,
 #: `setUp` 이나 `…_returns403` 은 업무 용어로 서술할 것이 없다. 모집단에 남겨 두면 생성기가
-#: 아니라 모집단을 재게 된다.
+#: 아니라 모집단을 측정하게 된다.
 _TEST_PATH = re.compile(r"(^|/)(test|tests)/|Test[s]?\.java$|IT\.java$|_test\.py$|/conftest\.py$")
 
 
@@ -57,8 +57,8 @@ def pick_symbols(repo: Path, n: int, *, strategy: str = "first-per-file", seed: 
                  exclude_tests: bool = False, min_body: int = 0):
     """카드 후보 중에서 고르되, **파일이 겹치지 않게** 흩는다.
 
-    한 파일에서 연속으로 뽑으면 서로 닮은 심볼만 재게 되고, 그러면 생성기가 실제보다
-    안정적으로 보인다 — 재려는 것이 흔들림인데.
+    한 파일에서 연속으로 뽑으면 서로 닮은 심볼만 측정하게 되고, 그러면 생성기가 실제보다
+    안정적으로 보인다 — 측정하려는 것이 흔들림인데.
 
     전략이 둘인 이유는 **첫 실행이 그 함정에 절반만 걸렸기 때문**이다. `first-per-file` 은
     파일은 흩지만 경로 정렬 순서를 그대로 따라가므로, 실제로는 알파벳 앞쪽 한 패키지
@@ -129,7 +129,7 @@ async def main() -> int:
         return 2
     state = snapshot_check(repo, commit)
     if not state.ok:
-        # 더러운 트리에서 잰 재현성은 무엇의 재현성인지 말할 수 없다.
+        # 더러운 트리에서 측정한 재현성은 무엇의 재현성인지 말할 수 없다.
         print(f"거부: {state.explain()}", file=sys.stderr)
         return 1
     print(f"대상: {state.context()}")
@@ -197,7 +197,7 @@ async def main() -> int:
     print(f"규칙 위반으로 버려진 카드: {rejected}건")
     print()
     print("SPEC §6.1 문턱은 0.70 이고 **잠정값**입니다 — 검색 결과에서 유도한 값이 아니라,")
-    print("매칭 층이 코퍼스가 아니라 생성기 잡음을 재지 않도록 둔 바닥입니다.")
+    print("매칭 층이 코퍼스가 아니라 생성기 잡음을 측정하지 않도록 둔 바닥입니다.")
     if overall < 0.70:
         print("→ 문턱 미달. 이 단위는 출하하지 않습니다.")
         return 1

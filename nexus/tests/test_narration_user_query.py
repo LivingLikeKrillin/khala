@@ -92,7 +92,7 @@ def test_the_system_prompt_says_which_sentence_governs_what():
 
     assert system.startswith(P.SYSTEM_PROMPT), "기존 규칙이 통째로 앞에 남아 있어야 한다"
     tail = system[len(P.SYSTEM_PROMPT):]
-    assert "형식" in tail, "형식 요청을 따르라는 말이 없으면 U2 가 재는 것이 프롬프트에 없다"
+    assert "형식" in tail, "형식 요청을 따르라는 말이 없으면 U2 가 측정하는 것이 프롬프트에 없다"
     assert "근거" in tail, "원문이 근거 규칙을 이기지 못한다는 말이 있어야 한다 (I4·I6)"
 
 

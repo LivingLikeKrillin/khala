@@ -1,8 +1,8 @@
-"""검색만 재는 평가 하니스 — LLM 을 한 번도 부르지 않는다.
+"""검색만 측정하는 평가 하니스 — LLM 을 한 번도 부르지 않는다.
 
 답변 하니스(`ko_eval_answer_run.py`)는 질의당 한 번 LLM 을 부르고, 그 키가 없으면 아무 숫자도
 못 낸다. 그런데 오늘 코퍼스를 바꾼 것들(재적재·벡터 무효화·청크 텍스트 변경)이 부술 수 있는 것은
-**검색 쪽**이고, 그 절반은 키 없이 잴 수 있다.
+**검색 쪽**이고, 그 절반은 키 없이 측정할 수 있다.
 
 **이것은 답변 품질이 아니다.** 검색이 정답 문서를 올려도 답이 틀릴 수 있고, 그 구간은 이 리포가
 이미 한 번 놓쳤다 — 문서 단위 Recall@10 이 1.000 인데 846자 표가 앞 300자만 프롬프트에 실려
@@ -44,7 +44,7 @@ async def _run(args) -> int:
         print("✗ 라벨 게이트 실패 — 측정 이전에 평가 하니스가 틀렸다:", *problems[:4], sep="\n  ")
         return 1
     if (signed := (labels.get("corpus") or {}).get("tenant")) != TENANT:
-        print(f"✗ 라벨은 테넌트 {signed!r} 에 서명됐는데 재는 것은 {TENANT!r} 이다")
+        print(f"✗ 라벨은 테넌트 {signed!r} 에 서명됐는데 측정하는 것은 {TENANT!r} 이다")
         return 1
 
     titles = {d["key"]: d["title"] for d in json.loads(MANIFEST.read_text(encoding="utf-8"))["docs"]}
@@ -54,12 +54,12 @@ async def _run(args) -> int:
 
     # **평가 하니스는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
     # 코드 기본값(`diversity_per_doc_cap=3`)으로 돌고, 배포는 config.yaml 의 5 로 돈다 —
-    # 즉 평가 하니스가 아무도 안 쓰는 설정을 재게 된다 (2026-08-18 발견).
+    # 즉 평가 하니스가 아무도 안 쓰는 설정을 측정하게 된다 (2026-08-18 발견).
     svc = embedding_service_from_config()
     search_cfg = _load_config()
     pool = await db.get_pool()
     # **같은 라벨·같은 테넌트를 재므로 같은 만료가 여기에도 걸린다.** 답변 쪽에만 게이트를 달면
-    # 만료된 라벨로 잰 숫자가 이 문으로 그대로 나온다(SPEC-nexus-answer-quality-ruler §3.3).
+    # 만료된 라벨로 측정한 숫자가 이 문으로 그대로 나온다(SPEC-nexus-answer-quality-ruler §3.3).
     async with pool.acquire() as con:
         stale = expired(labels, {k: v["sha"] for k, v in (await tenant_bodies(con, TENANT)).items()})
     if stale:
@@ -102,7 +102,7 @@ async def _run(args) -> int:
     # **만료가 있으면 총점을 찍지 않는다.** 21/40 은 성적이 아니고, 성적처럼 인용되면 안 된다.
     # 질의별 순위는 그대로 쓴다 — 재서명하는 사람이 볼 재료가 그것이다.
     if stale:
-        print(f"\n  ✗ 만료 {len(stale)}건 — 총점 없음. 잰 질의 {n}건의 순위만 남긴다.")
+        print(f"\n  ✗ 만료 {len(stale)}건 — 총점 없음. 측정한 질의 {n}건의 순위만 남긴다.")
     else:
         print(f"\n  Recall@{args.top_k} {len(hit)}/{n} = {recall:.3f}"
               f"   MRR {mrr:.3f}   Top-1 {top1:.3f}")

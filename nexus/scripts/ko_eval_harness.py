@@ -1,7 +1,7 @@
 """한국어 검색 평가 하니스 — 적재·채점·판정 (SPEC-nexus-korean-retrieval-eval §4.3~§4.5).
 
 **판정은 "정답 문서를 찾았나" 다.** 다리는 청크를 돌려주므로 문서로 접은 뒤(같은 문서는 최선
-순위만) **문서 10개** 안에서 잰다 — 청크 10개 창이 아니다. 한 문서가 청크를 여러 개 올리면 두
+순위만) **문서 10개** 안에서 측정한다 — 청크 10개 창이 아니다. 한 문서가 청크를 여러 개 올리면 두
 읽기의 숫자가 크게 갈리기 때문에 여기서 못박는다.
 
 **검정 규칙도 숫자가 나오기 전에 못박는다** (§4.3):
@@ -41,7 +41,7 @@ class OrphanedStoreError(RuntimeError):
 class AbstentionResult:
     """답변불가 라벨에 대한 채점 — **분모 40 과 섞지 않는다.**
 
-    §4.3 의 분모는 답변가능 40 이고 그건 그대로다. 답변불가 5건은 다른 것을 재기 때문에 따로
+    §4.3 의 분모는 답변가능 40 이고 그건 그대로다. 답변불가 5건은 다른 것을 측정하기 때문에 따로
     센다: 검색 품질이 아니라 **모르는 것을 모른다고 하는가** 이다.
 
     지금까지 이 5건은 어느 집계에도 안 들어갔다 — 기권이 답변 문장 안에만 있어서 기계가 읽을 수
@@ -230,7 +230,7 @@ def verdict(wins: int, losses: int, ties: int, name_a: str = "A", name_b: str = 
 async def load_pack(pack_dir: Path, tenant: str, con, config: dict | None = None) -> dict[str, str]:
     """팩을 버려도 되는 테넌트에 적재하고 **청크 rid → 팩 상대 경로** 매핑을 돌려준다.
 
-    프로덕션 청커(`chunk_document`)를 그대로 쓴다. 평가용으로 따로 쪼개면 재는 대상이 달라진다.
+    프로덕션 청커(`chunk_document`)를 그대로 쓴다. 평가용으로 따로 쪼개면 측정하는 대상이 달라진다.
     """
     from nexus.index.bm25 import index_chunk_bm25
     from nexus.ingest.chunker import chunk_document

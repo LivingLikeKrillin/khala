@@ -1,4 +1,4 @@
-"""형식 요청 준수를 잰다 (SPEC-nexus-multi-turn-narration §5, U1).
+"""형식 요청 준수를 측정한다 (SPEC-nexus-multi-turn-narration §5, U1).
 
 사용자가 "세 줄로" 라고 했을 때 답이 세 줄인가. 판정은 전부 문자열 연산이고
 (`nexus/search/format_compliance.py`) LLM 판정자를 쓰지 않는다 — 판정자가 흔들리면 채점기가 흔들린다.
@@ -7,7 +7,7 @@
 안 나온다. 같은 조건 10회를 돌려 폭을 먼저 보고, 그 폭보다 작은 차이는 승리로 세지 않는다.
 검색 SPEC 은 5회로 시작했다가 폭을 과소평가했다(5회 0.021 vs 10회 0.061).
 
-**두 실험군을 한 코드 버전에서 나란히 잰다.** U2 는 인자 하나로 켜지므로 그 인자를 실험군로 만들 수
+**두 실험군을 한 코드 버전에서 나란히 측정한다.** U2 는 인자 하나로 켜지므로 그 인자를 실험군로 만들 수
 있고, 그러면 배포를 갈아 끼우는 대신 같은 실행 안에서 대조가 선다 — 시간·모델·DB 가 두
 측정 사이에서 움직일 여지가 없다. 1턴 답변은 이력이 없어 두 실험군이 정의상 같으므로 공유한다
 (그래야 `shorter` 판정의 기준선이 실험군마다 달라지지 않는다).
@@ -38,7 +38,7 @@ LOCAL_DIR = KO_DIR.parent / "local"          # gitignore — 생성 텍스트는
 DEFAULT_CASES = KO_DIR / "format-requests.yaml"
 
 
-#: 실험군. **한 코드 버전에서 둘 다 잰다** — 배포를 갈아 끼우며 재면 두 측정 사이에 코드 말고도
+#: 실험군. **한 코드 버전에서 둘 다 측정한다** — 배포를 갈아 끼우며 측정하면 두 측정 사이에 코드 말고도
 #: 시간·모델·DB 가 함께 움직이고, 그 차이는 사후에 분리되지 않는다. U2 는 인자 하나로 켜지므로
 #: 그 인자를 실험군로 만드는 것이 가장 정직한 대조다.
 ARMS = ("baseline", "u2")
@@ -78,7 +78,7 @@ async def one_run(cases: dict, *, tenant: str, clearance: str, svc, llm,
     """한 회차. 팔별 형식 준수 여부 + 대조군 답변 길이 + **실험군이 갈렸는지**.
 
     **1턴 답변은 실험군 사이에 공유한다.** 이력이 없으면 두 실험군의 코드 경로가 같으니 두 번 부르는
-    것은 돈과 시간만 쓰는 게 아니라 해롭다: `shorter` 판정의 기준선이 실험군마다 달라져, 재는 것이
+    것은 돈과 시간만 쓰는 게 아니라 해롭다: `shorter` 판정의 기준선이 실험군마다 달라져, 측정하는 것이
     "원문 전달의 효과" 가 아니라 "두 1턴 답변의 길이 차" 가 섞인 값이 된다.
     """
     out: dict = {arm: {"format": {}, "control": {}} for arm in arms}
@@ -102,7 +102,7 @@ async def one_run(cases: dict, *, tenant: str, clearance: str, svc, llm,
             out["answers"][case["id"]][arm] = second
             mark = "" if changed else "  ⚠재작성없음"
             if case.get("control"):
-                # 대조군은 형식을 안 잰다. 오늘과 같은 답이 나오는지를 본다 — 길이로 근사한다.
+                # 대조군은 형식을 안 측정한다. 오늘과 같은 답이 나오는지를 본다 — 길이로 근사한다.
                 out[arm]["control"][case["id"]] = len(second)
                 print(f"  {case['id']:5s} {arm:8s} 대조군  {len(second)}자{mark}")
             else:
@@ -176,7 +176,7 @@ async def _run(args) -> int:
         "revision": cases["revision"], "tenant": args.tenant, "runs": args.runs,
         # 계측 설정도 결과의 일부다 — 재작성 타임아웃이 다르면 다른 실험이다.
         "rewrite_timeout_s": args.rewrite_timeout, "rows_without_rewrite": n_skipped,
-        # 어느 채점기로 잰 값인가. 채점기를 고치면 이 값이 바뀌고, 옛 리포트와 섞이지 않는다.
+        # 어느 채점기로 측정한 값인가. 채점기를 고치면 이 값이 바뀌고, 옛 리포트와 섞이지 않는다.
         "ruler_sha": _ruler_sha(),
         "arms": list(arms), "summary": summary, "detail": runs,
     }, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
@@ -220,7 +220,7 @@ def _verdict(summary: dict, runs: list, cases: dict) -> None:
           f"  (차 {gain:+.3f})")
     print(f"  잡음 폭       {spread:.3f}  ← 이보다 작은 차이는 승리가 아니다")
 
-    # 대조군 — 형식 요청이 없는 후속. 길이로 근사한다(채점기가 재는 것이 형식뿐이라 그렇다).
+    # 대조군 — 형식 요청이 없는 후속. 길이로 근사한다(채점기가 측정하는 것이 형식뿐이라 그렇다).
     ctrl_ids = [c["id"] for c in cases["cases"] if c.get("control")]
     print("  대조군(길이)  ", end="")
     for cid in ctrl_ids:
@@ -248,11 +248,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--runs", type=int, default=10,
                     help="SPEC §5.1: 첫 실행은 성능이 아니라 잡음 측정이다")
     ap.add_argument("--arm", choices=(*ARMS, "both"), default="both",
-                    help="both 면 한 코드 버전에서 두 실험군을 나란히 잰다(1턴 답변은 공유)")
+                    help="both 면 한 코드 버전에서 두 실험군을 나란히 측정한다(1턴 답변은 공유)")
     ap.add_argument("--rewrite-timeout", type=float, default=REWRITE_TIMEOUT_S,
                     help="재작성 상한(초). 프로덕션 기본은 6초지만 dev 브리지는 그보다 느려서 "
                          "그대로 두면 재작성이 대부분 타임아웃하고, 그러면 두 실험군이 같아져 "
-                         "실험이 아무것도 재지 않는다. 값은 리포트에 기록된다")
+                         "실험이 아무것도 측정하지 않는다. 값은 리포트에 기록된다")
     ap.add_argument("--report", type=Path, default=None)
     args = ap.parse_args(argv)
     import os

@@ -6,7 +6,7 @@
 
 ⚠ 두 번째가 왜 필요한가. 첫 판은 낱말 사이 기호에서 정렬이 어긋나 그 낱말의 형태소를 통째로
 버렸다 — `[파티룸] 디제잉 정책` 이 `['파티룸','디제잉']` 이 됐고(형태소 5개 소실), 그 상태로
-잰 숫자를 "표면형을 더한 결과" 라고 읽을 뻔했다.
+측정한 숫자를 "표면형을 더한 결과" 라고 읽을 뻔했다.
 """
 
 from __future__ import annotations
@@ -23,13 +23,13 @@ from nexus.index.bm25 import (
     use_tokenizer,
 )
 
-#: mecab 이 없으면 토크나이저는 공백 분해로 떨어지고, 형태소에 대한 단언은 **아무것도 재지
+#: mecab 이 없으면 토크나이저는 공백 분해로 떨어지고, 형태소에 대한 단언은 **아무것도 측정하지
 #: 않는다**(CI 의 unit 잡에 mecab 이 없어 첫 판이 빈 목록을 받고 빨간불이 났다).
 #: 그렇다고 파일 전체를 건너뛰지는 않는다 — 기본값·이음매 검사는 mecab 과 무관하고, 그 둘이
 #: CI 에서 안 도는 것이 더 나쁘다.
 needs_mecab = pytest.mark.skipif(
     _get_mecab() is None,
-    reason="mecab-ko 없음 — 형태소 동작은 프로덕션 토크나이저에서만 잰다")
+    reason="mecab-ko 없음 — 형태소 동작은 프로덕션 토크나이저에서만 측정한다")
 
 
 def test_the_default_is_still_mecab():

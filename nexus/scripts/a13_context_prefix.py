@@ -9,8 +9,8 @@
 `get_search_text()` 는 `context_prefix or "[section_path]"` 다. `context_prefix` 는 코퍼스
 전체에서 NULL 이고, `section_path` 가 'root' 면 접두사는 `[root]` — 정보가 0이다.
 
-Pack A 로는 이걸 못 잰다: 그 코퍼스는 H1 이 곧 문서 제목이라 `section_path` 가 이미
-"노드 > 노드 상태" 로 제목을 품는다. 그래서 **Pack B**(실물 스냅샷)로 잰다.
+Pack A 로는 이걸 못 측정한다: 그 코퍼스는 H1 이 곧 문서 제목이라 `section_path` 가 이미
+"노드 > 노드 상태" 로 제목을 품는다. 그래서 **Pack B**(실물 스냅샷)로 측정한다.
 
 **판정 규칙은 숫자를 보기 전에 못박는다** — 하니스가 이미 가진 규칙 그대로
 (`ko_eval_harness.verdict`): 질의별 승패는 키워드 **Recall@10**, 동점이면 **MRR@10**,

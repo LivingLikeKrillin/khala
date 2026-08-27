@@ -301,7 +301,7 @@ def test_identical_runs_agree_completely():
 
 
 def test_five_runs_give_ten_pairs_not_one_number():
-    """2회는 구간 없는 점추정이다. 재려는 것이 흔들림인데 흔들림을 못 본다."""
+    """2회는 구간 없는 점추정이다. 측정하려는 것이 흔들림인데 흔들림을 못 본다."""
     from nexus.index.cards import term_agreement
 
     a = term_agreement([("결제",)] * 5)
@@ -349,9 +349,9 @@ def test_generator_id_refuses_a_non_string_model():
 # ---------------------------------------------------------------- 재현성 하니스의 모집단
 #
 # 세 실험군을 돌려서야 알았다: 무작위 표본 12개 중 10개가 테스트 코드였고, `setUp` 을 업무 용어로
-# 서술하라는 요구에는 안정된 답이 없다(일치도 0.017). 그 표본으로 잰 재현성은 생성기가 아니라
-# 모집단을 잰 것이다. 그래서 경로 판정을 검사로 박는다 — 이 규칙이 조용히 틀리면 다음 측정이
-# 또 테스트를 잰다. (전말: docs/CODE_CARD_REPRODUCIBILITY.md)
+# 서술하라는 요구에는 안정된 답이 없다(일치도 0.017). 그 표본으로 측정한 재현성은 생성기가 아니라
+# 모집단을 측정한 것이다. 그래서 경로 판정을 검사로 박는다 — 이 규칙이 조용히 틀리면 다음 측정이
+# 또 테스트를 측정한다. (전말: docs/CODE_CARD_REPRODUCIBILITY.md)
 
 
 def test_test_paths_are_excluded_from_the_card_population():

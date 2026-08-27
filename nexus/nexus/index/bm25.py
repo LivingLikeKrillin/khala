@@ -145,7 +145,7 @@ def tokenize_with_surface(text: str, protect: set[str] | None = None) -> list[st
 
     `protect` 를 주면 **그 목록에 있는 낱말에만** 표면형을 넣는다. 두 실험군이 이 함수 하나를
     공유해야 처치가 분리된다 — 낱말 단위로 따로 분석하면 문맥이 달라져 **주입 말고 다른 것도**
-    바뀌고(mecab 은 이웃에 따라 다르게 자른다), 그러면 무엇을 잰 것인지 알 수 없다.
+    바뀌고(mecab 은 이웃에 따라 다르게 자른다), 그러면 무엇을 측정한 것인지 알 수 없다.
     """
     mecab = _get_mecab()
     if mecab is None:

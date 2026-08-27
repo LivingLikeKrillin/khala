@@ -103,7 +103,7 @@ def test_refusals_are_written_to_their_own_table_not_the_waiver_list(calls):
     """008 의 규율: waiver 는 사람이 이름을 걸고 만든다. 자동 기록이 그 표에 들어가면
     '포기했다' 와 '이번에 실패했다' 가 구분되지 않는다.
 
-    재는 것은 주석이 아니라 **나간 SQL** 이다 — 주석에서 waiver 를 설명하는 것은 옳다.
+    측정하는 것은 주석이 아니라 **나간 SQL** 이다 — 주석에서 waiver 를 설명하는 것은 옳다.
     """
     import asyncio
 

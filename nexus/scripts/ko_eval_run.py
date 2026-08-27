@@ -45,7 +45,7 @@ async def _run(args) -> int:
         return 1
 
     if _get_mecab() is None:
-        print("✗ mecab-ko 없음 — 프로덕션 토크나이저가 아니면 재지 않는다 (이미지 안에서 실행하라)")
+        print("✗ mecab-ko 없음 — 프로덕션 토크나이저가 아니면 측정하지 않는다 (이미지 안에서 실행하라)")
         return 1
 
     if not os.getenv("DATABASE_URL"):

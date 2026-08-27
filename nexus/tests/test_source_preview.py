@@ -77,7 +77,7 @@ def test_an_image_only_page_is_counted_separately_from_a_thin_one():
 
 
 def test_a_captioned_image_page_stops_counting_as_image_only():
-    """캡션을 살린 뒤에는 같은 페이지가 본문을 갖는다 — 그래서 이 지표가 캡션 수정의 효과를 잰다."""
+    """캡션을 살린 뒤에는 같은 페이지가 본문을 갖는다 — 그래서 이 지표가 캡션 수정의 효과를 측정한다."""
     caption = "그림 3. 환불 승인 흐름 — 신청 후 3영업일 내 승인, 초과 시 자동 반려" * 3
     assert len(caption) > IMAGE_ONLY_MAX_CHARS
     src = _FakeSource({"shot": _Conv(f"![{caption}](u)", image_count=1)})
@@ -161,7 +161,7 @@ def test_the_pack_b_distance_is_computed_not_remembered():
 
 
 def test_the_corpus_view_reports_substance_without_gating_on_it():
-    """**한때 여기가 게이트였고, 그 문턱은 재보지 않은 어림수였다.**
+    """**한때 여기가 게이트였고, 그 문턱은 측정해 보지 않은 어림수였다.**
 
     2026-08-07 오전: 문서 116(바닥값 0.086, 통과)인데 본문 800자 이상이 19건인 것을 보고
     "실질 문서 ≥ 60" 을 게이트로 박았다. 근거는 "gold 가 19건뿐이면 두 실험군이 같은 소수 문서를
@@ -178,7 +178,7 @@ def test_the_corpus_view_reports_substance_without_gating_on_it():
     got = asyncio.run(corpus_status(_Con(116, substantive=19)))["pack_b"]
     assert got["substantive_documents"] == 19, "코퍼스 구성은 여전히 보여야 한다"
     assert got["ready"] is True, "문서 수 조건은 찼다 — 실질 문서 수로 막지 않는다"
-    assert "substantive_short_by" not in got, "재보지 않은 문턱이 되살아났다"
+    assert "substantive_short_by" not in got, "측정해 보지 않은 문턱이 되살아났다"
     assert "ko_eval_packb_disagreement" in got["second_gate"], \
         "진짜 두 번째 조건이 어디 있는지 가리켜야 한다"
 

@@ -3,7 +3,7 @@
 
 이 리포지토리는 공개이고 배포 코퍼스는 실제 조직 문서다. 그래서 질의는 **커밋된 손글씨 세트**에서만
 오고, 렌더러는 집계 레코드의 필드만 찍는다 — 질의 문자열에서 보고서로 가는 경로가 없다는 것을
-여기서 잰다. "조심하겠다" 는 보증이 아니다.
+여기서 측정한다. "조심하겠다" 는 보증이 아니다.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def test_the_measurement_record_has_no_place_to_put_a_query():
 def test_the_query_set_is_committed_and_non_trivial():
     queries = load_queries()
     assert len(queries) >= 15, "p95 를 흔들지 않으려면 세트가 충분히 넓어야 한다"
-    assert len(set(queries)) == len(queries), "중복 질의는 캐시를 재는 것에 가깝다"
+    assert len(set(queries)) == len(queries), "중복 질의는 캐시를 측정하는 것에 가깝다"
 
 
 # ── 계측기 자체 — 동시성을 정말 유지하는가 ──────────────────────────────────
@@ -88,7 +88,7 @@ def test_the_query_set_is_committed_and_non_trivial():
 
 @pytest.mark.asyncio
 async def test_the_driver_keeps_the_load_up_instead_of_running_in_batches():
-    """배치로 `gather` 하면 각 배치의 꼬리가 다음 배치를 막아 **실제보다 낮은 동시성**을 잰다.
+    """배치로 `gather` 하면 각 배치의 꼬리가 다음 배치를 막아 **실제보다 낮은 동시성**을 측정한다.
 
     그래서 실제로 몇 개가 동시에 떠 있었는지를 센다 — 부하 측정에서 이게 틀리면 나머지 숫자는
     전부 다른 질문의 답이다.
