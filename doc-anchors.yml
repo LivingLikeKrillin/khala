@@ -122,3 +122,4 @@ docs:
     sources:
       - scripts/check_terms.py
       - tests/test_check_terms.py
+      - scripts/hooks/terms_guard.py

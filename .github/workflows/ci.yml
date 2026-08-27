@@ -121,6 +121,11 @@ jobs:
       - name: That check has teeth (word boundaries, archival exemption, diff parsing)
         run: python -m pytest tests/test_check_terms.py -q
 
+      # 그 검사는 `.md` diff 만 본다. 규칙을 넣은 당일부터 어긴 자리는 diff 가 아니라
+      # **에이전트의 보고 문장**이었고, 거기에는 아무 검사도 없었다. `Stop` 훅이 그 문을 단다.
+      - name: The same rule, applied to what the agent says (Stop hook)
+        run: python -m pytest tests/test_terms_guard.py -q
+
   lint:
     name: lint (ruff)
     runs-on: ubuntu-latest

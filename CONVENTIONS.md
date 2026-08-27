@@ -44,7 +44,11 @@ and dated measurement reports are not rewritten. This is the same rule the compo
 rename followed.
 
 The rules cover code comments, docstrings and user-facing strings as well as prose —
-same words, same readers. They stop at **data**: evaluation labels and questions are the
+same words, same readers. **They also cover what an agent says in the conversation**, which
+is where they were broken three times after the sweep finished: `check_terms.py` reads a
+diff, and a reported sentence is not one. The `Stop` hook (`scripts/hooks/terms_guard.py`)
+runs the same judgement over the turn's own message and blocks it once, with the
+replacement word. Quoting a retired term is done in backticks, as this file does. They stop at **data**: evaluation labels and questions are the
 input to measurement and are bound by signatures and manifests, and the retraction ledger
 is stamped. `GLOSSARY.md` lists what is frozen and why.
 
