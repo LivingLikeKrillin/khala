@@ -1,14 +1,14 @@
-"""평가용 벡터 저장소 — 모델별 팔, 거부 회계, 정확 스캔
+"""평가용 벡터 저장소 — 모델별 실험군, 거부 회계, 정확 스캔
 (SPEC-nexus-korean-embedding-comparison §4.1~§4.2).
 
 프로덕션 `chunks.embedding` 은 건드리지 않는다. 768 과 1024 를 나란히 두려면 차원 없는 `vector`
 컬럼이 필요하고, 그건 색인이 안 걸린다 — 1,900청크 정확 스캔이 공짜에 가까우니 오히려 설계다.
 ivfflat 후보 집합 흔들림이 비교에 섞이지 않는다.
 
-**해시가 둘인 이유**: 팔마다 지시문 프리픽스가 달라서(`search_document: ` vs 없음) "실제 보낸
-문자열" 해시는 두 팔이 절대 같을 수 없다. 그래서 공용 입력(프리픽스 이전)은 `input_sha256`,
-팔이 실제 보낸 것은 `payload_sha256` 으로 나눈다. 전자는 "두 팔이 같은 것을 봤나" 를, 후자는
-"이 팔이 지금 만들 문자열과 같은가" 를 지킨다.
+**해시가 둘인 이유**: 실험군마다 지시문 프리픽스가 달라서(`search_document: ` vs 없음) "실제 보낸
+문자열" 해시는 두 실험군이 절대 같을 수 없다. 그래서 공용 입력(프리픽스 이전)은 `input_sha256`,
+실험군이 실제 보낸 것은 `payload_sha256` 으로 나눈다. 전자는 "두 실험군이 같은 것을 봤나" 를, 후자는
+"이 실험군이 지금 만들 문자열과 같은가" 를 지킨다.
 
 **거부는 중단이 아니라 회계다**: Ollama 는 창을 넘는 입력을 잘라서 성공시키지 않고 **거부**하고,
 프로덕션은 그걸 NULL 임베딩으로 흡수한다(청크가 벡터 검색에서 조용히 사라진다). 평가도 같은
@@ -68,7 +68,7 @@ def to_pgvector(values: list[float]) -> str:
 
 @dataclass
 class EmbedRow:
-    """한 청크에 대한 한 팔의 결과. 임베딩됐거나, 거부됐거나 — 그 사이는 없다."""
+    """한 청크에 대한 한 실험군의 결과. 임베딩됐거나, 거부됐거나 — 그 사이는 없다."""
     chunk_rid: str
     input_sha256: str
     payload_sha256: str
@@ -91,7 +91,7 @@ class ArmProblem:
 
 @dataclass
 class Coverage:
-    """판정보다 **위에** 적히는 숫자 (§4.3). 한 팔이 코퍼스의 1/8을 못 먹으면 재현율 표를
+    """판정보다 **위에** 적히는 숫자 (§4.3). 한 실험군이 코퍼스의 1/8을 못 먹으면 재현율 표를
     like-for-like 로 읽으면 안 된다."""
     model: str
     embedded: int
@@ -116,7 +116,7 @@ async def ensure_table(con) -> None:
     """테이블을 만들고, **이미 있다면 모양이 맞는지 확인한다.**
 
     평가 전용 테이블이라 지워도 되지만, 지우는 것은 사람이 결정한다 — 조용히 DROP 하면 방금 몇
-    분씩 걸려 만든 팔이 소리 없이 사라진다.
+    분씩 걸려 만든 실험군이 소리 없이 사라진다.
     """
     await con.execute(CREATE_SQL)
     cols = {r["column_name"] for r in await con.fetch(
@@ -130,7 +130,7 @@ async def ensure_table(con) -> None:
 
 
 async def replace_arm(con, model: str, tenant: str, pack: str, rows: list[EmbedRow]) -> Coverage:
-    """한 팔을 통째로 갈아끼운다 — 병합하지 않는다(세대 혼재 방지)."""
+    """한 실험군을 통째로 갈아끼운다 — 병합하지 않는다(세대 혼재 방지)."""
     expected = MODELS[model]["dim"]
     for r in rows:
         if r.embedding is not None and len(r.embedding) != expected:
@@ -201,12 +201,12 @@ async def verify_arm(con, model: str, tenant: str, pack: str,
                    if rid in have and have[rid]["payload_sha256"] != h]
     if bad_payload:
         problems.append(ArmProblem(
-            model, f"이 팔이 보낸 문자열이 지금 만들 것과 다르다 ({len(bad_payload)}건, 예: {bad_payload[0]})"))
+            model, f"이 실험군이 보낸 문자열이 지금 만들 것과 다르다 ({len(bad_payload)}건, 예: {bad_payload[0]})"))
     return problems
 
 
 async def arms_saw_the_same_inputs(con, tenant: str, pack: str) -> list[str]:
-    """두 팔의 **공용 입력** 집합이 같은지 (§4.3). 다르면 그건 모델 비교가 아니다."""
+    """두 실험군의 **공용 입력** 집합이 같은지 (§4.3). 다르면 그건 모델 비교가 아니다."""
     rows = await con.fetch(
         "SELECT model, chunk_rid, input_sha256 FROM ko_eval_embeddings WHERE tenant=$1 AND pack=$2",
         tenant, pack)
@@ -234,7 +234,7 @@ async def vector_search(con, model: str, tenant: str, pack: str, query_vector: l
 
 
 async def refused_chunks(con, model: str, tenant: str, pack: str) -> set[str]:
-    """비교가능 부분집합(§4.7)을 만들 때 쓴다 — 이 팔이 먹지 못한 청크들."""
+    """비교가능 부분집합(§4.7)을 만들 때 쓴다 — 이 실험군이 먹지 못한 청크들."""
     rows = await con.fetch(
         "SELECT chunk_rid FROM ko_eval_embeddings "
         "WHERE model=$1 AND tenant=$2 AND pack=$3 AND status='refused'", model, tenant, pack)

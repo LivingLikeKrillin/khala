@@ -2,7 +2,7 @@
 
 `clean_db` 는 `chunks`/`documents` 를 TRUNCATE 하는데 `ko_eval_embeddings` 는 남겨두었다. 남은 행은
 사라진 청크를 가리키는 **고아**가 되고, 청크를 문서로 접는 코드는 조용히 빈 목록을 읽는다.
-2026-08-05 에 그 상태에서 두 팔이 `Recall@10 = 0.000` 을 냈다.
+2026-08-05 에 그 상태에서 두 실험군이 `Recall@10 = 0.000` 을 냈다.
 
 **정정 하나를 여기 남긴다.** 공식 경로(`ko_eval_embed_compare run`)는 그때도 보호되고 있었다 —
 `verify_arm` 이 "살아 있는 청크가 없는 행"을 잡고 `cmd_run` 이 거기서 멈춘다. 0.000 을 낸 것은 그
@@ -32,7 +32,7 @@ def _clean_db_source() -> str:
 def test_clean_db_leaves_the_expensive_store_alone_by_default():
     """기본은 **보존**이다. 파괴가 opt-in 인 이유는 §5.3 을 뒤집은 근거와 같다.
 
-    저장소는 두 팔 × 1906 청크이고 KURE 팔은 CPU sentence-transformers 라 시간이 든다.
+    저장소는 두 실험군 × 1906 청크이고 KURE 실험군은 CPU sentence-transformers 라 시간이 든다.
     2026-08-05 에 이 픽스처를 검증하다가 정확히 그렇게 날렸다.
     """
     src = _clean_db_source()

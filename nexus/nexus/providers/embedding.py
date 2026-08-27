@@ -204,7 +204,7 @@ class EmbeddingService:
 # `search.embedding_column` 을 바꿔도 질의 벡터는 nomic 768 차원 그대로였다. 세대를 정하는 곳은
 # 여기 하나여야 하고, 세대는 **셋이 함께**여야 한다 (SPEC-nexus-embedding-cutover-seam §4.1~4.2).
 
-#: 배포가 세대를 움직이는 손잡이. `NEXUS_` 접두는 공용 `.env` 에서의 충돌·오타 때문이다.
+#: 배포가 세대를 움직이는 식별자. `NEXUS_` 접두는 공용 `.env` 에서의 충돌·오타 때문이다.
 #: 백엔드만 접두 없는 옛 이름(`EMBEDDING_BACKEND`)도 계속 읽는다 — 이미 쓰이고 있어서,
 #: 조용히 무시하면 배포는 자기가 무시당한 줄 모른다. 접두 있는 쪽이 이긴다.
 ENV_MODEL = "NEXUS_EMBEDDING_MODEL"

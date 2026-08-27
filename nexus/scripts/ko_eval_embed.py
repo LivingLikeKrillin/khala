@@ -1,16 +1,16 @@
-"""임베딩 팔 — nomic(Ollama) · KURE-v1(sentence-transformers)
+"""임베딩 실험군 — nomic(Ollama) · KURE-v1(sentence-transformers)
 (SPEC-nexus-korean-embedding-comparison §4.3~§4.4).
 
-**두 팔은 같은 문자열을 본다.** 프로덕션이 임베딩하는 것은 `chunk_text` 가 아니라
-`get_search_text(chunk)`(섹션 경로 접두 + 본문)이고, 평가도 그것을 쓴다. 팔마다 다른 입력을 준
-비교는 모델 비교가 아니다 — 그래서 행마다 `input_sha256` 을 남기고 두 팔의 집합이 같은지 본다.
+**두 실험군은 같은 문자열을 본다.** 프로덕션이 임베딩하는 것은 `chunk_text` 가 아니라
+`get_search_text(chunk)`(섹션 경로 접두 + 본문)이고, 평가도 그것을 쓴다. 실험군마다 다른 입력을 준
+비교는 모델 비교가 아니다 — 그래서 행마다 `input_sha256` 을 남기고 두 실험군의 집합이 같은지 본다.
 
 **지시문 형식은 모델마다 다르다.** nomic 은 `search_document: `/`search_query: ` 를 요구하고,
 KURE-v1 카드에는 지시문이 없다. 한쪽 형식을 다른 쪽에 씌우면 "그 모델을 잘못 쓴 결과" 를 재게
 된다 — 토크나이저 비교에서 품사 필터가 그랬던 것과 같은 종류의 교란이다.
 
 **절단과 거부는 다르게 다룬다.** sentence-transformers 는 `max_seq_length` 에서 **조용히 자르므로**
-인코딩 전에 자기 토크나이저로 세어 넘치면 중단한다 — 잘린 팔과 온전한 팔을 비교하면 창 크기를
+인코딩 전에 자기 토크나이저로 세어 넘치면 중단한다 — 잘린 실험군과 온전한 실험군을 비교하면 창 크기를
 재게 된다. Ollama 는 반대로 **거부**한다(HTTP 500 + `exceeds the context length`), 그래서 자르지
 않았음이 관측으로 확인되고, 거부된 청크는 프로덕션이 그러듯 없는 것으로 두고 커버리지로 센다.
 """
@@ -25,7 +25,7 @@ import httpx
 from scripts.ko_eval_vector import MODELS, EmbedRow, sha256
 
 class TruncationRisk(RuntimeError):
-    """잘릴 입력이 있다. 부분적으로 잘린 팔은 결과가 아니다 (§5)."""
+    """잘릴 입력이 있다. 부분적으로 잘린 실험군은 결과가 아니다 (§5)."""
 
 
 @dataclass
@@ -116,7 +116,7 @@ class SentenceTransformerArm:
         if n > self.st.max_seq_length:
             raise TruncationRisk(
                 f"{self.model}: 입력 {n} 토큰 > max_seq_length {self.st.max_seq_length} — "
-                "잘린 팔은 채점하지 않는다")
+                "잘린 실험군은 채점하지 않는다")
 
     async def embed_one(self, payload: str) -> tuple[list[float] | None, str | None]:
         """sentence-transformers 는 **조용히 자른다.** 그래서 인코딩 전에 자기 토크나이저로 센다."""
@@ -145,7 +145,7 @@ def _hf_revision(st_model) -> str:
     **로드된 스냅샷에서 읽는다.** 예전에는 `model_info()` 로 허브에 물었는데, 그건 두 가지가
     틀렸다 — 네트워크가 없으면 예외를 삼키고 **빈 문자열**을 내서, 어떤 가중치를 썼는지 식별하는
     필드가 확인이 가장 어려운 상황에서 조용히 사라진다. 그리고 물어본 것은 "허브의 main 이 **지금**
-    무엇인가" 이지 "이 팔이 **무엇을 로드했는가**" 가 아니다. 캐시 스냅샷 디렉터리 이름이 곧
+    무엇인가" 이지 "이 실험군이 **무엇을 로드했는가**" 가 아니다. 캐시 스냅샷 디렉터리 이름이 곧
     커밋 sha 이므로 그쪽이 더 진실하다.
     """
     from pathlib import Path as _Path
@@ -164,10 +164,10 @@ def _hf_revision(st_model) -> str:
 
 
 async def embed_pack(arm, chunk_inputs: dict[str, str]) -> list[EmbedRow]:
-    """`{chunk_rid: 공용 입력}` → 팔의 결과 행들 (임베딩 또는 거부).
+    """`{chunk_rid: 공용 입력}` → 실험군의 결과 행들 (임베딩 또는 거부).
 
     공용 입력은 호출자가 `get_search_text` 로 **한 곳에서** 만들어 넘긴다. 프리픽스는 여기서
-    팔마다 붙이고, 그 결과를 `payload_sha256` 으로 따로 남긴다 — 두 팔의 공용 입력은 같아야
+    실험군마다 붙이고, 그 결과를 `payload_sha256` 으로 따로 남긴다 — 두 실험군의 공용 입력은 같아야
     하지만 실제 보낸 문자열은 같을 수 없다.
     """
     rows: list[EmbedRow] = []

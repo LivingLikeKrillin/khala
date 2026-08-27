@@ -151,7 +151,7 @@ def test_a_superseded_row_names_the_document_that_replaced_it():
 
 
 def test_supersede_returns_the_rids_it_resolved():
-    """파괴적 응답은 되돌리기 손잡이를 함께 준다 — ref 만 돌려주면 취소할 rid 를 모른다."""
+    """파괴적 응답은 되돌리기 식별자를 함께 준다 — ref 만 돌려주면 취소할 rid 를 모른다."""
     with _client() as c:
         d = c.post("/supersede", json={"old_ref": "doc_a", "new_ref": "doc_b"}).json()["data"]
         assert d["old_rid"] == "doc_a" and d["new_rid"] == "doc_b"

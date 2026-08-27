@@ -74,7 +74,7 @@ def test_the_hashing_helper_is_gone(monkeypatch):
         "질의 해시 헬퍼가 남아 있다 — 이 모듈에서 그 값을 만들 수단이 있으면 안 된다")
 
 
-# ── I5 — 기록 함수의 회귀 그물 ────────────────────────────────────────────────
+# ── I5 — 기록 함수의 회귀 회귀 검사 ────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_the_persisted_row_carries_no_derived_value(monkeypatch):
@@ -125,7 +125,7 @@ async def test_the_net_goes_red_when_the_defect_is_put_back(monkeypatch):
 
     초안의 대조군은 "옛 방식 해시를 가진 행을 만든다" 였는데, 그러면 증명되는 것이
     *"탐지기가 내가 방금 심은 값을 찾는다"* 뿐이다(SPEC §5.1 의 경고). 그래서 여기서는
-    **기록 함수 자체**가 유도값을 다시 흘리게 만들고, 그 상태에서 그물이 발화하는지 본다.
+    **기록 함수 자체**가 유도값을 다시 흘리게 만들고, 그 상태에서 회귀 검사이 발화하는지 본다.
     """
     sent: list = []
 
@@ -150,4 +150,4 @@ async def test_the_net_goes_red_when_the_defect_is_put_back(monkeypatch):
     blob = repr(sorted(captured.items()))
     leaked = _derivations(_QUERY, "default")["sha256"]
     assert leaked in blob, (
-        "결함을 되돌렸는데 그물이 안 걸렸다 — 이 검사는 아무것도 지키지 않는다")
+        "결함을 되돌렸는데 회귀 검사이 안 걸렸다 — 이 검사는 아무것도 지키지 않는다")

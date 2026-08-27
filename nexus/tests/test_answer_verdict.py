@@ -21,7 +21,7 @@ def _arm(tag, per_query):
 
 
 def _steady(tag, oks, n=20, runs=3):
-    """회차 간 흔들림이 없는 팔 — 앞 `oks` 개가 매 회차 통과."""
+    """회차 간 흔들림이 없는 실험군 — 앞 `oks` 개가 매 회차 통과."""
     return _arm(tag, {f"q{i}": [i < oks] * runs for i in range(n)})
 
 
@@ -77,7 +77,7 @@ def test_the_incumbent_survives_a_non_significant_result():
 
 
 def test_only_queries_both_arms_ran_are_compared():
-    """한쪽만 돈 질의를 세면 팔의 크기 차이가 승패로 둔갑한다."""
+    """한쪽만 돈 질의를 세면 실험군의 크기 차이가 승패로 둔갑한다."""
     champ = _arm("a", {"q1": [True] * 3, "q2": [True] * 3})
     chal = _arm("b", {"q1": [True] * 3})
     assert compare(champ, chal)["queries"] == 1

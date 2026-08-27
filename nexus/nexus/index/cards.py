@@ -225,7 +225,7 @@ def card_state(card: Card, current: dict[tuple[str, str], str]) -> str:
 class Agreement:
     """여러 실행 사이의 일치도. **점추정이 아니라 분포로 보고한다** (§6.1).
 
-    2회는 구간 없는 한 숫자를 준다. 스크린샷 판독기 때 잡음 바닥을 재지 않고 SPEC 을 네 개
+    2회는 구간 없는 한 숫자를 준다. 스크린샷 판독기 때 잡음 폭을 재지 않고 SPEC 을 네 개
     썼다가 근거 32건이 전부 잡음이었던 일이 있다 — 그래서 여기서는 쌍을 전부 본다.
     """
     mean: float

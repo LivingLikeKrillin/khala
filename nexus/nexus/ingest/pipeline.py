@@ -222,7 +222,7 @@ async def _save_chunks(
         "SELECT status, title FROM documents WHERE rid = $1", parent_rid)
     chunk_status = "active" if (parent is not None and parent["status"] == "active") else "superseded"
     # 제목은 **색인 접두사의 재료**다 (A13 컷오버). 정본 규칙은 `utils.context_prefix_for`
-    # 하나이고, 실험 팔도 같은 함수를 썼다.
+    # 하나이고, 실험 실험군도 같은 함수를 썼다.
     doc_title = (parent["title"] if parent is not None else "") or ""
 
     # 기존 청크 soft_delete

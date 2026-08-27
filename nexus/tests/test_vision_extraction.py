@@ -148,7 +148,7 @@ def test_bumping_the_answer_model_does_not_move_the_extractor_identity(monkeypat
 
 
 def test_the_vision_model_is_overridable_on_its_own(monkeypatch):
-    """두 수명주기가 별개라는 것의 나머지 반쪽: 비전 모델은 자기 손잡이로 움직인다."""
+    """두 수명주기가 별개라는 것의 나머지 반쪽: 비전 모델은 자기 식별자로 움직인다."""
     before = vision.extractor_identity()
     monkeypatch.setenv("NEXUS_VISION_MODEL", "some-newer-vision-model")
     assert vision.extractor_identity() != before

@@ -13,7 +13,7 @@
 * **한글 토큰**(2음절 이상)은 따로 센다. 서술로 새는지 보는 축이라 성격이 다르다.
 
 **한쪽에만 있는 토큰**이 사람에게 올릴 목록이다 — 그것은 *다른 쪽의 누락*이거나 *이쪽의 발명*이고,
-둘을 가르는 것은 그림을 보는 사람뿐이다. 이 자는 사람이 볼 곳을 좁힐 뿐 판정하지 않는다.
+둘을 가르는 것은 그림을 보는 사람뿐이다. 이 평가 하니스는 사람이 볼 곳을 좁힐 뿐 판정하지 않는다.
 
 충실도 표본 8장의 **본문은 출력하지 않는다** — 디렉터가 먼저 읽어야 한다 (§7.1c).
 
@@ -42,9 +42,9 @@ from nexus.ingest.vision import image_sha256  # noqa: E402
 from scripts.vision_gemini_probe import MODEL, gemini_read  # noqa: E402
 
 LOCAL = Path("/app/tests/eval/local")
-# 팔마다 캐시를 가른다. 사고 켠 판독과 끈 판독을 한 파일에 섞으면 무엇을 비교했는지 모른다.
+# 실험군마다 캐시를 가른다. 사고 켠 판독과 끈 판독을 한 파일에 섞으면 무엇을 비교했는지 모른다.
 _ARM = ("" if os.getenv("GEMINI_THINKING", "on").strip().lower() != "off" else "-nothink")
-# 같은 설정을 두 번 돌려 **실행 간 변동**을 재기 위한 꼬리표. 잡음 바닥을 모르면 독자 간 차이가
+# 같은 설정을 두 번 돌려 **실행 간 변동**을 재기 위한 꼬리표. 잡음 폭을 모르면 독자 간 차이가
 # 신호인지 알 수 없다 — 2026-08-11 에 그걸 모른 채 네 번 결론을 냈다.
 _ARM += os.getenv("CROSSCHECK_RUN", "")
 CACHE = LOCAL / f"crosscheck-gemini{_ARM}.json"

@@ -1,6 +1,6 @@
 """에이전트가 조직 지식을 어디서 가져갔는지 세는 분류기에 이가 있는가.
 
-이 자가 재려는 것은 하나다 — **문을 열어 놨더니 실제로 그 문으로 가는가.** 그러니 두 방향을
+이 테스트가 재려는 것은 하나다 — **문을 열어 놨더니 실제로 그 문으로 가는가.** 그러니 두 방향을
 다 틀리면 안 된다: khala 를 거친 것을 우회로 세면 비율이 거짓으로 낮아지고, 아무 명령이나
 우회로 세면 분모가 부풀어 같은 방향으로 거짓이 된다.
 
@@ -34,7 +34,7 @@ def test_the_khala_door_is_counted_as_the_door():
 
 def test_going_straight_to_the_corpus_is_a_bypass():
     """**가장 중요한 대조군.** 이 셋이 세어지지 않으면 분모가 사라지고, 비율은 언제나 1.0 이
-    된다 — 즉 자가 자기를 통과시킨다."""
+    된다 — 즉 테스트가 자기를 통과시킨다."""
     for cmd in (
         'docker exec nexus-db psql -U nexus -d nexus -c "SELECT count(*) FROM documents"',
         'psql "postgresql://nexus:nexus@localhost:5432/nexus" -c "select 1"',
@@ -67,7 +67,7 @@ def test_an_empty_command_is_not_an_access():
 
 
 def test_the_team_code_tree_counts_on_the_host_too():
-    """⛔ 이 자가 없으면 계수기는 **컨테이너 안에서만** 우회를 본다.
+    """⛔ 이 테스트가 없으면 계수기는 **컨테이너 안에서만** 우회를 본다.
 
     `/code-src` 는 마운트 지점이다 — 에이전트는 호스트에서 돌고, 호스트에서 팀 코드 트리를
     직접 grep 하는 것이 바로 이 계수기가 잡으려던 우회다. 그 경로는 배포마다 다르고
@@ -116,7 +116,7 @@ def test_no_configured_tree_is_not_an_error(tmp_path):
 
 
 def test_the_hook_actually_passes_the_configured_tree(tmp_path, monkeypatch):
-    """⛔ **배선 자.** 이 리포가 데인 모양이 정확히 이것이다 — 분류기 자는 초록인데 부르는
+    """⛔ **배선 테스트.** 이 리포가 데인 모양이 정확히 이것이다 — 분류기 테스트는 초록인데 부르는
     데가 없어 라이브에서는 아무것도 안 세어진다. 그러니 훅을 통째로 돌린다."""
     monkeypatch.setattr(knowledge_access, "LOG", tmp_path / "ledger.jsonl")
     monkeypatch.setenv("CODE_SRC_PATH", "/srv/team-platform")
@@ -162,7 +162,7 @@ def test_a_non_bash_tool_reaching_the_team_tree_is_counted(tmp_path, monkeypatch
 
 def test_a_search_pattern_is_not_a_door(tmp_path, monkeypatch):
     """대조군 — 리포 안에서 `nexus.cli query` 라는 **문자열을 찾는 것**은 문을 지난 게 아니다.
-    패턴까지 읽으면 분자가 부풀고, 그 방향의 거짓이 이 자에서 제일 달다."""
+    패턴까지 읽으면 분자가 부풀고, 그 방향의 거짓이 이 테스트에서 제일 달다."""
     monkeypatch.setattr(knowledge_access, "LOG", tmp_path / "ledger.jsonl")
     payload = {"tool_input": {"pattern": "nexus.cli query", "path": "scripts/hooks"}}
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
@@ -202,7 +202,7 @@ def test_an_ordinary_file_read_is_screened_out_before_any_work():
 
 
 def test_the_screen_lets_every_real_access_through():
-    """⛔ **거짓 음성이 이 자의 유일한 치명상이다.** 여기서 놓치면 뒤의 정밀 분류기는
+    """⛔ **거짓 음성이 이 테스트의 유일한 치명상이다.** 여기서 놓치면 뒤의 정밀 분류기는
     아예 안 불린다 — 즉 안 세어지고, 분모만 조용히 줄어든다."""
     door = "docker exec app python -m " + "nexus" + ".cli " + "query 'x'"
     corpus = "docker exec " + "nexus" + "-db " + "psql" + " -U u -d d -c 'select 1'"

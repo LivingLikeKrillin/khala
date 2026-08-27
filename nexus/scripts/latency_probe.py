@@ -293,7 +293,7 @@ def render_report(before: Measurement, after: Measurement,
         "",
         "## 질의 임베딩 (HTTP 경계 너머)",
         "",
-        "| 팔 | n | p50 | p95 | max | 오류 |",
+        "| 실험군 | n | p50 | p95 | max | 오류 |",
         "|---|---:|---:|---:|---:|---:|",
     ]
     for m in embeds:

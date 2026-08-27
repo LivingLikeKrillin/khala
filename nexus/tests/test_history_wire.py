@@ -29,7 +29,7 @@ _AUTH = {"Authorization": "Bearer " + _TOKEN}
 @pytest.fixture
 def client(monkeypatch):
     """`test_search_route_api.py` 와 같은 이유로 풀을 되돌린다: TestClient 의 루프가 닫히면
-    모듈 전역 asyncpg 풀은 죽은 손잡이가 되고, 다음 테스트가 그것을 집어 죽는다."""
+    모듈 전역 asyncpg 풀은 죽은 식별자가 되고, 다음 테스트가 그것을 집어 죽는다."""
     from nexus import db
 
     monkeypatch.setenv("NEXUS_DEV_TOKEN", _TOKEN)
@@ -223,7 +223,7 @@ def test_a2a_history_does_not_leak_into_the_query():
 #
 # 2026-08-13 라이브에서 잡혔다: 검색은 고쳐졌는데 답변자에게 **생략형 원문**이 갔고, 근거
 # 5건을 손에 쥐고도 "'그건' 이 무엇을 가리키는지 파악하기 어렵습니다" 라고 답했다. 검색만
-# 검사하는 그물은 이 결함을 통과시킨다.
+# 검사하는 회귀 검사은 이 결함을 통과시킨다.
 #
 # 이력을 프롬프트에 넣는 것과 혼동하지 마라 — 들어가는 것은 **질의 하나**다. I3 은 그대로다.
 

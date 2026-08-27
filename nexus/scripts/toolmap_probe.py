@@ -75,7 +75,7 @@ async def run(qpath: Path, top_k: int = 10) -> int:
     """두 다리를 각각 재고, **세트가 선언한** 규칙으로 고른다.
 
     `sequential` (1회차): 문서가 약할 때만 도구를 본다.
-    `comparison` (2회차): 둘 다 약하면 미선택, 아니면 **더 가까운 팔**. 여유값 없음(margin=0)
+    `comparison` (2회차): 둘 다 약하면 미선택, 아니면 **더 가까운 실험군**. 여유값 없음(margin=0)
         — 자유 파라미터를 하나도 만들지 않기 위해서다. 거리만 판정에 쓰고 BM25 는 기록만 한다.
     """
     from nexus import db
@@ -140,7 +140,7 @@ async def run(qpath: Path, top_k: int = 10) -> int:
     n_ok = sum(r["ok"] for r in rows)
     n_mis = sum(r["misfire"] for r in rows)
     print(f"\n  일치 {n_ok}/{len(rows)}  ·  오선택 {n_mis}  "
-          f"(오선택 1건 이상이면 이 형태 그대로는 방아쇠로 못 쓴다 — 사전등록 규칙 1)")
+          f"(오선택 1건 이상이면 이 형태 그대로는 트리거로 못 쓴다 — 사전등록 규칙 1)")
     out = HERE / f"result-{qpath.stem}.json"
     out.write_text(json.dumps({"set": qpath.name, "rule": rule,
                                "rows": rows, "ok": n_ok, "misfire": n_mis},

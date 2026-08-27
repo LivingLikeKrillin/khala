@@ -1,6 +1,6 @@
 """한국어 평가 코퍼스 팩 — 빌드·검증 (SPEC-nexus-korean-retrieval-eval §4.1).
 
-**자가 움직이면 자가 아니다.** 이 팩은 `kubernetes/website` 의 한국어 문서를 **커밋 SHA 로 못박아**
+**평가 하니스가 움직이면 평가 하니스가 아니다.** 이 팩은 `kubernetes/website` 의 한국어 문서를 **커밋 SHA 로 못박아**
 가져와 정규화하고, 파일별 해시를 매니페스트에 적어 리포에 커밋한다. 라이브 Notion 미러를 안 쓰는
 이유는 기술이 아니라 공개 리포이기 때문이다 — 조직 내부 문서를 재배포하게 된다 (SPEC §4.1).
 
@@ -229,7 +229,7 @@ def build(pack_dir: Path, tree: list[dict] | None = None, fetch=fetch_blob, work
 
     manifest = build_manifest(documents)
     # newline="\n": Windows 의 기본 개행 변환이 매니페스트를 플랫폼마다 다른 바이트로 만든다.
-    # 문서 본문은 write_bytes 라 무관하지만, 자 자체가 플랫폼을 타면 안 된다.
+    # 문서 본문은 write_bytes 라 무관하지만, 평가 하니스 자체가 플랫폼을 타면 안 된다.
     (pack_dir / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
     return manifest

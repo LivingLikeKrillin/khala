@@ -49,7 +49,7 @@ async def test_hide_hits_the_same_endpoint_as_the_web_view(calls):
     assert seen[0][0] == "post" and seen[0][1] == "/documents/doc_a/hide"
     # 사람이 확인 패널에서 읽는 문장과 같은 문장 — 무엇이 일어났는지 에이전트도 안다
     assert "검색에서 사라집니다" in out
-    assert "nexus_document_restore" in out          # 되돌리기 손잡이
+    assert "nexus_document_restore" in out          # 되돌리기 식별자
 
 
 async def test_restore_reports_the_result_in_prose_not_a_raw_token(calls):

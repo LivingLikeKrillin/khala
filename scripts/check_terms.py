@@ -116,10 +116,11 @@ def check_line(path: str, line: str, banned: dict[str, str]) -> list[tuple[str, 
     prose = _EMPHASIS.sub("", prose)
     hits = []
     for word, replacement in banned.items():
-        # 낱말 경계. 앞에 한글이 붙었으면 합성어이고('사용자'·'숫자'), **숫자·영문이 붙었으면
-        # 단위**다('3,000자'·'12자'). 뒤는 조사까지만 허용한다.
+        # 낱말 경계. 앞에 한글이 붙었으면 합성어이고('사용자'·'숫자'), **숫자·영문·닫는
+        # 중괄호가 붙었으면 단위**다('3,000자' · '12자' · f-string 의 '{len(body)}자').
+        # 뒤는 조사까지만 허용한다.
         # 이런 거짓 경고를 하나라도 내보내면 사람이 검사를 끈다.
-        if re.search(rf"(?<![가-힣0-9A-Za-z]){re.escape(word)}(?:{_JOSA})?(?![가-힣])", prose):
+        if re.search(rf"(?<![가-힣0-9A-Za-z}}]){re.escape(word)}(?:{_JOSA})?(?![가-힣])", prose):
             hits.append((word, replacement))
     return hits
 

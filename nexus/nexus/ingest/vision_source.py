@@ -24,7 +24,7 @@ _HANDLE = re.compile(r"^[0-9a-f]{%d}$" % HANDLE_CHARS)
 
 
 class AmbiguousHandle(RuntimeError):
-    """한 손잡이가 두 행에 걸렸다. **고르지 않는다** — 인용이 다른 그림으로 해석되는 것은
+    """한 식별자가 두 행에 걸렸다. **고르지 않는다** — 인용이 다른 그림으로 해석되는 것은
     해석 못 하는 것보다 나쁘다."""
 
 
@@ -78,7 +78,7 @@ async def resolve_source(tenant: str, chunk_text: str) -> SourceRef | Unresolvab
         return Unresolvable("no extraction row")      # 행이 지워졌거나 신원이 옮겨졌다
     if len(rows) > 1:
         raise AmbiguousHandle(
-            f"손잡이 {handle} 가 {len(rows)}개 행에 걸렸다 (tenant={tenant}) — "
+            f"식별자 {handle} 가 {len(rows)}개 행에 걸렸다 (tenant={tenant}) — "
             "유일 인덱스(idx_vision_handle)가 없거나 깨졌다. 어느 하나를 고르지 않는다.")
     row = rows[0]
     if not (row["block_id"] or "").strip():

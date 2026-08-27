@@ -1,12 +1,12 @@
 """DB-backed tests for 마이그레이션 034 — 테넌트별 엔트로피 신호 + `identityless_chunks`.
 
 **무엇을 지키는 검사인가.** 이 뷰는 하중을 받는다: ADR-0006 이 그것을 Slice-2 의 demand-pull
-방아쇠로 지정했고, 여러 SPEC 처분이 *"gated on v_entropy_signals"* 로 보류돼 있다. 그런데
+트리거로 지정했고, 여러 SPEC 처분이 *"gated on v_entropy_signals"* 로 보류돼 있다. 그런데
 전역 집계라 버릴 평가 테넌트가 신호를 삼켰다(2026-08-25 라이브: 전역 정확중복 61,425 vs
 `default` 0).
 
 그래서 이 파일의 중심은 **대조군**이다: 테넌트를 가로지르는 중복쌍을 일부러 심고, 그것이
-**세어지지 않는 것**을 단언한다. 옛 뷰에서는 이 검사가 실패한다 — 그물을 일부러 깨뜨려
+**세어지지 않는 것**을 단언한다. 옛 뷰에서는 이 검사가 실패한다 — 회귀 검사을 일부러 깨뜨려
 확인하는 자리다.
 
 Own SelectorEventLoop + injected asyncpg pool (see test_entropy_signals_cli_db.py).
@@ -84,7 +84,7 @@ async def _by_tenant() -> dict[str, dict]:
 def test_repeated_overwrites_of_one_document_are_one_document():
     """**이 신호의 남은 오염이 여기 있었다.** 2026-08-26 라이브 `default`: 이벤트 53 · 문서 18,
     그중 38건이 사흘에 몰려 있었다 — 코퍼스가 흔들린 것이 아니라 **같은 열여덟 개를 우리가 다시
-    적재한** 수다. 이벤트만 읽으면 방아쇠가 부풀려진 수를 읽는다."""
+    적재한** 수다. 이벤트만 읽으면 트리거가 부풀려진 수를 읽는다."""
     async def inner():
         from nexus import db
 

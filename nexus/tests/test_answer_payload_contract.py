@@ -41,7 +41,7 @@ def client(monkeypatch):
     """DB·임베딩·LLM 없이 **엔드포인트 본문**을 돌린다.
 
     풀을 되돌리는 이유는 `test_search_route_api.py` 와 같다(TestClient 의 루프가 닫히면
-    모듈 전역 asyncpg 풀이 죽은 손잡이가 된다).
+    모듈 전역 asyncpg 풀이 죽은 식별자가 된다).
     """
     from nexus import db
 

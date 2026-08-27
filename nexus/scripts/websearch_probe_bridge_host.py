@@ -68,8 +68,8 @@ def main() -> int:
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--only", default="", help="쉼표로 구분한 id 만 돌린다")
     ap.add_argument("--system-suffix", default="",
-                    help="시스템 프롬프트 뒤에 덧붙일 절(팔 비교용). 출력 파일명에 태그가 붙는다")
-    ap.add_argument("--tag", default="", help="출력 파일 태그(팔 이름)")
+                    help="시스템 프롬프트 뒤에 덧붙일 절(실험군 비교용). 출력 파일명에 태그가 붙는다")
+    ap.add_argument("--tag", default="", help="출력 파일 태그(실험군 이름)")
     args = ap.parse_args()
 
     prompts = json.loads((WORK / "prompts.json").read_text(encoding="utf-8"))

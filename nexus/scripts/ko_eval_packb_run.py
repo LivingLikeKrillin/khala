@@ -6,11 +6,11 @@ Pack A 는 같은 종류의 **공개 대역**이라 §5(b) 를 닫지 못한다.
 
 1. 스냅샷 ↔ 매니페스트. §4.1 이 라이브 테넌트를 실격시킨 이유가 '움직인다' 였으므로, 검증되지
    않은 실행은 결과가 아니다.
-2. 라벨 게이트. 자가 틀렸는지를 측정 **전에** 본다 — 층 균형·gold 존재·제목 베끼기·검토 서명.
+2. 라벨 게이트. 평가 하니스가 틀렸는지를 측정 **전에** 본다 — 층 균형·gold 존재·제목 베끼기·검토 서명.
 
-관문을 나중에 두면 숫자가 먼저 나오고, 그 숫자를 보고 자를 고치게 된다.
+관문을 나중에 두면 숫자가 먼저 나오고, 그 숫자를 보고 평가 하니스를 고치게 된다.
 
-**팔은 같은 테넌트를 순서대로 쓴다.** rid 가 테넌트를 품어서, 테넌트가 다르면 동점 정렬 키까지
+**실험군은 같은 테넌트를 순서대로 쓴다.** rid 가 테넌트를 품어서, 테넌트가 다르면 동점 정렬 키까지
 달라지고 토크나이저와 무관한 차이가 승패에 섞인다(§4.3).
 
 리포트는 `tests/eval/local/` 에만 쓴다 — 다른 조직의 문서를 가리키고 이 리포는 public 이다.
@@ -72,7 +72,7 @@ async def _run(args) -> int:
         return 1
     labels = load(LABELS)
     if problems := check(labels, ManifestPack(MANIFEST)):
-        print("✗ 라벨 게이트 실패 — 측정 이전에 자가 틀렸다:", *problems[:6], sep="\n  ")
+        print("✗ 라벨 게이트 실패 — 측정 이전에 평가 하니스가 틀렸다:", *problems[:6], sep="\n  ")
         return 1
     answerable = [q for q in labels["queries"] if q.get("answerable")]
     print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 답변가능 {len(answerable)}건")

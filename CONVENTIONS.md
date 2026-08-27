@@ -43,6 +43,11 @@ Records keep the words of their time: approved SPECs, ADRs, the public engineeri
 and dated measurement reports are not rewritten. This is the same rule the component
 rename followed.
 
+The rules cover code comments, docstrings and user-facing strings as well as prose —
+same words, same readers. They stop at **data**: evaluation labels and questions are the
+input to measurement and are bound by signatures and manifests, and the retraction ledger
+is stamped. `GLOSSARY.md` lists what is frozen and why.
+
 ## Naming
 
 - **A lowercase top-level directory is a tool.** `nexus/`, `observer/`,

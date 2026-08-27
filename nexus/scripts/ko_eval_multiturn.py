@@ -1,18 +1,18 @@
-"""멀티턴 검색 자 — 후속 질문이 검색을 어디서 잃는지 잰다 (SPEC-nexus-multi-turn-retrieval §3.4).
+"""멀티턴 검색 평가 하니스 — 후속 질문이 검색을 어디서 잃는지 잰다 (SPEC-nexus-multi-turn-retrieval §3.4).
 
 **절대점수를 재지 않는다.** 두 코퍼스가 답변 품질 천장에 닿았으므로(memory:
 khala-answer-quality-harness) 그 수는 아무것도 말하지 않는다. 여기서 재는 것은 **같은 정보
 요구의 두 표현 사이 격차**이고, 상한은 라벨의 원 질의가 이미 정해 준다.
 
-팔 넷을 항상 같이 돌린다:
+실험군 넷을 항상 같이 돌린다:
 
     standalone     라벨의 원 질의 그대로        — 대조군·상한 (이 실행이 믿을 만한가)
     elliptical     같은 요구의 2턴째 말투        — 오늘의 서버가 실제로 받는 것
     concat         turn1 + turn2 를 그냥 붙임    — LLM 없이 공짜로 되는 싸구려 하한
-    drift_concat   앞에 다른 화제 한 턴 + 위     — 그 하한이 무너지는 조건 (판정 팔)
+    drift_concat   앞에 다른 화제 한 턴 + 위     — 그 하한이 무너지는 조건 (판정 실험군)
 
 **LLM 을 부르지 않는다.** 검색만 본다 — 문서 단위 Recall@10 과 MRR. 그래서 돈이 안 들고,
-결정적이며(2회 실행 바이트 동일), 답변 품질 자의 천장에 걸리지 않는다.
+결정적이며(2회 실행 바이트 동일), 답변 품질 평가 하니스의 천장에 걸리지 않는다.
 
     docker exec nexus-app python scripts/ko_eval_multiturn.py --tenant ko_eval_packa
 """
@@ -40,15 +40,15 @@ DEFAULT_THREADS = KO_DIR / "multiturn-threads.yaml"
 DEFAULT_LABELS = KO_DIR / "answer-labels.yaml"
 DEFAULT_MANIFEST = KO_DIR / "answer-manifest.json"
 
-#: 팔 이름 → 사람이 읽는 이름. 순서가 곧 보고 순서다.
+#: 실험군 이름 → 사람이 읽는 이름. 순서가 곧 보고 순서다.
 ARMS = {
     "standalone": "독립형(대조군·상한)",
     "elliptical": "생략형(오늘의 서버)",
     "concat": "두 턴 이어붙임(싸구려 하한)",
-    "drift_concat": "앞 화제 깔린 이어붙임(판정 팔)",
+    "drift_concat": "앞 화제 깔린 이어붙임(판정 실험군)",
 }
 
-#: 재작성 팔은 **옵트인**이다(`--rewrite`). LLM 을 부르므로 돈이 들고, 같은 입력에 같은 출력이
+#: 재작성 실험군은 **옵트인**이다(`--rewrite`). LLM 을 부르므로 돈이 들고, 같은 입력에 같은 출력이
 #: 안 나온다 — 그래서 SPEC §5.1 은 U3 의 **첫 실행을 성능이 아니라 잡음 측정**으로 못박았다.
 REWRITE_ARMS = {
     "rewritten": "재작성 단독",
@@ -63,7 +63,7 @@ def doc_key(source_uri: str) -> str:
 
 
 def arm_queries(thread: dict, query: str, drift: str) -> dict[str, str]:
-    """이 스레드에 대한 팔별 검색어. **한 곳에서만 조립한다** — 팔 정의가 갈라지면 비교가 아니다."""
+    """이 스레드에 대한 팔별 검색어. **한 곳에서만 조립한다** — 실험군 정의가 갈라지면 비교가 아니다."""
     t1, t2 = thread["turn1"], thread["turn2"]
     return {
         "standalone": query,
@@ -76,7 +76,7 @@ def arm_queries(thread: dict, query: str, drift: str) -> dict[str, str]:
 def gate_reasons(threads: dict, labels: dict) -> list[str]:
     """스레드 파일이 자기 라벨과 맞물리는가. 비어 있어야 실행이 결과가 된다.
 
-    관문이 뒤에 있으면 숫자를 보고 자를 고치게 된다(`ko_eval_answer_run.py` 와 같은 이유).
+    관문이 뒤에 있으면 숫자를 보고 평가 하니스를 고치게 된다(`ko_eval_answer_run.py` 와 같은 이유).
     """
     reasons: list[str] = []
     by_id = {q["id"]: q for q in labels.get("queries") or []}
@@ -102,7 +102,7 @@ def gate_reasons(threads: dict, labels: dict) -> list[str]:
             if not (t.get(field) or "").strip():
                 reasons.append(f"{qid}: {field} 가 비었다")
     if not threads.get("drift_turn", "").strip():
-        reasons.append("drift_turn 이 비었다 — 판정 팔이 사라진다")
+        reasons.append("drift_turn 이 비었다 — 판정 실험군이 사라진다")
     return reasons
 
 
@@ -130,7 +130,7 @@ async def run_arm(query: str, gold: set[str], svc, *, tenant: str, clearance: st
 
 
 def arms_present(rows: list[dict]) -> dict[str, str]:
-    """이 실행에 실제로 있는 팔만 집계·보고한다 — 없는 팔을 0 으로 채우면 거짓 수가 된다."""
+    """이 실행에 실제로 있는 실험군만 집계·보고한다 — 없는 실험군을 0 으로 채우면 거짓 수가 된다."""
     out = dict(ARMS)
     for arm, name in REWRITE_ARMS.items():
         if rows and arm in rows[0]:
@@ -153,10 +153,10 @@ def summarise(rows: list[dict]) -> dict:
 
 
 def control_failures(summary: dict, baseline: dict, n: int) -> list[str]:
-    """**독립형 팔이 이 실행의 대조군이다.** 상한을 재현 못 하면 다른 숫자는 결과가 아니다.
+    """**독립형 실험군이 이 실행의 대조군이다.** 상한을 재현 못 하면 다른 숫자는 결과가 아니다.
 
     계측기를 먼저 의심하라 — 이 리포는 계측기가 틀린 숫자를 의사결정 근거로 올린 적이 여러 번
-    있다(memory: suspect-the-instrument-first). 팔 넷은 LLM 이 없어 결정적이므로, 독립형이
+    있다(memory: suspect-the-instrument-first). 실험군 넷은 LLM 이 없어 결정적이므로, 독립형이
     베이스라인과 다르면 코퍼스·임베딩 세대·등급 중 하나가 달라진 것이다.
     """
     want = (baseline or {}).get("standalone") or {}
@@ -178,7 +178,7 @@ async def _run(args) -> int:
 
     # ── 관문 1: 라벨이 자기 코퍼스에 대해 성립하는가 ────────────────────────────
     if problems := check(labels, ManifestPack(args.manifest), require_corpus_binding=True):
-        print("✗ 라벨 게이트 실패 — 측정 이전에 자가 틀렸다:", *problems[:4], sep="\n  ")
+        print("✗ 라벨 게이트 실패 — 측정 이전에 평가 하니스가 틀렸다:", *problems[:4], sep="\n  ")
         return 1
     # ── 관문 2: 스레드가 그 라벨과 맞물리는가 ──────────────────────────────────
     if problems := gate_reasons(threads, labels):
@@ -197,8 +197,8 @@ async def _run(args) -> int:
         from nexus.providers.llm import LLMService
         llm = LLMService()
         # 유료 백엔드면 여기서 멈춘다 — 잊는 쪽이 비싸다 (nexus/llm/dev_spend.py).
-        require_free(llm, allow_paid=args.paid, what="재작성 팔")
-        print("  재작성 팔 켬 — LLM 호출이 스레드당 1회 붙는다")
+        require_free(llm, allow_paid=args.paid, what="재작성 실험군")
+        print("  재작성 실험군 켬 — LLM 호출이 스레드당 1회 붙는다")
     base = threads.get("baseline") or {}
     svc = embedding_service_from_config()
     rows: list[dict] = []
@@ -264,12 +264,12 @@ async def _run(args) -> int:
     # ── 대조군은 총점보다 **먼저** 판정한다 ────────────────────────────────────
     if partial:
         print(f"\n⚠ 부분 실행({n}/{len(threads['threads'])}건) — **대조군을 판정할 수 없다.**")
-        print("  아래 수는 진단 재료이지 이 자의 값이 아니다. 값을 얻으려면 --limit 없이 돌려라.")
+        print("  아래 수는 진단 재료이지 이 평가 하니스의 값이 아니다. 값을 얻으려면 --limit 없이 돌려라.")
     elif failures := control_failures(summary, base, n):
         print("\n✗ **대조군이 베이스라인을 재현하지 못했다** — 이 실행의 숫자는 결과가 아니다.")
         for f in failures:
             print(f"    {f}")
-        print("  팔 넷은 LLM 이 없어 결정적이다. 그러니 달라진 것은 시스템이 아니라 조건이다:")
+        print("  실험군 넷은 LLM 이 없어 결정적이다. 그러니 달라진 것은 시스템이 아니라 조건이다:")
         print("  코퍼스 적재본 · 임베딩 세대(nexus generation show) · clearance 를 먼저 보라.")
         return 1
 
@@ -318,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--report", type=Path, default=None)
     ap.add_argument("--paid", action="store_true", help=paid_flag_help())
     ap.add_argument("--rewrite", action="store_true",
-                    help="재작성 팔을 켠다 (LLM 호출·비용). SPEC §5.1: 첫 실행은 성능이 아니라 "
+                    help="재작성 실험군을 켠다 (LLM 호출·비용). SPEC §5.1: 첫 실행은 성능이 아니라 "
                          "잡음 측정이다 — 같은 조건 5회를 돌려 폭을 먼저 보고하라")
     args = ap.parse_args(argv)
     import os

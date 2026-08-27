@@ -52,14 +52,14 @@ def dimensions_of(column: str) -> int:
     return VECTOR_COLUMNS[resolve_column(column)]
 
 
-#: 배포가 읽을 세대를 바꾸는 손잡이. 설정 파일이 아니라 env 인 이유는 이 배포가 `config.yaml` 을
+#: 배포가 읽을 세대를 바꾸는 식별자. 설정 파일이 아니라 env 인 이유는 이 배포가 `config.yaml` 을
 #: git 워킹트리에서 읽기 때문이다 — 추적 파일을 고쳐 flip 하면 `git checkout` 이 프로덕션을 되돌린다
 #: (SPEC-nexus-embedding-cutover-seam §1.9, §4.2).
 ENV_COLUMN = "NEXUS_EMBEDDING_COLUMN"
 
 
 def configured_column(config: dict | None = None) -> str:
-    """이 프로세스가 읽고 쓸 벡터 컬럼. **검색 다리와 팩토리가 같은 답을 봐야 한다** —
+    """이 프로세스가 읽고 쓸 벡터 컬럼. **검색 경로와 팩토리가 같은 답을 봐야 한다** —
     갈라지면 팩토리는 새 모델을 만들고 검색은 옛 컬럼을 읽는, 조용한 절반 컷오버가 된다.
     """
     import os

@@ -55,7 +55,7 @@ def test_trailing_whitespace_does_not_change_the_hash():
 
 
 def test_a_real_edit_does_change_the_hash():
-    """그물이 실제로 잡는지 — 한 글자를 바꾸면 달라져야 한다."""
+    """회귀 검사이 실제로 잡는지 — 한 글자를 바꾸면 달라져야 한다."""
     assert span_hash("int MAX = 2;") != span_hash("int MAX = 3;")
 
 

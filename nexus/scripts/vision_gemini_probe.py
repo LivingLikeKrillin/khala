@@ -60,7 +60,7 @@ async def gemini_read(image_b64: str, media_type: str, model: str) -> tuple[str,
     gen: dict = {"temperature": 0, "maxOutputTokens": 4096}
     if THINKING == "off":
         # Gemini 3.x 는 **완전히 끌 수 없다** — `thinkingBudget: 0` 은 400 을 낸다(실측).
-        # 3.x 의 손잡이는 `thinkingLevel` 이고, 낮출 수는 있어도 0 은 아니다. 그래서 이 팔의
+        # 3.x 의 식별자는 `thinkingLevel` 이고, 낮출 수는 있어도 0 은 아니다. 그래서 이 실험군의
         # 이름은 "사고 없음" 이 아니라 **"사고 최소"** 이고, 통제도 그만큼만 맞춰진다.
         gen["thinkingConfig"] = {"thinkingLevel": "minimal"}
     body = {

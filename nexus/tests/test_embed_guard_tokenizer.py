@@ -111,7 +111,7 @@ def test_no_event_loop_path_calls_the_models_tokenizer():
     """소스에서 `model.tokenizer(...)` **호출 노드**를 찾는다.
 
     이 검사가 못 보는 것: 별칭(`tok = model.tokenizer`), 헬퍼·다른 모듈 경유, `getattr`.
-    발생했던 **모양**을 잡는 그물이지 부류 전체를 잡는 그물이 아니다 — SPEC §5 가 그렇게 적었고,
+    발생했던 **모양**을 잡는 그물이지 부류 전체를 잡는 회귀 검사이 아니다 — SPEC §5 가 그렇게 적었고,
     수용 기준도 딱 거기까지다.
     """
     tree = ast.parse(APP_SRC.read_text(encoding="utf-8"))

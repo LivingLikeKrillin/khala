@@ -43,7 +43,7 @@ def test_the_blind_pool_is_committed_for_whoever_resumes():
     assert pool, "풀이 비었다"
     assert all("candidates" in q for q in pool)
     assert not any(k in q for q in pool for k in ("arm", "model", "source_leg")), (
-        "덤프에 팔 정보가 남아 있다 — 블라인드 판정이 성립하지 않는다")
+        "덤프에 실험군 정보가 남아 있다 — 블라인드 판정이 성립하지 않는다")
 
 
 def test_growing_the_gold_set_requires_judging_the_pool_first():

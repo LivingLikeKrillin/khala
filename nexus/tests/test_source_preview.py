@@ -164,7 +164,7 @@ def test_the_corpus_view_reports_substance_without_gating_on_it():
     """**한때 여기가 게이트였고, 그 문턱은 재보지 않은 어림수였다.**
 
     2026-08-07 오전: 문서 116(바닥값 0.086, 통과)인데 본문 800자 이상이 19건인 것을 보고
-    "실질 문서 ≥ 60" 을 게이트로 박았다. 근거는 "gold 가 19건뿐이면 두 팔이 같은 소수 문서를
+    "실질 문서 ≥ 60" 을 게이트로 박았다. 근거는 "gold 가 19건뿐이면 두 실험군이 같은 소수 문서를
     두고 겨뤄 무승부가 쌓인다" 였는데, 같은 날 오후에 **라벨 없이 재보니 반증됐다**: 상위10에
     뜬 서로 다른 문서 48건, 순위표가 갈리는 질의 12/30, 그중 8건이 2~3위에서 갈렸다
     (KOREAN_SEARCH_QUALITY.md §6.3).
@@ -295,7 +295,7 @@ def test_it_counts_the_column_the_search_leg_actually_reads(monkeypatch):
     got = asyncio.run(corpus_status(con))
     assert got["unembedded_chunks"]["column"] == "embedding_1024"
     assert any("embedding_1024 IS NULL" in s for s in con.sql), \
-        "검색 다리가 읽는 컬럼으로 세야 한다"
+        "검색 경로가 읽는 컬럼으로 세야 한다"
 
     monkeypatch.setenv("NEXUS_EMBEDDING_COLUMN", "embedding")
     con2 = _FakeCon(docs=1, unembedded=0)

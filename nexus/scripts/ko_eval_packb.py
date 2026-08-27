@@ -37,7 +37,7 @@ MANIFEST = LOCAL_DIR / "packb-manifest.json"
 SNAPSHOT_TENANT = "ko_eval_packb"
 
 
-#: 탐침 결과 파일 — 라벨 없이 잰 "두 팔이 다른 순위를 내는가".
+#: 탐침 결과 파일 — 라벨 없이 잰 "두 실험군이 다른 순위를 내는가".
 PROBE = LOCAL_DIR / "packb-disagreement.json"
 
 #: 상위 3위 안에서 갈리는 질의의 최소 건수. 판정 규칙의 `MIN_DISCORDANT = 6` 과 같은 수를 쓴다 —
@@ -266,11 +266,11 @@ async def cmd_status(_args) -> int:
     print(f"스냅샷 테넌트 {SNAPSHOT_TENANT}: 문서 {docs} · 청크 {chunks}")
     print(f"  [1] 무작위 랭커 바닥값 = 창({window}) / 문서({docs}) = {floor:.3f}"
           f"  → {'통과' if ok_floor else '검정력 부족이 예상된다'}")
-    print("      Pack A 는 0.038. 0.10 을 넘으면 두 팔이 바닥 위에 붙어 무승부만 쌓인다.")
+    print("      Pack A 는 0.038. 0.10 을 넘으면 두 실험군이 바닥 위에 붙어 무승부만 쌓인다.")
 
     # [2] 는 **측정한 문턱**이다. 한때 여기 "실질 문서 ≥ 60" 이 있었는데 그 60 은 재보지 않고
     # 만든 어림수였고, 같은 날 라벨 없이 재보니 그 근거가 반증됐다(§6.3). 검정력을 예고하는 양은
-    # 문서 수가 아니라 **두 팔의 순위가 갈리는 자리**다.
+    # 문서 수가 아니라 **두 실험군의 순위가 갈리는 자리**다.
     probe = _load_probe()
     print(f"  [2] 탐침: 상위 3위 안에서 갈리는 질의 = "
           f"{probe['shallow'] if probe else '미측정'}"

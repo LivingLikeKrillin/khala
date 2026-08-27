@@ -52,7 +52,7 @@ def answer_text(content) -> str:
     이미 다룬다 — 여기서 지어내는 것보다 낫다.
 
     **`type` 이 없는 블록은 텍스트로 본다.** 실제 SDK 는 늘 `type` 을 채우지만 테스트 더블은 자주
-    생략한다 — 없는 것을 "텍스트가 아니다" 로 읽으면 진짜 응답은 멀쩡한데 자가 빨간불이 되고,
+    생략한다 — 없는 것을 "텍스트가 아니다" 로 읽으면 진짜 응답은 멀쩡한데 평가 하니스가 빨간불이 되고,
     그 상태의 초록/빨강은 아무것도 보증하지 못한다.
     """
     return "".join(getattr(b, "text", "") for b in (content or [])
@@ -261,7 +261,7 @@ class _GeminiBackend:
     ) -> tuple[str, str | None]:
         """이미지 1장 → (텍스트, 절단 사유).
 
-        `thinkingLevel: minimal` 은 비용이 아니라 **통제**다: 사고 예산이 붙은 팔과 안 붙은 팔을
+        `thinkingLevel: minimal` 은 비용이 아니라 **통제**다: 사고 예산이 붙은 실험군과 안 붙은 실험군을
         비교하면 차이를 판독 능력으로 못 돌린다. Gemini 3.x 는 `thinkingBudget: 0` 을 400 으로
         거부하므로 끌 수는 없고 낮출 수만 있다 (실측).
         """

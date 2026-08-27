@@ -41,7 +41,7 @@ async def _run(args) -> int:
     labels = load(DEFAULT_LABELS)
     problems = check(labels, DEFAULT_PACK_DIR)
     if problems:
-        print("✗ 라벨 게이트 실패 — 측정 이전에 자가 틀렸다:", *problems[:5], sep="\n  ")
+        print("✗ 라벨 게이트 실패 — 측정 이전에 평가 하니스가 틀렸다:", *problems[:5], sep="\n  ")
         return 1
 
     if _get_mecab() is None:

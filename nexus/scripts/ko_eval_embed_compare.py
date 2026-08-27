@@ -7,11 +7,11 @@
     python -m scripts.ko_eval_embed_compare load                      # nexus 이미지 (mecab)
     python -m scripts.ko_eval_embed_compare embed --model nomic-embed-text   # nexus 이미지 + ollama
     python -m scripts.ko_eval_embed_compare embed --model KURE-v1     # kure 이미지 (torch)
-    python -m scripts.ko_eval_embed_compare embed-queries --model ...  # 팔이 있는 이미지에서
+    python -m scripts.ko_eval_embed_compare embed-queries --model ...  # 실험군이 있는 이미지에서
     python -m scripts.ko_eval_embed_compare run --dump-pool p.json    # nexus 이미지 (모델 불필요)
     python -m scripts.ko_eval_embed_compare run --report --adjudicated
 
-`load` 가 만든 청크 위에서만 임베딩이 유효하다 — 다시 적재하면 팔도 다시 만들어야 하고,
+`load` 가 만든 청크 위에서만 임베딩이 유효하다 — 다시 적재하면 실험군도 다시 만들어야 하고,
 `verify_arm` 이 그걸 강제한다(살아 있는 청크 조인 · 개수 · 입력 해시).
 """
 
@@ -92,7 +92,7 @@ async def cmd_load(_args) -> int:
             await con.execute("DELETE FROM documents WHERE tenant=$1", TENANT)
             chunk_doc = await load_pack(DEFAULT_PACK_DIR, TENANT, con)
         print(f"적재: 문서 {len(set(chunk_doc.values()))} · 청크 {len(chunk_doc)} (테넌트 {TENANT})")
-        print("팔은 이 적재본 위에서만 유효하다 — 다시 적재하면 임베딩도 다시 만들어야 한다.")
+        print("실험군은 이 적재본 위에서만 유효하다 — 다시 적재하면 임베딩도 다시 만들어야 한다.")
         return 0
     finally:
         await db.close_pool()
@@ -192,7 +192,7 @@ async def cmd_embed(args) -> int:
 
 
 async def cmd_embed_queries(args) -> int:
-    """질의를 이 팔로 임베딩해 파일로 남긴다 — 채점기가 모델 없이 돌 수 있게."""
+    """질의를 이 실험군로 임베딩해 파일로 남긴다 — 채점기가 모델 없이 돌 수 있게."""
     labels = load(DEFAULT_LABELS)
     arm = _make_arm(args.model)
     payload = {}
@@ -201,8 +201,8 @@ async def cmd_embed_queries(args) -> int:
             continue
         prefixed = arm.prefixed(q["query"], "query")
         payload[q["id"]] = {
-            "query": q["query"],                       # 프리픽스 이전 — 팔 간 동일해야 한다
-            "payload_sha256": sha256(prefixed),        # 이 팔이 실제 보낸 것
+            "query": q["query"],                       # 프리픽스 이전 — 실험군 간 동일해야 한다
+            "payload_sha256": sha256(prefixed),        # 이 실험군이 실제 보낸 것
             "vector": await arm.embed_query(q["query"]),
         }
     QUERY_VECTORS.mkdir(parents=True, exist_ok=True)
@@ -220,7 +220,7 @@ def _load_query_vectors(model: str) -> dict:
 
 
 def _queries_match_across_arms(per_model: dict) -> list[str]:
-    """두 팔이 **같은 질의 텍스트**를 봤는지 (§4.3). 프리픽스는 달라도 원문은 같아야 한다."""
+    """두 실험군이 **같은 질의 텍스트**를 봤는지 (§4.3). 프리픽스는 달라도 원문은 같아야 한다."""
     models = sorted(per_model)
     problems = []
     for other in models[1:]:
@@ -251,7 +251,7 @@ async def cmd_run(args) -> int:
 
             pack = labels["pack"]
             if diffs := await arms_saw_the_same_inputs(con, TENANT, pack):
-                print("✗ 두 팔이 다른 입력을 봤다 — 모델 비교가 아니다:")
+                print("✗ 두 실험군이 다른 입력을 봤다 — 모델 비교가 아니다:")
                 for d in diffs:
                     print(f"  {d}")
                 return 1
@@ -337,10 +337,10 @@ async def _narrowed_documents(con, tenant: str, pack: str,
 
 
 def _dump_blind_pool(labels: dict, arms: dict, out: Path) -> None:
-    """**팔 정보를 지우고 순서를 섞어** 내보낸다 (§4.5).
+    """**실험군 정보를 지우고 순서를 섞어** 내보낸다 (§4.5).
 
-    판정 대상은 정확히 두 팔을 가르는 문서들이고, 판정자는 어느 모델이 이겨야 하는지에 대한
-    가설을 들고 있다. 어느 팔이 올린 후보인지 보이면 그 가설이 gold 에 들어간다.
+    판정 대상은 정확히 두 실험군을 가르는 문서들이고, 판정자는 어느 모델이 이겨야 하는지에 대한
+    가설을 들고 있다. 어느 실험군이 올린 후보인지 보이면 그 가설이 gold 에 들어간다.
     """
     import hashlib
 
@@ -354,13 +354,13 @@ def _dump_blind_pool(labels: dict, arms: dict, out: Path) -> None:
             for leg_tops in arm["tops"].values():
                 cands |= set(leg_tops.get(q["id"], []))
         cands -= gold[q["id"]]
-        # 결정적 셔플: 질의 id 로 시드해 순서에서 팔을 못 읽게 한다
+        # 결정적 셔플: 질의 id 로 시드해 순서에서 실험군을 못 읽게 한다
         ordered = sorted(cands, key=lambda c: hashlib.sha256((q["id"] + c).encode()).hexdigest())
         payload.append({"id": q["id"], "query": q["query"], "stratum": q["stratum"],
                         "gold": q["gold"], "candidates": ordered})
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n",
                    encoding="utf-8", newline="\n")
-    print(f"풀 후보 {sum(len(p['candidates']) for p in payload)}건 → {out} (팔 정보 제거·셔플)")
+    print(f"풀 후보 {sum(len(p['candidates']) for p in payload)}건 → {out} (실험군 정보 제거·셔플)")
 
 
 def _write_report(labels: dict, arms: dict, v_conf, v_vec, v_fused, comparable, args,
@@ -379,8 +379,8 @@ def _write_report(labels: dict, arms: dict, v_conf, v_vec, v_fused, comparable, 
         "질의": f"답변가능 {arms['KURE-v1']['legs']['vector'].n}",
         "벡터 다리": "정확 스캔 (ko_eval_embeddings, ivfflat 아님 — SPEC §4.2)",
         "융합": "프로덕션 `_rrf_fusion` 그대로 (k=60)",
-        "nomic 팔": provs.get("nomic-embed-text", {}),
-        "KURE 팔": provs.get("KURE-v1", {}),
+        "nomic 실험군": provs.get("nomic-embed-text", {}),
+        "KURE 실험군": provs.get("KURE-v1", {}),
         "풀 구성원": "keyword/mecab · keyword/nori · vector×2 · fused×2 (모든 다리 top-10)",
         "확증 분석": f"비교가능 부분집합 {len(comparable)}/{arms['KURE-v1']['legs']['vector'].n}질의 (벡터 다리)",
         "수치의 성격": "**전부 하한(lower bound)** — 풀 판정 보류, 미판정 문서는 비관련으로 세어진다",
@@ -405,7 +405,7 @@ def _write_report(labels: dict, arms: dict, v_conf, v_vec, v_fused, comparable, 
         "> 벡터 다리는 정확 스캔이라 프로덕션(ivfflat)보다 후하게 나온다 — 절대값이 아니라 두",
         "> 모델의 차이를 읽는 자다. 그리고 Pack A 는 khala 자신의 코퍼스가 아니다 (SPEC §4.7).",
         "> **모든 수치는 하한이다** — 풀 판정을 보류했으므로 미판정 문서가 비관련으로 세어진다.",
-        "> 그 페널티는 새 문서를 더 많이 건져 올린 팔이 더 많이 받는다: 결론 방향에 보수적이다.",
+        "> 그 페널티는 새 문서를 더 많이 건져 올린 실험군이 더 많이 받는다: 결론 방향에 보수적이다.",
         "> 이 실행의 결과는 **교체를 허가하지 않는다** — 정확 스캔이라 프로덕션(ivfflat)을 예측하지",
         "> 못하고, 차원 변경(768→1024)이 ANN 거동을 또 바꾼다. 교체 SPEC 이 자기 측정을 져야 한다.",
         "",

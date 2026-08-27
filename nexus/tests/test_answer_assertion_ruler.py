@@ -38,7 +38,7 @@ CONCLUDED = """**회의실은 최대 14일 전부터 예약할 수 있습니다.
 | 예약 규정 | 14일 |
 """
 
-#: 물러선 답변 — **같은 값을 담고도** 결론을 안 낸다. 이 쌍이 이 자의 존재 이유다.
+#: 물러선 답변 — **같은 값을 담고도** 결론을 안 낸다. 이 쌍이 이 채점기의 존재 이유다.
 HEDGED = """**핵심 답변: 두 근거가 서로 다른 값을 말하고 있어 확인이 필요합니다.**
 
 ---
@@ -117,7 +117,7 @@ def test_a_lead_heading_does_not_end_the_lead():
 
 
 def test_the_hole_this_ruler_admits_to():
-    """**이 자는 자리를 재지 확신을 재지 않는다.** 뚫리는 문구를 실물로 박아 둔다 —
+    """**이 채점기는 자리를 재지 확신을 재지 않는다.** 뚫리는 문구를 실물로 박아 둔다 —
     다음 판이 이것을 고치면 이 테스트가 먼저 빨간불이 되어 알려 준다."""
     text = "여러 근거가 있습니다.\n\n따라서 **14일**일 가능성이 있습니다.\n"
     assert verdict_segments(text)
@@ -131,7 +131,7 @@ def test_an_empty_answer_asserts_nothing():
 
 def test_a_question_that_asks_for_a_breakdown_is_outside_this_ruler():
     """**정의역 밖을 실물로 박아 둔다.** 나열을 요구하는 질문에서는 표가 곧 답이다 —
-    이 자는 표를 '늘어놓기' 로 보므로 옳은 답을 떨어뜨린다. 규칙을 늘려 표를 받아들이면
+    이 채점기는 표를 '늘어놓기' 로 보므로 옳은 답을 떨어뜨린다. 규칙을 늘려 표를 받아들이면
     `HEDGED` 가 같이 통과하므로(값이 표에 있다) **고칠 것이 아니라 안 쓸 자리**다.
     2026-08-18 정책 8문항(홀드아웃)에 걸어 보고 알았다."""
     text = """로그인 방식에 따른 한도는 다음과 같습니다.
@@ -142,7 +142,7 @@ def test_a_question_that_asks_for_a_breakdown_is_outside_this_ruler():
 | 지갑 연동 | 최대 10개 |
 """
     assert all(facts_present([["10개"]], text)) is True
-    assert asserts_value(["10개"], text) is False     # ⚠ 오탐. 이 자의 질문이 아니다.
+    assert asserts_value(["10개"], text) is False     # ⚠ 오탐. 이 채점기의 질문이 아니다.
 
 
 def test_the_ruler_takes_one_value_not_a_must_contain():
