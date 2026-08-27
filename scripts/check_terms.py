@@ -33,9 +33,15 @@ PROSE = (".md",)
 #: 그때 그 말로 쓰인 기록물 — 손대지 않으므로 검사도 하지 않는다.
 ARCHIVAL_PREFIXES = ("specs/", ".reviews/", "adr/", ".superpowers/")
 ARCHIVAL_FILES = (
-    "docs/src/content/docs/ko/engineering-log.md",
-    "docs/src/content/docs/engineering-log.md",
+    # 승인된 SPEC 의 제목을 그대로 옮긴 등록부다. 게다가 `arbiter/.../ledger.py` 가 **생성**하므로
+    # 손으로 고쳐도 다음 실행에 덮인다 — 여기 말은 그 SPEC 들의 것이다.
+    "INDEX.md",
 )
+# ⚠ 공개 엔지니어링 로그는 여기 **없다.** 한때 있었고, 2026-08-27 에 걷어냈다:
+# 「기록물은 그대로」 규칙의 기제는 둘인데(승인 문서는 고치면 도장이 깨진다 · 결정 기록은
+# 그때 정한 것을 말한다) 그 로그는 **둘 다 아니다.** 서명이 없고, 결정 기록도 아니고,
+# 바깥 사람이 읽으라고 쓴 서사다 — 그리고 그 독자가 바로 이 리포의 조어를 해독 못 하는 사람이다.
+# 인용된 커밋 제목만은 그대로 둔다(코드 스팬이라 이 검사가 알아서 지나간다).
 #: 사전은 자기가 금지한 말을 적어야 한다.
 EXEMPT_FILES = ("GLOSSARY.md",)
 
@@ -100,6 +106,23 @@ def load_banned(glossary: Path = GLOSSARY) -> dict[str, str]:
     return banned
 
 
+def _fires(word: str, prose: str) -> bool:
+    """이 말이 **산문으로** 쓰였는가.
+
+    한국어와 영문은 경계 규칙이 다르다:
+      · 한국어 — 앞에 한글이면 합성어(`사용자`), 숫자·`}` 면 단위(`3,000자`·`{n}자`),
+        뒤는 조사까지만.
+      · 영문 — 대소문자를 안 가린다(문장 첫머리를 놓치면 한쪽 언어만 고쳐진다). 대신
+        앞뒤에 `-`·`_`·글자가 붙으면 **이름**이다: `SPEC-…-ruler` 는 승인된 문서의
+        이름이고 `ruler_sha` 는 필드 이름이라, 고치면 가리키는 것이 사라진다.
+    """
+    if any(ch >= "가" for ch in word):
+        return bool(re.search(
+            rf"(?<![가-힣0-9A-Za-z}}]){re.escape(word)}(?:{_JOSA})?(?![가-힣])", prose))
+    return bool(re.search(
+        rf"(?<![A-Za-z0-9_-]){re.escape(word)}s?(?![A-Za-z0-9_-])", prose, re.IGNORECASE))
+
+
 def check_line(path: str, line: str, banned: dict[str, str]) -> list[tuple[str, str]]:
     """이 줄이 규칙을 어겼는가. 어긴 (말, 대신 쓸 말) 목록을 낸다.
 
@@ -120,7 +143,7 @@ def check_line(path: str, line: str, banned: dict[str, str]) -> list[tuple[str, 
         # 중괄호가 붙었으면 단위**다('3,000자' · '12자' · f-string 의 '{len(body)}자').
         # 뒤는 조사까지만 허용한다.
         # 이런 거짓 경고를 하나라도 내보내면 사람이 검사를 끈다.
-        if re.search(rf"(?<![가-힣0-9A-Za-z}}]){re.escape(word)}(?:{_JOSA})?(?![가-힣])", prose):
+        if _fires(word, prose):
             hits.append((word, replacement))
     return hits
 
