@@ -66,7 +66,7 @@ docker exec nexus-app python -m nexus.cli query "질문" --tenant design_docs --
   | `원장` (로그 파일을 가리킬 때) | 기록 파일 — 회계·판정 기록에는 원장이 맞다 |
 
   ⚠ **규칙을 넣은 뒤로 내가 보고 문장에서 세 번 어겼다** — 규칙이 없어서가 아니라 그
-  자리에 검사가 없었기 때문이다(셋째는 「8/25 자」로, 뜻은 날짜 접미사였다. 읽는 사람이
+  자리에 검사가 없었기 때문이다(셋째는 `8/25 자` 로, 뜻은 날짜 접미사였다. 읽는 사람이
   못 가르면 값은 같다 — 예외를 달지 말고 풀어 써라). 늘어나면 `GLOSSARY.md` 표에 한 줄
   더하고 이 표도 같이 고쳐라. 규칙은 `CONVENTIONS.md` §Terminology, 검사는 둘 —
   `python scripts/check_terms.py`(`.md` 의 새 줄) 와 `Stop` 훅(내 응답 문장).
