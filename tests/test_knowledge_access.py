@@ -231,3 +231,65 @@ def test_the_hook_is_launched_without_site_scanning():
     settings = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))
     cmds = [h["command"] for grp in settings["hooks"]["PreToolUse"] for h in grp["hooks"]]
     assert any(" -S " in c for c in cmds), cmds
+
+
+# ── 파이프는 UTF-8 이 아니다 ────────────────────────────────────────────────
+#
+# ⛔ **위의 배선 테스트들은 이것을 볼 수 없다.** 그것들은 `io.StringIO` 를 꽂는데, 그건 이미
+# 디코드된 문자열이다 — 라이브에서 잃은 것은 **디코딩 그 자체**다. 실측 2026-08-27: 훅이
+# 받는 stdin 은 콘솔 코드페이지로 열린다(한국어 Windows 에서 `cp949`, `surrogateescape`).
+# 그래서 한글이 든 질의는 서러게이트가 섞인 채로 들어오고, 해시를 뜨는 자리에서 터진다.
+# 분류는 이미 `khala` 로 끝난 뒤였다 — 즉 **문을 지난 것만 골라서 안 세어졌다.**
+# 우회 쪽 명령은 대개 경로뿐이라 ASCII 로 살아남는다. 비율이 한 방향으로 거짓이 된다.
+#
+# 같은 이가 `terms_guard.py` 에서는 하루 먼저 잡혔다(#329). 이쪽으로 안 옮겨진 것뿐이다.
+
+
+def _run_the_hook_in_a_real_process(tmp_path, payload: dict, stdin_encoding: str):
+    """훅을 **별도 프로세스**로, 진짜 파이프로 돌린다.
+
+    기록 파일 경로는 스크립트 위치에서 나오므로(`_root()`) 정본을 tmp 로 복사해 돌린다 —
+    테스트가 라이브 기록 파일을 더럽히면 그 기록이 곧 지표라 값이 상한다.
+
+    `-E` 는 일부러 뺀다. 프로덕션에서 이 인코딩은 인터프리터 **밖에서**(Windows 콘솔)
+    정해지고, 테스트는 그것을 `PYTHONIOENCODING` 으로 흉내 내는 것이기 때문이다.
+    """
+    import os
+    import shutil
+    import subprocess
+
+    hooks = tmp_path / "scripts" / "hooks"
+    hooks.mkdir(parents=True)
+    shutil.copy(ROOT / "scripts" / "hooks" / "knowledge_access.py",
+                hooks / "knowledge_access.py")
+    env = {**os.environ, "PYTHONIOENCODING": stdin_encoding}
+    env.pop("CODE_SRC_PATH", None)
+    proc = subprocess.run(
+        [sys.executable, "-S", str(hooks / "knowledge_access.py")],
+        input=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        capture_output=True, env=env,
+    )
+    ledger = tmp_path / ".khala" / "knowledge-access.jsonl"
+    rows = ([json.loads(ln) for ln in ledger.read_text(encoding="utf-8").splitlines() if ln.strip()]
+            if ledger.exists() else [])
+    return proc, rows
+
+
+def test_a_korean_query_survives_a_console_codepage_pipe(tmp_path):
+    """이 리포의 실제 질의는 한국어다. 이것이 안 세어지면 분자가 통째로 사라진다."""
+    payload = {"tool_name": "Bash", "tool_input": {
+        "command": 'docker exec nexus-app python -m nexus.cli query "정책은 무엇인가" --no-answer'}}
+    proc, rows = _run_the_hook_in_a_real_process(tmp_path, payload, "cp949:surrogateescape")
+
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
+    assert [r["kind"] for r in rows] == ["khala"]
+
+
+def test_an_ascii_command_still_counts_in_the_same_process(tmp_path):
+    """대조군 — 위를 통과시키려고 전부 삼키면 이쪽이 빈다."""
+    payload = {"tool_name": "Bash", "tool_input": {
+        "command": 'docker exec nexus-db psql -U nexus -d nexus -c "select 1"'}}
+    proc, rows = _run_the_hook_in_a_real_process(tmp_path, payload, "cp949:surrogateescape")
+
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
+    assert [r["kind"] for r in rows] == ["bypass"]

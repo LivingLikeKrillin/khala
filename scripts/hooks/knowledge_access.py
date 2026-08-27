@@ -174,10 +174,22 @@ def report() -> int:
     return 0
 
 
+def _read_stdin() -> str:
+    """⚠ **파이프는 UTF-8 이 아니다.** 훅의 stdin 은 콘솔 코드페이지로 열린다(실측
+    2026-08-27, 한국어 Windows: `cp949` · `surrogateescape`). 그냥 `sys.stdin.read()` 로
+    읽으면 한글이 든 질의가 서러게이트를 물고 들어와 해시 자리에서 터지고, **문을 지난
+    호출만 골라서** 안 세어진다 — 우회 쪽은 대개 경로뿐이라 ASCII 로 살아남기 때문이다.
+    그래서 바이트로 받아 UTF-8 로 푼다. (테스트가 갈아 끼우는 `StringIO` 에는 `buffer`
+    가 없다. `terms_guard.py` 가 하루 먼저 배운 것과 같은 처방이다.)
+    """
+    buf = getattr(sys.stdin, "buffer", None)
+    return buf.read().decode("utf-8", "replace") if buf is not None else sys.stdin.read()
+
+
 def main() -> int:
     if "--report" in sys.argv[1:]:
         return report()
-    raw = sys.stdin.read()
+    raw = _read_stdin()
     tree = host_code_tree()
     if not might_be_an_access(raw, tree):
         return 0
