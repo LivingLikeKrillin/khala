@@ -52,6 +52,6 @@ def test_a_block_without_a_type_counts_as_text():
     """실제 SDK 는 `type` 을 늘 채우지만 테스트 더블은 자주 생략한다.
 
     없는 것을 "텍스트가 아니다" 로 읽었더니 `test_llm_usage` 가 빨간불이 됐다 — 진짜 응답은
-    멀쩡한데. 더블이 자를 흔드는 그 형태를 여기서 못 박는다.
+    멀쩡한데. 더블이 평가 하니스를 흔드는 그 형태를 여기서 못 박는다.
     """
     assert answer_text([SimpleNamespace(text="근거 답변")]) == "근거 답변"

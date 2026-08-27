@@ -509,7 +509,7 @@ async def _fill_sections(
     try:
         rows = await fill_for_docs(tenant, clearance, docs, exclude) if docs else []
 
-        # **상한을 넘는 문서는 방아쇠가 다르다.** `fill_for_docs` 가 그 문서를 통째로 빼므로,
+        # **상한을 넘는 문서는 트리거가 다르다.** `fill_for_docs` 가 그 문서를 통째로 빼므로,
         # 포화를 기다리면 그 부류는 **영영 아무 맥락도 못 받는다**. 그리고 포화는 오히려 덜
         # 걸린다 — A13 컷오버로 파편이 패킷 자리를 나눠 가지면서 큰 정책 문서의 몫이 상한 아래로
         # 내려갔다(2026-08-26 실측: 3/5). 그래서 큰 문서에서는 **히트가 앉은 절**을 포화와

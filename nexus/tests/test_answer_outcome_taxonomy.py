@@ -1,6 +1,6 @@
-"""오답과 기권을 가르는 자 — `scripts/ko_eval_answer_quality`.
+"""오답과 기권을 가르는 채점기 — `scripts/ko_eval_answer_quality`.
 
-옛 자는 `grounded AND cites_gold AND has_facts` 하나로만 셌다. 셋 중 무엇이 어긋나든 같은
+옛 채점기는 `grounded AND cites_gold AND has_facts` 하나로만 셌다. 셋 중 무엇이 어긋나든 같은
 `failed` 칸에 들어가므로, **정직한 기권**(검색이 근거를 못 줘서 답변자가 없다고 밝힘)과
 **오답**(근거를 받고도 틀림)이 구별되지 않는다. 2026-08-10 에 그 뭉침 때문에 "답변 품질이
 내려갔다" 를 잘못 읽었다 — 실제로는 검색 결함이 대부분이었고 답변자는 그때마다 정직했다.
@@ -62,11 +62,11 @@ def test_markdown_heading_before_the_refusal_still_counts():
 
 
 def test_a_fact_that_only_appears_inside_the_refusal_was_not_delivered():
-    """**옛 자의 실제 결함.** 거절 문장은 질문의 어휘를 되풀이하므로 `must_contain` 이 거저
+    """**옛 채점기의 실제 결함.** 거절 문장은 질문의 어휘를 되풀이하므로 `must_contain` 이 거저
     통과한다. 2026-08-10 에 `pb-part-07` 이 "태스크와 디제잉 포인트의 관계를 확인할 수
     없습니다" 로 거절하면서 `태스크`·`다른` 을 둘 다 담아 사실검사를 통과했다.
 
-    옛 자는 그것을 **기권이 사실검사를 이긴다**는 우선순위로 막았다. 그 우선순위가 §1.1 의
+    옛 채점기는 그것을 **기권이 사실검사를 이긴다**는 우선순위로 막았다. 그 우선순위가 §1.1 의
     반대편 오탐(부분 기권을 전체 기권으로 읽는 것)을 낳았으므로, 이제는 우선순위가 아니라
     **배달**로 막는다: 사실은 거절 세그먼트 **밖**에 있어야 센다.
     """
@@ -80,7 +80,7 @@ def test_a_fact_that_only_appears_inside_the_refusal_was_not_delivered():
 # ── 거절의 범위: 어느 문장인가, 그리고 어디에 섰는가 (SPEC-nexus-answer-quality-ruler §3.1) ──
 
 #: 2026-08-11 실행에서 나온 실제 답변의 **여는 문장**이다. 둘 다 범위를 좁히는 단서일 뿐,
-#: 질문을 거절한 것이 아니다 — 그리고 옛 자는 둘 다 기권으로 셌다.
+#: 질문을 거절한 것이 아니다 — 그리고 옛 채점기는 둘 다 기권으로 셌다.
 REAL_HEDGES = [
     ("제공된 문서에 재시도 **횟수·간격·백오프 공식** 등 구체적인 정책 수치는 명시되어 있지 않습니다.\n\n"
      "낙관적 락은 커밋 시점에 version 필드로 충돌을 감지하며, 영향 행 수가 0이면 재시도가 필요합니다.",
@@ -107,7 +107,7 @@ REAL_CONTROL_OPENINGS = [
 
 
 def test_a_hedge_that_still_delivers_the_answer_is_not_an_abstention():
-    """§1.1 의 결함. 옛 자는 여는 문장만 보고 `pb-space-01`·`pb-mix-08` 을 기권으로 셌다."""
+    """§1.1 의 결함. 옛 채점기는 여는 문장만 보고 `pb-space-01`·`pb-mix-08` 을 기권으로 셌다."""
     for text, must in REAL_HEDGES:
         s = score_answer("q", text, [], set(), must)
         assert s.has_facts is True, text[:40]
@@ -124,7 +124,7 @@ def test_a_trailing_caveat_does_not_turn_an_answer_into_an_abstention():
 
 
 def test_every_control_opening_refuses_and_abstains():
-    """대조군 = 코퍼스가 답을 못 가진 질의. 5/5 가 실제로 거절했고, 자는 그것을 기권으로 세야 한다.
+    """대조군 = 코퍼스가 답을 못 가진 질의. 5/5 가 실제로 거절했고, 채점기는 그것을 기권으로 세야 한다.
 
     `must_contain` 이 비면 **배달할 것이 없다** → 배달 실패다. `all([]) == True` 에 맡기면
     반대로 읽히므로 여기서 못 박는다.
@@ -154,7 +154,7 @@ def _cited(title, verified=True):
 
 def test_a_correct_answer_citing_an_unjudged_document_is_not_incorrect():
     """`pb-part-02` 의 모양. 사실도 맞고 인용도 해소되는데 라벨이 그 문서를 판정한 적이 없다.
-    자는 그 문서가 답을 담는지 **모른다** — 모르는 것을 오답이라 부르면 안 된다."""
+    채점기는 그 문서가 답을 담는지 **모른다** — 모르는 것을 오답이라 부르면 안 된다."""
     s = score_answer("q", "최대 100 곡입니다 [출처: 같은 사실을 적은 다른 문서]",
                      [_cited("같은 사실을 적은 다른 문서")], {"정답 문서"}, [["100"]],
                      known_titles=TENANT)
@@ -246,7 +246,7 @@ def test_a_wrong_answer_with_the_gold_document_is_incorrect():
 
 
 def test_a_right_answer_citing_the_wrong_document_is_incorrect():
-    """정답 문서를 못 가리키면 그 답이 맞았다는 것을 이 자는 확인할 수 없다."""
+    """정답 문서를 못 가리키면 그 답이 맞았다는 것을 이 채점기는 확인할 수 없다."""
     s = AnswerScore(qid="q", grounded=True, cites_gold=False, facts=[True])
     assert s.outcome == "incorrect"
 
@@ -314,7 +314,7 @@ def test_a_tier_note_swallowed_into_a_citation_is_the_shape_that_misled_us():
     시작한 탓에 모델이 그것을 인용 문자열 안으로 흡수했고, 인용 검증기가 제목을 못 찾아
     `grounded=False` 가 되면서 **근거에 실재하는 답이 환각 칸으로 분류**됐다.
 
-    등급 표시가 `출처` 를 안 쓰게 고쳤으므로 이 모양은 더 나오지 않아야 한다. 그래도 자 쪽에
+    등급 표시가 `출처` 를 안 쓰게 고쳤으므로 이 모양은 더 나오지 않아야 한다. 그래도 채점기 쪽에
     남겨 두는 이유는, 같은 사고가 다른 라벨로 재발하면 **여기서 먼저 보이게** 하기 위해서다.
     """
     from nexus.search.provenance import PROMPT_NOTE

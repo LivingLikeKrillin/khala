@@ -6,9 +6,9 @@
 살아 있는 `default` 코퍼스가 아니라 **리포에 고정된 fixture** 를 쓴다. 누가 Notion 을
 동기화할 때마다 바뀌는 코퍼스에 바닥값을 못 박으면, 그건 아무것에도 못 박지 않은 것이다.
 
-측정 전에 **자를 먼저 검사한다.** 조사 중에 정답 id 를 8자 접두사로 줬다가 서로 다른 두
+측정 전에 **평가 하니스를 먼저 검사한다.** 조사 중에 정답 id 를 8자 접두사로 줬다가 서로 다른 두
 페이지에 매칭됐고, 채점기가 정답 1위를 '회귀' 로 기록했다. 그 회귀를 고치려고 설계를 하나
-만들 뻔했다. 자가 틀린 측정은 약한 측정이 아니라 허구다.
+만들 뻔했다. 평가 하니스가 틀린 측정은 약한 측정이 아니라 허구다.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ def _has_mecab() -> bool:
 
 
 # 이 스위트는 **mecab-ko 가 있어야만 의미가 있다.** 없으면 `tokenize_korean` 이 공백 분리로
-# 내려앉고, 그건 프로덕션이 쓰는 토크나이저가 아니다 — 다른 자로 잰 숫자는 바닥값이 아니다.
+# 내려앉고, 그건 프로덕션이 쓰는 토크나이저가 아니다 — 다른 평가 하니스로 잰 숫자는 바닥값이 아니다.
 # mecab 은 Dockerfile 에서 소스 빌드된다. 그래서 CI 는 이 파일을 **이미지 안에서** 돌린다.
 pytestmark = [
     pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"), reason="NEXUS_TEST_DB_URL 필요"),
@@ -113,7 +113,7 @@ async def corpus(db_pool):
     db._pool = None
 
 
-# ── 자를 먼저 검사한다 ────────────────────────────────────────────────────────
+# ── 평가 하니스를 먼저 검사한다 ────────────────────────────────────────────────────────
 
 async def test_every_gold_label_resolves_to_exactly_one_document(corpus):
     from nexus import db

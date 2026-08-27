@@ -3,7 +3,7 @@
 
 **"같은 모델 두 번 돌리면 같은 결과" 는 결정성만 증명한다.** 그건 이 하니스가 모델 차이를
 잡아낼 수 있는지에 대해 아무 말도 하지 않는다 — ADR-0008 §2.6 이 이름 붙인 바로 그 구멍이다.
-그래서 진짜 대조군은 **벡터를 청크 사이에서 뒤섞는 것**이다: 뒤섞은 팔이 여전히 점수를 내면
+그래서 진짜 대조군은 **벡터를 청크 사이에서 뒤섞는 것**이다: 뒤섞은 실험군이 여전히 점수를 내면
 이 다리는 아무것도 재고 있지 않다.
 
 임베딩은 여기서 가짜다(결정적 해시 기반). 실제 모델은 Unit 3 이고, 이 파일이 지키는 것은
@@ -183,9 +183,9 @@ async def test_replacing_an_arm_does_not_merge_generations(db_pool, arm):
 
 
 async def test_shuffled_vectors_collapse_the_vector_leg(db_pool, arm):
-    """**뒤섞은 팔이 여전히 점수를 내면 이 다리는 아무것도 재고 있지 않다.**
+    """**뒤섞은 실험군이 여전히 점수를 내면 이 다리는 아무것도 재고 있지 않다.**
 
-    각 문서를 자기 벡터로 질의하는 판이라 온전한 팔은 만점이어야 하고, 벡터를 청크 사이에서
+    각 문서를 자기 벡터로 질의하는 판이라 온전한 실험군은 만점이어야 하고, 벡터를 청크 사이에서
     돌리면 무너져야 한다. '같은 모델 두 번' 류의 자명한 확인과 달리 이건 실패할 수 있다 —
     실제로 처음 작성한 5문서 fixture 에서 실패했고, 그 실패가 fixture 가 창보다 작다는 것을
     알려줬다(코퍼스 42 · 창 10).
@@ -214,7 +214,7 @@ async def test_shuffled_vectors_collapse_the_vector_leg(db_pool, arm):
 
     intact_recall = sum(s.recall for s in intact) / len(intact)
     shuffled_recall = sum(s.recall for s in shuffled) / len(shuffled)
-    assert intact_recall == 1.0, f"온전한 팔이 만점이 아니다 ({intact_recall:.2f}) — 배관이 틀렸다"
+    assert intact_recall == 1.0, f"온전한 실험군이 만점이 아니다 ({intact_recall:.2f}) — 배관이 틀렸다"
     assert shuffled_recall < intact_recall * 0.5, (
-        f"뒤섞은 팔의 재현율이 {shuffled_recall:.2f} (온전 {intact_recall:.2f}) — "
+        f"뒤섞은 실험군의 재현율이 {shuffled_recall:.2f} (온전 {intact_recall:.2f}) — "
         "이 벡터 다리는 나쁜 임베딩을 잡아내지 못한다")

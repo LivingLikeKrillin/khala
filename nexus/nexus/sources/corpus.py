@@ -31,7 +31,7 @@ PACK_B_MIN_DOCUMENTS = 100
 PACK_B_SUBSTANTIVE_CHARS = 800
 
 # **이 수는 보고용이지 게이트가 아니다.** 한때 게이트였고(2026-08-07 오전, "≥ 60"), 그 60 은
-# 재보지 않고 만든 어림수였다. 근거로 든 것은 "gold 후보가 19건뿐이면 두 팔이 같은 소수 문서를
+# 재보지 않고 만든 어림수였다. 근거로 든 것은 "gold 후보가 19건뿐이면 두 실험군이 같은 소수 문서를
 # 두고 겨뤄 무승부가 쌓인다" 였는데, 같은 날 오후에 라벨 없이 그것을 재보니 반대가 나왔다:
 # 상위10에 뜬 서로 다른 문서가 48건, 순위표가 갈리는 질의 12/30, 그중 8건이 2~3위에서 갈렸다.
 #
@@ -55,7 +55,7 @@ async def _unembedded(con, tenant: str) -> dict:
     `413 max_seq_length(8192)` 로 거부했고, 그 청크는 벡터 다리에서 영구히 안 보인다. 지금은
     289분의 1이지만 **큰지 작은지 보이지 않는 것이 결함의 본질**이라, 판정보다 위에 적는다.
 
-    컬럼은 `configured_column` 으로 정한다 — 검색 다리가 읽는 그 컬럼이어야 한다. 다른 컬럼을
+    컬럼은 `configured_column` 으로 정한다 — 검색 경로가 읽는 그 컬럼이어야 한다. 다른 컬럼을
     세면 세대가 바뀐 뒤 "다 임베딩됐다" 는 거짓을 보고하게 된다.
     """
     from nexus.index.vector_index import configured_column
@@ -141,7 +141,7 @@ async def corpus_status(con, tenant: str = "default") -> dict:
             "substantive_chars": PACK_B_SUBSTANTIVE_CHARS,
             "substantive_documents": substantive,
             "ready": docs >= PACK_B_MIN_DOCUMENTS,
-            "why": ("창이 상위 10문서라, 코퍼스가 그보다 크지 않으면 두 팔이 거의 무승부가 되고 "
+            "why": ("창이 상위 10문서라, 코퍼스가 그보다 크지 않으면 두 실험군이 거의 무승부가 되고 "
                     "판정 규칙이 '검정력 부족' 을 돌려준다 (KOREAN_SEARCH_QUALITY.md §6.1)."),
             "second_gate": ("코퍼스 크기만으로는 잴 수 있는지 알 수 없다. 두 토크나이저가 이 "
                             "코퍼스에서 실제로 다른 순위를 내는지는 라벨 없이 잴 수 있고, 그것이 "

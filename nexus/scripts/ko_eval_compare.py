@@ -1,7 +1,7 @@
 """mecab-ko vs nori — 같은 엔진·같은 인덱스 구조·같은 스코러·같은 품사 정책으로
 (SPEC-nexus-korean-retrieval-eval §4.3~§4.5).
 
-두 팔은 **각자의 토크나이저로 색인하고 각자의 토크나이저로 질의한다.** 한 실행 안에서 한 번만
+두 실험군은 **각자의 토크나이저로 색인하고 각자의 토크나이저로 질의한다.** 한 실행 안에서 한 번만
 갈아끼우므로 색인/질의가 어긋날 수 없다. 어긋난 실행은 그럴듯한 숫자를 내고 아무 의미도 없다.
 
     python -m scripts.ko_eval_compare --dump-pool pool.json       # 풀 후보 덤프(판정 전)
@@ -40,7 +40,7 @@ POOL_DEPTH = METRIC_K       # 풀 깊이 = 지표 깊이. 얕으면 6~10위가 �
 
 
 async def run_arm(tokenizer, labels: dict, pool, tenant: str) -> tuple[LegResult, dict[str, list[str]]]:
-    """한 팔: 팩 적재(그 토크나이저로) → 질의(같은 토크나이저로) → 점수 + 질의별 상위 문서."""
+    """한 실험군: 팩 적재(그 토크나이저로) → 질의(같은 토크나이저로) → 점수 + 질의별 상위 문서."""
     from nexus.index.bm25 import use_tokenizer
     from nexus.search import hybrid
 
@@ -70,7 +70,7 @@ async def _run(args) -> int:
         return 1
     labels = load(DEFAULT_LABELS)
     if problems := check(labels, DEFAULT_PACK_DIR):
-        print("✗ 라벨 게이트 실패 — 측정 이전에 자가 틀렸다:", *problems[:5], sep="\n  ")
+        print("✗ 라벨 게이트 실패 — 측정 이전에 평가 하니스가 틀렸다:", *problems[:5], sep="\n  ")
         return 1
     if _get_mecab() is None:
         print("✗ mecab-ko 없음 — 이미지 안에서 실행하라")
@@ -82,7 +82,7 @@ async def _run(args) -> int:
 
     pool = await db.get_pool()
     try:
-        # **두 팔은 같은 테넌트를 순서대로 쓴다.** rid 가 테넌트를 품고 있어서, 테넌트가 다르면
+        # **두 실험군은 같은 테넌트를 순서대로 쓴다.** rid 가 테넌트를 품고 있어서, 테넌트가 다르면
         # 동점 정렬 키(rid)도 달라진다 — 토크나이저와 무관한 차이가 승패에 섞인다.
         arm_tenant = "ko_eval_arm"
         mecab_leg, mecab_tops = await run_arm(mecab, labels, pool, arm_tenant)
@@ -117,7 +117,7 @@ async def _run(args) -> int:
                 "라벨 리비전": labels["revision"],
                 "질의": f"답변가능 {mecab_leg.n} · 답변불가 "
                         f"{sum(1 for q in labels['queries'] if not q['answerable'])}(집계 제외)",
-                "엔진": "Postgres to_tsquery + ts_rank_cd (양 팔 동일)",
+                "엔진": "Postgres to_tsquery + ts_rank_cd (양 실험군 동일)",
                 "nori 분석기": f"{engine}, decompound_mode={nori.decompound_mode}, user_dictionary=none",
                 "mecab 정책": mecab.policy,
                 "nori 정책": nori.policy,

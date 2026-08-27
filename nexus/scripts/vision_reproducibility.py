@@ -36,7 +36,7 @@ from scripts.vision_crosscheck import _catalogue  # noqa: E402
 
 LOCAL = Path("/app/tests/eval/local")
 
-#: 팔 이름 → (1회차 캐시, 2회차 캐시, 그 캐시에서 텍스트 꺼내는 법, 신원)
+#: 실험군 이름 → (1회차 캐시, 2회차 캐시, 그 캐시에서 텍스트 꺼내는 법, 신원)
 ARMS = {
     "gemini": ("crosscheck-gemini-nothink.json", "crosscheck-gemini-nothink-r2.json",
                lambda v: v["text"], None),
@@ -58,7 +58,7 @@ async def measure(arm: str) -> dict:
     pairs = [(get(first[k]), get(second[k])) for k in keys]
     s = summarize(pairs)
 
-    print(f"  팔 {arm} · 그림 {s['images']}장")
+    print(f"  실험군 {arm} · 그림 {s['images']}장")
     print(f"  두 실행 완전 동일   {s['identical']}/{s['images']}")
     print(f"  토큰 변동률         {s['variation']:.1%}")
     print(f"  문턱 통과           {'예' if s['passes'] else '아니오'}")
@@ -77,7 +77,7 @@ async def record(arm: str, tenant: str) -> int:
     report = json.loads((LOCAL / f"reproducibility-{arm}.json").read_text(encoding="utf-8"))
     identity = report["identity"]
     if not identity:
-        print("  이 팔은 저장된 추출이 아니다 — 적을 행이 없다 (측정만 유효)")
+        print("  이 실험군은 저장된 추출이 아니다 — 적을 행이 없다 (측정만 유효)")
         return 0
     rate = report["summary"]["variation"]
     measured = set(report["per_image"])

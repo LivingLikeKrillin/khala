@@ -1,7 +1,7 @@
 """인용에서 원본 그림으로 — SPEC-nexus-vision-source-ref (DB 없이 도는 부분).
 
 여기서 재는 것은 **문법과 거절**이다: writer 가 만든 마커를 parser 가 읽는가, 참조 없는 추출이
-저장을 통과하는가, 큰 블록이 쪼개졌을 때 조각들이 손잡이를 잃지 않는가.
+저장을 통과하는가, 큰 블록이 쪼개졌을 때 조각들이 식별자를 잃지 않는가.
 
 마커 문자열을 손으로 타이핑하지 않는다. `build_block()` 이 만든 것을 읽는다 — 손으로 쓰면
 writer 와 parser 가 갈려도 시험은 초록으로 남는다.
@@ -21,14 +21,14 @@ sys.path.insert(0, str(ROOT))
 from nexus.ingest import vision, vision_source, vision_store  # noqa: E402
 from nexus.ingest.chunker import chunk_document  # noqa: E402
 
-_SHA = "a1b2c3d4e5f60718" + "9" * 48          # 64자, 앞 16자가 손잡이
+_SHA = "a1b2c3d4e5f60718" + "9" * 48          # 64자, 앞 16자가 식별자
 
 
 def _block(text="| 아바타 | 해금 |\n|---|---|\n| A | 1200 |", sha=_SHA):
     return vision.build_block(vision.Extraction(text, "m/p", sha))
 
 
-# ── §5.4 마커가 손잡이를 나르는가 ────────────────────────────────────────────
+# ── §5.4 마커가 식별자를 나르는가 ────────────────────────────────────────────
 
 def test_the_marker_carries_a_handle_that_matches_the_sha():
     fields = vision_source.parse_marker(_block())
@@ -85,7 +85,7 @@ def test_a_fetch_failure_may_be_stored_without_a_reference():
     assert not (not (e.block_id or "").strip() and not e.error)
 
 
-# ── §5.7 쪼개진 블록도 손잡이를 잃지 않는가 ─────────────────────────────────
+# ── §5.7 쪼개진 블록도 식별자를 잃지 않는가 ─────────────────────────────────
 
 def test_two_chunks_split_from_one_block_carry_the_same_handle():
     """§4 — 긴 추출은 청커가 쪼갠다. 두 번째 조각에 마커가 없으면 그 조각의 인용은 등급만 있고
@@ -98,7 +98,7 @@ def test_two_chunks_split_from_one_block_carry_the_same_handle():
 
     handles = [(vision_source.parse_marker(c.chunk_text) or {}).get("img") for c in machine]
     assert all(h == _SHA[:16] for h in handles), (
-        f"조각이 손잡이를 잃었다: {handles}")
+        f"조각이 식별자를 잃었다: {handles}")
 
 
 def test_a_short_block_still_carries_exactly_one_marker():

@@ -3,7 +3,7 @@
 이 리포는 검색을 엄격하게 재 왔고 답변은 한 번도 안 쟀다. 이것이 그 첫 실행이다.
 
 **관문을 먼저 통과해야 결과로 친다** (`ko_eval_packb_run.py` 와 같은 이유): 라벨 게이트가
-막으면 숫자를 내지 않는다. 관문이 뒤에 있으면 숫자를 보고 자를 고치게 된다.
+막으면 숫자를 내지 않는다. 관문이 뒤에 있으면 숫자를 보고 평가 하니스를 고치게 된다.
 
 **LLM 을 부른다 — 돈이 든다.** 질의 하나에 한 번, 기본 40건. `--limit` 로 줄일 수 있고, 무엇을
 부를지는 `NEXUS_LLM_PROVIDER` 가 정한다(키 없이 도는 claude-code 브리지 포함).
@@ -110,7 +110,7 @@ async def unreadable_gold(con, labels: dict, tenant: str, clearance: str) -> dic
     2026-08-12 에 q002 가 4런 연속 실패했고 원인은 랭킹이 아니었다: gold 인
     `tutorials/security/apparmor.md` 가 경로 규칙(`**/security/**`)으로 RESTRICTED 인데
     실행은 INTERNAL 로 돌아, `classification <= clearance` 가 그 문서를 원천 배제했다.
-    **시스템이 정책을 지킨 것을 자가 검색 실패로 적고 있었다.**
+    **시스템이 정책을 지킨 것을 평가 하니스가 검색 실패로 적고 있었다.**
 
     라벨은 못 읽는 문서를 gold 로 가질 수 없다 — 그런 질의는 통과가 불가능하고, 불가능한
     질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을 재는 수다.
@@ -162,7 +162,7 @@ def run_conditions(args) -> dict:
 def gate_reasons(summary: dict, expired_qids: list[str] | None = None) -> list[str]:
     """총점을 내면 안 되는 이유들. 비어 있어야 실행이 결과가 된다.
 
-    관문을 **뒤**에 두면 숫자를 보고 자를 고치게 되므로, 이 판단은 총점 출력 이전에 한다.
+    관문을 **뒤**에 두면 숫자를 보고 평가 하니스를 고치게 되므로, 이 판단은 총점 출력 이전에 한다.
     """
     reasons = []
     if qids := summary.get("unadjudicated_qids"):
@@ -204,7 +204,7 @@ async def _run(args) -> int:
 
     labels = load(args.labels)
     if problems := check(labels, ManifestPack(args.manifest), require_corpus_binding=True):
-        print("✗ 라벨 게이트 실패 — 측정 이전에 자가 틀렸다:", *problems[:4], sep="\n  ")
+        print("✗ 라벨 게이트 실패 — 측정 이전에 평가 하니스가 틀렸다:", *problems[:4], sep="\n  ")
         return 1
 
     # **서명된 테넌트가 아니면 시작하지 않는다.** 다른 테넌트의 해시는 이 라벨에 대해 아무것도
@@ -218,9 +218,9 @@ async def _run(args) -> int:
     queries = [q for q in labels["queries"] if q.get("answerable")][:args.limit]
     print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 질의 {len(queries)}건\n")
 
-    # **자는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
+    # **평가 하니스는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
     # 코드 기본값(`diversity_per_doc_cap=3`)으로 돌고, 배포는 config.yaml 의 5 로 돈다 —
-    # 즉 자가 아무도 안 쓰는 설정을 재게 된다 (2026-08-18 발견).
+    # 즉 평가 하니스가 아무도 안 쓰는 설정을 재게 된다 (2026-08-18 발견).
     svc, llm = embedding_service_from_config(), LLMService()
     search_cfg = _load_config()
     if args.section_fill:
@@ -326,7 +326,7 @@ async def _run(args) -> int:
                   f"  인용 {s.n_citations}")
 
         # ── 대조군: 코퍼스가 답을 못 가진 질의에서 답변자는 거절해야 한다 ──────
-        # 이 팔이 없으면 기권 탐지기에는 **양성 대조군이 없다**. 라벨엔 5건이 일주일째 있었고
+        # 이 실험군이 없으면 기권 탐지기에는 **양성 대조군이 없다**. 라벨엔 5건이 일주일째 있었고
         # 한 번도 안 돌렸다 — 돌리자마자 규칙 하나가 죽었다(SPEC §1.4).
         for q in ([q for q in labels["queries"] if not q.get("answerable")]
                   if args.controls else []):
@@ -351,17 +351,17 @@ async def _run(args) -> int:
 
     # ── 대조군이 거절하지 않았다면, 그것은 **환각 판정이 아니라 재판정 대상**이다 ──
     # 코퍼스가 답을 얻었을 수도 있고(2026-08-10 에 스크린샷 44장이 그렇게 했다) 답변자가
-    # 지어냈을 수도 있다. 자는 둘을 못 가른다 — 그러니 이름만 부르고 멈춘다.
+    # 지어냈을 수도 있다. 평가 하니스는 둘을 못 가른다 — 그러니 이름만 부르고 멈춘다.
     if answered := [c["qid"] for c in controls if not c["refused"]]:
         print(f"\n  ‼ 대조군 {len(answered)}건이 거절하지 않았다: {', '.join(answered)}")
         print("    코퍼스가 답을 얻었는지(라벨을 answerable 로 뒤집어야 한다) 답변자가 지어냈는지")
-        print("    자는 못 가른다. 사람이 근거를 읽어야 한다.")
+        print("    평가 하니스는 못 가른다. 사람이 근거를 읽어야 한다.")
     elif controls:
         print(f"\n  대조군 {len(controls)}/{len(controls)} 거절 — 기권 탐지기의 양성 대조군은 살아 있다")
 
     # ── 판정할 거리는 총점보다 먼저 나온다 ────────────────────────────────────
     # **미판정은 오답이 아니다.** 사실을 배달했고 인용이 해소되는데 라벨이 그 문서를 판정한 적이
-    # 없으면 이 자는 모른다 — 모르는 채로 총점을 찍으면 그 총점이 판정을 대신하게 된다.
+    # 없으면 이 평가 하니스는 모른다 — 모르는 채로 총점을 찍으면 그 총점이 판정을 대신하게 된다.
     if a["adjudication_candidates"]:
         print("\n  판정 대기 — 라벨이 한 번도 읽지 않은 문서를 인용했다:")
         for qid, cited in a["adjudication_candidates"].items():
@@ -418,14 +418,14 @@ def main(argv: list[str] | None = None) -> int:
             pass
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--limit", type=int, default=40, help="LLM 을 부르는 횟수 — 돈이 든다")
-    ap.add_argument("--tag", default="", help="이 실행의 이름(모델 팔·반복 회차 구분용)")
+    ap.add_argument("--tag", default="", help="이 실행의 이름(모델 실험군·반복 회차 구분용)")
     # 라벨셋·매니페스트·테넌트가 인자인 이유: 하니스가 Pack B 에 못박혀 있으면 "다른 코퍼스에서도
     # 같은 수가 나오나" 를 물을 수 없고, 물을 수 없는 질문은 한계가 아니라 사각이 된다.
     ap.add_argument("--labels", type=Path, default=DEFAULT_LABELS, help="라벨 파일")
     ap.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST, help="팩 매니페스트")
     ap.add_argument("--tenant", default="default", help="재는 테넌트(라벨의 서명 테넌트와 같아야 한다)")
     # 등급은 **재는 조건**이지 상수가 아니다. 하드코딩돼 있던 동안, 그 등급으로 못 읽는 문서를
-    # gold 로 가진 질의는 어떤 질의문으로도 통과할 수 없었고 자는 그것을 "검색 실패" 로 적었다.
+    # gold 로 가진 질의는 어떤 질의문으로도 통과할 수 없었고 평가 하니스는 그것을 "검색 실패" 로 적었다.
     ap.add_argument("--clearance", default="INTERNAL",
                     help="이 등급으로 읽을 수 있는 것만 검색된다. gold 가 이보다 위면 실행이 거부된다")
     ap.add_argument("--model", default="", help="브리지에 넘길 모델. 비우면 백엔드 기본값")
@@ -434,7 +434,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="답변불가 5건도 돌린다 — 기권 탐지기의 **양성 대조군**이다. "
                          "거절하지 않는 대조군은 라벨 재판정 대상이다")
     ap.add_argument("--section-fill", choices=("on", "off"), default="",
-                    help="절 채움 팔 (비우면 배포 설정을 따른다). 팔을 가르는 스위치이지 "
+                    help="절 채움 실험군 (비우면 배포 설정을 따른다). 실험군을 가르는 스위치이지 "
                          "기본값이 아니다 — config.yaml 을 고치면 도는 앱까지 흔든다")
     ap.add_argument("--sufficiency", action="store_true",
                     help="근거 충분성도 판정한다(질의당 LLM 1회 추가). 이것 없이는 기권이 "

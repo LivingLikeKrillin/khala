@@ -2,7 +2,7 @@
 
 규칙은 측정 전에 `tests/eval/bm25-normalization/README.md` 에 박혔다.
 
-**제품 경로를 1차 지표로 쓴다.** A13 자는 다리별로 쟀는데 제품은 RRF 융합 + 다양화 + top_k
+**제품 경로를 1차 지표로 쓴다.** A13 평가 하니스는 다리별로 쟀는데 제품은 RRF 융합 + 다양화 + top_k
 컷을 쓴다 — 그래서 "재서 이겼는데 답이 안 바뀌는" 자리가 나왔다. 여기서는 `hybrid_search()`
 의 Recall@10 이 판정이고 다리 점수는 참고다.
 
@@ -26,7 +26,7 @@ import yaml  # noqa: E402
 
 from nexus import db  # noqa: E402
 
-#: 사전등록된 팔. 0 = 현직.
+#: 사전등록된 실험군. 0 = 현직.
 FLAGS = [0, 1, 2, 16, 32]
 TENANT = "default"
 CLEARANCE = "INTERNAL"
@@ -76,7 +76,7 @@ async def main() -> int:
     labels = yaml.safe_load(Path(args.labels).read_text(encoding="utf-8"))
     queries = [q for q in labels["queries"] if q.get("answerable")]
     kinds = {q["id"]: q.get("kind", "all") for q in queries}
-    print(f"질문 {len(queries)}건 · 팔 {FLAGS} · 라이브 {TENANT} 읽기 전용 · LLM 0회")
+    print(f"질문 {len(queries)}건 · 실험군 {FLAGS} · 라이브 {TENANT} 읽기 전용 · LLM 0회")
 
     await db.get_pool()
     try:

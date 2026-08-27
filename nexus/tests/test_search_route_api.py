@@ -19,7 +19,7 @@ def client(monkeypatch):
     """DB·Ollama 없이 라우팅 검증만 한다.
 
     `TestClient` 는 자기 이벤트 루프에서 요청을 돌리고, 그 안에서 만들어진 asyncpg 풀이
-    모듈 전역 `db._pool` 에 남는다. 루프가 닫히면 그 풀은 죽은 손잡이가 되고, 다음 테스트가
+    모듈 전역 `db._pool` 에 남는다. 루프가 닫히면 그 풀은 죽은 식별자가 되고, 다음 테스트가
     그것을 집어 `RuntimeError: Event loop is closed` 로 죽는다 — 실제로 그렇게 죽였다.
     끝나면 되돌린다.
     """

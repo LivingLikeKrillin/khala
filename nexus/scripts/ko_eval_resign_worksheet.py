@@ -52,7 +52,7 @@ def _requirement_state(groups: list[list[str]] | None, body: str) -> list[tuple[
     """`must_contain` 각 항목이 **지금 본문에서** 성립하는가 → (표시, 성립, 어느 표기가 맞았나).
 
     성립 여부는 **채점기의 함수**(`facts_present`)가 정한다. 여기서 관대한 사본을 쓰면 워크시트가
-    '본문에 있다' 고 말한 요구를 자가 답변에서 떨어뜨리는 조합이 생기고, 사람은 자기가 확인한
+    '본문에 있다' 고 말한 요구를 채점기가 답변에서 떨어뜨리는 조합이 생기고, 사람은 자기가 확인한
     것과 다른 것에 서명하게 된다. 맞은 표기만 여기서 다시 찾는다 — 보여 주려고.
     """
     ok = facts_present(groups, body)

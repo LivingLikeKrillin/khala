@@ -1,7 +1,7 @@
 """총점을 언제 내면 안 되는가 — `scripts/ko_eval_answer_run` 의 관문
 (SPEC-nexus-answer-quality-ruler §3.2).
 
-**관문이 숫자 뒤에 있으면 숫자를 보고 자를 고치게 된다.** 그래서 판단은 총점 출력 이전이고,
+**관문이 숫자 뒤에 있으면 숫자를 보고 평가 하니스를 고치게 된다.** 그래서 판단은 총점 출력 이전이고,
 막힌 실행도 리포트는 쓴다 — 판정할 재료가 그 리포트 안에 있기 때문이다. 파일이 `partial` 로
 막혔다는 사실을 말하고, 사람의 기억이 그 자리를 대신하지 않는다.
 """
@@ -218,7 +218,7 @@ async def test_the_gate_speaks_the_databases_vocabulary():
     이 파일의 게이트는 한때 자기 사본(`_LEVELS`)을 들고 있었고 거기엔 `CONFIDENTIAL` 이 있었다.
     Postgres enum 은 `PUBLIC < INTERNAL < RESTRICTED` 셋뿐이라, 그 이름으로 `--clearance` 를
     주면 **게이트는 통과시키고 SQL 캐스트가 터진다**. 정본을 지키는 parity 테스트는 이미
-    있었지만(`test_sql_enum_parity`), 사본은 그 그물 밖에 있었다.
+    있었지만(`test_sql_enum_parity`), 사본은 그 회귀 검사 밖에 있었다.
     """
     import pytest
 

@@ -172,7 +172,7 @@ async def test_a_number_the_user_typed_is_not_reported_as_invented():
 
 @pytest.mark.asyncio
 async def test_a_number_from_nowhere_is_still_reported():
-    """대조군. 위 완화가 검증기를 통째로 끄지 않았음을 보인다 — 그물은 일부러 깨뜨려 확인한다."""
+    """대조군. 위 완화가 검증기를 통째로 끄지 않았음을 보인다 — 회귀 검사은 일부러 깨뜨려 확인한다."""
     from nexus.llm.answer import generate_answer
 
     llm = _FakeLLM("응답 시간은 47ms 입니다. [출처: 문서 A, 1절]")
@@ -200,7 +200,7 @@ async def test_the_answerer_actually_sends_both_sentences_to_the_model():
 @pytest.fixture
 def client(monkeypatch):
     """`test_history_wire.py` 와 같은 이유로 풀을 되돌린다 — TestClient 의 루프가 닫히면
-    모듈 전역 asyncpg 풀은 죽은 손잡이가 되고, 다음 테스트가 그것을 집어 죽는다."""
+    모듈 전역 asyncpg 풀은 죽은 식별자가 되고, 다음 테스트가 그것을 집어 죽는다."""
     from nexus import db
 
     monkeypatch.setenv("NEXUS_DEV_TOKEN", _TOKEN)
@@ -293,7 +293,7 @@ def test_without_history_the_answerer_sees_no_second_sentence(client, monkeypatc
                     reason="NEXUS_TEST_DB_URL 필요")
 def test_the_streaming_surface_is_wired_the_same_way(client, monkeypatch):
     """웹이 쓰는 것은 이 경로다. 비스트림만 고치면 사람이 보는 표면은 그대로 무시한다 —
-    이 리포가 반복한 '사본이 정본 그물 밖' 이다."""
+    이 리포가 반복한 '사본이 정본 회귀 검사 밖' 이다."""
     seen: dict = {}
     _wire(monkeypatch, seen, rewritten="다시 쓴 질의")
 

@@ -90,7 +90,7 @@ def test_dash_range_is_not_folded_and_that_is_pinned():
 
 
 def test_variation_endpoints():
-    """§4.1 — 자의 양 끝."""
+    """§4.1 — 평가 하니스의 양 끝."""
     assert variation("Ava_01 60", "Ava_01 60") == 0.0
     assert variation("Ava_01", "ZZZ_99") == 1.0
 

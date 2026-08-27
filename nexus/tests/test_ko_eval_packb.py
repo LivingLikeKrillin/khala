@@ -70,7 +70,7 @@ def test_the_frozen_manifest_is_self_consistent():
 
 @pytest.mark.skipif(not MANIFEST.exists(), reason="Pack B 가 아직 얼려지지 않았다(로컬 전용)")
 def test_the_corpus_is_large_enough_for_the_window():
-    """창이 상위 10문서다. 코퍼스가 그보다 크지 않으면 두 팔이 바닥 위에 붙어 무승부만 쌓이고,
+    """창이 상위 10문서다. 코퍼스가 그보다 크지 않으면 두 실험군이 바닥 위에 붙어 무승부만 쌓이고,
     판정 규칙이 '검정력 부족' 을 돌려준다 (KOREAN_SEARCH_QUALITY.md §6.1)."""
     m = json.loads(MANIFEST.read_text(encoding="utf-8"))
     floor = 10 / m["documents"]
@@ -106,7 +106,7 @@ def test_the_manifest_still_records_body_size():
 def test_the_gate_is_the_measured_disagreement_not_a_document_count():
     """게이트가 무엇을 재는지 못박는다.
 
-    검정력을 예고하는 것은 문서 수가 아니라 **두 팔의 순위가 갈리는 자리**다. 문서 수는 구하기
+    검정력을 예고하는 것은 문서 수가 아니라 **두 실험군의 순위가 갈리는 자리**다. 문서 수는 구하기
     쉬운 양이었고, 갈리는 자리는 한 번 더 물어야 나오는 양이었다 — §6.2 가 지적한 실수를 그
     처방에서 그대로 반복했다.
     """

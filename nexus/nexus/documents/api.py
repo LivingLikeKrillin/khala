@@ -195,7 +195,7 @@ async def supersede_docs(req: SupersedeRequest, principal: Principal = Depends(d
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     # 해석된 rid 를 돌려준다: 되돌리려면(unsupersede) rid 가 필요한데, 그때 옛 문서는 이미
-    # active 가 아니라 경로로 다시 찾을 수 없다. 파괴한 자리에서 손잡이를 함께 준다.
+    # active 가 아니라 경로로 다시 찾을 수 없다. 파괴한 자리에서 식별자를 함께 준다.
     return _Envelope(
         data={"result": result, "old_rid": old_rid, "new_rid": new_rid},
         meta={"undo": f"POST /documents/{old_rid}/unsupersede (reason 필수)"},

@@ -2,10 +2,10 @@
 
 임베딩 비교의 벡터 다리는 **정확 스캔**이었고, 그 SPEC 이 문서로 "프로덕션(ivfflat)을 예측하지
 못한다" 고 적었다. 여기서 그 문장을 숫자로 바꾼다: 같은 팩·같은 라벨을 **프로덕션 경로**
-(`hybrid_search`, ivfflat 포함)로 다시 재고, 각 팔이 정확 스캔 대비 얼마를 잃는지 본다.
+(`hybrid_search`, ivfflat 포함)로 다시 재고, 각 실험군이 정확 스캔 대비 얼마를 잃는지 본다.
 
-**1차 판독은 팔 대 팔이 아니라 팔 대 자기 자신이다** (§4.6). 검색 경로를 바꾸면 판정된 적 없는
-문서가 새로 올라오고 그건 두 팔에 비대칭으로 불리하다 — 그래서 교차 비교는 기술용으로만 적고,
+**1차 판독은 실험군 대 실험군이 아니라 실험군 대 자기 자신이다** (§4.6). 검색 경로를 바꾸면 판정된 적 없는
+문서가 새로 올라오고 그건 두 실험군에 비대칭으로 불리하다 — 그래서 교차 비교는 기술용으로만 적고,
 컷오버 조건은 **자기 델타**(exact → ANN)에 건다.
 
 두 인덱스는 **같은 방식으로 사이징한 상태에서** 비교한다. 새 컬럼만 잘 맞춘 인덱스를 주면 모델이
@@ -61,7 +61,7 @@ class _Fixed:
 async def _seed_old_column(con) -> int:
     """옛 세대(nomic) 벡터를 평가 저장소에서 `chunks.embedding` 으로 옮긴다.
 
-    비교가 두 팔을 `ko_eval_embeddings` 에 담아 뒀는데, 프로덕션 경로는 `chunks` 를 읽는다.
+    비교가 두 실험군을 `ko_eval_embeddings` 에 담아 뒀는데, 프로덕션 경로는 `chunks` 를 읽는다.
     같은 벡터를 그대로 옮기는 것이므로 측정 대상이 달라지지 않는다.
     """
     return int((await con.execute(
@@ -138,9 +138,9 @@ def _write(results: dict, rows: int, lists: int, n: int) -> None:
         f"- **질의**: 답변가능 {n}건 · 라벨 revision 2 · 팩 ko-k8s-2026-08-01",
         "- **수치의 성격**: 앞선 비교와 같이 **하한** (풀 판정 보류)",
         "",
-        "## 1차 판독 — 각 팔의 자기 델타 (exact → ANN)",
+        "## 1차 판독 — 각 실험군의 자기 델타 (exact → ANN)",
         "",
-        "| 팔 | fused 정확 스캔 | fused ANN | 델타 |",
+        "| 실험군 | fused 정확 스캔 | fused ANN | 델타 |",
         "|---|---:|---:|---:|",
     ]
     for model, leg in results.items():
@@ -148,13 +148,13 @@ def _write(results: dict, rows: int, lists: int, n: int) -> None:
         lines.append(f"| {model} | {base:.3f} | {leg.recall:.3f} | {leg.recall - base:+.3f} |")
     lines += [
         "",
-        "> 이 비교가 1차인 이유: 같은 gold 로 같은 팔의 양쪽을 재므로, 판정 안 된 문서가 **양쪽에서**",
-        "> 똑같이 빠진다. 팔 대 팔 비교는 검색 경로가 바뀌며 새로 올라온 미판정 문서 때문에 비대칭이라",
+        "> 이 비교가 1차인 이유: 같은 gold 로 같은 실험군의 양쪽을 재므로, 판정 안 된 문서가 **양쪽에서**",
+        "> 똑같이 빠진다. 실험군 대 실험군 비교는 검색 경로가 바뀌며 새로 올라온 미판정 문서 때문에 비대칭이라",
         "> 기술용으로만 읽는다 (SPEC §4.6).",
         "",
-        "## 기술 — 팔 대 팔 (ANN 경로)",
+        "## 기술 — 실험군 대 실험군 (ANN 경로)",
         "",
-        "| 팔 | Recall@10 | MRR@10 | 미스 |",
+        "| 실험군 | Recall@10 | MRR@10 | 미스 |",
         "|---|---:|---:|---:|",
     ]
     for model, leg in results.items():
@@ -185,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
         print("✗ DATABASE_URL 이 없다")
         return 1
     if set(MODELS) != {m for m, _ in ARMS}:
-        print("✗ 레지스트리와 팔 목록이 어긋난다")
+        print("✗ 레지스트리와 실험군 목록이 어긋난다")
         return 1
     return asyncio.run(_run(args))
 

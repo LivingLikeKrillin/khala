@@ -332,7 +332,7 @@ def chunk_document(
                 sub_chunks = _split_text_with_overlap(
                     part_text, target_tokens, overlap_tokens, language)
                 # **조각마다 마커를 다시 싣는다.** 마커는 블록 첫 줄에 한 번만 있으므로, 쪼개면
-                # 두 번째 조각부터는 그림으로 돌아갈 손잡이가 없다 — 등급은 machine_read 인데
+                # 두 번째 조각부터는 그림으로 돌아갈 식별자가 없다 — 등급은 machine_read 인데
                 # 인용을 든 독자는 원본에 닿지 못하는 상태이고, ADR-0010 §2 가 이 등급을
                 # 받아들인 근거가 바로 그 닿음이다 (SPEC-nexus-vision-source-ref §4).
                 from nexus.ingest.vision import marker_line

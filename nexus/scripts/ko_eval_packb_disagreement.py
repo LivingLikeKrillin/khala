@@ -1,13 +1,13 @@
 """라벨 없이, 두 토크나이저가 이 코퍼스에서 **애초에 다른 답을 내놓는지** 잰다.
 
 왜 이것이 먼저인가. Pack B 트리거에 "실질 문서 ≥ 60" 을 넣으면서 근거로 든 것은 측정이 아니라
-추론이었다: *gold 후보가 19건뿐이면 두 팔이 같은 소수 문서를 두고 겨뤄 무승부가 쌓이고, 불일치쌍
+추론이었다: *gold 후보가 19건뿐이면 두 실험군이 같은 소수 문서를 두고 겨뤄 무승부가 쌓이고, 불일치쌍
 6 미만 → "검정력 부족" 이 나온다.* 그럴듯하지만 재보지 않았고, 그 추론 하나로 라벨 45건을 세웠다.
 
-**gold 없이도 잴 수 있는 부분이 있다.** 판정에는 정답이 필요하지만, "두 팔이 다른 문서를
+**gold 없이도 잴 수 있는 부분이 있다.** 판정에는 정답이 필요하지만, "두 실험군이 다른 문서를
 돌려주는가" 에는 필요 없다. 그리고 그것이 불일치쌍의 필요조건이다:
 
-    상위 10문서가 같다  →  두 팔의 Recall·MRR 이 같다  →  무승부  →  불일치쌍 0
+    상위 10문서가 같다  →  두 실험군의 Recall·MRR 이 같다  →  무승부  →  불일치쌍 0
 
 즉 여기서 차이가 거의 없으면 **라벨을 아무리 잘 써도 검정력 부족**이고, 차이가 넉넉하면 내
 "무승부가 쌓인다" 는 주장이 반증된다. 어느 쪽이든 라벨 노동 이전에 알 수 있다.
@@ -58,7 +58,7 @@ async def _snapshot_rows(con) -> list[dict]:
 
 
 async def run_arm(tokenizer, rows, queries, pool, tenant: str) -> dict[str, list[str]]:
-    """한 팔: 그 토크나이저로 색인하고 **그 토크나이저로** 질의한다.
+    """한 실험군: 그 토크나이저로 색인하고 **그 토크나이저로** 질의한다.
 
     색인과 질의가 어긋나면 그럴듯한 숫자가 나오고 아무 의미도 없다 — 그래서 한 컨텍스트 안에서
     한 번만 갈아끼운다 (SPEC-nexus-korean-retrieval-eval §4.3).
@@ -97,7 +97,7 @@ async def run_arm(tokenizer, rows, queries, pool, tenant: str) -> dict[str, list
         for q in queries:
             hits = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", WINDOW * 3)
             # 손으로 접지 않는다. 하니스의 접기는 **고아 저장소 가드**를 품고 있다 — 매핑이 빈
-            # 채로 접으면 두 팔이 나란히 0 을 내고, 2026-08-05 에 실제로 그 숫자가 나왔다.
+            # 채로 접으면 두 실험군이 나란히 0 을 내고, 2026-08-05 에 실제로 그 숫자가 나왔다.
             tops[q["id"]] = collapse_to_documents(hits, chunk_doc, limit=WINDOW)
     return tops
 
@@ -186,7 +186,7 @@ async def _run(args) -> int:
         docs = len({_doc_key(r["source_uri"]) for r in rows})
         print(f"Pack B: 문서 {docs} · 청크 {len(rows)} · 탐침 질의 {len(queries)}")
 
-        # 두 팔은 같은 테넌트를 순서대로 쓴다 — rid 가 테넌트를 품어서, 테넌트가 다르면 동점
+        # 두 실험군은 같은 테넌트를 순서대로 쓴다 — rid 가 테넌트를 품어서, 테넌트가 다르면 동점
         # 정렬 키까지 달라지고 토크나이저와 무관한 차이가 섞인다.
         arm = "ko_eval_arm"
         mecab_tops = await run_arm(mecab, rows, queries, pool, arm)

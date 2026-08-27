@@ -80,7 +80,7 @@ def collapse_to_documents(
     """(청크 rid, 순위) 목록 → 문서 목록. 같은 문서는 최선 순위 한 번만, 상위 `limit` 개.
 
     **빈 매핑은 0점이 아니라 중단이다.** `clean_db` 가 `chunks` 를 TRUNCATE 하면 평가 저장소는
-    살아남고 참조만 끊긴다. 그 상태로 접으면 모든 다리가 빈 목록을 돌려주고 두 팔이 나란히
+    살아남고 참조만 끊긴다. 그 상태로 접으면 모든 다리가 빈 목록을 돌려주고 두 실험군이 나란히
     `Recall@10 = 0.000` 을 낸다 — 2026-08-05 에 실제로 나온, 기제상 불가능한 숫자다. 공식 경로는
     `verify_arm` 이 막지만 그 검사를 우회하는 코드가 여기까지 온다. 여기서 멈춘다.
     """
@@ -240,9 +240,9 @@ async def load_pack(pack_dir: Path, tenant: str, con, config: dict | None = None
     chunk_doc: dict[str, str] = {}
     to_index: list[tuple[str, object]] = []
 
-    # rid 는 **테넌트를 포함한 uri 에서** 결정적으로 만든다. 두 토크나이저 팔은 서로 다른 테넌트에
+    # rid 는 **테넌트를 포함한 uri 에서** 결정적으로 만든다. 두 토크나이저 실험군은 서로 다른 테넌트에
     # 같은 문서를 적재하는데, `documents.rid` 는 테넌트가 아니라 전역 기본키다 — 경로만으로 만든
-    # rid 는 두 번째 팔에서 충돌한다.
+    # rid 는 두 번째 실험군에서 충돌한다.
     for f in sorted(docs_dir.rglob("*.md")):
         rel = f.relative_to(docs_dir).as_posix()
         text = f.read_text(encoding="utf-8")

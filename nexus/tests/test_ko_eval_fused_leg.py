@@ -76,7 +76,7 @@ async def test_fusion_promotes_the_document_both_legs_agree_on(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_without_a_vector_leg_only_keyword_runs(monkeypatch):
-    """벡터 팔이 없으면 융합도 없다 — 빈 벡터 다리와 융합하면 키워드를 융합이라 부르게 된다."""
+    """벡터 실험군이 없으면 융합도 없다 — 빈 벡터 다리와 융합하면 키워드를 융합이라 부르게 된다."""
     from nexus.search import hybrid
 
     async def fake_bm25(query, tenant, clearance, top_k):

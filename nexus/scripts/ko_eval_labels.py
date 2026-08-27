@@ -1,6 +1,6 @@
-"""한국어 평가 라벨 — 적재와 자 검사 (SPEC-nexus-korean-retrieval-eval §4.2, §6).
+"""한국어 평가 라벨 — 적재와 채점기 검사 (SPEC-nexus-korean-retrieval-eval §4.2, §6).
 
-**측정 전에 자를 먼저 검사한다.** 예전 조사에서 정답 id 를 8자 접두사로 줬다가 서로 다른 두
+**측정 전에 채점기를 먼저 검사한다.** 예전 조사에서 정답 id 를 8자 접두사로 줬다가 서로 다른 두
 페이지에 매칭됐고, 채점기가 정답 1위를 '회귀' 로 적었다. 그 허구를 고치려고 설계를 하나 만들 뻔했다.
 
 여기 게이트가 막는 것들:
@@ -169,7 +169,7 @@ def _as_corpus(source):
 
 
 def check(labels: dict, pack_dir, *, require_corpus_binding: bool = False) -> list[str]:
-    """라벨 파일의 자 검사. 문제 목록을 돌려준다(빈 목록 = 통과).
+    """라벨 파일의 채점기 검사. 문제 목록을 돌려준다(빈 목록 = 통과).
 
     `pack_dir` 는 디스크 팩 경로이거나 `ManifestPack` 같은 코퍼스다.
 
@@ -209,7 +209,7 @@ def check(labels: dict, pack_dir, *, require_corpus_binding: bool = False) -> li
     counts = dict.fromkeys(STRATA, 0)
     # 층 균형은 **한국어 형태소 비교 설계의 규칙**이지 모든 라벨의 규칙이 아니다
     # (SPEC-nexus-korean-embedding-comparison). 라이브 코퍼스의 답변 회귀용 라벨처럼 다른 목적의
-    # 자를 그 틀에 밀어 넣으면 `stratum` 이 뜻을 잃는다 — 없는 성질을 적어야 통과하니까.
+    # 채점기를 그 틀에 밀어 넣으면 `stratum` 이 뜻을 잃는다 — 없는 성질을 적어야 통과하니까.
     #
     # **선언으로 켠다. 추론하지 않는다.** "층 이름이 있으면 켠다" 같은 규칙은 오타 하나로 검사가
     # 조용히 꺼지는 길이고, 이 리포는 조용히 꺼진 검사에 여러 번 데였다.

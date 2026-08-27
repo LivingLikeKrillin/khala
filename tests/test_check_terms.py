@@ -99,6 +99,17 @@ def test_machine_read_image_text_is_not_our_prose():
                                   {"자": "평가 하니스"}) == []
 
 
+def test_an_interpolated_count_is_a_counter_too():
+    """`{len(body)}자` 는 f-string 안의 단위다. 숫자가 변수로 들어오면 앞 글자가 `}` 라
+    숫자 경계에 안 걸린다 — 실물에서 다섯 곳이 이 모양이었다."""
+    for line in (
+        'print(f"  {d.name}  ({len(d.body):,}자)  {d.title}")',
+        'echo "기본값이거나 24자 미만, 현재 ${#tok}자"',
+        'f"스니펫 {n}개 × 최대 {snippet_max_chars}자"',
+    ):
+        assert check_terms.check_line("nexus/x.md", line, {"자": "평가 하니스"}) == [], line
+
+
 def test_archival_paths_are_exempt():
     """과거는 그대로 둔다 — 컴포넌트 개명 때 정한 규칙과 같다."""
     line = "이 자가 통과시켰다"

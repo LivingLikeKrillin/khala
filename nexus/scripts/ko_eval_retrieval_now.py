@@ -1,4 +1,4 @@
-"""검색만 재는 자 — LLM 을 한 번도 부르지 않는다.
+"""검색만 재는 평가 하니스 — LLM 을 한 번도 부르지 않는다.
 
 답변 하니스(`ko_eval_answer_run.py`)는 질의당 한 번 LLM 을 부르고, 그 키가 없으면 아무 숫자도
 못 낸다. 그런데 오늘 코퍼스를 바꾼 것들(재적재·벡터 무효화·청크 텍스트 변경)이 부술 수 있는 것은
@@ -41,7 +41,7 @@ async def _run(args) -> int:
 
     labels = load(LABELS)
     if problems := check(labels, ManifestPack(MANIFEST), require_corpus_binding=True):
-        print("✗ 라벨 게이트 실패 — 측정 이전에 자가 틀렸다:", *problems[:4], sep="\n  ")
+        print("✗ 라벨 게이트 실패 — 측정 이전에 평가 하니스가 틀렸다:", *problems[:4], sep="\n  ")
         return 1
     if (signed := (labels.get("corpus") or {}).get("tenant")) != TENANT:
         print(f"✗ 라벨은 테넌트 {signed!r} 에 서명됐는데 재는 것은 {TENANT!r} 이다")
@@ -52,9 +52,9 @@ async def _run(args) -> int:
     print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 질의 {len(queries)}건 "
           f"(테넌트 {TENANT}, LLM 미사용)\n")
 
-    # **자는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
+    # **평가 하니스는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
     # 코드 기본값(`diversity_per_doc_cap=3`)으로 돌고, 배포는 config.yaml 의 5 로 돈다 —
-    # 즉 자가 아무도 안 쓰는 설정을 재게 된다 (2026-08-18 발견).
+    # 즉 평가 하니스가 아무도 안 쓰는 설정을 재게 된다 (2026-08-18 발견).
     svc = embedding_service_from_config()
     search_cfg = _load_config()
     pool = await db.get_pool()

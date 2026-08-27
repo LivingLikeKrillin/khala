@@ -1,4 +1,4 @@
-"""Pack A 답변 라벨 — 커밋된 자가 스스로 성립하는지 지킨다.
+"""Pack A 답변 라벨 — 커밋된 채점기가 스스로 성립하는지 지킨다.
 
 이 파일이 존재하는 이유는 `answer-labels.yaml` 이 **리포에 들어간 첫 답변 라벨**이기 때문이다.
 Pack B 라벨은 gitignore 라 CI 가 볼 수 없고, 그래서 지금까지 "요구가 gold 본문에서 성립한다" 는
@@ -55,7 +55,7 @@ def test_every_requirement_holds_in_its_own_gold_document(labels):
 
 
 def test_the_requirements_do_not_pass_against_the_wrong_document(labels):
-    """대조군 — 옆 질의의 gold 에 대면 떨어져야 한다. 안 떨어지면 이 검사는 눈금이 없다."""
+    """대조군 — 옆 질의의 gold 에 대면 떨어져야 한다. 안 떨어지면 이 검사는 분별력이 없다."""
     qs = [q for q in answerable(labels) if q["gold"]]
     survived = []
     for i, q in enumerate(qs):
@@ -64,7 +64,7 @@ def test_the_requirements_do_not_pass_against_the_wrong_document(labels):
             continue                      # 같은 문서를 공유하면 대조가 성립하지 않는다
         if all(facts_present(q["must_contain"], _body(other))):
             survived.append((q["id"], other["id"]))
-    # 어휘가 겹치는 쿠버네티스 문서들이라 일부는 통과할 수 있다. 대다수가 통과하면 눈금이 없는 것.
+    # 어휘가 겹치는 쿠버네티스 문서들이라 일부는 통과할 수 있다. 대다수가 통과하면 분별력이 없는 것.
     assert len(survived) <= len(qs) // 4, f"요구가 남의 문서에서도 통과한다: {survived}"
 
 

@@ -2,7 +2,7 @@
 
 규칙은 측정 전에 `tests/eval/tokenizer-surface/README.md` 에 박혔다.
 
-**두 팔은 벡터가 완전히 같다.** 토크나이저는 `tsvector` 에만 쓰이고 임베딩은 원문을 쓰므로,
+**두 실험군은 벡터가 완전히 같다.** 토크나이저는 `tsvector` 에만 쓰이고 임베딩은 원문을 쓰므로,
 라이브 청크를 **임베딩째 복사**해서 BM25 색인만 다르게 건다. 그래서 이 측정은 제품 경로
 (`hybrid_search`)를 볼 수 있으면서도 한 시간짜리 재임베딩이 없다.
 
@@ -89,7 +89,7 @@ async def main() -> int:
 
         svc, cfg = embedding_service_from_config(), _load_config()
         arms = {"tok_a": MecabTokenizer(), "tok_b": SurfaceFormTokenizer()}
-        print(f"질문 {len(queries)}건 · 팔 {list(arms)} · 임베딩 복사(재계산 없음) · LLM 0회")
+        print(f"질문 {len(queries)}건 · 실험군 {list(arms)} · 임베딩 복사(재계산 없음) · LLM 0회")
 
         results: dict[str, dict] = {}
         try:

@@ -7,7 +7,7 @@ DB 없이 도는 단위 테스트 수백 개가 `hybrid_search` 를 부르는데
 검색 파일에 사는 모양이었다.
 
 파일을 가른 것은 문서가 아니라 검사였다: `test_search_determinism_db` 는 `hybrid.py` 의 **모든**
-`ORDER BY` 가 `c.rid ASC` 로 끝나는지 훑는다(검색 다리는 전순서여야 하므로). 진단용 집계의
+`ORDER BY` 가 `c.rid ASC` 로 끝나는지 훑는다(검색 경로는 전순서여야 하므로). 진단용 집계의
 `ORDER BY 2 DESC` 가 거기 걸렸고, 검사를 좁히는 대신 함수를 옮겼다 — 검사가 옳았다.
 """
 

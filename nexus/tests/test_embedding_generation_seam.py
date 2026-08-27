@@ -145,7 +145,7 @@ def test_a_column_outside_the_whitelist_is_refused_from_config_or_env(monkeypatc
         embedding_service_from_config({})
 
 
-# ── 어느 컬럼을 읽는가: 검색 다리와 팩토리가 같은 답을 봐야 한다 ─────────────
+# ── 어느 컬럼을 읽는가: 검색 경로와 팩토리가 같은 답을 봐야 한다 ─────────────
 
 
 def test_the_read_path_and_the_factory_resolve_the_same_column(monkeypatch):
@@ -175,7 +175,7 @@ def test_no_production_path_constructs_the_service_with_defaults():
     offenders = []
     for path in root.rglob("*.py"):
         # 문자열 검색이 아니라 **호출 노드**를 본다 — 주석·독스트링의 언급은 결함이 아니고,
-        # 그걸 못 가리면 이 그물은 문서를 고칠 때마다 울린다.
+        # 그걸 못 가리면 이 회귀 검사은 문서를 고칠 때마다 울린다.
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)

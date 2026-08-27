@@ -1,4 +1,4 @@
-"""A13 — 문서 제목을 검색 텍스트에 넣으면 키워드 다리가 좋아지는가. **재보는 자, 제품 아님.**
+"""A13 — 문서 제목을 검색 텍스트에 넣으면 키워드 다리가 좋아지는가. **재보는 평가 하니스, 제품 아님.**
 
 라이브 코퍼스 실측(2026-08-15, `default` 활성 309청크):
 
@@ -16,7 +16,7 @@ Pack A 로는 이걸 못 잰다: 그 코퍼스는 H1 이 곧 문서 제목이라
 (`ko_eval_harness.verdict`): 질의별 승패는 키워드 **Recall@10**, 동점이면 **MRR@10**,
 양측 부호검정 α=0.05, **불일치쌍 6건 미만이면 "검정력 부족"**(차이 없음이 아니다).
 
-두 팔은 같은 청크·같은 토크나이저·같은 질의다. 다른 것은 접두사 하나뿐이다:
+두 실험군은 같은 청크·같은 토크나이저·같은 질의다. 다른 것은 접두사 하나뿐이다:
 
     A(현직)  [section_path]                      · 오늘 배포된 그대로
     B(후보)  [제목 > section_path] / [제목]       · section_path 가 root 면 제목만
@@ -44,7 +44,7 @@ from scripts.ko_eval_harness import (  # noqa: E402
 
 #: 기본은 2026-08-15 1회차와 같다 — 그 판정을 재현할 수 있어야 하므로 바꾸지 않는다.
 #: 2회차(2026-08-26)는 `--source default --labels <파일>` 로 **다른 코퍼스·다른 라벨**에 같은
-#: 자를 댄다. 사본을 만들지 않는 이유: 두 벌이 되는 순간 규칙이 갈라지고, 어느 쪽 숫자인지가
+#: 평가 하니스를 댄다. 사본을 만들지 않는 이유: 두 벌이 되는 순간 규칙이 갈라지고, 어느 쪽 숫자인지가
 #: 실행 기록 밖에 남는다.
 SOURCE = "ko_eval_packb"
 ARMS = {"a13_a": None, "a13_b": "title"}
@@ -61,7 +61,7 @@ def _arg(flag: str, default):
 
 
 def prefix_for(title: str, section_path: str) -> str:
-    """B 팔의 접두사. **제목이 이미 있으면 두 번 넣지 않는다** — 중복은 그 자체로 신호를 흐린다."""
+    """B 실험군의 접두사. **제목이 이미 있으면 두 번 넣지 않는다** — 중복은 그 자체로 신호를 흐린다."""
     section = (section_path or "root").strip()
     if section == "root" or not section:
         return f"[{title}]"
@@ -135,8 +135,8 @@ async def leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegResult:
 
 
 async def embed_arm(arm: str) -> int:
-    """이 팔의 청크를 **설정된 세대**로 임베딩한다. 인덱스는 안 만든다 — 289행이면 전수 스캔이고,
-    ANN 근사가 두 팔에 서로 다른 잡음을 얹는 것이 이 측정에서 제일 나쁜 일이다."""
+    """이 실험군의 청크를 **설정된 세대**로 임베딩한다. 인덱스는 안 만든다 — 289행이면 전수 스캔이고,
+    ANN 근사가 두 실험군에 서로 다른 잡음을 얹는 것이 이 측정에서 제일 나쁜 일이다."""
     from nexus.index.embed import index_chunks_embedding
     from nexus.index.vector_index import configured_column
     from nexus.providers.embedding import embedding_service_from_config
@@ -157,7 +157,7 @@ async def embed_arm(arm: str) -> int:
 
 
 async def vector_leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegResult:
-    """**컬럼을 명시해서 부른다.** 안 넘기면 기본 768 컬럼을 읽고, 이 팔은 1024 에 있다 —
+    """**컬럼을 명시해서 부른다.** 안 넘기면 기본 768 컬럼을 읽고, 이 실험군은 1024 에 있다 —
     같은 실수로 "벡터 다리가 죽었다" 를 보고할 뻔한 적이 있다."""
     from nexus.index.vector_index import configured_column
     from nexus.providers.embedding import embedding_service_from_config

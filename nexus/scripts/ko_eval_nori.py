@@ -6,7 +6,7 @@ ADR-0008 §2.6 의 nori 탐색이 아무것도 증명하지 못한 첫째 이유
 `_analyze` API 로 **토큰만** 얻어 와서, 그 토큰을 우리의 `tokens_to_tsquery` · 우리의 tsvector ·
 우리의 `ts_rank_cd` 에 그대로 넣는다. 남는 차이는 **분해**뿐이다.
 
-둘째 이유가 될 뻔한 것은 **품사 필터**다. mecab 팔은 `_INCLUDE_POS` 로 걸러지는데 nori 팔이
+둘째 이유가 될 뻔한 것은 **품사 필터**다. mecab 실험군은 `_INCLUDE_POS` 로 걸러지는데 nori 실험군이
 안 걸러지면, 그 차이를 "분해 차이" 라고 부르게 된다. 그래서 `explain: true` 로 품사를 받아
 **같은 allow-list 를 우리 코드에서** 적용한다(`nori_part_of_speech` stoptags 로 근사하지 않는다).
 nori 와 mecab-ko 는 같은 mecab-ko-dic 태그셋을 쓰므로 이 비교가 성립한다.
@@ -39,7 +39,7 @@ class NoriTokenizer:
         self.decompound_mode = decompound_mode
         self.id = f"nori-{decompound_mode}"
         self.policy = (f"nori(decompound_mode={decompound_mode}, user_dictionary=none) + "
-                       f"POS allow-list {sorted(_INCLUDE_POS)} (mecab 팔과 동일)")
+                       f"POS allow-list {sorted(_INCLUDE_POS)} (mecab 실험군과 동일)")
         self.unknown_tags: dict[str, int] = {}     # allow-list 밖 태그 — 리포트에 그대로 적는다
 
     def analyze(self, text: str) -> list[tuple[str, str]]:
