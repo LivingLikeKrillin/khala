@@ -396,13 +396,37 @@ def label_is_usable(expect: list[str], superseded: list[str]) -> tuple[bool, str
     return True, ""
 
 
-def asserts_all(expect_all: list[str], answer: str) -> bool:
-    """종합 — 값이 **전부** 결론에 서야 한다. 값마다 2판 판정을 따로 적용한다.
+def prose_segments(answer_text: str) -> list[str]:
+    """표·인용·헤딩이 아닌 **산문** 세그먼트.
 
-    ⚠ *"두 값을 연결해 설명했는가"* 는 재지 못한다. 문자열 규칙으로 연결은 판정할 수 없고,
-    그 한계는 규칙에 미리 적혀 있다.
+    다중 부분 질문에서 둘째 값은 자기 소제목 밑에 앉는다. 그래서 *선두 또는 결론* 이라는
+    **전역 위치**가 뜻을 잃는다 — 그 규칙은 단일 값 질문의 것이다(`asserts_value` 주석 참조).
+    대신 남기는 성질은 2판이 실제로 사고 싶었던 것 하나다: **늘어놓기와 말하기를 가른다.**
+    표 행·인용 줄에만 있는 값은 여전히 통과하지 못한다.
     """
-    return bool(expect_all) and all(asserts_value([e], answer) for e in expect_all)
+    return [s for s in segments(answer_text) if not _is_break(s)]
+
+
+def asserts_part(surfaces: list[str], answer_text: str) -> bool:
+    """값 하나가 **산문으로** 말해졌는가. 위치는 보지 않는다."""
+    if not surfaces:
+        return False
+    said = " ".join(prose_segments(answer_text))
+    return all(facts_present([list(surfaces)], said))
+
+
+def asserts_all(expect_all: list[str], answer: str) -> bool:
+    """종합 — 값이 **전부** 산문으로 말해졌는가.
+
+    ⚠ **첫 판은 `asserts_value` 를 값마다 돌렸고 그건 오용이었다.** 그 함수 주석이
+    *"여러 항목을 AND 로 요구하는 라벨에는 뜻이 없다"* 고 미리 적어 뒀는데 그대로 어겼다.
+    실물로 드러났다(2026-08-28): 값 둘이 근거에도 답변에도 다 있는 답이 실패로 찍혔다 —
+    둘째 값이 소제목 밑 산문에 있었기 때문이다.
+
+    ⛔ 점수를 보고 규칙을 무르게 고친 것이 아니다. **정의역 밖에 쓴 것을 되돌린 것**이고,
+    그 전에 나온 종합 라벨 점수는 무효다.
+    """
+    return bool(expect_all) and all(asserts_part([e], answer) for e in expect_all)
 
 
 def asserts_current_not_stale(expect: list[str], superseded: list[str], answer: str) -> bool:
