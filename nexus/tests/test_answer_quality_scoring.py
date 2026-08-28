@@ -130,3 +130,58 @@ def test_a_failed_call_is_not_hidden_in_the_aggregate():
     assert a["llm_failed"] == 1, "실패 건수가 안 보이면 0% 를 '품질' 로 읽게 된다"
     assert a["facts_measurable"] == 1, "실패한 건은 측정한 것이 아니다"
     assert a["facts_present"] == 1 and a["all_three"] == 1
+
+
+class TestSynthesisAndRecencyScoring:
+    """3판 — 규칙은 tests/eval/answer-facts/README.md §3판에 측정 전에 박혔다."""
+
+    def test_synthesis_needs_every_value_in_the_conclusion(self):
+        from scripts.ko_eval_answer_quality import asserts_all
+        both = "추가할 인덱스는 idx_ual_partyroom_event_time 이고, 마이그레이션 파일은 V34__x.sql 이다."
+        assert asserts_all(["idx_ual_partyroom_event_time", "V34__x.sql"], both) is True
+
+    def test_synthesis_fails_when_only_one_value_lands(self):
+        """⛔ 이게 통과하면 '문서 하나를 잘 찾았다' 를 종합이라 부르게 된다."""
+        from scripts.ko_eval_answer_quality import asserts_all
+        one = "추가할 인덱스는 idx_ual_partyroom_event_time 이다."
+        assert asserts_all(["idx_ual_partyroom_event_time", "V34__x.sql"], one) is False
+
+    def test_recency_passes_when_the_current_value_is_the_conclusion(self):
+        from scripts.ko_eval_answer_quality import asserts_current_not_stale
+        ans = "지금 쓰는 인덱스는 crew_partyroom_id_user_id_IDX 이다."
+        assert asserts_current_not_stale(["crew_partyroom_id_user_id_IDX"],
+                                         ["crew_partroom_id_IDX"], ans) is True
+
+    def test_recency_allows_naming_the_old_value_while_rejecting_it(self):
+        """좋은 답은 낡은 값을 들면서 기각한다. 언급을 감점하면 그 답이 떨어진다."""
+        from scripts.ko_eval_answer_quality import asserts_current_not_stale
+        ans = ("지금 쓰는 인덱스는 crew_partyroom_id_user_id_IDX 이다. "
+               "예전 crew_partroom_id_IDX 는 DB-1 에서 대체됐다.")
+        assert asserts_current_not_stale(["crew_partyroom_id_user_id_IDX"],
+                                         ["crew_partroom_id_IDX"], ans) is True
+
+    def test_recency_fails_when_the_old_value_is_the_conclusion(self):
+        """⛔ 이 리포가 실제로 겪은 실패다 — 답변이 낡은 값을 정본으로 읽었다."""
+        from scripts.ko_eval_answer_quality import asserts_current_not_stale
+        ans = "crew_partroom_id_IDX 를 쓴다."
+        assert asserts_current_not_stale(["crew_partyroom_id_user_id_IDX"],
+                                         ["crew_partroom_id_IDX"], ans) is False
+
+    def test_a_label_whose_current_value_hides_inside_the_stale_one_is_refused(self):
+        """부분일치가 낡은 값 안에서 지금 값을 찾아내 언제나 통과시킨다."""
+        from scripts.ko_eval_answer_quality import label_is_usable
+        ok, why = label_is_usable(["DjWithProfileDto"], ["CurrentDjWithProfileDto"])
+        assert ok is False and "부분열" in why
+
+    def test_a_normal_label_passes_the_self_check(self):
+        from scripts.ko_eval_answer_quality import label_is_usable
+        assert label_is_usable(["crew_partyroom_id_user_id_IDX"],
+                               ["crew_partroom_id_IDX"])[0] is True
+
+    def test_recency_fails_when_the_old_value_leads_and_the_new_one_trails(self):
+        """⛔ 읽는 사람은 먼저 만나는 값을 가져간다. 뒤에 정정이 붙어도 선두가 낡았으면 실패다."""
+        from scripts.ko_eval_answer_quality import asserts_current_not_stale
+        ans = ("crew_partroom_id_IDX 를 쓴다. "
+               "다만 지금은 crew_partyroom_id_user_id_IDX 로 대체됐다.")
+        assert asserts_current_not_stale(["crew_partyroom_id_user_id_IDX"],
+                                         ["crew_partroom_id_IDX"], ans) is False
