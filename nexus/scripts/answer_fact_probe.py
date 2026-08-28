@@ -47,6 +47,33 @@ def _norm(s: str) -> str:
     return re.sub(r"[\s,]+", "", s or "")
 
 
+def summary_lines(rows: list[dict], for_signature: bool) -> list[str]:
+    """요약 줄. **서명 전에는 비율을 만들지 않는다.**
+
+    한 번 찍힌 수는 인용된다 — 이 리포는 라벨 문제를 그렇게 물려받았다. 그래서 이 함수는
+    `for_signature` 일 때 어떤 분수도 내지 않는다. 조립을 함수로 뺀 이유는 그 성질을
+    **소스 문자열이 아니라 출력으로** 확인하기 위해서다.
+    """
+    n = len(rows)
+    p = sum(r["pass"] for r in rows)
+    a = sum(r["asserted"] for r in rows)
+    if for_signature:
+        return ["",
+                "  서명 전이므로 총점을 내지 않는다. 위의 질의별 결과와 답변만 읽어라.",
+                "  확인할 것: (1) 지금 값이 정말 지금 값인가 (2) 낡은 값이 정말 낡았는가",
+                "  서명하면 라벨 파일의 signed_off 를 true 로 바꾸고 다시 돌린다."]
+    out = ["",
+           f"  1판 언급(부분일치) **{p}/{n} = {p / n:.3f}**",
+           f"  2판 주장(선두·결론)  **{a}/{n} = {a / n:.3f}**"
+           f"   — 값은 담고도 결론을 안 낸 답변 {p - a}건"]
+    mismatch = [r["id"] for r in rows if r["pass"] != r["mentioned"]]
+    if mismatch:
+        out.append(f"  ⚠ 두 정규화가 갈린 질의: {mismatch}")
+    out.append(f"  낡은 값이 언급된 답변 {sum(1 for r in rows if r['distractor_seen'])}건 "
+               "(판정에 안 들어감 — 좋은 답도 기각하며 언급한다)")
+    return out
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--labels", required=True)
@@ -129,14 +156,14 @@ async def main() -> int:
         n = len(rows)
         p = sum(r["pass"] for r in rows)
         a = sum(r["asserted"] for r in rows)
-        mismatch = [r["id"] for r in rows if r["pass"] != r["mentioned"]]
-        print(f"\n  1판 언급(부분일치) **{p}/{n} = {p/n:.3f}**")
-        print(f"  2판 주장(선두·결론)  **{a}/{n} = {a/n:.3f}**"
-              f"   — 값은 담고도 결론을 안 낸 답변 {p - a}건")
-        if mismatch:
-            print(f"  ⚠ 두 정규화가 갈린 질의: {mismatch}")
-        print(f"  낡은 값이 언급된 답변 {sum(1 for r in rows if r['distractor_seen'])}건 "
-              "(판정에 안 들어감 — 좋은 답도 기각하며 언급한다)")
+        for line in summary_lines(rows, args.for_signature):
+            print(line)
+        if args.for_signature:
+            if args.save_answers:
+                Path(args.save_answers).write_text(
+                    json.dumps(answers, ensure_ascii=False, indent=2), encoding="utf-8")
+                print(f"  답변 원문: {args.save_answers}")
+            return 0
         if args.out:
             Path(args.out).write_text(json.dumps(
                 {"n": n, "passed": p, "asserted": a, "rows": rows},
