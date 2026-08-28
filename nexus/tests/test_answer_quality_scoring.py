@@ -185,3 +185,25 @@ class TestSynthesisAndRecencyScoring:
                "다만 지금은 crew_partyroom_id_user_id_IDX 로 대체됐다.")
         assert asserts_current_not_stale(["crew_partyroom_id_user_id_IDX"],
                                          ["crew_partroom_id_IDX"], ans) is False
+
+    def test_the_signature_run_prints_no_ratio_at_all(self):
+        """⛔ 한 번 찍힌 비율은 인용된다. `--for-signature` 의 뜻은 '점수를 안 낸다' 이고,
+        처음 구현은 그 플래그를 켜고도 총점을 찍었다 — 규칙을 어긴 것이 구현이었다."""
+        from scripts.answer_fact_probe import summary_lines
+        rows = [{"id": "R1", "pass": True, "asserted": True, "mentioned": True,
+                 "distractor_seen": []},
+                {"id": "R2", "pass": False, "asserted": False, "mentioned": False,
+                 "distractor_seen": []}]
+        text = " ".join(summary_lines(rows, for_signature=True))
+        assert "/" not in text and "0." not in text, text
+        assert "서명" in text
+
+    def test_a_signed_run_still_prints_the_ratio(self):
+        """대조군 — 서명 뒤에는 수가 나와야 한다. 안 그러면 게이트가 하니스를 없앤 것이다."""
+        from scripts.answer_fact_probe import summary_lines
+        rows = [{"id": "R1", "pass": True, "asserted": True, "mentioned": True,
+                 "distractor_seen": []},
+                {"id": "R2", "pass": False, "asserted": False, "mentioned": False,
+                 "distractor_seen": []}]
+        text = " ".join(summary_lines(rows, for_signature=False))
+        assert "1/2 = 0.500" in text
