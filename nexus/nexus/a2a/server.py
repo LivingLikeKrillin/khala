@@ -310,7 +310,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
     from nexus.providers.llm import LLMService
     from nexus.repositories.graph import PostgresGraphRepository
     from nexus.rid import entity_rid
-    from nexus.search.evidence_packet import assemble_packet
+    from nexus.search.reconcile import packet_for_answer
     from nexus.search.hybrid import hybrid_search
     from nexus.search.router import determine_route
 
@@ -342,8 +342,9 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
         embedding_svc=embedding_svc, graph_repo=graph_repo, route=route,
         entity_rids=entity_rids, config=config,
     )
-    packet = await assemble_packet(search_result.hits, search_result.graph, tenant,
-                                   fill=search_result.fill)
+    packet = await packet_for_answer(search_result, tenant, clearance,
+                                     config=config, search=hybrid_search,
+                                     embedding_svc=embedding_svc)
     answer_result = await generate_answer(
         query=query, packet=packet, llm_svc=llm_svc,
         route_used=route, timing_ms=search_result.timing_ms,

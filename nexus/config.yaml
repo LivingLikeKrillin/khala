@@ -81,6 +81,12 @@ search:
   # 랭킹으로도 못 간다. 순위는 안 건드리고 근거만 는다(단일홉 평가에서 +22%, 해는 관측 안 됨).
   # 코드 기본값은 꺼짐이다: 설정 없는 호출부가 DB 를 새로 치지 않게 하려는 것이다.
   section_fill: true
+  # 정정 확인 패스 — 1차 근거가 부른 이름에 변경 어휘를 붙여 한 번 더 검색한다
+  # (`search/reconcile.py`). **정정당한 문서가 정정한 문서를 이기는 것**을 막는다.
+  # 측정 2026-08-29: 처치 대상 라벨 0/5 → 3/5, 대조군 무해, 검색 300 → 1,065 ms.
+  # 코드 기본값은 꺼짐이고 답변 경로에만 걸린다 — 검색만 하는 경로에서는 그 3.5배가
+  # 그대로 사용자에게 보인다.
+  reconcile_pass: true
   snippet_max_chars: 300       # 근거 스니펫 최대 길이(문장 경계에서 컷, SPEC-nexus-snippet-boundary-truncation)
   # 어느 임베딩 세대를 읽을지 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버도 롤백도 이 값 하나다.
   # embedding=nomic-embed-text(768) · embedding_1024=KURE-v1(1024). 화이트리스트 밖이면 기동 실패.

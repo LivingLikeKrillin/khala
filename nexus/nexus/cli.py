@@ -279,7 +279,7 @@ def query(
         from nexus.providers.llm import LLMService
         from nexus.repositories.graph import PostgresGraphRepository
         from nexus.rid import entity_rid
-        from nexus.search.evidence_packet import assemble_packet
+        from nexus.search.reconcile import packet_for_answer
         from nexus.search.hybrid import hybrid_search
         from nexus.search.router import determine_route
 
@@ -321,8 +321,10 @@ def query(
         if answer and result.hits:
             typer.echo("─" * 60)
             typer.echo("답변 생성 중...\n")
-            packet = await assemble_packet(result.hits, result.graph, tenant,
-                                           fill=result.fill)
+            # 등급은 이 명령이 검색에 넘긴 값과 **같은 것**을 쓴다(위 `hybrid_search`).
+            packet = await packet_for_answer(result, tenant, "INTERNAL",
+                                             config=config, search=hybrid_search,
+                                             embedding_svc=embedding_svc)
             llm_svc = LLMService()
             answer_result = await generate_answer(
                 query=q, packet=packet, llm_svc=llm_svc,

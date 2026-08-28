@@ -38,6 +38,7 @@ from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.anchor_status import summarize as _anchor_summary
 from nexus.search.evidence_packet import assemble_packet, format_for_llm
+from nexus.search.reconcile import packet_for_answer
 from nexus.search import history as history_module
 from nexus.search.corpus_scope import visibility_counts
 from nexus.search.hybrid import hybrid_search
@@ -583,9 +584,10 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             channels=channels,
         )
 
-        # Evidence packet 조립
-        packet = await assemble_packet(search_result.hits, search_result.graph, req.tenant,
-                                       fill=search_result.fill)
+        # 답변용 근거 패킷은 한 함수로만 만든다 (`search/reconcile.py`).
+        packet = await packet_for_answer(
+            search_result, req.tenant, req.classification_max,
+            config=config, search=hybrid_search, embedding_svc=embedding_svc)
 
         # LLM 답변 생성
         answer_result = await generate_answer(
