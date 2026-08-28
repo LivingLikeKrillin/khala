@@ -27,7 +27,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import yaml  # noqa: E402
 
 from nexus import db  # noqa: E402
-from scripts.ko_eval_answer_quality import asserts_value, facts_present  # noqa: E402
+from scripts.ko_eval_answer_quality import (  # noqa: E402
+    asserts_all,
+    asserts_current_not_stale,
+    asserts_value,
+    facts_present,
+    label_is_usable,
+)
 
 #: 기본 코퍼스. `--tenant` 로 바꿀 수 있다 — 합친 코퍼스(`merge_probe`)와 견주려면
 #: **같은 라벨·같은 채점기**로 양쪽을 돌려야 하기 때문이다. 채점은 답변 텍스트만 보므로
@@ -46,6 +52,8 @@ async def main() -> int:
     ap.add_argument("--labels", required=True)
     ap.add_argument("--tenant", default=TENANT,
                     help="어느 코퍼스에 물을 것인가 (기본: default)")
+    ap.add_argument("--for-signature", action="store_true",
+                    help="서명 전 라벨을 사람이 읽으려고 돌린다 — 답변은 내고 **점수는 안 낸다**")
     ap.add_argument("--out", default="")
     ap.add_argument("--only", default="", help="쉼표로 구분한 id — 그것만 돈다")
     ap.add_argument("--fill", choices=("on", "off"), default="",
@@ -56,6 +64,15 @@ async def main() -> int:
 
     labels = yaml.safe_load(Path(args.labels).read_text(encoding="utf-8"))
     queries = labels["queries"]
+    # ⛔ **서명 전 라벨로 점수를 내지 않는다** (README §3판). 키가 없는 옛 라벨 파일은
+    #    이미 서명된 것으로 읽는다 — 새 규칙이 옛 측정을 소급해서 막으면 안 된다.
+    signed = bool(labels.get("signed_off", True))
+    if not signed and not args.for_signature:
+        print("  이 라벨은 아직 서명 전이다 — 점수를 내지 않는다.")
+        print("  사람이 확인할 것: (1) 지금 값이 정말 지금 값인가 "
+              "(2) 낡은 값이 정말 낡았는가.")
+        print("  답변을 읽으려면 --for-signature 로 돌려라.")
+        return 1
     if args.only:
         want = {q.strip() for q in args.only.split(",") if q.strip()}
         queries = [q for q in queries if q["id"] in want]
@@ -86,6 +103,16 @@ async def main() -> int:
             ok = any(_norm(e) in nt for e in expect)
             # 2판 — **주장했는가**. 같은 값을 담고도 결론을 안 낸 답변을 1판은 통과시킨다.
             said = asserts_value(expect, text)
+            # 3판 — 종합·최신성. 라벨이 그 모양일 때만 판정이 바뀐다.
+            if q.get("expect_all"):
+                ok = all(_norm(e) in nt for e in q["expect_all"])
+                said = asserts_all(q["expect_all"], text)
+            elif q.get("superseded") is not None:
+                usable, why = label_is_usable(expect, q["superseded"])
+                if not usable:
+                    print(f"  {q['id']:4} ⛔ 라벨 버림 — {why}", flush=True)
+                    continue
+                said = asserts_current_not_stale(expect, q["superseded"], text)
             # 두 정규화(쉼표 제거 vs 공백 축약)가 갈리는 자리를 드러내 둔다.
             mentioned = all(facts_present([expect], text)) if expect else False
             dis = [d for d in (q.get("distractor") or []) if _norm(d) in nt]

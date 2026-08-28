@@ -380,3 +380,55 @@ def grid(scores: list[AnswerScore], sufficiency: dict[str, str]) -> dict:
     return {k: {"n": len(v), "qids": sorted(v),
                 "means": CELL_MEANING.get(tuple(k.split("/")), "")}
             for k, v in sorted(cells.items())}
+
+
+# ── 3판: 종합·최신성 (규칙은 tests/eval/answer-facts/README.md §3판) ──────────
+
+
+def label_is_usable(expect: list[str], superseded: list[str]) -> tuple[bool, str]:
+    """⛔ **라벨 자체 검사.** `expect` 가 `superseded` 의 부분열이면 부분일치가 낡은 값
+    안에서 지금 값을 찾아내 **언제나 통과**시킨다. 실제로 후보 하나가 여기 걸려 버려졌다.
+    """
+    for e in expect or []:
+        for old in superseded or []:
+            if e and old and e in old:
+                return False, f"expect {e!r} 가 superseded {old!r} 의 부분열이다"
+    return True, ""
+
+
+def asserts_all(expect_all: list[str], answer: str) -> bool:
+    """종합 — 값이 **전부** 결론에 서야 한다. 값마다 2판 판정을 따로 적용한다.
+
+    ⚠ *"두 값을 연결해 설명했는가"* 는 재지 못한다. 문자열 규칙으로 연결은 판정할 수 없고,
+    그 한계는 규칙에 미리 적혀 있다.
+    """
+    return bool(expect_all) and all(asserts_value([e], answer) for e in expect_all)
+
+
+def asserts_current_not_stale(expect: list[str], superseded: list[str], answer: str) -> bool:
+    """최신성 — 지금 값이 **낡은 값보다 앞에서** 주장되는가.
+
+    ⚠ **첫 규칙은 틀렸고, 측정 전에 검사가 잡았다.** 처음에는 *"낡은 값을 주장하지 않는다"*
+    로 적었는데, 그러면 **좋은 답이 떨어진다**: *"지금은 A 다. 예전 B 는 대체됐다"* 에서 뒤
+    문장도 결론 자리에 서기 때문이다. 낡은 값을 들면서 기각하는 것은 좋은 답의 모양이고,
+    2판이 언급과 주장을 가른 이유가 여기서 값을 한다.
+
+    그래서 판정은 **순서**다 — 부정 어휘 목록(대체·폐기·아니다…)을 만들지 않는다. 그런 목록은
+    문장이 조금만 달라져도 무너지고, 이 리포는 그 자리에서 이미 데었다. 읽는 사람이 먼저 만나는
+    값이 지금 값이면 통과다.
+    """
+    if not asserts_value(expect, answer):
+        return False
+    if not superseded:
+        return True
+    said = _norm(" ".join(lead_segments(answer) + verdict_segments(answer)))
+
+    def first(surfaces: list[str]) -> int | None:
+        hits = [said.find(_norm(x)) for x in surfaces if _norm(x) and _norm(x) in said]
+        return min(hits) if hits else None
+
+    old_at = first(superseded)
+    if old_at is None:
+        return True
+    new_at = first(expect)
+    return new_at is not None and new_at < old_at
