@@ -207,3 +207,22 @@ class TestSynthesisAndRecencyScoring:
                  "distractor_seen": []}]
         text = " ".join(summary_lines(rows, for_signature=False))
         assert "1/2 = 0.500" in text
+
+    def test_a_blocked_label_is_not_scored_as_a_failure(self):
+        """⛔ 값을 못 정한 이유가 코퍼스 쪽이면(현재 모양을 적은 문서가 없다) 그 라벨을
+        0점으로 세는 순간 **문서 부채가 답변 품질 점수로 둔갑한다.**"""
+        import yaml
+
+        from pathlib import Path
+        labels = yaml.safe_load(
+            Path(__file__).resolve().parents[1].joinpath(
+                "tests/eval/local/synthesis-recency.yaml").read_text(encoding="utf-8")
+        ) if Path(__file__).resolve().parents[1].joinpath(
+            "tests/eval/local/synthesis-recency.yaml").exists() else None
+        if labels is None:
+            import pytest
+            pytest.skip("라벨 파일은 gitignore 다 — CI 에는 없다")
+        blocked = [q for q in labels["queries"] if q.get("blocked_on")]
+        for q in blocked:
+            assert not q.get("expect") and not q.get("expect_all"), \
+                f"{q['id']}: 막힌 라벨에 기대값이 남아 있다"

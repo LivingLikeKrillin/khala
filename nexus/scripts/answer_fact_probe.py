@@ -100,6 +100,12 @@ async def main() -> int:
               "(2) 낡은 값이 정말 낡았는가.")
         print("  답변을 읽으려면 --for-signature 로 돌려라.")
         return 1
+    # **막힌 라벨은 돌리지 않는다.** 값을 못 정한 이유가 코퍼스 쪽에 있으면(예: 현재 모양을
+    # 적은 문서가 없다), 그것을 0점으로 세는 순간 문서 부채가 답변 품질 점수로 둔갑한다.
+    blocked = [q for q in queries if q.get("blocked_on")]
+    for q in blocked:
+        print(f"  {q['id']:4} — 건너뜀: {q['blocked_on']}")
+    queries = [q for q in queries if not q.get("blocked_on")]
     if args.only:
         want = {q.strip() for q in args.only.split(",") if q.strip()}
         queries = [q for q in queries if q["id"] in want]
