@@ -173,6 +173,24 @@ def added_lines(diff: str) -> list[tuple[str, str]]:
     return out
 
 
+def _diff_text(base: str) -> str:
+    """기준부터 **지금 작업물까지**의 diff.
+
+    ⚠ 예전에는 `base...HEAD` 하나만 봤다. 그러면 **커밋 전 로컬 실행이 아무것도 못 본다** —
+    방금 쓴 줄은 아직 커밋에 없기 때문이다. 2026-08-28 에 그것 때문에 로컬은 초록인데 CI 가
+    빨간불이었고, 걸린 줄은 하필 **이 규칙을 설명하는 문장 자체**였다.
+
+    그래서 커밋된 것(`base...HEAD`)과 작업 트리(`HEAD` 대비, staged+unstaged)를 **둘 다**
+    본다. CI 는 트리가 깨끗하니 뒤엣것이 비고, 동작은 그대로다.
+    """
+    parts = []
+    for args in (["git", "diff", "--unified=0", f"{base}...HEAD"],
+                 ["git", "diff", "--unified=0", "HEAD"]):
+        r = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
+        parts.append(r.stdout or "")
+    return "\n".join(parts)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="새 산문에 걷어낸 말이 들어왔는지 본다")
     ap.add_argument("--base", default=None, help="비교 기준 (기본: origin/master 또는 master)")
@@ -190,15 +208,14 @@ def main() -> int:
         print("기준 브랜치를 못 찾았다 — 검사를 건너뛴다")
         return 0
 
-    diff = subprocess.run(["git", "diff", "--unified=0", f"{base}...HEAD"],
-                          cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
+    diff_text = _diff_text(base)
     banned = load_banned()
     if not banned:
         print("GLOSSARY.md 의 「걷어낸 말」 표를 못 읽었다")
         return 1
 
     bad = []
-    for path, line in added_lines(diff.stdout or ""):
+    for path, line in added_lines(diff_text):
         for word, replacement in check_line(path, line, banned):
             bad.append((path, word, replacement, line.strip()[:90]))
 
