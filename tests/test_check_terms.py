@@ -231,3 +231,30 @@ def test_only_prose_files_are_checked():
         "+# 이 자가 측정한다",
     ])
     assert check_terms.added_lines(diff) == []
+
+
+def test_the_check_also_reads_work_that_is_not_committed_yet(monkeypatch):
+    """⛔ `base...HEAD` 만 보면 **커밋 전 로컬 실행이 아무것도 못 본다** — 방금 쓴 줄은
+    아직 커밋에 없다. 2026-08-28 에 그것 때문에 로컬은 초록인데 CI 가 빨간불이었고, 걸린
+    줄은 하필 그 규칙을 설명하는 문장 자체였다."""
+    import subprocess
+
+    seen = []
+
+    class _R:
+        def __init__(self, out):
+            self.stdout = out
+            self.returncode = 0
+
+    def fake_run(args, **kw):
+        seen.append(list(args))
+        if args[-1] == "HEAD":                      # 작업 트리
+            return _R("+++ b/w.md\n+작업 트리 줄\n")
+        return _R("+++ b/c.md\n+커밋된 줄\n")        # 커밋된 것
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    text = check_terms._diff_text("origin/master")
+
+    assert ["git", "diff", "--unified=0", "origin/master...HEAD"] in seen
+    assert ["git", "diff", "--unified=0", "HEAD"] in seen
+    assert "작업 트리 줄" in text and "커밋된 줄" in text
