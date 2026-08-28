@@ -128,7 +128,10 @@ def ingest(
             await db.close_pool()
             raise typer.Exit(2) from None
 
-        typer.echo(f"총 파일: {result.total_files}")
+        # **셋을 나눠 찍는다.** 하나로 덮으면 "못 봤다" 와 "안 바뀌었다" 가 같은 숫자가 되고,
+        # 2026-08-28 에 그 줄 하나 때문에 없는 결함을 보고했다.
+        typer.echo(f"찾은 파일: {result.found_files}"
+                   f"  (바뀜 {result.total_files} · 그대로 {result.unchanged_files})")
         typer.echo(f"인덱싱: {result.indexed}")
         typer.echo(f"스킵: {result.skipped}")
         typer.echo(f"격리: {result.quarantined}")

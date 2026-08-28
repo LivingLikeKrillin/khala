@@ -32,7 +32,12 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class IngestResult:
     """인제스트 결과 요약."""
+    #: 변경분(= 실제로 처리한 파일). **패턴이 찾은 수가 아니다.**
     total_files: int = 0
+    #: 패턴이 찾은 파일 수. `total_files` 와 벌어지면 그 차이가 `unchanged_files` 다.
+    found_files: int = 0
+    #: 내용이 그대로라 건너뛴 수. "못 봤다" 와 "안 바뀌었다" 를 가르는 유일한 숫자다.
+    unchanged_files: int = 0
     indexed: int = 0
     skipped: int = 0
     quarantined: int = 0
@@ -447,8 +452,11 @@ async def run_ingest(
 
     # 1. Collect
     glob_pattern = config.get("sources", {}).get("glob_pattern", "**/*.md")
-    collected_files = await collect_files(docs_path, glob_pattern, force, tenant)
+    collection = await collect_files(docs_path, glob_pattern, force, tenant)
+    collected_files = collection.files
     result.total_files = len(collected_files)
+    result.found_files = collection.found
+    result.unchanged_files = collection.unchanged
 
     if not collected_files:
         logger.info("no_files_to_ingest")
