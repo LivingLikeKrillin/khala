@@ -226,3 +226,26 @@ class TestSynthesisAndRecencyScoring:
         for q in blocked:
             assert not q.get("expect") and not q.get("expect_all"), \
                 f"{q['id']}: 막힌 라벨에 기대값이 남아 있다"
+
+    def test_a_second_value_under_its_own_heading_still_counts(self):
+        """⛔ 실물 사례(2026-08-28): 값 둘이 근거·답변에 다 있는데 실패로 찍혔다.
+        둘째 값이 소제목 밑에 앉았기 때문이고, 그건 다중 부분 답변의 정상 모양이다."""
+        from scripts.ko_eval_answer_quality import asserts_all
+        ans = ("## 추가되는 인덱스\n"
+               "인덱스는 idx_ual_partyroom_event_time 입니다.\n"
+               "## 마이그레이션 파일\n"
+               "**V34__admin_analytics_indexes.sql** 입니다.")
+        assert asserts_all(["idx_ual_partyroom_event_time",
+                            "V34__admin_analytics_indexes.sql"], ans) is True
+
+    def test_a_value_that_only_sits_in_a_table_row_still_fails(self):
+        """⛔ 대조군. 2판이 사고 싶었던 성질은 이것 하나다 — 늘어놓기는 말하기가 아니다.
+        위치 규칙을 걷어내면서 이것까지 잃으면 채점기가 1판으로 되돌아간다."""
+        from scripts.ko_eval_answer_quality import asserts_all
+        ans = ("## 근거\n"
+               "| 항목 | 값 |\n"
+               "| 파일 | V34__admin_analytics_indexes.sql |\n"
+               "인덱스는 idx_ual_partyroom_event_time 입니다.\n"
+               "제공된 근거만으로는 파일명을 확정할 수 없습니다.")
+        assert asserts_all(["idx_ual_partyroom_event_time",
+                            "V34__admin_analytics_indexes.sql"], ans) is False
