@@ -268,3 +268,19 @@ class TestSynthesisAndRecencyScoring:
         from scripts.ko_eval_answer_quality import asserts_all
         ans = "메시지는 DjChangeType 으로 갑니다."
         assert asserts_all([["hard-delete", "물리 삭제"], "DjChangeType"], ans) is False
+
+    def test_a_conflict_answer_may_lay_the_values_out_in_a_table(self):
+        """⛔ 단일 값 질문에서 늘어놓기는 주장이 아니지만, **모순 질문에서는 늘어놓는 것이
+        곧 답이다.** 라이브에서 좋은 답이 표로 나왔고 위치 규칙이 그것을 떨어뜨렸다."""
+        from scripts.ko_eval_answer_quality import discloses_conflict
+        ans = ("## 근거가 갈립니다\n"
+               "| 문서 | 값 |\n"
+               "| A 정책 | 12자 |\n"
+               "| B 정책 | 8자 |\n"
+               "어느 쪽이 현행인지는 근거로 확정할 수 없습니다.")
+        assert discloses_conflict([["12자"], ["8자"]], ans) is True
+
+    def test_a_conflict_label_fails_when_only_one_side_appears(self):
+        """대조군 — 한쪽만 말하면 그것은 모순을 드러낸 것이 아니다."""
+        from scripts.ko_eval_answer_quality import discloses_conflict
+        assert discloses_conflict([["12자"], ["8자"]], "닉네임은 12자 제한입니다.") is False

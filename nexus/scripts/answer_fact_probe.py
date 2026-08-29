@@ -32,6 +32,7 @@ from scripts.ko_eval_answer_quality import (  # noqa: E402
     asserts_current_not_stale,
     asserts_value,
     facts_present,
+    discloses_conflict,
     label_is_usable,
 )
 
@@ -140,7 +141,10 @@ async def main() -> int:
             # 2판 — **주장했는가**. 같은 값을 담고도 결론을 안 낸 답변을 1판은 통과시킨다.
             said = asserts_value(expect, text)
             # 3판 — 종합·최신성. 라벨이 그 모양일 때만 판정이 바뀐다.
-            if q.get("expect_all"):
+            if q.get("type") == "conflict":
+                # 모순 라벨은 **늘어놓기가 곧 답**이다 (표로 나란히 놓는 것이 좋은 모양).
+                said = discloses_conflict(q["expect_all"], text)
+            elif q.get("expect_all"):
                 ok = all(any(_norm(x) in nt for x in ([e] if isinstance(e, str) else e))
                          for e in q["expect_all"])
                 said = asserts_all(q["expect_all"], text)

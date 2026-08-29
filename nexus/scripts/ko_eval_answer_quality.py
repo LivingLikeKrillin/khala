@@ -464,3 +464,19 @@ def asserts_current_not_stale(expect: list[str], superseded: list[str], answer: 
         return True
     new_at = first(expect)
     return new_at is not None and new_at < old_at
+
+
+def discloses_conflict(values: list, answer: str) -> bool:
+    """**갈린 값들을 다 꺼냈는가.** 모순 질문에서는 위치를 보지 않는다.
+
+    단일 값 질문에서 *늘어놓기* 는 주장이 아니지만, **모순 질문에서는 늘어놓는 것이 곧 답이다**
+    — 두 값을 표로 나란히 놓고 어느 쪽이 현행인지 모른다고 적는 것이 가장 좋은 답변의 모양이고,
+    실제로 라이브에서 그렇게 나왔다(2026-08-29, 닉네임 글자수). 그 답을 `asserts_all` 로 재면
+    표에 있다는 이유로 떨어진다.
+
+    ⚠ 이 판정은 *"갈렸다고 말했는가"* 까지는 못 본다. 값 둘이 다 나왔는지만 본다.
+    """
+    if not values:
+        return False
+    surfaces = [[v] if isinstance(v, str) else list(v) for v in values]
+    return all(facts_present(surfaces, answer))
