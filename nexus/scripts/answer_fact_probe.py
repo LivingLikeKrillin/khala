@@ -117,7 +117,7 @@ async def main() -> int:
         from nexus.providers.embedding import embedding_service_from_config
         from nexus.providers.llm import LLMService
         from nexus.search import hybrid
-        from nexus.search.evidence_packet import assemble_packet
+        from nexus.search.reconcile import packet_for_answer
 
         svc, cfg = embedding_service_from_config(), _load_config()
         if args.fill:
@@ -127,7 +127,10 @@ async def main() -> int:
         for q in queries:
             r = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance=CLEARANCE,
                                            top_k=10, embedding_svc=svc, config=cfg)
-            packet = await assemble_packet(r.hits, r.graph, tenant=args.tenant, fill=r.fill)
+            # **프로덕션이 답변용 근거를 만드는 그 함수**를 쓴다. 직접 조립하면
+            # 하니스가 아무도 안 지나는 경로를 측정한다 — 2026-08-29 에 실제로 그랬다.
+            packet = await packet_for_answer(r, args.tenant, CLEARANCE, config=cfg,
+                                             search=hybrid.hybrid_search, embedding_svc=svc)
             ans = await generate_answer(q["query"], packet, LLMService(),
                                         confidence=r.confidence)
             text = getattr(ans, "answer", None) or getattr(ans, "text", "") or str(ans)
