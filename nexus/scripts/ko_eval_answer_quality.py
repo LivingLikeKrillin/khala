@@ -423,10 +423,18 @@ def asserts_all(expect_all: list[str], answer: str) -> bool:
     실물로 드러났다(2026-08-28): 값 둘이 근거에도 답변에도 다 있는 답이 실패로 찍혔다 —
     둘째 값이 소제목 밑 산문에 있었기 때문이다.
 
+    **값마다 표기 후보를 여럿 둘 수 있다** (`["hard-delete", "물리 삭제"]`). 단일 값 라벨은
+    처음부터 그랬는데 여기만 문자열 하나였고, 그 차이가 **없는 실패를 만들었다**(2026-08-29:
+    시스템은 `hard-delete`·`물리 삭제` 로 쓰는데 라벨엔 `Hard-Delete` 만 있어 옳은 답이 3회 다
+    실패로 찍혔고, 나는 그 유령을 고치려고 프롬프트 조항을 만들어 측정까지 했다).
+
     ⛔ 점수를 보고 규칙을 무르게 고친 것이 아니다. **정의역 밖에 쓴 것을 되돌린 것**이고,
     그 전에 나온 종합 라벨 점수는 무효다.
     """
-    return bool(expect_all) and all(asserts_part([e], answer) for e in expect_all)
+    if not expect_all:
+        return False
+    return all(asserts_part([v] if isinstance(v, str) else list(v), answer)
+               for v in expect_all)
 
 
 def asserts_current_not_stale(expect: list[str], superseded: list[str], answer: str) -> bool:

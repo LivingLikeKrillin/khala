@@ -249,3 +249,22 @@ class TestSynthesisAndRecencyScoring:
                "제공된 근거만으로는 파일명을 확정할 수 없습니다.")
         assert asserts_all(["idx_ual_partyroom_event_time",
                             "V34__admin_analytics_indexes.sql"], ans) is False
+
+    def test_a_value_may_have_several_surface_forms(self):
+        """⛔ 표기 후보가 하나뿐이면 **없는 실패가 만들어진다.** 2026-08-29 에 그것 때문에
+        옳은 답 3회가 실패로 찍혔고, 그 유령을 고치려고 프롬프트 조항까지 만들어 측정했다."""
+        from scripts.ko_eval_answer_quality import asserts_all
+        ans = "저장 쪽은 물리 삭제입니다. 메시지는 DjChangeType 으로 갑니다."
+        assert asserts_all([["hard-delete", "물리 삭제"], "DjChangeType"], ans) is True
+
+    def test_surface_forms_are_an_or_not_an_and(self):
+        """후보 중 **하나만** 나와도 그 값은 말해진 것이다."""
+        from scripts.ko_eval_answer_quality import asserts_all
+        ans = "저장 쪽은 hard-delete 입니다. 메시지는 DjChangeType 으로 갑니다."
+        assert asserts_all([["hard-delete", "물리 삭제"], "DjChangeType"], ans) is True
+
+    def test_a_missing_value_still_fails_with_surface_forms(self):
+        """대조군 — 후보를 늘린 것이 통과를 사 오면 안 된다."""
+        from scripts.ko_eval_answer_quality import asserts_all
+        ans = "메시지는 DjChangeType 으로 갑니다."
+        assert asserts_all([["hard-delete", "물리 삭제"], "DjChangeType"], ans) is False
