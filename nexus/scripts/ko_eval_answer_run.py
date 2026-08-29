@@ -200,6 +200,7 @@ async def _run(args) -> int:
     from nexus.providers.llm import LLMService
     from nexus.search import hybrid
     from nexus.search.evidence_packet import assemble_packet, format_for_llm
+    from nexus.search.reconcile import packet_for_answer
     from nexus.llm.answer import generate_answer
 
     labels = load(args.labels)
@@ -289,7 +290,10 @@ async def _run(args) -> int:
             if result.degraded:
                 print(f"✗ 다리가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
                 return 1
-            packet = await assemble_packet(result.hits, result.graph, fill=result.fill)
+            # 프로덕션과 같은 함수로 만든다 (`search/reconcile.py`).
+            packet = await packet_for_answer(
+                result, args.tenant, args.clearance, config=search_cfg,
+                search=hybrid.hybrid_search, embedding_svc=svc)
             ans = await generate_answer(q["query"], packet, llm_svc=llm,
                                         confidence=result.confidence)
             spend.add(ans.usage, kind="answer")
