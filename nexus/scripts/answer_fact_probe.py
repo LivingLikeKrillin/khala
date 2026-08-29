@@ -138,7 +138,8 @@ async def main() -> int:
             said = asserts_value(expect, text)
             # 3판 — 종합·최신성. 라벨이 그 모양일 때만 판정이 바뀐다.
             if q.get("expect_all"):
-                ok = all(_norm(e) in nt for e in q["expect_all"])
+                ok = all(any(_norm(x) in nt for x in ([e] if isinstance(e, str) else e))
+                         for e in q["expect_all"])
                 said = asserts_all(q["expect_all"], text)
             elif q.get("superseded") is not None:
                 usable, why = label_is_usable(expect, q["superseded"])
