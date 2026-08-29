@@ -87,6 +87,10 @@ search:
   # 코드 기본값은 꺼짐이고 답변 경로에만 걸린다 — 검색만 하는 경로에서는 그 3.5배가
   # 그대로 사용자에게 보인다.
   reconcile_pass: true
+  # 짝 문서 확장 — 설계(`specs/`)와 구현 계획(`plans/`)은 같은 일의 두 문서이고, 파일
+  # 이름으로 이어진다(라이브 27쌍). 측정 2026-08-29: 처치 라벨 0/5 → 4/5, 대조군 셋 5/5 유지,
+  # 지연 +3 ms, **근거 분량 +26~134%**. 값이 붙는 곳은 짝이 있는 코퍼스뿐이다.
+  pair_expansion: true
   snippet_max_chars: 300       # 근거 스니펫 최대 길이(문장 경계에서 컷, SPEC-nexus-snippet-boundary-truncation)
   # 어느 임베딩 세대를 읽을지 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버도 롤백도 이 값 하나다.
   # embedding=nomic-embed-text(768) · embedding_1024=KURE-v1(1024). 화이트리스트 밖이면 기동 실패.

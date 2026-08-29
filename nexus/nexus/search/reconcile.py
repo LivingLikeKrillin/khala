@@ -105,9 +105,29 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
     """
     from nexus.search.evidence_packet import assemble_packet
 
+    from nexus.search.hybrid import SearchHit, _truncate_snippet
+
+    def _as_hit(r):
+        return SearchHit(
+            rid=r["rid"], doc_rid=r["doc_rid"], doc_title=r["doc_title"] or "",
+            section_path=r["section_path"], source_uri=r["source_uri"],
+            source_version=r["source_version"] or "",
+            snippet=_truncate_snippet(r["chunk_text"], 300), chunk_text=r["chunk_text"],
+            doc_n_images=r["n_images"] or 0,
+            provenance_tier=r["provenance_tier"] or "authored",
+            # 점수는 0 이다 — 이 청크들은 순위 경쟁을 하지 않았다.
+            score=0.0, classification=r["classification"],
+            approved_hash=r["approved_hash"] or "", doc_type=r["doc_type"] or "",
+            updated_at=r["updated_at"])
+
+    search_cfg = (config or {}).get("search", {}) or {}
     fill = list(result.fill or [])
-    if (config or {}).get("search", {}).get("reconcile_pass"):
+    if search_cfg.get("reconcile_pass"):
         fill += await corrections_for(result.hits, tenant, clearance, search=search,
                                       exclude_rids={f.rid for f in fill},
                                       embedding_svc=embedding_svc, config=config)
+    if search_cfg.get("pair_expansion"):
+        from nexus.search.pairs import paired_chunks
+        fill += [_as_hit(r) for r in await paired_chunks(
+            result.hits, tenant, clearance, exclude_rids={f.rid for f in fill})]
     return await assemble_packet(result.hits, result.graph, tenant, fill=fill)
