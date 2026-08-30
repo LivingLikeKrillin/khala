@@ -361,3 +361,18 @@ I asked about the ban and recorded the kick's answer. The correction then opens 
 ⛔ **In the previous round I wrote that all four permission labels agreed.** That was a comparison run against a wrong label. When the label is wrong the comparison is wrong with it, and **the direction of the error is always toward "nothing to see".**
 
 Also: A-2 reads as both `50자` and `60자` within the same document, and four labels rest on a single chunk — not wrong, but with no control to disagree with them.
+
+**The safeguard is missing exactly where it is needed (2026-08-31).** The owner asked why the capacity label still says 200. Leaving it is correct under the pre-registered rules — these labels measure *whether the document is read accurately*, not *whether the product actually behaves that way*, and divergence is explicitly a reporting matter rather than a score.
+
+Pushing that question through the live path turned up something worse.
+
+```
+"how many people fit in a room?"   → answers 200 only        (owner: 50 is correct)
+"minimum DJ time?"                 → answers both: 3 min in the document, 1 in the code
+```
+
+The difference is not whether a claim was seeded but **what shape the value takes in the code**. The DJ minimum is `@Min(value = 1)` and is readable; the capacity is `if (activeCrewCount > 49)` and is not. So on the one value already known to be wrong in the document, the safeguard that exists to catch exactly that is absent.
+
+Three more sit in the same position — the 30-day auto-close (a method argument), the 3am batch (a method annotation), the nickname's domain guard. They are invisible only because document and code currently agree.
+
+⛔ And when the owner decided capacity was 50, that was the moment to say what happens to the three labels resting on rejected document values. I did not. Leaving them alone by the rules and saying nothing about them are not the same thing.
