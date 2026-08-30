@@ -9,20 +9,20 @@ description: 이 시스템이 무엇을 틀렸고, 그 결함이 어떻게 드�
 
 ## 무엇이 그것을 잡았나
 
-아래 16건을 **무엇이 실제로 그 결함을 드러냈는지**로 나눴다. 개수보다 모양이 중요하다: 자동 검사는 인프라 문제를, 측정은 데이터 문제를 잡았고, 가장 값비싼 결함 하나 — 몇 주 동안 모든 자동 검사를 통과하고 있던 그것 — 은 **사람의 한 문장**이 잡았다. 가장 최근 셋은 전부 같은 방법으로 나왔다: **주장을 그것이 서술하는 대상에 대 보는 것.** 측정 레인이 계속 자라는 이유다.
+아래 19건을 **무엇이 실제로 그 결함을 드러냈는지**로 나눴다. 개수보다 모양이 중요하다: 자동 검사는 인프라 문제를, 측정은 데이터 문제를 잡았고, 가장 값비싼 결함 하나 — 몇 주 동안 모든 자동 검사를 통과하고 있던 그것 — 은 **사람의 한 문장**이 잡았다. 가장 최근 셋은 전부 같은 방법으로 나왔다: **주장을 그것이 서술하는 대상에 대 보는 것.** 측정 레인이 계속 자라는 이유다.
 
-<svg class="kh-fig" viewBox="0 0 580 214" role="img" aria-label="2026년 7월부터 8월까지의 타임라인, 세 개의 레인. 'CI·가드' 레인에 4건, '측정' 레인에 9건, '사람' 레인에 3건이 있다. 8월로 갈수록 밀도가 급격히 올라가고, 월말에 측정 3건이 몰려 있다. 사람 레인의 마지막 항목이 모든 자동 검사를 통과했던 근거 적합도 결함이다.">
+<svg class="kh-fig" viewBox="0 0 600 214" role="img" aria-label="2026년 7월부터 8월까지의 타임라인, 세 개의 레인. 'CI·가드' 레인에 4건, '측정' 레인에 12건, '사람' 레인에 3건이 있다. 8월로 갈수록 밀도가 급격히 올라가고, 월말에 측정 6건이 몰려 있다. 사람 레인의 마지막 항목이 모든 자동 검사를 통과했던 근거 적합도 결함이다.">
   <text class="kh-fig-h" x="0" y="14">WHAT SURFACED IT</text>
-  <line class="kh-fig-rule" x1="112" y1="34" x2="560" y2="34"/>
+  <line class="kh-fig-rule" x1="112" y1="34" x2="575" y2="34"/>
   <text class="kh-fig-s" x="0" y="60">CI · 가드</text>
-  <line class="kh-fig-line" x1="112" y1="60" x2="560" y2="60"/>
+  <line class="kh-fig-line" x1="112" y1="60" x2="575" y2="60"/>
   <circle class="kh-fig-verified" cx="189" cy="60" r="3.5"/>
   <circle class="kh-fig-verified" cx="428" cy="60" r="3.5"/>
   <circle class="kh-fig-verified" cx="445" cy="60" r="3.5"/>
   <circle class="kh-fig-verified" cx="548" cy="60" r="3.5"/>
-  <text class="kh-fig-rk" x="568" y="60" text-anchor="end">4</text>
+  <text class="kh-fig-rk" x="583" y="60" text-anchor="end">4</text>
   <text class="kh-fig-s" x="0" y="108">측정</text>
-  <line class="kh-fig-line" x1="112" y1="108" x2="560" y2="108"/>
+  <line class="kh-fig-line" x1="112" y1="108" x2="575" y2="108"/>
   <circle class="kh-fig-verified" cx="403" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="420" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="462" cy="108" r="3.5"/>
@@ -32,19 +32,22 @@ description: 이 시스템이 무엇을 틀렸고, 그 결함이 어떻게 드�
   <circle class="kh-fig-verified" cx="538" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="547" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="556" cy="108" r="3.5"/>
-  <text class="kh-fig-rk" x="568" y="108" text-anchor="end">9</text>
+  <circle class="kh-fig-verified" cx="563" cy="108" r="3.5"/>
+  <circle class="kh-fig-verified" cx="569" cy="108" r="3.5"/>
+  <circle class="kh-fig-verified" cx="575" cy="108" r="3.5"/>
+  <text class="kh-fig-rk" x="583" y="108" text-anchor="end">12</text>
   <text class="kh-fig-s" x="0" y="156">사람</text>
-  <line class="kh-fig-line" x1="112" y1="156" x2="560" y2="156"/>
+  <line class="kh-fig-line" x1="112" y1="156" x2="575" y2="156"/>
   <circle class="kh-fig-verified" cx="197" cy="156" r="3.5"/>
   <circle class="kh-fig-verified" cx="466" cy="156" r="3.5"/>
   <circle class="kh-fig-ah" cx="524" cy="156" r="5"/>
   <path class="kh-fig-line-acc" d="M524 163 L524 178 L470 178"/>
   <text class="kh-fig-d" x="464" y="178" text-anchor="end">모든 자동 검사를 통과했다</text>
-  <text class="kh-fig-rk" x="568" y="156" text-anchor="end">3</text>
-  <line class="kh-fig-rule" x1="112" y1="196" x2="560" y2="196"/>
+  <text class="kh-fig-rk" x="583" y="156" text-anchor="end">3</text>
+  <line class="kh-fig-rule" x1="112" y1="196" x2="575" y2="196"/>
   <text class="kh-fig-s" x="112" y="207">JUL</text>
   <text class="kh-fig-s" x="378" y="207">AUG</text>
-  <text class="kh-fig-s" x="560" y="207" text-anchor="end">2026</text>
+  <text class="kh-fig-s" x="575" y="207" text-anchor="end">2026</text>
 </svg>
 
 ---
@@ -219,3 +222,46 @@ soft-delete 된 문서를 되살리면 청크의 "현재 세대만" 복원되고
 **시스템보다 계측기가 더 자주 틀렸다.** 이건 계측기에 대한 불평이 아니라, 여기서 계측기를 일급 산출물로 취급하는 이유다 — 서명된 라벨, 사전등록된 판정 규칙, 그리고 **점수를 본 뒤에 채점기를 고치는 것에 대한 상시 금지**와 함께. 가장 날카로운 사례가 가장 최근 것이다: 만점을 읽으면서 자기가 측정하려던 변경을 못 보던 채점기, 그리고 다른 오염을 고친 **바로 다음 날** 우리 자신의 재적재를 세고 있던 엔트로피 신호. 둘 다 **주장을 그것이 서술하는 대상에 대 보다가** 나왔다 — 값싸고, 이제는 뭔가 이상하다고 느낄 때가 아니라 정해진 주기로 한다.
 
 *이 페이지는 기록이지 현황판이 아니다. 지금 열려 있는 것은 [OPEN.md](https://github.com/LivingLikeKrillin/khala/blob/master/OPEN.md) 를 보라 — 미결을 세어서, 그것이 늘고 있는지 줄고 있는지 알 수 있게 해 둔 파일이다.*
+
+### 하니스가 아무도 안 지나는 경로를 측정하고 있었다
+
+**2026-08-29** · `fix(nexus): the harness was measuring a path no user takes`
+
+라벨 둘이 실험 스크립트에서 5/5, 4/5 로 통과했다. 같은 라벨을 평가 하니스로 돌리자 통째로 실패했다.
+
+같은 코퍼스, 같은 질문, 같은 채점 규칙이었다. 다른 것은 근거를 만드는 방법 하나였다 — 실험은 답변 경로가 쓰는 함수를 불렀고, 하니스는 자기가 직접 조립했다. 그래서 하니스에는 그 주에 들어간 보강 둘이 빠져 있었다. **하니스가 내는 모든 수가 아무도 지나지 않는 시스템을 서술하고 있었다.**
+
+같은 함수로 돌리자 두 라벨이 통과로 돌아왔다. 그게 증거다.
+
+이 리포는 같은 모양을 이미 여러 번 적었다 — 등록이 실행 가드 뒤에 있던 것, 사본이 회귀 검사 밖이던 것, 배선이 세 경로 중 하나에만 붙던 것. 새로 배운 것은 그 목록에 **측정 도구 자신**이 들어간다는 점이다. 측정이 프로덕션과 다른 길을 가면, 그 측정은 초록인 채로 아무것도 지키지 않는다.
+
+
+### 계측기가 없는 병을 만들었고, 나는 그 병을 고치러 갔다
+
+**2026-08-29** · `fix(nexus): a value has surface forms, and one missing form invented a defect`
+
+라벨에 기대값을 한 가지 표기로만 적었다. 시스템은 다른 표기로 **옳게** 답했다. 채점기는 세 번 다 실패로 찍었다.
+
+여기까지는 흔한 라벨 결함이다. 값이 나간 곳은 그다음이다. 나는 그 실패를 시스템 결함으로 읽었다 — *"근거를 쥐고도 낡은 쪽을 고른다"*. 그 진단에 맞는 처방을 설계하고, 프롬프트 조항을 만들고, 실행군마다 다섯 번씩 돌려 측정했다. 사전에 박아 둔 채택 규칙이 그것을 기각했다. **고칠 병이 없었기 때문에 당연한 결과였다.**
+
+실패한 답변을 한 번 읽자 3분 만에 끝났다. 그전까지 나는 점수만 보고 있었다.
+
+그래서 규칙 하나가 늘었다: **실패를 진단하기 전에 실패한 답변을 읽는다.** 점수는 *어느 값이 빠졌는지*까지만 말하고, *그 값이 정말 빠졌는지*는 말하지 않는다. 표기를 넓혀 다시 측정하니 그 보강의 실제 효과는 처음 보고한 3/5 이 아니라 **0/5 → 5/5** 였다.
+
+
+### 정직하게 만들려던 수정이 실물 모순을 덮었다
+
+**2026-08-29** · `eval: labels say what they are measured against, and a "fix" that hid a conflict`
+
+문서 코퍼스로 채점하면서 *"제품이 실제로 어떻게 동작하나"* 를 묻는 문장을 쓰고 있었다. 그러면 **정확한 인용을 단, 현실과 다른 답**이 만점을 받는다. 그래서 라벨마다 무엇을 권위로 삼는지 적고, 질문 문장도 *"문서 기준으로"* 라고 밝히도록 고쳤다.
+
+그 수정을 측정에 걸었더니 이렇게 나왔다:
+
+| | 갈린 문서가 근거에 | 답변 |
+|---|---|---|
+| 원래 문구 | 들어옴 | 두 값을 다 내고 불일치를 표시 (2/2) |
+| 권위 접두 | **빠짐** | 한 값만 단정 (2/2) |
+
+접두어가 검색을 좁혀 **모순을 담은 문서가 후보에서 통째로 빠졌다.** 답변은 받은 근거에 충실했을 뿐이다. 근거 도달은 회차와 무관한 결정론이므로 잡음이 아니다.
+
+되돌렸다. 권위는 메타데이터로만 적는다. **라벨의 질문 문구는 자유 변수가 아니다** — 건드리면 검색이 바뀐다. 정직하게 만들려던 문구가 이 도구가 잡으라고 만들어진 바로 그것을 가릴 뻔했다.
