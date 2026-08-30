@@ -194,8 +194,12 @@ def claim_seed(
         cfg = _load_config(config_path)
         repo_path = cfg.get("code_source", {}).get("repo_path", "")
         pool = await db.get_pool()
-        n = await seed_claims(path, ClaimRepository(pool), CodeValueResolver(repo_path))
-        typer.echo(f"{n}건 적재")
+        rep = await seed_claims(path, ClaimRepository(pool), CodeValueResolver(repo_path))
+        typer.echo(f"{rep.total}건 적재 · 코드에 붙음 {rep.bound}")
+        # **안 붙은 것을 조용히 넘기지 않는다.** 행은 들어가지만 값이 없다 — 그 상태로
+        # 답변에 붙으면 "코드는 …" 자리가 빈 채로 나간다. 이유는 해석기 것을 그대로 옮긴다.
+        for claim_id, reason in rep.unbound:
+            typer.echo(f"  ⚠ {claim_id}: {reason}")
         await db.close_pool()
 
     _run(_seed())

@@ -235,11 +235,24 @@ class CodeValueResolver:
         return qualifier in _DECL.findall(self._text(path))
 
     def _text(self, path):
-        """주석을 지운 본문. 파일당 한 번만 읽는다."""
+        """주석을 지운 본문.
+
+        ⚠ **여기는 비싼 쪽이 아니다 (2026-08-30 실측).** 첫 해석이 55.9초라서 스캔이
+        범인인 줄 알고 사전 거르기를 넣었다가, 나눠 측정하니 **개선이 0** 이었다:
+
+            파일 목록(rglob)  50.70s   ← 여기다
+            전부 읽기          5.28s
+            주석 지우기         0.18s
+
+        비용은 **바인드 마운트를 훑는 것**이고 파이썬 루프가 아니다. 그래서 여기서 아낄 것이
+        없고, 고칠 자리는 두 곳이다 — 해석기 인스턴스를 요청마다 새로 만들지 말 것(지금
+        `api.py` 가 그렇게 한다), 그리고 claim 처럼 **파일을 이미 아는** 경우에는 목록을
+        만들지 말고 그 파일만 읽을 것.
+        """
         key = str(path)
         if key not in self._texts:
-            raw = path.read_text(encoding="utf-8", errors="ignore")
-            self._texts[key] = _blank_comments(raw)
+            self._texts[key] = _blank_comments(
+                path.read_text(encoding="utf-8", errors="ignore"))
         return self._texts[key]
 
     def resolve(self, source: str) -> ResolvedValue:
