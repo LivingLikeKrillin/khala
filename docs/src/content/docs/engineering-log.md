@@ -314,3 +314,18 @@ So I did not read an absence — **I read a failure to read as an absence.** A t
 Digging turned up one more thing. The introduction is validated at `@Size(max = 500)` while its column is `varchar(255)`, with no entity override, `ddl-auto: validate`, and Flyway managing the schema. **An introduction between 256 and 500 characters passes validation and then fails to store** — not a documentation mismatch but a break.
 
 ⛔ And the notice limit I had recorded as *no code site found* **exists**. It reads `@Size(max = PartyroomData.MAX_NOTICE_CONTENT_LENGTH)`, referencing a constant, which my search did not see. Writing "not found" instead of "absent" earned its keep.
+
+**Where the nickname's 20 came from (2026-08-31).** The owner asked for its history too. Followed to the end:
+
+| when | what |
+|---|---|
+| 2023-05 to 09 | column `varchar(255)` — **no limit** |
+| 2023-07-30, 08-31 | two document revisions about nickname limits (the era of the documented 12 and 8/16) |
+| **2024-06-12** | **`@Column(length = 20)` first appears** — in a commit titled *"Add temporary users in local profile"* |
+| 2026-02-15 | request validation `@Size(max = 20)` added |
+| 2026-02-20 | domain `Nickname` throws above 20 |
+| 2026-04-19 | the Flyway baseline pins `varchar(20)` |
+
+**The 20 was never decided as a product rule.** It is a column length that arrived while adding a temporary-user feature in 2024, and the two 2026 changes copied it. **Neither 12 nor 8/16 has ever existed in the code.**
+
+The same 2026-02-15 commit raised the introduction column *"to match frontend limit"*. Within one commit, one field followed the product rule and another followed the column. Looking at the values alone, both are just numbers.
