@@ -9,20 +9,20 @@ This page is safe to hand-write, which most of the documentation here is not. Ev
 
 ## Who caught what
 
-Sixteen entries below, sorted by what actually surfaced the defect. The shape matters more than the count: automated checks caught the infrastructure problems, measurement caught the data problems, and the single most consequential defect — the one that had passed every automated check for weeks — was caught by one sentence from a person. The three most recent were all found the same way: by checking a claim against the thing it describes, which is why the measurement lane keeps growing.
+Nineteen entries below, sorted by what actually surfaced the defect. The shape matters more than the count: automated checks caught the infrastructure problems, measurement caught the data problems, and the single most consequential defect — the one that had passed every automated check for weeks — was caught by one sentence from a person. The three most recent were all found the same way: by checking a claim against the thing it describes, which is why the measurement lane keeps growing.
 
-<svg class="kh-fig" viewBox="0 0 580 214" role="img" aria-label="A timeline from July to August 2026 with three lanes. The 'CI and guards' lane holds four defects, the 'measurement' lane holds nine, and the 'a person' lane holds three. Density increases sharply through August, with three measurement entries clustered at the end of the month. The final entry in the person lane is the evidence-fit defect that every automated check had passed.">
+<svg class="kh-fig" viewBox="0 0 600 214" role="img" aria-label="A timeline from July to August 2026 with three lanes. The 'CI and guards' lane holds four defects, the 'measurement' lane holds twelve, and the 'a person' lane holds three. Density increases sharply through August, with three measurement entries clustered at the end of the month. The final entry in the person lane is the evidence-fit defect that every automated check had passed.">
   <text class="kh-fig-h" x="0" y="14">WHAT SURFACED IT</text>
-  <line class="kh-fig-rule" x1="112" y1="34" x2="560" y2="34"/>
+  <line class="kh-fig-rule" x1="112" y1="34" x2="575" y2="34"/>
   <text class="kh-fig-s" x="0" y="60">CI &amp; guards</text>
-  <line class="kh-fig-line" x1="112" y1="60" x2="560" y2="60"/>
+  <line class="kh-fig-line" x1="112" y1="60" x2="575" y2="60"/>
   <circle class="kh-fig-verified" cx="189" cy="60" r="3.5"/>
   <circle class="kh-fig-verified" cx="428" cy="60" r="3.5"/>
   <circle class="kh-fig-verified" cx="445" cy="60" r="3.5"/>
   <circle class="kh-fig-verified" cx="548" cy="60" r="3.5"/>
-  <text class="kh-fig-rk" x="568" y="60" text-anchor="end">4</text>
+  <text class="kh-fig-rk" x="583" y="60" text-anchor="end">4</text>
   <text class="kh-fig-s" x="0" y="108">measurement</text>
-  <line class="kh-fig-line" x1="112" y1="108" x2="560" y2="108"/>
+  <line class="kh-fig-line" x1="112" y1="108" x2="575" y2="108"/>
   <circle class="kh-fig-verified" cx="403" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="420" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="462" cy="108" r="3.5"/>
@@ -32,19 +32,22 @@ Sixteen entries below, sorted by what actually surfaced the defect. The shape ma
   <circle class="kh-fig-verified" cx="538" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="547" cy="108" r="3.5"/>
   <circle class="kh-fig-verified" cx="556" cy="108" r="3.5"/>
-  <text class="kh-fig-rk" x="568" y="108" text-anchor="end">9</text>
+  <circle class="kh-fig-verified" cx="563" cy="108" r="3.5"/>
+  <circle class="kh-fig-verified" cx="569" cy="108" r="3.5"/>
+  <circle class="kh-fig-verified" cx="575" cy="108" r="3.5"/>
+  <text class="kh-fig-rk" x="583" y="108" text-anchor="end">12</text>
   <text class="kh-fig-s" x="0" y="156">a person</text>
-  <line class="kh-fig-line" x1="112" y1="156" x2="560" y2="156"/>
+  <line class="kh-fig-line" x1="112" y1="156" x2="575" y2="156"/>
   <circle class="kh-fig-verified" cx="197" cy="156" r="3.5"/>
   <circle class="kh-fig-verified" cx="466" cy="156" r="3.5"/>
   <circle class="kh-fig-ah" cx="524" cy="156" r="5"/>
   <path class="kh-fig-line-acc" d="M524 163 L524 178 L470 178"/>
   <text class="kh-fig-d" x="464" y="178" text-anchor="end">passed every automated check</text>
-  <text class="kh-fig-rk" x="568" y="156" text-anchor="end">3</text>
-  <line class="kh-fig-rule" x1="112" y1="196" x2="560" y2="196"/>
+  <text class="kh-fig-rk" x="583" y="156" text-anchor="end">3</text>
+  <line class="kh-fig-rule" x1="112" y1="196" x2="575" y2="196"/>
   <text class="kh-fig-s" x="112" y="207">JUL</text>
   <text class="kh-fig-s" x="378" y="207">AUG</text>
-  <text class="kh-fig-s" x="560" y="207" text-anchor="end">2026</text>
+  <text class="kh-fig-s" x="575" y="207" text-anchor="end">2026</text>
 </svg>
 
 ---
@@ -219,3 +222,46 @@ Wiring it surfaced a latent failure worth recording. Passing the new argument un
 **The instrument was wrong more often than the system.** That is not a complaint about the instrument; it is the reason the instrument is treated as a first-class artifact here, with signed labels, pre-registered verdict rules, and a standing prohibition on editing a grader after seeing the score it produced. The sharpest case is the most recent: a grader that read a perfect score and could not see the change it had been written to evaluate, and an entropy signal that was counting our own re-ingests one day after being repaired for a different contamination. Both were found by checking a claim against the thing it describes, which is cheap and is now done on a schedule rather than when something feels wrong.
 
 *This page is a record, not a status board. For what is currently open, see [OPEN.md](https://github.com/LivingLikeKrillin/khala/blob/master/OPEN.md), which counts unresolved items so that it is possible to tell whether they are going up or down.*
+
+### The harness was measuring a path no user takes
+
+**2026-08-29** · `fix(nexus): the harness was measuring a path no user takes`
+
+Two labels passed 5/5 and 4/5 in experiment scripts. Run through the evaluation harness, the same labels failed outright.
+
+Same corpus, same questions, same scoring rules. One thing differed: how the evidence was assembled. The experiments called the function the answer paths use; the harness assembled its own. So the harness was missing both enrichments added that week. **Every number it produced described a system nobody uses.**
+
+Pointing it at the shared function flipped both labels back to passing. That is the proof.
+
+This repo has recorded the shape before — registration behind an execution guard, a copy outside the regression checks, wiring attached to one of three paths. What is new is that the list now includes **the measuring instrument itself**. When measurement takes a different road than production, it stays green while guarding nothing.
+
+
+### The instrument invented a defect, and I went to fix it
+
+**2026-08-29** · `fix(nexus): a value has surface forms, and one missing form invented a defect`
+
+A label listed its expected value in one spelling. The system answered **correctly** in another. The grader scored three correct answers as misses.
+
+That much is an ordinary label defect. The cost came next. I read the failure as a system defect — *"it holds the evidence and picks the stale side"* — designed a remedy for that defect, wrote a prompt clause, and measured it over five runs per arm. The pre-registered adoption rule rejected it. **Of course it did: there was nothing to fix.**
+
+Reading one failing answer ended it in three minutes. Until then I had been reading only scores.
+
+So a rule was added: **read the failing answer before diagnosing the failure.** A score says which value is missing; it does not say whether that value is really missing. Re-measured with the spellings the system actually writes, the enrichment reads **0/5 → 5/5**, not the 3/5 first reported.
+
+
+### A change meant to make the harness honest buried a real contradiction
+
+**2026-08-29** · `eval: labels say what they are measured against, and a "fix" that hid a conflict`
+
+The corpus is documents, yet the questions were phrased as *"how does the product behave"*. Under that mismatch, **a correctly cited answer that is wrong about reality scores full marks.** So every label was made to declare its authority, and the questions were rewritten to say *"according to the document"*.
+
+Putting that change under measurement produced this:
+
+| | conflicting document in evidence | answer |
+|---|---|---|
+| natural phrasing | present | both values, disagreement flagged (2/2) |
+| authority prefix | **absent** | one value, stated confidently (2/2) |
+
+The prefix narrowed retrieval and dropped the document holding the contradiction out of the candidate set entirely. The answer was faithful to what it received. Evidence arrival does not vary between runs, so this is not noise.
+
+Reverted. Authority stays metadata. **A label's wording is not a free variable** — change it and retrieval changes. A phrasing meant to make the harness honest had come close to hiding exactly what this tool is built to surface.
