@@ -102,7 +102,8 @@ async def _answer(query: str, say, event: dict, client=None) -> None:
                                    + _fit_note(answer_data, token)
                                    + fb.feedback_blocks(answer_key)),
                            thread_ts=thread_ts)
-        await _record_offer(answer_key, posted, event)
+        await _record_offer(answer_key, posted, event,
+                            answer_text=answer_data.get("answer", ""))
     except NexusCallError as e:
         # 401 은 운영자를 위해 로그로도 남긴다(사용자 메시지와 별개).
         if e.outcome is Outcome.BAD_TOKEN:
@@ -156,7 +157,8 @@ def _fit_note(payload: dict, token: str | None) -> list[dict]:
     return [{"type": "context", "elements": [{"type": "mrkdwn", "text": note}]}]
 
 
-async def _record_offer(answer_key: str, posted, event: dict) -> None:
+async def _record_offer(answer_key: str, posted, event: dict,
+                        answer_text: str = "") -> None:
     """제안 행(분모) 한 줄. **best-effort** — 여기서 예외가 나가면 피드백이 답변을 죽인다.
 
     `say()` 가 응답을 안 돌려주는 표면도 있다(테스트 더블 등). 그때는 결속할 (채널, ts) 가
@@ -169,7 +171,8 @@ async def _record_offer(answer_key: str, posted, event: dict) -> None:
         if not ts or not channel:
             logger.warning("feedback_offer_skipped_no_message_handle")
             return
-        await fb.record_offer(answer_key=answer_key, channel_id=channel, message_ts=ts)
+        await fb.record_offer(answer_key=answer_key, channel_id=channel,
+                              message_ts=ts, answer_text=answer_text)
     except Exception:  # noqa: BLE001 — 답변은 이미 나갔다
         logger.warning("feedback_offer_failed", exc_info=True)
 

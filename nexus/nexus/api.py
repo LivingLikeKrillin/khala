@@ -478,6 +478,9 @@ class FeedbackOfferRequest(BaseModel):
     answer_key: str
     channel_id: str
     message_ts: str
+    #: 사람에게 **보여 준 답변 원문**. 비어 있으면 저장하지 않는다 — 옛 클라이언트가
+    #: 이 필드 없이 부르면 제안 기록만 남고 예전과 같이 동작한다.
+    answer_text: str = ""
 
 
 class FeedbackVoteRequest(BaseModel):
@@ -501,6 +504,12 @@ async def feedback_offer(req: FeedbackOfferRequest,
     tenant, _ = effective_scope(principal)
     await store.record_offer(tenant=tenant, answer_key=req.answer_key,
                              channel_id=req.channel_id, message_ts=req.message_ts)
+    if req.answer_text:
+        # **신고를 답에 대 보려면 답이 남아 있어야 한다.** 2026-08-30 파일럿 첫날에 여기가
+        # 비어서 진단이 멈췄다 — 같은 질문의 재현이 150·653·2,000자로 갈렸고, 사용자가 본
+        # 것이 그중 무엇인지 알 방법이 없었다.
+        await store.record_answer_text(tenant=tenant, answer_key=req.answer_key,
+                                       answer_text=req.answer_text)
     return NexusResponse(data={"recorded": True})
 
 
