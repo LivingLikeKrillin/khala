@@ -376,3 +376,19 @@ The difference is not whether a claim was seeded but **what shape the value take
 Three more sit in the same position — the 30-day auto-close (a method argument), the 3am batch (a method annotation), the nickname's domain guard. They are invisible only because document and code currently agree.
 
 ⛔ And when the owner decided capacity was 50, that was the moment to say what happens to the three labels resting on rejected document values. I did not. Leaving them alone by the rules and saying nothing about them are not the same thing.
+
+**There was almost nothing to sign (2026-08-31).** The owner asked: *"you wrote the source document under each label yourself — so that must be right. And you said these only measure whether the document is read accurately."*
+
+Counting them proved the point. Of the eighteen labels, **fifteen carry source notes quoted verbatim from the corpus** — a script can check those, and a person has no reason to. Only **three** places genuinely needed human judgement: one value where the corpus contradicts itself, one question of which document governs, and **the permission matrix, where my note is my own reading of `O/X` cells rather than a quotation.**
+
+The matrix is the one place that is not a quotation, and three of the four defects came from it.
+
+| | |
+|---|---|
+| B-4 | asked about the ban, read the **kick's row** |
+| B-3 | the question is ambiguous about which side it asks about, and its evidence row covers granting one specific grade while the question asked about roles generally |
+| A-11 | the document calls it `소개`; I asked about a `상태 메시지`, a term the corpus does not use |
+
+The owner caught B-3's ambiguity. Because the code applies the general rule, **the answer came out the same either way** — which is exactly why it could have been left alone. Then the next time code and document diverge, nobody knows what was asked.
+
+⛔ All three surfaced **before signature**. No scores existed yet, so correcting labels is not tampering — that is why the rules withhold scores until signing. But what the rule protected was the *order*. What actually found the defects was a person asking the same question three times.
