@@ -26,7 +26,7 @@ class Claim(NexusResource):
     concepts: list[str] = field(default_factory=list)  # 척추 entity name 참조
     statement: str = ""
     value_source: str | None = None
-    value_ref_kind: str | None = None  # code_constant | config_key | db_default
+    value_ref_kind: str | None = None  # code_constant | code_annotation | config_key | db_default
     criticality: str = "peripheral"  # core | peripheral
     activity: str = "active"  # active | dormant | archived
     # 검증상태 (CRM status와 분리)

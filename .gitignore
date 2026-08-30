@@ -21,6 +21,12 @@ __pycache__/
 # SPEC-nexus-korean-retrieval-eval §4.1 defines it as local-only for exactly this reason.
 nexus/tests/eval/local/
 
+# Team claims name real product classes and fields (`CreateFooRequest.title@Size.max`),
+# which is an organization fingerprint. The tracked `nexus/claims.yaml` exists to show the
+# shape against a sample app; the real ones stay local. Same reasoning as the eval dir above.
+nexus/claims.local.yaml
+nexus/claims.local.*.yaml
+
 # `task ingest:self` 의 임시 스테이징 — 정본은 docs/ 와 adr/ 에 있다
 nexus/.self-docs/
 
