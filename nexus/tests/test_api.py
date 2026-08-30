@@ -43,7 +43,9 @@ class TestAnswerRequest:
     def test_defaults(self):
         req = AnswerRequest(query="질문")
         assert req.tenant == "default"
-        assert req.top_k == 10
+        # 답변 경로의 예산은 20 이다 — 근거는 `tests/test_answer_budget.py` 와
+        # `AnswerRequest.top_k` 주석(2026-08-30 실측). 검색 전용 경로는 10 그대로다.
+        assert req.top_k == 20
 
     def test_custom_values(self):
         req = AnswerRequest(query="질문", tenant="dev", top_k=3)
