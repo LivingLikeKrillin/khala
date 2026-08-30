@@ -290,4 +290,19 @@ What comes out now:
 Which one is correct cannot be settled from this evidence.
 ```
 
-Three values diverge: name 30 vs 100, introduction 50 vs 500, nickname 12 vs no validation at all. **The system picks neither.** They may both be right at different layers — a product rule of 30, a server guard of 100 and a column of 255 is a real shape in this codebase, not a contradiction.
+Three values diverge: party name 30 vs 100, party introduction 50 vs 500, nickname 12 vs 20. **The system picks neither.** They may both be right at different layers — a product rule of 30, a server guard of 100 and a column of 255 is a real shape in this codebase, not a contradiction.
+
+**Correction (2026-08-31).** Above, I wrote that the nickname had *no server validation at all*. **That was false.** The owner asked *"no limit? not even in the test code?"*, and checking properly found it in four places: the user-facing `UpdateMyBioRequest @Size(max = 20)`, a domain value object `Nickname` that throws above 20, the column `varchar(20)`, and a test asserting that 21 characters fail. **The code is consistently 20.**
+
+What I had looked at were the admin and bot-creation paths only. And missing the user-facing one had a mechanical cause: the regex that finds field declarations required them to begin with `private|protected|public`, and that class uses Lombok, so its fields carry no modifier.
+
+```java
+@Getter
+public class UpdateMyBioRequest {
+    @Size(max = 20, message = "닉네임은 20자를 초과할 수 없습니다")
+    String nickname;          // no modifier
+```
+
+So I did not read an absence — **I read a failure to read as an absence.** A tool that cannot tell those two apart, wired to something that speaks with confidence, produces exactly this. It now requires a type token and no modifier, with the real-world shape pinned in a test. Seeded claims went from 4 of 7 bound to 6 of 7.
+
+⛔ One limitation belongs next to it: the value object's `if (value.length() > 20) throw …` is neither a constant nor an annotation, so it is **still unreadable**. That the 20 holds in three layers is something a person confirmed, not something the tool produced.
