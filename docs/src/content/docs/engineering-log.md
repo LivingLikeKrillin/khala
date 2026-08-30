@@ -392,3 +392,24 @@ The matrix is the one place that is not a quotation, and three of the four defec
 The owner caught B-3's ambiguity. Because the code applies the general rule, **the answer came out the same either way** — which is exactly why it could have been left alone. Then the next time code and document diverge, nobody knows what was asked.
 
 ⛔ All three surfaced **before signature**. No scores existed yet, so correcting labels is not tampering — that is why the rules withhold scores until signing. But what the rule protected was the *order*. What actually found the defects was a person asking the same question three times.
+
+**The first score after signing indicted the scorer (2026-08-31).** Running all eighteen right after the owner signed, one policy label came back `mentioned=fail, asserted=pass`. The second-generation check is a subset of the first, so that combination cannot happen.
+
+Two defects, both mine. The `conflict` branch never recomputed `ok`, so **a conflict label could not pass the first check with any answer at all**, and `mentioned` defaulted to False for any label without an `expect` list. The module had **no tests**.
+
+Fixed and re-run:
+
+| | first run | after the fix |
+|---|---|---|
+| mention | 14/15 | **15/15** |
+| assertion | 12/15 | **13/15** |
+
+The first run's 14/15 is void. **A number, once printed, gets quoted** — this repository inherited its label problems that way, which is why scores are withheld until signature. That guard did not cover the minutes *after* signing.
+
+Both remaining failures carried a defect of their own.
+
+**B-4** — the answer said `Mod` and cited a table I had never read. **There are two permission matrices and their ban rows disagree**: one says Admin and CM, the other adds Mod. The code allows Mod. I had "corrected" that label from Mod to CM on the strength of one table — **the same mistake as the nickname**, concluding from a single place. Twice now.
+
+**A-3, A-5** — they pass the first check and fail only the second, not because the answer is wrong but because it **puts both the document's value and the code's value on the page and leads with the fact that they disagree**. The second check requires the document value to sit in the lead or verdict position, a rule written when answers carried no code values. The answer got better and the score went down.
+
+⛔ That rule does not get changed now. **Changing a scoring rule after seeing the score is tampering.** It gets changed by pre-registration, before the next round.

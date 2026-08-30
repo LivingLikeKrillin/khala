@@ -48,6 +48,19 @@ def _norm(s: str) -> str:
     return re.sub(r"[\s,]+", "", s or "")
 
 
+
+def _all_groups_present(expect_all, normalized_text: str) -> bool:
+    """`expect_all` 의 **모든 묶음**이 답변에 있는가. 묶음 안은 표기 후보라 하나면 된다.
+
+    상수·모순·종합 라벨이 이 판정을 공유한다. 갈래마다 따로 쓰면 한 갈래만 고쳐지고
+    나머지는 조용히 틀린 채 남는다 — 2026-08-31 에 모순 갈래가 정확히 그렇게 빠져 있었다.
+    """
+    return all(
+        any(_norm(x) in normalized_text for x in ([e] if isinstance(e, str) else e))
+        for e in expect_all
+    )
+
+
 def summary_lines(rows: list[dict], for_signature: bool) -> list[str]:
     """요약 줄. **서명 전에는 비율을 만들지 않는다.**
 
@@ -146,10 +159,16 @@ async def main() -> int:
             # 3판 — 종합·최신성. 라벨이 그 모양일 때만 판정이 바뀐다.
             if q.get("type") == "conflict":
                 # 모순 라벨은 **늘어놓기가 곧 답**이다 (표로 나란히 놓는 것이 좋은 모양).
+                #
+                # ⛔ **2026-08-31: 여기서 `ok` 를 다시 계산하지 않았다.** 모순 라벨은
+                # `expect` 가 비고 `expect_all` 만 갖는데, `ok` 는 위에서 `expect` 로만
+                # 계산됐다 — 그래서 `any([])` = False 가 되어 **답이 무엇이든 1판 실패**였다.
+                # 첫 서명 회차에서 A-10 이 `언급=실패 · 주장=통과` 로 찍혔고, 2판은 1판의
+                # 부분집합이어야 하므로 그 모순이 결함을 드러냈다.
+                ok = _all_groups_present(q["expect_all"], nt)
                 said = discloses_conflict(q["expect_all"], text)
             elif q.get("expect_all"):
-                ok = all(any(_norm(x) in nt for x in ([e] if isinstance(e, str) else e))
-                         for e in q["expect_all"])
+                ok = _all_groups_present(q["expect_all"], nt)
                 said = asserts_all(q["expect_all"], text)
             elif q.get("superseded") is not None:
                 usable, why = label_is_usable(expect, q["superseded"])
@@ -158,7 +177,16 @@ async def main() -> int:
                     continue
                 said = asserts_current_not_stale(expect, q["superseded"], text)
             # 두 정규화(쉼표 제거 vs 공백 축약)가 갈리는 자리를 드러내 둔다.
-            mentioned = all(facts_present([expect], text)) if expect else False
+            # ⛔ **2026-08-31: `expect` 가 없는 라벨은 무조건 False 였다.** 모순·종합 라벨은
+            # `expect_all` 만 갖는다. 그 상태로 요약이 `1판 14/15` 를 냈는데, 빠진 하나는
+            # 답이 나빠서가 아니라 **1판이 그 라벨을 볼 수 없어서**였다. 분모에 넣고 항상
+            # 떨어뜨리는 것은 측정이 아니다.
+            if expect:
+                mentioned = all(facts_present([expect], text))
+            elif q.get("expect_all"):
+                mentioned = _all_groups_present(q["expect_all"], nt)
+            else:
+                mentioned = False
             dis = [d for d in (q.get("distractor") or []) if _norm(d) in nt]
             rows.append({"id": q["id"], "pass": ok, "asserted": said,
                          "mentioned": mentioned, "distractor_seen": dis,
