@@ -42,6 +42,9 @@ docker exec nexus-app python -m nexus.cli query "질문" --tenant design_docs --
 
 - **옛 컴포넌트 이름을 쓰지 않는다.** specledger → **Arbiter** · mutqa → **Probe** · ken →
   **Adept** · 옛 Probe(리뷰) → **Observer**. 시점 기록물(ADR·런로그)의 잔존만 허용.
+- ⛔ **팀 제품 코드를 고치지 않는다.** `/code-src` 로 마운트된 코드는 **읽기 전용 근거**다.
+  거기서 결함을 찾으면(예: 검증 상한이 컬럼보다 커서 저장이 깨지는 것) **찾아서 정확히
+  전달하는 것까지가 내 몫**이고, 고치는 것은 개발진이다. 2026-08-31 지시.
 - **커밋 메시지·PR 본문은 영문**이고, 조직명·개인명·실 페이지 ID 를 넣지 않는다.
   `python scripts/fingerprint_scan.py` 가 `git add` 뒤에 검사한다.
 - **개발 실행에 돈을 쓰지 않는다.** LLM 은 키리스 브리지로 돈다(`NEXUS_LLM_PROVIDER=claude-code`).
