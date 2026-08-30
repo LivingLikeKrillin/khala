@@ -328,7 +328,8 @@ def query(
             # 등급은 이 명령이 검색에 넘긴 값과 **같은 것**을 쓴다(위 `hybrid_search`).
             packet = await packet_for_answer(result, tenant, "INTERNAL",
                                              config=config, search=hybrid_search,
-                                             embedding_svc=embedding_svc)
+                                             embedding_svc=embedding_svc,
+                                             question=q, pool=await db.get_pool())
             llm_svc = LLMService()
             answer_result = await generate_answer(
                 query=q, packet=packet, llm_svc=llm_svc,

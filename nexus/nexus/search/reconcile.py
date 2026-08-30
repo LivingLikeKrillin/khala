@@ -91,8 +91,49 @@ async def corrections_for(hits, tenant, clearance, *, search, exclude_rids=None,
     return out
 
 
+async def code_values_for(question, tenant, clearance, *, config, pool):
+    """질문에 걸린 claim 의 **코드 현재값**.
+
+    ⛔ **왜 이 배선이 필요했나 (2026-08-30).** 코드 값 해석기도, claim 표도, 전용 CLI 도
+    다 있었는데 **답변 경로가 부르는 곳이 없었다**. 그래서 슬랙에서 *"파티 이름 몇 자까지"*
+    를 물으면 문서만 보고 답했고, 코드가 다른 값을 갖고 있어도 화면에 나타날 길이 없었다.
+    이 리포가 반복해서 데인 모양이다 — 만들어 놓고 읽는 쪽이 없다.
+
+    **요청 경로라 트리를 훑지 않는다.** claim 이 파일을 알고 있으므로 그 파일만 읽는다
+    (`resolve_at`). 전체 해석은 이 배포에서 첫 호출이 55.9초다.
+
+    실패는 **조용히** 넘긴다 — 코드 값은 답변의 덤이지 답변의 조건이 아니다. 값이 안 나오면
+    오늘과 같은 프롬프트가 나가고, 왜 안 나왔는지는 시드 보고가 말한다.
+    """
+    from nexus.claims.matching import claims_for_question
+    from nexus.claims.repository import ClaimRepository
+    from nexus.index.code_source import CodeValueResolver
+    from nexus.search.evidence_packet import CodeValue
+
+    repo_path = (config or {}).get("code_source", {}).get("repo_path", "")
+    if not repo_path:
+        return []
+    matched = claims_for_question(
+        question, await ClaimRepository(pool).find_all(tenant, clearance))
+    if not matched:
+        return []
+
+    resolver = CodeValueResolver(repo_path)
+    out = []
+    for c in matched:
+        if not (c.value_source and c.source_uri):
+            continue
+        r = resolver.resolve_at(c.source_uri, c.value_source)
+        if not r.found:
+            continue
+        out.append(CodeValue(
+            statement=c.statement, value=r.value or "", source=c.source_uri,
+            drifted=bool(c.value_symbol_hash) and c.value_symbol_hash != r.symbol_hash))
+    return out
+
+
 async def packet_for_answer(result, tenant, clearance, *, config, search,
-                            embedding_svc=None):
+                            embedding_svc=None, question=None, pool=None):
     """**답변용 근거 패킷은 이 함수 하나로 만든다.**
 
     답변 경로가 셋이다(HTTP · CLI · A2A). 각자 `assemble_packet` 을 부르면, 보강을 한 곳에만
@@ -130,4 +171,12 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
         from nexus.search.pairs import paired_chunks
         fill += [_as_hit(r) for r in await paired_chunks(
             result.hits, tenant, clearance, exclude_rids={f.rid for f in fill})]
-    return await assemble_packet(result.hits, result.graph, tenant, fill=fill)
+    packet = await assemble_packet(result.hits, result.graph, tenant, fill=fill)
+    if search_cfg.get("code_values") and question and pool is not None:
+        try:
+            packet.code_values = await code_values_for(
+                question, tenant, clearance, config=config, pool=pool)
+        except Exception:                                   # noqa: BLE001
+            # 답변을 막지 않는다. 코드 값은 덤이고, 여기서 터지면 질문 전체가 죽는다.
+            logger.warning("code_values_failed", tenant=tenant)
+    return packet

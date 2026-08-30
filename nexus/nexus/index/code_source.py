@@ -203,6 +203,28 @@ def _attr_value(args: str, attr: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+
+def _constant_hits(path, text: str, symbol: str) -> list[tuple]:
+    pat = re.compile(r"static\s+final\s+\w+\s+" + re.escape(symbol) + r"\s*=\s*([^;]+);")
+    m = pat.search(text)
+    return [(path, m.group(1).strip(), m.group(0))] if m else []
+
+
+def _annotation_hits(path, text: str, field: str, ann_name: str, attr: str) -> list[tuple]:
+    if "@" + ann_name not in text:
+        return []
+    out = []
+    anns = _scan_annotations(text)
+    for decl in _field_declarations(text, field):
+        for start, end, name, args in _attached_annotations(text, anns, decl):
+            if name != ann_name:
+                continue
+            value = _attr_value(args, attr)
+            if value is not None:
+                out.append((path, value, text[start:end]))
+    return out
+
+
 class CodeValueResolver:
     def __init__(self, repo_path):
         self.repo_path = Path(repo_path)
@@ -270,6 +292,52 @@ class CodeValueResolver:
             return self._resolve_annotation(source)
         return self._resolve_constant(source)
 
+    def resolve_at(self, rel_path: str, source: str) -> ResolvedValue:
+        """**파일을 이미 아는 경우**의 해석 — 트리를 훑지 않는다.
+
+        ⚠ **왜 따로 있나 (2026-08-30 실측).** 전체 해석의 비용은 파싱이 아니라 목록 만들기다:
+        `rglob` 50.70초 · 읽기 5.28초 · 주석 지우기 0.18초. 그 값은 요청 경로에 둘 수 없다.
+        claim 은 심을 때 어느 파일에서 나왔는지(`source_uri`)를 이미 적어 두므로, 답변 경로는
+        그 파일 하나만 읽으면 된다.
+
+        **대신 무엇을 잃는가.** 여기서는 다른 파일에 같은 이름이 다른 값으로 있는지 보지
+        않는다 — 그 판정은 **심을 때** 끝났다. 심은 뒤에 새로 생긴 충돌은 다시 심을 때까지
+        안 보인다. 이것을 감추지 않으려고 `reason` 에 적어 둔다.
+        """
+        path = self.repo_path / rel_path
+        if not path.is_file():
+            return ResolvedValue(
+                found=False,
+                reason=f"기록된 파일이 없다: {rel_path} (코드가 옮겨졌거나 마운트가 빠졌다)")
+        text = _blank_comments(path.read_text(encoding="utf-8", errors="ignore"))
+
+        if "@" in source:
+            left, _, right = source.partition("@")
+            _, _, field = left.rpartition(".")
+            ann_name, _, attr = right.rpartition(".")
+            symbol = f"{field}@{ann_name}.{attr}"
+            hits = _annotation_hits(path, text, field, ann_name, attr)
+        else:
+            _, _, symbol = source.rpartition(".")
+            hits = _constant_hits(path, text, symbol)
+
+        if not hits:
+            # **낡은 claim 과 사라진 값을 가르지 않는다** — 둘 다 "다시 심어라" 다.
+            return ResolvedValue(
+                found=False, symbol=symbol,
+                reason=f"`{symbol}` 이 {rel_path} 에 더는 없다 (다시 심어야 한다)")
+        values = {v for _, v, _ in hits}
+        if len(values) > 1:
+            return ResolvedValue(
+                found=False, symbol=symbol,
+                reason=f"`{symbol}` 이 {rel_path} 안에서만도 값이 갈린다")
+
+        _, value, whole = hits[0]
+        symbol_hash = hashlib.sha256(
+            (rel_path + "::" + source + "::" + whole).encode("utf-8")
+        ).hexdigest()[:12]
+        return ResolvedValue(True, value, rel_path, symbol, symbol_hash)
+
     def _decide(self, source, hits, qualifier, symbol, missing_reason):
         """찾은 것들에서 답 하나를 낸다 — **낼 수 있을 때만**.
 
@@ -314,14 +382,9 @@ class CodeValueResolver:
         if not symbol:
             return ResolvedValue(found=False, reason=f"value_source 를 읽을 수 없다: {source!r}")
 
-        pat = re.compile(
-            r"static\s+final\s+\w+\s+" + re.escape(symbol) + r"\s*=\s*([^;]+);"
-        )
         hits: list[tuple[Path, str, str]] = []          # (path, value, whole_match)
         for path in self._eligible_files():
-            m = pat.search(self._text(path))
-            if m:
-                hits.append((path, m.group(1).strip(), m.group(0)))
+            hits += _constant_hits(path, self._text(path), symbol)
         return self._decide(source, hits, qualifier, symbol,
                             f"`{symbol}` 을 코드에서 찾지 못했다")
 
@@ -339,17 +402,7 @@ class CodeValueResolver:
         symbol = f"{field}@{ann_name}.{attr}"
         hits: list[tuple[Path, str, str]] = []
         for path in self._eligible_files():
-            text = self._text(path)
-            if "@" + ann_name not in text:
-                continue
-            anns = _scan_annotations(text)
-            for decl in _field_declarations(text, field):
-                for start, end, name, args in _attached_annotations(text, anns, decl):
-                    if name != ann_name:
-                        continue
-                    value = _attr_value(args, attr)
-                    if value is not None:
-                        hits.append((path, value, text[start:end]))
+            hits += _annotation_hits(path, self._text(path), field, ann_name, attr)
         return self._decide(
             source, hits, qualifier, symbol,
             f"`{field}` 에 붙은 `@{ann_name}({attr} = …)` 를 코드에서 찾지 못했다")

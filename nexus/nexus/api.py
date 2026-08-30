@@ -612,7 +612,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         # 답변용 근거 패킷은 한 함수로만 만든다 (`search/reconcile.py`).
         packet = await packet_for_answer(
             search_result, req.tenant, req.classification_max,
-            config=config, search=hybrid_search, embedding_svc=embedding_svc)
+            config=config, search=hybrid_search, embedding_svc=embedding_svc,
+            question=req.query, pool=await db.get_pool())
 
         # LLM 답변 생성
         answer_result = await generate_answer(

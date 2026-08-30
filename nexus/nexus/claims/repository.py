@@ -59,6 +59,30 @@ class ClaimRepository:
         return [_row_to_claim(r) for r in rows]
 
 
+    async def find_all(self, tenant: str, clearance: str) -> list[Claim]:
+        """테넌트의 활성 claim 전부.
+
+        답변 경로는 개념 하나가 아니라 **문장**을 들고 온다. 그래서 고르기는 파이썬에서
+        하고(`claims/matching.py`), 여기서는 범위만 지킨다 — 등급·격리·상태는 SQL 이
+        판정한다. 이 표가 커지면 그때 고르기를 SQL 로 내린다.
+        """
+        async with self.pool.acquire() as con:
+            rows = await con.fetch(
+                """
+                SELECT rid, tenant, classification, owner, source_uri, hash, claim_id, kind,
+                       concepts, statement, value_source, value_ref_kind, criticality, activity,
+                       claim_status, confidence, value_symbol_hash, last_verified_commit
+                FROM claims
+                WHERE tenant = $1
+                  AND classification <= $2::classification_level
+                  AND is_quarantined = false
+                  AND status = 'active'
+                """,
+                tenant, clearance,
+            )
+        return [_row_to_claim(r) for r in rows]
+
+
 def _row_to_claim(r) -> Claim:
     return Claim(
         rid=r["rid"], tenant=r["tenant"], classification=r["classification"],

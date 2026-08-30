@@ -151,3 +151,48 @@ def test_constants_still_work(tmp_path):
           "public class PlanPolicy { public static final int BASIC_MAX_PROJECTS = 3; }")
     r = CodeValueResolver(tmp_path).resolve("PlanPolicy.BASIC_MAX_PROJECTS")
     assert r.found is True and r.value == "3"
+
+
+# ── 파일을 이미 아는 경우 (`resolve_at`) ──────────────────────────────────────
+
+def test_resolve_at_reads_one_file_without_walking_the_tree(tmp_path):
+    """⛔ 요청 경로용. 전체 해석은 이 배포에서 첫 호출이 55.9초이고 그중 50.7초가 목록이다."""
+    _java(tmp_path, "a/CreatePartyroomRequest.java", REQUEST)
+    # 트리에 잡음을 잔뜩 둬도 결과가 같아야 한다 — 저 파일만 읽기 때문이다.
+    for i in range(5):
+        _java(tmp_path, f"noise/N{i}.java",
+              f"public class N{i} {{ @Size(max = {i}) private String title; }}")
+
+    r = CodeValueResolver(tmp_path).resolve_at("a/CreatePartyroomRequest.java",
+                                               "CreatePartyroomRequest.title@Size.max")
+    assert r.found is True and r.value == "100"
+
+
+def test_resolve_at_and_the_full_scan_agree_on_the_hash(tmp_path):
+    """드리프트 판정이 두 경로에 걸쳐 성립해야 한다 — 심을 때와 읽을 때가 다른 경로다."""
+    _java(tmp_path, "a/CreatePartyroomRequest.java", REQUEST)
+    src = "CreatePartyroomRequest.title@Size.max"
+    full = CodeValueResolver(tmp_path).resolve(src)
+    fast = CodeValueResolver(tmp_path).resolve_at(full.rel_path, src)
+    assert fast.symbol_hash == full.symbol_hash
+
+
+def test_resolve_at_says_the_file_moved_rather_than_guessing(tmp_path):
+    r = CodeValueResolver(tmp_path).resolve_at("gone/Nope.java", "Nope.title@Size.max")
+    assert r.found is False and "기록된 파일이 없다" in r.reason
+
+
+def test_resolve_at_says_the_symbol_left_rather_than_falling_back_to_a_scan(tmp_path):
+    """⛔ 여기서 전체 훑기로 되돌아가면 요청 하나가 50초를 문다."""
+    _java(tmp_path, "a/Req.java", "public class Req { private String title; }")
+    _java(tmp_path, "b/Other.java", "public class Other { @Size(max = 9) private String title; }")
+
+    r = CodeValueResolver(tmp_path).resolve_at("a/Req.java", "Req.title@Size.max")
+    assert r.found is False and "다시 심어야 한다" in r.reason
+
+
+def test_resolve_at_works_for_constants_too(tmp_path):
+    _java(tmp_path, "a/PlanPolicy.java",
+          "public class PlanPolicy { public static final int MAX = 7; }")
+    r = CodeValueResolver(tmp_path).resolve_at("a/PlanPolicy.java", "PlanPolicy.MAX")
+    assert r.value == "7"

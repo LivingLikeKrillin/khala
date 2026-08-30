@@ -293,7 +293,8 @@ async def _run(args) -> int:
             # 프로덕션과 같은 함수로 만든다 (`search/reconcile.py`).
             packet = await packet_for_answer(
                 result, args.tenant, args.clearance, config=search_cfg,
-                search=hybrid.hybrid_search, embedding_svc=svc)
+                search=hybrid.hybrid_search, embedding_svc=svc,
+                question=q["query"], pool=await db.get_pool())
             ans = await generate_answer(q["query"], packet, llm_svc=llm,
                                         confidence=result.confidence)
             spend.add(ans.usage, kind="answer")
