@@ -9,9 +9,9 @@ This page is safe to hand-write, which most of the documentation here is not. Ev
 
 ## Who caught what
 
-Nineteen entries below, sorted by what actually surfaced the defect. The shape matters more than the count: automated checks caught the infrastructure problems, measurement caught the data problems, and the single most consequential defect — the one that had passed every automated check for weeks — was caught by one sentence from a person. The three most recent were all found the same way: by checking a claim against the thing it describes, which is why the measurement lane keeps growing.
+Twenty entries below, sorted by what actually surfaced the defect. The shape matters more than the count: automated checks caught the infrastructure problems, measurement caught the data problems, and the single most consequential defect — the one that had passed every automated check for weeks — was caught by one sentence from a person. The most recent ones were found the same way: by checking a claim against the thing it describes — including the newest, where a person's question exposed a capability that had been built and then never wired to anything that reads it.
 
-<svg class="kh-fig" viewBox="0 0 600 214" role="img" aria-label="A timeline from July to August 2026 with three lanes. The 'CI and guards' lane holds four defects, the 'measurement' lane holds twelve, and the 'a person' lane holds three. Density increases sharply through August, with three measurement entries clustered at the end of the month. The final entry in the person lane is the evidence-fit defect that every automated check had passed.">
+<svg class="kh-fig" viewBox="0 0 600 214" role="img" aria-label="A timeline from July to August 2026 with three lanes. The 'CI and guards' lane holds four defects, the 'measurement' lane holds twelve, and the 'a person' lane holds four. Density increases sharply through August, with entries clustered at the end of the month. The person lane ends with a question that exposed a capability built but never wired to anything that reads it.">
   <text class="kh-fig-h" x="0" y="14">WHAT SURFACED IT</text>
   <line class="kh-fig-rule" x1="112" y1="34" x2="575" y2="34"/>
   <text class="kh-fig-s" x="0" y="60">CI &amp; guards</text>
@@ -41,9 +41,10 @@ Nineteen entries below, sorted by what actually surfaced the defect. The shape m
   <circle class="kh-fig-verified" cx="197" cy="156" r="3.5"/>
   <circle class="kh-fig-verified" cx="466" cy="156" r="3.5"/>
   <circle class="kh-fig-ah" cx="524" cy="156" r="5"/>
+  <circle class="kh-fig-verified" cx="575" cy="156" r="3.5"/>
   <path class="kh-fig-line-acc" d="M524 163 L524 178 L470 178"/>
   <text class="kh-fig-d" x="464" y="178" text-anchor="end">passed every automated check</text>
-  <text class="kh-fig-rk" x="583" y="156" text-anchor="end">3</text>
+  <text class="kh-fig-rk" x="583" y="156" text-anchor="end">4</text>
   <line class="kh-fig-rule" x1="112" y1="196" x2="575" y2="196"/>
   <text class="kh-fig-s" x="112" y="207">JUL</text>
   <text class="kh-fig-s" x="378" y="207">AUG</text>
@@ -265,3 +266,28 @@ Putting that change under measurement produced this:
 The prefix narrowed retrieval and dropped the document holding the contradiction out of the candidate set entirely. The answer was faithful to what it received. Evidence arrival does not vary between runs, so this is not noise.
 
 Reverted. Authority stays metadata. **A label's wording is not a free variable** — change it and retrieval changes. A phrasing meant to make the harness honest had come close to hiding exactly what this tool is built to surface.
+
+### Built, then never read
+
+Asking *"how many characters can a nickname be"* returned two documents with two different numbers. Opening the code settled less than expected: the server does not validate that length at all, and only the column caps it at 20. It was not a question of which document to believe.
+
+What the owner asked for was not a verdict but a juxtaposition — *an implementation may have broken the document, or the document may not have caught up, so tell me both.* Checking whether that capability existed found **three of four layers disconnected**:
+
+| layer | state |
+|---|---|
+| code value resolver | present |
+| code tree mount | present |
+| registered concepts | **zero rows** — the seed file targeted a sample app |
+| wired into answers | **absent** — reachable only from one dedicated CLI command |
+
+Fixing it surfaced three more. **The resolver read the wrong shape**: `static final` constants only, while in real Java the "how many characters" limits live in `@Size(max = 100)` and `@Column(length = 20)` — so it could reach none of the values we wanted to compare. **I looked for the cost in the wrong place**: the first lookup took 55.9s and I assumed the new parsing was to blame, added a pre-filter, and measured no improvement at all. Split out, it was listing files 50.70s, reading them 5.28s, parsing 0.18s — the cost of walking a bind mount. **Seeding made dead claims look alive**: it printed only `11 loaded`, and a claim that fails to bind is still stored, just without a value.
+
+What comes out now:
+
+```
+50 characters — but the code disagrees, so both are given.
+⚠ The server's request validation caps this at 500, ten times the document's 50.
+Which one is correct cannot be settled from this evidence.
+```
+
+Three values diverge: name 30 vs 100, introduction 50 vs 500, nickname 12 vs no validation at all. **The system picks neither.** They may both be right at different layers — a product rule of 30, a server guard of 100 and a column of 255 is a real shape in this codebase, not a contradiction.
