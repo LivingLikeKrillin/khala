@@ -91,6 +91,12 @@ search:
   # 이름으로 이어진다(라이브 27쌍). 측정 2026-08-29: 처치 라벨 0/5 → 4/5, 대조군 셋 5/5 유지,
   # 지연 +3 ms, **근거 분량 +26~134%**. 값이 붙는 곳은 짝이 있는 코퍼스뿐이다.
   pair_expansion: true
+  # 코드의 현재 값 — 질문에 걸린 claim 을 코드에서 다시 읽어 근거에 **문서와 나란히** 붙인다
+  # (`claims/matching.py` · `search/reconcile.py`). 문서 30자 vs 서버 `@Size(max = 100)` 처럼
+  # 갈리는 자리가 실물에 있고, 어느 쪽이 맞는지는 시스템이 판정하지 않는다 — 둘 다 보인다.
+  # claim 이 파일을 알고 있으므로 그 파일만 읽는다(트리 훑기는 이 배포에서 50.7초다).
+  # 코드 기본값은 꺼짐이고, claim 이 안 걸리면 프롬프트는 오늘과 바이트 단위로 같다.
+  code_values: true
   snippet_max_chars: 300       # 근거 스니펫 최대 길이(문장 경계에서 컷, SPEC-nexus-snippet-boundary-truncation)
   # 어느 임베딩 세대를 읽을지 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버도 롤백도 이 값 하나다.
   # embedding=nomic-embed-text(768) · embedding_1024=KURE-v1(1024). 화이트리스트 밖이면 기동 실패.

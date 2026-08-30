@@ -63,6 +63,23 @@ class Provenance:
 
 
 @dataclass
+class CodeValue:
+    """코드가 **지금** 말하는 값. 문서가 말하는 값과 나란히 놓으려고 있다.
+
+    ⛔ **어느 쪽이 맞다고 판정하지 않는다.** 구현이 문서를 어긴 것일 수도 있고 문서가
+    갱신되지 않은 것일 수도 있으며, 층이 달라 둘 다 맞을 수도 있다(제품 규칙 30 · 서버
+    방어선 100 · 저장 한계 255 는 실제로 관측된 모양이다). 시스템이 할 일은 둘을 **같이
+    보이는 것**이고, 고르는 것은 읽는 사람 몫이다.
+    """
+
+    statement: str
+    value: str
+    source: str = ""
+    #: 심을 때의 코드와 지금 코드가 다른가. 값 자체는 지금 것이라 정확하다.
+    drifted: bool = False
+
+
+@dataclass
 class EvidencePacket:
     """LLM에 전달할 evidence 패킷."""
     snippets: list[EvidenceSnippet] = field(default_factory=list)
@@ -71,6 +88,9 @@ class EvidencePacket:
     #: 근거 문서에 붙은 **결정론적** 갱신 부채(supersede·제목 중복). 의미적 모순은 여기 없다 —
     #: 그건 답변자가 서술할 뿐 시스템이 보증하지 않는다 (`search/doc_debt.py`).
     debts: list[DocDebt] = field(default_factory=list)
+    #: 질문에 걸린 claim 의 **코드 현재값**. 문서와 나란히 놓기 위한 것이고, 비면 프롬프트는
+    #: 오늘과 바이트 단위로 같다 (평가 팩과의 비교가 안 끊긴다).
+    code_values: list[CodeValue] = field(default_factory=list)
 
 
 async def assemble_packet(
@@ -170,6 +190,21 @@ def format_for_llm(packet: EvidencePacket) -> str:
         # `getattr` 인 이유: packet 을 손으로 만드는 호출부(테스트 픽스처, 다른 조립 경로)가
         # 이 필드를 모를 수 있다. 없으면 짧은 쪽으로 떨어진다 — 프롬프트가 비는 것보다 낫다.
         parts.append(f"\n{getattr(s, 'full_text', '') or s.text}")
+
+    # 코드의 현재 값 — **문서가 아니다.** 그 구별이 프롬프트에 보여야 규칙 7(근거가 어긋나면
+    # 감추지 마라)이 볼 것을 갖는다. 비면 한 줄도 안 나가므로 오늘 프롬프트와 같다.
+    # `getattr` 인 이유는 위 스니펫과 같다 — 패킷을 손으로 만드는 호출부(테스트 픽스처·다른
+    # 조립 경로)가 이 필드를 모른다. 없으면 한 줄도 안 나간다.
+    code_values = getattr(packet, "code_values", None)
+    if code_values:
+        parts.append("\n## 코드의 현재 값 (Code)")
+        parts.append("아래는 문서가 아니라 **코드에서 지금 읽은 값**입니다. 문서의 값과 "
+                     "다르면 어느 쪽이 맞다고 단정하지 말고, 문서는 무엇이라 하고 코드는 "
+                     "무엇이라 하는지 **둘 다** 적으세요.")
+        for cv in code_values:
+            drift = " (심은 뒤 코드가 바뀜 — 값은 현재 것)" if cv.drifted else ""
+            where = f" — {cv.source}" if cv.source else ""
+            parts.append(f"- {cv.statement}: {cv.value}{where}{drift}")
 
     # Graph findings
     if packet.graph:

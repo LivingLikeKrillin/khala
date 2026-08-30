@@ -133,7 +133,8 @@ async def main() -> int:
             # **프로덕션이 답변용 근거를 만드는 그 함수**를 쓴다. 직접 조립하면
             # 하니스가 아무도 안 지나는 경로를 측정한다 — 2026-08-29 에 실제로 그랬다.
             packet = await packet_for_answer(r, args.tenant, CLEARANCE, config=cfg,
-                                             search=hybrid.hybrid_search, embedding_svc=svc)
+                                             search=hybrid.hybrid_search, embedding_svc=svc,
+                                             question=q["query"], pool=await db.get_pool())
             ans = await generate_answer(q["query"], packet, LLMService(),
                                         confidence=r.confidence)
             text = getattr(ans, "answer", None) or getattr(ans, "text", "") or str(ans)
