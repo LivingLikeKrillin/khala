@@ -196,3 +196,60 @@ def test_resolve_at_works_for_constants_too(tmp_path):
           "public class PlanPolicy { public static final int MAX = 7; }")
     r = CodeValueResolver(tmp_path).resolve_at("a/PlanPolicy.java", "PlanPolicy.MAX")
     assert r.value == "7"
+
+
+# ── 접근 제어자가 없는 필드 ──────────────────────────────────────────────────
+
+LOMBOK = """
+package a;
+@Getter
+public class UpdateMyBioRequest {
+    @Size(max = 20, message = "닉네임은 20자를 초과할 수 없습니다")
+    String nickname;
+
+    @Size(max = 50, message = "소개글은 50자를 초과할 수 없습니다")
+    String introduction;
+}
+"""
+
+
+def test_a_field_without_an_access_modifier_is_still_a_field(tmp_path):
+    """⛔ **실물에서 놓친 자리.** Lombok 을 쓰면 제어자를 안 붙인다.
+
+    이것을 못 읽어서 사용자 경로의 닉네임 상한이 안 잡혔고, 나는 관리자·봇 경로만 보고
+    *"서버에 길이 검증이 없다"* 고 잘못 보고했다.
+    """
+    _java(tmp_path, "a/UpdateMyBioRequest.java", LOMBOK)
+    r = CodeValueResolver(tmp_path).resolve("UpdateMyBioRequest.nickname@Size.max")
+    assert r.found is True and r.value == "20"
+
+
+def test_the_neighbour_field_is_still_told_apart_without_modifiers(tmp_path):
+    _java(tmp_path, "a/UpdateMyBioRequest.java", LOMBOK)
+    r = CodeValueResolver(tmp_path).resolve("UpdateMyBioRequest.introduction@Size.max")
+    assert r.value == "50"
+
+
+def test_generic_and_array_types_are_read(tmp_path):
+    _java(tmp_path, "a/Holder.java", """
+public class Holder {
+    @Size(max = 3) List<String> tags;
+    @Size(max = 4) String[] names;
+}
+""")
+    res = CodeValueResolver(tmp_path)
+    assert res.resolve("Holder.tags@Size.max").value == "3"
+    assert res.resolve("Holder.names@Size.max").value == "4"
+
+
+def test_a_word_in_prose_is_not_a_declaration(tmp_path):
+    """⛔ 대조군. 제어자를 안 요구하는 대신 **타입 토큰**을 요구한다 — 없으면 산문이
+    선언으로 잡히고, 그러면 이 모듈은 아무 글에서나 값을 읽는다."""
+    _java(tmp_path, "a/Doc.java", """
+public class Doc {
+    @Size(max = 9)
+    void method() { int x = 1; }
+}
+""")
+    r = CodeValueResolver(tmp_path).resolve("Doc.x@Size.max")
+    assert r.found is False

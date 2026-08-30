@@ -191,7 +191,27 @@ def _attached_annotations(text, anns, decl_start):
 
 
 def _field_declarations(text: str, field: str) -> list[int]:
-    pat = re.compile(r"(?:private|protected|public)[^;{}=]*?\b" + re.escape(field) + r"\s*[;=]")
+    """`field` 를 선언하는 자리들.
+
+    ⛔ **접근 제어자를 요구하지 않는다 (2026-08-31).** 첫 판은 `private|protected|public` 으로
+    시작해야만 필드로 봤다. 그래서 Lombok 을 쓰는 실물 클래스를 통째로 놓쳤다 —
+
+        @Getter
+        public class UpdateMyBioRequest {
+            @Size(max = 20, message = "닉네임은 20자를 초과할 수 없습니다")
+            String nickname;          // ← 제어자가 없다
+
+    그 결과 *"닉네임은 몇 자 제한이야"* 의 **사용자 경로 값**이 안 잡혔고, 관리자·봇 경로만
+    잡혀서 나는 *"서버에 길이 검증이 없다"* 고 보고했다. 그것은 사실이 아니었고, 사용자가
+    *"테스트 코드에도?"* 라고 되물어서 드러났다.
+
+    대신 **타입 토큰을 요구한다** — 이름 앞에 타입이 와야 선언이다. 그것마저 없애면 산문
+    속의 낱말이 선언으로 잡힌다.
+    """
+    pat = re.compile(
+        r"(?:(?:private|protected|public|static|final|transient|volatile)\s+)*"
+        r"[A-Za-z_$][\w.$]*(?:\s*<[^;{}]*>)?(?:\s*\[\s*\])*\s+"
+        + re.escape(field) + r"\s*[;=]")
     return [m.start() for m in pat.finditer(text)]
 
 
