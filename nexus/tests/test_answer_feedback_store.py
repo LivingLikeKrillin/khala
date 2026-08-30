@@ -100,14 +100,36 @@ async def test_neither_table_has_an_identity_column(clean_db):
             assert banned not in cols, f"{table} 에 {banned} 가 있다 — §3.4 위반"
 
 
+#: `answer_key` 를 가져도 되는 표. 늘리는 것은 **결정**이어야 하므로 여기 적는다.
+KEY_TABLES = {"answer_offered", "answer_vote", "search_answer_text"}
+
+
 @pytest.mark.asyncio
-async def test_the_key_lives_in_exactly_two_tables(clean_db):
-    """`retention_key` 에 건 교차표 검사와 같은 모양. **principal 을 가진 표와 동거 금지.**"""
+async def test_the_key_never_sits_beside_an_identity(clean_db):
+    """**이 검사가 실제로 지키는 것.** `retention_key` 에 건 교차표 검사와 같은 모양 —
+    `answer_key` 는 신원을 가진 표와 **동거하지 않는다**. 표 이름을 굳혀 두면 규칙의 *뜻*이
+    아니라 그때의 *목록*을 지키게 되고, 2026-08-30 에 실제로 그렇게 걸렸다: 신원 컬럼이 없는
+    답변 보존 표를 더했는데 목록이 둘로 박혀 있어 빨간불이 났다."""
     from nexus import db
 
     rows = await db.fetch_all(
         "SELECT table_name FROM information_schema.columns WHERE column_name = 'answer_key'")
-    assert {r["table_name"] for r in rows} == {"answer_offered", "answer_vote"}
+    for table in {r["table_name"] for r in rows}:
+        cols = {r["column_name"] for r in await db.fetch_all(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = $1", table)}
+        for banned in ("principal", "user_id", "slack_user_id", "voter", "voter_hash"):
+            assert banned not in cols, f"{table} 이 answer_key 와 {banned} 를 같이 갖는다"
+
+
+@pytest.mark.asyncio
+async def test_the_key_does_not_spread_without_a_decision(clean_db):
+    """뜻을 지키는 검사만 두면 표가 조용히 늘어난다. 목록은 **늘리는 것을 결정으로 만드는**
+    자리로 남긴다 — 지우는 검사가 아니라 손을 멈추게 하는 검사다."""
+    from nexus import db
+
+    rows = await db.fetch_all(
+        "SELECT table_name FROM information_schema.columns WHERE column_name = 'answer_key'")
+    assert {r["table_name"] for r in rows} == KEY_TABLES
 
 
 # ── I5 — 투표는 INSERT ────────────────────────────────────────────────────────
