@@ -15,6 +15,8 @@ Nexus 응답을 Slack 메시지로 변환한다.
 
 from __future__ import annotations
 
+from nexus.slack.mrkdwn import to_slack
+
 #: Slack 이 블록 텍스트에 거는 하드 상한. 넘기면 메시지 전체가 `invalid_blocks` 로 거절된다.
 SLACK_BLOCK_TEXT_LIMIT = 3000
 #: 잘림 표시를 **포함해** 상한을 넘지 않도록 본문에 허용하는 길이.
@@ -46,7 +48,10 @@ def format_answer(answer_data: dict) -> list[dict]:
 
     blocks.append({
         "type": "section",
-        "text": {"type": "mrkdwn", "text": _clip(answer_data.get("answer", ""))},
+        # **슬랙이 그리는 것으로 바꿔서 넣는다.** 마크다운을 그대로 넣으면 표는 파이프 줄로,
+        # 헤딩은 `#` 으로 화면에 나간다 (`slack/mrkdwn.py`).
+        "text": {"type": "mrkdwn",
+                 "text": _clip(to_slack(answer_data.get("answer", "")))},
     })
 
     # 구분선
