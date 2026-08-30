@@ -45,6 +45,8 @@ REASONS = ("wrong_evidence", "not_my_question", "ignored_format", "not_found")
 counters: dict = {
     "offers": 0,
     "offer_write_failed": 0,
+    "answers_kept": 0,
+    "answer_write_failed": 0,
     "votes": 0,
     "votes_refused": 0,
     "reason_rejected": 0,
@@ -87,6 +89,34 @@ async def record_offer(*, tenant: str, answer_key: str, channel_id: str | None =
     except Exception as exc:  # noqa: BLE001 — 피드백이 답변 경로를 죽이면 안 된다
         counters["offer_write_failed"] += 1
         log.warning("feedback.offer_write_failed", error=str(exc))
+
+
+async def record_answer_text(*, tenant: str, answer_key: str, answer_text: str) -> None:
+    """**보여 준 답변을 남긴다.** 신고를 그 답에 대 보려면 답이 남아 있어야 한다.
+
+    **왜 생겼나 (2026-08-30, 파일럿 첫날).** 사용자가 받은 답이 이상하다고 말했는데 그 답을
+    꺼낼 수 없었다 — 질문은 남고 답변은 안 남았다. 같은 질문을 다시 돌리니 150·653·2,000자가
+    나왔고, 사용자가 본 것이 그중 무엇인지 알 방법이 없었다. **진단이 거기서 멈췄다.**
+
+    `record_offer` 와 같은 규율을 따른다 — **best-effort**. 여기서 예외가 나가면 보존이
+    답변을 죽인다. 저장이 실패해도 답변은 나가고, 실패한 사실은 세어 둔다.
+    """
+    if not answer_text:
+        # 빈 답변은 남길 것이 없다. **거르는 자리를 호출부가 아니라 여기 둔다** — 호출부가
+        # 늘어나면 그중 하나가 이 검사를 빠뜨리고, 그게 이 리포가 반복해 데인 모양이다.
+        return
+    try:
+        await db.execute(
+            """
+            INSERT INTO search_answer_text (tenant, answer_key, answer_text, chars)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (tenant, answer_key) DO NOTHING
+            """,
+            tenant, answer_key, answer_text, len(answer_text or ""))
+        counters["answers_kept"] += 1
+    except Exception as exc:  # noqa: BLE001 — 보존이 답변 경로를 죽이면 안 된다
+        counters["answer_write_failed"] += 1
+        log.warning("feedback.answer_write_failed", error=str(exc))
 
 
 async def record_vote(*, tenant: str, answer_key: str, verdict: str,

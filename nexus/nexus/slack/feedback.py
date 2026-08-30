@@ -66,11 +66,15 @@ def issue_key() -> str:
     return secrets.token_urlsafe(16)
 
 
-async def record_offer(*, answer_key: str, channel_id: str, message_ts: str) -> None:
+async def record_offer(*, answer_key: str, channel_id: str, message_ts: str,
+                       answer_text: str = "") -> None:
     """제안 한 줄(분모). **best-effort** — 답변은 이미 나갔고 여기서 예외를 올리지 않는다."""
     try:
         await _post("/feedback/offer", {"answer_key": answer_key,
-                                        "channel_id": channel_id, "message_ts": message_ts})
+                                        "channel_id": channel_id, "message_ts": message_ts,
+                                        # **보여 준 답변 원문.** 신고가 오면 그 답에
+                                        # 대 봐야 한다 — 없으면 진단이 시작도 못 한다.
+                                        "answer_text": answer_text})
     except Exception as exc:  # noqa: BLE001
         logger.warning("feedback offer failed: %s", type(exc).__name__)
 
