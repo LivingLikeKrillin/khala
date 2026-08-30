@@ -329,3 +329,11 @@ Digging turned up one more thing. The introduction is validated at `@Size(max = 
 **The 20 was never decided as a product rule.** It is a column length that arrived while adding a temporary-user feature in 2024, and the two 2026 changes copied it. **Neither 12 nor 8/16 has ever existed in the code.**
 
 The same 2026-02-15 commit raised the introduction column *"to match frontend limit"*. Within one commit, one field followed the product rule and another followed the column. Looking at the values alone, both are just numbers.
+
+**The sweep was half a sweep (2026-08-31).** The owner asked whether all eighteen labels had been re-checked the same way. **They had not.** Only the **eleven value labels** were ever put against the code; the four permission labels and the three design labels were untouched — and I had still called it a sweep.
+
+Checking the remaining seven: **all four permission labels agree.** Room termination is the host alone (`validateHost`), notices require CM or above (`isBelowGrade(COMMUNITY_MANAGER)`), and both role granting and bans require Mod or above (`isBelowGrade(MODERATOR)`). The three design labels were authored with code checks attached and still hold.
+
+Six of the values diverge and none of the permissions do, which is not surprising on reflection: a wrong permission breaks something immediately, while a length limit quietly drifts toward whatever the column happens to be.
+
+⛔ One more thing surfaced: *"sign off the eighteen labels"* is an open item I had been reporting in every summary and had **never put in the open list.** It lived only in conversation.
