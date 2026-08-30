@@ -337,3 +337,27 @@ Checking the remaining seven: **all four permission labels agree.** Room termina
 Six of the values diverge and none of the permissions do, which is not surprising on reflection: a wrong permission breaks something immediately, while a length limit quietly drifts toward whatever the column happens to be.
 
 ⛔ One more thing surfaced: *"sign off the eighteen labels"* is an open item I had been reporting in every summary and had **never put in the open list.** It lived only in conversation.
+
+**I never checked the answers (2026-08-31).** It took the owner asking three times. I had only ever checked labels *against the code* — never whether the labels' own expected answers match the corpus. Those answers are ones I wrote.
+
+Checking them, of eighteen:
+
+| | |
+|---|---|
+| confirmed | 12 |
+| **wrong label** | **1** |
+| corpus disagrees with itself | 1 |
+| resting on a single chunk | 4 |
+
+**B-4 was wrong.** Read row by row, the matrix separates two things:
+
+```
+kick (may return)     | O | O | O | X | X |   Mod allowed
+ban (may not return)  | O | O | X | X | X |   Mod not allowed
+```
+
+I asked about the ban and recorded the kick's answer. The correction then opens a defect: **the code does not separate those two rows.** One gate (`isBelowGrade(MODERATOR)`) covers both one-time and permanent expulsion. So a Mod can permanently ban in code while the document says only Admin and CM can.
+
+⛔ **In the previous round I wrote that all four permission labels agreed.** That was a comparison run against a wrong label. When the label is wrong the comparison is wrong with it, and **the direction of the error is always toward "nothing to see".**
+
+Also: A-2 reads as both `50자` and `60자` within the same document, and four labels rest on a single chunk — not wrong, but with no control to disagree with them.
