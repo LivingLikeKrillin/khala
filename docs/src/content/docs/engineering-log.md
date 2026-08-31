@@ -448,3 +448,29 @@ The rule was written **before the scores existed**, and it fired. The copy was n
 The wobble has a clear shape. **Five of the seven wobble only on the second-generation check**, passing the first every time. The answer sometimes leads with the document's value and sometimes with the fact that document and code disagree, and the second check requires the value to sit in the lead or the verdict. That rule was written for answers that carried no code values. **The answer improving is what shakes the instrument.**
 
 ⛔ And this is where it would be easy to slip. **Changing a rule because it blocked you is tampering.** The grounds for changing it already exist — this drift was filed this morning, with the note that any amendment goes through pre-registration before the next round. So the order holds: register the amendment first, then re-run the baseline. Lowering twelve to eleven now would make pre-registration decorative.
+
+**The cutover ran end to end and was rolled back (2026-08-31).** The rule fired twice.
+
+| step | result |
+|---|---|
+| baseline, five runs | **14** labels stable (≥12, proceed) |
+| hide the 122 copies | `soft_deleted` with `hold=true`, zero active chunks |
+| five runs | exactly **one** of the fourteen changed — a design label dropped, which is the evidence the predicate took hold; the thirteen policy labels were untouched |
+| attach the scope | verified live: Slack reads the source corpus with no copy |
+| five runs | **A-9, stable at five of five in the baseline, began wobbling on the second check** → roll back |
+
+Rolling back was one command. Copy and configuration restored, verified live.
+
+### Three defects surfaced on the way
+
+**A model default swallowed the contract.** `AnswerRequest.tenant` defaults to `"default"`, so the field arrives populated whether or not the caller sent it. Read as a request, the "no tenant given, use the whole scope" branch can never fire. **The lock was opened, the configuration written, the service restarted — and only the answer not changing revealed it.** Every unit test constructs the request explicitly, so the field is always set in tests and always set in production, for opposite reasons.
+
+**The harness was asking a different corpus.** After the hide, the design labels failed and the rule said roll back. The same question answered correctly through the live path: the harness passes one tenant string straight into search while the live path resolves a read scope. **A comment four lines below records the same mistake three days earlier.**
+
+**The instrument wobbled because the answers improved.** The second check wants the value in the lead or the verdict; answers presenting document and code values together push the committing sentence into a section. The amendment went through pre-registration, and on implementation **a control already in this repository narrowed it**.
+
+### What is left
+
+Why A-9 wobbled is not yet known. The design corpus entering the evidence may have changed how the answer is composed, or the label may always have been marginal. **It does not get switched on again before that is understood.**
+
+⭐ The valuable part of this round was not the cutover but the three places it stopped. All three wore the same face: something that ran fine while measuring a path nobody travels.
