@@ -572,8 +572,15 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
     """검색 + LLM 답변 생성."""
     # 읽기 경로는 **범위를 목록으로** 받는다 (SPEC-nexus-tenant-read-scope §3.3). 목록이 없는
     # principal 은 원소 하나라 오늘과 같은 스칼라 술어가 나간다.
+    # ⛔ **모델 기본값을 "요청했다" 로 읽으면 안 된다** (실측 2026-08-31). `AnswerRequest.tenant`
+    # 의 기본값이 `"default"` 라, 봇이 **보내지 않아도** 모델이 채워 넣는다. 그러면 §3.2 의
+    # *"요청을 안 주면 read_tenants 전체"* 가 영원히 발화하지 않고, 범위 목록을 붙여도
+    # 언제나 `default` 하나로 좁혀진다 — 컷오버가 그 자리에서 조용히 무효가 됐다.
+    #
+    # 그래서 **원문 본문에 키가 있었는지**로 판정한다. 기본값은 요청이 아니다.
+    asked_tenant = req.tenant if "tenant" in req.model_fields_set else None
     _scope, req.classification_max, _out = effective_read_scope(
-        principal, req.tenant, req.classification_max)
+        principal, asked_tenant, req.classification_max)
     req.tenant = _scope[0] if len(_scope) == 1 else list(_scope)
     if _out:
         # ⛔ 오류를 내지 않는다(존재 누출 금지). 대신 **운영자에게 남긴다** — 그게 없으면
