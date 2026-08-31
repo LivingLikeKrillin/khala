@@ -196,3 +196,30 @@ def test_two_tenants_without_the_declaration_refuse_to_boot(monkeypatch):
     cfg = _slack_cfg(monkeypatch, NEXUS_SLACK_READ_TENANTS="default,design_docs")
     with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
         cfg.validate_startup()
+
+
+# ── 요청 계약 (§3.2) — 기본값은 요청이 아니다 ────────────────────────────────
+
+def test_an_omitted_tenant_is_not_the_same_as_a_requested_one():
+    """⛔ **컷오버를 조용히 무효로 만든 자리** (실측 2026-08-31).
+
+    `AnswerRequest.tenant` 의 기본값이 `"default"` 라, 봇이 **보내지 않아도** 모델이 채워
+    넣는다. 그것을 "요청했다" 로 읽으면 §3.2 의 *"안 주면 범위 전체"* 가 영원히 발화하지
+    않고, 범위 목록을 붙여도 언제나 하나로 좁혀진다 — 자물쇠를 열고 설정을 넣고 재기동까지
+    했는데 답변이 안 바뀌어서야 드러났다.
+    """
+    from nexus.api import AnswerRequest
+
+    omitted = AnswerRequest(query="q")
+    given = AnswerRequest(query="q", tenant="default")
+
+    assert omitted.tenant == given.tenant == "default"      # 값은 같다
+    assert "tenant" not in omitted.model_fields_set          # 그러나 요청은 다르다
+    assert "tenant" in given.model_fields_set
+
+
+def test_the_scope_opens_only_when_the_tenant_was_omitted():
+    """값이 같아도 해소가 갈려야 한다 — 그 구별이 이 계약의 전부다."""
+    p = _p(read_tenants=("default", "design_docs"))
+    assert resolve_read_scope(p, None)[0] == ("default", "design_docs")
+    assert resolve_read_scope(p, "default")[0] == ("default",)
