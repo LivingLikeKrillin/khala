@@ -504,3 +504,20 @@ fails:   | 문서 (화면 정책) | 20자 |   it sits only in a table row
 Not counting a table row as an assertion is by design. Both are good answers; the format varies, so the label sits on the boundary. ⛔ **The answer's shape does not get bent to fit the instrument** — that is backwards.
 
 The amendment is registered: classify stability **once, over ten runs**, then compare five runs per point using only the labels that classification called stable. Stability is a property of the label and the system, not of the moment.
+
+**Retracting the previous entry's root cause (2026-08-31, evening).** It said the label had been unstable all along. That conclusion came from running **that label alone**. Across the ten-run classification, which runs the whole set, it is **10/10**.
+
+| how it was run | second check |
+|---|---|
+| that label alone, ×8 | 4/8 (reproduced twice) |
+| all fifteen, ×10 | **10/10** |
+
+The difference reproduces. **The cause is not known** — the harness's filter only subsets the query list, and the keyless bridge keeps no session between calls. The remaining candidate is that the vector leg is approximate, so its candidate set shifts with process state; unverified.
+
+Splitting what survives from what does not:
+
+- ⛔ *"that label sits on the boundary"* is **retracted**. It was only ever seen in subset runs.
+- ✅ the power arithmetic (`2 × 0.5ⁿ`; at n=5, 1.12 expected misclassifications across 18 labels) **stands** — it has nothing to do with that label.
+- ✅ classification and comparison both run the full set, so this measurement is internally consistent.
+
+⚠ And one rule is added: **a number obtained from a subset run does not get quoted for the full-run condition.** Running a single label is fast and convenient when diagnosing, and the number it gives belongs to a different condition. Today I put such a number into the public record as a cause.
