@@ -413,3 +413,13 @@ Both remaining failures carried a defect of their own.
 **A-3, A-5** — they pass the first check and fail only the second, not because the answer is wrong but because it **puts both the document's value and the code's value on the page and leads with the fact that they disagree**. The second check requires the document value to sit in the lead or verdict position, a rule written when answers carried no code values. The answer got better and the score went down.
 
 ⛔ That rule does not get changed now. **Changing a scoring rule after seeing the score is tampering.** It gets changed by pre-registration, before the next round.
+
+**Someone else's numbers were accumulating on a public list (2026-08-31).** The owner put it plainly: *"save my to-dos to memory — they aren't work for this product."*
+
+True, and there was a second reason. `OPEN.md` is **khala's** open-items list, and it lives in a **public repository**. What I had been piling into it over several days were the team product's screen names, field names, length limits and permission-table rows. khala found them, but **not one of them was khala's work.**
+
+Six rows moved to operator memory, outside the repository, leaving one line in their place saying they are not here and not to move them back.
+
+Writing that line, **the fingerprint check caught me.** The memory file I named carried the organisation's name, and `fingerprint_scan.py` stopped the commit: *"partner organisation name — this becomes public."* That check exists because fingerprints crept back in a month after the first scrub. Today it fired on **the commit that was cleaning up the boundary.**
+
+⛔ This repository's defect list carries khala's defects. For another organisation's facts, each individual value is a fingerprint.
