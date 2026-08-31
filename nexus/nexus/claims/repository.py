@@ -66,19 +66,23 @@ class ClaimRepository:
         하고(`claims/matching.py`), 여기서는 범위만 지킨다 — 등급·격리·상태는 SQL 이
         판정한다. 이 표가 커지면 그때 고르기를 SQL 로 내린다.
         """
+        # 읽기 범위가 목록일 수 있다 (SPEC-nexus-tenant-read-scope). 술어는 검색 경로와
+        # **같은 함수**로 만든다 — 갈라 두면 한쪽만 고쳐진다.
+        from nexus.search.scope_sql import tenant_predicate
+        pred, val = tenant_predicate("tenant", 1, tenant)
         async with self.pool.acquire() as con:
             rows = await con.fetch(
-                """
+                f"""
                 SELECT rid, tenant, classification, owner, source_uri, hash, claim_id, kind,
                        concepts, statement, value_source, value_ref_kind, criticality, activity,
                        claim_status, confidence, value_symbol_hash, last_verified_commit
                 FROM claims
-                WHERE tenant = $1
+                WHERE {pred}
                   AND classification <= $2::classification_level
                   AND is_quarantined = false
                   AND status = 'active'
                 """,
-                tenant, clearance,
+                val, clearance,
             )
         return [_row_to_claim(r) for r in rows]
 
