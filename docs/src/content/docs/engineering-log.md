@@ -435,3 +435,16 @@ Before building, I measured and looked. Neither was needed.
 ⛔ I was about to build two new primitives and write an ADR, and **I had not looked first.** The critique pushed back that it was not the right place; looking, it was not merely the wrong place — the thing was already there.
 
 This log already carries the same lesson in another form: *most retrieval problems are already solved; search the repository's own documents first.* That time it was someone else's paper. This time it was **a function in my own repository.**
+
+**The rule I wrote stopped me (2026-08-31).** Five baseline runs before the cutover. The pre-registered rule: *drop any label that wobbles between runs, and if fewer than twelve remain, hold the attachment.*
+
+```
+18 labels  →  11 stable, 7 wobbling
+11 < 12    →  hold
+```
+
+The rule was written **before the scores existed**, and it fired. The copy was not hidden; the gap window was never entered.
+
+The wobble has a clear shape. **Five of the seven wobble only on the second-generation check**, passing the first every time. The answer sometimes leads with the document's value and sometimes with the fact that document and code disagree, and the second check requires the value to sit in the lead or the verdict. That rule was written for answers that carried no code values. **The answer improving is what shakes the instrument.**
+
+⛔ And this is where it would be easy to slip. **Changing a rule because it blocked you is tampering.** The grounds for changing it already exist — this drift was filed this morning, with the note that any amendment goes through pre-registration before the next round. So the order holds: register the amendment first, then re-run the baseline. Lowering twelve to eleven now would make pre-registration decorative.
