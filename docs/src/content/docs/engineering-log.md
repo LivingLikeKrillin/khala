@@ -474,3 +474,33 @@ Rolling back was one command. Copy and configuration restored, verified live.
 Why A-9 wobbled is not yet known. The design corpus entering the evidence may have changed how the answer is composed, or the label may always have been marginal. **It does not get switched on again before that is understood.**
 
 ⭐ The valuable part of this round was not the cutover but the three places it stopped. All three wore the same face: something that ran fine while measuring a path nobody travels.
+
+**The rollback was a false alarm (2026-08-31, evening).** After rolling the cutover back by rule, the offending label was run eight more times in the rolled-back state — **the same condition as the baseline**.
+
+```
+first check:  8/8    the value is present every time
+second check: 4/8    where it commits varies
+```
+
+**That label was already unstable.** Its five-of-five in the baseline was luck, and the cutover created no regression.
+
+Working it out, this was inevitable. A label that passes half the time looks uniform across n runs with probability `2 × 0.5ⁿ`.
+
+| n | looks uniform | expected misclassifications across 18 labels |
+|---|---|---|
+| 3 | 25.00% | 4.50 |
+| **5** | **6.25%** | **1.12** |
+| 10 | 0.20% | 0.04 |
+
+**Five runs was a design that expects one misclassification, and produced exactly one.** The critique had said to fix the run count and estimation method and state the smallest change they could detect; I raised three to five and never computed the power. Writing a number down in advance does not make it the right number.
+
+The instability was not in the scorer but in **the answer's format**:
+
+```
+passes:  **문서(설계) 기준: 20자**     the commitment sits in a section lead
+fails:   | 문서 (화면 정책) | 20자 |   it sits only in a table row
+```
+
+Not counting a table row as an assertion is by design. Both are good answers; the format varies, so the label sits on the boundary. ⛔ **The answer's shape does not get bent to fit the instrument** — that is backwards.
+
+The amendment is registered: classify stability **once, over ten runs**, then compare five runs per point using only the labels that classification called stable. Stability is a property of the label and the system, not of the moment.
