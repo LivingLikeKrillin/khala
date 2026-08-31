@@ -1,0 +1,19 @@
+[
+ {"issue_id":"I-001","disposition":"deferred","reason":"컷오버 SPEC 으로. U2(사본 제거)를 이 SPEC 에서 뺐다 — 교차 테넌트 supersession 이 현재 프리미티브로 표현 불가능하다는 지적이 맞고, 그 수단 설계는 컷오버 SPEC 의 몫이다."},
+ {"issue_id":"I-002","disposition":"deferred","reason":"컷오버 SPEC 으로. 해시 dedup 이 ADR-0006 이 의도적으로 안 만든 것이고 적재 경로가 달라 발화조차 안 할 수 있다는 지적이 맞다. 사본 식별 술어는 §1.1 에서 '제목 일치'로 바꿔 측정했다."},
+ {"issue_id":"I-003","disposition":"accepted","reason":"§3.4 로 옮기고 강화했다 — U1 은 목록을 아무도 안 가지므로 전제를 안 깬다. 조각별 clearance 판정을 불변식·검사로 갖추는 것을 컷오버 SPEC 의 진입 조건으로 박았다. 산문 전제로 부족하다는 지적 그대로다."},
+ {"issue_id":"I-004","disposition":"deferred","reason":"컷오버 SPEC 으로. 되돌림 절차가 없다는 지적이 맞고, U2 자체가 이 SPEC 밖으로 나갔다."},
+ {"issue_id":"I-005","disposition":"accepted","reason":"가장 값진 지적. §0 의 경계 선언과 U2 의 실제 크기(1,582청크 수명주기 쓰기)가 어긋났다. U2·중복억제·부착을 통째로 별도 SPEC 으로 뺐다."},
+ {"issue_id":"I-006","disposition":"accepted","reason":"측정해서 확인했다 — 1,849 는 상한이었고 사본은 1,582(122문서)다. 나머지는 자기 문서·ops-map 이다. §1.1 에 식별 술어(제목 일치)와 재현 SQL 을 박았다."},
+ {"issue_id":"I-007","disposition":"deferred","reason":"컷오버 SPEC 으로. 타이브레이크를 principal 기본값에서 가져오면 정본을 버릴 수 있다는 지적이 맞다 — 소유권·supersession 에서 와야 한다."},
+ {"issue_id":"I-008","disposition":"accepted","reason":"§5 를 다시 썼다. 'A/A 라 구성상 실패 불가'가 정확하다. C-1~C-4 로 U1 이 실제로 바꾸는 것(순서 동일성·부팅 거부 3종·범위 밖 신호·합성 principal 로 기제 확인)을 완료 조건으로 박았다."},
+ {"issue_id":"I-009","disposition":"deferred","reason":"양방향 사전 등록은 컷오버 SPEC 에서 정한다. §5 에 그 요구를 명시해 넘겼다 — 상승도 원인 규명 전에는 채택하지 않는다."},
+ {"issue_id":"I-010","disposition":"deferred","reason":"3회 range 가 아래로 편향된 추정량이라는 지적이 맞다(이 리포에 이미 기록된 실수다). 잡음 폭 추정 방식은 컷오버 SPEC 에서 정한다."},
+ {"issue_id":"I-011","disposition":"accepted","reason":"§3.2 에 요청 계약 표를 박았다 — 요청은 여전히 단일 tenant, 안 주면 목록 전체, 주면 좁히기, 밖이면 기본값+기록. 셋이 다른 노출 범위라는 지적 그대로다."},
+ {"issue_id":"I-012","disposition":"accepted","reason":"§0.1 재독 근거를 좁힌 범위에 맞게 다시 썼다. 초판은 '함수 하나와 술어 하나'라 해 놓고 §3.3 이 여섯 곳을 손댔다 — 이제 실제로 둘이다."},
+ {"issue_id":"I-013","disposition":"deferred","reason":"로그 스키마는 컷오버 SPEC 으로. 다만 지적의 핵심(교차 테넌트 조회를 단일 tenant 로 기록하면 demand-pull 신호가 오염된다)은 그 SPEC 이 반드시 다뤄야 하므로 §6 에 남겼다."},
+ {"issue_id":"I-014","disposition":"accepted","reason":"측정해서 확인했고 이 SPEC 의 구조를 바꿨다 — 설계 라벨 셋의 근거 문서가 전부 사본에 있다. 그래서 '제거 먼저'는 구성상 틀렸고, '부착 먼저'는 공존 창을 연다. 둘은 한 단위여야 하며 그 설계는 컷오버 SPEC 이다. §1.2 에 적었다."},
+ {"issue_id":"I-015","disposition":"accepted","reason":"§3.1 부팅 검사를 셋으로 늘렸다 — 목록 밖 tenant · 빈/중복 원소 · 실재하지 않는 이름. 설정 오타가 조용히 좁은 범위로 도는 자리를 닫았다."},
+ {"issue_id":"I-016","disposition":"accepted","reason":"I-4 를 불변식에 추가했다 — 집합뿐 아니라 상위 k 순서도 동일해야 한다. 검색 제품에서 순서 변화는 회귀라는 지적이 맞다."},
+ {"issue_id":"I-017","disposition":"accepted","reason":"모순을 없앴다 — 근거 조립은 이 SPEC 밖으로 나갔다. U1 이 바꾸는 곳은 effective_scope 와 hybrid_search 둘뿐이라고 §3.3 에 못박았다."}
+]
