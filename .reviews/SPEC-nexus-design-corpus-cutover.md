@@ -11,8 +11,9 @@ issues:
     의 '정본 있음' 값은 115 가 아니라 1,517 근처가 나온다(문서당 1회가 아니라 청크당 1회). 표의 `115/115 · 6/6 ·
     1/1` 은 이 쿼리의 출력이 아니다. 계수를 두 번 틀렸다고 스스로 적은 SPEC 이 세 번째 계측기도 검증 없이 인용하고 있고, C-1
     의 `122문서 1,582청크` 전체가 이 표에 얹혀 있다.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: ⛔ 내가 숫자를 지어냈다. 질의는 LEFT JOIN 으로 행이 청크 단위로 불어난 뒤 세어 1517·50·15
+    를 냈는데 나는 그것을 문서 수(115/115)로 읽어 옮겼다. §1 을 통째로 다시 썼고 세 대조(경로·해시·제목)를 독립적으로 돌렸다.
 - issue_id: I-002
   category: unverifiable-claim
   severity: high
@@ -20,8 +21,9 @@ issues:
     않는다. 쿼리가 `AND d.source_uri NOT LIKE ''%ext-notion%''` 로 노션 행을 그룹화 **전에** 제거했기
     때문에, 노션 문서 중 `default:docs/…` 접두를 가진 것이 있는지를 이 표는 원리적으로 보여 줄 수 없다. 사본 술어의 거짓양성
     위험이 정확히 그 배제된 집합에 있는데 그 집합을 안 본 채 결론을 냈다.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 노션을 배제하지 않고 다시 셌다 — 경로 술어에 걸리는 122건 전부가 비-노션이고 노션 행은 나오지 않는다.
+    배제한 집합에 대해서는 아무것도 못 보인다는 지적이 맞다.
 - issue_id: I-003
   category: unverifiable-claim
   severity: high
@@ -29,8 +31,9 @@ issues:
     ⚠ 문단은 제목 일치를 ''같은 제목의 별개 문서를 못 가른다''며 근거로 기각한다. 그러면서 ''경로 술어는 양방향으로 확인된다(위 표의
     마지막 칸)'' 라고 바로 그 기각된 칸을 검증 근거로 인용한다 — 순환이다. 정본 존재는 rid·source_uri·content_hash
     같은 신원으로 대조돼야 하고, 지금 상태로는 정본 없는 사본을 내릴 위험(설계 문서가 영구 소실)이 열려 있다.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 순환을 없앴다. 정본 대응을 제목이 아니라 경로와 내용 해시로 확인했고 셋이 122/122/122 로 같은
+    답을 준다.
 - issue_id: I-004
   category: missing-invariant
   severity: high
@@ -38,8 +41,9 @@ issues:
     를 넣던 수집 소스가 그대로면, 다음 적재가 같은 `tenant:filename` 신원으로 upsert 하면서(ADR-0006: documents
     는 제자리 upsert, 이력 없음) 은퇴한 122 문서를 되살리거나 청크를 재활성화한다. 그러면 §2 가 피하려던 정본·사본 겹침 창이 배포
     뒤에 조용히 재생성되고, 아무 완료 조건도 그것을 잡지 못한다(C-2 는 되돌림만, C-5 는 행 생존만 본다).'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 조항이 없었다. §3.3 신설 — 적재 경로 차단을 순서의 맨 앞에 넣고, C-7 로 재적재를 한 번 돌려
+    사본이 안 돌아오는 것을 확인한다.
 - issue_id: I-005
   category: undefined
   severity: high
@@ -48,8 +52,9 @@ issues:
     전역 enum 하나만 있는 상태에서 '테넌트 어휘로 내려가는 판정' 이 무엇인지 — 값 매핑인지, 조각별 필터 적용 위치인지, 두 테넌트의
     같은 enum 값이 다른 뜻일 때 어느 쪽을 따르는지 — 정의가 없다. P-2 가 이 미정의 조항의 충족을 선행 조건으로 걸어 두어, 무엇을
     하면 충족인지 판정할 수 없다.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: K-1 이 오늘 정의되지 않는다는 것을 조항 안에 적고, P-2 가 충족이 아니라 **정의부터** 요구하도록
+    바꿨다. 정의 없이 충족을 주장할 수 없다.
 - issue_id: I-006
   category: adr-contradiction
   severity: high
@@ -58,8 +63,9 @@ issues:
     스키마를 바꾸며, principal 하나가 두 코퍼스를 읽는 것 자체가 검색 범위의 확장이다. §3 의 ''검색 경로 변경 0'' 도 이와
     충돌한다. 게다가 ADR-0008 §3 은 ''게이트는 director 가 발화를 선언하고 SPEC 은 그것을 기록할 뿐, SPEC 이 논증으로
     만들어 내지 않는다'' 고 못박는데, 이 backstop 행은 SPEC 이 스스로 비적용을 논증한 문단이다.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: backstop 에서 자기 논증을 뺐다. '검색 알고리즘 그대로'는 같은 문서의 K-1·§5.4 와 어긋났다.
+    재독 근거만 남기고 판정은 director 몫이라고 명시했다.
 - issue_id: I-007
   category: adr-contradiction
   severity: medium
@@ -67,8 +73,9 @@ issues:
     기록한' 수요 신호를 요구하고, ADR-0008 §3.3 이 이를 재확인한다. 이 SPEC 은 ADR-0008 backstop ruling
     만 pending 으로 두었을 뿐, **누가 `design_docs` 를 슬랙에서 필요로 했는지에 대한 관측 신호를 기록하지 않는다.** §5.3
     이 demand-pull 신호 오염을 걱정하면서 정작 이 작업 자체를 당긴 신호는 비어 있다.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: §5.5 신설 — 수요 신호 칸을 만들고 내가 아는 사실(소유자 지시 2026-08-30)만 적었다. 선언은
+    사람이 한다. P-4 로 선행 조건에 넣었다.
 - issue_id: I-008
   category: missing-invariant
   severity: medium
@@ -76,8 +83,9 @@ issues:
     미치는 영향이 다뤄지지 않았다. 사본은 정본과 내용·제목이 같으므로 신호 ②(cross-URI content_hash 충돌)와 ③(정규화 제목
     어간 충돌)이 122쌍을 공존 후보로 계속 센다. 뷰가 `status` 를 거르는지 여부에 대한 불변식도, 확인도 없다. ADR-0006 이
     그 신호를 Slice 2 의 demand-pull 방아쇠로 지정했으므로, 검증 없이 넘어가면 이 배포가 그 방아쇠를 122건만큼 오염시킨다.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: §3.4 신설 — v_entropy_signals 가 은퇴 행을 세는지 확인하고 기록하는 것을 C-8 로 박았다.
+    안 거르면 이 배포가 Slice 2 방아쇠를 122건 오염시킨다.
 - issue_id: I-009
   category: undefined
   severity: medium
@@ -86,8 +94,9 @@ issues:
     만 추가됐다 — `retired` 가 이미 유효한 값인지, enum 확장이 필요한지, `retire_reason`·`moved_to` 컬럼이
     신설인지, 마이그레이션 번호가 무엇인지 어디에도 없다. '오늘의 `status='active'` 필터가 그대로 막는다 · 검색 경로 변경 0'
     이라는 핵심 주장이 이 미확인 전제 위에 서 있고, `status` 를 문자열로 읽는 다른 소비자(웹 렌더·API·리포트)에 대한 조사도 없다.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: ⛔ 스키마를 이 SPEC 에서 만들지 않는다. §3.2 로 바꿔 '제거 수단이 만족해야 할 것' 넷(R-1~R-4)만
+    적고, 수명주기 사유 확장은 P-3(ADR 처분)로 넘겼다.
 - issue_id: I-010
   category: untestable-requirement
   severity: medium
@@ -95,16 +104,17 @@ issues:
     회차 수는 없다. 그러면 '통과율 5/5' 인 T0 와 1회짜리 T2 를 어떤 규칙으로 비교해 C-4 의 '같다' 를 판정하는지가 미정의다(다수결?
     전건 일치? 통과율 차?). 잡음을 range 로 추정하지 말라는 자기 경고를 지키면서도, 정작 비교 통계량을 정의하지 않아 판정이 사후 재량으로
     남는다.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 세 시점 모두 5회로 바꿨다. T0 만 5회면 비교 통계량이 정의되지 않는다는 지적이 맞다. 비교는 라벨별
+    통과율 전건 일치다.
 - issue_id: I-011
   category: untestable-requirement
   severity: medium
   description: '''한 번이라도 흔들린 라벨은 판정에서 뺀다''(§5)에 남은 라벨 수의 하한이 없다. 18개 중 다수가 흔들리면 비교
     표본이 한 자리로 떨어지고, 극단적으로 전부 제외되면 C-4(''흔들리지 않는 라벨 기준으로 T2 = T0'')는 공집합 위에서 공허하게 통과한다.
     최소 잔존 라벨 수와, 그 수 미만일 때의 처분(부착 보류)이 사전 등록에 빠져 있다.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 잔존 라벨 하한을 12로 박고, 그 아래면 부착 보류로 처분했다. 공집합 위의 공허한 통과를 막는다.
 - issue_id: I-012
   category: risky-assumption
   severity: medium
@@ -112,8 +122,9 @@ issues:
     술어가 정확해도 남은 근거(§1 이 세어 둔 khala 자기 문서 9종 113청크, 노션 문서)로 같은 라벨이 통과할 수 있다. 그러면 술어가
     옳은데도 C-3 가 실패해 SPEC 이 스스로를 막고, 반대로 라벨이 떨어져도 그것이 '사본을 정확히' 잡았다는 증거는 아니다(과잉 삭제도
     똑같이 떨어뜨린다). 술어 검증은 답변 라벨이 아니라 잡힌 행 목록 자체로 해야 한다.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 술어 검증을 라벨에서 떼어 냈다. §5.1 — 술어는 세 대조와 잡힌 rid 목록으로 검증하고, 라벨은 사용자가
+    받는 답의 회귀 검사다. 과잉 삭제도 똑같이 라벨을 떨어뜨린다는 지적이 정확하다.
 - issue_id: I-013
   category: untestable-requirement
   severity: medium
@@ -121,8 +132,9 @@ issues:
     문서를 읽는 것인지, 실제 부여된 값 분포를 대조하는 것인지, 같은 enum 값이 두 코퍼스에서 같은 노출 범위를 뜻하는지를 무엇으로 판정하는지
     없다. K-3('불가능하거나 다르면 부착하지 않는다')와 P-2 가 전부 이 미정의 판정에 매달려 있어, 통과·불통과를 사후에 아무렇게나 주장할
     수 있다.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: K-2 를 '증명'에서 '분포 대조'로 낮추고 **그 한계를 조항 안에 적었다** — 분포가 같아도 뜻은 다를
+    수 있다. 눈에 띄는 불일치를 잡는 회귀 검사이지 증명이 아니다.
 - issue_id: I-014
   category: undefined
   severity: medium
@@ -130,16 +142,18 @@ issues:
     진행했다면 설계 문서는 어느 코퍼스에서도 안 나오는 상태로 남는다. P-2 가 선행이라 순서상 피할 수 있다고 읽히지만, 그 경우 §2 의
     ''제거 후'' 시점 T1 측정 자체가 K-3 판정 뒤로 밀린다는 점이 어디에도 적혀 있지 않다. 또한 §2 의 창에 최대 길이·중단 기준·되돌림
     방아쇠가 없다(''DB 갱신 ~ 재기동'' 은 재기동이 실패했을 때의 상한을 주지 않는다).'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: §2 에 창 상한(재기동 10분)과 중단 기준을 넣고, K-3 가 부정이면 제거를 시작하지 않는다는 것과 T1
+    이 K-3 뒤라는 것을 명시했다.
 - issue_id: I-015
   category: risky-assumption
   severity: low
   description: C-1 이 `122문서 1,582청크` 라는 시점 값을 완료 조건으로 박았다. 라이브 코퍼스이므로 T0 와 컷오버 사이의
     정상적인 재적재·신규 문서만으로도 조건이 깨지고, 그때 술어가 옳은데도 C-1 이 실패하거나(엄격 해석) 숫자를 사후에 고쳐 쓰게 된다(느슨한
     해석). 완료 조건은 고정 숫자가 아니라 '술어가 잡은 집합 = 경로 접두 집합이고 자기 문서·노션과 교집합 0' 같은 불변식이어야 한다.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: C-1 을 고정 숫자에서 불변식으로 바꿨다 — 술어가 잡은 집합이 경로 접두 집합과 같고 자기 문서·노션과
+    교집합 0. 라이브 코퍼스라 숫자는 정상 적재만으로 깨진다.
 - issue_id: I-016
   category: scope-creep
   severity: low
@@ -148,9 +162,10 @@ issues:
     수명주기는 ADR-0006 이 소유하는 영역이고, 새 사유는 이번 컷오버 한 건이 아니라 앞으로의 모든 테넌트 이동에 쓰이는 일반 기제다.
     '개정이 아니라 사유를 더한다' 는 §3 의 주장은 그 확장을 ADR 처분 없이 SPEC 안에서 처리하겠다는 뜻이 되고, 되돌리기 비싼 스키마
     변경이라 게이트가 필요한 쪽에 가깝다.
-  status: open
-  disposition_reason: null
-approved_by: null
-approved_at: null
+  status: accepted
+  disposition_reason: 가장 값진 지적. 새 수명주기 프리미티브 둘을 SPEC 안에서 만들려 했는데, 그것은 ADR-0006 이 소유하는
+    영역이고 앞으로의 모든 테넌트 이동에 쓰이는 일반 기제다. P-3 로 ADR 처분을 선행 조건에 넣었다.
+approved_by: LivingLikeKrillin
+approved_at: '2026-08-31T02:27:53Z'
 ---
 

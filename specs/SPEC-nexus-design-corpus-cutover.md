@@ -2,7 +2,7 @@
 id: SPEC-nexus-design-corpus-cutover
 type: spec
 title: Retire the copy and read the source — a gap is safer than an overlap
-status: in_review
+status: approved
 linked_adrs:
 - ADR-0002
 - ADR-0006
@@ -12,6 +12,9 @@ tags:
 - auth
 - governance
 - lifecycle
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-08-31T02:27:53Z'
+content_hash: sha256:5c320f25dd5509ea4c46f4124eef0d60b44452fae4b29a3f5564a6cb3837d134
 ---
 # Retire the copy and read the source — a gap is safer than an overlap
 
@@ -32,7 +35,13 @@ backstop:
     넣고 로그 스키마를 바꾸며 principal 하나가 두 코퍼스를 읽게 한다 — 어긋난다(I-006).
     ADR-0008 §3 은 게이트를 **director 가 선언하고 SPEC 은 기록만** 한다고 못박는다.
   clause: none
-  ruling: pending-director
+  ruling: does-not-fire
+  ruled_by: LivingLikeKrillin
+  ruled_at: '2026-08-31'
+  recorded_note: |
+    ⚠ 소유자가 대화에서 "서명한다" 고 말했고 **내가 이 칸을 채웠다.** 판정 내용은 위 재독
+    근거(새 검색 채널·인덱스 백엔드·토크나이저/임베딩·커넥터 없음)에 따른다. 사람이 직접
+    적은 것처럼 보이면 안 되므로 남긴다 — 아니라고 하면 되돌린다.
 ```
 
 ⛔ **이 판정이 채워지기 전에는 구현하지 않는다** (§6 P-1).
@@ -116,25 +125,33 @@ WHERE d.tenant='default' AND d.source_uri ~ '^default:(docs|modules|repo)/';
 **그리고 억지로 확장할 이유도 없다.** supersede 는 *"이 문서가 저 문서를 대체했다"* 는
 관계이고, 여기서 일어난 일은 **같은 문서를 다른 테넌트에서 읽는다**는 것이다.
 
-### 3.2 ⛔ 무엇으로 내릴지는 **이 SPEC 이 정하지 않는다**
+### 3.2 ✅ 수단이 **이미 있다** — 새 프리미티브를 안 만든다
 
-초판은 `status='retired'` + `retire_reason='moved_to_tenant'` + `moved_to` 라는 **새 수명주기
-프리미티브 둘**을 여기서 만들려 했다. 비평(I-009·I-016)이 둘을 잡았다.
+초판은 `status='retired'` + `retire_reason` + `moved_to` 라는 **새 수명주기 프리미티브 둘**을
+여기서 만들려 했다. 비평(I-009·I-016)이 *"근거가 없고 자리가 아니다"* 로 잡았고, 그래서
+**찾아봤더니 있었다** (확인 2026-08-31).
 
-1. **근거가 없다** — 현행 `status` enum 에 `retired` 가 있는지, 컬럼 둘이 신설인지, 마이그레이션
-   번호가 무엇인지, `status` 를 문자열로 읽는 다른 소비자(웹·API·리포트)가 무엇인지 조사가 없다.
-2. **자리가 아니다** — 문서 수명주기는 **ADR-0006 이 소유**하고, 새 사유는 이번 한 건이 아니라
-   앞으로의 모든 테넌트 이동에 쓰이는 **일반 기제**다. 되돌리기 비싼 스키마 변경이라 ADR 자리다.
-
-⇒ **선행 조건 P-3**: 수명주기 사유 확장을 ADR 로 처분한다(ADR-0006 개정 또는 새 ADR).
-그 전에는 제거를 실행하지 않는다. 이 SPEC 은 **무엇을 만족해야 하는지**만 적는다.
-
-| # | 제거 수단이 만족해야 할 것 |
+| 있는 것 | 무엇 |
 |---|---|
-| R-1 | 검색에서 빠진다 |
-| R-2 | **행은 남는다** — 인용·피드백·`search_log` 가 그 rid 를 가리킨다 |
-| R-3 | **역연산이 있다** — 되돌리면 T0 가 재현된다 (supersede 는 단방향이라 못 쓴다) |
-| R-4 | 왜 내렸는지가 행에 남는다 |
+| `resource_status` enum | `active` · `superseded` · **`soft_deleted`** — 세 번째 값이 이미 있다 |
+| `lifecycle.soft_delete` / `revive` | 대체 문서가 없는 소멸/부활. 상태 가드 있음 |
+| `documents/lifecycle_ops.hide_document` | `soft_delete + hold=true` — *"사람이 이 문서는 검색에 있으면 안 된다고 결정했다"* |
+| `restore_document` | `revive + hold=false` — **역연산** |
+
+§3.1 의 네 요구가 그대로 만족된다.
+
+| # | 요구 | 무엇이 만족하나 |
+|---|---|---|
+| R-1 | 검색에서 빠진다 | `status='soft_deleted'` — 오늘의 `status='active'` 필터가 막는다 |
+| R-2 | 행은 남는다 | 상태만 바뀐다. 인용·피드백·`search_log` 의 rid 가 산다 |
+| R-3 | 역연산이 있다 | `restore_document` |
+| R-4 | 왜 내렸는지 남는다 | `hold=true` 가 **사람의 결정**임을 구별한다(재조정이 내린 것은 `hold=false`). 사유 본문은 이 SPEC 과 작업 기록이 갖는다 |
+
+⭐ **덤으로 I-004 의 절반이 이미 닫혀 있다**: 재조정은 `hold = true` 인 문서를 **되살리지
+않는다**(`notion_reconcile.py`). 사본이 재조정으로 조용히 돌아오는 경로는 막혀 있다.
+
+⇒ **P-3(ADR 처분)가 필요 없다.** 만들 것이 없으므로 처분할 것도 없다. ⛔ 다만 §3.3 은 여전히
+필요하다 — 재조정이 아니라 **적재 자체**가 같은 신원으로 upsert 하면 되살아난다.
 
 ### 3.3 ⛔ 사본을 만들어 낸 적재 경로를 먼저 끊는다
 
@@ -151,21 +168,60 @@ WHERE d.tenant='default' AND d.source_uri ~ '^default:(docs|modules|repo)/';
 충돌)이 **122쌍을 공존 후보로 센다**. 뷰가 `status` 를 거르는지 **확인하고 결과를 기록한다**
 — 안 거르면 이 배포가 ADR-0006 이 Slice 2 방아쇠로 지정한 신호를 122건만큼 오염시킨다.
 
-## 4. 조각별 등급 — U1 자물쇠를 여는 조건
+## 4. 조각별 등급 — **측정해 보니 만들 것이 없다**
 
-U1 은 `len(read_tenants) > 1` 을 기동에서 막는다. 그 이유는 전역 `classification_level` 이
+U1 은 `len(read_tenants) > 1` 을 기동에서 막는다. 전역 `classification_level` 이
 **principal 하나가 테넌트 하나만 읽는다**는 전제 위에 있기 때문이다.
 
-**이 SPEC 이 갖춰야 할 것** (갖추기 전에는 자물쇠를 안 푼다):
+⛔ 초판의 K-1 은 *"조각의 테넌트 어휘로 판정한다"* 였는데, 비평(I-005)이 **그것이 오늘
+정의되지 않는다**고 잡았다 — enum 이 전역 하나뿐이라 *"테넌트 어휘"* 라는 것이 없다.
+
+### 4.1 그래서 대조부터 했다 (2026-08-31)
+
+```sql
+SELECT tenant, classification, count(*) FROM documents
+WHERE tenant IN ('default','design_docs') AND status='active' GROUP BY 1,2;
+```
+
+| 테넌트 | INTERNAL | RESTRICTED |
+|---|---|---|
+| `default` | 문서 246 · 청크 1,993 | 문서 2 · 청크 55 |
+| `design_docs` | 문서 120 · 청크 1,527 | 문서 2 · 청크 55 |
+
+**두 값뿐이고, 한쪽에만 나타나는 값이 없다.** 그리고 `RESTRICTED` 네 건을 열어 보니
+**서로 사본이다**(같은 제목·경로 구조, 해시 대응).
+
+### 4.2 결론 — 이 컷오버는 노출을 **안 바꾼다**
+
+| | |
+|---|---|
+| 값 집합 | 두 테넌트 동일 (`INTERNAL`·`RESTRICTED`) |
+| `RESTRICTED` 문서 | **같은 문서**의 정본과 사본 |
+| `INTERNAL` principal 이 보게 되는 것 | 양쪽 다 `INTERNAL` 만. `RESTRICTED` 는 **어느 쪽에서도 못 본다** |
+
+⇒ **조각별 판정을 만들 필요가 없다.** 어휘가 실제로 갈릴 때 — **두 번째 조직이 붙을 때** —
+필요하고, 그때는 전역 enum 자체를 고치는 일이다(§7).
+
+### 4.3 다만 자물쇠는 **없애지 않는다**
+
+`MAX_READ_TENANTS_U1` 을 그냥 올리면 **앞으로 어느 쌍에든** 검사가 사라진다. 이번 쌍이
+안전하다는 것은 **이번 쌍을 측정했기 때문**이지 일반 사실이 아니다.
+
+⇒ 자물쇠를 **선언에 걸린 것**으로 바꾼다:
+
+```yaml
+principals:
+  - name: "slack-bot"
+    tenant: "default"
+    read_tenants: ["default", "design_docs"]
+    clearance_equivalence_verified: '2026-08-31'   # 없으면 기동 거부
+```
 
 | # | 불변식 |
 |---|---|
-| K-1 | 근거 조각의 등급 판정은 **그 조각의 테넌트** 어휘로 내려간다. ⛔ **오늘 이것은 정의되지 않는다**(I-005) — `classification_level` 이 전역 enum 하나뿐이라 *"테넌트 어휘"* 가 무엇인지(값 매핑인가·필터 적용 위치인가·같은 값이 다른 뜻일 때 누가 이기는가) 근거가 없다. **그래서 P-2 는 이 조항의 정의부터 요구한다** — 정의 없이 충족을 주장할 수 없다 |
-| K-2 | 두 테넌트의 등급 라벨 **분포를 대조**한다 — 각 테넌트에서 `classification` 값별 문서 수를 내고, 한쪽에만 나타나는 값이 있는지 본다. ⚠ 이것은 *"같은 뜻인가"* 를 증명하지 못한다 (I-013) — 분포가 같아도 뜻은 다를 수 있다. **증명이 아니라 눈에 띄는 불일치를 잡는 그물**이고, 그 한계를 여기 적어 둔다 |
-| K-3 | 대조가 불가능하거나 다르면 **부착하지 않는다** |
-
-⚠ K-2 는 **임시 방편**이다. 근본은 테넌트별 등급 어휘(전역 enum → 정수 순서 + 이름표)이고
-그것은 여전히 두 번째 조직이 붙을 때다.
+| K-1 | `len(read_tenants) > 1` 인 principal 은 `clearance_equivalence_verified` 가 있어야 기동한다 |
+| K-2 | 그 대조는 §4.1 의 질의이고 **결과를 SPEC 에 기록**한다 |
+| K-3 | ⚠ 이것은 *"같은 뜻인가"* 의 **증명이 아니다** — 분포가 같아도 뜻은 다를 수 있다. 눈에 띄는 불일치를 잡는 회귀 검사이고, 그 한계를 여기 적어 둔다 |
 
 ## 5. 측정 — 사전 등록 (양방향)
 
@@ -213,8 +269,16 @@ ADR-0002 는 방향마다 **director 가 선언한 수요 신호**를 첫 SPEC �
 
 ```yaml
 demand_signal:
-  declared_by:            # director
-  observation:            # 누가 언제 design_docs 를 슬랙에서 필요로 했는가
+  declared_by: LivingLikeKrillin
+  declared_at: '2026-08-31'
+  observation: |
+    2026-08-30 소유자 지시 — "design_docs 을 슬랙에 붙여야 한다". 그리고 채널로 코퍼스를
+    가르는 UX 를 기각하며 "어떤 질문을 하든 우리 넥서스에서 알아서 처리해야 한다" 고 했다.
+    같은 날 "파일럿 목적 외에도 문서의 라이프사이클이 코퍼스에 반영되어야 하는 요구사항이
+    존재한다" 고 못박아, 사본이 임시 타협이 아니라 닫아야 할 항목이 됐다.
+  recorded_note: |
+    ⚠ **내가 옮겨 적었다.** 위 관측은 대화 기록에서 가져온 소유자 발언이고, 선언 자체는
+    2026-08-31 "서명한다" 이다. 아니라고 하면 되돌린다.
 ```
 
 ⚠ 내가 아는 사실만 적어 둔다 — 소유자가 *"design_docs 을 슬랙에 붙여야 한다"* 고 지시했고
@@ -224,10 +288,10 @@ demand_signal:
 
 | # | 무엇 |
 |---|---|
-| **P-1** | ⛔ 선행: §0.1 backstop `ruling` 에 director 서명 |
-| **P-2** | ⛔ 선행: §4 K-1·K-2 가 갖춰지고 K-3 판정이 기록됐다 |
-| **P-3** | ⛔ 선행: 수명주기 사유 확장이 **ADR 로 처분**됐다 (§3.2) |
-| **P-4** | ⛔ 선행: §5.5 수요 신호가 director 선언으로 채워졌다 |
+| ~~P-1~~ | ✅ **해소 (2026-08-31)**: backstop `ruling` = `does-not-fire`, 소유자 서명. ⚠ 칸은 내가 채웠고 경위를 §0.1 에 남겼다 |
+| ~~P-2~~ | ✅ **해소 (2026-08-31)**: 대조해 보니 두 테넌트의 값 집합이 같고 `RESTRICTED` 는 서로 사본이라 **노출이 안 바뀐다**(§4). 조각별 판정은 만들지 않는다. 남은 것은 자물쇠를 선언 기반으로 바꾸는 구현뿐이다 |
+| ~~P-3~~ | ✅ **해소 (2026-08-31)**: 찾아보니 `hide_document`(=`soft_delete + hold=true`)와 `restore_document` 가 이미 있고 네 요구를 다 만족한다(§3.2). **새 프리미티브를 안 만들므로 ADR 처분할 것이 없다** |
+| ~~P-4~~ | ✅ **해소 (2026-08-31)**: 수요 신호 선언됨(§5.5). ⚠ 관측은 내가 대화 기록에서 옮겨 적었고 선언은 소유자 서명이다 |
 | C-1 | 술어가 잡은 집합 = 경로 접두 집합이고, **자기 문서·노션과 교집합 0**, 전건이 §1.3 의 세 대조를 통과한다 ⚠ 고정 숫자(122·1,582)를 조건으로 쓰지 않는다 — 라이브 코퍼스라 정상 적재만으로 깨진다 (I-015) |
 | C-2 | 제거가 되돌려진다 — 역연산 후 T0 가 재현된다 |
 | C-3 | 제거 대상 rid 목록이 기록되고, 제거 후 그 rid 들이 검색에서 안 나온다 |

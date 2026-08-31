@@ -423,3 +423,15 @@ Six rows moved to operator memory, outside the repository, leaving one line in t
 Writing that line, **the fingerprint check caught me.** The memory file I named carried the organisation's name, and `fingerprint_scan.py` stopped the commit: *"partner organisation name — this becomes public."* That check exists because fingerprints crept back in a month after the first scrub. Today it fired on **the commit that was cleaning up the boundary.**
 
 ⛔ This repository's defect list carries khala's defects. For another organisation's facts, each individual value is a fingerprint.
+
+**Two things I was about to build already existed (2026-08-31).** The cutover spec was blocked on four preconditions. Two were the owner's signature; the other two I had written down as **things I needed to build** — per-chunk clearance evaluation, and a new document-lifecycle reason plus an ADR to dispose of it.
+
+Before building, I measured and looked. Neither was needed.
+
+**Clearance** — comparing the two tenants' distributions, both use only `INTERNAL` and `RESTRICTED`, with no value appearing in one and not the other. Opening the four `RESTRICTED` documents shows they are **copies of each other**. So this cutover changes nobody's exposure. Per-chunk evaluation is needed when the vocabularies actually diverge — when a second organisation joins.
+
+**The removal mechanism** — `resource_status` already carries `soft_deleted`, and `hide_document` (`soft_delete` with `hold=true`) and `restore_document` already exist. They satisfy all four requirements: invisible to search, rows survive, has an inverse, and records that a person decided. As a bonus, **reconciliation refuses to revive anything with `hold=true`** — one path by which the copy could quietly return was already closed.
+
+⛔ I was about to build two new primitives and write an ADR, and **I had not looked first.** The critique pushed back that it was not the right place; looking, it was not merely the wrong place — the thing was already there.
+
+This log already carries the same lesson in another form: *most retrieval problems are already solved; search the repository's own documents first.* That time it was someone else's paper. This time it was **a function in my own repository.**
