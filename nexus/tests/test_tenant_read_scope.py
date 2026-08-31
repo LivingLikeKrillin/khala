@@ -163,3 +163,36 @@ def test_boot_does_not_ask_the_database_whether_the_tenant_exists():
     """⛔ 3R I-003. 기동을 DB **내용**에 의존시키면 비어 있는 신규 테넌트나 재적재 중
     재시작이 서비스를 죽인다. 오타는 범위 밖 요청 기록으로 잡는다."""
     _boot(["default"], tenant="default")          # DB 없이 통과해야 한다
+
+
+# ── 배포 배선 (SPEC-nexus-design-corpus-cutover §4.3) ────────────────────────
+
+def _slack_cfg(monkeypatch, **env):
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setenv("NEXUS_SLACK_TOKEN", "t" * 40)
+    from nexus.auth.config import AuthConfig
+    return AuthConfig.from_dict({"auth": {"mode": "permissive", "principals": []}})
+
+
+def test_the_slack_principal_gets_no_scope_by_default(monkeypatch):
+    """⛔ 대조군. 환경변수를 안 주면 오늘과 같다 — 배선했다고 열리면 안 된다."""
+    cfg = _slack_cfg(monkeypatch)
+    bot = next(p for p in cfg.principals if p["name"] == "slack-bot")
+    assert "read_tenants" not in bot
+
+
+def test_a_declared_scope_reaches_the_principal(monkeypatch):
+    cfg = _slack_cfg(monkeypatch, NEXUS_SLACK_READ_TENANTS="default, design_docs",
+                     NEXUS_SLACK_CLEARANCE_VERIFIED="2026-08-31")
+    bot = next(p for p in cfg.principals if p["name"] == "slack-bot")
+    assert bot["read_tenants"] == ["default", "design_docs"]
+    cfg.validate_startup()          # 선언이 있으므로 기동한다
+
+
+def test_two_tenants_without_the_declaration_refuse_to_boot(monkeypatch):
+    """⛔ **자물쇠가 배포 경로에서도 물린다.** 단위 검사만 통과하고 실제 배선에서 안 걸리면
+    그 검사는 아무것도 안 지킨 것이다 — 이 리포가 반복해서 데인 모양이다."""
+    cfg = _slack_cfg(monkeypatch, NEXUS_SLACK_READ_TENANTS="default,design_docs")
+    with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
+        cfg.validate_startup()

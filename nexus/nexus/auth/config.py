@@ -134,13 +134,28 @@ class AuthConfig:
         slack_token = os.getenv("NEXUS_SLACK_TOKEN")
         if slack_token:
             from .principal import hash_token
-            principals.append({
+            slack_tenant = os.getenv("NEXUS_SLACK_TENANT", "default")
+            entry = {
                 "name": "slack-bot",
                 "token_sha256": hash_token(slack_token),
-                "tenant": os.getenv("NEXUS_SLACK_TENANT", "default"),
+                "tenant": slack_tenant,
                 "clearance": os.getenv("NEXUS_SLACK_CLEARANCE", "PUBLIC"),
                 "capabilities": [],
-            })
+            }
+            # 읽기 범위 — 배포가 `NEXUS_SLACK_READ_TENANTS` 로 정한다 (쉼표 구분).
+            #
+            # ⛔ **원소가 둘 이상이면 `NEXUS_SLACK_CLEARANCE_VERIFIED` 가 함께 있어야 기동한다**
+            # (`_validate_read_tenants`). 그 값은 *"두 테넌트의 등급 값 분포를 대 봤다"* 는
+            # 사람의 선언이고, 없으면 한 테넌트의 `INTERNAL` 이 다른 테넌트 기준으로 해석된다.
+            # 상한을 그냥 올리지 않은 이유가 이것이다 — 이번 쌍이 안전한 것은 **측정했기
+            # 때문**이지 일반 사실이 아니다 (SPEC-nexus-design-corpus-cutover §4).
+            raw_scope = os.getenv("NEXUS_SLACK_READ_TENANTS", "")
+            if raw_scope.strip():
+                entry["read_tenants"] = [t.strip() for t in raw_scope.split(",") if t.strip()]
+                verified = os.getenv("NEXUS_SLACK_CLEARANCE_VERIFIED", "").strip()
+                if verified:
+                    entry["clearance_equivalence_verified"] = verified
+            principals.append(entry)
 
         # 두 번째 코퍼스: `NEXUS_SLACK_CORPUS_<별칭> = 토큰|테넌트[|등급]`
         #
