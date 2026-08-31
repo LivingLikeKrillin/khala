@@ -16,13 +16,19 @@ _MIN_DEV_TOKEN_LEN = 24
 
 
 
-#: U1 에서 허용하는 읽기 범위 원소 수. **1 이다** (SPEC-nexus-tenant-read-scope §3.1 B-3).
+#: 등급 대조를 선언하지 않은 principal 이 읽을 수 있는 테넌트 수.
 #:
-#: ⛔ 이것이 U1 의 안전장치다. 기제는 원소 둘을 해소할 수 있게 만들어지지만, 조각별 clearance
-#: 가 없는 상태에서 두 코퍼스를 열면 한 테넌트 어휘의 ``INTERNAL`` 이 다른 테넌트 기준으로
-#: 해석된다. 비평(3R I-002)이 잡은 것은 *"설정 한 줄만 쓰면 열리는 상태로 출하한다"* 였고,
-#: 그 한 줄을 여기서 막는다. 컷오버 SPEC 이 조각별 판정을 갖추면 이 상수를 올린다.
-MAX_READ_TENANTS_U1 = 1
+#: ⛔ **자물쇠를 없애지 않고 선언에 건다** (SPEC-nexus-design-corpus-cutover §4.3). 상한을
+#: 그냥 올리면 **앞으로 어느 쌍에든** 검사가 사라진다. 이번 쌍(`default`·`design_docs`)이
+#: 안전한 것은 **측정했기 때문**이지 일반 사실이 아니다 — 두 테넌트의 등급 값 집합이 같고
+#: `RESTRICTED` 네 건이 서로 사본이라 노출이 안 바뀐다는 것을 대조로 확인했다.
+#:
+#: 그래서 원소 둘 이상을 열려면 `clearance_equivalence_verified` 를 적어야 한다. 그 한 줄이
+#: *"두 테넌트의 등급 어휘를 대 봤다"* 는 사람의 선언이다.
+MAX_READ_TENANTS_UNVERIFIED = 1
+
+#: 등급 대조를 했다는 선언. 값은 대조한 날짜다.
+CLEARANCE_VERIFIED_KEY = "clearance_equivalence_verified"
 
 
 def _validate_read_tenants(p: dict) -> None:
@@ -46,12 +52,12 @@ def _validate_read_tenants(p: dict) -> None:
             f"auth: principal {name!r} 의 tenant {tenant!r} 가 read_tenants 에 없다 — "
             "요청이 아니라 **설정이** 범위를 넓히게 된다"
         )
-    if len(items) > MAX_READ_TENANTS_U1:
+    if len(items) > MAX_READ_TENANTS_UNVERIFIED and not str(p.get(CLEARANCE_VERIFIED_KEY, "")).strip():
         raise RuntimeError(
-            f"auth: principal {name!r} 의 read_tenants 원소가 {len(items)}개다. "
-            f"지금은 {MAX_READ_TENANTS_U1}개만 허용한다 — 조각별 clearance 판정이 없는 상태로 "
-            "두 코퍼스를 열면 한 테넌트의 등급 어휘가 다른 테넌트 기준으로 해석된다 "
-            "(SPEC-nexus-tenant-read-scope §3.1 B-3)"
+            f"auth: principal {name!r} 이 테넌트 {len(items)}개를 읽으려 하는데 "
+            f"{CLEARANCE_VERIFIED_KEY} 가 없다. 두 코퍼스를 열면 한 테넌트의 등급 값이 다른 "
+            "테넌트 기준으로 해석된다 — 등급 값 분포를 대조하고 그 날짜를 적어라 "
+            "(SPEC-nexus-design-corpus-cutover §4)"
         )
 
 
