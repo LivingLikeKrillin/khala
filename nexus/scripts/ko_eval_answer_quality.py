@@ -172,6 +172,45 @@ def lead_segments(answer_text: str) -> list[str]:
     return out
 
 
+#: 목록 항목. 표 행과 같은 부류로 다룬다 — 늘어놓기이지 주장이 아니다.
+_LIST_ITEM = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s")
+
+
+def section_lead_segments(answer_text: str) -> list[str]:
+    """**절 머리** — 헤딩·구분선 다음의 첫 산문 세그먼트들.
+
+    ⛔ **왜 생겼나 (사전 등록 2026-08-31, `tests/eval/answer-facts/README.md`).**
+    `lead_segments` 는 산문이 시작된 뒤 첫 구조 전환에서 끊긴다. 답변이 문서 값과 코드 값을
+    **함께** 내게 된 뒤로 확정 문장이 구분선 뒤 절로 밀렸고, 기준선 5회에서 라벨 다섯이
+    2판만 회차마다 갈렸다(1판은 매번 통과). **답이 좋아진 것이 계측기를 흔들었다.**
+
+    ⚠ **표 행·인용문은 여전히 아니다.** *"늘어놓기는 주장이 아니다"* 는 그대로다. 바뀐 것은
+    "주장은 답변 맨 앞에만 있다" 는 가정 하나다.
+    """
+    out: list[str] = []
+    after_break = False
+    for seg in segments(answer_text):
+        if not seg.strip():
+            continue
+        if _is_break(seg):
+            after_break = True
+            continue
+        if after_break:
+            after_break = False
+            # ⛔ **목록 항목으로 시작하는 절은 통째로 건너뛴다.** 첫 구현은 이것을 안 걸렀고,
+            # 이 리포에 이미 있던 대조군(`test_answer_assertion_ruler.py` 의 `HEDGED` —
+            # *같은 값을 담고도 결론을 안 낸 답변*)이 통과해 버렸다. 그 쌍을 가르는 것이
+            # 2판의 존재 이유인데, 개정이 그것을 지웠다.
+            #
+            # 목록은 표 행과 같은 부류다 — **늘어놓기이지 주장이 아니다.** 사전 등록에는
+            # 이 구멍을 "안 막는다" 고 적었는데, 대조군이 그 판단을 뒤집었다. 등록보다
+            # **더 엄격해지는** 쪽이므로 점수를 부풀리지 않는다.
+            if _LIST_ITEM.match(seg.strip()):
+                continue
+            out.append(seg)
+    return out
+
+
 def verdict_segments(answer_text: str) -> list[str]:
     """**결론** — 접속 부사가 여는 세그먼트. 표 행·인용문은 결론이 아니다."""
     return [s for s in segments(answer_text)
@@ -199,7 +238,9 @@ def asserts_value(surfaces: list[str] | None, answer_text: str) -> bool:
     """
     if not surfaces:
         return False
-    said = " ".join(lead_segments(answer_text) + verdict_segments(answer_text))
+    said = " ".join(lead_segments(answer_text)
+                    + verdict_segments(answer_text)
+                    + section_lead_segments(answer_text))
     return all(facts_present([list(surfaces)], said))
 
 
