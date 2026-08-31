@@ -25,6 +25,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
+from nexus.search.scope_sql import tenant_predicate
+
 import re
 
 import structlog
@@ -60,14 +64,16 @@ def mates_from(rows: list[dict]) -> dict[str, list[str]]:
             for group in by_slug.values() if len(group) == 2 for rid in group}
 
 
-async def paired_chunks(hits, tenant: str, clearance: str, *, exclude_rids=None) -> list[dict]:
+async def paired_chunks(hits, tenant: str | Sequence[str], clearance: str, *,
+                        exclude_rids=None) -> list[dict]:
     """상위 히트 문서들의 **짝 문서** 청크. 실패는 삼키되 조용하지 않게."""
     if not hits:
         return []
+    _pred, _val = tenant_predicate("tenant", 1, tenant)
     try:
         rows = await db.fetch_all(
-            "SELECT rid, source_uri FROM documents WHERE tenant = $1 AND status = 'active' "
-            "AND (source_uri LIKE '%/specs/%' OR source_uri LIKE '%/plans/%')", tenant)
+            f"SELECT rid, source_uri FROM documents WHERE {_pred} AND status = 'active' "
+            "AND (source_uri LIKE '%/specs/%' OR source_uri LIKE '%/plans/%')", _val)
         if not rows:
             return []
         mates = mates_from([dict(r) for r in rows])

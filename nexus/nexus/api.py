@@ -19,8 +19,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from nexus import db
-from nexus.auth import AuthConfig, Principal, effective_scope
+from nexus.auth import (
+    AuthConfig,
+    Principal,
+    effective_read_scope,
+    effective_scope,
+)
 from nexus.auth.deps import make_get_principal
+from nexus.auth.scope import OUT_OF_SCOPE_EVENT
 from nexus.index.graph_extractor import find_entities_in_text, _build_entity_patterns, _load_gazetteer
 from nexus.ingest.pipeline import run_ingest
 from nexus.llm.answer import _load_staleness_ttl, _shown_query, generate_answer
@@ -564,7 +570,17 @@ async def feedback_reason(req: FeedbackReasonRequest,
 @app.post("/search/answer", response_model=NexusResponse)
 async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """검색 + LLM 답변 생성."""
-    req.tenant, req.classification_max = effective_scope(principal, req.tenant, req.classification_max)
+    # 읽기 경로는 **범위를 목록으로** 받는다 (SPEC-nexus-tenant-read-scope §3.3). 목록이 없는
+    # principal 은 원소 하나라 오늘과 같은 스칼라 술어가 나간다.
+    _scope, req.classification_max, _out = effective_read_scope(
+        principal, req.tenant, req.classification_max)
+    req.tenant = _scope[0] if len(_scope) == 1 else list(_scope)
+    if _out:
+        # ⛔ 오류를 내지 않는다(존재 누출 금지). 대신 **운영자에게 남긴다** — 그게 없으면
+        # 오설정 하나가 "요청하지 않은 코퍼스의 답" 을 영구히 정상 응답으로 준다 (1R I-009).
+        import structlog
+        structlog.get_logger(__name__).warning(
+            OUT_OF_SCOPE_EVENT, principal=principal.name, resolved=list(_scope))
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
     _validate_route(req.route)

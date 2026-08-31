@@ -18,6 +18,8 @@
 
 from __future__ import annotations
 
+from nexus.search.scope_sql import tenant_predicate
+
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -74,7 +76,7 @@ class ChunkAnchors:
 
 
 async def statuses_for_chunks(
-    tenant: str, chunk_rids: Sequence[str],
+    tenant: str | Sequence[str], chunk_rids: Sequence[str],
 ) -> dict[str, ChunkAnchors]:
     """이 청크들이 부른 이름의 현재 상태. **쿼리 한 번.**
 
@@ -90,9 +92,11 @@ async def statuses_for_chunks(
     if not tenant or not chunk_rids:
         return {}
 
+    _a_pred, _val = tenant_predicate("a.tenant", 1, tenant)
+    _r_pred, _ = tenant_predicate("r.tenant", 1, tenant)
     try:
         rows = await db.fetch_all(
-            """
+            f"""
             SELECT a.chunk_rid,
                    a.candidate                                           AS name,
                    'anchor'                                              AS kind,
@@ -104,7 +108,7 @@ async def statuses_for_chunks(
                      ON s.tenant = a.tenant
                     AND s.repo   = a.repo
                     AND s.symbol_name = a.symbol_name
-             WHERE a.tenant = $1
+             WHERE {_a_pred}
                AND a.chunk_rid = ANY($2::text[])
              GROUP BY a.chunk_rid, a.candidate, a.span_hash
 
@@ -118,7 +122,7 @@ async def statuses_for_chunks(
                      ON d.tenant = r.tenant
                     AND d.repo   = r.repo
                     AND d.symbol_name = r.candidate
-             WHERE r.tenant = $1
+             WHERE {_r_pred}
                AND r.chunk_rid = ANY($2::text[])
                -- `ambiguous` 는 여기 오지 않는다. 동명이 여럿이라 못 고른 것이지 사라진 것이
                -- 아니고, 그것을 삭제로 부르면 목록이 거짓을 말한다.
@@ -126,7 +130,7 @@ async def statuses_for_chunks(
 
              ORDER BY 1, 3, 2
             """,
-            tenant, list(chunk_rids),
+            _val, list(chunk_rids),
         )
     except Exception as e:  # noqa: BLE001 — 보강 실패가 답변을 죽이지 않는다
         logger.warning("anchor_status_lookup_failed", tenant=tenant, error=str(e))

@@ -17,6 +17,8 @@
 
 from __future__ import annotations
 
+from nexus.search.scope_sql import tenant_predicate
+
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -41,13 +43,15 @@ class DocDebt:
     same_title_docs: int = 0
 
 
-async def debts_for_docs(tenant: str, doc_rids: Sequence[str]) -> dict[str, DocDebt]:
+async def debts_for_docs(tenant: str | Sequence[str],
+                         doc_rids: Sequence[str]) -> dict[str, DocDebt]:
     """이 근거 문서들에 붙은 부채. **쿼리 한 번.** 실패하면 빈 결과(진단이 답을 죽이지 않는다)."""
     if not tenant or not doc_rids:
         return {}
     try:
+        _pred, _val = tenant_predicate("d.tenant", 1, tenant)
         rows = await db.fetch_all(
-            """
+            f"""
             SELECT d.rid, d.title,
                    coalesce(s.title, '')                                  AS superseded_by_title,
                    (SELECT count(*) FROM documents t
@@ -56,9 +60,9 @@ async def debts_for_docs(tenant: str, doc_rids: Sequence[str]) -> dict[str, DocD
               FROM documents d
               LEFT JOIN documents s
                      ON s.rid = d.superseded_by AND s.tenant = d.tenant
-             WHERE d.tenant = $1 AND d.rid = ANY($2::text[])
+             WHERE {_pred} AND d.rid = ANY($2::text[])
             """,
-            tenant, list(doc_rids))
+            _val, list(doc_rids))
         out: dict[str, DocDebt] = {}
         for r in rows:
             superseded = r["superseded_by_title"] or ""

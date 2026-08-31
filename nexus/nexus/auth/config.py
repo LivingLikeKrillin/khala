@@ -15,6 +15,46 @@ _WEAK_DEV_TOKEN_DEFAULT = "nexus-local-dev"
 _MIN_DEV_TOKEN_LEN = 24
 
 
+
+#: U1 에서 허용하는 읽기 범위 원소 수. **1 이다** (SPEC-nexus-tenant-read-scope §3.1 B-3).
+#:
+#: ⛔ 이것이 U1 의 안전장치다. 기제는 원소 둘을 해소할 수 있게 만들어지지만, 조각별 clearance
+#: 가 없는 상태에서 두 코퍼스를 열면 한 테넌트 어휘의 ``INTERNAL`` 이 다른 테넌트 기준으로
+#: 해석된다. 비평(3R I-002)이 잡은 것은 *"설정 한 줄만 쓰면 열리는 상태로 출하한다"* 였고,
+#: 그 한 줄을 여기서 막는다. 컷오버 SPEC 이 조각별 판정을 갖추면 이 상수를 올린다.
+MAX_READ_TENANTS_U1 = 1
+
+
+def _validate_read_tenants(p: dict) -> None:
+    """``read_tenants`` 세 가지를 본다. 어기면 기동 거부.
+
+    ⚠ **실재하는 테넌트인지는 안 본다.** 기동을 DB 내용에 의존시키면 비어 있는 신규 테넌트나
+    재적재 중 재시작이 서비스를 죽인다 (비평 3R I-003). 오타는 범위 밖 요청 기록으로 잡는다.
+    """
+    raw = p.get("read_tenants")
+    if not raw:
+        return
+    name = p.get("name", "?")
+    items = [str(t) for t in raw]
+    if any(not t.strip() for t in items):
+        raise RuntimeError(f"auth: principal {name!r} 의 read_tenants 에 빈 원소가 있다")
+    if len(set(items)) != len(items):
+        raise RuntimeError(f"auth: principal {name!r} 의 read_tenants 에 중복이 있다")
+    tenant = str(p.get("tenant", "default"))
+    if tenant not in items:
+        raise RuntimeError(
+            f"auth: principal {name!r} 의 tenant {tenant!r} 가 read_tenants 에 없다 — "
+            "요청이 아니라 **설정이** 범위를 넓히게 된다"
+        )
+    if len(items) > MAX_READ_TENANTS_U1:
+        raise RuntimeError(
+            f"auth: principal {name!r} 의 read_tenants 원소가 {len(items)}개다. "
+            f"지금은 {MAX_READ_TENANTS_U1}개만 허용한다 — 조각별 clearance 판정이 없는 상태로 "
+            "두 코퍼스를 열면 한 테넌트의 등급 어휘가 다른 테넌트 기준으로 해석된다 "
+            "(SPEC-nexus-tenant-read-scope §3.1 B-3)"
+        )
+
+
 @dataclass
 class AuthConfig:
     mode: str = "enforced"  # "enforced" (default, fail-closed) | "permissive"
@@ -153,6 +193,10 @@ class AuthConfig:
             if os.getenv("NEXUS_REQUIRE_STRONG_DEV_TOKEN") == "1":
                 raise RuntimeError("auth: " + msg)
             logger.warning("weak_dev_token", detail=msg)
+
+        # 읽기 범위 목록은 **모드와 무관하게** 검사한다 — permissive 도 범위를 넓히면 안 된다.
+        for p in self.principals:
+            _validate_read_tenants(p)
 
         if self.permissive:
             return

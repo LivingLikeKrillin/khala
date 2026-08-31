@@ -15,8 +15,9 @@ issues:
     silently ingest into the wrong tenant for any principal whose list is ordered
     `["design_docs", "default"]`. Add an invariant + check: writes resolve to the
     declared `tenant` field, never to a list element.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 불변식 I-5 신설 — 쓰기는 principal.tenant 로 해소되고 목록 원소로는 절대 아니다. 목록이
+    생기면 tenants[0] 로 리팩터하는 것이 자연스럽고 그게 잘못된 테넌트에 적재한다는 지적이 정확하다.
 - issue_id: I-002
   category: missing-invariant
   severity: high
@@ -31,8 +32,10 @@ issues:
     that guard. A `design_docs` chunk labeled `internal` under one tenant's vocabulary
     becomes readable by a `default` principal whose `internal` means something weaker,
     the moment one config line is added, with no check firing.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 설계를 바꿨다. 부팅 검사 B-3 로 len(read_tenants) > 1 을 U1 에서 거부하고, C-4
+    는 살아 있는 principal 이 아니라 effective_scope 단위 검사로 바꿨다. '설정 한 줄만 쓰면 열리는 상태로 출하한다'는
+    지적이 맞았다.
 - issue_id: I-003
   category: risky-assumption
   severity: high
@@ -45,8 +48,9 @@ issues:
     DB-unavailable case is specified, and C-2 only tests the positive rejection. A
     typo-detection check should not be able to take down a running deployment on restart;
     make it a warning, or scope it to a tenant registry rather than row existence.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 실재 테넌트 검사를 뺐다. 기동을 DB 내용에 의존시키면 비어 있는 신규 테넌트나 재적재 중 재시작이 서비스를
+    죽인다. 오타는 §3.2 의 기록으로 잡는다.
 - issue_id: I-004
   category: undefined
   severity: medium
@@ -59,8 +63,9 @@ issues:
     a list will either fail to type-check or silently coerce (e.g. `tenants[0]`),
     producing results scoped to a different tenant than the search leg that fed it.
     The SPEC needs the enumerated call-site list as an artifact, not a grep count.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 세어서 적었다. '130곳'도 '두 곳'도 틀렸다 — 전체 32곳, 검색 읽기 경로 12곳이고 파일·건수를
+    §1.2 에 열거했다. 목록을 반환하면 그 12곳이 전부 바뀌어야 한다.
 - issue_id: I-005
   category: untestable-requirement
   severity: medium
@@ -72,8 +77,9 @@ issues:
     C-1 is either flaky or it is passing for reasons nobody characterized. Specify
     the corpus, the query set, the k, the tie-break (e.g. `ORDER BY score DESC, chunk_rid`),
     and how the ''before'' baseline is captured in CI.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: C-1 에 타이브레이크(ORDER BY score DESC, chunk_rid)와 기준선 포착(라벨 18개
+    질의, CI)을 박았다.
 - issue_id: I-006
   category: undefined
   severity: medium
@@ -83,8 +89,9 @@ issues:
     row, `a2a_audit` row, or metric counter — each has different retention, tenancy,
     and query-text-consent implications (a rejected tenant name is caller-supplied
     input). C-3 cannot be written as a test until the sink is named.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: §3.2 에 자리를 명시했다 — 새 표 없이 애플리케이션 로그 한 줄 + 계수기, 요청 원문 미저장. search_log·a2a_audit
+    스키마는 안 건드린다.
 - issue_id: I-007
   category: adr-contradiction
   severity: medium
@@ -96,8 +103,9 @@ issues:
     nothing that blocks implementation or merge on that ruling being filled in. As
     written, U1 can ship with the gate permanently unresolved. Add the ruling as an
     explicit precondition row in §5.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: §5 에 선행 조건 P-1 을 신설했다 — backstop ruling 이 director 서명으로 채워지기
+    전에는 구현하지 않는다. 2판은 pending 으로 두고도 그것을 막는 조건이 없었다.
 - issue_id: I-008
   category: adr-contradiction
   severity: medium
@@ -110,8 +118,9 @@ issues:
     cannot be done with the mechanism ADR-0006 accepted, and the cutover SPEC will
     require either an ADR-0006 amendment or a new cross-tenant identity key. This
     SPEC should say so rather than forward-referencing a solution that does not exist.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: §1.3 에 적었다 — 교차 테넌트 supersession 은 오늘의 프리미티브로 표현이 불가능하고, 컷오버
+    SPEC 은 ADR-0006 개정이나 새 식별자를 필요로 한다. 있는 것으로 되는 일처럼 앞으로 미루지 않는다.
 - issue_id: I-009
   category: risky-assumption
   severity: medium
@@ -124,8 +133,9 @@ issues:
     and callers that today send an arbitrary/stale `tenant` value harmlessly will,
     once any list exists, have their results silently narrowed. Restate §2 as the
     narrowing-only guarantee and re-derive the isolation argument from that.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: §2 를 다시 썼다. '이 성질을 없애지 않는다'는 거짓이었다 — 요청 tenant 를 좁히는 데 쓰므로 성질은
+    없어지고, 남는 보장은 '좁힐 수만 있다' 하나다. 낡은 tenant 를 보내던 호출부가 조용히 좁아지는 부작용도 적었다.
 - issue_id: I-010
   category: risky-assumption
   severity: medium
@@ -137,8 +147,9 @@ issues:
     produces confidently-cited wrong-corpus answers. The server-side log (I-7) helps
     the operator, not the caller. At minimum the response should carry the resolved
     scope, which is a response-shape decision this SPEC is currently deferring.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 응답이 해소된 범위를 들고 나가게 했다. 코퍼스 X 를 묻고 Y 로 답을 받는데 아무 신호가 없으면 에이전트에겐
+    오류보다 나쁘다는 지적이 맞다.
 - issue_id: I-011
   category: unverifiable-claim
   severity: medium
@@ -150,8 +161,9 @@ issues:
     rows with no `status='active'` predicate, so superseded chunks are included. The
     initial 1,849 was correctly demoted to an upper bound; 1,582 is an upper bound
     by the same argument and should not be stated as '사본은 1,582 다'.
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: 1,582 도 상한이라고 적었다 — 제목 일치는 사본 동일성이 아니고 status 필터도 없다. 사본 식별
+    술어는 컷오버 SPEC 이 정한다.
 - issue_id: I-012
   category: missing-invariant
   severity: medium
@@ -162,8 +174,8 @@ issues:
     chunks per tenant. No latency or plan invariant is stated and C-1 would pass while
     p95 regresses. Add an `EXPLAIN`-level or latency-bound condition, or pin the single-element
     case to the scalar predicate.'
-  status: open
-  disposition_reason: null
+  status: accepted
+  disposition_reason: C-5 신설 — 원소 하나 배열의 질의 계획이 스칼라와 같거나 p95 가 기준선 안이어야 한다.
 - issue_id: I-013
   category: scope-creep
   severity: low
@@ -174,9 +186,10 @@ issues:
     §3.1 example block, which itself shows `read_tenants: ["default", "design_docs"]`,
     the SPEC ships a copy-pasteable path to the exact state §0 and §3.4 promise this
     SPEC does not create.'
-  status: open
-  disposition_reason: null
-approved_by: null
-approved_at: null
+  status: accepted
+  disposition_reason: C-4 를 단위 검사로 바꾸고 §3.1 예시의 read_tenants 를 원소 하나로 줄였다. 복사해 붙이면
+    §0 이 안 만든다고 한 상태가 되는 경로를 없앴다.
+approved_by: LivingLikeKrillin
+approved_at: '2026-08-31T01:10:09Z'
 ---
 
