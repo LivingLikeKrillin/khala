@@ -23,6 +23,18 @@ class Principal:
     tenant: str
     clearance: str  # always a valid clearance level
     capabilities: tuple[str, ...] = ()
+    #: 읽기 범위. 비면 ``(tenant,)`` 와 같다 (SPEC-nexus-tenant-read-scope §3.1).
+    #:
+    #: ⛔ **쓰기는 이 목록을 절대 쓰지 않는다.** 쓰기 테넌트는 ``tenant`` 하나다. 목록이
+    #: 생기면 호출부를 ``read_tenants[0]`` 로 고치는 것이 자연스러운데, 그것은 목록이
+    #: ``["design_docs", "default"]`` 인 principal 을 **엉뚱한 테넌트에 적재**시킨다
+    #: (SPEC §4 I-5, 비평 3R I-001).
+    read_tenants: tuple[str, ...] = ()
+
+    @property
+    def read_scope(self) -> tuple[str, ...]:
+        """읽기에 허용된 테넌트들. 설정이 없으면 오늘과 같은 하나."""
+        return self.read_tenants or (self.tenant,)
 
     def has(self, capability: str) -> bool:
         """True if this principal carries ``capability`` (default-deny: empty ⇒ read-only)."""
@@ -57,5 +69,6 @@ def resolve_principal(token: str | None, principals: list[dict]) -> Principal | 
                 tenant=str(p.get("tenant", "default")),
                 clearance=floor_public(p.get("clearance")),
                 capabilities=tuple(str(c) for c in (p.get("capabilities") or [])),
+                read_tenants=tuple(str(t) for t in (p.get("read_tenants") or [])),
             )
     return None

@@ -4,6 +4,9 @@
 """
 
 from __future__ import annotations
+from collections.abc import Sequence
+
+from nexus.search.scope_sql import tenant_predicate
 
 import asyncio
 import re
@@ -105,7 +108,7 @@ BM25_LENGTH_NORMALIZATION = 1
 
 async def _bm25_search(
     query: str,
-    tenant: str,
+    tenant: str | Sequence[str],
     clearance: str,
     top_k: int = 20,
 ) -> tuple[list[tuple[str, int]], float | None]:
@@ -127,14 +130,15 @@ async def _bm25_search(
     if not tsquery:
         return [], None
 
+    tenant_pred, tenant_val = tenant_predicate("c.tenant", 2, tenant)
     rows = await db.fetch_all(
-        """
+        f"""
         SELECT c.rid,
                ts_rank_cd(c.tsvector_ko, to_tsquery('simple', $1),
                           $5) as rank_score
         FROM chunks c
         WHERE c.tsvector_ko @@ to_tsquery('simple', $1)
-          AND c.tenant = $2
+          AND {tenant_pred}
           AND c.classification <= $3::classification_level
           AND c.is_quarantined = false
           AND c.status = 'active'
@@ -146,7 +150,7 @@ async def _bm25_search(
         ORDER BY rank_score DESC, c.rid ASC
         LIMIT $4
         """,
-        tsquery, tenant, clearance, top_k, BM25_LENGTH_NORMALIZATION,
+        tsquery, tenant_val, clearance, top_k, BM25_LENGTH_NORMALIZATION,
     )
 
     # 매칭 0건은 **측정해서 0점**이다(위 참조). 안 측정한 것이 아니다.
@@ -157,7 +161,7 @@ async def _bm25_search(
 async def _vector_search(
     query: str,
     embedding_svc: EmbeddingService,
-    tenant: str,
+    tenant: str | Sequence[str],
     clearance: str,
     top_k: int = 20,
     column: str | None = None,
@@ -171,13 +175,14 @@ async def _vector_search(
     query_embedding = await embedding_svc.embed_query(query)
 
     vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
+    tenant_pred, tenant_val = tenant_predicate("c.tenant", 2, tenant)
 
     rows = await db.fetch_all(
         f"""
         SELECT c.rid, c.{col} <=> $1::vector as distance
         FROM chunks c
         WHERE c.{col} IS NOT NULL
-          AND c.tenant = $2
+          AND {tenant_pred}
           AND c.classification <= $3::classification_level
           AND c.is_quarantined = false
           AND c.status = 'active'
@@ -188,7 +193,7 @@ async def _vector_search(
         ORDER BY distance ASC, c.rid ASC
         LIMIT $4
         """,
-        vec_str, tenant, clearance, top_k,
+        vec_str, tenant_val, clearance, top_k,
     )
 
     return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
@@ -552,7 +557,7 @@ async def _fill_sections(
 
 async def hybrid_search(
     query: str,
-    tenant: str = "default",
+    tenant: str | Sequence[str] = "default",
     clearance: str = "INTERNAL",
     top_k: int = 10,
     embedding_svc: EmbeddingService | None = None,

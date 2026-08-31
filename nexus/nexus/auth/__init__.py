@@ -10,11 +10,12 @@ contract the A2A `policy.py` reuses (ADR-0001 / SPEC Phase 0).
 from .clearance import ORDER, LEVELS, floor_public, min_level, parse
 from .config import PLACEHOLDER, AuthConfig
 from .principal import Principal, gen_token, hash_token, resolve_principal
-from .scope import effective_scope
+from .scope import effective_read_scope, effective_scope
 
 __all__ = [
     "ORDER", "LEVELS", "floor_public", "min_level", "parse",
     "PLACEHOLDER", "AuthConfig",
     "Principal", "gen_token", "hash_token", "resolve_principal",
+    "effective_read_scope",
     "effective_scope",
 ]

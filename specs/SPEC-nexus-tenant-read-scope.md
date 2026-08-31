@@ -1,8 +1,8 @@
 ---
 id: SPEC-nexus-tenant-read-scope
 type: spec
-title: 'One token, more than one corpus to read — the mechanism only'
-status: draft
+title: One token, more than one corpus to read — the mechanism only
+status: approved
 linked_adrs:
 - ADR-0002
 - ADR-0006
@@ -11,6 +11,9 @@ tags:
 - nexus
 - auth
 - governance
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-08-31T01:10:09Z'
+content_hash: sha256:23d097479d9b84eec3beefe1e374866633814e7df29b54e6201df034bc11d64b
 ---
 # One token, more than one corpus to read — the mechanism only
 
@@ -31,7 +34,13 @@ backstop:
     U1 이 바꾸는 것은 `auth/scope.py` 한 함수와 그 값을 받는 **검색 읽기 경로의 tenant 술어
     12곳**(§1.2)이며, 원소 둘 이상은 기동이 막으므로 모든 술어가 원소 하나짜리 배열을 받는다.
   clause: none
-  ruling: pending-director
+  ruling: does-not-fire
+  ruled_by: LivingLikeKrillin
+  ruled_at: '2026-08-31'
+  recorded_note: |
+    ⚠ 소유자가 대화에서 "서명한다" 고 말했고 **내가 이 칸을 채웠다.** 근거는 그 진술이고,
+    판정 내용은 위 `reread` 의 재독 결과(새 검색 채널·인덱스 백엔드·토크나이저/임베딩·커넥터
+    없음)다. 사람이 직접 적은 것처럼 보이면 안 되므로 남긴다 — 아니라고 하면 되돌린다.
 ```
 
 ⛔ **이 판정이 채워지기 전에는 구현하지 않는다** (§5 P-1). 초판은 내가 `does-not-fire` 를 직접
