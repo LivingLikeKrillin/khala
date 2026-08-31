@@ -105,12 +105,13 @@ def test_a_plain_string_normalises():
 
 # ── 기동 검사 (§3.1) ─────────────────────────────────────────────────────────
 
-def _boot(read_tenants, tenant="default"):
+def _boot(read_tenants, tenant="default", verified=None):
     # `from_dict` 는 **전체 설정**을 받는다 (`auth` 키로 감싼다) — 이 자리를 처음에 틀렸다.
     cfg = AuthConfig.from_dict({"auth": {
         "mode": "permissive",
-        "principals": [{"name": "p", "tenant": tenant, "clearance": "INTERNAL",
-                        "read_tenants": read_tenants}],
+        "principals": [dict({"name": "p", "tenant": tenant, "clearance": "INTERNAL",
+                             "read_tenants": read_tenants},
+                            **({"clearance_equivalence_verified": verified} if verified else {}))],
     }})
     cfg.validate_startup()
 
@@ -129,10 +130,23 @@ def test_boot_refuses_duplicates_and_blanks():
         _boot(["default", "  "])
 
 
-def test_boot_refuses_more_than_one_tenant_in_u1():
-    """⛔ **U1 의 안전장치** (3R I-002). 이것이 없으면 설정 한 줄로 등급 경계를 넘는다."""
-    with pytest.raises(RuntimeError, match="clearance|등급"):
+def test_boot_refuses_more_than_one_tenant_without_a_clearance_declaration():
+    """⛔ **자물쇠** (3R I-002). 선언 없이는 설정 한 줄로 등급 경계를 넘는다."""
+    with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
         _boot(["default", "design_docs"])
+
+
+def test_a_recorded_clearance_comparison_opens_it():
+    """선언이 있으면 열린다 — **자물쇠를 없앤 게 아니라 사람의 확인에 걸었다**
+    (SPEC-nexus-design-corpus-cutover §4.3). 상한을 그냥 올리면 앞으로 어느 쌍에든
+    검사가 사라진다."""
+    _boot(["default", "design_docs"], verified="2026-08-31")
+
+
+def test_a_blank_declaration_does_not_count():
+    """⛔ 대조군. 빈 문자열로 검사를 통과하면 선언이 장식이 된다."""
+    with pytest.raises(RuntimeError):
+        _boot(["default", "design_docs"], verified="   ")
 
 
 def test_boot_accepts_a_single_element_list():

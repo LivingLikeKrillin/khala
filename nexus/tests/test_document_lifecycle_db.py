@@ -228,3 +228,58 @@ async def test_a_pruned_document_is_still_revived_when_its_page_returns(seeded):
 
     row = await db.fetch_one("SELECT status, hold FROM documents WHERE rid=$1", _NOTION)
     assert row["status"] == "active" and row["hold"] is False
+
+
+# ── 컷오버가 기대는 불변식 (SPEC-nexus-design-corpus-cutover §3.2·§3.3) ──────────
+
+async def test_reingesting_a_hidden_document_does_not_revive_it(seeded):
+    """⛔ **컷오버 전체가 이 불변식에 걸려 있다.**
+
+    사본 122문서를 `hide` 로 내린 뒤 누가 같은 경로를 다시 적재하면 되살아나는가? 되살아나면
+    순서를 짜서 피하려던 **정본·사본 겹침이 배포 뒤에 조용히 재생성**되고, 어떤 완료 조건도
+    그것을 안 본다(비평 I-004).
+
+    코드를 읽어 보니 이미 막혀 있었다 — 문서 upsert 의 `SET` 목록에 `status` 가 없다. 하지만
+    **읽어서 그렇다고 믿는 것과 검사로 박는 것은 다르다.** 이 리포가 반복해서 데인 자리다.
+    """
+    from nexus import db
+    from nexus.documents.lifecycle_ops import hide_document
+
+    await hide_document(_V1, _TENANT)
+
+    async with db._pool.acquire() as con:
+        # 적재 파이프라인과 **같은 upsert 형태**로 재적재한다.
+        await con.execute(
+            "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, status, "
+            "superseded_by, hold, title) "
+            "VALUES ($1,$2,$3,$4,$4,'active'::resource_status,'',false,$5) "
+            "ON CONFLICT (rid) DO UPDATE SET hash = EXCLUDED.hash, "
+            "content_hash = EXCLUDED.content_hash, title = EXCLUDED.title",
+            _V1, _TENANT, f"{_TENANT}:v1.md", "h1-new", "재적재된 제목",
+        )
+        row = await con.fetchrow(
+            "SELECT status::text AS status, hold, title FROM documents WHERE rid = $1", _V1)
+
+    assert row["status"] == "soft_deleted", "재적재가 숨긴 문서를 되살렸다 — 컷오버가 무너진다"
+    assert row["hold"] is True, "사람의 결정이 재적재에 지워졌다"
+    # 대조군: 내용은 갱신된다. 상태만 안 건드리는 것이지 적재가 죽은 게 아니다.
+    assert row["title"] == "재적재된 제목"
+
+
+async def test_hiding_and_restoring_returns_the_document_exactly(seeded):
+    """§3.2 R-3 — **역연산이 있다.** supersede 는 단방향이라 못 쓴다."""
+    from nexus import db
+    from nexus.documents.lifecycle_ops import hide_document, restore_document
+
+    async with db._pool.acquire() as con:
+        before = await con.fetchrow(
+            "SELECT status::text AS s, hold FROM documents WHERE rid = $1", _V1)
+
+    await hide_document(_V1, _TENANT)
+    await restore_document(_V1, _TENANT)
+
+    async with db._pool.acquire() as con:
+        after = await con.fetchrow(
+            "SELECT status::text AS s, hold FROM documents WHERE rid = $1", _V1)
+
+    assert (after["s"], after["hold"]) == (before["s"], before["hold"])
