@@ -93,6 +93,11 @@ async def main() -> int:
     ap.add_argument("--labels", required=True)
     ap.add_argument("--top-k", type=int, default=10,
                     help="검색 예산. 집합을 요구하는 질문이 여기서 잘린다")
+    # ⛔ **쉼표로 여러 테넌트를 받는다** (2026-08-31). 컷오버 뒤 하니스가 `default` 하나만
+    # 물어서 설계 라벨이 떨어졌고, 나는 그것을 제품 회귀로 읽을 뻔했다. 라이브 경로는
+    # principal 의 읽기 범위를 해소해 두 테넌트를 보는데(SPEC-nexus-tenant-read-scope),
+    # 하니스는 문자열 하나를 그대로 넘겨 **아무도 안 지나는 경로를 측정**하고 있었다.
+    # 같은 파일 아래 주석이 2026-08-29 에 같은 실수를 적어 두었는데 또 났다.
     ap.add_argument("--tenant", default=TENANT,
                     help="어느 코퍼스에 물을 것인가 (기본: default)")
     ap.add_argument("--for-signature", action="store_true",
@@ -141,11 +146,12 @@ async def main() -> int:
         print(f"  절 채움: {cfg.get('search', {}).get('section_fill')}", flush=True)
         rows, answers = [], []
         for q in queries:
-            r = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance=CLEARANCE,
+            scope = [t.strip() for t in args.tenant.split(",") if t.strip()]
+            r = await hybrid.hybrid_search(q["query"], tenant=scope, clearance=CLEARANCE,
                                            top_k=args.top_k, embedding_svc=svc, config=cfg)
             # **프로덕션이 답변용 근거를 만드는 그 함수**를 쓴다. 직접 조립하면
             # 하니스가 아무도 안 지나는 경로를 측정한다 — 2026-08-29 에 실제로 그랬다.
-            packet = await packet_for_answer(r, args.tenant, CLEARANCE, config=cfg,
+            packet = await packet_for_answer(r, scope, CLEARANCE, config=cfg,
                                              search=hybrid.hybrid_search, embedding_svc=svc,
                                              question=q["query"], pool=await db.get_pool())
             ans = await generate_answer(q["query"], packet, LLMService(),
