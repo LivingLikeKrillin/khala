@@ -521,3 +521,24 @@ Splitting what survives from what does not:
 - ✅ classification and comparison both run the full set, so this measurement is internally consistent.
 
 ⚠ And one rule is added: **a number obtained from a subset run does not get quoted for the full-run condition.** Running a single label is fast and convenient when diagnosing, and the number it gives belongs to a different condition. Today I put such a number into the public record as a cause.
+
+**It took three blocks to suspect the judgment design (2026-09-01).** The cutover rolled back three times at the same place, each time over a single label that passes the first check every run and wobbles only on the second. On the third, I did the arithmetic.
+
+For a label with pass probability `p`: the chance it looks uniform across ten runs, times the chance it wobbles in the following five.
+
+| p | uniform over 10 | wobbles in next 5 | expected false alarms across 18 labels |
+|---|---|---|---|
+| 0.50 | 0.2% | 93.8% | 0.03 |
+| 0.80 | 10.7% | 67.2% | **1.30** |
+| 0.90 | 34.9% | 40.9% | **2.57** |
+| 0.95 | 59.9% | 22.6% | **2.44** |
+
+**"Uniform across n runs" is not "deterministic".** That classification screens out `p≈0.5` and nothing else. A label at `p=0.9` looks uniform one time in three, then wobbles in the next comparison with probability 0.41. The design expected two or three false alarms per comparison.
+
+⛔ And the previous amendment **enlarged the wrong axis.** Raising five runs to ten, I wrote that expected misclassifications were now 0.04 — that figure assumes `p=0.5`. A label at `p=0.9` keeps passing a set-equality test no matter how many runs are added. **Having computed a number is not the same as having computed the right one.**
+
+The amendment is registered: judge on **rates** rather than set equality, and state the smallest detectable change — this harness catches `1.0 → ≤0.5` and nothing finer. The second check drops from **deployment gate to improvement gauge**: while the answer's format is non-deterministic, gating deployment on it means never deploying. The regression net for absence stays with the first check, which has not wobbled once.
+
+⛔ The answer's shape does not get bent to fit the instrument. The instrument is made to tolerate format noise instead.
+
+Re-measurement starts fresh on both sides. **The data that motivated a rule does not get to pass that rule.**
