@@ -77,7 +77,8 @@ def main() -> None:
         if got != {fixed}:
             diff.append((lid, fixed, sorted(got)))
 
-    print(f"\n비교 {args.compare} vs 기준선 {args.against or args.classify}")
+    # 기준선은 **분류 회차 그 자체**다 — 분류는 기준선 조건에서 돌렸다.
+    print(f"\n비교 {args.compare} vs 기준선(분류 회차) {args.classify}")
     for lid, fixed, got in diff:
         print(f"  {lid}: 기준 {fixed} → {got}")
     if diff:

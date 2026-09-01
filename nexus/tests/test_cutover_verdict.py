@@ -42,3 +42,24 @@ def test_a_stably_failing_label_is_still_stable():
 def test_the_floor_is_twelve():
     """사전 등록된 하한. 그 아래로는 비교가 공허하다."""
     assert cv.MIN_STABLE == 12
+
+
+def test_the_script_actually_runs(tmp_path, monkeypatch, capsys):
+    """⛔ **배선 검사.** 앞의 검사들은 `classify()` 만 불렀고 `main()` 은 한 번도 안 돌았다.
+    그래서 제거한 인자를 참조하는 줄이 남아 있는 것을 못 잡았고, 판정을 돌리자 그 자리에서
+    터졌다 — *검사가 초록인데 스크립트가 죽는다.* 이 리포가 반복해서 데인 모양이다.
+    """
+    import json
+    d = tmp_path / "tests" / "eval" / "local"
+    d.mkdir(parents=True)
+    for tag in ("CLS", "X"):
+        n = 10 if tag == "CLS" else 5
+        for i in range(1, n + 1):
+            (d / f"cutover-{tag}-policy-{i}.json").write_text(json.dumps(
+                {"rows": [{"id": f"L{k}", "pass": True, "asserted": True} for k in range(14)]}),
+                encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["cv", "--classify", "CLS", "--compare", "X"])
+    cv.main()
+    out = capsys.readouterr().out
+    assert "전건 일치" in out
