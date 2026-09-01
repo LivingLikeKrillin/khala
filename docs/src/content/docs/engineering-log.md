@@ -542,3 +542,35 @@ The amendment is registered: judge on **rates** rather than set equality, and st
 ⛔ The answer's shape does not get bent to fit the instrument. The instrument is made to tolerate format noise instead.
 
 Re-measurement starts fresh on both sides. **The data that motivated a rule does not get to pass that rule.**
+
+**It landed on the fourth attempt (2026-09-01).** After rebuilding the judgment on rates, everything was measured again from scratch.
+
+```
+baseline ×10   16 labels stable on the first check, 2 wobbling
+hide 122 + attach              gap window ≈ 30 seconds
+comparison ×10  all 16 identical, zero gauge flags  → pass
+```
+
+Slack now reads the source corpus directly, with no copy. The policy tenant is back to 466 chunks of its own material, and the 1,582 chunks of design documents come from where they actually live. The 122 copies are hidden rather than deleted, so the rollback is still two lines.
+
+### All three earlier blocks were instrument defects
+
+| attempt | what stopped it | the actual cause |
+|---|---|---|
+| 1 | one label wobbled | a **request model default** swallowed the scope contract, leaving the cutover silently inert |
+| 2 | design labels dropped | the **harness asked one corpus** while the live path asks two |
+| 3 | one label wobbled | the **judgment design** — uniform across n runs is not deterministic |
+
+The product was never the thing that was wrong. And each time the rule stopped me, I stopped — by the third, the rule firing three times at the same place was itself the signal.
+
+### One lesson worth keeping
+
+**Pre-registration protects the order of operations, not the arithmetic.** I raised the run count from three to five to ten, writing a justification each time, and every justification assumed `p=0.5`. What actually blocked was a label near `p=0.9`, which keeps passing a set-equality test however many runs are added. **I enlarged the wrong axis three times.**
+
+The verdict now prints its own limit with every judgment:
+
+```
+⚠ smallest detectable change: 1.0 → ≤0.5. Anything finer, this harness cannot see.
+```
+
+The limit is stated rather than left to be inferred from a precision that is not there.
