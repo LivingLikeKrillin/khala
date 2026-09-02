@@ -118,6 +118,55 @@ def totals(rows: list[dict]) -> dict:
     return out
 
 
+async def explain(q: dict, present: list[bool], tenant: list[str], cfg, svc, search, con) -> dict:
+    """이 질의의 요구가 왜 안 왔는가 — **관측만** 한다. 판정도 처방도 없다.
+
+    조립 실패를 "채움 설정값이 낮다" 로 뭉뚱그리면 서로 다른 실패가 한 이름으로 묶인다.
+    실측 2026-09-02: 같은 문자열이 빠진 두 질의가 **다른 이유**로 빠졌다 — 하나는 문서가 포화에
+    하나 모자랐고(상한을 내리면 들어온다), 다른 하나는 그 문서가 상위 10 에 **둘밖에** 못 올려
+    어떤 상한으로도 포화하지 않는다. 처방이 갈리므로 이름도 갈려야 한다.
+    """
+    missing = [g for g, ok in zip(q.get("must_contain") or [], present) if not ok]
+    out: dict = {"qid": q["id"], "missing_groups": len(missing), "holders": []}
+    if not missing:
+        return out
+
+    from nexus.search import section_fill
+
+    cap = (cfg.get("search") or {}).get("diversity_per_doc_cap", 5)
+    result = await search(q["query"], tenant=tenant, clearance="INTERNAL", top_k=10,
+                          embedding_svc=svc, config=cfg)
+    counts: dict[str, int] = {}
+    for h in result.hits:
+        counts[h.doc_rid] = counts.get(h.doc_rid, 0) + 1
+    sections = {s for _, s in section_fill.hit_sections(result.hits)}
+
+    for group in missing:
+        # 요구의 후보 중 **아무거나 하나**를 담은 활성 청크. 후보는 같은 사실의 다른 표기이므로
+        # 어느 것이 걸리든 그 사실이 사는 자리는 같다.
+        rows = await con.fetch(
+            "SELECT c.doc_rid, c.section_path, d.title, "
+            "       (SELECT count(*) FROM chunks x WHERE x.tenant = c.tenant "
+            "          AND x.doc_rid = c.doc_rid AND x.status = 'active' "
+            "          AND x.is_quarantined = false) AS doc_chunks "
+            "FROM chunks c JOIN documents d ON d.rid = c.doc_rid AND d.tenant = c.tenant "
+            "WHERE c.tenant = ANY($1) AND c.status = 'active' AND c.is_quarantined = false "
+            "  AND c.chunk_text LIKE ANY($2) LIMIT 4",
+            list(tenant), [f"%{alt}%" for alt in group])
+        for r in rows:
+            hits = counts.get(r["doc_rid"], 0)
+            out["holders"].append({
+                "requirement": " | ".join(group), "doc": r["title"],
+                "doc_hits_in_top10": hits, "cap": cap,
+                "saturated": hits >= cap,
+                "cap_that_would_saturate": hits if hits else None,
+                "doc_chunks": r["doc_chunks"],
+                "over_max_doc_chunks": r["doc_chunks"] > section_fill.MAX_DOC_CHUNKS,
+                "section_is_a_hit_section": r["section_path"] in sections,
+            })
+    return out
+
+
 def cost_delta(arm_chars: float, base_chars: float) -> str:
     """근거 분량의 **변화율**. `base` 는 `+0%`, 3할 줄면 `-29%`.
 
@@ -191,6 +240,29 @@ async def _run(args) -> int:
     drift = determinism(arms[0], base_again)
     v = verdict(arms, drift)
 
+    # ── 왜 안 왔는가 (관측) ──────────────────────────────────────────────────
+    # 판정과 **따로** 돈다. 판정이 §5 에서 멈춰도 이 관측은 남아야 한다 — 멈춘 자리에서 다음
+    # 단위를 정하는 재료가 정확히 이것이다.
+    explanations = []
+    if args.diagnose:
+        from nexus.api import _load_config
+        from nexus.providers.embedding import embedding_service_from_config
+        from nexus.search import hybrid
+
+        cfg, svc = _load_config(), embedding_service_from_config()
+        pool = await db.get_pool()
+        try:
+            async with pool.acquire() as con:
+                by_qid = {r["qid"]: r for r in arms[0]["rows"]}
+                for q in groups["multihop"]:
+                    row = by_qid.get(q["id"])
+                    if row and not row["covered"]:
+                        explanations.append(await explain(
+                            q, row["requirements"], tenant, cfg, svc,
+                            hybrid.hybrid_search, con))
+        finally:
+            await db.close_pool()
+
     print("\n| 실험군 | 멀티홉 | 정책 | 근거 중앙값 | vs base |")
     print("|---|---|---|---|---|")
     base_chars = arms[0]["median_chars"]
@@ -199,6 +271,17 @@ async def _run(args) -> int:
               f"{a['policy']['covered']}/{a['policy']['n']} | {a['median_chars']:.0f} | "
               f"{cost_delta(a['median_chars'], base_chars)} |")
     print(f"\n  결정론 대조군: {'통과' if not drift else '실패 — ' + ', '.join(drift)}")
+    for e in explanations:
+        print(f"\n  {e['qid']} 가 못 받은 요구 {e['missing_groups']}건 — 왜:")
+        for h in e["holders"]:
+            print(f"    그 사실은 「{h['doc']}」 에 있고, 상위 10 에 이 문서의 히트는 "
+                  f"{h['doc_hits_in_top10']}개다 (상한 {h['cap']} · 포화 "
+                  f"{'예' if h['saturated'] else '아니오'})")
+            print(f"      문서 청크 {h['doc_chunks']}"
+                  + (" — MAX_DOC_CHUNKS 초과라 문서 채움이 통째로 건너뛴다"
+                     if h["over_max_doc_chunks"] else "")
+                  + " · 그 절이 상위 히트의 절인가: "
+                  + ("예" if h["section_is_a_hit_section"] else "아니오"))
     print(f"  판정: {v['reason']}")
     if v["candidates"]:
         print(f"  후보: {v['candidates']}")
@@ -208,7 +291,8 @@ async def _run(args) -> int:
         {"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
          "preregistration": "docs/MULTIHOP_ASSEMBLY_PREREGISTRATION.md",
          "tenant": tenant, "clearance": CLEARANCE, "cost_ceiling": COST_CEILING,
-         "determinism_drift": drift, "verdict": v, "arms": arms},
+         "determinism_drift": drift, "verdict": v,
+         "why_uncovered": explanations, "arms": arms},
         ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"\n기록: {args.out}")
     return 0
@@ -224,6 +308,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--labels", type=Path, required=True, help="멀티홉 라벨 (처치군)")
     p.add_argument("--control", type=Path, required=True, help="단일홉 라벨 (회귀 검사)")
     p.add_argument("--tenant", default="default", help="쉼표로 여러 개")
+    # 관측이지 판정이 아니다 — 그래서 사전 등록 §5 와 무관하게 켜고 끌 수 있고, 판정이 §5 에서
+    # 멈춰도 이 관측은 남는다. 멈춘 자리에서 다음 단위를 정하는 재료가 정확히 이것이다.
+    p.add_argument("--diagnose", action="store_true",
+                   help="못 받은 요구마다 **왜** 안 왔는지 관측한다 — 그 사실이 어느 문서에 "
+                        "있고, 그 문서가 상위 10 에 몇 개를 올렸고, 포화·절 조건에 걸리는가")
     p.add_argument("--out", type=Path, required=True,
                    help="결과 파일. 조직 문서의 사실이 요구에 들어 있으므로 gitignore 된 곳에")
     return asyncio.run(_run(p.parse_args(argv)))
