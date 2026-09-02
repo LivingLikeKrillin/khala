@@ -207,11 +207,20 @@ def _field_declarations(text: str, field: str) -> list[int]:
 
     대신 **타입 토큰을 요구한다** — 이름 앞에 타입이 와야 선언이다. 그것마저 없애면 산문
     속의 낱말이 선언으로 잡힌다.
+
+    ⭐ **인자 선언도 본다 (2026-09-02).** 끝을 `;=` 만 보다가 `,)` 를 더했다. 팀 코드에서
+    위치 인자 어노테이션 29개를 세어 보니 **필드에 붙은 것이 0개**였다 — 전부 메서드·레코드
+    인자였고, 그중에는 정책 값이 들어 있다(`@Min(1) @Max(60) Integer playbackTimeLimit`).
+    필드만 보면 그 스물아홉이 통째로 안 보인다.
+
+    ⚠ 넓히면 같은 이름이 여러 자리에서 잡힐 수 있다. **그 위험은 이미 막혀 있다** —
+    `resolve_at` 이 값이 갈리면 답을 고르지 않고 *"값이 갈린다"* 로 거부한다. 넓히는 쪽이
+    아니라 **고르는 쪽**이 위험한 자리이고, 거기는 손대지 않았다.
     """
     pat = re.compile(
         r"(?:(?:private|protected|public|static|final|transient|volatile)\s+)*"
         r"[A-Za-z_$][\w.$]*(?:\s*<[^;{}]*>)?(?:\s*\[\s*\])*\s+"
-        + re.escape(field) + r"\s*[;=]")
+        + re.escape(field) + r"\s*[;=,)]")
     return [m.start() for m in pat.finditer(text)]
 
 
@@ -220,7 +229,36 @@ def _attr_value(args: str, attr: str) -> str | None:
     lit = '"(?:[^"' + esc + esc + ']|' + esc + esc + '.)*"'
     m = re.search(esc + "b" + re.escape(attr) + esc + "s*=" + esc + "s*("
                   + lit + "|[^,]+)", args)
-    return m.group(1).strip() if m else None
+    if m:
+        return m.group(1).strip()
+    return _positional_value(args, attr)
+
+
+def _positional_value(args: str, attr: str) -> str | None:
+    """이름 없이 적힌 단일 인자. `@Min(1)` 의 `1`.
+
+    ⛔ **`value` 에만 해당한다.** 자바 규칙이 그렇다 — 원소가 하나인 어노테이션은 `value=` 를
+    생략할 수 있고, 생략된 그 자리는 **`value` 원소**다. 그래서 `@Size.max` 를 묻는 claim 이
+    `@Min(1)` 로 채워지는 일이 없다. 그 실수는 조용하고, *"코드는 …"* 자리에 남의 값이 앉는다.
+
+    **왜 필요한가 (실측 2026-09-02).** 팀 코드(테스트 제외 899파일)를 세니 이 모양이 **29개**
+    였다(`@Min(1)` 17 · `@Min(0)` 7 · `@Max(60)` 3 · `@Max(500)` · `@Max(100)`). 해석기가
+    읽던 자리 125개 옆에 있던 사각지대이고, 같은 어노테이션인데 이름만 없는 것이라
+    **해석 위험이 없다** — 가드절(18개)과 다른 부류다.
+
+    ⚠ 인자가 이름 있는 형태이면(`=` 가 있으면) 손대지 않는다. 문자열 안의 쉼표·등호에 걸리지
+    않도록 **문자열 리터럴을 지운 뒤** 판정한다 — `@Scheduled("0 0,30 * * * *")` 같은 값이
+    쉼표로 쪼개지면 조용히 잘린 값이 나간다.
+    """
+    if attr != "value":
+        return None
+    esc = chr(92)
+    lit = '"(?:[^"' + esc + esc + ']|' + esc + esc + '.)*"'
+    if not (text := args.strip()):
+        return None
+    if "=" in re.sub(lit, '""', text):
+        return None                                   # 이름 있는 형태 — 위에서 처리한다
+    return text
 
 
 

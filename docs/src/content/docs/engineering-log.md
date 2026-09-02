@@ -780,3 +780,28 @@ ADR-0010 §4 called marker-stripping — extracted text laundered into authored 
 Verified against the live deployment that the same command now stops, with the predicate kept in the **same function** the ingest path uses; a copy would eventually let the guard pass while ingestion deletes.
 
 ⚠ And while recording this in the open-items list I **got the count wrong again**, adding a closed item to reach 23. The check I built a few hours earlier caught it on the spot.
+
+**Counted the shapes behind "the reader misses about half", and the bottleneck was elsewhere (2026-09-02).** Before widening the code-value reader, I counted where values actually sit (899 non-test Java sources):
+
+| shape | count | read? |
+|---|---:|---|
+| `static final` numeric constant | 66 | ✅ |
+| named annotation argument | 59 | ✅ |
+| positional argument `@Min(1)` | 29 | ❌ → opened here |
+| guard clause `if (… > N)` | 18 | ❌ (left closed) |
+| `@Scheduled(cron=)` | 7 | ❌ |
+| argument referencing a constant | 1 | ❌ |
+
+⭐ **125 readable slots, and 10 claims.** The open item said *"the reader misses about half of what is out there"* — counted, **the unseeded side is far larger than the unreadable side.** `claims.yaml` is written by hand, and it had ten lines. All ten are `unverified`; the verification loop has never run.
+
+## Positional arguments — opened, but only where Java puts them
+
+The `1` in `@Min(1)` is the **`value` element**: Java lets a single-element annotation omit `value=`, and that rule fixes which slot it fills. So it fills only a claim asking for `value`. If a claim asking for `@Size.max` could be satisfied by `@Min(1)`, another field's number would quietly sit in the answer's *"the code says…"* slot — **worse than a wrong value, because it is wrong with confidence.** A test pins that.
+
+⭐ **And opening it revealed a second layer.** Of the 29 positional arguments, **zero are attached to fields** — they are all method and record parameters. The reader only looked at field declarations, so reading positional arguments alone would still have read **none of them**. Declaration terminators widened from `;=` to `;=,)`.
+
+Widening means a name can match in several places. That risk was already handled: when the values disagree, the resolver refuses rather than picking. The dangerous part is not the widening but the **choosing**, and that was left alone.
+
+Verified live against the real tree: `@Max.value → 60`, `@Min.value → 1` — the code-side bounds for the DJ time limit, whose document states the same value as *"3 minutes or more."*
+
+⛔ **The 18 guard clauses stay closed.** Reading `if (activeCrewCount > 49)` as `50` requires getting the comparison, the boundary, and the variable's meaning all right. That is not value reading but **code comprehension**, and when it is wrong it is wrong with confidence. The capacity value the owner overruled happens to live there — but wanting it is not evidence.
