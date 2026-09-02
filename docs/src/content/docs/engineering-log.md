@@ -688,3 +688,17 @@ So what changed is **instrumentation only; not one character of the scoring rule
 ⇒ **Changing the rule before reading the answers is exactly what that open item proposed.** No rule changed, so there is nothing to pre-register.
 
 ⚠ **I got one thing wrong while writing this correction.** My first pass aggregated all 65 verdict files and read it as *"the second grader wavers on all fifteen labels."* Those files span **ten arms** and include runs scored by the pre-amendment grader. Split by arm, the count is **two**. A shared filename prefix is not a shared condition.
+
+**The file that counts open items was mirroring its own count by hand (2026-09-02).** Over one day I closed four items and opened three, bumping the header by hand each time — 23 → 24 → 26. That number went straight into a report.
+
+The user asked: *"26? What are they?"*
+
+I counted. It was **21**. The human-side number was **14**, not 15. The cause is plain: **nothing was ever subtracted on close.** Only added on open.
+
+That is precisely why the file exists. Its opening paragraph says the open items were scattered across SPECs, ADRs, memory and conversation, so *nobody knew whether the number was going up or down* — gather them, count them, and state the count in every report. **And the count itself was hand-mirrored.** This repo has already written down, twice, that a hand-mirrored list is a source of rot.
+
+⇒ `scripts/check_open_counts.py` now runs in CI. Struck rows are not counted (that is the file's own rule), and it checks **both places** the number appears — the summary table and the section heading — because fixing only one is exactly the shape of this mistake. It fails in both directions: too high and too low.
+
+Verified by breaking it on purpose. And the first version of the checker **died with a `UnicodeEncodeError` at the very moment it tried to report a failure** — the console codepage was cp949. This repo's hook already carries the same helper for the same reason. **A checker that dies says nothing at all.**
+
+⚠ What surfaced this was not CI. It was **one question from a person.** When a number looks plausible, nobody counts it.

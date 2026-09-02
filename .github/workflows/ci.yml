@@ -121,6 +121,14 @@ jobs:
       - name: That check has teeth (word boundaries, archival exemption, diff parsing)
         run: python -m pytest tests/test_check_terms.py -q
 
+      # 미결 수를 손으로 증감시키면 그 수가 곧 거짓이 된다. 2026-09-02 에 실제로 그랬다 —
+      # 항목을 닫으면서 머리말을 안 뺐고, 26 이라고 보고한 것이 실제로는 21 이었다.
+      # `OPEN.md` 가 존재하는 이유가 그 수를 믿을 수 있게 하는 것이라 이건 그냥 오타가 아니다.
+      - name: OPEN.md counts what it claims to count
+        run: python scripts/check_open_counts.py
+      - name: That check has teeth (struck rows, decisions, both directions)
+        run: python -m pytest tests/test_open_counts.py -q
+
       # 그 검사는 `.md` diff 만 본다. 규칙을 넣은 당일부터 어긴 자리는 diff 가 아니라
       # **에이전트의 보고 문장**이었고, 거기에는 아무 검사도 없었다. `Stop` 훅이 그 문을 단다.
       - name: The same rule, applied to what the agent says (Stop hook)
