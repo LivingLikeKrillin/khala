@@ -629,3 +629,25 @@ search_answer_text  2 rows · last (62.1h ago)
 No thresholds. **A threshold becomes one more signal nobody reads** — which is precisely what caused the defect this was built for.
 
 Also: I got the dataclass field order wrong **twice** in the same file, putting a defaulted field ahead of undefaulted ones. The second time it went into a comment.
+
+**Two enrichments were off for two days, and every test was green (2026-09-02).** Reading live logs after the cutover, I found `section_fill_failed`. The error text says all of it:
+
+```
+invalid input for query argument $2: ('default', 'design_docs') (expected str, got tuple)
+```
+
+Section fill bound the read scope straight into `c.tenant = $n`, and since 2026-08-31 the read scope is a **tuple**. asyncpg will not take a tuple as a TEXT argument. And the caller swallows that exception — *an enrichment failure must not kill the search*. The design is right. The outcome was not: **section fill and pair expansion were silently off on every HTTP answer request.**
+
+⛔ **A one-element scope is still a tuple.** So this was never limited to the deployment that had cut over — single-tenant deployments, which never configure a scope list, went dark the same day. The blast radius of a defect nobody can see is usually wider than my first guess.
+
+**The value of this entry is why the tests were green.** Section fill has eight tests against a real Postgres, and one of them asserts that the filled section reaches **the LLM prompt itself**. All eight pass the tenant as a **string**. Pair expansion's five tests never touch the database — they check the pure function that links a design to its plan by filename. The whole wiring can die without moving one of the thirteen.
+
+And a lie was sitting right there. The module that collects the scope predicate into one function opens by saying *"a new read path calls this, and **if it doesn't, a test catches it**"*. No such test existed. The tests in that file exercise the function itself; none of them count its callers.
+
+Three fixes:
+
+1. Both queries use the scope predicate. One element yields `= $n`, several yield `= ANY($n)` — **different SQL, so both shapes have to be run.**
+2. A test that runs the answer path once for each of **three scope shapes** (string, one-element tuple, two). It asserts not a return value but **that no enrichment died quietly** — it counts shapes, not names, so enrichments added later fall into the same net. Broken on purpose against the old code: 6 of 9 go red, and the three that stay green are exactly the string shape.
+3. The false sentence is gone. That paragraph now names what actually guards the property.
+
+⛔ **A closed item had to be reopened.** On 09-01 I closed one saying *"pair expansion now sees `specs/` and `plans/` in the design corpus"*. It had never run on the human surface — the live log holds `pair_expansion_failed` and no record of a success. **The evidence for closing it was one CLI path, and that is the only path that passes the tenant as a string.**

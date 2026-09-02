@@ -27,9 +27,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import structlog
 
 from nexus import db
+from nexus.search.scope_sql import tenant_predicate
 
 logger = structlog.get_logger(__name__)
 
@@ -52,7 +55,7 @@ FILL_TOP_HITS = 3
 
 
 async def fill_for_docs(
-    tenant: str,
+    tenant: str | Sequence[str],
     clearance: str,
     doc_rids: list[str],
     exclude_rids: set[str],
@@ -61,12 +64,18 @@ async def fill_for_docs(
 
     **정책 필터는 검색 경로와 글자 그대로 같다.** 여기서 한 줄이라도 빠지면 등급이 막아 둔 절이
     근거로 새어 나간다 — 랭킹이 아니라 접근 통제의 문제다.
+
+    ⛔ **범위는 목록이다** (실측 2026-09-02). `= $n` 으로 직접 묶었더니 읽기 범위가 튜플이 된
+    2026-08-31 부터 이 함수가 **모든 HTTP 답변 요청에서 예외**를 냈다. 부르는 쪽이 그 예외를
+    삼키도록 만들어져 있어서(보강 실패가 검색을 죽이면 안 된다) 절 채움과 짝 확장이 이틀 동안
+    조용히 꺼져 있었다. 원소가 하나여도 튜플이므로 **단일 테넌트 배포도 같이 꺼졌다.**
     """
     if not doc_rids:
         return []
 
+    tenant_pred, tenant_val = tenant_predicate("c.tenant", 2, tenant)
     rows = await db.fetch_all(
-        """
+        f"""
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.classification,
                c.provenance_tier, c.chunk_index, c.source_uri, c.source_version,
                d.title AS doc_title, d.approved_hash, d.doc_type, d.updated_at,
@@ -75,7 +84,7 @@ async def fill_for_docs(
         FROM chunks c
         JOIN documents d ON d.rid = c.doc_rid AND d.tenant = c.tenant
         WHERE c.doc_rid = ANY($1::text[])
-          AND c.tenant = $2
+          AND {tenant_pred}
           AND c.classification <= $3::classification_level
           AND c.is_quarantined = false
           AND c.status = 'active'
@@ -83,7 +92,7 @@ async def fill_for_docs(
           AND d.is_quarantined = false
         ORDER BY c.doc_rid, c.chunk_index, c.rid
         """,
-        doc_rids, tenant, clearance,
+        doc_rids, tenant_val, clearance,
     )
     # 상한을 넘는 문서는 통째로 뺀다. **부분만 붙이지 않는다** — 어느 절을 고를지가 바로 이
     # 코드가 못 한다고 판정한 일이고, 여기서 다시 고르면 같은 결함을 다른 자리에서 반복한다.
@@ -92,7 +101,7 @@ async def fill_for_docs(
 
 
 async def fill_for_sections(
-    tenant: str,
+    tenant: str | Sequence[str],
     clearance: str,
     sections: list[tuple[str, str]],
     exclude_rids: set[str],
@@ -113,8 +122,9 @@ async def fill_for_sections(
         return []
     doc_rids = [d for d, _ in sections]
     paths = [p for _, p in sections]
+    tenant_pred, tenant_val = tenant_predicate("c.tenant", 3, tenant)
     rows = await db.fetch_all(
-        """
+        f"""
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.classification,
                c.provenance_tier, c.chunk_index, c.source_uri, c.source_version,
                d.title AS doc_title, d.approved_hash, d.doc_type, d.updated_at,
@@ -124,7 +134,7 @@ async def fill_for_sections(
         JOIN documents d ON d.rid = c.doc_rid AND d.tenant = c.tenant
         JOIN unnest($1::text[], $2::text[]) AS want(doc_rid, section_path)
           ON want.doc_rid = c.doc_rid AND want.section_path = c.section_path
-        WHERE c.tenant = $3
+        WHERE {tenant_pred}
           AND c.classification <= $4::classification_level
           AND c.is_quarantined = false
           AND c.status = 'active'
@@ -132,7 +142,7 @@ async def fill_for_sections(
           AND d.is_quarantined = false
         ORDER BY c.doc_rid, c.chunk_index, c.rid
         """,
-        doc_rids, paths, tenant, clearance,
+        doc_rids, paths, tenant_val, clearance,
     )
     return [dict(r) for r in rows
             if r["section_chunks"] <= MAX_SECTION_CHUNKS and r["rid"] not in exclude_rids]
