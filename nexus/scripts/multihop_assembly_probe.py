@@ -118,6 +118,19 @@ def totals(rows: list[dict]) -> dict:
     return out
 
 
+def cost_delta(arm_chars: float, base_chars: float) -> str:
+    """근거 분량의 **변화율**. `base` 는 `+0%`, 3할 줄면 `-29%`.
+
+    첫 판은 비율을 그대로 백분율로 찍었다 — 0.706 이 `+71%` 로, 1.00 이 `+100%` 로 나왔고
+    거기에 문자열 치환을 덧대 `+00%` 를 만들고 있었다. 근거가 **3할 줄어든 실험군이 7할
+    늘어난 것처럼** 읽혔다. 판정은 원래 값으로 계산하므로 결과는 안 틀렸지만, 사람이 읽는
+    표가 반대를 말하면 그 표를 근거로 다음 결정이 난다.
+    """
+    if not base_chars:
+        return "?"
+    return f"{arm_chars / base_chars - 1:+.0%}"
+
+
 def determinism(a: dict, b: dict) -> list[str]:
     """사전 등록 §5.1 — `base` 두 회차가 글자까지 같은가. 다른 질의 id 를 돌려준다."""
     second = {r["qid"]: r["text_sha256"] for r in b["rows"]}
@@ -182,10 +195,9 @@ async def _run(args) -> int:
     print("|---|---|---|---|---|")
     base_chars = arms[0]["median_chars"]
     for a in arms:
-        ratio = a["median_chars"] / base_chars if base_chars else 0
         print(f"| {a['arm']} | {a['multihop']['covered']}/{a['multihop']['n']} | "
               f"{a['policy']['covered']}/{a['policy']['n']} | {a['median_chars']:.0f} | "
-              f"{ratio:+.0%}".replace("+1", "+").rstrip() + " |")
+              f"{cost_delta(a['median_chars'], base_chars)} |")
     print(f"\n  결정론 대조군: {'통과' if not drift else '실패 — ' + ', '.join(drift)}")
     print(f"  판정: {v['reason']}")
     if v["candidates"]:
