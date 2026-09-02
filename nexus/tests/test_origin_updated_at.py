@@ -112,3 +112,47 @@ async def test_the_column_actually_holds_the_origin_time(db_pool):
             await con.execute("DELETE FROM documents WHERE tenant=$1", _TENANT)
     finally:
         db._pool = previous
+
+
+# ── 이음매: 값이 **커넥터에서 파이프라인까지** 살아 오는가 ────────────────────
+
+def test_the_value_survives_the_seam_that_dropped_it():
+    """⛔ **이 검사가 없어서 프로덕션이 조용히 틀렸다.**
+
+    위 검사들은 `_save_document` 를 **직접** 불러서 통과했다. 실제 노션 경로는
+    `ConvertedDoc → build_csf → 임시 마크다운 → collector → pipeline` 이고, 그 사슬의
+    첫 칸(`build_csf`)이 이 값을 **버리고 있었다.** 그래서 마이그레이션을 넣고 적재를
+    돌렸는데도 126건 전부 `미상` 이었다.
+
+    이 리포가 이미 적어 둔 실패다 — *"생산자의 dict 를 검사했다."* 그래서 여기서는 사슬을
+    **통과시켜서** 확인한다.
+
+    ⭐ 같은 이음매에서 값이 사라진 것이 **세 번째**다: 제목 · 그림 수 · 그리고 이것.
+    """
+    import frontmatter as fm_lib
+
+    from nexus.a2a.server import _csf_to_markdown_file
+    from nexus.ingest.pipeline import origin_updated_at
+    from nexus.ingest.sources.base import ConvertedDoc
+    from nexus.ingest.sources.notion_importer import build_csf
+
+    conv = ConvertedDoc(
+        page_id="p1", markdown="본문",
+        frontmatter={"title": "정책", "origin_last_edited": "2025-05-06T07:08:09.000Z"})
+    csf = build_csf(conv, "p1", {"url": "https://example.invalid/p1"}, [])
+    assert csf.get("origin_last_edited"), "build_csf 가 값을 버렸다 — 여기가 끊겼던 자리다"
+
+    parsed = fm_lib.loads(_csf_to_markdown_file(csf))
+    assert origin_updated_at(dict(parsed.metadata)) == datetime(
+        2025, 5, 6, 7, 8, 9, tzinfo=timezone.utc), "임시 파일 frontmatter 까지 안 닿았다"
+
+
+def test_a_page_without_an_edit_time_adds_no_frontmatter_key():
+    """대조군 — 값이 없으면 임시 파일은 오늘과 **글자 그대로 같아야** 한다."""
+    from nexus.a2a.server import _csf_to_markdown_file
+    from nexus.ingest.sources.base import ConvertedDoc
+    from nexus.ingest.sources.notion_importer import build_csf
+
+    conv = ConvertedDoc(page_id="p2", markdown="본문", frontmatter={"title": "정책"})
+    md = _csf_to_markdown_file(build_csf(conv, "p2", {"url": "u"}, []))
+    assert "origin_last_edited" not in md
