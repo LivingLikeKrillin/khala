@@ -904,3 +904,36 @@ The evaluator left an unverified hypothesis: *"the overlap raises BM25, so the `
 **② The trigger has already fired and cannot be read.** `search_log` holds **8 rows** in the middle band (max 0.4765). But whether those are real usage or my own probes **cannot be determined** — the query-retention key is **deliberately non-joinable**, by the same design that keeps identity from sitting beside text. The author's trigger asks for a *real usage* question, and that judgment is currently unavailable.
 
 ⛔ **And moving the threshold would not close this anyway.** `weak` does not block an answer; it **changes the narration contract only** — the same file says so. The threshold is a partial response, and there is still no axis that judges topic drift itself.
+
+**Split the 0/3 multihop result deterministically — two are assembly, one is generation (2026-09-02).** The external evaluation scored multihop **0/3** on the real corpus, and its §11 had already narrowed it: *the gold chunks do reach the top ten.* One question remained — **does the required fact reach the prompt at all?**
+
+Checked without calling the model (zero spend, zero noise):
+
+| qid | required fact | in the prompt |
+|---|---|---|
+| m01 | `최대 10개` | **no** |
+| m02 | `최대 10개` | **no** |
+| m03 | both | yes |
+
+⇒ **Two assembly failures, one generation failure.** And that verdict **independently agrees** with §9's `sufficiency=insufficient` on the same two — a judge model and a string comparison picked out the same pair.
+
+## The mechanism
+
+The missing fact sits in one section of a document that **is** among the hits. Section fill exists for exactly this, and it did not run.
+
+Fill triggers on *"did this document reach `diversity_per_doc_cap`"*. A document at the cap means the diversity rule **cut** it, which means retrieval concentrated there. That is a sound trigger — **for single-document questions only.**
+
+```
+m01  five documents share the top ten → zero saturated
+m02  the needed document sits at 4 of 5 — one short
+```
+
+⭐ **Fill triggers on concentration, and multihop is dispersion by definition.** Spread across five documents, nothing saturates; and a near miss (m02) fails by one. The second fill path — completing the section a hit landed in — cannot catch it either, because the fact lives in a **different** section.
+
+This is why single-value questions score well while multihop sits at 0/3: single-value questions concentrate on one document, multihop does not.
+
+## Not fixed
+
+The candidate settings are visible — `diversity_per_doc_cap`, `FILL_TOP_HITS`, a multihop-specific trigger. **None was chosen.** This repo has gone **0 for 7** adding techniques; everything that improved came from removing a defect. And widening has a price: completing the sections of all ten hits raised evidence volume by **+102%** when measured on 2026-08-26.
+
+The mechanism now has a name. What comes next is a pre-registered measurement.
