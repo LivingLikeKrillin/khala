@@ -840,3 +840,41 @@ There was no check that **counts the surfaces**. Building one taught two things:
 - ⛔ **An existing test was stubbing the bypass.** `test_answer_payload_contract.py` replaced `assemble_packet` with a no-op — but the endpoint it exercises, `/search/answer`, never called that function. It was a dead line. Removed.
 
 ⚠ Fixing it surfaced one more: `/search`, the retrieval-only endpoint, is still on `effective_scope`. All four answer paths now receive the read scope; search alone does not. That list is read directly by people, so it needs its own verification and went onto the open-items list.
+
+**The title of a document you may not read could reach the prompt (2026-09-02).** The external evaluation's second finding (F3). `nexus/CLAUDE.md` states the rule: *"Every SELECT carries the policy filters. **No exceptions.**"* The four are tenant, clearance, quarantine, status.
+
+Two places held an exception — the join to the superseding document:
+
+```sql
+LEFT JOIN documents s ON s.rid = d.superseded_by AND s.tenant = d.tenant
+```
+
+No clearance, no quarantine, no status on `s`. And that title travels through `describe()` into the prompt — the function itself is documented as *"the one line that goes into the prompt."* The document list API returns the same field from the same join.
+
+**Live leakage was zero.** But every ingredient is present:
+
+```
+documents with a supersede relation   121
+RESTRICTED documents                   17
+quarantined documents                   4
+leaking combinations                    0   ← simply not overlapping yet
+```
+
+**Latent, not safe.** One ingestion away.
+
+## The split the fix required: the name versus the fact
+
+With the filters on, the replacement's title comes back empty. If the *superseded* debt disappeared along with it, a reader would consume stale evidence **without knowing it is stale**.
+
+⇒ **Withhold the name, keep the fact.** Being retired is a fact about the document **the reader is already holding**; what clearance protects is the replacement's content and identity. So `superseded` is now separate from the title.
+
+And clearance is not an optional argument. Reading an empty clearance as "no filter" would turn every clearance-less caller into a bypass, so an empty value **skips the lookup** instead.
+
+## Why the existing tests missed it
+
+- `test_documents_api.py` asserts the title **does** appear. Nothing asserted that it does **not** when out of clearance.
+- `test_doc_debt.py` never touches the database — it builds the objects by hand, and so walks straight past this SQL.
+
+The new test **plants rows**: one replacement over-clearance, one quarantined, one non-active. It asserts the title is absent from the prompt line and that the fact survives. Two controls come with it — a readable replacement **is still named**, and raising the clearance reveals it, which is what proves the other assertions are about clearance at all.
+
+**Disabling only the clearance clause turns exactly one of the nine red.**

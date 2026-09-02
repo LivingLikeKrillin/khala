@@ -41,35 +41,58 @@ class DocDebt:
     title: str
     superseded_by_title: str = ""
     same_title_docs: int = 0
+    #: 대체됐다는 **사실**. 제목과 갈라 둔다 — 대체한 문서를 읽을 권한이 없으면 이름은
+    #: 못 주지만, *"이 문서는 은퇴했다"* 는 읽는 사람이 볼 수 있는 문서에 대한 사실이다.
+    superseded: bool = False
 
 
 async def debts_for_docs(tenant: str | Sequence[str],
+                         clearance: str,
                          doc_rids: Sequence[str]) -> dict[str, DocDebt]:
-    """이 근거 문서들에 붙은 부채. **쿼리 한 번.** 실패하면 빈 결과(진단이 답을 죽이지 않는다)."""
-    if not tenant or not doc_rids:
+    """이 근거 문서들에 붙은 부채. **쿼리 한 번.** 실패하면 빈 결과(진단이 답을 죽이지 않는다).
+
+    ⛔ **`clearance` 는 선택이 아니다** (외부 평가 F3, 2026-09-02). 대체 문서를 잇는 조인에
+    `tenant` 만 있고 등급·격리·상태 필터가 없어서, **읽을 권한이 없는 문서의 제목이 프롬프트에
+    들어갈 수 있었다.** `nexus/CLAUDE.md` 는 *"모든 SELECT 에 정책 필터를 건다. 예외 없음."*
+    이라고 적어 두었고 그 예외가 여기였다.
+
+    ⚠ **비어 있으면 조회하지 않는다.** 빈 등급을 "필터 없음" 으로 읽으면 이 함수를 등급 없이
+    부르는 자리가 곧 우회로가 된다 — 앵커 조회가 `tenant` 에 대해 쓰는 것과 같은 규율이다.
+
+    ⚠ 라이브 실측(2026-09-02): 누출 조합 **0건**. 다만 재료는 다 있다 — 대체 관계 121 ·
+    `RESTRICTED` 17 · 격리 4. 잠복이지 안전이 아니다.
+    """
+    if not tenant or not clearance or not doc_rids:
         return {}
     try:
         _pred, _val = tenant_predicate("d.tenant", 1, tenant)
         rows = await db.fetch_all(
             f"""
             SELECT d.rid, d.title,
+                   (d.superseded_by IS NOT NULL AND d.superseded_by <> '')  AS superseded,
                    coalesce(s.title, '')                                  AS superseded_by_title,
                    (SELECT count(*) FROM documents t
                      WHERE t.tenant = d.tenant AND t.title = d.title
                        AND t.status = 'active' AND t.is_quarantined = false) AS same_title
               FROM documents d
+              -- 대체한 문서에도 **같은 네 절**을 건다. 하나라도 빠지면 읽을 권한이 없는
+              -- 문서의 제목이 프롬프트로 나간다 (외부 평가 F3).
               LEFT JOIN documents s
                      ON s.rid = d.superseded_by AND s.tenant = d.tenant
+                    AND s.classification <= $3::classification_level
+                    AND s.is_quarantined = false
+                    AND s.status = 'active'
              WHERE {_pred} AND d.rid = ANY($2::text[])
             """,
-            _val, list(doc_rids))
+            _val, list(doc_rids), clearance)
         out: dict[str, DocDebt] = {}
         for r in rows:
-            superseded = r["superseded_by_title"] or ""
+            title = r["superseded_by_title"] or ""
             same = int(r["same_title"] or 1)
-            if superseded == _NOT_SUPERSEDED and same <= 1:
+            is_sup = bool(r["superseded"])
+            if not is_sup and same <= 1:
                 continue                  # 부채 없음 — 조용한 것이 기본이다
-            out[r["rid"]] = DocDebt(r["rid"], r["title"], superseded, same)
+            out[r["rid"]] = DocDebt(r["rid"], r["title"], title, same, is_sup)
         return out
     except Exception as e:  # noqa: BLE001
         # **행 파싱까지 감싼다.** 조회는 성공했는데 모양이 다른 경우가 실제로 있었다(검사가
@@ -94,6 +117,11 @@ def describe(debts: Sequence[DocDebt]) -> str:
         seen.add(d.title)
         if d.superseded_by_title:
             parts.append(f"`{d.title}` 은 `{d.superseded_by_title}` 로 대체된 문서다")
+        elif d.superseded:
+            # 대체한 문서를 읽을 권한이 없다. **이름은 안 주고 사실은 준다** — 은퇴했다는
+            # 것은 읽는 사람이 이미 보고 있는 문서에 대한 사실이고, 그것을 감추면 낡은
+            # 근거를 낡은 줄 모르고 읽는다 (외부 평가 F3).
+            parts.append(f"`{d.title}` 은 대체된 문서다")
         elif d.same_title_docs > 1:
             parts.append(f"`{d.title}` 은 같은 제목의 문서가 {d.same_title_docs}개 있어 "
                          f"인용만으로는 어느 것인지 가리키지 못한다")

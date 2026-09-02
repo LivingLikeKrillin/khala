@@ -97,7 +97,12 @@ async def list_documents(
                    AS chunk_count
         FROM documents d
         -- 대체한 문서의 **제목**. rid 만 보여주면 사람은 그게 무슨 문서인지 알 수 없다.
+        -- ⛔ 여기에도 **같은 네 절**을 건다 (외부 평가 F3, 2026-09-02). `s.tenant` 만
+        -- 있었고, 그래서 읽을 권한이 없는 문서의 제목이 목록에 나올 수 있었다.
         LEFT JOIN documents s ON s.rid = d.superseded_by AND s.tenant = d.tenant
+                             AND s.classification <= $2::classification_level
+                             AND s.is_quarantined = false
+                             AND s.status = 'active'
         WHERE {where}
         ORDER BY d.updated_at DESC
         OFFSET $4 LIMIT $5
