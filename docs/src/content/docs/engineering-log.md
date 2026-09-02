@@ -878,3 +878,29 @@ And clearance is not an optional argument. Reading an empty clearance as "no fil
 The new test **plants rows**: one replacement over-clearance, one quarantined, one non-active. It asserts the title is absent from the prompt line and that the fact survives. Two controls come with it — a readable replacement **is still named**, and raising the clearance reveals it, which is what proves the other assertions are about clearance at all.
 
 **Disabling only the clearance clause turns exactly one of the nine red.**
+
+**Topic drift — the evaluator's hypothesis was right and its reason was wrong (2026-09-02).** The external evaluation's other **high** finding (F8): asked a question whose subject is absent from the corpus but whose **vocabulary overlaps**, the system answers confidently. Asked who signs off an approval gate, it answered — correctly — about Kubernetes **certificate approval**, three runs out of three.
+
+⛔ **The two axes this repo judges in code are structurally blind to it.** The citations exist, the numbers exist, and it is not a guess — it **answered a different question using real evidence**. The only thing that caught it was a five-item abstention control set.
+
+The evaluator left an unverified hypothesis: *"the overlap raises BM25, so the `and` rule never fires."* Measured:
+
+| query | distance | BM25 | `weak` |
+|---|---:|---:|---|
+| **overlapping · out of corpus** | **0.4694** | **0.295** | **False** |
+| non-overlapping · out of corpus | 0.5569 | 0.000 | True |
+| in corpus | 0.3211 | 1.038 | False |
+
+**BM25 was already below its threshold** (0.295 < 1.5). What slipped past is the **vector** side: distance 0.4694 cleared the 0.48 threshold by **0.011**.
+
+⭐ **That is the exact spot the threshold's author flagged in advance.** From `confidence.py`:
+
+> ⚠ **The threshold is still a hypothesis.** All 17 questions are mine, and the gap between the middle band's maximum distance (0.470) and the threshold (0.48) is only **0.010** … if one real usage question fires in the middle band, move it near 0.51.
+
+## And yet it does not move — for two reasons
+
+**① The observed case is not real usage.** On four retained real questions the threshold behaves correctly (out: 0.614, 0.589 → fires; in: 0.255, 0.310 → does not). The author pre-registered *"before measuring, state whether the sample is authored or real usage"*, and the one failure is an **authored label** on a different corpus.
+
+**② The trigger has already fired and cannot be read.** `search_log` holds **8 rows** in the middle band (max 0.4765). But whether those are real usage or my own probes **cannot be determined** — the query-retention key is **deliberately non-joinable**, by the same design that keeps identity from sitting beside text. The author's trigger asks for a *real usage* question, and that judgment is currently unavailable.
+
+⛔ **And moving the threshold would not close this anyway.** `weak` does not block an answer; it **changes the narration contract only** — the same file says so. The threshold is a partial response, and there is still no axis that judges topic drift itself.
