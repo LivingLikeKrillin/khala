@@ -10,7 +10,13 @@
 
 리포트는 `tests/eval/local/` 에만 쓴다 — 답변 본문이 다른 조직의 정책 내용을 담는다.
 
+**산출물은 라벨 파일 옆에 앉고, Pack A 에서는 그 자리를 git 이 추적한다.** 즉 기본값으로 돌리면
+이 실행이 측정 대상의 리포를 고친다. 남기지 않으려면 `--out-dir` 로 자리를 옮긴다(격리 실행).
+그리고 `--limit` 로 잘린 회차는 누적 로그에 **들어가지 않는다** — 그 파일은 같은 입력의 반복에서
+잡음 폭을 뽑는 자리이고, 부분 회차가 섞이면 줄을 다 읽어 평균을 내는 집계가 조용히 틀린다.
+
     docker exec nexus-app python scripts/ko_eval_answer_run.py --limit 5
+    docker exec nexus-app python scripts/ko_eval_answer_run.py --out-dir /tmp/eval   # 격리
 """
 
 from __future__ import annotations
@@ -36,7 +42,7 @@ DEFAULT_LABELS = LOCAL_DIR / "packb-labels.yaml"
 DEFAULT_MANIFEST = MANIFEST
 
 
-def resolve_paths(labels_path: Path, tag: str) -> tuple[Path, Path]:
+def resolve_paths(labels_path: Path, tag: str, out_dir: Path | None = None) -> tuple[Path, Path]:
     """(리포트, 누적로그). 이름은 **팩**에서, 자리는 **라벨 파일 옆**에서 온다.
 
     리포트 파일명에 tag 가 들어간다. 예전에는 고정 경로 하나여서 매 실행이 앞 실행을 덮었고,
@@ -51,6 +57,11 @@ def resolve_paths(labels_path: Path, tag: str) -> tuple[Path, Path]:
     갔는데, Pack A 는 공개 코퍼스에 대한 공개 라벨이라 결과만 커밋 못 하는 것이 앞뒤가 안 맞았다.
     결과는 자기 라벨 옆에 산다 — 라벨이 커밋되는 자리면 결과도 커밋할 수 있고, 라벨이 gitignore
     안이면 결과도 거기 남는다.
+
+    **`out_dir` 이 그 자리를 통째로 옮긴다 — 격리 실행이다.** 기본 자리는 Pack A 의 경우
+    git 이 추적하는 디렉터리이고, 거기 쓰는 것은 **측정 대상의 리포를 실행이 고치는 것**이다.
+    2026-09-02 에 외부 평가자가 이 하니스를 돌렸고 추적되는 누적 로그에 네 줄이 들어가 되돌려야
+    했다. 평가가 피측정 대상을 바꾸면 그 평가는 자기 자신을 조건으로 갖는다.
     """
     import yaml
 
@@ -62,7 +73,7 @@ def resolve_paths(labels_path: Path, tag: str) -> tuple[Path, Path]:
         pack = ""
     prefix = pack.split("-")[0] or labels_path.stem.removesuffix("-labels")
     suffix = f"-{tag}" if tag else ""
-    out = labels_path.parent
+    out = out_dir or labels_path.parent
     #: 반복 실행은 덮어쓰지 않고 쌓는다. **같은 입력에 같은 답이 안 나오기 때문이다** — 두 실행이
     #: grounded 에서 1, 인용 0개에서 2 흔들렸다(2026-08-08). 그 폭을 모르면 모델 간 차이를 잡음과
     #: 구별할 수 없고, 구별 못 하는 비교는 비교가 아니다.
@@ -70,8 +81,28 @@ def resolve_paths(labels_path: Path, tag: str) -> tuple[Path, Path]:
             out / f"{prefix}-answer-runs.jsonl")
 
 
-def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, str]) -> None:
+def ledger_blocked(n_scored: int, n_answerable: int) -> str | None:
+    """누적 로그에 넣으면 **안 되는** 이유. 비어 있어야 이 회차가 변동 폭 계산에 들어간다.
+
+    누적 로그의 용도는 하나다 — **같은 입력을 반복했을 때의 잡음 폭**. `--limit` 로 잘린 회차가
+    같은 파일에 섞이면 순진한 집계(줄을 다 읽고 평균을 내는 것)가 조용히 틀리고, 틀렸다는 표시가
+    파일 안에 없다. 리포트는 그래도 쓰이므로 부분 회차의 재료가 사라지지는 않는다.
+
+    규칙만 여기 있고 **막는 것은 쓰는 자리(`append_run`)가 한다.** 이 함수를 호출자가 보고
+    분기하는 모양이면 호출자 하나가 잊는 순간 규칙이 조용히 없어진다 — 이 파일은 그 자리에서
+    이미 한 번 데였다(2026-08-08, 누적 쓰기가 통째로 빠진 채 3회 실행이 다 돌았다).
+    """
+    if n_scored < n_answerable:
+        return (f"질의 {n_scored}/{n_answerable} 만 돌았다 — 부분 회차는 잡음 폭이 아니다")
+    return None
+
+
+def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, str],
+               *, answerable: int) -> str | None:
     """회차를 누적 로그에 **덧붙인다**. 리포트는 tag 별로 갈라지지만 변동은 한 파일에 모여야 한다.
+
+    **완주한 회차만 들어간다** — 넣지 않았으면 그 이유를 돌려준다(넣었으면 `None`).
+    판단이 이 안에 있는 이유는 위 `ledger_blocked` 의 docstring 에 있다.
 
     변동 폭을 모르면 두 모델의 차이가 잡음인지 실력인지 못 가리고, 질의별 `ok` 까지 남겨야
     다수결이 된다.
@@ -85,6 +116,8 @@ def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, st
     그때 박은 검사는 소스에 `RUNS.open(` 문자열이 있는지 보는 것이었다 — 이름을 바꾸자 깨졌고,
     애초에 문자열은 그 코드가 **돌았다는** 것을 증명하지 않는다.
     """
+    if blocked := ledger_blocked(len(scores), answerable):
+        return blocked
     args.runs.parent.mkdir(parents=True, exist_ok=True)
     with args.runs.open("a", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps({
@@ -96,6 +129,7 @@ def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, st
             "sufficiency": sufficiency or None,
             "grid": grid(scores, sufficiency) if sufficiency else None,
         }, ensure_ascii=False) + "\n")
+    return None
 
 
 #: 등급 순서는 **정본 하나**에서만 온다 (`nexus.auth.clearance`). 여기 사본을 두었더니 곧바로
@@ -180,7 +214,10 @@ def _write_report(args, labels, llm, summary, rows, *, partial: bool,
     막혔다는 사실은 파일 안에 `partial` 로 남는다. 사람의 기억이 아니라 파일이 그것을 말해야
     한다(SPEC-nexus-answer-quality-ruler §3.2·§3.3). 총점만 없다.
     """
-    LOCAL_DIR.mkdir(parents=True, exist_ok=True)
+    # 만드는 것은 **리포트가 실제로 앉을 자리**다. 전에는 `LOCAL_DIR` 을 만들었는데 리포트는
+    # 2026-08-17 부터 라벨 옆으로 가고, `--out-dir` 이 붙은 뒤로는 아무 데나 갈 수 있다 —
+    # 없는 디렉터리를 주면 실행이 끝난 자리에서 쓰기가 터진다(LLM 값은 이미 나간 뒤).
+    args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(
         {"ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
          "labels_revision": labels["revision"], "tenant": args.tenant,
@@ -216,8 +253,20 @@ async def _run(args) -> int:
         return 1
 
     titles = {d["key"]: d["title"] for d in json.loads(args.manifest.read_text(encoding="utf-8"))["docs"]}
-    queries = [q for q in labels["queries"] if q.get("answerable")][:args.limit]
-    print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 질의 {len(queries)}건\n")
+    answerable = [q for q in labels["queries"] if q.get("answerable")]
+    queries = answerable[:args.limit]
+    print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 질의 {len(queries)}"
+          f"/{len(answerable)}건")
+    # **돈을 쓰기 전에 이 실행이 무엇을 고칠지 말한다.** 기본 자리는 라벨 옆이고 Pack A 에서는
+    # 그것이 git 이 추적하는 디렉터리다 — 모르고 돌리면 측정이 측정 대상을 바꾼다.
+    print(f"  쓸 파일: {args.report}")
+    if partial_run := ledger_blocked(len(queries), len(answerable)):
+        print(f"          누적 로그 없음 — {partial_run}")
+    else:
+        print(f"          {args.runs}")
+    if not args.out_dir:
+        print("  다른 자리에 쓰려면 --out-dir 를 준다 (격리 실행).")
+    print()
 
     # **평가 하니스는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
     # 코드 기본값(`diversity_per_doc_cap=3`)으로 돌고, 배포는 config.yaml 의 5 로 돈다 —
@@ -401,14 +450,22 @@ async def _run(args) -> int:
 
     _write_report(args, labels, llm, a, rows, partial=False, controls=controls)
 
-    append_run(args, llm, a, scores, sufficiency)
+    # **부분 회차는 누적 로그에 넣지 않는다.** 그 파일의 용도는 같은 입력의 반복에서 잡음 폭을
+    # 뽑는 것 하나이고, 잘린 회차가 섞이면 줄을 다 읽어 평균을 내는 집계가 조용히 틀린다.
+    # 판단은 쓰는 함수 안에 있다 — 여기서는 결과만 받는다.
+    blocked = append_run(args, llm, a, scores, sufficiency, answerable=len(answerable))
 
     # 커밋 여부는 **라벨이 사는 자리**가 정한다. 조직 문서 위의 라벨(Pack B)은 gitignore 안에
     # 있고 그 결과도 거기 남는다. 공개 코퍼스 위의 라벨(Pack A)은 리포에 있고, 결과도 올릴 수
     # 있다 — 그게 "누구나 재현한다" 의 나머지 절반이다. 문구를 고정해 두면 둘 중 하나에 거짓말한다.
     local = "eval/local" in args.report.as_posix()
-    print(f"\n기록: {args.report}  (답변 본문 — {'커밋하지 않는다' if local else '커밋 가능'})")
-    print(f"      {args.runs}  (실행별 누적 — 잡음 폭은 이것으로만 나온다)")
+    where = ("--out-dir 격리 실행 — 라벨 옆의 산출물은 건드리지 않았다" if args.out_dir
+             else f"답변 본문 — {'커밋하지 않는다' if local else '커밋 가능'}")
+    print(f"\n기록: {args.report}  ({where})")
+    if blocked:
+        print(f"      누적 로그에 넣지 않았다 — {blocked}")
+    else:
+        print(f"      {args.runs}  (실행별 누적 — 잡음 폭은 이것으로만 나온다)")
     # **이 실행이 쓴 것.** 하니스 지출은 search_log 에 안 들어간다(평가 트래픽이 "답변 1회 비용"
     # 추정기를 오염시키므로) — 그래서 여기서 스스로 말한다.
     print(f"\n  {spend.summary()}")
@@ -441,11 +498,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--section-fill", choices=("on", "off"), default="",
                     help="절 채움 실험군 (비우면 배포 설정을 따른다). 실험군을 가르는 스위치이지 "
                          "기본값이 아니다 — config.yaml 을 고치면 도는 앱까지 흔든다")
+    # **격리 실행.** 기본 자리는 라벨 옆이고 Pack A 에서는 git 이 추적한다 — 즉 기본값이 리포를
+    # 고친다. 2026-09-02 에 외부 평가자가 이 하니스를 돌렸고 추적되는 누적 로그에 네 줄이 들어가
+    # 되돌려야 했다. 평가가 피측정 대상을 바꾸면 그 평가는 자기 자신을 조건으로 갖는다.
+    ap.add_argument("--out-dir", type=Path, default=None,
+                    help="리포트·누적 로그를 여기에 쓴다(격리 실행). 비우면 라벨 파일 옆 — "
+                         "Pack A 에서는 그것이 추적되는 디렉터리다")
     ap.add_argument("--sufficiency", action="store_true",
                     help="근거 충분성도 판정한다(질의당 LLM 1회 추가). 이것 없이는 기권이 "
                          "정직한 기권인지 과잉 기권인지, 오답이 생성 결함인지 환각인지 못 가른다")
     args = ap.parse_args(argv)
-    args.report, args.runs = resolve_paths(args.labels, args.tag)
+    args.report, args.runs = resolve_paths(args.labels, args.tag, args.out_dir)
     if not os.getenv("DATABASE_URL"):
         print("✗ DATABASE_URL 이 없다")
         return 1

@@ -104,9 +104,11 @@ def test_the_runner_actually_appends_to_the_accumulating_file(tmp_path):
     runs = tmp_path / "runs.jsonl"
     args = SimpleNamespace(tag="r1", labels=Path("packb-labels.yaml"), tenant="default", runs=runs)
     score = SimpleNamespace(qid="q1", ok=True, outcome="correct")
-    append_run(args, SimpleNamespace(model="m"), {"queries": 1}, [score], {})
+    append_run(args, SimpleNamespace(model="m"), {"queries": 1}, [score], {},
+               answerable=1)
     args.tag = "r2"
-    append_run(args, SimpleNamespace(model="m"), {"queries": 1}, [score], {"q1": "sufficient"})
+    append_run(args, SimpleNamespace(model="m"), {"queries": 1}, [score],
+               {"q1": "sufficient"}, answerable=1)
 
     lines = [json.loads(x) for x in runs.read_text(encoding="utf-8").splitlines() if x.strip()]
     assert [x["tag"] for x in lines] == ["r1", "r2"], "append 가 아니면 회차가 서로를 지운다"
