@@ -1,6 +1,12 @@
-"""CRM 모델 테스트 — rid 생성, canonicalize, 접근 통제, base_filter."""
+"""CRM 모델 테스트 — rid 생성, canonicalize.
 
-from nexus.models.resource import NexusResource, is_accessible, CLASSIFICATION_LEVELS
+⚠ 접근 통제·`base_filter` 시험이 여기 있었는데 2026-09-02 에 걷어냈다. 그 대상이
+`models/resource.py` 의 **사본**이었고 프로덕션 호출자가 0이었다(외부 평가 F1).
+실제 통제는 SQL 의 네 절이고, 그것은 진짜 DB 를 치는 검사들이 지킨다 —
+`test_graph_scope_filter.py` · `test_supersede_title_policy_filter.py` ·
+`test_corpus_scope.py`. 등급 순서표가 하나뿐인지는 `test_auth_clearance.py` 가 본다.
+"""
+
 from nexus.rid import (
     make_rid, doc_rid, chunk_rid, entity_rid, edge_rid,
     evidence_rid, canonicalize_entity_name,
@@ -68,45 +74,3 @@ class TestCanonicalizeEntityName:
 
     def test_korean(self):
         assert canonicalize_entity_name("결제 서비스", "Service") == "결제-서비스"
-
-
-class TestAccessControl:
-    def _make_resource(self, **kwargs) -> NexusResource:
-        defaults = {
-            "rid": "test_rid",
-            "rtype": "document",
-            "tenant": "default",
-            "classification": "INTERNAL",
-        }
-        defaults.update(kwargs)
-        return NexusResource(**defaults)
-
-    def test_accessible(self):
-        r = self._make_resource()
-        assert is_accessible(r, "INTERNAL", "default") is True
-
-    def test_higher_clearance(self):
-        r = self._make_resource(classification="PUBLIC")
-        assert is_accessible(r, "INTERNAL", "default") is True
-
-    def test_insufficient_clearance(self):
-        r = self._make_resource(classification="RESTRICTED")
-        assert is_accessible(r, "INTERNAL", "default") is False
-
-    def test_quarantined_blocked(self):
-        r = self._make_resource(is_quarantined=True)
-        assert is_accessible(r, "RESTRICTED", "default") is False
-
-    def test_wrong_tenant(self):
-        r = self._make_resource(tenant="other")
-        assert is_accessible(r, "INTERNAL", "default") is False
-
-    def test_inactive_blocked(self):
-        r = self._make_resource(status="superseded")
-        assert is_accessible(r, "INTERNAL", "default") is False
-
-
-class TestClassificationLevels:
-    def test_ordering(self):
-        assert CLASSIFICATION_LEVELS["PUBLIC"] < CLASSIFICATION_LEVELS["INTERNAL"]
-        assert CLASSIFICATION_LEVELS["INTERNAL"] < CLASSIFICATION_LEVELS["RESTRICTED"]

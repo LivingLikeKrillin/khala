@@ -43,30 +43,15 @@ class NexusResource:
     prov_pipeline: str = ""
     prov_inputs: list[str] = field(default_factory=list)
     prov_transform: str = ""
-
-
-# ── Classification 순서 ──
-CLASSIFICATION_LEVELS = {"PUBLIC": 0, "INTERNAL": 1, "RESTRICTED": 2}
-
-
-def is_accessible(resource: NexusResource, user_clearance: str, user_tenant: str) -> bool:
-    """CRM 기반 접근 통제. 모든 검색/조회에 이 함수를 적용한다."""
-    if resource.is_quarantined:
-        return False
-    if resource.status != "active":
-        return False
-    if resource.tenant != user_tenant:
-        return False
-    user_level = CLASSIFICATION_LEVELS.get(user_clearance, 0)
-    resource_level = CLASSIFICATION_LEVELS.get(resource.classification, 2)
-    return user_level >= resource_level
-
-
-def base_filter_sql() -> str:
-    """모든 DB SELECT에 적용할 공통 WHERE 절. 예외 없음."""
-    return """
-        AND tenant = %(tenant)s
-        AND classification <= %(clearance)s::classification_level
-        AND is_quarantined = false
-        AND status = 'active'
-    """
+# ⛔ **등급 순서표는 여기 없다.** 2026-09-02 까지 이 파일에 두 번째 사본
+# (`CLASSIFICATION_LEVELS`)과 그것으로 접근 통제를 구현한 `is_accessible()` 이 있었고,
+# 그 docstring 이 *"모든 검색/조회에 이 함수를 적용한다"* 고 지시했다. **프로덕션 호출자는
+# 0이었다** — 실제 통제는 SQL 의 네 절이 한다. 그런데 정본(`auth/clearance.py`)에는 SQL enum
+# 동등성 검사가 있고 사본에는 없어서, enum 에 등급이 추가되면 정본만 걸리고 사본은 조용히
+# 뒤처지는 구조였다(외부 평가 F1).
+#
+# 함께 있던 `base_filter_sql()` 도 지웠다 — psycopg 스타일(`%(tenant)s`)인데 이 코드베이스는
+# asyncpg 이고, `claims/repository.py` 가 이미 "미사용" 이라 적어 두고 있었다.
+#
+# **사본은 고치지 않고 없앤다.** 이 리포가 등급 목록을 두 번 적었다가 곧바로 갈린 전례가 있다.
+# 순서표가 필요하면 `nexus.auth.clearance.ORDER` 하나뿐이다.

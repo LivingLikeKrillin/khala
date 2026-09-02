@@ -937,3 +937,25 @@ This is why single-value questions score well while multihop sits at 0/3: single
 The candidate settings are visible — `diversity_per_doc_cap`, `FILL_TOP_HITS`, a multihop-specific trigger. **None was chosen.** This repo has gone **0 for 7** adding techniques; everything that improved came from removing a defect. And widening has a price: completing the sections of all ten hits raised evidence volume by **+102%** when measured on 2026-08-26.
 
 The mechanism now has a name. What comes next is a pre-registered measurement.
+
+**It said "the only place" and lived in two (2026-09-02).** External evaluation F1. The first line of `auth/clearance.py` is *"the single source of truth"*, and the same file states that because the order lives in **only** that place on the Python side, a test can assert parity with the SQL enum. The seam map in `nexus/CLAUDE.md` says the same: *one canonical table; a copy creates two answers.*
+
+`models/resource.py` held a second ordering table — and an **access-control function** built on it, whose docstring instructed *"apply this function to every search and lookup."* The exact opposite of the seam map.
+
+**Production callers: zero.** The real control is the four SQL clauses. So it was latent rather than active — but the shape of the risk is clear: the canonical table has a SQL-enum parity test and **the copy does not**. Add one level to the enum and the canonical goes red while the copy quietly falls behind.
+
+`base_filter_sql()` went with it: psycopg-style `%(tenant)s` in an asyncpg codebase, already annotated as unused in `claims/repository.py`. **An unusable function was claiming to be the common clause on every SELECT, no exceptions.**
+
+## Deleted, not fixed
+
+That is this repo's discipline — *do not repair a copy, remove it.* It has written the clearance list twice before and watched the two diverge immediately.
+
+Seven access-control tests came out of `test_crm.py` with it. **Their subject was the copy** — a pure function nobody called — while the real control is covered by tests that hit a real database.
+
+## And the claim became a check
+
+Deleting does not stop the next person from writing it again. An AST walk now inspects **dictionary literals by key set** and asserts the ordering table exists in exactly one place.
+
+⛔ The reason it is AST and not a regex is written down beside it. This repo has been bitten by source-string checks — *the presence of a string does not mean the code ran*. But the property here **is the text itself**: a second copy can diverge whether or not it runs. The AST form ignores words inside comments and strings and survives different quoting or line breaks.
+
+Verified by restoring a copy on purpose and watching it go red.
