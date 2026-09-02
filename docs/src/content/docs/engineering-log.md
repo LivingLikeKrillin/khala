@@ -702,3 +702,32 @@ That is precisely why the file exists. Its opening paragraph says the open items
 Verified by breaking it on purpose. And the first version of the checker **died with a `UnicodeEncodeError` at the very moment it tried to report a failure** — the console codepage was cp949. This repo's hook already carries the same helper for the same reason. **A checker that dies says nothing at all.**
 
 ⚠ What surfaced this was not CI. It was **one question from a person.** When a number looks plausible, nobody counts it.
+
+**Asked whether the documents were stale, and found the question could not be asked (2026-09-02).** Digging into why answer quality looks the way it does, the most plausible hypothesis was that the source policy documents had gone stale. So I measured.
+
+```
+document age: all 126 in "under 3 months"
+```
+
+**That number says nothing.** `documents.updated_at` is **our ingest time**. I nearly reported *"the documents are not stale"* when all the number said was **we ingested them in August**.
+
+The staleness module had already written the limitation into its own docstring:
+
+> *"`updated_at` is the ingest time, so a document re-synced unchanged looks fresh. A more accurate signal (`origin_last_edited`) is follow-up work."*
+
+⇒ **Every re-ingest makes every document new again.** It is a signal structurally incapable of ever saying "stale".
+
+⭐ **And the value was already arriving.** The connector reads `last_edited_time` and carries it in frontmatter as `origin_last_edited`. There was simply **nowhere for it to land** — which is why that name appears in exactly two places in the codebase: where it is set, and the comment calling it follow-up. This repo's recurring shape: the signal gets produced and nothing reads it.
+
+So the column now exists (migration 039). **The judgment did not change** — altering the warning changes what users see, and that starts with deciding whether a pile of old documents suddenly carrying warnings is acceptable. What this does is make the question askable.
+
+The read side shipped with it, printing both ages **side by side**, because printing one walks the reader into the misreading I just made:
+
+```
+[default] 126 active documents — these two ages are different things
+                    origin edit      our ingest
+  under 3 months              0             126
+  unknown                   126               0
+```
+
+⚠ `unknown` means **we do not know**, not "new". Without that distinction the new column would repeat the very lie it was added to remove.

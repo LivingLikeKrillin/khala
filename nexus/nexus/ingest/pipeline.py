@@ -69,6 +69,32 @@ def _load_config(config_path: str = "config.yaml") -> dict:
         return yaml.safe_load(f) or {}
 
 
+def origin_updated_at(frontmatter: dict) -> datetime | None:
+    """원본이 말하는 **문서 자신의** 마지막 수정 시각. 못 읽으면 `None`.
+
+    ⛔ **`documents.updated_at` 과 다른 것이다** (실측 2026-09-02). 그 칸은 우리 적재 시각이라
+    재적재하면 모든 문서가 새것이 된다 — *"문서가 낡았나"* 를 구조상 못 묻는다. 오늘 그 칸으로
+    재고 하마터면 *"126건 전부 3개월 이내"* 를 **문서가 안 낡았다**로 보고할 뻔했다.
+
+    값은 이미 오고 있었다(노션 커넥터가 frontmatter 에 싣는다). **저장되는 자리가 없었을 뿐**이다.
+
+    ⚠ **절대 예외를 내지 않는다.** 원본이 준 문자열 하나 때문에 적재가 죽으면, 얻은 것보다
+    잃은 것이 크다. 못 읽으면 `None` 이고 그것은 *"모른다"* 이지 *"새것"* 이 아니다.
+    """
+    raw = frontmatter.get("origin_last_edited")
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    text = raw.strip().replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        logger.warning("origin_last_edited_unparsed", value=raw[:40])
+        return None
+    # 시간대 없는 값은 UTC 로 읽는다. naive 를 TIMESTAMPTZ 에 넣으면 서버 시간대에 따라
+    # 조용히 몇 시간 옮겨 앉고, 그 오차는 나이 분포에서 안 보인다.
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
 async def _save_document(
     collected: CollectedFile,
     classification: ClassificationResult,
@@ -95,13 +121,15 @@ async def _save_document(
             source_uri, source_kind, hash, content_hash,
             is_quarantined, quality_flags, status,
             created_at, updated_at,
-            title, doc_type, language, approved_hash, n_images
+            title, doc_type, language, approved_hash, n_images,
+            origin_updated_at
         ) VALUES (
             $1, 'document', $2, $3::classification_level, 'indexer',
             $4, $14::source_kind, $5, $5,
             $6, $7, 'active',
             $8, $8,
-            $9, $10, $11, $12, $13
+            $9, $10, $11, $12, $13,
+            $15
         )
         ON CONFLICT (rid) DO UPDATE SET
             hash = EXCLUDED.hash,
@@ -120,7 +148,10 @@ async def _save_document(
             -- 있었는데 frontmatter 에만 있어서 질의할 수 없었다.
             n_images = EXCLUDED.n_images,
             -- 갱신 목록에 없으면 **재적재로도 고쳐지지 않는다.** 이미 들어앉은 108건이 그랬다.
-            source_kind = EXCLUDED.source_kind
+            source_kind = EXCLUDED.source_kind,
+            -- 원본이 말하는 수정 시각(039). **덮어쓰되 NULL 로는 안 덮는다** — 커넥터가 그
+            -- 값을 못 준 재적재가 이미 알던 시각을 지우면, 아는 것이 모르는 것으로 바뀐다.
+            origin_updated_at = coalesce(EXCLUDED.origin_updated_at, documents.origin_updated_at)
         """,
         rid, tenant, classification.classification,
         collected.canonical_uri, collected.content_hash,
@@ -133,6 +164,7 @@ async def _save_document(
         # 없는 경로가 그렇고, 0 은 "그림 없음" 으로 참이다.
         int(collected.frontmatter.get("image_count") or 0),
         source_kind_for(collected.canonical_uri),
+        origin_updated_at(collected.frontmatter),
     )
 
     # content_hash가 바뀐 재수집(덮어쓰기)이면 이벤트 1건 기록 → v_entropy_signals 신호원.
