@@ -146,7 +146,7 @@ async def test_the_search_function_never_runs_the_visibility_query(monkeypatch):
     monkeypatch.setattr(hybrid.db, "fetch_one", tripwire)
 
     async def no_hits(*a, **k):
-        # 다리 계약 = (결과, 1위 원점수). 빈 결과의 원점수는 None 이다 (0.0 이 아니다).
+        # 경로 계약 = (결과, 1위 원점수). 빈 결과의 원점수는 None 이다 (0.0 이 아니다).
         return [], None
     monkeypatch.setattr(hybrid, "_bm25_search", no_hits)
     monkeypatch.setattr(hybrid, "_vector_search", no_hits)
@@ -158,7 +158,7 @@ async def test_the_search_function_never_runs_the_visibility_query(monkeypatch):
 
 # ── 가중 채널 융합 (SPEC-nexus-multi-turn-retrieval §3.3, U3) ────────────────────
 #
-# 채널 = 무엇을 물었나(재작성/원문). 다리 = 어떻게 찾았나(BM25/vector). 축이 둘이고,
+# 채널 = 무엇을 물었나(재작성/원문). 경로 = 어떻게 찾았나(BM25/vector). 축이 둘이고,
 # 가중은 **채널당 한 번** 걸린다.
 
 from nexus.search.hybrid import ChannelResults, fuse_channels  # noqa: E402
@@ -174,7 +174,7 @@ def test_one_channel_at_weight_one_is_exactly_the_old_fusion():
 
 
 def test_the_weight_applies_once_per_channel_not_once_per_leg():
-    """1.3 이 2.6 이 되면 안 된다 — 두 다리를 다 타는 채널은 그래도 채널 하나다."""
+    """1.3 이 2.6 이 되면 안 된다 — 두 경로를 다 타는 채널은 그래도 채널 하나다."""
     one_leg = fuse_channels([ChannelResults(bm25=[("a", 1)], weight=2.0)], k=60)
     two_legs = fuse_channels(
         [ChannelResults(bm25=[("a", 1)], vector=[("a", 1)], weight=2.0)], k=60)
@@ -234,7 +234,7 @@ from nexus.search import hybrid as _H  # noqa: E402
 
 
 def _spy_legs(monkeypatch):
-    """다리 호출을 가로채 **어떤 질의가 어느 다리로 갔는지** 본다."""
+    """경로 호출을 가로채 **어떤 질의가 어느 경로로 갔는지** 본다."""
     calls = {"bm25": [], "vector": []}
 
     async def bm25(query, tenant, clearance, top_k=20):
@@ -255,7 +255,7 @@ def _spy_legs(monkeypatch):
 
 
 async def test_without_channels_each_leg_runs_once_on_the_query(monkeypatch):
-    """§4 I1. 이력이 없으면 오늘과 같다 — 질의 하나, 다리 둘, 그게 전부다."""
+    """§4 I1. 이력이 없으면 오늘과 같다 — 질의 하나, 경로 둘, 그게 전부다."""
     calls = _spy_legs(monkeypatch)
     await _H.hybrid_search("결제 토픽", embedding_svc=object(), route="hybrid_only")
     assert calls["bm25"] == ["결제 토픽"] and calls["vector"] == ["결제 토픽"]

@@ -149,7 +149,7 @@ services:
       NEXUS_EMBEDDING_COLUMN: ${NEXUS_EMBEDDING_COLUMN:-embedding}
       NEXUS_EMBEDDING_BACKEND: ${NEXUS_EMBEDDING_BACKEND:-ollama}
       # 사이드카는 프로파일 뒤에 있어 안 떠 있을 수 있다. depends_on 을 걸면 프로파일을 안 켠
-      # 배포가 `depends on undefined service` 로 아예 죽는다(실측) — 없는 사이드카는 벡터 다리의
+      # 배포가 `depends on undefined service` 로 아예 죽는다(실측) — 없는 사이드카는 벡터 경로의
       # degrade 경로가 맡는다 (§4.4).
       EMBED_URL: ${EMBED_URL:-http://nexus-embed:8080}
       # 슬랙 봇 신원 — **봇과 같은 변수**를 앱도 읽는다. 앱은 이 토큰의 해시로 읽기 전용

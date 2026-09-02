@@ -99,7 +99,7 @@ def _cfg(cap: int) -> dict:
 
 
 async def _search(cap: int, clearance: str = "INTERNAL"):
-    # embedding_svc 없이 = BM25 다리만. 채움은 벡터와 무관하고, 키 없이 돌아야 한다.
+    # embedding_svc 없이 = BM25 경로만. 채움은 벡터와 무관하고, 키 없이 돌아야 한다.
     return await hybrid.hybrid_search(
         _QUERY, tenant=_TENANT, clearance=clearance, top_k=10,
         embedding_svc=None, config=_cfg(cap))

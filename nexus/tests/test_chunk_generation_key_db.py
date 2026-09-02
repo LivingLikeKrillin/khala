@@ -7,7 +7,7 @@ ON CONFLICT 는 `content_hash` 를 갱신하고 `_save_chunks` 의 ON CONFLICT �
 갱신하지 않았다. 그래서 문서를 한 번이라도 고쳐 재적재하면 두 값이 갈라지고, 그 뒤의
 soft_delete → revive 는 **청크를 0건 되살린 채 문서만 active 로 세운다.**
 
-그 상태의 이름은 유령 문서다: 목록·개수·커버리지에는 건강하게 보이는데 어떤 다리도
+그 상태의 이름은 유령 문서다: 목록·개수·커버리지에는 건강하게 보이는데 어떤 경로도
 읽지 못한다. 라이브 `default` 에서 실제로 하나 나왔다(`SLACK_BOT.md`, 청크 12개 전부
 soft_deleted, 해시 불일치) — 팀이 묻는 코퍼스다.
 
@@ -159,7 +159,7 @@ def test_revive_after_an_edit_brings_the_chunks_back():
             "SELECT count(*) FROM chunks WHERE doc_rid=$1 AND status='active'", rid)
         assert alive == 1, (
             "되살린 문서가 읽을 수 있는 청크를 0건 갖고 있다 — 목록에는 보이는데 "
-            "어떤 다리도 못 읽는 유령 문서다."
+            "어떤 경로도 못 읽는 유령 문서다."
         )
 
     _run(inner)

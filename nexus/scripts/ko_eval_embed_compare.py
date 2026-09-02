@@ -1,6 +1,6 @@
 """임베딩 비교 실행 — 적재 → 팔별 임베딩 → 판정 (SPEC-nexus-korean-embedding-comparison).
 
-**세 단계로 나눈 이유는 컨테이너가 다르기 때문이다.** 팩 적재와 키워드 다리는 mecab 이 있는
+**세 단계로 나눈 이유는 컨테이너가 다르기 때문이다.** 팩 적재와 키워드 경로는 mecab 이 있는
 프로덕션 이미지에서, KURE 임베딩은 torch 가 있는 하니스 이미지에서 돈다. 나눠 두면 각 단계가
 자기 전제(mecab / torch / ollama)만 요구한다.
 
@@ -377,12 +377,12 @@ def _write_report(labels: dict, arms: dict, v_conf, v_vec, v_fused, comparable, 
         "팩": labels["pack"],
         "라벨 리비전": labels["revision"],
         "질의": f"답변가능 {arms['KURE-v1']['legs']['vector'].n}",
-        "벡터 다리": "정확 스캔 (ko_eval_embeddings, ivfflat 아님 — SPEC §4.2)",
+        "벡터 경로": "정확 스캔 (ko_eval_embeddings, ivfflat 아님 — SPEC §4.2)",
         "융합": "프로덕션 `_rrf_fusion` 그대로 (k=60)",
         "nomic 실험군": provs.get("nomic-embed-text", {}),
         "KURE 실험군": provs.get("KURE-v1", {}),
-        "풀 구성원": "keyword/mecab · keyword/nori · vector×2 · fused×2 (모든 다리 top-10)",
-        "확증 분석": f"비교가능 부분집합 {len(comparable)}/{arms['KURE-v1']['legs']['vector'].n}질의 (벡터 다리)",
+        "풀 구성원": "keyword/mecab · keyword/nori · vector×2 · fused×2 (모든 경로 top-10)",
+        "확증 분석": f"비교가능 부분집합 {len(comparable)}/{arms['KURE-v1']['legs']['vector'].n}질의 (벡터 경로)",
         "수치의 성격": "**전부 하한(lower bound)** — 풀 판정 보류, 미판정 문서는 비관련으로 세어진다",
         "기술 분석": "전체 답변가능 질의 (벡터·융합)",
     }
@@ -400,9 +400,9 @@ def _write_report(labels: dict, arms: dict, v_conf, v_vec, v_fused, comparable, 
         f"- 전체 질의·벡터: {v_vec.decision}",
         f"- 전체 질의·융합: {v_fused.decision}",
         "",
-        "> 위 '판정' 은 **비교가능 부분집합**의 확증 결과다(벡터 다리). 전체 질의 분석은",
+        "> 위 '판정' 은 **비교가능 부분집합**의 확증 결과다(벡터 경로). 전체 질의 분석은",
         "> 커버리지 격차를 포함한 사용자 관점의 기술이며, 모델 품질 주장으로 인용해서는 안 된다.",
-        "> 벡터 다리는 정확 스캔이라 프로덕션(ivfflat)보다 후하게 나온다 — 절대값이 아니라 두",
+        "> 벡터 경로는 정확 스캔이라 프로덕션(ivfflat)보다 후하게 나온다 — 절대값이 아니라 두",
         "> 모델의 차이를 읽는 자다. 그리고 Pack A 는 khala 자신의 코퍼스가 아니다 (SPEC §4.7).",
         "> **모든 수치는 하한이다** — 풀 판정을 보류했으므로 미판정 문서가 비관련으로 세어진다.",
         "> 그 페널티는 새 문서를 더 많이 건져 올린 실험군이 더 많이 받는다: 결론 방향에 보수적이다.",

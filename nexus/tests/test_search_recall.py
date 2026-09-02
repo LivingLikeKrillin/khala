@@ -1,6 +1,6 @@
 """검색 재현율 회귀 세트 — SPEC-nexus-search-recall §4.3.
 
-**이 파일이 없어서 BM25 다리가 몇 년째 침묵하는 줄 아무도 몰랐다.** `tests/` 어디에도
+**이 파일이 없어서 BM25 경로가 몇 년째 침묵하는 줄 아무도 몰랐다.** `tests/` 어디에도
 "이 질의는 이 문서를 찾아야 한다" 는 단언이 없었다. 여기 그것을 둔다.
 
 살아 있는 `default` 코퍼스가 아니라 **리포에 고정된 fixture** 를 쓴다. 누가 Notion 을
@@ -135,7 +135,7 @@ async def test_the_label_gate_fires_on_an_ambiguous_reference(corpus):
     assert n > 1, "모호한 참조가 1건에만 매칭되면 이 테스트는 게이트를 검증하지 못한다"
 
 
-# ── 키워드 다리 (이 단언이 몇 년간 없었다) ────────────────────────────────────
+# ── 키워드 경로 (이 단언이 몇 년간 없었다) ────────────────────────────────────
 
 async def test_the_expected_lexeme_actually_survives_tokenisation(corpus):
     """기대 어휘가 mecab 을 통과하지 못하면, 재현율 테스트는 엉뚱한 것을 측정하게 된다."""
@@ -150,7 +150,7 @@ async def test_the_keyword_leg_alone_finds_the_gold_document(corpus, query, gold
     from nexus.search import hybrid
 
     hits, _top = await hybrid._bm25_search(query, _TENANT, "INTERNAL", 20)
-    assert hits, f"'{query}' — 키워드 다리가 아무것도 반환하지 않았다 ('{lexeme}' 는 문서에 있다)"
+    assert hits, f"'{query}' — 키워드 경로가 아무것도 반환하지 않았다 ('{lexeme}' 는 문서에 있다)"
     assert any(r == f"chunk_{gold}" for r, _ in hits), f"'{query}' → {gold} 를 못 찾았다"
 
 

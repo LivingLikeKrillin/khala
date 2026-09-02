@@ -70,7 +70,7 @@ async def test_counts_the_missing_and_excludes_what_no_leg_reads(db_pool, db_url
 
 
 async def test_active_chunk_under_a_dead_document_is_not_a_gap(db_pool, db_url):
-    """§6-1·§3.1a — 어느 다리도 읽지 않는 청크를 구멍으로 세면 영원히 안 꺼지는 경보가 된다."""
+    """§6-1·§3.1a — 어느 경로도 읽지 않는 청크를 구멍으로 세면 영원히 안 꺼지는 경보가 된다."""
     await _seed(db_pool, [{"rid": "cov_orphan", "v1024": None, "ts": "'a'"}],
                 doc_status="superseded")
     row = next((r for r in await _coverage(db_url) if r["tenant"] == _T), None)
@@ -78,7 +78,7 @@ async def test_active_chunk_under_a_dead_document_is_not_a_gap(db_pool, db_url):
 
 
 async def test_empty_tsvector_is_as_dark_as_a_null_one(db_pool, db_url):
-    """§6-2 — `''::tsvector` 는 NULL 이 아니지만 키워드 다리에서 똑같이 안 잡힌다."""
+    """§6-2 — `''::tsvector` 는 NULL 이 아니지만 키워드 경로에서 똑같이 안 잡힌다."""
     await _seed(db_pool, [
         {"rid": "cov_ts_ok", "v1024": _V1024, "ts": "'a'"},
         {"rid": "cov_ts_null", "v1024": _V1024, "ts": None},

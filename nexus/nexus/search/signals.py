@@ -92,11 +92,11 @@ class SearchSignals:
     completion_tokens: int | None = None
     cost_usd: float | None = None
     #: 근거가 **얼마나 잘 맞았는가**의 크기 (`search/confidence.py`). RRF 가 지워 버리는 값이라
-    #: 다리에서 되살려 여기까지 들고 온다. **불리언(`weak`)을 남기지 않는다** — 그 값은 오늘의
+    #: 경로에서 되살려 여기까지 들고 온다. **불리언(`weak`)을 남기지 않는다** — 그 값은 오늘의
     #: 문턱으로 계산된 것이고, 문턱을 옮기면 지나간 행의 뜻이 조용히 바뀐다. 거리와 점수는
     #: 문턱과 무관한 사실이다. 지금 문턱은 지어낸 질문 17개에서 나왔고, 다시 측정할 재료는
     #: **실사용 질문**뿐인데 그것이 매 요청마다 버려지고 있었다.
-    #: None = 그 다리가 안 돌았다(못 잼) ≠ 0(측정해서 낮음).
+    #: None = 그 경로가 안 돌았다(못 잼) ≠ 0(측정해서 낮음).
     top_distance: float | None = None
     top_bm25: float | None = None
     #: 근거가 나온 문서 중 그림을 가진 것의 수 (migration 011). ADR-0002 가 요구하는 게이트

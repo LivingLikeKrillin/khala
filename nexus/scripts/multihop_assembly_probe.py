@@ -119,9 +119,9 @@ def totals(rows: list[dict]) -> dict:
 
 
 def one_leg_only(holder: dict) -> bool:
-    """이 청크가 **한 다리에만** 잡혔는가.
+    """이 청크가 **한 경로에만** 잡혔는가.
 
-    융합(RRF)은 순위만 쓰므로 두 다리가 합의한 청크가 유리하다. 한 다리에서 8위인 청크가 융합
+    융합(RRF)은 순위만 쓰므로 두 경로가 합의한 청크가 유리하다. 한 경로에서 8위인 청크가 융합
     뒤 15위로 내려가는 것이 그래서다 — 조립 실패를 '랭킹이 나쁘다' 로 뭉뚱그리면 이 구별이
     사라진다. `SPEC-nexus-bm25-length-normalization` §2 가 같은 기제를 이미 이름 붙여 두었다.
     """
@@ -129,10 +129,10 @@ def one_leg_only(holder: dict) -> bool:
 
 
 async def leg_ranks(query: str, rid: str, tenant: list[str], cfg, svc) -> dict:
-    """이 청크가 **각 다리의 후보 풀 안에** 있는가. 융합(RRF)은 순위만 쓴다.
+    """이 청크가 **각 경로의 후보 풀 안에** 있는가. 융합(RRF)은 순위만 쓴다.
 
-    한 다리에만 있는 청크는 두 다리가 합의한 청크에 밀린다 — 그래서 "다리 하나에서 8위" 가
-    "융합 뒤 15위" 가 된다. 이 값이 없으면 조립 실패가 *어느 다리의 문제인지* 못 가른다.
+    한 경로에만 있는 청크는 두 경로가 합의한 청크에 밀린다 — 그래서 "경로 하나에서 8위" 가
+    "융합 뒤 15위" 가 된다. 이 값이 없으면 조립 실패가 *어느 경로의 문제인지* 못 가른다.
     `SPEC-nexus-bm25-length-normalization` §2 가 같은 기제를 이미 이름 붙여 두었다.
     """
     from nexus.index.vector_index import configured_column
@@ -313,9 +313,9 @@ async def _run(args) -> int:
                      if h["over_max_doc_chunks"] else "")
                   + " · 그 절이 상위 히트의 절인가: "
                   + ("예" if h["section_is_a_hit_section"] else "아니오"))
-            print(f"      다리별 후보 풀 — BM25 {h['bm25_rank'] or '밖'}/{h['bm25_pool']} · "
+            print(f"      경로별 후보 풀 — BM25 {h['bm25_rank'] or '밖'}/{h['bm25_pool']} · "
                   f"벡터 {h['vector_rank'] or '밖'}/{h['vector_pool']}"
-                  + ("  ⇒ **한 다리에만 있다** — 융합이 두 다리 합의를 이기지 못한다"
+                  + ("  ⇒ **한 경로에만 있다** — 융합이 두 경로 합의를 이기지 못한다"
                      if one_leg_only(h) else ""))
     print(f"  판정: {v['reason']}")
     if v["candidates"]:

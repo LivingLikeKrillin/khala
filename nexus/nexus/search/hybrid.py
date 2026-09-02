@@ -2,7 +2,7 @@
 
 ⛔ **그래프는 융합에 들어가지 않는다.** 이 줄이 오래 `"BM25 + Vector + Graph 3-way"` 였고
 `nexus/CLAUDE.md` 는 이미 정정했는데 이 파일만 그대로였다(외부 평가 P4). 그래프는 라우터가
-고른 경로에서 **따로** 조회되어 근거에 붙고, RRF 는 두 다리만 융합한다.
+고른 경로에서 **따로** 조회되어 근거에 붙고, RRF 는 두 경로만 융합한다.
 
 모든 검색은 base_filter(tenant, classification, quarantine, status)를 적용한다.
 """
@@ -85,14 +85,14 @@ class SearchResult:
     graph: SubGraph | None = None
     route_used: str = ""
     timing_ms: dict = field(default_factory=dict)
-    #: 실패해서 결과에 기여하지 못한 다리들 (`LEGS` 의 부분집합).
+    #: 실패해서 결과에 기여하지 못한 경로들 (`LEGS` 의 부분집합).
     #: **"아무것도 못 찾았다" 와 "죽었다" 는 다른 사실**이고, 그 둘이 구별되지 않는 것이
     #: 이 코드베이스가 반복해서 찾아낸 결함이다. 호출자에게도 그대로 나간다.
     degraded: list[str] = field(default_factory=list)
     #: 상한을 꽉 채운 문서의 **남은 절**(`search/section_fill.py`). 근거로만 가고 **순위에는
     #: 안 들어간다** — 사람이 보는 목록·Recall·Top-1 은 이 필드가 있든 없든 같다.
     fill: list[SearchHit] = field(default_factory=list)
-    #: 이번 검색이 얼마나 **잘 맞았는가**(`search/confidence.py`). 융합이 지우는 신호라 다리에서
+    #: 이번 검색이 얼마나 **잘 맞았는가**(`search/confidence.py`). 융합이 지우는 신호라 경로에서
     #: 직접 들고 온다. **랭킹에 쓰지 않는다** — 서술 계약에만 쓴다.
     confidence: Confidence = field(default_factory=Confidence)
 
@@ -102,7 +102,7 @@ class SearchResult:
 #: 오래 `0`(정규화 없음)이었고, 커버 밀도는 매치 수에 비례하므로 **긴 청크가 이겼다.**
 #: 2026-08-26 실측: 질의 하나에 매칭 140건인데 1위가 1,228자짜리(점수 4.700)이고 정답인
 #: 19자짜리 행은 **48위**(0.400)였다 — 못 찾은 게 아니라 `bm25_top_k`(20) 밖으로 밀렸고,
-#: 그래서 RRF 에 한쪽 다리 점수만 들고 들어가 융합에서 탈락했다.
+#: 그래서 RRF 에 한쪽 경로 점수만 들고 들어가 융합에서 탈락했다.
 #:
 #: 다섯 후보를 **제품 경로**(hybrid Recall@10)로 측정했다 —
 #: `tests/eval/bm25-normalization/README.md`. 사전등록한 바는 "파편이 오르고 대조군이 안
@@ -129,7 +129,7 @@ async def _bm25_search(
     사라진다. 그 크기는 여기서 이미 계산해 정렬에까지 썼는데 버려지고 있었다
     (`search/confidence.py` 머리말의 실측). 융합에 들어가는 첫 값은 예전과 같다.
 
-    **`None` 과 `0.0` 은 다른 사실이다.** `None` 은 *다리가 안 돌았다* — 토크나이저가 텀을
+    **`None` 과 `0.0` 은 다른 사실이다.** `None` 은 *경로가 안 돌았다* — 토크나이저가 텀을
     하나도 못 만들어 질의 자체가 없었다. `0.0` 은 *돌았는데 아무것도 못 잡았다* 이고, 그것은
     "코퍼스 밖" 의 가장 강한 증거다. 둘을 같은 `None` 으로 뭉개던 동안 그 강한 증거가
     `Confidence.weak` 에서 **못 측정한 것**으로 읽혀 신호가 안 켜졌다 — 2026-08-24 라이브에서
@@ -199,7 +199,7 @@ async def _vector_search(
           AND c.status = 'active'
           AND EXISTS (SELECT 1 FROM documents d
                       WHERE d.rid = c.doc_rid AND d.status = 'active')
-        -- 키워드 다리와 같은 이유의 전순서 키. 다만 이 다리는 ivfflat(ANN)이라 **후보 집합
+        -- 키워드 경로와 같은 이유의 전순서 키. 다만 이 경로는 ivfflat(ANN)이라 **후보 집합
         -- 자체**가 흔들릴 수 있고, 정렬 키는 그걸 고치지 못한다 (같은 SPEC §4.3 — 측정해서 기록한다).
         ORDER BY distance ASC, c.rid ASC
         LIMIT $4
@@ -211,24 +211,24 @@ async def _vector_search(
             float(rows[0]["distance"]) if rows else None)
 
 
-#: 검색이 가진 다리들. `SearchResult.degraded` 에 들어갈 수 있는 값은 여기가 정본이다.
+#: 검색이 가진 경로들. `SearchResult.degraded` 에 들어갈 수 있는 값은 여기가 정본이다.
 LEGS = ("bm25", "vector", "graph")
 
 
 def degrades_the_leg(exc: BaseException) -> bool:
-    """이 실패는 **이 다리만** 죽이는가, 아니면 배포가 아픈가 (SPEC-nexus-embedding-cutover-seam §4.4).
+    """이 실패는 **이 경로만** 죽이는가, 아니면 배포가 아픈가 (SPEC-nexus-embedding-cutover-seam §4.4).
 
-    `nexus/CLAUDE.md` 가 금지하는 것은 **죽은 DB 를 우회해 답하는 것**이지 한 다리의 degrade 가
-    아니다. 그 둘의 차이는 무엇이 없어졌느냐다: **DB 는 두 다리가 함께 서 있는 기반**이고,
-    임베딩 백엔드는 한 다리의 서버다. 기반이 없으면 어떤 답도 신뢰할 수 없으니 크게 실패해야 하고,
-    한 다리의 서버가 없으면 다른 다리의 답은 여전히 근거 위에 있다 — 더 나쁘지만, 나쁘다고 표시된다.
+    `nexus/CLAUDE.md` 가 금지하는 것은 **죽은 DB 를 우회해 답하는 것**이지 한 경로의 degrade 가
+    아니다. 그 둘의 차이는 무엇이 없어졌느냐다: **DB 는 두 경로가 함께 서 있는 기반**이고,
+    임베딩 백엔드는 한 경로의 서버다. 기반이 없으면 어떤 답도 신뢰할 수 없으니 크게 실패해야 하고,
+    한 경로의 서버가 없으면 다른 경로의 답은 여전히 근거 위에 있다 — 더 나쁘지만, 나쁘다고 표시된다.
 
     그래서 분류는 **좁게** 하고, 애매하면 503 으로 보낸다: 잘못된 503 은 보이는 장애지만 잘못된
     degrade 는 조용히 나빠진 답이고, 이 코드베이스는 후자를 이미 두 번 치렀다(재적재마다 흔들리던
     검색 순서, 상수 벡터를 읽은 ANN 측정).
 
     degrade: `DataError` — 차원 불일치(SQLSTATE 22000)가 이 부류다. **이 질의의 벡터**의 성질이라
-    재시도로 낫지 않는다. 이 부류가 그 결함 하나보다 넓다는 것은 알고 있고(벡터 다리의 질의 조립
+    재시도로 낫지 않는다. 이 부류가 그 결함 하나보다 넓다는 것은 알고 있고(벡터 경로의 질의 조립
     버그도 여기로 온다), 그래서 error 레벨로 SQLSTATE 와 함께 남긴다 — 조립 버그는 테스트와 로그가
     잡고, 살아 있는 500 은 사용자가 잡는다.
     """
@@ -245,11 +245,11 @@ async def _vector_leg(
     top_k: int,
     column: str | None,
 ) -> tuple[list[tuple[str, int]], bool, float | None]:
-    """(결과, degraded, 1위 거리). **빈 결과와 죽은 다리를 구분해서 돌려준다.**
+    """(결과, degraded, 1위 거리). **빈 결과와 죽은 경로를 구분해서 돌려준다.**
 
     예전엔 임베딩 실패를 조용히 삼켜 빈 리스트를 냈고 SQL 실패는 500 으로 나갔다 — 둘 다 틀렸다.
 
-    죽은 다리의 거리는 `None` 이다. **0.0 으로 채우지 않는다** — 그러면 "완벽하게 맞았다" 로
+    죽은 경로의 거리는 `None` 이다. **0.0 으로 채우지 않는다** — 그러면 "완벽하게 맞았다" 로
     읽히고, 못 측정한 것과 측정해서 좋은 것이 같은 값이 된다.
     """
     try:
@@ -280,7 +280,7 @@ class UnknownRoute(ValueError):
     """
 
 
-#: route → (BM25 다리를 도는가, 벡터 다리를 도는가). 그래프 보강은 아래에서 따로 판정한다.
+#: route → (BM25 경로를 도는가, 벡터 경로를 도는가). 그래프 보강은 아래에서 따로 판정한다.
 #: SPEC-nexus-search-recall §4.2 — 이 표가 API·MCP·CLI 가 광고하는 계약의 정본이다.
 ROUTES: dict[str, tuple[bool, bool]] = {
     "keyword_only": (True, False),
@@ -310,12 +310,12 @@ def _rrf_fusion(
 
 @dataclass
 class ChannelResults:
-    """한 **채널**(= 질의 변형)이 두 **다리**에서 얻은 순위. 축이 둘이라는 것이 요점이다.
+    """한 **채널**(= 질의 변형)이 두 **경로**에서 얻은 순위. 축이 둘이라는 것이 요점이다.
 
     채널 = 무엇을 물었나(재작성 질의 / 사용자가 실제로 친 문장).
-    다리  = 어떻게 찾았나(BM25 / vector).
+    경로  = 어떻게 찾았나(BM25 / vector).
 
-    가중은 **채널당 한 번** 걸린다. 다리마다 걸면 1.3 이 2.6 이 된다 (SPEC §3.3).
+    가중은 **채널당 한 번** 걸린다. 경로마다 걸면 1.3 이 2.6 이 된다 (SPEC §3.3).
     """
     bm25: list[tuple[str, int]] = field(default_factory=list)
     vector: list[tuple[str, int]] = field(default_factory=list)
@@ -347,7 +347,7 @@ def fuse_channels(channels: list[ChannelResults], k: int = 60) -> list[dict]:
             for rid, rank in results:
                 slot = _slot(rid)
                 slot["score"] += ch.weight * (1.0 / (k + rank + 1))
-                # 다리별 순위는 **채널을 통틀어 가장 좋은 것**을 남긴다. 칸이 둘뿐인데 채널이
+                # 경로별 순위는 **채널을 통틀어 가장 좋은 것**을 남긴다. 칸이 둘뿐인데 채널이
                 # 늘었으므로, 어느 하나를 고르지 않으면 나중 채널이 앞 채널을 덮는다.
                 key = f"{leg}_rank"
                 if slot[key] is None or rank < slot[key]:
@@ -610,14 +610,14 @@ async def hybrid_search(
 
     result = SearchResult(route_used=route)
 
-    # route 가 고르는 것은 그래프 보강만이 아니다 — 어느 **다리**를 돌릴지도 고른다.
+    # route 가 고르는 것은 그래프 보강만이 아니다 — 어느 **경로**를 돌릴지도 고른다.
     # 예전엔 둘 다 무조건 돌면서 route_used 로 "반영됐다" 고 보고했다.
     use_bm25, use_vector = ROUTES[route]
 
     # **채널 = 질의 변형.** 기본은 하나(= 오늘) — 그러면 아래 융합이 예전과 글자 그대로 같다.
     # 멀티턴은 (재작성, 1.3) + (원문, 0.5) 두 채널로 온다 (SPEC §3.3).
     #
-    # **후보 풀은 채널마다 그대로다.** 다리가 둘에서 넷으로 늘어도 bm25_top_k/vector_top_k 는
+    # **후보 풀은 채널마다 그대로다.** 경로가 둘에서 넷으로 늘어도 bm25_top_k/vector_top_k 는
     # 건드리지 않는다. 컷(_diversify/per_doc_cap/top_k)은 융합 **뒤 한 번만** 걸린다 — 채널마다
     # 걸면 다양성 규칙이 두 번 먹는다.
     active = channels or [(query, 1.0)]
@@ -629,7 +629,7 @@ async def hybrid_search(
         if use_bm25:
             tasks[(i, "bm25")] = asyncio.create_task(
                 _bm25_search(text, tenant, clearance, bm25_top_k))
-        # embedding_svc 가 없으면 벡터 다리는 못 돈다. 그렇다고 BM25 로 슬그머니 바꿔치기하고
+        # embedding_svc 가 없으면 벡터 경로는 못 돈다. 그렇다고 BM25 로 슬그머니 바꿔치기하고
         # route_used='vector_only' 라 보고하지는 않는다 — 빈 결과가 정직하다.
         if use_vector and embedding_svc:
             tasks[(i, "vector")] = asyncio.create_task(

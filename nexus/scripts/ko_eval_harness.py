@@ -1,12 +1,12 @@
 """한국어 검색 평가 하니스 — 적재·채점·판정 (SPEC-nexus-korean-retrieval-eval §4.3~§4.5).
 
-**판정은 "정답 문서를 찾았나" 다.** 다리는 청크를 돌려주므로 문서로 접은 뒤(같은 문서는 최선
+**판정은 "정답 문서를 찾았나" 다.** 경로는 청크를 돌려주므로 문서로 접은 뒤(같은 문서는 최선
 순위만) **문서 10개** 안에서 측정한다 — 청크 10개 창이 아니다. 한 문서가 청크를 여러 개 올리면 두
 읽기의 숫자가 크게 갈리기 때문에 여기서 못박는다.
 
 **검정 규칙도 숫자가 나오기 전에 못박는다** (§4.3):
 
-- 질의별 승패는 키워드 다리 **Recall@10**, 동점이면 **MRR@10** 으로 깬다. 265문서에서 Recall 은
+- 질의별 승패는 키워드 경로 **Recall@10**, 동점이면 **MRR@10** 으로 깬다. 265문서에서 Recall 은
   대부분 동점이라(양쪽 다 정답을 찾되 순위만 다름) 동점을 그냥 버리면 분해가 옮기는 정보를
   통째로 버리게 된다.
 - 양측 정확 이항검정(부호검정), α=0.05.
@@ -14,8 +14,8 @@
   애초에 결론을 낼 수 없다. 그 상태를 "차이 없음" 으로 적는 것이 지표가 자기 둔감함을
   세탁하는 방법이다. 우리는 **"검정력 부족"** 이라고 쓴다.
 
-지표는 **다리별**로 낸다. 토크나이저는 키워드 다리 말고는 건드리지 못한다 — 융합 숫자로 읽은
-토크나이저 판정은 바뀔 수 없는 다리에 희석된 판정이다.
+지표는 **경로별**로 낸다. 토크나이저는 키워드 경로 말고는 건드리지 못한다 — 융합 숫자로 읽은
+토크나이저 판정은 바뀔 수 없는 경로에 희석된 판정이다.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def collapse_to_documents(
     """(청크 rid, 순위) 목록 → 문서 목록. 같은 문서는 최선 순위 한 번만, 상위 `limit` 개.
 
     **빈 매핑은 0점이 아니라 중단이다.** `clean_db` 가 `chunks` 를 TRUNCATE 하면 평가 저장소는
-    살아남고 참조만 끊긴다. 그 상태로 접으면 모든 다리가 빈 목록을 돌려주고 두 실험군이 나란히
+    살아남고 참조만 끊긴다. 그 상태로 접으면 모든 경로가 빈 목록을 돌려주고 두 실험군이 나란히
     `Recall@10 = 0.000` 을 낸다 — 2026-08-05 에 실제로 나온, 기제상 불가능한 숫자다. 공식 경로는
     `verify_arm` 이 막지만 그 검사를 우회하는 코드가 여기까지 온다. 여기서 멈춘다.
     """
@@ -106,7 +106,7 @@ def collapse_to_documents(
 
 @dataclass
 class QueryScore:
-    """한 질의의 한 다리 점수."""
+    """한 질의의 한 경로 점수."""
     qid: str
     recall: float
     rr: float
@@ -129,7 +129,7 @@ def score_query(qid: str, docs: list[str], gold: list[str] | set[str]) -> QueryS
 
 @dataclass
 class LegResult:
-    """한 다리의 집계. `n` 은 답변가능 질의 수(=분모)."""
+    """한 경로의 집계. `n` 은 답변가능 질의 수(=분모)."""
     leg: str
     scores: list[QueryScore] = field(default_factory=list)
 
@@ -279,7 +279,7 @@ class _IndexableChunk:
 
 async def run_keyword_leg(labels: dict, tenant: str, chunk_doc: dict[str, str],
                           top_k: int = 20) -> LegResult:
-    """답변가능 질의만 키워드 다리로 돌려 점수를 낸다 (§4.3 분모 = 40)."""
+    """답변가능 질의만 키워드 경로로 돌려 점수를 낸다 (§4.3 분모 = 40)."""
     from nexus.search import hybrid
 
     result = LegResult(leg="keyword")
@@ -297,10 +297,10 @@ RRF_K = 60      # config.yaml `search.rrf_k` 기본값. 융합은 프로덕션 �
 
 async def run_legs(labels: dict, tenant: str, chunk_doc: dict[str, str],
                    vector_search=None, top_k: int = 20) -> dict[str, LegResult]:
-    """키워드·벡터·융합 다리를 한 번에 돌린다 (SPEC-nexus-korean-embedding-comparison §8 Unit 2).
+    """키워드·벡터·융합 경로를 한 번에 돌린다 (SPEC-nexus-korean-embedding-comparison §8 Unit 2).
 
     **융합은 프로덕션 `_rrf_fusion` 을 그대로 부른다.** 평가용으로 다시 구현하면 fused 숫자가
-    사용자가 겪는 것과 다른 뜻이 되고, 그건 "사용자가 보는 결과" 를 재겠다는 이 다리의 존재
+    사용자가 겪는 것과 다른 뜻이 되고, 그건 "사용자가 보는 결과" 를 재겠다는 이 경로의 존재
     이유를 지운다.
 
     `vector_search` 는 `(query_text) -> list[(chunk_rid, rank)]` 코루틴. 없으면 키워드만 돈다.
@@ -336,7 +336,7 @@ async def run_legs(labels: dict, tenant: str, chunk_doc: dict[str, str],
 async def leg_top_documents(labels: dict, tenant: str, chunk_doc: dict[str, str],
                             vector_search=None, top_k: int = 20,
                             depth: int = METRIC_K) -> dict[str, dict[str, list[str]]]:
-    """풀 판정용 — **다리별** 질의별 상위 문서. 융합도 다리다 (§4.5): RRF 가 11~20위를 top-10 으로
+    """풀 판정용 — **경로별** 질의별 상위 문서. 융합도 경로다 (§4.5): RRF 가 11~20위를 top-10 으로
     끌어올릴 수 있어서, 융합을 빼고 판정하면 그 문서는 무판정으로 비관련 처리된다."""
     from nexus.search import hybrid
 
@@ -413,8 +413,8 @@ def render_report(meta: dict, legs: list[LegResult], strata: dict[str, str],
     out += ["", "> Pack A 는 khala 자신의 코퍼스가 아니라 같은 종류의 공개 대역 코퍼스다.",
             "> 이 실행만으로 ADR-0008 §5(b) 가 닫히지 않는다.", ""]
 
-    out += ["## 다리별 (답변가능 질의 기준)", "",
-            "| 다리 | n | Recall@10 | MRR@10 | 미스 |", "|---|---:|---:|---:|---:|"]
+    out += ["## 경로별 (답변가능 질의 기준)", "",
+            "| 경로 | n | Recall@10 | MRR@10 | 미스 |", "|---|---:|---:|---:|---:|"]
     for leg in legs:
         out.append(f"| {leg.leg} | {leg.n} | {leg.recall:.3f} | {leg.mrr:.3f} | {leg.misses} |")
 

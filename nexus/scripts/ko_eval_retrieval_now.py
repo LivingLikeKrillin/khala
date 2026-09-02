@@ -76,7 +76,7 @@ async def _run(args) -> int:
             result = await hybrid.hybrid_search(q["query"], tenant=TENANT, clearance="INTERNAL",
                                                 top_k=args.top_k, embedding_svc=svc, config=search_cfg)
             if result.degraded:
-                print(f"✗ 다리가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
+                print(f"✗ 경로가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
                 return 1
             gold = {titles[g] for g in q["gold"]}
             rank = next((i + 1 for i, h in enumerate(result.hits) if h.doc_title in gold), None)

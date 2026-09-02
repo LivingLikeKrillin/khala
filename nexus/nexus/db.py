@@ -137,7 +137,7 @@ ALTER TABLE search_log ADD COLUMN IF NOT EXISTS prompt_tokens        INTEGER;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS completion_tokens    INTEGER;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS cost_usd             DOUBLE PRECISION;
 -- 근거 적합도의 **크기** (migration 032). 불리언이 아니라 크기를 남긴다 — 문턱이 옮겨가면
--- 불리언은 지나간 행의 뜻을 조용히 바꾼다. NULL = 그 다리가 안 돌았다(못 잼) ≠ 0(측정해서 낮음).
+-- 불리언은 지나간 행의 뜻을 조용히 바꾼다. NULL = 그 경로가 안 돌았다(못 잼) ≠ 0(측정해서 낮음).
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS top_distance         DOUBLE PRECISION;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS top_bm25             DOUBLE PRECISION;
 CREATE INDEX IF NOT EXISTS idx_search_log_ts     ON search_log (ts DESC);

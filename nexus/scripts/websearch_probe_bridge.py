@@ -55,7 +55,7 @@ async def _packets(limit: int):
         r = await hybrid.hybrid_search(q["q"], tenant=TENANT, clearance=CLEARANCE, top_k=10,
                                        embedding_svc=svc, config=cfg)
         if r.degraded:
-            raise SystemExit(f"✗ 다리가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
+            raise SystemExit(f"✗ 경로가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
         packet = await assemble_packet(r.hits, r.graph, TENANT, fill=r.fill)
         system, user = build_prompts(q["q"], format_for_llm(packet),
                                      weak_evidence=r.confidence.weak)

@@ -1,10 +1,10 @@
-"""`route` 는 다리를 고르는가 — SPEC-nexus-search-recall §4.2, §6.
+"""`route` 는 경로를 고르는가 — SPEC-nexus-search-recall §4.2, §6.
 
 `route` 는 그래프 보강만 게이트했다. `keyword_only` 든 `vector_only` 든 BM25 와 벡터가 **언제나
 둘 다** 돌았고, `route_used` 는 받은 값을 그대로 되돌려 주어 호출자에게 "당신 선택이 반영됐다"
 고 말했다. 없는 식별자를 API·MCP·CLI 가 광고했다.
 
-그래서 이 테스트는 `route_used` 를 읽지 않는다. **각 다리가 실제로 몇 번 불렸는지 센다.**
+그래서 이 테스트는 `route_used` 를 읽지 않는다. **각 경로가 실제로 몇 번 불렸는지 센다.**
 거짓말을 한 바로 그 필드로 거짓말을 검증할 수는 없다.
 """
 
@@ -17,7 +17,7 @@ from nexus.search import hybrid
 
 @pytest.fixture
 def legs(monkeypatch):
-    """BM25/벡터 다리를 세는 스파이. DB 도 Ollama 도 필요 없다."""
+    """BM25/벡터 경로를 세는 스파이. DB 도 Ollama 도 필요 없다."""
     calls = {"bm25": 0, "vector": 0}
 
     async def fake_bm25(query, tenant, clearance, top_k=20):
@@ -39,7 +39,7 @@ def legs(monkeypatch):
 
 
 class _Svc:
-    """EmbeddingService 자리표시자 — 벡터 다리가 도는지만 본다."""
+    """EmbeddingService 자리표시자 — 벡터 경로가 도는지만 본다."""
 
 
 @pytest.mark.parametrize(
@@ -54,7 +54,7 @@ class _Svc:
 )
 async def test_each_route_runs_exactly_the_legs_it_names(legs, route, bm25, vector):
     await hybrid.hybrid_search("질의", embedding_svc=_Svc(), route=route)
-    assert (legs["bm25"], legs["vector"]) == (bm25, vector), f"{route} 가 광고한 다리를 안 돌렸다"
+    assert (legs["bm25"], legs["vector"]) == (bm25, vector), f"{route} 가 광고한 경로를 안 돌렸다"
 
 
 async def test_keyword_only_issues_no_embedding_call(legs):

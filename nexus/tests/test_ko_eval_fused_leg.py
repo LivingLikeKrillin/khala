@@ -1,8 +1,8 @@
-"""평가용 융합 다리 — **프로덕션 RRF 를 그대로 부른다**
+"""평가용 융합 경로 — **프로덕션 RRF 를 그대로 부른다**
 (SPEC-nexus-korean-embedding-comparison §8 Unit 2, §6).
 
 평가용으로 RRF 를 다시 구현하면 fused 숫자가 사용자가 겪는 것과 다른 뜻이 된다. 그러면 "벡터
-다리는 이겼는데 융합에서 지워졌다" 같은 판정이 프로덕션에 대해 아무 말도 못 하게 된다.
+경로는 이겼는데 융합에서 지워졌다" 같은 판정이 프로덕션에 대해 아무 말도 못 하게 된다.
 그래서 재구현이 아니라 **호출**이어야 하고, 그 사실을 구조로 못박는다.
 """
 
@@ -47,10 +47,10 @@ def test_the_fusion_parameter_matches_production_config():
 
 @pytest.mark.asyncio
 async def test_fusion_promotes_the_document_both_legs_agree_on(monkeypatch):
-    """두 다리가 각각 2위로 꼽은 문서가, 어느 한 다리의 1위보다 위로 올라와야 융합이다.
+    """두 경로가 각각 2위로 꼽은 문서가, 어느 한 경로의 1위보다 위로 올라와야 융합이다.
 
     RRF 점수는 순위의 역수 합이므로 `2/(k+3)` > `1/(k+2)` — 양쪽이 동의한 문서가 이긴다.
-    이 단언이 깨지면 융합이 실제로는 한 다리를 그대로 흘려보내고 있다는 뜻이다.
+    이 단언이 깨지면 융합이 실제로는 한 경로를 그대로 흘려보내고 있다는 뜻이다.
     """
     from nexus.search import hybrid
 
@@ -69,14 +69,14 @@ async def test_fusion_promotes_the_document_both_legs_agree_on(monkeypatch):
 
     assert set(legs) == {"keyword", "vector", "fused"}
     assert legs["fused"].scores[0].rr == 1.0, (
-        "양쪽 다리가 동의한 문서가 융합 1위가 아니다 — 융합이 한 다리를 흘려보내고 있다")
+        "양쪽 경로가 동의한 문서가 융합 1위가 아니다 — 융합이 한 경로를 흘려보내고 있다")
     assert legs["keyword"].scores[0].rr == 0.5      # 키워드 단독으로는 2위
     assert legs["vector"].scores[0].rr == 0.5       # 벡터 단독으로도 2위
 
 
 @pytest.mark.asyncio
 async def test_without_a_vector_leg_only_keyword_runs(monkeypatch):
-    """벡터 실험군이 없으면 융합도 없다 — 빈 벡터 다리와 융합하면 키워드를 융합이라 부르게 된다."""
+    """벡터 실험군이 없으면 융합도 없다 — 빈 벡터 경로와 융합하면 키워드를 융합이라 부르게 된다."""
     from nexus.search import hybrid
 
     async def fake_bm25(query, tenant, clearance, top_k):
@@ -89,7 +89,7 @@ async def test_without_a_vector_leg_only_keyword_runs(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_unanswerable_queries_stay_out_of_every_leg(monkeypatch):
-    """분모는 답변가능 질의뿐 — 융합 다리도 예외가 아니다 (§4.3)."""
+    """분모는 답변가능 질의뿐 — 융합 경로도 예외가 아니다 (§4.3)."""
     from nexus.search import hybrid
 
     async def fake_bm25(query, tenant, clearance, top_k):

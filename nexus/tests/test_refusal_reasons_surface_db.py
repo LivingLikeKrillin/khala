@@ -1,7 +1,7 @@
 """거부의 **이유**가 사람에게 닿는가 — REAL Postgres. OPEN.md A7.
 
 `embed_refusals` 는 2026-08-07 부터 이유를 그대로 적어 왔다(`413 max_seq_length(8192)` 같은,
-곧 처방이 되는 문장). 그런데 **읽는 곳이 코퍼스 뷰 하나뿐이었다.** 적재는 "벡터 다리가 못 보는
+곧 처방이 되는 문장). 그런데 **읽는 곳이 코퍼스 뷰 하나뿐이었다.** 적재는 "벡터 경로가 못 보는
 청크 N건" 과 "`nexus reembed run` 으로 복구하라" 를 찍는데, 그 재시도는 같은 이유로 다시
 실패한다 — 이유를 안 보여줬기 때문에.
 
@@ -157,7 +157,7 @@ def test_the_ingest_command_actually_prints_the_reason(tmp_path, monkeypatch):
         result = CliRunner().invoke(
             app, ["ingest", str(tmp_path), "--tenant", _TENANT, "--force", "--no-graph"])
         out = result.stdout + str(result.stderr or "")
-        assert "벡터 다리가 못 보는 청크" in out, f"전제: 구멍이 보고돼야 한다\n{out}"
+        assert "벡터 경로가 못 보는 청크" in out, f"전제: 구멍이 보고돼야 한다\n{out}"
         # **`_REASON in out` 로 쓰면 안 된다.** structlog 가 같은 stdout 으로 `embedding_index_failed`
         # 와 `ingest_left_chunks_unindexed` 를 찍고 거기에도 그 문자열이 들어 있다 — 실제로 이
         # 검사를 그렇게 썼다가, CLI 출력을 **꺼 놓고도 통과**하는 것을 보고 고쳤다. 그러므로

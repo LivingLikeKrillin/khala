@@ -20,7 +20,7 @@ logger = structlog.get_logger(__name__)
 
 async def record_refusal(chunk_rid: str, column: str, embedding_svc, reason: str,
                          chars: int = 0) -> None:
-    """거부를 **행으로 남긴다.** 삼키면 그 청크는 벡터 다리에서 영구히 사라지고 아무도 모른다.
+    """거부를 **행으로 남긴다.** 삼키면 그 청크는 벡터 경로에서 영구히 사라지고 아무도 모른다.
 
     `embed_waivers` 와 섞지 않는다 — 그건 사람이 이름을 걸고 포기한 **결정**이고, 이건 기계가 낸
     **사실**이다. 백엔드 메시지는 요약하지 않고 그대로 남긴다: "왜 안 되는지" 가 곧 처방이다

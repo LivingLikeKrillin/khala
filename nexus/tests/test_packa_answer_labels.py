@@ -138,7 +138,7 @@ def test_the_manifest_covers_the_whole_pack_not_just_the_gold(manifest):
 # ── CI 가 실제로 덮는 범위 ────────────────────────────────────────────────────
 #
 # 답변 하니스는 CI 에서 못 돈다: 임베딩 사이드카(KURE, CPU 로 시간당 500청크)와 LLM 이 필요하다.
-# CI 가 도는 것은 **키워드 다리 회귀**(`test_ko_eval_run_db.py`, mecab 강제)이고, 그것은
+# CI 가 도는 것은 **키워드 경로 회귀**(`test_ko_eval_run_db.py`, mecab 강제)이고, 그것은
 # `labels.yaml` 을 읽는다. 답변 라벨은 별도 파일이다.
 #
 # 그래서 두 파일이 어긋나는 순간 CI 의 바닥값은 답변 세트가 측정하는 것을 더 이상 안 덮는다 —

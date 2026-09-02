@@ -267,7 +267,7 @@ class _FakeCon:
 
 def test_unembedded_chunks_are_reported_because_nothing_else_counts_them():
     """`index/embed.py` 는 실패를 삼키고, `embed_health` 는 IS NOT NULL 만 센다. 거부된 청크는
-    벡터 다리에서 영구히 안 보이는데 두 곳 어디에도 안 잡힌다 (§3.2).
+    벡터 경로에서 영구히 안 보이는데 두 곳 어디에도 안 잡힌다 (§3.2).
 
     2026-08-07 실물: 18,751자 청크를 사이드카가 413 으로 거부했다.
     """
@@ -281,7 +281,7 @@ def test_unembedded_chunks_are_reported_because_nothing_else_counts_them():
     u = got["unembedded_chunks"]
     assert u["count"] == 1
     assert u["sample"][0]["chars"] == 18751
-    assert "벡터 다리" in u["note"]
+    assert "벡터 경로" in u["note"]
 
 
 def test_it_counts_the_column_the_search_leg_actually_reads(monkeypatch):

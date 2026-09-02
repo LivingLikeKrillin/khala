@@ -96,7 +96,7 @@ def _split_oversize(para: str, target_tokens: int, language: str) -> list[str]:
        열의 뜻이 사라진다. 실제로 터진 것이 정책 표였다.
     2. 줄 단위로 모은다 — 줄 중간을 자르면 표 행이나 코드 문장이 깨진다.
     3. **한 줄이 그 자체로 target 을 넘으면 문자로 자른다.** 단어를 깨는 것이 맞다 — 안 자르면
-       상한이 상한이 아니고, 넘치는 청크는 벡터 다리에서 통째로 안 보인다. 잘린 것이 안 보이는
+       상한이 상한이 아니고, 넘치는 청크는 벡터 경로에서 통째로 안 보인다. 잘린 것이 안 보이는
        것보다 낫다.
     """
     lines = para.split("\n")
@@ -189,7 +189,7 @@ def _split_text_with_overlap(
         # 아무것도 안 막는 유일한 경로였다 (KOREAN_SEARCH_QUALITY.md §3.2).
         #
         # 2026-08-07 에 실물에서 터졌다: 빈 줄이 없는 정책 표는 문단 하나로 잡혀 18,751자 청크가
-        # 됐고, 임베딩 사이드카가 `413 max_seq_length(8192)` 로 거부해 그 청크는 벡터 다리에서
+        # 됐고, 임베딩 사이드카가 `413 max_seq_length(8192)` 로 거부해 그 청크는 벡터 경로에서
         # 영구히 사라졌다. 통째로 두면 보존이 아니라 **비가시**다.
         if para_tokens > target_tokens and not current_chunk:
             chunks.extend(_split_oversize(para, target_tokens, language))
