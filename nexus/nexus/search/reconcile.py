@@ -159,7 +159,7 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
             # 점수는 0 이다 — 이 청크들은 순위 경쟁을 하지 않았다.
             score=0.0, classification=r["classification"],
             approved_hash=r["approved_hash"] or "", doc_type=r["doc_type"] or "",
-            updated_at=r["updated_at"])
+            updated_at=r["updated_at"], tenant=r["tenant"] or "")
 
     search_cfg = (config or {}).get("search", {}) or {}
     fill = list(result.fill or [])

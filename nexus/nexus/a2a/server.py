@@ -354,6 +354,8 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
     from nexus.search.signals import JudgeInput, extract_signals, record_search
     sig = extract_signals(
         search_result, answer_result, path="a2a",
+        # 근거 점유율은 패킷에서 센다 (§5.3) — 히트만 세면 채움·짝·정정이 빠진다.
+        evidence=packet.snippets,
         tenant=tenant, clearance=clearance, query=query,
         n_entities=len(entity_rids),
         latency_ms=int((time.time() - _t0) * 1000),

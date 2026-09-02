@@ -441,6 +441,10 @@ CREATE TABLE IF NOT EXISTS search_log (
     -- 이 조회가 실제로 읽은 테넌트들. `tenant` 는 귀속용 단일 값이라 교차 테넌트
     -- 조회를 구별하지 못한다 (migration 037).
     read_scope      TEXT,
+    -- 근거가 **실제로 어디서 왔는가** — `design_docs:6,default:4` (migration 038).
+    -- `read_scope` 는 읽을 수 있었던 범위이고 이것은 읽은 것이다. 비율이 아니라 개수를
+    -- 남긴다 — 비율은 분모를 지운다.
+    evidence_tenants TEXT,
     clearance       TEXT,
     route           TEXT,
     query_sha256    TEXT NOT NULL DEFAULT '',

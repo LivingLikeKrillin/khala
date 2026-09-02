@@ -128,6 +128,9 @@ CREATE TABLE IF NOT EXISTS search_log (
 -- 구별하지 못한다 — 그러면 `design_docs` 수요가 `default` 로 귀속돼 demand-pull 판단이
 -- 거짓이 된다 (SPEC-nexus-design-corpus-cutover §5.4).
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS read_scope           TEXT;
+-- 근거가 실제로 어디서 왔는가 (migration 038). `read_scope` 는 읽을 수 있었던 범위이고
+-- 이것은 읽은 것이다 — 둘이 갈리는 상태가 SPEC-nexus-design-corpus-cutover §5.3 이 보려던 것.
+ALTER TABLE search_log ADD COLUMN IF NOT EXISTS evidence_tenants     TEXT;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS n_citations          INTEGER;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS unverified_citations INTEGER;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS prompt_tokens        INTEGER;

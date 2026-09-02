@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from nexus import db
+from nexus.search import evidence_share
 
 if TYPE_CHECKING:  # 런타임 import 불필요(순환 회피) — 속성 접근만 한다
     from nexus.llm.answer import AnswerResult
@@ -110,6 +111,14 @@ class SearchSignals:
     #: `design_docs` 를 읽어도 행에는 `default` 만 남아, demand-pull 판단이 *"설계 코퍼스는
     #: 아무도 안 본다"* 로 읽힌다. 컷오버가 그 오귀속을 만들어 놓고 시작하는 셈이다.
     read_scope: str | None = None
+    #: 이 답이 **실제로 어느 코퍼스에 기댔는가** — `design_docs:6,default:4`
+    #: (SPEC-nexus-design-corpus-cutover §5.3, `search/evidence_share.py`).
+    #:
+    #: `read_scope` 는 **읽을 수 있었던** 범위이고 이것은 **읽은 것**이다. 둘이 갈리는 것이
+    #: 관측하려던 바로 그 상태다 — 범위를 넓혀 놓고 근거가 한쪽에서만 오는 경우.
+    #:
+    #: ⚠ 테넌트 **이름과 개수**뿐이다. 조각 본문도, rid 도, 질의도 담지 않는다.
+    evidence_tenants: str | None = None
 def extract_signals(
     result: SearchResult,
     answer: AnswerResult | None = None,
@@ -119,6 +128,7 @@ def extract_signals(
     clearance: str | None,
     query: str,
     read_scope=None,
+    evidence=None,
     n_entities: int = 0,
     fusion_channels: int = 1,
     rewrite=None,
@@ -134,6 +144,11 @@ def extract_signals(
 
     인용 지표(n_citations/unverified_citations)와 llm_failed 는 명시 인자가 우선, 없으면
     AnswerResult 에서 유도, 그것도 없으면 None/False(미측정). 스트림은 answer 없이 명시로 넘긴다.
+
+    `evidence` 는 **소비자가 실제로 받은 조각들**이다(답변 경로 = 패킷의 스니펫). 안 주면
+    `result.hits` 로 떨어진다 — 그래야 새 호출부가 아무것도 안 해도 이 신호가 빈칸이 되지
+    않는다. 답변 경로는 반드시 패킷을 넘긴다: 채운 절·짝 문서·정정 확인 패스는 랭킹을 거치지
+    않으므로 히트만 세면 **답변이 기댄 코퍼스를 과소평가한다.**
     """
     hits = result.hits
     graph = result.graph
@@ -156,6 +171,7 @@ def extract_signals(
     return SearchSignals(
         read_scope=(",".join(read_scope)
                     if read_scope and not isinstance(read_scope, str) else read_scope),
+        evidence_tenants=evidence_share.encode(hits if evidence is None else evidence),
         path=path,
         tenant=tenant,
         clearance=clearance,
@@ -335,10 +351,10 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             rewrite_applied, rephrased_sha256, rephrased_len, rewrite_changed,
             rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd,
             answer_prompt_sha, rewrite_prompt_sha,
-            top_distance, top_bm25
+            top_distance, top_bm25, evidence_tenants
         ) VALUES ($1,$2,$36,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
                   $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                  $34, $35)
+                  $34, $35, $37)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -351,7 +367,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.rewrite_applied, sig.rephrased_sha256, sig.rephrased_len, sig.rewrite_changed,
         sig.rewrite_prompt_tokens, sig.rewrite_completion_tokens, sig.rewrite_cost_usd,
         sig.answer_prompt_sha, sig.rewrite_prompt_sha,
-        sig.top_distance, sig.top_bm25, sig.read_scope,
+        sig.top_distance, sig.top_bm25, sig.read_scope, sig.evidence_tenants,
     )
 
 

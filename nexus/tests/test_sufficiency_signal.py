@@ -84,6 +84,10 @@ def test_the_signal_object_carries_no_text():
         # 범위는 **테넌트 이름들**이지 질의 원문이 아니다 — 이 검사가 막는 것은
         # 원문·근거 텍스트가 신호 객체에 실리는 것이고, 그 성질은 그대로다.
         "read_scope", "clearance", "route",          # 식별자·라벨
+        # 근거가 실제로 어디서 왔는가 — **테넌트 이름과 개수**뿐이다(`design_docs:6,default:4`).
+        # 조각 본문도 rid 도 담지 않으므로 이 검사가 막으려는 성질은 그대로다.
+        # `read_scope` 가 *읽을 수 있었던* 범위라면 이것은 *읽은 것*이다 (migration 038).
+        "evidence_tenants",
         "query_sha256", "query_len",                     # 질의가 들어갈 수 있는 **유일한** 형태
         "n_snippets", "top_score", "n_entities", "graph_requested", "n_graph_edges",
         "no_answer", "llm_failed", "latency_ms",
