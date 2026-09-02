@@ -102,6 +102,7 @@ async def assemble_packet(
     graph: SubGraph | None = None,
     tenant: str = "",
     fill: list[SearchHit] | None = None,
+    clearance: str = "",
 ) -> EvidencePacket:
     """검색 결과에서 evidence packet 조립.
 
@@ -129,7 +130,9 @@ async def assemble_packet(
     # `nexus code drift` 를 10분 걸리게 한 N+1 이다.
     anchors = await statuses_for_chunks(tenant, [h.rid for h in ordered])
     # 문서 부채도 같은 규율로 — 쿼리 하나, 없으면 조용하다.
-    debts = await debts_for_docs(tenant, sorted({h.doc_rid for h in ordered}))
+    # ⛔ 등급을 넘긴다 (외부 평가 F3). 안 넘기면 `debts_for_docs` 가 조회를 **건너뛴다** —
+    # 빈 등급을 "필터 없음" 으로 읽으면 이 함수가 곧 우회로가 되기 때문이다.
+    debts = await debts_for_docs(tenant, clearance, sorted({h.doc_rid for h in ordered}))
     packet.debts = [debts[r] for r in sorted(debts)]
 
     for hit in ordered:

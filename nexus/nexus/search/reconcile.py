@@ -171,7 +171,8 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
         from nexus.search.pairs import paired_chunks
         fill += [_as_hit(r) for r in await paired_chunks(
             result.hits, tenant, clearance, exclude_rids={f.rid for f in fill})]
-    packet = await assemble_packet(result.hits, result.graph, tenant, fill=fill)
+    packet = await assemble_packet(result.hits, result.graph, tenant, fill=fill,
+                                   clearance=clearance)
     if search_cfg.get("code_values") and question and pool is not None:
         try:
             packet.code_values = await code_values_for(

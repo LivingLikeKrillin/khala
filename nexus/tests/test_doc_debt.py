@@ -49,7 +49,7 @@ async def test_no_documents_touches_no_database(monkeypatch):
         raise AssertionError("빈 입력에 쿼리를 날렸다")
 
     monkeypatch.setattr(doc_debt.db, "fetch_all", _boom)
-    assert await doc_debt.debts_for_docs("t", []) == {}
+    assert await doc_debt.debts_for_docs("t", "INTERNAL", []) == {}
 
 
 async def test_a_failed_lookup_does_not_take_the_answer_down(monkeypatch):
@@ -59,7 +59,7 @@ async def test_a_failed_lookup_does_not_take_the_answer_down(monkeypatch):
         raise RuntimeError("relation does not exist")
 
     monkeypatch.setattr(doc_debt.db, "fetch_all", _boom)
-    assert await doc_debt.debts_for_docs("t", ["d1"]) == {}
+    assert await doc_debt.debts_for_docs("t", "INTERNAL", ["d1"]) == {}
 
 
 async def test_one_query_regardless_of_how_many_documents(monkeypatch):
@@ -69,11 +69,12 @@ async def test_one_query_regardless_of_how_many_documents(monkeypatch):
 
     async def _count(*a, **k):
         calls["n"] += 1
-        return [{"rid": f"d{i}", "title": f"문서{i}", "superseded_by_title": "", "same_title": 2}
+        return [{"rid": f"d{i}", "title": f"문서{i}", "superseded_by_title": "",
+                 "superseded": False, "same_title": 2}
                 for i in range(20)]
 
     monkeypatch.setattr(doc_debt.db, "fetch_all", _count)
-    out = await doc_debt.debts_for_docs("t", [f"d{i}" for i in range(20)])
+    out = await doc_debt.debts_for_docs("t", "INTERNAL", [f"d{i}" for i in range(20)])
 
     assert calls["n"] == 1
     assert len(out) == 20
@@ -88,7 +89,7 @@ async def test_an_empty_string_means_not_superseded(monkeypatch):
         return [{"rid": "d1", "title": "멀쩡한 문서", "superseded_by_title": "", "same_title": 1}]
 
     monkeypatch.setattr(doc_debt.db, "fetch_all", _rows)
-    assert await doc_debt.debts_for_docs("t", ["d1"]) == {}
+    assert await doc_debt.debts_for_docs("t", "INTERNAL", ["d1"]) == {}
 
 
 def test_the_same_title_is_not_repeated_once_per_document():
@@ -108,4 +109,4 @@ async def test_a_row_of_the_wrong_shape_does_not_take_the_answer_down(monkeypatc
         return [{"chunk_rid": "c1", "candidate": "Alpha"}]      # 다른 층의 행
 
     monkeypatch.setattr(doc_debt.db, "fetch_all", _wrong_shape)
-    assert await doc_debt.debts_for_docs("t", ["d1"]) == {}
+    assert await doc_debt.debts_for_docs("t", "INTERNAL", ["d1"]) == {}
