@@ -109,13 +109,15 @@ first, and each is enforced on every push rather than remembered.
 | **Declared index generations** | Ingestion whose resolved embedding generation differs from the corpus's declared one | A documented command, run from the host, wrote vectors into a column no query reads. Nothing failed. |
 | **Pre-registered verdict rules** | An evaluation harness edited after seeing the score it produced | Evaluation labels are signed, and the rule that decides the verdict is written down before the run. |
 
-Roughly 1,900 test functions run across 17 CI jobs, including a job that runs the
-database-backed suite against a real Postgres with migrations applied — added after the
-discovery that those tests had never executed at all. Governance artifacts (10 ADRs,
-49 SPECs) are stamped and checked for integrity in CI.
+2,585 test functions and 17 CI jobs, including a job that runs the database-backed
+suite against a real Postgres with migrations applied — added after the discovery that
+those tests had never executed at all. Governance artifacts (10 ADRs, 52 SPECs) are
+stamped and checked for integrity in CI. Those four numbers are verified on every push
+by `scripts/check_readme_counts.py`; they drifted once, and a hand-mirrored count in
+this repository has never stayed true on its own.
 
 **[→ Engineering log](https://livinglikekrillin.github.io/khala/engineering-log/)** — a dated
-record of thirteen defects, how each surfaced, and what changed. It is the most useful
+record of what was wrong, how each defect surfaced, and what changed. It is the most useful
 page here for judging the project, because it is the one that reports what was wrong.
 
 Open items are counted rather than described, in [OPEN.md](./OPEN.md), so that it is

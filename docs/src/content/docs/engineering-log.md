@@ -959,3 +959,20 @@ Deleting does not stop the next person from writing it again. An AST walk now in
 ⛔ The reason it is AST and not a regex is written down beside it. This repo has been bitten by source-string checks — *the presence of a string does not mean the code ran*. But the property here **is the text itself**: a second copy can diverge whether or not it runs. The AST form ignores words inside comments and strings and survives different quoting or line breaks.
 
 Verified by restoring a copy on purpose and watching it go red.
+
+**Swept the stale claims, and gave the README a counter too (2026-09-02).** The external evaluation made *declaration versus code* its main product and named four drifts. All are now reflected.
+
+| claim | reality | done |
+|---|---|---|
+| seam map: *"four surfaces converge on `assemble_packet`"* | only streaming bypassed it | the convergence point is now `packet_for_answer`, pointing at the **check that counts surfaces** |
+| `hybrid.py`: *"BM25 + Vector + Graph 3-way fusion"* | graph is not in the fusion | `nexus/CLAUDE.md` had already been corrected; **this file had not** |
+| `ROADMAP`: *"RAG + GraphRAG"* | document entity extraction was retired | separated from the **OTel dual graph**, which is kept |
+| `README`: *roughly 1,900 test functions, 49 SPECs* | **2,585 · 52** | corrected, and a **counter now runs in CI** |
+
+## Only the README had no guard
+
+The evaluator's point was exact. This repo had already mis-stated the open-items count by incrementing it by hand — the same morning, reporting 26 where the real number was 21 — and put `check_open_counts.py` into CI for it. **The README carried the same kind of number with none of that protection.**
+
+`check_readme_counts.py` now verifies four figures (test functions, CI jobs, ADRs, SPECs) on every push. The counting rule lives **only in the checker**; the README carries values. Counting in both places would recreate the very illness.
+
+⚠ And the hand-counted *"record of thirteen defects"* lost its number entirely. What counts as a log entry is ambiguous — a heading, or a bold paragraph? — and adding a counter would pin that ambiguity into code. What cannot be counted is not counted.

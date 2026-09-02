@@ -129,6 +129,13 @@ jobs:
       - name: That check has teeth (struck rows, decisions, both directions)
         run: python -m pytest tests/test_open_counts.py -q
 
+      # README 도 손으로 세는 수를 들고 있었다 — 1,900 이라고 적힌 것이 실제로는 2,585 였다.
+      # `OPEN.md` 에는 보호가 있고 README 에는 없던 그 비대칭을 외부 평가가 지적했다(F4).
+      - name: README counts what it claims to count
+        run: python scripts/check_readme_counts.py
+      - name: That check has teeth (drift, thousands separator, missing sentence)
+        run: python -m pytest tests/test_readme_counts.py -q
+
       # 그 검사는 `.md` diff 만 본다. 규칙을 넣은 당일부터 어긴 자리는 diff 가 아니라
       # **에이전트의 보고 문장**이었고, 거기에는 아무 검사도 없었다. `Stop` 훅이 그 문을 단다.
       - name: The same rule, applied to what the agent says (Stop hook)
