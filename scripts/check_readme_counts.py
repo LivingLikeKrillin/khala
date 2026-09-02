@@ -29,8 +29,12 @@ def _test_functions() -> int:
 
     README 도 그렇게 읽히도록 "run across" 가 아니라 개수만 말한다.
     """
+    # ⛔ `--untracked` 가 있어야 한다 (실측 2026-09-02). 없으면 `git grep` 이 **추적된 파일만**
+    # 세고, 새 시험 파일을 만든 뒤 커밋 전에 돌리면 CI 와 다른 수가 나온다. 이 검사기가
+    # **자기 PR 에서 그 함정에 빠졌다** — 로컬 2,585 · CI 2,592. 무시된 파일은 여전히 안 센다.
     out = subprocess.run(
-        ["git", "grep", "-hoE", r"^\s*(async )?def test_[a-zA-Z0-9_]+", "--", "*.py"],
+        ["git", "grep", "--untracked", "-hoE",
+         r"^\s*(async )?def test_[a-zA-Z0-9_]+", "--", "*.py"],
         cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return len([ln for ln in out.stdout.splitlines() if ln.strip()])
 

@@ -976,3 +976,5 @@ The evaluator's point was exact. This repo had already mis-stated the open-items
 `check_readme_counts.py` now verifies four figures (test functions, CI jobs, ADRs, SPECs) on every push. The counting rule lives **only in the checker**; the README carries values. Counting in both places would recreate the very illness.
 
 ⚠ And the hand-counted *"record of thirteen defects"* lost its number entirely. What counts as a log entry is ambiguous — a heading, or a bold paragraph? — and adding a counter would pin that ambiguity into code. What cannot be counted is not counted.
+
+⭐ **And the counter caught me on its own pull request.** Locally it was green at 2,585; CI went red at 2,592 — `git grep` counts **tracked files only**, and the test file I had just written was not yet committed. Adding `--untracked` makes local and CI count the same set. **The counter's first defect was found by the counter.**
