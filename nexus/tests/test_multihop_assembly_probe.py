@@ -122,3 +122,33 @@ def test_totals_counts_each_group_separately():
     assert t["multihop"] == {"covered": 1, "n": 2}
     assert t["policy"] == {"covered": 1, "n": 1}
     assert t["median_chars"] == 20
+
+
+# ── 사람이 읽는 표가 반대를 말하지 않는가 ────────────────────────────────────
+#
+# 첫 판은 비율을 그대로 백분율로 찍었다: 0.706 → `+71%`, 1.00 → `+100%`, 거기에 문자열 치환을
+# 덧대 `+00%` 를 만들었다. **근거가 3할 줄어든 실험군이 7할 늘어난 것처럼** 보였다. 판정은 원래
+# 값으로 계산하므로 결과는 안 틀렸지만, 표가 반대를 말하면 그 표를 근거로 다음 결정이 난다.
+
+from scripts.multihop_assembly_probe import cost_delta  # noqa: E402
+
+
+def test_the_base_arm_shows_no_change():
+    assert cost_delta(15292, 15292) == "+0%"
+
+
+def test_a_smaller_arm_reads_as_a_decrease():
+    assert cost_delta(10796, 15292) == "-29%"
+
+
+def test_a_bigger_arm_reads_as_an_increase():
+    assert cost_delta(19533, 15292) == "+28%"
+
+
+def test_the_ceiling_reads_as_the_number_it_was_registered_as():
+    """+50% 로 박아 둔 상한이 표에서도 +50% 로 읽혀야 한다."""
+    assert cost_delta(1000 * COST_CEILING, 1000) == "+50%"
+
+
+def test_a_zero_base_says_so_instead_of_dividing():
+    assert cost_delta(100, 0) == "?"
