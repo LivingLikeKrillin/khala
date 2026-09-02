@@ -22,7 +22,7 @@
 
 | 프로젝트 | 역할 | 기술 |
 |---------|------|------|
-| **Nexus** | 근거 기반 지식 검색 시스템 (RAG + GraphRAG) | Python, FastAPI, PostgreSQL, mecab-ko |
+| **Nexus** | 근거 기반 지식 검색 시스템 (RAG). ⚠ 예전 표기는 `RAG + GraphRAG` 였는데 **문서 엔티티 추출 GraphRAG 는 내리기로 확정**됐고 데이터도 사실상 없다(엔티티 5·엣지 1). 유지 대상은 **OTel 설계-관측 이중 그래프**이고 그것은 다른 것이다 | Python, FastAPI, PostgreSQL, mecab-ko |
 | **Observer** | 플랫폼 인식 PR 분석 + API 검증 도구 | TypeScript, Node.js, MCP |
 
 Observer는 Nexus 없이도 100% 동작한다. Nexus가 있으면 조직 맥락이 풍부해진다.

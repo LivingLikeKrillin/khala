@@ -1,4 +1,8 @@
-"""BM25 + Vector + Graph 3-way 병렬 검색 + RRF Fusion.
+"""BM25 + Vector 병렬 검색 + RRF Fusion.
+
+⛔ **그래프는 융합에 들어가지 않는다.** 이 줄이 오래 `"BM25 + Vector + Graph 3-way"` 였고
+`nexus/CLAUDE.md` 는 이미 정정했는데 이 파일만 그대로였다(외부 평가 P4). 그래프는 라우터가
+고른 경로에서 **따로** 조회되어 근거에 붙고, RRF 는 두 다리만 융합한다.
 
 모든 검색은 base_filter(tenant, classification, quarantine, status)를 적용한다.
 """

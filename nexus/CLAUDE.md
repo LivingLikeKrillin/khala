@@ -68,7 +68,7 @@
 | 벡터 컬럼 선택 | `index/vector_index.py` (`configured_column`/`VECTOR_COLUMNS`) | 화이트리스트 밖이면 기동 실패 |
 | 적재 (모든 경로) | `ingest/pipeline.py` (`run_ingest`) | CLI·HTTP·A2A·Notion 이 전부 여기로 모이므로 세대 게이트가 한 곳이면 된다 |
 | 출처 등급 표기 | `search/provenance.py` | 프롬프트·응답·MCP·웹이 같은 어휘를 써야 한다. 사본 금지 |
-| 근거에 무언가 덧붙이기 | `search/evidence_packet.py` (`assemble_packet`) | 네 표면(web API ×2·A2A·CLI)이 전부 여기로 모인다. 표면마다 붙이면 하나가 조용히 빠진다 |
+| 근거에 무언가 덧붙이기 | `search/reconcile.py` (`packet_for_answer`) | 네 표면(web API ×2·A2A·CLI)이 전부 여기로 모인다. 표면마다 붙이면 하나가 조용히 빠진다 — **2026-09-02 에 실제로 그랬다**: 스트리밍 경로가 `assemble_packet` 을 직접 불러 정정·짝·코드 값이 웹 채팅에서만 빠졌다(외부 평가 F2). 지금은 `tests/test_answer_surfaces_share_the_seam.py` 가 표면을 센다 |
 | 앵커 상태 판정 | `index/anchors.py` (`status_from_counts`) | 재검사(CLI)와 요청 경로(`search/anchor_status.py`)가 같은 규칙을 써야 한다 |
 | clearance 판정 | `auth/clearance.py` | 정본 하나. 사본을 만들면 두 답이 생긴다 |
 | 답변이 맞았는지 채점 | `scripts/ko_eval_answer_quality.py` | 답변 채점기는 **이미 있다** — 새로 쓰지 마라. `facts_present`=값이 어딘가 있는가, `asserts_value`=답으로 내세웠는가(단일 값 질문 전용). 2026-08-26 에 이것을 모르고 부분일치 채점기를 다시 썼고, 그 채점기는 천장에 붙어 아무것도 못 측정했다 |
