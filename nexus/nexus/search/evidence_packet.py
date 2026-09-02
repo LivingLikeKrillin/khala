@@ -50,6 +50,10 @@ class EvidenceSnippet:
     #: 이 문단이 부르는데 **코드에서 지워진** 이름들(마이그레이션 029). 앵커와 나란히 두되
     #: 섞지 않는다 — 하나는 걸린 참조, 하나는 걸 곳이 사라진 참조다.
     code_deleted: list[DeletedMention] = field(default_factory=list)
+    #: 이 조각이 **어느 코퍼스에서 왔는가** (`search/evidence_share.py`). 답변이 실제로 무엇에
+    #: 기댔는지는 히트가 아니라 **패킷**에서 세어야 한다 — 채운 절·짝 문서·정정 확인 패스가
+    #: 랭킹을 거치지 않고 여기 들어오기 때문이다.
+    tenant: str = ""
 
 
 @dataclass
@@ -137,6 +141,7 @@ async def assemble_packet(
             section_path=hit.section_path,
             source_uri=hit.source_uri,
             text=hit.snippet,
+            tenant=getattr(hit, "tenant", "") or "",
             full_text=getattr(hit, "chunk_text", "") or hit.snippet,
             score=hit.score,
             classification=hit.classification,

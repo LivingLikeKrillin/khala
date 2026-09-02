@@ -669,6 +669,9 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
 
         sig = extract_signals(
             search_result, answer_result, path="search_answer",
+            # 근거 점유율은 **패킷**에서 센다 (SPEC-nexus-design-corpus-cutover §5.3). 히트만
+            # 세면 채운 절·짝 문서·정정 확인 패스가 빠져 답변이 기댄 코퍼스를 과소평가한다.
+            evidence=packet.snippets,
             tenant=req.tenant, read_scope=_scope,
             clearance=req.classification_max, query=req.query,
             n_entities=len(entity_rids),
@@ -1178,6 +1181,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             _u = usage_out[0] if usage_out else None   # 성공 완료 시 Usage(토큰 None 가능), 실패 시 없음
             sig = extract_signals(
                 search_result, None, path="search_answer_stream",
+                # 근거 점유율은 패킷에서 센다 (§5.3) — 히트만 세면 채움·짝·정정이 빠진다.
+                evidence=packet.snippets,
                 tenant=req.tenant, clearance=req.classification_max, query=req.query,
                 n_entities=len(entity_rids),
                 fusion_channels=len(channels or [1]),

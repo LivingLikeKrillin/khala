@@ -77,7 +77,7 @@ async def fill_for_docs(
     rows = await db.fetch_all(
         f"""
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.classification,
-               c.provenance_tier, c.chunk_index, c.source_uri, c.source_version,
+               c.provenance_tier, c.chunk_index, c.source_uri, c.source_version, c.tenant,
                d.title AS doc_title, d.approved_hash, d.doc_type, d.updated_at,
                coalesce(d.n_images, 0) AS n_images,
                count(*) OVER (PARTITION BY c.doc_rid) AS doc_chunks
@@ -126,7 +126,7 @@ async def fill_for_sections(
     rows = await db.fetch_all(
         f"""
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.classification,
-               c.provenance_tier, c.chunk_index, c.source_uri, c.source_version,
+               c.provenance_tier, c.chunk_index, c.source_uri, c.source_version, c.tenant,
                d.title AS doc_title, d.approved_hash, d.doc_type, d.updated_at,
                coalesce(d.n_images, 0) AS n_images,
                count(*) OVER (PARTITION BY c.doc_rid, c.section_path) AS section_chunks

@@ -342,6 +342,9 @@ def query(
         from nexus.search.signals import JudgeInput, extract_signals, record_search
         sig = extract_signals(
             result, answer_result, path="cli",
+            # 근거 점유율은 패킷에서 센다 (§5.3). 답변을 안 만든 실행에는 패킷이 없고,
+            # 그때는 히트로 떨어진다 — 그 실행에는 채움·짝·정정도 없었으므로 같은 값이다.
+            evidence=packet.snippets if answer_result is not None else None,
             tenant=tenant, clearance="INTERNAL", query=q,
             n_entities=len(entity_rids),
             latency_ms=int((time.time() - _t0) * 1000),
@@ -978,6 +981,40 @@ def persistence_health() -> None:
             await db.close_pool()
 
     _run(_run_check())
+
+
+@app.command("evidence-share")
+def evidence_share_cmd(
+    days: int = typer.Option(30, "--days", "-d", help="최근 며칠"),
+    path: str = typer.Option("", "--path", help="이 경로만 (search_answer · cli · a2a …)"),
+) -> None:
+    """근거가 **실제로 어느 코퍼스에서 왔는가** — 질문당 테넌트별 조각 수의 분포.
+
+    ⛔ `read_scope` 는 **읽을 수 있었던** 범위이고 이것은 **읽은 것**이다. 범위를 넓혀 놓고
+    근거가 여전히 한쪽에서만 오는 상태를, 그 칸으로는 고르게 오는 상태와 못 가른다
+    (SPEC-nexus-design-corpus-cutover §5.3).
+
+    **첫 회차는 관측이다.** 문턱을 두지 않는다 — 이 분포를 보고 사람이 정한다. 측정해 본 적
+    없는 수로 문을 만드는 것이 이 리포가 반복한 실수이고, 임계는 곧 또 하나의 안 읽는
+    신호가 된다.
+    """
+
+    async def _do() -> None:
+        from nexus import db
+        from nexus.search.evidence_share import summarize
+
+        try:
+            rows = await db.fetch_all(
+                "SELECT evidence_tenants FROM search_log "
+                "WHERE ts > now() - ($1 || ' days')::interval "
+                "  AND ($2 = '' OR path = $2) "
+                "ORDER BY ts DESC",
+                str(days), path)
+            typer.echo(summarize([r["evidence_tenants"] for r in rows]))
+        finally:
+            await db.close_pool()
+
+    _run(_do())
 
 
 @app.command("entropy-signals")

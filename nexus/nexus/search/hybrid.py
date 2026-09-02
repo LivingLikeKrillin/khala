@@ -65,6 +65,13 @@ class SearchHit:
     approved_hash: str = ""  # documents.approved_hash — accountable-review stamp (SPEC §5.4)
     doc_type: str = ""  # documents.doc_type — 축-A 타입(S3 intake 보존)
     updated_at: datetime | None = None  # documents.updated_at — 신선도 판정용(SPEC-nexus-answer-staleness-warning)
+    #: 이 청크가 **어느 코퍼스에서 왔는가** (SPEC-nexus-design-corpus-cutover §5.3).
+    #:
+    #: 읽기 범위가 목록이 된 뒤로 한 답변의 근거는 여러 테넌트에서 온다. `search_log.tenant` 는
+    #: 귀속용 단일 값이고 `read_scope` 는 **읽을 수 있었던** 범위라, 둘 다 *"이 답이 실제로 어느
+    #: 코퍼스에 기댔는가"* 를 말하지 못한다 — 범위를 넓혀 놓고 근거가 한쪽에서만 오는 상태와
+    #: 고르게 오는 상태가 기록에서 같아 보인다. 그 차이가 여기 있다.
+    tenant: str = ""
 
 
 @dataclass
@@ -452,7 +459,7 @@ async def _enrich_hits(
     rows = await db.fetch_all(
         f"""
         SELECT c.rid, c.doc_rid, c.section_path, c.chunk_text, c.source_uri,
-               c.classification, c.source_version,
+               c.classification, c.source_version, c.tenant,
                d.title as doc_title, d.approved_hash as approved_hash,
                d.doc_type as doc_type, d.updated_at as updated_at,
                coalesce(d.n_images, 0) as n_images,
@@ -490,6 +497,7 @@ async def _enrich_hits(
             approved_hash=r["approved_hash"] or "",
             doc_type=r["doc_type"] or "",
             updated_at=r["updated_at"],
+            tenant=r["tenant"] or "",
         ))
 
     return hits
@@ -552,6 +560,7 @@ async def _fill_sections(
         approved_hash=r["approved_hash"] or "",
         doc_type=r["doc_type"] or "",
         updated_at=r["updated_at"],
+        tenant=r["tenant"] or "",
     ) for r in rows]
 
 

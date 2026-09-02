@@ -651,3 +651,24 @@ Three fixes:
 3. The false sentence is gone. That paragraph now names what actually guards the property.
 
 ⛔ **A closed item had to be reopened.** On 09-01 I closed one saying *"pair expansion now sees `specs/` and `plans/` in the design corpus"*. It had never run on the human surface — the live log holds `pair_expansion_failed` and no record of a success. **The evidence for closing it was one CLI path, and that is the only path that passes the tenant as a string.**
+
+**The scope was widened, and nothing recorded whether that paid off (2026-09-02).** After the cutover, Slack reads the design corpus directly. But no column said *what a given answer actually leaned on*:
+
+| Column | What it says | What it cannot say |
+|---|---|---|
+| `search_log.tenant` | who it is **attributed** to (single value) | where the evidence came from |
+| `search_log.read_scope` | what it was **allowed** to read | what it actually read |
+
+⇒ **A widened scope whose evidence still comes from one side** looks identical, in the record, to one that draws evenly. Those two columns cannot tell you whether the cutover delivered anything.
+
+So `evidence_tenants` was added (migration 038): per question, the **count of evidence pieces per tenant**.
+
+⭐ **It counts the packet, not the hits.** That is the value of this entry. The first live row reads `n_snippets=10` and `default:18` — filled sections, mate documents, and the correction pass enter the evidence without going through ranking. Counting hits would have answered "what did this lean on" while **missing 44% of the evidence**, and those three are exactly what the cutover pulls from the design corpus.
+
+**Counts, not ratios.** A ratio erases its denominator — `1.00` looks the same whether it stands on one piece or twenty. Counts give you the ratio whenever you want it; the reverse does not hold.
+
+⛔ **And the first version printed `100.0%` off a single row.** A one-question ratio, and it looked quotable. That is twice this week for the same class of mistake (misreading 62 hours in the persistence signal; comparing two batch fractions by eye). So below ten questions it prints **no percentages at all** — counts only. The repo had already settled that discipline once.
+
+No threshold. §5.3 says the first round is observation and the threshold comes from looking at the distribution, and that is what it does.
+
+⚠ That SPEC also says, in §5.4, that the column and migration number are to be **recorded in the SPEC itself**. They cannot be. An approved body is frozen at the bytes it was signed on; touching it breaks the stamp — a rule this repo learned by turning master red fifteen times in a row over a single footnote. The numbers live in the migration file and the open-items list, not in the SPEC. **The template is making a promise it cannot keep.**
