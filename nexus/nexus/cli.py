@@ -959,6 +959,27 @@ def sources_health(tenant: str = typer.Option("default", "--tenant", "-t")) -> N
         raise typer.Exit(1)
 
 
+@app.command("persistence-health")
+def persistence_health() -> None:
+    """best-effort 적재가 아직 살아 있는가 — 표별 마지막 적재 시각.
+
+    ⛔ `search_log` 가 34시간 죽어 있었는데 검사 1,800개가 초록이었다. 실패 경고는 로그에
+    찍혔지만 **아무도 안 읽었다.** 이 명령은 그 자리를 사람이 볼 수 있게 한다.
+    """
+
+    async def _run_check() -> None:
+        from nexus import db
+        from nexus.health.persistence import check, describe
+
+        await db.get_pool()
+        try:
+            typer.echo(describe(await check()))
+        finally:
+            await db.close_pool()
+
+    _run(_run_check())
+
+
 @app.command("entropy-signals")
 def entropy_signals(
     tenant: str = typer.Option("", "--tenant", "-t", help="이 테넌트만. 비우면 전부"),

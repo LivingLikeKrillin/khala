@@ -611,3 +611,21 @@ That changes the treatment. If the problem were silence, the answer would be to 
 Separately, fixing the schema in one place was not enough, and CI caught it: the runtime `ensure_search_log()` carries the ALTER, but CI builds its Postgres from `init.sql` and has tests that never call that function. **The schema has to match in three places** — the init file, a migration, and the runtime DDL.
 
 ⛔ And I merged with a check still red. Two were still running when my wait loop gave up, and one of them then failed. Second time this round.
+
+**I misread the health signal within minutes of building it (2026-09-02).** After the search log went unnoticed for 34 hours, I added a command that shows the last write time per sink.
+
+The first version printed only the age. Looking at it, I read `search_answer_text` sitting at **two rows and 62 hours** as a second defect. It was not — that table is only written when Slack answers something, and no Slack question had been asked. It was fine.
+
+⇒ **"nothing arriving" cannot distinguish "dead" from "quiet".** A signal that prints only an age leads its reader into exactly that misreading. So each sink now states **what drives it**, and a test enforces that.
+
+```
+search_log  1072 rows · last (1.1h ago)
+    search and answer signals — driven by: every search and answer — little reason to be quiet
+
+search_answer_text  2 rows · last (62.1h ago)
+    answer text retention — driven by: only when Slack answers — silence is normal with no questions
+```
+
+No thresholds. **A threshold becomes one more signal nobody reads** — which is precisely what caused the defect this was built for.
+
+Also: I got the dataclass field order wrong **twice** in the same file, putting a defaulted field ahead of undefaulted ones. The second time it went into a comment.
