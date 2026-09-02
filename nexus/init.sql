@@ -438,6 +438,9 @@ CREATE TABLE IF NOT EXISTS search_log (
     ts              TIMESTAMPTZ NOT NULL DEFAULT now(),
     path            TEXT NOT NULL,
     tenant          TEXT,
+    -- 이 조회가 실제로 읽은 테넌트들. `tenant` 는 귀속용 단일 값이라 교차 테넌트
+    -- 조회를 구별하지 못한다 (migration 037).
+    read_scope      TEXT,
     clearance       TEXT,
     route           TEXT,
     query_sha256    TEXT NOT NULL DEFAULT '',

@@ -1,0 +1,12 @@
+-- 이 조회가 **실제로 읽은 테넌트들**.
+--
+-- ⛔ `search_log.tenant` 는 귀속용 단일 값이라 교차 테넌트 조회를 구별하지 못한다. 슬랙이
+-- `design_docs` 를 읽어도 행에는 `default` 만 남고, demand-pull 판단이 *"설계 코퍼스는
+-- 아무도 안 본다"* 로 읽힌다 — 컷오버가 자기를 정당화할 측정을 오염시키며 시작하는 셈이다
+-- (SPEC-nexus-design-corpus-cutover §5.4).
+--
+-- ⚠ 런타임 `ensure_search_log()` 에도 같은 ALTER 가 있지만 **그것만으로는 모자랐다**:
+-- CI 의 Postgres 는 `init.sql` 로 스키마를 만들고 `ensure_search_log()` 를 부르지 않는
+-- 검사가 있어서, 컬럼 없이 INSERT 가 터졌다. 스키마는 **세 곳이 같아야 한다** —
+-- `init.sql` · 마이그레이션 · 런타임 DDL.
+ALTER TABLE search_log ADD COLUMN IF NOT EXISTS read_scope TEXT;

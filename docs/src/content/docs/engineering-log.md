@@ -603,3 +603,11 @@ The root cause is fixed rather than patched: nothing puts a list into a field ty
 Four tests now run against a real Postgres, one of them the test that would have caught this: **the row actually lands, the count goes up by one, and the scope is on it.** None of the previous 1,800 asked whether anything arrives.
 
 ⛔ And the same shape sits elsewhere — answer-text retention, feedback, the audit trail, the access counter. All best-effort, all able to die quietly. Filed.
+
+**Correcting the previous entry's diagnosis (same day).** It said the failure went nowhere, not even to the log. Wrong — a `search.signal.persist_failed` warning **was written at the time.** I missed it for a dull reason: the event was 34 hours old and I looked at the last two hours.
+
+That changes the treatment. If the problem were silence, the answer would be to make failures louder. The actual problem is **a warning that was written and never read**, and the answer to that is a health signal on the last write time. Making the warning louder does nothing when nobody is reading.
+
+Separately, fixing the schema in one place was not enough, and CI caught it: the runtime `ensure_search_log()` carries the ALTER, but CI builds its Postgres from `init.sql` and has tests that never call that function. **The schema has to match in three places** — the init file, a migration, and the runtime DDL.
+
+⛔ And I merged with a check still red. Two were still running when my wait loop gave up, and one of them then failed. Second time this round.
