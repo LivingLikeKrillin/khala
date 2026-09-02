@@ -272,8 +272,80 @@ def test_the_accumulated_log_carries_the_same_conditions(tmp_path):
     s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
                      [["100"]], known_titles=TENANT_TITLES)
     args = _args_full(tmp_path)
-    run.append_run(args, SimpleNamespace(model="m"), _summary(s), [s], {})
+    run.append_run(args, SimpleNamespace(model="m"), _summary(s), [s], {}, answerable=1)
 
     row = json.loads((tmp_path / "runs.jsonl").read_text(encoding="utf-8").splitlines()[-1])
     assert row["clearance"] == "RESTRICTED"
     assert row["answer_prompt_sha"]
+
+
+# ── 평가가 피측정 대상을 바꾸지 않는가 (2026-09-02, 외부 평가 F5) ─────────────
+#
+# 산출물은 라벨 파일 옆에 앉고 Pack A 에서는 그 자리를 git 이 추적한다. 즉 **기본값이 리포를
+# 고친다.** 외부 평가자가 이 하니스를 돌렸을 때 추적되는 누적 로그에 네 줄이 들어가 되돌려야
+# 했다. 평가가 피측정 대상을 바꾸면 그 평가는 자기 자신을 조건으로 갖는다.
+
+
+def test_out_dir_moves_both_artifacts_off_the_tracked_directory(tmp_path):
+    """격리 실행 — 리포트도 누적 로그도 라벨 옆을 떠난다. 하나만 옮기면 절반만 격리된다."""
+    labels = tmp_path / "labels" / "answer-labels.yaml"
+    labels.parent.mkdir()
+    _write_labels(labels)
+    scratch = tmp_path / "scratch"
+
+    report, runs = run.resolve_paths(labels, "r1", scratch)
+    assert report.parent == scratch and runs.parent == scratch
+    assert report.name.startswith("packa-") and runs.name == "packa-answer-runs.jsonl"
+
+
+def test_without_out_dir_the_artifacts_still_live_beside_their_labels(tmp_path):
+    """격리는 **고르는 것**이지 새 기본값이 아니다 — 완주한 회차는 계속 정본 자리에 쌓여야 한다."""
+    labels = _write_labels(tmp_path / "answer-labels.yaml")
+    report, runs = run.resolve_paths(labels, "r1", None)
+    assert report.parent == tmp_path and runs.parent == tmp_path
+
+
+def test_a_partial_run_writes_nothing_to_the_accumulated_log(tmp_path):
+    """`--limit` 로 잘린 회차는 잡음 폭이 아니다.
+
+    누적 로그의 용도는 **같은 입력의 반복**에서 폭을 뽑는 것 하나다. 부분 회차가 섞이면 줄을 다
+    읽어 평균을 내는 집계가 조용히 틀리고, 틀렸다는 표시가 파일 안에 없다.
+
+    막는 자리를 **쓰는 함수 안**에 두었는지 이 검사가 확인한다 — 호출자가 분기하는 모양이면
+    호출자 하나가 잊는 순간 규칙이 없어진다.
+    """
+    s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
+                     [["100"]], known_titles=TENANT_TITLES)
+    args = _args_full(tmp_path)
+    why = run.append_run(args, SimpleNamespace(model="m"), _summary(s), [s], {}, answerable=40)
+
+    assert why and "1/40" in why
+    assert not (tmp_path / "runs.jsonl").exists(), "부분 회차가 잡음 폭 파일에 앉았다"
+
+
+def test_a_complete_run_is_recorded_and_says_so_by_returning_nothing(tmp_path):
+    s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
+                     [["100"]], known_titles=TENANT_TITLES)
+    args = _args_full(tmp_path)
+    assert run.append_run(args, SimpleNamespace(model="m"),
+                          _summary(s), [s], {}, answerable=1) is None
+    assert (tmp_path / "runs.jsonl").exists()
+
+
+def test_the_rule_is_stated_once_and_both_readers_get_the_same_answer():
+    """실행 시작의 예고와 실제 차단이 같은 규칙에서 와야 한다 — 둘이 갈리면 예고가 거짓말한다."""
+    assert run.ledger_blocked(40, 40) is None
+    assert run.ledger_blocked(41, 40) is None      # 라벨이 줄어도 완주는 완주다
+    assert run.ledger_blocked(5, 40)
+
+
+def test_the_report_directory_is_created_where_the_report_actually_goes(tmp_path, monkeypatch):
+    """`--out-dir` 이 없는 디렉터리를 가리키면, 쓰기는 LLM 값이 이미 나간 뒤에 터진다."""
+    monkeypatch.setattr(run, "LOCAL_DIR", tmp_path / "never-used")
+    args = _args_full(tmp_path)
+    args.report = tmp_path / "brand" / "new" / "report.json"
+    s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
+                     [["100"]], known_titles=TENANT_TITLES)
+    run._write_report(args, {"revision": 9}, SimpleNamespace(model="m"),
+                      _summary(s), [{"qid": "a"}], partial=False)
+    assert args.report.exists()
