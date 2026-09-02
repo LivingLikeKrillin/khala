@@ -35,3 +35,10 @@ nexus/.probe/
 
 # 에이전트 지식 접근 계수(훅 산출물) — 조직 어휘가 섞일 수 있어 남기지 않는다
 .khala/
+
+# 외부 평가 산출물 — **로컬 보관, 추적하지 않는다** (2026-09-02 소유자 지시).
+# 평가 계획·결과와 그 실행이 남긴 채점 산출물이다. 이 리포의 거버넌스 문서가 아니고,
+# 세 번이나 `git add -A` 로 무관한 커밋에 휩쓸렸다(평가서 자신이 F7 로 지적했다).
+audit/*-external-evaluation-*.md
+nexus/tests/eval/ko/*-ext-eval-*.json
+nexus/tests/eval/ko/*-ext-probe.json
