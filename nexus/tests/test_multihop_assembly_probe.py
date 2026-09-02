@@ -175,3 +175,35 @@ async def test_a_query_with_no_requirements_is_not_a_failure():
 
     out = await explain({"id": "x"}, [], ["default"], {}, None, None, None)
     assert out["missing_groups"] == 0
+
+
+# ── 한 다리에만 잡힌 청크 (2026-09-02) ───────────────────────────────────────
+#
+# 실측: 정답 청크가 벡터 다리에서 **8위**인데 융합 뒤 **15위**였다. BM25 후보 풀(20) 밖이라
+# 한 다리에서만 들어왔고, 융합은 두 다리가 합의한 청크를 위로 올린다. m01 은 BM25 전체 순위
+# **21위** — 풀을 **한 자리** 차이로 놓쳤다(점수 0.30696 vs 20위 0.31138).
+
+from scripts.multihop_assembly_probe import one_leg_only  # noqa: E402
+
+
+def test_a_chunk_in_both_pools_is_not_one_leg_only():
+    assert not one_leg_only({"bm25_rank": 3, "vector_rank": 8})
+
+
+def test_a_chunk_only_the_vector_leg_found_is_flagged():
+    """m01 이 정확히 이 모양이다 — 벡터 8위, BM25 풀 밖."""
+    assert one_leg_only({"bm25_rank": None, "vector_rank": 8})
+
+
+def test_a_chunk_only_the_keyword_leg_found_is_flagged_too():
+    """반대 방향도 같은 결함이다 — 한쪽만 보면 벡터 세대 사고를 놓친다."""
+    assert one_leg_only({"bm25_rank": 4, "vector_rank": None})
+
+
+def test_a_chunk_neither_leg_found_is_not_a_fusion_problem():
+    """양쪽 다 못 잡았으면 융합 탓이 아니다 — 처방이 다르므로 같은 이름으로 부르면 안 된다."""
+    assert not one_leg_only({"bm25_rank": None, "vector_rank": None})
+
+
+def test_missing_keys_do_not_crash_the_diagnosis():
+    assert not one_leg_only({})

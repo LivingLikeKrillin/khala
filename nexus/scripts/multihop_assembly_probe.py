@@ -118,6 +118,36 @@ def totals(rows: list[dict]) -> dict:
     return out
 
 
+def one_leg_only(holder: dict) -> bool:
+    """이 청크가 **한 다리에만** 잡혔는가.
+
+    융합(RRF)은 순위만 쓰므로 두 다리가 합의한 청크가 유리하다. 한 다리에서 8위인 청크가 융합
+    뒤 15위로 내려가는 것이 그래서다 — 조립 실패를 '랭킹이 나쁘다' 로 뭉뚱그리면 이 구별이
+    사라진다. `SPEC-nexus-bm25-length-normalization` §2 가 같은 기제를 이미 이름 붙여 두었다.
+    """
+    return (holder.get("bm25_rank") is None) != (holder.get("vector_rank") is None)
+
+
+async def leg_ranks(query: str, rid: str, tenant: list[str], cfg, svc) -> dict:
+    """이 청크가 **각 다리의 후보 풀 안에** 있는가. 융합(RRF)은 순위만 쓴다.
+
+    한 다리에만 있는 청크는 두 다리가 합의한 청크에 밀린다 — 그래서 "다리 하나에서 8위" 가
+    "융합 뒤 15위" 가 된다. 이 값이 없으면 조립 실패가 *어느 다리의 문제인지* 못 가른다.
+    `SPEC-nexus-bm25-length-normalization` §2 가 같은 기제를 이미 이름 붙여 두었다.
+    """
+    from nexus.index.vector_index import configured_column
+    from nexus.search import hybrid
+
+    s = cfg.get("search") or {}
+    bm, _ = await hybrid._bm25_search(query, tenant, "INTERNAL", s.get("bm25_top_k", 20))
+    vec, _ = await hybrid._vector_search(query, svc, tenant, "INTERNAL",
+                                         s.get("vector_top_k", 20),
+                                         column=configured_column(cfg))
+    return {"bm25_pool": len(bm), "vector_pool": len(vec),
+            "bm25_rank": next((r for x, r in bm if x == rid), None),
+            "vector_rank": next((r for x, r in vec if x == rid), None)}
+
+
 async def explain(q: dict, present: list[bool], tenant: list[str], cfg, svc, search, con) -> dict:
     """이 질의의 요구가 왜 안 왔는가 — **관측만** 한다. 판정도 처방도 없다.
 
@@ -145,7 +175,7 @@ async def explain(q: dict, present: list[bool], tenant: list[str], cfg, svc, sea
         # 요구의 후보 중 **아무거나 하나**를 담은 활성 청크. 후보는 같은 사실의 다른 표기이므로
         # 어느 것이 걸리든 그 사실이 사는 자리는 같다.
         rows = await con.fetch(
-            "SELECT c.doc_rid, c.section_path, d.title, "
+            "SELECT c.rid, c.doc_rid, c.section_path, d.title, "
             "       (SELECT count(*) FROM chunks x WHERE x.tenant = c.tenant "
             "          AND x.doc_rid = c.doc_rid AND x.status = 'active' "
             "          AND x.is_quarantined = false) AS doc_chunks "
@@ -163,6 +193,7 @@ async def explain(q: dict, present: list[bool], tenant: list[str], cfg, svc, sea
                 "doc_chunks": r["doc_chunks"],
                 "over_max_doc_chunks": r["doc_chunks"] > section_fill.MAX_DOC_CHUNKS,
                 "section_is_a_hit_section": r["section_path"] in sections,
+                **await leg_ranks(q["query"], r["rid"], tenant, cfg, svc),
             })
     return out
 
@@ -282,6 +313,10 @@ async def _run(args) -> int:
                      if h["over_max_doc_chunks"] else "")
                   + " · 그 절이 상위 히트의 절인가: "
                   + ("예" if h["section_is_a_hit_section"] else "아니오"))
+            print(f"      다리별 후보 풀 — BM25 {h['bm25_rank'] or '밖'}/{h['bm25_pool']} · "
+                  f"벡터 {h['vector_rank'] or '밖'}/{h['vector_pool']}"
+                  + ("  ⇒ **한 다리에만 있다** — 융합이 두 다리 합의를 이기지 못한다"
+                     if one_leg_only(h) else ""))
     print(f"  판정: {v['reason']}")
     if v["candidates"]:
         print(f"  후보: {v['candidates']}")
