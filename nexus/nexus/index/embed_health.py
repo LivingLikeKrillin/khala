@@ -56,21 +56,21 @@ async def fetch_refusals(column: str, *, tenant: str | None = None, limit: int =
 
 
 async def fetch_coverage_by_tenant() -> list[dict]:
-    """테넌트별 · 다리별 커버리지 (SPEC-nexus-embedding-cutover-seam §4.2,
+    """테넌트별 · 경로별 커버리지 (SPEC-nexus-embedding-cutover-seam §4.2,
     SPEC-nexus-index-completeness §3.1).
 
-    **집계 쿼리 하나**로 두 벡터 컬럼과 키워드 다리를 함께 센다 — `/status` 가 테넌트마다 쿼리를
+    **집계 쿼리 하나**로 두 벡터 컬럼과 키워드 경로를 함께 센다 — `/status` 가 테넌트마다 쿼리를
     날리기 시작하면 "필드 하나 더" 가 조용히 팬아웃이 된다. 여기서 지키는 경계다.
 
-    커버리지가 보고돼야 하는 이유는 하나다: 컬럼이 비어 있으면 벡터 다리가 **예외 없이** 0행을
+    커버리지가 보고돼야 하는 이유는 하나다: 컬럼이 비어 있으면 벡터 경로가 **예외 없이** 0행을
     내고, 그 배포는 키워드 전용으로 답하면서 건강해 보인다.
 
     세 가지가 이 함수의 판정을 정한다 (index-completeness §3.1):
 
-    * **모집단은 다리가 실제로 읽는 것이다.** `status='active' AND NOT is_quarantined` 에
+    * **모집단은 경로가 실제로 읽는 것이다.** `status='active' AND NOT is_quarantined` 에
       **부모 문서가 active** 라는 조건이 붙는다 (ADR-0006 containment, `search/hybrid.py`).
-      죽은 문서 아래 살아있는 청크는 어느 다리도 읽지 않으므로, 세면 절대 안 꺼지는 구멍이 된다.
-    * **키워드 다리의 어두운 상태는 NULL 만이 아니다.** 형태소 분석기가 품사 화이트리스트로
+      죽은 문서 아래 살아있는 청크는 어느 경로도 읽지 않으므로, 세면 절대 안 꺼지는 구멍이 된다.
+    * **키워드 경로의 어두운 상태는 NULL 만이 아니다.** 형태소 분석기가 품사 화이트리스트로
       거르므로 토큰이 하나도 안 남으면 `''::tsvector` 가 저장된다 — NULL 이 아니면서 안 잡힌다.
       (그 함수 이름은 여기 적지 않는다: `test_tokenizer_seam` 은 문자열로 검사하고, 주석에
       적힌 이름과 우회하는 import 를 구별하지 못한다.)
@@ -78,7 +78,7 @@ async def fetch_coverage_by_tenant() -> list[dict]:
       표현하지 못한다. 768 세대에서 받은 웨이버가 1024 의 진짜 구멍을 가리게 둘 수 없다.
       개수는 `fetch_waived_count()` 로 **옆에** 보여 준다.
 
-    `gap_*` 는 `active - <다리>` 다. 빼기 한 번이지만 여기서 한다 — 읽는 쪽마다 다시 빼면
+    `gap_*` 는 `active - <경로>` 다. 빼기 한 번이지만 여기서 한다 — 읽는 쪽마다 다시 빼면
     "무엇에서 뺐는가" 가 곧 갈린다.
     """
     rows = await db.fetch_all(
@@ -117,12 +117,12 @@ async def fetch_coverage_by_tenant() -> list[dict]:
 
 
 async def fetch_unreachable_documents(limit_examples: int = 3) -> list[dict]:
-    """**어떤 다리도 읽을 수 없는 active 문서** — 테넌트별 개수와 예시.
+    """**어떤 경로도 읽을 수 없는 active 문서** — 테넌트별 개수와 예시.
 
     `fetch_coverage_by_tenant()` 의 사각지대다. 그 함수의 모집단은 *청크*라, 읽을 수 있는
     청크가 **0건인 문서**는 분모에도 분자에도 안 들어간다 → 커버리지 100% 로 건강하게 보인다.
-    같은 논리를 한 층 위에 적용한 것이 이 함수다: 컬럼이 비면 벡터 다리가 0행을 내듯,
-    청크가 없으면 **모든** 다리가 그 문서에 대해 0행을 낸다.
+    같은 논리를 한 층 위에 적용한 것이 이 함수다: 컬럼이 비면 벡터 경로가 0행을 내듯,
+    청크가 없으면 **모든** 경로가 그 문서에 대해 0행을 낸다.
 
     격리 문서는 뺀다 — 청크가 없는 것이 **의도**이고, 이미 `nexus status` 가 따로 센다.
     빼지 않으면 정상 상태가 매번 울려 경보가 무의미해진다.
@@ -192,7 +192,7 @@ async def log_embedding_coverage(column: str, config: dict | None = None) -> lis
             logger.error("embedding_column_empty", tenant=row["tenant"], column=column,
                          active=active,
                          hint="이 세대로 flip 했는데 재임베딩을 안 했을 때의 모양이다 — "
-                              "벡터 다리는 조용히 0행을 낸다")
+                              "벡터 경로는 조용히 0행을 낸다")
         elif embedded < active:
             logger.warning("embedding_coverage_partial", tenant=row["tenant"], column=column,
                            active=active, embedded=embedded, pending=active - embedded)

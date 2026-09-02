@@ -6,7 +6,7 @@
 
   1. 엔진·스코러가 다르다 — Nexus 는 Postgres `to_tsquery('simple', …)` + `ts_rank_cd`
      (nexus/search/hybrid.py), 여기는 OpenSearch `match` + BM25.
-  2. 질의 의미가 다르다 — Nexus 의 키워드 다리는 tokens_to_tsquery 조립에 좌우되고,
+  2. 질의 의미가 다르다 — Nexus 의 키워드 경로는 tokens_to_tsquery 조립에 좌우되고,
      `match` 는 OR 이다.
   3. 코퍼스(5문서)가 조회 창(size=20)보다 작다 — **미스가 구조적으로 거의 불가능하다.**
      그래서 '미스 0' 은 결과가 아니라 산술이다.

@@ -1,10 +1,10 @@
-"""키워드 다리의 길이 보정 — `ts_rank_cd` 정규화 인자 비교. **읽기 전용, 지출 0.**
+"""키워드 경로의 길이 보정 — `ts_rank_cd` 정규화 인자 비교. **읽기 전용, 지출 0.**
 
 규칙은 측정 전에 `tests/eval/bm25-normalization/README.md` 에 박혔다.
 
-**제품 경로를 1차 지표로 쓴다.** A13 평가 하니스는 다리별로 쟀는데 제품은 RRF 융합 + 다양화 + top_k
+**제품 경로를 1차 지표로 쓴다.** A13 평가 하니스는 경로별로 쟀는데 제품은 RRF 융합 + 다양화 + top_k
 컷을 쓴다 — 그래서 "측정해서 이겼는데 답이 안 바뀌는" 자리가 나왔다. 여기서는 `hybrid_search()`
-의 Recall@10 이 판정이고 다리 점수는 참고다.
+의 Recall@10 이 판정이고 경로 점수는 참고다.
 
 `_bm25_search` 를 **감싸서** 인자를 주입한다(프로덕션 SQL 을 고치지 않는다 — 측정하는 동안 배포
 코드가 바뀌면 무엇을 쟀는지가 흐려진다).
@@ -110,7 +110,7 @@ async def main() -> int:
                     return sum(s.recall for s in sel) / len(sel) if sel else 0.0
                 print(f"  norm={norm:<3} hybrid R@10 전체 {_r(hyb):.3f} · "
                       f"파편 {_r(hyb,'fragment'):.3f} · 대조군 {_r(hyb,'control'):.3f}"
-                      f"   (다리 {_r(leg):.3f})", flush=True)
+                      f"   (경로 {_r(leg):.3f})", flush=True)
         finally:
             hybrid._bm25_search = original
 

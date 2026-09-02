@@ -337,7 +337,7 @@ async def _run(args) -> int:
             result = await hybrid.hybrid_search(q["query"], tenant=args.tenant, clearance=args.clearance,
                                                 top_k=10, embedding_svc=svc, config=search_cfg)
             if result.degraded:
-                print(f"✗ 다리가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
+                print(f"✗ 경로가 죽었다({result.degraded}) — 이 상태의 숫자는 결과가 아니다")
                 return 1
             # 프로덕션과 같은 함수로 만든다 (`search/reconcile.py`).
             packet = await packet_for_answer(

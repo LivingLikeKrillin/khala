@@ -64,7 +64,7 @@ async def _load(con, tenant: str) -> None:
 
 @pytest.fixture
 async def reloads(db_pool):
-    """세 번 재적재하면서 매번 키워드 다리 결과를 받아 둔다."""
+    """세 번 재적재하면서 매번 키워드 경로 결과를 받아 둔다."""
     from nexus import db
     from nexus.search import hybrid
 
@@ -94,7 +94,7 @@ async def test_the_keyword_leg_returns_the_same_order_after_every_reload(reloads
 
 
 async def test_the_hits_a_user_sees_are_stable_across_reloads(db_pool):
-    """다리가 아니라 **사용자가 보는 층**(융합·다양화·final_top_k 이후)에서 확인한다."""
+    """경로가 아니라 **사용자가 보는 층**(융합·다양화·final_top_k 이후)에서 확인한다."""
     from nexus import db
     from nexus.search import hybrid
 
@@ -140,7 +140,7 @@ async def test_the_scored_match_set_is_unchanged_by_the_tie_break(reloads):
 
 
 async def test_the_vector_leg_reload_behaviour_is_measured_not_assumed(db_pool):
-    """벡터 다리는 ivfflat(ANN) 이라 **후보 집합**이 흔들릴 수 있다 (SPEC §4.3).
+    """벡터 경로는 ivfflat(ANN) 이라 **후보 집합**이 흔들릴 수 있다 (SPEC §4.3).
 
     임베딩을 심어 두 적재본을 비교하고, 어긋나면 '정렬 키가 깨졌다' 가 아니라 '후보 집합이
     흔들렸다' 로 읽히도록 메시지를 붙인다.
@@ -169,7 +169,7 @@ async def test_the_vector_leg_reload_behaviour_is_measured_not_assumed(db_pool):
     db._pool = None
 
     assert orders[0] == orders[1] == orders[2], (
-        "벡터 다리가 적재본마다 다른 결과를 냈다. 동점 키는 걸려 있으므로 원인은 "
+        "벡터 경로가 적재본마다 다른 결과를 냈다. 동점 키는 걸려 있으므로 원인은 "
         "**ivfflat 후보 집합**일 가능성이 높다 (SPEC-nexus-deterministic-retrieval-order §4.3) — "
         f"정렬 키 문제로 읽지 말 것. 결과: {[[r for r, _ in o] for o in orders]}")
 

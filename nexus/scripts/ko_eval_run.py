@@ -1,6 +1,6 @@
 """한국어 평가셋 탐색 실행 — 리포트를 남긴다 (SPEC-nexus-korean-retrieval-eval §4.5).
 
-CI 는 mecab 키워드 다리의 **바닥값**만 지킨다(빠르고 임베딩이 필요 없다). 벡터/융합 다리와
+CI 는 mecab 키워드 경로의 **바닥값**만 지킨다(빠르고 임베딩이 필요 없다). 벡터/융합 경로와
 토크나이저 비교는 손으로 도는 **탐색 실행**이고, 그 결과는 기억이 아니라 **커밋된 리포트**로
 남는다 — ADR-0008 §5(b) 가 인용할 것은 리포트지 "돌려봤다" 가 아니다.
 
@@ -71,7 +71,7 @@ async def _run(args) -> int:
                     f"{sum(1 for q in labels['queries'] if not q['answerable'])}(집계 제외)",
             "토크나이저": args.tokenizer,
             "필터 정책": f"POS allow-list {sorted(_INCLUDE_POS)}",
-            "다리": "keyword (벡터/융합은 임베딩 서비스가 필요해 이 실행에는 없다)",
+            "경로": "keyword (벡터/융합은 임베딩 서비스가 필요해 이 실행에는 없다)",
             "풀 구성원": args.tokenizer,
             "미판정": "풀 판정 미실시 — gold 는 authored_from_doc 뿐 (§4.2)",
         }

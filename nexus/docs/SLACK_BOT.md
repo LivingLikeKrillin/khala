@@ -187,7 +187,7 @@ Nexus 봇에게 DM을 보내면 멘션 없이 바로 질문할 수 있다.
 | `/visibility` 진단 실패 | **아무것도 안 붙는다** — 진단이 답변을 어지럽히지 않는다 |
 
 카드 내용은 **손으로 쓰지 않는다.** 출처도 예시 제목도 코퍼스 자신에서 온다(`/visibility`).
-`weak_evidence` 판정은 서버가 한다(`nexus/search/confidence.py`) — **두 다리가 모두** 약할
+`weak_evidence` 판정은 서버가 한다(`nexus/search/confidence.py`) — **두 경로가 모두** 약할
 때만이고, **답을 막지는 않는다.**
 
 ### 스레드 응답

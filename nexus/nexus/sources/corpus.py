@@ -52,7 +52,7 @@ async def _unembedded(con, tenant: str) -> dict:
     §3.2 가 "아무 데도 집계되지 않는다" 로 기록하고 유예해 둔 상태다.
 
     2026-08-07 실물에서 발생했다: 정책 문서의 18,751자 청크를 사이드카가
-    `413 max_seq_length(8192)` 로 거부했고, 그 청크는 벡터 다리에서 영구히 안 보인다. 지금은
+    `413 max_seq_length(8192)` 로 거부했고, 그 청크는 벡터 경로에서 영구히 안 보인다. 지금은
     289분의 1이지만 **큰지 작은지 보이지 않는 것이 결함의 본질**이라, 판정보다 위에 적는다.
 
     컬럼은 `configured_column` 으로 정한다 — 검색 경로가 읽는 그 컬럼이어야 한다. 다른 컬럼을
@@ -78,7 +78,7 @@ async def _unembedded(con, tenant: str) -> dict:
         "column": column,
         "count": total,
         "sample": [dict(r) for r in rows],
-        "note": ("벡터가 없는 청크는 **벡터 다리에서 영구히 안 보인다**. 임베딩 실패는 삼켜지고 "
+        "note": ("벡터가 없는 청크는 **벡터 경로에서 영구히 안 보인다**. 임베딩 실패는 삼켜지고 "
                  "embed_health 도 세지 않으므로, 여기 말고는 드러나는 곳이 없다. "
                  "가장 흔한 원인은 max_seq_length 를 넘는 긴 청크다."),
     }

@@ -194,7 +194,7 @@ task ingest:notion ROOTS="<pageId1>,<pageId2>" FLAGS="--reconcile"
 `ollama`)이고, 재임베딩을 마치지 않은 설치가 빈 컬럼을 읽는 일이 없도록 그대로 둔다. 전환은 이
 배포의 `.env` 에서만 일어난다 — 추적 파일을 고치면 `git checkout` 이 프로덕션 설정을 되돌린다.
 
-측정 근거: 한국어 팩(공개 대역)에서 벡터 다리 `Recall@10` 0.402 → 0.975, ivfflat 을 통과한
+측정 근거: 한국어 팩(공개 대역)에서 벡터 경로 `Recall@10` 0.402 → 0.975, ivfflat 을 통과한
 융합 0.777 → 0.988 (`docs/KOREAN_SEARCH_QUALITY.md` §3.4~3.5).
 
 ```bash

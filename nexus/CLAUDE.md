@@ -73,7 +73,7 @@
 | clearance 판정 | `auth/clearance.py` | 정본 하나. 사본을 만들면 두 답이 생긴다 |
 | 답변이 맞았는지 채점 | `scripts/ko_eval_answer_quality.py` | 답변 채점기는 **이미 있다** — 새로 쓰지 마라. `facts_present`=값이 어딘가 있는가, `asserts_value`=답으로 내세웠는가(단일 값 질문 전용). 2026-08-26 에 이것을 모르고 부분일치 채점기를 다시 썼고, 그 채점기는 천장에 붙어 아무것도 못 측정했다 |
 
-**검색 경로의 사실 하나** — `search/hybrid.py` 는 **BM25 와 벡터 두 다리**를 RRF(`k=60`)로 융합한다.
+**검색 경로의 사실 하나** — `search/hybrid.py` 는 **BM25 와 벡터 두 경로**를 RRF(`k=60`)로 융합한다.
 그래프는 3-way 융합에 들어가지 않는다: `_diversify` 와 top-k 컷이 **끝난 뒤** `result.graph` 로
 따로 붙는 보강이고, 히트 점수에 기여하지 않는다. (이 파일은 오랫동안 "3-way 병렬 + RRF" 라고
 적고 있었다.)
@@ -125,7 +125,7 @@
 ### 에러 처리
 - Ingestion 실패: 해당 문서만 skip, 나머지 계속. 실패 로그
 - PII 감지: 즉시 quarantine. 절대 chunk 생성 금지
-- Embedding 실패: **삼키지 말고 `index/embed.py:record_refusal()` 로 거부를 행으로 남긴다**(`embed_refusals`). 삼키면 그 청크는 벡터 다리에서 영구히 사라지고 아무도 모른다. 백엔드 메시지는 **요약하지 말고 그대로** 남긴다 — "왜 안 되는지" 가 곧 처방이다(`413 max_seq_length` 는 청킹을 고치라는 말이고, 인코딩 오류는 다른 처방이다). 기계가 낸 사실인 `embed_refusals` 와 사람이 이름을 걸고 포기한 `embed_waivers` 를 **섞지 않는다**. 거부 기록 자체가 실패해도 색인은 계속한다 — 진단이 진단 대상을 죽이면 안 된다.
+- Embedding 실패: **삼키지 말고 `index/embed.py:record_refusal()` 로 거부를 행으로 남긴다**(`embed_refusals`). 삼키면 그 청크는 벡터 경로에서 영구히 사라지고 아무도 모른다. 백엔드 메시지는 **요약하지 말고 그대로** 남긴다 — "왜 안 되는지" 가 곧 처방이다(`413 max_seq_length` 는 청킹을 고치라는 말이고, 인코딩 오류는 다른 처방이다). 기계가 낸 사실인 `embed_refusals` 와 사람이 이름을 걸고 포기한 `embed_waivers` 를 **섞지 않는다**. 거부 기록 자체가 실패해도 색인은 계속한다 — 진단이 진단 대상을 죽이면 안 된다.
 - LLM 호출 실패: evidence snippet 은 그대로 제공하고, `llm_failed` 와 **안정적인** `llm_failure_reason`(`llm/failure.py`)을 붙인다. 서술이 없다고 검색 결과까지 버리지 않는다.
 - 근거 0건: **LLM 을 아예 호출하지 않는다.** 고정 문장 + `abstained=True, abstain_reason="no_evidence"`. 근거가 없을 때 모델에게 물어보는 것 자체가 환각을 초대한다.
 - DB 연결 실패: 503. partial result 반환 금지

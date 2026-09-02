@@ -72,7 +72,7 @@ async def drop() -> int:
 
 
 async def run(qpath: Path, top_k: int = 10) -> int:
-    """두 다리를 각각 측정하고, **세트가 선언한** 규칙으로 고른다.
+    """두 경로를 각각 측정하고, **세트가 선언한** 규칙으로 고른다.
 
     `sequential` (1회차): 문서가 약할 때만 도구를 본다.
     `comparison` (2회차): 둘 다 약하면 미선택, 아니면 **더 가까운 실험군**. 여유값 없음(margin=0)
@@ -98,7 +98,7 @@ async def run(qpath: Path, top_k: int = 10) -> int:
             r = await hybrid.hybrid_search(q["q"], tenant=tenant, clearance=CLEARANCE,
                                            top_k=top_k, embedding_svc=svc, config=cfg)
             if r.degraded:
-                print(f"✗ 다리가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
+                print(f"✗ 경로가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
                 return 1
             arms[name] = r
 

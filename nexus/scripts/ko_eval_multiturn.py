@@ -119,7 +119,7 @@ async def run_arm(query: str, gold: set[str], svc, *, tenant: str, clearance: st
                                    top_k=top_k, embedding_svc=svc, route=route,
                                    channels=channels)
     if r.degraded:
-        raise SystemExit(f"✗ 다리가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
+        raise SystemExit(f"✗ 경로가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
     seen: list[str] = []
     for h in r.hits:
         k = doc_key(h.source_uri)

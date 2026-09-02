@@ -361,11 +361,11 @@ async def _search_channels(req, llm_svc):
 
     **재작성이 원문과 같으면 채널을 늘리지 않는다.** 같은 문자열은 같은 순위 목록을 내고,
     가중 합산은 모든 문서에 같은 배수를 곱할 뿐 순서를 바꾸지 않는다(SPEC §3.3). 늘려 봐야
-    다리를 두 배로 돌리고 절대 점수만 팽창시킨다 — 보수적 재작성의 정상 결과가 "원문과 같음"
+    경로를 두 배로 돌리고 절대 점수만 팽창시킨다 — 보수적 재작성의 정상 결과가 "원문과 같음"
     이므로 이 분기가 흔한 경로다.
 
     반환하는 첫 값은 **재작성 질의**다: 라우팅과 엔티티 추출이 그것을 쓴다. 생략형 원문에서
-    뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다(§3.3).
+    뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 경로는 완성된 문장을 전제한다(§3.3).
     """
     history = _history(req.history)
     if not history:
@@ -395,7 +395,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         graph_repo = PostgresGraphRepository(pool)
 
         # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
-        # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다 (SPEC §3.3).
+        # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 경로는 완성된 문장을 전제한다 (SPEC §3.3).
         search_query, channels, rw = await _search_channels(req, LLMService())
 
         # 엔티티 감지
@@ -469,7 +469,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 "graph_findings": graph_findings,
                 "route_used": result.route_used,
                 "timing_ms": result.timing_ms,
-                # 죽은 다리는 호출자에게도 보여야 한다 — 로그에만 있으면 "건강해 보이는" 상태가
+                # 죽은 경로는 호출자에게도 보여야 한다 — 로그에만 있으면 "건강해 보이는" 상태가
                 # 그대로다 (SPEC-nexus-embedding-cutover-seam §4.5).
                 "degraded": result.degraded,
             },
@@ -612,7 +612,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         graph_repo = PostgresGraphRepository(pool)
 
         # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
-        # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다 (SPEC §3.3).
+        # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 경로는 완성된 문장을 전제한다 (SPEC §3.3).
         search_query, channels, rw = await _search_channels(req, llm_svc)
 
         # 엔티티 감지
@@ -1062,7 +1062,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             graph_repo = PostgresGraphRepository(pool)
 
             # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
-            # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 다리는 완성된 문장을 전제한다 (SPEC §3.3).
+            # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 경로는 완성된 문장을 전제한다 (SPEC §3.3).
             search_query, channels, rw = await _search_channels(req, llm_svc)
 
             # 엔티티 감지

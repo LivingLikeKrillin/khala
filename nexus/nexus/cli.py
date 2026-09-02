@@ -150,7 +150,7 @@ def ingest(
             col = configured_column(_load_config(config_path))
             gap = result.coverage["active"] - result.coverage[col]
             if gap:
-                typer.echo(f"\n⚠ 벡터 다리가 못 보는 청크 {gap}건 "
+                typer.echo(f"\n⚠ 벡터 경로가 못 보는 청크 {gap}건 "
                            f"(활성 {result.coverage['active']} 중 {result.coverage[col]} 인덱싱)")
                 # **이유를 여기서 말한다.** 아래 복구 명령은 이유를 모르면 같은 자리에서 같은
                 # 실패를 다시 부른다 — 그 이유는 `embed_refusals` 에 이미 적혀 있었고, 읽는
@@ -606,7 +606,7 @@ def status() -> None:
                     typer.echo("  ⚠ 옵트인 행 없이 남은 텍스트 — 철회가 절반만 됐다")
 
             # 인덱스 커버리지 (SPEC-nexus-index-completeness §3.2). 이 값은 이미 측정하고 있었지만
-            # **API 기동 로그에만** 있었다 — 사람이 치는 건 이 명령이다. 51개 청크가 벡터 다리에서
+            # **API 기동 로그에만** 있었다 — 사람이 치는 건 이 명령이다. 51개 청크가 벡터 경로에서
             # 빠진 채 하루를 지나간 이유가 그 간극이었다.
             from nexus.index.embed_health import exempt_tenants, fetch_coverage_by_tenant
             from nexus.index.vector_index import configured_column
@@ -629,7 +629,7 @@ def status() -> None:
                     f"bm25 {row_['bm25']:>5}{note}")
                 if gap and row_["tenant"] not in exempt:
                     typer.echo(
-                        f"   └ 벡터 다리가 못 보는 청크 {gap}건 — "
+                        f"   └ 벡터 경로가 못 보는 청크 {gap}건 — "
                         f"nexus reembed run --tenant {row_['tenant']}")
                     # 그 구멍의 **이유**. `embed_refusals` 는 백엔드 메시지를 그대로 갖고 있는데
                     # 읽는 곳이 코퍼스 뷰 하나뿐이었다 — 그래서 안내받은 재시도가 같은 이유로
@@ -670,7 +670,7 @@ def status() -> None:
                 elif c["unreadable_files"] is None:
                     typer.echo("   └ 이 스캔은 가르기 전이다 — 다시 스캔하면 채워진다")
 
-            # 어떤 다리도 읽을 수 없는 문서 (SPEC-nexus-index-completeness §3.1 의 사각지대).
+            # 어떤 경로도 읽을 수 없는 문서 (SPEC-nexus-index-completeness §3.1 의 사각지대).
             # 위 커버리지는 **청크**를 세므로 청크가 0건인 문서는 모집단 밖이다 — 그래서
             # 유령 문서는 커버리지 100% 로 보인다. 그래서 `coverage` 가 아니라 이 함수의 행을
             # 직접 돈다: 문서가 전부 유령인 테넌트는 커버리지에 줄 자체가 없다.
@@ -1497,7 +1497,7 @@ def reembed_status(column: str = typer.Option("embedding_1024", "--column"),
                        help="청크를 가진 테넌트를 모두 본다 — 조건은 테넌트마다 선다")) -> None:
     """컷오버 전제 조건 (§4.5). 막는 것이 있으면 **무엇이 막는지** 말한다.
 
-    조건은 테넌트마다 서야 한다. 하나를 빠뜨린 채 flip 하면 그 테넌트의 벡터 다리만 조용히 비고,
+    조건은 테넌트마다 서야 한다. 하나를 빠뜨린 채 flip 하면 그 테넌트의 벡터 경로만 조용히 비고,
     범위를 손으로 세는 절차는 언젠가 하나를 빠뜨린다 (SPEC-nexus-embedding-cutover-seam §4.6).
     """
     from nexus.index.reembed import counts, cutover_blockers, tenants_with_chunks, waived_rows

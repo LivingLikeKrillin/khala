@@ -7,7 +7,7 @@
 **불리언이 아니라 크기를 남긴다.** `weak` 는 오늘의 문턱으로 계산된 값이라, 문턱을 옮기면
 지나간 행의 뜻이 조용히 바뀐다. 거리와 점수는 문턱과 무관한 사실이다.
 
-**죽은 다리는 `None` 이다.** 0.0 으로 채우면 거리 0 = "완벽히 맞았다", BM25 0 = "전혀 못 맞췄다"
+**죽은 경로는 `None` 이다.** 0.0 으로 채우면 거리 0 = "완벽히 맞았다", BM25 0 = "전혀 못 맞췄다"
 로 읽혀 두 방향으로 거짓말한다. 못 측정한 것과 측정해서 낮은 것은 다른 사실이다.
 """
 
@@ -45,7 +45,7 @@ def test_the_magnitudes_reach_the_signal():
 
 
 def test_a_dead_leg_stays_unmeasured():
-    """벡터 다리가 죽으면 거리는 **없는 것**이지 0 이 아니다."""
+    """벡터 경로가 죽으면 거리는 **없는 것**이지 0 이 아니다."""
     from nexus.search.confidence import Confidence
     from nexus.search.signals import extract_signals
 
@@ -97,7 +97,7 @@ async def test_the_magnitudes_land_in_search_log(db_pool):
 async def test_a_keyword_leg_that_matched_nothing_reports_zero_not_unknown(monkeypatch):
     """*"오늘 서울 날씨 알려줘"* 는 거리 0.608(멀다)인데도 약함 판정을 못 받았다.
 
-    키워드 다리가 **돌았고 한 행도 못 잡은** 것을 `None` 으로 돌려줬고, `Confidence.weak` 은
+    키워드 경로가 **돌았고 한 행도 못 잡은** 것을 `None` 으로 돌려줬고, `Confidence.weak` 은
     `None` 을 *못 측정한 것*으로 읽어(그건 옳다) 판정을 접었다. 코퍼스 밖의 가장 강한 증거가
     그 뭉침 속에서 사라진 것이다.
     """
@@ -114,7 +114,7 @@ async def test_a_keyword_leg_that_matched_nothing_reports_zero_not_unknown(monke
 async def test_a_keyword_leg_that_never_ran_still_reports_unknown(monkeypatch):
     """토크나이저가 텀을 못 만들면 질의가 없었던 것이다 — 그때는 여전히 `None`.
 
-    이 구분이 무너지면 **다리가 죽은 배포**가 전부 '코퍼스 밖' 으로 보고된다.
+    이 구분이 무너지면 **경로가 죽은 배포**가 전부 '코퍼스 밖' 으로 보고된다.
     """
     from nexus.search import hybrid
 

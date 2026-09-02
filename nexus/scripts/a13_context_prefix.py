@@ -1,4 +1,4 @@
-"""A13 — 문서 제목을 검색 텍스트에 넣으면 키워드 다리가 좋아지는가. **재보는 평가 하니스, 제품 아님.**
+"""A13 — 문서 제목을 검색 텍스트에 넣으면 키워드 경로가 좋아지는가. **재보는 평가 하니스, 제품 아님.**
 
 라이브 코퍼스 실측(2026-08-15, `default` 활성 309청크):
 
@@ -127,7 +127,7 @@ async def leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegResult:
     for q in labels["queries"]:
         if not q.get("answerable"):
             continue
-        # **다리는 `(순위목록, 1위 원점수)` 를 돌려준다** — PR #292 가 원점수를 되살리면서
+        # **경로는 `(순위목록, 1위 원점수)` 를 돌려준다** — PR #292 가 원점수를 되살리면서
         # 모양이 바뀌었고, 그 뒤로 이 하니스를 아무도 안 돌려서 조용히 썩어 있었다.
         hits, _top = await hybrid._bm25_search(q["query"], arm, "INTERNAL", 20)
         res.scores.append(score_query(q["id"], collapse_to_documents(hits, chunk_doc), q["gold"]))
@@ -158,7 +158,7 @@ async def embed_arm(arm: str) -> int:
 
 async def vector_leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegResult:
     """**컬럼을 명시해서 부른다.** 안 넘기면 기본 768 컬럼을 읽고, 이 실험군은 1024 에 있다 —
-    같은 실수로 "벡터 다리가 죽었다" 를 보고할 뻔한 적이 있다."""
+    같은 실수로 "벡터 경로가 죽었다" 를 보고할 뻔한 적이 있다."""
     from nexus.index.vector_index import configured_column
     from nexus.providers.embedding import embedding_service_from_config
     from nexus.search import hybrid

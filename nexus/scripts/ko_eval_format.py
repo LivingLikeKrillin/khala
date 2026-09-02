@@ -65,7 +65,7 @@ async def answer(query: str, history, *, tenant: str, clearance: str, svc, llm,
     r = await hybrid.hybrid_search(rw.query, tenant=tenant, clearance=clearance, top_k=10,
                                    embedding_svc=svc, route="hybrid_only", channels=channels)
     if r.degraded:
-        raise SystemExit(f"✗ 다리가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
+        raise SystemExit(f"✗ 경로가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
     result = await generate_answer(rw.query, await assemble_packet(r.hits, r.graph), llm_svc=llm,
                                    user_query=query if u2 else None)
     if result.llm_failed:

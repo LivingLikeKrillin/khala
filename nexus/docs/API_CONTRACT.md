@@ -101,8 +101,8 @@ class SearchResponse(BaseModel):
     graph_findings: GraphFinding | None  # include_graph=true일 때
     route_used: str                     # 실제 사용된 route
     timing_ms: float                    # 전체 소요 시간
-    degraded: list[str]                 # 실패해서 기여하지 못한 다리 ("bm25"|"vector"|"graph")
-                                        # 빈 결과와 죽은 다리는 다른 사실이다
+    degraded: list[str]                 # 실패해서 기여하지 못한 경로 ("bm25"|"vector"|"graph")
+                                        # 빈 결과와 죽은 경로는 다른 사실이다
                                         # (SPEC-nexus-embedding-cutover-seam §4.4)
 ```
 
@@ -135,7 +135,7 @@ class AnswerResponse(BaseModel):
     provenance: list[ProvenanceRef]     # 사용자가 검증할 수 있는 출처
     route_used: str
     timing_ms: float
-    degraded: list[str]                 # 검색 단계에서 죽은 다리 (SearchResponse 와 같은 뜻)
+    degraded: list[str]                 # 검색 단계에서 죽은 경로 (SearchResponse 와 같은 뜻)
 
 class EvidenceSnippet(BaseModel):
     chunk_rid: str

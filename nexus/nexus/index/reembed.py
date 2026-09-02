@@ -111,7 +111,7 @@ async def pending_rids(column: str, limit: int, exclude: set[str] | None = None,
 
 async def tenants_with_chunks() -> list[str]:
     """청크를 가진 테넌트들. **컷오버 조건은 테넌트마다 서야 한다** — 하나를 빠뜨리고 flip 하면
-    그 테넌트의 벡터 다리만 조용히 비고, 그걸 손으로 세는 절차는 언젠가 하나를 빠뜨린다
+    그 테넌트의 벡터 경로만 조용히 비고, 그걸 손으로 세는 절차는 언젠가 하나를 빠뜨린다
     (SPEC-nexus-embedding-cutover-seam §4.3, §4.6).
     """
     rows = await db.fetch_all(
@@ -160,7 +160,7 @@ async def reembed(embedding_svc, column: str, batch_size: int = 16,
         """⚠ `context_prefix` 를 **실어야 한다.** 예전에는 `None` 을 박아 뒀고, 코퍼스 전체가
         NULL 이던 동안에는 우연히 맞았다. A13 컷오버가 접두사를 채우자 그 가정이 거짓이 됐고,
         재임베딩은 **옛 텍스트**(`[section_path]`)로 벡터를 만들었다 — BM25 에는 제목이 있고
-        벡터에는 없는 반쪽 상태. 실측으로 잡혔다: 같은 코퍼스에서 벡터 다리 파편 Recall 이
+        벡터에는 없는 반쪽 상태. 실측으로 잡혔다: 같은 코퍼스에서 벡터 경로 파편 Recall 이
         실험(0.889)과 라이브(0.444)로 갈렸다."""
 
         def __init__(self, text, section, prefix):

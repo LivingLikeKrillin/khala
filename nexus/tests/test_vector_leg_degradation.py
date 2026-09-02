@@ -1,7 +1,7 @@
-"""벡터 다리는 죽어도 검색은 답한다 — 단, 죽었다고 말한다
+"""벡터 경로는 죽어도 검색은 답한다 — 단, 죽었다고 말한다
 (SPEC-nexus-embedding-cutover-seam §4.4).
 
-교체 SPEC §5 는 "임베딩 백엔드가 없으면 벡터 다리는 빈 결과를 내고 키워드 다리가 답한다. 검색은
+교체 SPEC §5 는 "임베딩 백엔드가 없으면 벡터 경로는 빈 결과를 내고 키워드 경로가 답한다. 검색은
 degrade 되지 error 가 되지 않는다" 고 약속했지만, `_vector_search` 의 try 는 `embed_query` 만
 감싸고 있었다 — SQL 예외는 `asyncio.gather` 를 타고 그대로 500 으로 나갔다. 차원 불일치는 정확히
 그 경로로 온다.
@@ -25,7 +25,7 @@ def _pg(cls, message: str = "boom"):
     return cls(message)
 
 
-# ── 무엇이 다리만 죽이고, 무엇이 배포가 아픈 것인가 ──────────────────────────
+# ── 무엇이 경로만 죽이고, 무엇이 배포가 아픈 것인가 ──────────────────────────
 
 
 @pytest.mark.parametrize("exc", [
@@ -56,7 +56,7 @@ def test_the_legal_degraded_values_are_the_legs_themselves():
     assert SearchResult().degraded == []
 
 
-# ── 다리 래퍼: 빈 결과와 죽은 다리를 구분한다 ────────────────────────────────
+# ── 경로 래퍼: 빈 결과와 죽은 경로를 구분한다 ────────────────────────────────
 
 
 class _Svc:
@@ -84,7 +84,7 @@ async def test_an_embedding_backend_failure_degrades_the_leg_instead_of_vanishin
 
     hits, degraded, distance = await _vector_leg("결제", _Svc(error), "default", "INTERNAL", 10, None)
     assert (hits, degraded) == ([], True)
-    # 죽은 다리의 거리는 **없다**. 0.0 이면 "완벽히 맞았다" 로 읽혀 약한 근거 판정이 뒤집힌다.
+    # 죽은 경로의 거리는 **없다**. 0.0 이면 "완벽히 맞았다" 로 읽혀 약한 근거 판정이 뒤집힌다.
     assert distance is None
 
 
@@ -135,6 +135,6 @@ async def test_a_dimension_mismatch_degrades_and_keyword_results_survive(monkeyp
         query="결제", tenant="default", clearance="INTERNAL", top_k=5,
         embedding_svc=_Svc(), route="hybrid_only")
 
-    assert result.degraded == ["vector"], "죽은 다리는 결과에 표시돼야 한다"
+    assert result.degraded == ["vector"], "죽은 경로는 결과에 표시돼야 한다"
     assert [h["rid"] if isinstance(h, dict) else h.rid for h in result.hits] == ["chunk_kw"], (
-        "키워드 다리는 계속 답해야 한다 — 이게 degrade 와 장애의 차이다")
+        "키워드 경로는 계속 답해야 한다 — 이게 degrade 와 장애의 차이다")

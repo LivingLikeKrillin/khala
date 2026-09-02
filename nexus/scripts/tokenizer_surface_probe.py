@@ -117,7 +117,7 @@ async def main() -> int:
                     return sum(s.recall for s in sel) / len(sel) if sel else 0.0
                 print(f"  {arm} ({tok.id}) BM25 색인 {n} · hybrid R@10 전체 {_r(hyb):.3f} · "
                       f"파편 {_r(hyb,'fragment'):.3f} · 대조군 {_r(hyb,'control'):.3f}"
-                      f"   (다리 {_r(leg):.3f})", flush=True)
+                      f"   (경로 {_r(leg):.3f})", flush=True)
 
             def rec(scores, kind):
                 sel = [s for s in scores if kinds[s.qid] == kind]
