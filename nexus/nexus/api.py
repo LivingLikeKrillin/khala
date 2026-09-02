@@ -43,7 +43,7 @@ from nexus.providers.llm import LLMService
 from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.anchor_status import summarize as _anchor_summary
-from nexus.search.evidence_packet import assemble_packet, format_for_llm
+from nexus.search.evidence_packet import format_for_llm
 from nexus.search.reconcile import packet_for_answer
 from nexus.search import history as history_module
 from nexus.search.corpus_scope import visibility_counts
@@ -1028,7 +1028,20 @@ async def otel_aggregate(req: OtelAggregateRequest, principal: Principal = Depen
 @app.post("/search/answer/stream")
 async def search_answer_stream(req: AnswerRequest, principal: Principal = Depends(get_principal)) -> StreamingResponse:
     """검색 + LLM 스트리밍 답변 (SSE). 2.0 UI용."""
-    req.tenant, req.classification_max = effective_scope(principal, req.tenant, req.classification_max)
+    # ⛔ **이 경로만 다른 함수를 쓰고 있었다** (외부 평가 F2, 2026-09-02). 비스트리밍 HTTP 는
+    # `effective_read_scope` 로 **범위 목록**을 받는데 여기만 `effective_scope` 의 스칼라였다.
+    # 그래서 웹 채팅은 컷오버가 연 교차 코퍼스를 못 읽었고, 범위 밖 요청의 감사 이벤트도
+    # 남지 않았다.
+    asked_tenant = req.tenant if "tenant" in req.model_fields_set else None
+    _scope, req.classification_max, _out = effective_read_scope(
+        principal, asked_tenant, req.classification_max)
+    # 귀속은 단일 값, 범위는 로컬 `_scope` 로만 흐른다 — 목록을 `str` 칸에 넣었다가 적재가
+    # 34시간 조용히 죽은 것이 2026-09-02 이다.
+    req.tenant = principal.tenant
+    if _out:
+        import structlog
+        structlog.get_logger(__name__).warning(
+            OUT_OF_SCOPE_EVENT, principal=principal.name, resolved=list(_scope))
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
 
@@ -1066,7 +1079,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 검색 (검색 완료 시 evidence 먼저 전송)
             search_result = await hybrid_search(
                 query=search_query,
-                tenant=req.tenant,
+                tenant=_scope,
                 clearance=req.classification_max,
                 top_k=req.top_k,
                 embedding_svc=embedding_svc,
@@ -1077,8 +1090,15 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 channels=channels,
             )
 
-            packet = await assemble_packet(search_result.hits, search_result.graph, req.tenant,
-                                           fill=search_result.fill)
+            # ⛔ **여기서 `assemble_packet` 을 직접 부르고 있었다** (외부 평가 F2).
+            # `packet_for_answer` 가 정정 확인 패스·짝 확장·코드 값을 붙이는 자리이고, 그
+            # docstring 이 *"답변용 근거 패킷은 이 함수 하나로 만든다 … 표면마다 붙이면 하나가
+            # 조용히 빠진다"* 라고 적어 두었다. **웹 채팅이 타는 경로가 바로 그 하나였다.**
+            # 평가 실측(정책 8질의): 4건에서 근거가 적게 갔고 최대 19 → 13(−32%).
+            packet = await packet_for_answer(
+                search_result, _scope, req.classification_max,
+                config=config, search=hybrid_search, embedding_svc=embedding_svc,
+                question=req.query, pool=await db.get_pool())
 
             # 1) evidence 이벤트 전송 — 신선도(staleness) 판정 포함
             from datetime import datetime, timezone
@@ -1183,7 +1203,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 search_result, None, path="search_answer_stream",
                 # 근거 점유율은 패킷에서 센다 (§5.3) — 히트만 세면 채움·짝·정정이 빠진다.
                 evidence=packet.snippets,
-                tenant=req.tenant, clearance=req.classification_max, query=req.query,
+                tenant=req.tenant, read_scope=_scope,
+                clearance=req.classification_max, query=req.query,
                 n_entities=len(entity_rids),
                 fusion_channels=len(channels or [1]),
                 rewrite=rw,
