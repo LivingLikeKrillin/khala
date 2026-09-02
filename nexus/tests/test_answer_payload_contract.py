@@ -58,7 +58,11 @@ def client(monkeypatch):
     monkeypatch.setattr(api, "_load_gazetteer", lambda *a, **k: {})
     monkeypatch.setattr(api, "_build_entity_patterns", lambda *a, **k: {})
     monkeypatch.setattr(api, "find_entities_in_text", lambda *a, **k: [])
-    monkeypatch.setattr(api, "assemble_packet", _noop_async)
+    # ⚠ 여기 `assemble_packet` 스텁이 있었는데 **죽은 줄이었다** — 이 시험이 치는
+    # `/search/answer` 는 그 함수를 부른 적이 없다(`packet_for_answer` 를 부른다).
+    # 우회로 그것을 부르던 곳은 스트리밍 경로였고, 그쪽은 2026-09-02 에 이음매로
+    # 돌아왔다(외부 평가 F2). 스텁을 되살리지 말 것 — 실물 패킷이 돌아야 이 시험이
+    # 재는 `weak_evidence`·`abstained` 가 진짜 경로에서 나온다.
     monkeypatch.setattr(api, "format_for_llm", lambda *a, **k: "")
     monkeypatch.setattr(api, "extract_signals", lambda *a, **k: None)
     monkeypatch.setattr(api, "record_search", _noop_async)

@@ -805,3 +805,38 @@ Widening means a name can match in several places. That risk was already handled
 Verified live against the real tree: `@Max.value → 60`, `@Min.value → 1` — the code-side bounds for the DJ time limit, whose document states the same value as *"3 minutes or more."*
 
 ⛔ **The 18 guard clauses stay closed.** Reading `if (activeCrewCount > 49)` as `50` requires getting the comparison, the boundary, and the variable's meaning all right. That is not value reading but **code comprehension**, and when it is wrong it is wrong with confidence. The capacity value the owner overruled happens to live there — but wanting it is not evidence.
+
+**An external evaluation found the largest defect: web chat was on a different path (2026-09-02).** An outside evaluator (a different model) assessed Nexus and filed a result document. One of its two **high**-severity findings is this.
+
+The `packet_for_answer` docstring in `reconcile.py` had already written the rule:
+
+> *"The answer's evidence packet is built by this one function. There are three answer paths — if each calls `assemble_packet` itself, wiring an enrichment into only one of them becomes possible, and **that combination is silently wrong in production while the tests stay green.** On 2026-08-29 I did exactly that, which is why they are collected here."*
+
+**No check enforced that sentence.** One of the four surfaces, `/search/answer/stream`, called `assemble_packet` directly, so the **correction pass, pair expansion and code values** were missing from that path alone — and that is the path **web chat uses** (`web/js/api.js`).
+
+The evaluator's measurement, over 8 policy queries:
+
+```
+qid   /search/answer   /stream    diff
+p04              23        20      −3
+p05              21        18      −3
+p07              19        13      −6   (32%)
+p08              18        15      −3
+```
+
+⇒ For the same question, CLI, A2A and non-streaming HTTP received the enrichments; **only web users did not.**
+
+## The fix
+
+Routed through `packet_for_answer`. As a side effect that path was also the only one still on `effective_scope`, so it could not read the corpora the cutover opened and left no out-of-scope audit event; both closed together.
+
+**Re-measured: all 8 queries now differ by zero**, matching the non-streaming column exactly.
+
+## Why no test caught it
+
+There was no check that **counts the surfaces**. Building one taught two things:
+
+- **It has to walk nested functions.** The streaming handler assembles its packet inside `event_stream()`, so a check that reads only the outer function stays **green on the broken build**. Broken on purpose, it goes red on exactly that surface and no other.
+- ⛔ **An existing test was stubbing the bypass.** `test_answer_payload_contract.py` replaced `assemble_packet` with a no-op — but the endpoint it exercises, `/search/answer`, never called that function. It was a dead line. Removed.
+
+⚠ Fixing it surfaced one more: `/search`, the retrieval-only endpoint, is still on `effective_scope`. All four answer paths now receive the read scope; search alone does not. That list is read directly by people, so it needs its own verification and went onto the open-items list.
