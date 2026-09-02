@@ -152,3 +152,26 @@ def test_the_ceiling_reads_as_the_number_it_was_registered_as():
 
 def test_a_zero_base_says_so_instead_of_dividing():
     assert cost_delta(100, 0) == "?"
+
+
+# ── 진단은 판정이 아니다 ─────────────────────────────────────────────────────
+
+async def test_a_covered_query_needs_no_database_to_explain():
+    """다 받은 질의는 설명할 것이 없다 — DB 도, 검색도 부르지 않고 곧장 돌아와야 한다.
+
+    이 검사가 도는 것 자체가 그 성질의 증거다: `con`·`search` 자리에 `None` 을 넣었으므로
+    조기 반환이 없으면 여기서 터진다.
+    """
+    from scripts.multihop_assembly_probe import explain
+
+    q = {"id": "m03", "must_contain": [["가"], ["나"]]}
+    out = await explain(q, [True, True], ["default"], {}, None, None, None)
+    assert out == {"qid": "m03", "missing_groups": 0, "holders": []}
+
+
+async def test_a_query_with_no_requirements_is_not_a_failure():
+    """요구가 없으면 못 받은 것도 없다 — `must_contain` 이 빈 라벨에서 터지면 안 된다."""
+    from scripts.multihop_assembly_probe import explain
+
+    out = await explain({"id": "x"}, [], ["default"], {}, None, None, None)
+    assert out["missing_groups"] == 0
