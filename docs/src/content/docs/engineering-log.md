@@ -591,3 +591,15 @@ The old state's `p=0.034` is a **post-hoc test on a case picked because it looke
 ⇒ **It was a finding built by eyeballing two batch fractions.** The same class of error that stopped me three times this week. Those times a rule caught it; this time I did not apply the rule and used my eyes instead.
 
 One rule added: **test before claiming two conditions differ.** And a post-hoc p-value on a case selected for looking odd is not evidence.
+
+**No signal row landed for 34 hours while 1,800 tests stayed green (2026-09-02).** Attaching the read scope, I assigned the resolved list to `req.tenant`. That field is typed `str` and `search_log.tenant` is TEXT, so the insert failed — and `record_search` is built **never to raise**, so it failed in silence.
+
+That design is right: writing a log must not kill a user's request. The problem is that **the failure went nowhere.** Not even to the log.
+
+How it surfaced is worth recording too. Working on an item the cutover had created — *recording a cross-tenant query under a single tenant misattributes demand* — I opened the schema and noticed **the table was empty to begin with.** Going to fix a misattribution, I found the writing had stopped.
+
+The root cause is fixed rather than patched: nothing puts a list into a field typed for a string. Attribution keeps a single value and the scope gets its own column. Without it, Slack reading the design corpus leaves only the policy corpus on the row, and the pull signal reads as *"nobody looks at the design corpus"* — **the cutover would have begun by poisoning the measurement meant to justify it.**
+
+Four tests now run against a real Postgres, one of them the test that would have caught this: **the row actually lands, the count goes up by one, and the scope is on it.** None of the previous 1,800 asked whether anything arrives.
+
+⛔ And the same shape sits elsewhere — answer-text retention, feedback, the audit trail, the access counter. All best-effort, all able to die quietly. Filed.
