@@ -731,3 +731,27 @@ The read side shipped with it, printing both ages **side by side**, because prin
 ```
 
 ⚠ `unknown` means **we do not know**, not "new". Without that distinction the new column would repeat the very lie it was added to remove.
+
+**Added the column, ran the ingest, and it filled nothing (2026-09-02, same day).** The previous entry added storage for the document's own edit time. After an ingest, all 126 rows were still `unknown`.
+
+The value was dropped in `build_csf` — the function that builds the dict handed from the connector to the next stage. The field simply was not in it.
+
+⭐ **Two comments in that same function already record the two previous times this happened.** One for the title (a Notion page named `Index` entered the corpus under a different name), one for the image count (overwritten with 0 on every re-ingest). **This is the third value lost at that seam.**
+
+⛔ **And my test did not catch it**, because it called `_save_document` **directly**. The real path is `connector → build_csf → temporary markdown → collector → pipeline`, and the break was in the first link. This repo had already written that failure down — *"I asserted on the producer's dict."* There is now a test that runs the chain, verified by breaking it on purpose.
+
+**There was a second wall.** A document whose body is unchanged is skipped by content-hash dedup, so a new metadata column fills **only for documents that happen to change** — a biased sample. Backfilling meant enabling the **destructive** `--reconcile` (which can delete documents). Opening a delete path for one metadata column is a bad trade, so `--force` alone now means *"save the document again even if the body is identical."* It deletes nothing.
+
+## So are the documents stale — **yes**
+
+```
+[default] 126 active documents
+                    origin edit      our ingest
+  under 3 months             14             126
+  6–12 months                 8               0
+  over a year                90               0
+```
+
+The signal we had was saying the opposite. Restricted to the Notion corpus: of the 19 documents that carry actual prose, **9 are over a year old** (newest 2025-07-20), **8 are 3–12 months** (newest 2025-11-02, and they hold most of the text), and 2 are under three months. The range runs 2023-12 to 2026-08.
+
+⇒ The code moved; the policy prose mostly has not been touched in over ten months. The document-versus-code divergences observed earlier are exactly what that produces. **Fixing the documents is not this repository's work** — reporting the divergence precisely is.

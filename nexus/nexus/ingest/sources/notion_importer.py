@@ -70,6 +70,13 @@ def build_csf(
         # `ConvertedDoc.frontmatter` 에 넣지만 CSF 로는 안 실려서, **재적재할 때마다
         # `documents.n_images` 가 0 으로 덮였다** — 신호가 조용히 죽는다. 2026-08-10 실측.
         "image_count": int(conv.frontmatter.get("image_count") or 0),
+        # 문서 **자신의** 마지막 수정 시각(039). ⛔ 이 칸을 안 실으면 `documents.origin_updated_at`
+        # 이 영원히 NULL 이고, *"문서가 낡았나"* 는 계속 답할 수 없다 — 2026-09-02 에 칸을
+        # 만들고 적재를 돌렸는데 126건 전부 `미상` 이었던 것이 이 줄이 없어서다.
+        #
+        # **이 이음매에서 값이 사라진 것은 세 번째다.** 같은 함수의 주석 둘이 앞의 둘을 적어
+        # 두었다 — 제목(페이지 `Index` 가 딴 이름으로 들어감)과 그림 수(재적재마다 0 으로 덮임).
+        "origin_last_edited": str(conv.frontmatter.get("origin_last_edited") or ""),
     }
 
 

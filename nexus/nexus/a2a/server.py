@@ -451,6 +451,11 @@ def _csf_to_markdown_file(doc: dict) -> str:
     # 그림 수도 같은 통로로 간다. 파이프라인이 `documents.n_images` 를 여기서 읽는다.
     if doc.get("image_count"):
         meta["image_count"] = int(doc["image_count"])
+    # 원본이 말하는 수정 시각도 같은 통로로 간다(039). 파이프라인이 여기서 읽어
+    # `documents.origin_updated_at` 에 넣는다. ⚠ `content_hash` 는 frontmatter 를 뺀 본문만
+    # 해싱하므로 이 줄이 늘어도 **재적재가 새로 일어나지 않는다** — 확인하고 넣었다.
+    if doc.get("origin_last_edited"):
+        meta["origin_last_edited"] = str(doc["origin_last_edited"])
     if not meta:
         return body
     # yaml.safe_dump 로 인용한다 — `선두 컬럼: 제약 #1` 처럼 콜론·해시가 든 제목이 흔하다.

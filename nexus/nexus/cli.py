@@ -1157,9 +1157,13 @@ def ingest_notion(
     # (`sources/api.py`), CLI 만 `--token-env` 하나를 전부에 적용하고 있었다.
     # `--dry-run` 은 이제 **적재까지** 마른다. 그래서 `--reconcile` 없이도 의미가 있다:
     # "지금 돌리면 무엇이 들어오나" 를 쓰기 없이 보는 것. `--force` 는 여전히 재조정 전용이다.
-    if force and not reconcile:
-        typer.echo("--force 는 --reconcile 과 함께 써야 의미가 있습니다")
-        raise typer.Exit(code=1)
+    # ⛔ **예전엔 `--force` 단독을 거부했다.** 그런데 새 메타데이터 칸은 본문이 안 바뀐 문서에
+    # 영원히 안 채워진다(dedup 이 `_save_document` 자체를 건너뛴다). 그러면 백필하려고
+    # **파괴적인 `--reconcile`** 을 같이 켜야 했다 — 메타데이터 한 칸 때문에 문서를 지울 수
+    # 있는 경로를 여는 것은 거래가 안 맞는다. 039 에서 실제로 그 자리에 섰다.
+    #
+    # 이제 `--force` 단독 = **본문이 같아도 문서를 다시 저장한다**(파생 메타데이터 갱신).
+    # 지우지 않는다 — prune 은 여전히 `--reconcile` 에만 있다.
     reconcile_fn = (
         make_reconcile_fn(threshold=threshold, force=force, dry_run=dry_run)
         if reconcile else None
