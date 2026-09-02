@@ -672,3 +672,19 @@ So `evidence_tenants` was added (migration 038): per question, the **count of ev
 No threshold. §5.3 says the first round is observation and the threshold comes from looking at the distribution, and that is what it does.
 
 ⚠ That SPEC also says, in §5.4, that the column and migration number are to be **recorded in the SPEC itself**. They cannot be. An approved body is frozen at the bytes it was signed on; touching it breaks the stamp — a rule this repo learned by turning master red fifteen times in a row over a single footnote. The numbers live in the migration file and the open-items list, not in the SPEC. **The template is making a promise it cannot keep.**
+
+**Went to fix it, and there was nothing to fix — the second time (2026-09-02).** An open item read: *"labels A-3 and A-5 pass the first grader and fail the second, not because the answer is wrong but because it puts the document value and the code value side by side and writes 'the document and the code disagree' in the conclusion slot."* It even carried a candidate fix — *"an answer that discloses the conflict should pass even when the value sits inside a table."*
+
+Starting the work, I read the artifacts before the rules. All three parts were different.
+
+**① The symptom is already gone.** Across the final two arms (ten runs each), A-3 and A-5 score **10/10 and 10/10** on the second grader. The two that waver are different ones (A-1 at 9/10, A-9 at 7/10). Re-running the grader over the stored answers shows where they pass: the decisive sentence sits in a **section head**. The 2026-08-31 section-head amendment fixed exactly that shape — and the open item, written the same day, was never removed after the amendment resolved it.
+
+**② The candidate fix would reverse a pre-registration.** *"Pass when the value sits in a table"* is precisely what this harness wrote down as forbidden: accept tables and you also pass the answer that **prints the value in a table and then backs away in the conclusion**. Separating that pair is the second grader's whole reason to exist, and the control case is pinned in a test. Applying the fix would have turned that control red.
+
+**③ The real remainder cannot be read.** Nobody knows why A-1 and A-9 flipped, because **those twenty runs kept only the summary and threw the answer text away**. The answer backend has no temperature and no seed, so the same answers cannot be regenerated. This repo had already burned three hours on that and written down that *"the grader's report keeps an answer-text sidecar"* — and that discipline sat **behind an option the scoring runs never turned on**.
+
+So what changed is **instrumentation only; not one character of the scoring rules**: a run that writes a results file now writes the answer sidecar **by default** (turning it off must be explicit), and the verdict script names the **run ids** where a label flipped — a path from the number back to the text.
+
+⇒ **Changing the rule before reading the answers is exactly what that open item proposed.** No rule changed, so there is nothing to pre-register.
+
+⚠ **I got one thing wrong while writing this correction.** My first pass aggregated all 65 verdict files and read it as *"the second grader wavers on all fifteen labels."* Those files span **ten arms** and include runs scored by the pre-amendment grader. Split by arm, the count is **two**. A shared filename prefix is not a shared condition.

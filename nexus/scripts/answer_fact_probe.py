@@ -61,6 +61,28 @@ def _all_groups_present(expect_all, normalized_text: str) -> bool:
     )
 
 
+def sidecar_path(out: str, explicit: str, disabled: bool) -> str:
+    """답변 **원문**을 적을 자리. 빈 문자열이면 안 적는다.
+
+    ⛔ **왜 기본이 켜짐인가 (실측 2026-09-02).** 컷오버 판정에 쓴 실행 65회가 요약만 남기고
+    원문을 버렸다. 그래서 *"2판이 왜 이 라벨에서 갈렸는가"* 를 **다시 볼 방법이 없다** —
+    같은 답변을 다시 만들 수도 없다(답변 백엔드에 temperature·seed 가 없다). 이 리포는
+    같은 일로 이미 3시간을 태우고 *"채점기 리포트는 답변 원문 사이드카를 남긴다"* 고 적어 뒀는데,
+    그 규율이 **옵션 하나 뒤에** 있었고 판정 실행이 그 옵션을 안 켰다.
+
+    ⚠ 원문은 조직 문서의 사실이므로 gitignore 된 자리에만 앉는다. 그 성질은 안 바뀐다 —
+    `--out` 자체가 이미 그런 자리를 가리킨다.
+    """
+    if disabled:
+        return ""
+    if explicit:
+        return explicit
+    if not out:
+        return ""
+    q = Path(out)
+    return str(q.with_name(q.stem + ".answers" + (q.suffix or ".json")))
+
+
 def summary_lines(rows: list[dict], for_signature: bool) -> list[str]:
     """요약 줄. **서명 전에는 비율을 만들지 않는다.**
 
@@ -107,7 +129,10 @@ async def main() -> int:
     ap.add_argument("--fill", choices=("on", "off"), default="",
                     help="절 채움(`search.section_fill`) 강제. 비우면 config 그대로")
     ap.add_argument("--save-answers", default="",
-                    help="답변 **원문**을 적을 파일. 조직 문서의 사실이므로 gitignore 된 곳에만")
+                    help="답변 **원문**을 적을 파일. 조직 문서의 사실이므로 gitignore 된 곳에만. "
+                         "안 주면 `--out` 옆에 자동으로 적는다")
+    ap.add_argument("--no-answers", action="store_true",
+                    help="원문 사이드카를 만들지 않는다 — **기본은 만든다**")
     args = ap.parse_args()
 
     labels = yaml.safe_load(Path(args.labels).read_text(encoding="utf-8"))
@@ -221,11 +246,12 @@ async def main() -> int:
                 ensure_ascii=False, indent=2),
                 encoding="utf-8")
             print(f"  기록: {args.out}")
-        if args.save_answers:
-            Path(args.save_answers).write_text(json.dumps(
+        sidecar = sidecar_path(args.out, args.save_answers, args.no_answers)
+        if sidecar:
+            Path(sidecar).write_text(json.dumps(
                 {"fill": cfg.get("search", {}).get("section_fill"), "answers": answers},
                 ensure_ascii=False, indent=2), encoding="utf-8")
-            print(f"  답변 원문: {args.save_answers}")
+            print(f"  답변 원문: {sidecar}")
     finally:
         await db.close_pool()
     return 0

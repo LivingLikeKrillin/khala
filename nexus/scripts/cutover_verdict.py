@@ -63,6 +63,19 @@ def rate(runs, lid: str, idx: int) -> tuple[int, int]:
     return sum(1 for x in v.values() if x[idx]), len(v)
 
 
+def flips(runs, lid: str, idx: int) -> list[str]:
+    """그 라벨이 **떨어진 회차**의 이름들. 원문을 열 자리를 가리키려고 있다.
+
+    ⛔ **왜 필요한가 (실측 2026-09-02).** 2판이 갈린 라벨을 두고 *"답변이 문서·코드를 나란히
+    내면서 결론 자리에 불일치를 적기 때문"* 이라는 진단을 미결로 올렸는데, 실물을 보니
+    **그 라벨들은 이미 10/10 이었다.** 진단이 낡은 채 항목으로 앉아 있었던 것이다.
+
+    회차 이름을 내면 사이드카(`<기록파일>.answers.json`)에서 그 답변을 바로 열 수 있다.
+    이 하니스가 오래 못 하던 일이 그것이다 — 숫자는 있는데 **읽을 원문이 없었다.**
+    """
+    return sorted(run for run, x in runs.get(lid, {}).items() if not x[idx])
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--classify", required=True, help="기준선 태그 (10회)")
@@ -102,6 +115,17 @@ def main() -> None:
         print(f"  ⛔ 게이트 {lid}: 1판 기준 {fixed} → {got}")
     for lid, b, c in gauge:
         print(f"  · 게이지 {lid}: 2판 {b} → {c} (**게이트 아님** — 보고만 한다)")
+
+    # 2판이 한 번이라도 갈린 라벨은 **회차 이름과 함께** 낸다. 숫자만 내면 다음 사람이
+    # 원문을 못 찾고, 못 찾으면 진단이 추측이 된다 — 그렇게 앉아 있던 항목이 실제로 있었다.
+    wobble = [(lid, flips(base, lid, 1), flips(cmp_runs, lid, 1))
+              for lid in sorted(stable)
+              if flips(base, lid, 1) or flips(cmp_runs, lid, 1)]
+    if wobble:
+        print(chr(10) + '  2판이 갈린 라벨 — 원문은 `<기록파일>.answers.json` 에 있다')
+        for lid, b_f, c_f in wobble:
+            print(f"    {lid}: {args.classify} 실패회차 {b_f or '없음'} · "
+                  f"{args.compare} 실패회차 {c_f or '없음'}")
     if gate_diff:
         print(f"⛔ 1판이 달라진 라벨 {len(gate_diff)} — **되돌린다**")
     else:
