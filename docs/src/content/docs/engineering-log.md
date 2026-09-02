@@ -574,3 +574,20 @@ The verdict now prints its own limit with every judgment:
 ```
 
 The limit is stated rather than left to be inferred from a precision that is not there.
+
+**Retracting "subset runs differ from full runs" as well (2026-09-02).** Yesterday I recorded it as a reproducible fact and filed it as an open item. Digging in, it does not hold.
+
+**Retrieval and evidence assembly are deterministic.** Running the same query with no warm-up and with eight preceding queries gives the same top-20 chunks in the same order, and the assembled prompt is **byte-identical**. There is nowhere for a difference to enter.
+
+Counted by state:
+
+| | full runs | subset runs |
+|---|---|---|
+| old state | 17/20 | 8/16 |
+| new state | 10/10 | 10/10 |
+
+The old state's `p=0.034` is a **post-hoc test on a case picked because it looked odd**, so it is not evidence. And two full runs under identical conditions gave 10/10 and 7/10 — the noise is larger than the thing being compared.
+
+⇒ **It was a finding built by eyeballing two batch fractions.** The same class of error that stopped me three times this week. Those times a rule caught it; this time I did not apply the rule and used my eyes instead.
+
+One rule added: **test before claiming two conditions differ.** And a post-hoc p-value on a case selected for looking odd is not evidence.
