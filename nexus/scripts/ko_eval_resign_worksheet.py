@@ -38,14 +38,37 @@ from scripts.ko_eval_packb import (  # noqa: E402
     _collect,
 )
 from scripts.ko_eval_answer_quality import _norm, facts_present  # noqa: E402
-from scripts.ko_eval_labels import judged_keys, load  # noqa: E402
+from scripts.ko_eval_labels import _digest, judged_keys, load  # noqa: E402
 
 LABELS = LOCAL_DIR / "packb-labels.yaml"
 POOL = LOCAL_DIR / "pool-adjudication.json"
-OUT = LOCAL_DIR / "resign-worksheet.md"
 
 #: 본문 발췌는 잘라서 싣는다 — 워크시트는 읽히려고 있는 문서이고, 청크 하나가 4천 자인 것도 있다.
 EXCERPT = 700
+
+
+def signed_bodies(labels: dict, manifest: dict | None) -> tuple[dict[str, str | None], str]:
+    """**서명된 본문 해시**와 그 값이 어디서 왔는지 → ({문서키: hex}, 출처 이름).
+
+    ⛔ 정본은 라벨 자신의 `corpus.bodies` 다. 관문(`ko_eval_labels.expired`)이 보는 것이 그것이고,
+    워크시트가 다른 것을 보면 사람은 **관문이 막지도 않은 문서**를 다시 읽게 된다.
+
+    실측 2026-09-03 에 실제로 갈라져 있었다. Pack B 의 판정 문서 20건에 대해 매니페스트 기준으로는
+    15건이 달라졌고 `corpus.bodies` 기준으로는 8건이었다 — 매니페스트는 2026-08-07 에 얼린 팩의
+    해시이고 라벨은 2026-08-12 에 다시 서명됐기 때문이다. 워크시트는 그 차이만큼 사람에게 없는
+    일을 시키고 있었다. 매니페스트는 **라벨이 결속을 안 들고 있을 때만** 쓴다(옛 라벨).
+    """
+    inline = (labels.get("corpus") or {}).get("bodies") or {}
+    if inline:
+        return {k: _digest(v) for k, v in inline.items()}, "corpus.bodies"
+    docs = (manifest or {}).get("docs") or []
+    return {d["key"]: _digest(d.get("body_sha256")) for d in docs}, "manifest"
+
+
+#: `signed_bodies` 의 출처를 사람이 읽는 말로. 워크시트 머리에 **어느 해시로 판정했는지**가 적혀야
+#: 한다 — 그것이 관문과 같은지 다른지가 이 문서의 신뢰도 전부다.
+SOURCE_TEXT = {"corpus.bodies": "라벨의 `corpus.bodies` (관문이 보는 것과 같다)",
+               "manifest": "매니페스트 (라벨에 `corpus.bodies` 가 없다)"}
 
 
 def _requirement_state(groups: list[list[str]] | None, body: str) -> list[tuple[str, bool, str]]:
@@ -60,7 +83,10 @@ def _requirement_state(groups: list[list[str]] | None, body: str) -> list[tuple[
     out = []
     for group, present in zip(groups or [], ok):
         hit = next((alt for alt in group if _norm(alt) in normalized), "")
-        out.append((" | ".join(group), present, hit))
+        # 후보를 `|` 로 이으면 마크다운 표의 칸이 갈라진다 — `["잠금해제", "해금"]` 이 실제로
+        # 칸 넷짜리 줄을 만들었다(2026-09-03). 표를 읽으라고 만든 문서에서 표가 깨지면
+        # 사람은 그 줄을 안 읽는다.
+        out.append((" 또는 ".join(f"`{alt}`" for alt in group), present, hit))
     return out
 
 
@@ -100,10 +126,15 @@ def _body(doc: dict | None) -> str:
 async def _run(args) -> int:
     from nexus import db
 
-    labels = load(LABELS)
-    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    signed = {d["key"]: d for d in manifest["docs"]}
-    titles = {k: d["title"] for k, d in signed.items()}
+    labels = load(args.labels)
+    manifest = json.loads(args.manifest.read_text(encoding="utf-8")) if args.manifest.exists() else None
+    signed_sha, signed_from = signed_bodies(labels, manifest)
+    # 매니페스트의 청크·글자 수는 **매니페스트가 곧 서명일 때만** '이전' 이다. 라벨이 자기
+    # 결속을 들고 있으면 그 매니페스트는 다른 시점의 다른 팩일 수 있고(키가 겹쳐도), 그 수를
+    # '이전' 이라고 적으면 일어나지 않은 변경을 보여 준다.
+    signed = ({d["key"]: d for d in (manifest or {}).get("docs", [])}
+              if signed_from == "manifest" else {})
+    titles = {d["key"]: d["title"] for d in (manifest or {}).get("docs", [])}
 
     pool_obj = await db.get_pool()
     async with pool_obj.acquire() as con:
@@ -115,11 +146,12 @@ async def _run(args) -> int:
             "WHERE tenant = $1 AND status = 'active' AND is_quarantined = false", args.tenant)}
     await db.close_pool()
 
-    if not frozen:
-        print(f"snapshot tenant {args.snapshot!r} is empty: no body to diff against")
-        return 2
-
     live_sha = {k: _body_hash([t for _, _, t in v["chunks"]]) for k, v in live.items()}
+    #: 스냅샷이 **서명된 그 본문**을 들고 있을 때만 '이전' 이라고 부른다. 해시가 다른 스냅샷을
+    #: 나란히 놓으면 워크시트는 일어나지 않은 변경을 보여 주고, 사람은 그것을 읽고 서명한다 —
+    #: 아무것도 안 보여 주는 것보다 나쁘다.
+    frozen_sha = {k: _body_hash([t for _, _, t in v["chunks"]]) for k, v in frozen.items()}
+    titles.update({k: v["title"] for k, v in live.items() if v.get("title")})
     queries = [q for q in labels["queries"] if q.get("answerable")]
 
     #: 라벨이 **판정한** 문서만 묶인다 (§3.3: 코퍼스 전체를 묶으면 적재마다 45건이 전부 만료된다).
@@ -128,18 +160,21 @@ async def _run(args) -> int:
         for key in judged_keys(q):
             judged.setdefault(key, []).append(q)
 
-    drifted = {k: v for k, v in judged.items()
-               if live_sha.get(k) != (signed.get(k) or {}).get("body_sha256")}
+    drifted = {k: v for k, v in judged.items() if live_sha.get(k) != signed_sha.get(k)}
     stale_qids = sorted({q["id"] for qs in drifted.values() for q in qs})
+    #: 서명된 본문을 실제로 들고 있는 스냅샷 문서만 '이전' 이 된다.
+    has_before = {k for k in drifted if frozen_sha.get(k) == signed_sha.get(k)}
 
     L: list[str] = []
     w = L.append
-    w("# 재서명 워크시트 — packb-labels.yaml")
+    w(f"# 재서명 워크시트 — {args.labels.name}")
     w("")
     w(f"- 생성: {datetime.now(timezone.utc).isoformat(timespec='seconds')}")
-    w(f"- 라벨 revision **{labels['revision']}** · 팩 `{manifest['pack']}` "
-      f"(얼린 시각 {manifest['frozen_at']})")
-    w(f"- 측정하는 테넌트 `{args.tenant}` · 대조하는 스냅샷 테넌트 `{args.snapshot}`")
+    w(f"- 라벨 revision **{labels['revision']}** · 팩 `{labels.get('pack', '?')}`"
+      + (f" · 매니페스트 얼린 시각 {manifest['frozen_at']}" if manifest else ""))
+    w(f"- 서명된 해시의 출처: **{SOURCE_TEXT[signed_from]}**")
+    w(f"- 측정하는 테넌트 `{args.tenant}` · 대조하는 스냅샷 테넌트 `{args.snapshot}` "
+      f"— 서명된 본문을 실제로 들고 있는 문서 **{len(has_before)}/{len(drifted)}**")
     w(f"- 판정된 문서 **{len(judged)}**건 중 본문이 달라진 것 **{len(drifted)}**건 "
       f"→ 만료되는 질의 **{len(stale_qids)} / {len(queries)}**")
     w("")
@@ -169,11 +204,24 @@ async def _run(args) -> int:
         sig = signed.get(key) or {}
         n_mr = sum(1 for _, idx, _ in now["chunks"]
                    if tiers.get((key, idx)) == "machine_read")
-        w(f"- 청크 {sig.get('chunks', '?')} → **{len(now['chunks'])}** · "
+        before_chunks = sig.get("chunks") or (len(before["chunks"]) if key in has_before else "?")
+        w(f"- 청크 {before_chunks} → **{len(now['chunks'])}** · "
           f"본문 {sig.get('body_chars', '?')}자 → **{sum(len(t) for _, _, t in now['chunks'])}**자")
         w(f"- 기계가 그림에서 읽은 청크: **{n_mr}** / {len(now['chunks'])} (ADR-0010 §2)")
         w(f"- 딸린 질의: {', '.join(q['id'] for q in drifted[key])}")
+        w(f"- 서명된 해시 `{(signed_sha.get(key) or '(없음)')[:12]}` → 지금 "
+          f"`{(live_sha.get(key) or '')[:12]}`")
         w("")
+
+        if key not in has_before:
+            # 스냅샷의 본문이 서명된 그 본문이 아니면, 나란히 놓는 순간 일어나지 않은 변경을
+            # 보여 준다. 결속은 해시만 저장하므로 옛 본문은 어디에도 없다 — 없다고 적는다.
+            w(f"⚠️ **이전 본문이 없다.** 스냅샷 테넌트 `{args.snapshot}` 의 이 문서는 "
+              f"`{(frozen_sha.get(key) or '(없음)')[:12]}` 로 서명된 해시와 다르다. 결속은 해시만"
+              " 저장하므로 옛 본문은 복원되지 않는다 — 아래 B 의 요구 성립 여부와 지금 본문으로"
+              " 판단해야 한다.")
+            w("")
+            continue
 
         added, removed = _diff_chunks(before["chunks"] if before else [], now["chunks"])
         if added:
@@ -237,7 +285,11 @@ async def _run(args) -> int:
     # ── C. 미판정 인용 ───────────────────────────────────────────────────────
     if POOL.exists():
         pool_rows = json.loads(POOL.read_text(encoding="utf-8"))
-        open_rows = [r for r in pool_rows if r.get("candidates")]
+        # **이 라벨셋의 질의만.** 판정 풀은 Pack B 의 것이고, 라벨 인자가 생기기 전에는 어떤
+        # 라벨을 펼치든 그 풀이 통째로 실렸다 — 정책 라벨의 워크시트에 `pb-loan-01` 이 나왔다
+        # (2026-09-03). 사람에게 자기 목록이 아닌 판정거리를 내미는 것은 목록을 못 믿게 만든다.
+        mine = {q["id"] for q in labels.get("queries") or []}
+        open_rows = [r for r in pool_rows if r.get("candidates") and r.get("qid") in mine]
         w("## C. 미판정 인용 — gold 승격 / not_gold")
         w("")
         w("답변이 인용했지만 아무도 판정하지 않은 문서들. 판정이 없으면 `unadjudicated` 로 남아 "
@@ -277,9 +329,13 @@ async def _run(args) -> int:
     w("```")
     w("")
 
-    OUT.write_text("\n".join(L) + "\n", encoding="utf-8")
+    out = args.out or (LOCAL_DIR / f"resign-worksheet-{args.labels.stem}.md")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(L) + "\n", encoding="utf-8")
     print(f"judged docs {len(judged)}, drifted {len(drifted)}, expired queries {len(stale_qids)}")
-    print(f"worksheet: {OUT}")
+    print(f"signed hashes from: {signed_from}")
+    print(f"before-body available for {len(has_before)}/{len(drifted)} drifted docs")
+    print(f"worksheet: {out}")
     return 0
 
 
@@ -287,6 +343,13 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--tenant", default="default", help="지금 측정하는 테넌트")
     p.add_argument("--snapshot", default="ko_eval_packb", help="얼린 스냅샷 테넌트")
+    # 라벨셋이 인자인 이유: 결속은 `packb-labels.yaml` 만의 것이 아니다. 정책·멀티홉 라벨도 같은
+    # `corpus:` 블록을 들고 같은 관문에 막히는데, 그것들을 펼칠 방법이 없어 사람이 읽을 것이
+    # 없었다. 산출물 이름도 라벨에서 딴다 — 고정 경로 하나면 두 번째 실행이 첫 번째를 덮는다.
+    p.add_argument("--labels", type=Path, default=LABELS, help="라벨 파일")
+    p.add_argument("--manifest", type=Path, default=MANIFEST,
+                   help="팩 매니페스트(제목·청크 수 용도). 없으면 라이브에서 읽는다")
+    p.add_argument("--out", type=Path, default=None, help="워크시트 경로. 비우면 라벨 이름에서")
     return asyncio.run(_run(p.parse_args(argv)))
 
 

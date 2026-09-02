@@ -57,8 +57,19 @@ def test_worksheet_and_grader_agree_on_the_same_text():
 
 def test_requirement_state_names_the_spelling_that_matched():
     state = _requirement_state([["트랙", "곡"]], "상한은 100곡이다")
-    assert state == [("트랙 | 곡", True, "곡")]
-    assert _requirement_state([["트랙"]], "상한은 100곡이다") == [("트랙", False, "")]
+    assert state[0][1:] == (True, "곡")
+    assert "트랙" in state[0][0] and "곡" in state[0][0]
+    assert _requirement_state([["트랙"]], "상한은 100곡이다")[0][1:] == (False, "")
+
+
+def test_a_requirement_label_never_breaks_the_markdown_table():
+    """후보를 `|` 로 이으면 표의 칸이 갈라진다 — `["잠금해제", "해금"]` 이 칸 넷짜리 줄을 만들었다.
+
+    표를 읽으라고 만든 문서에서 표가 깨지면 사람은 그 줄을 안 읽는다.
+    """
+    label = _requirement_state([["잠금해제", "해금"]], "해금 방식이다")[0][0]
+    assert "|" not in label
+    assert f"| {label} | ✓ | |".count("|") == 4, "마크다운 칸이 셋이어야 한다"
 
 
 # ── 본문 대조: 번호가 아니라 텍스트 ──────────────────────────────────────────
@@ -122,3 +133,50 @@ def test_excerpt_truncates_long_text_and_marks_it():
 
 def test_excerpt_keeps_short_text_and_flattens_lines():
     assert _excerpt("한 줄\n두 줄") == "한 줄 두 줄"
+
+
+# ── 워크시트가 보는 서명과 관문이 보는 서명이 같은가 (2026-09-03) ─────────────
+#
+# 실측: Pack B 의 판정 문서 20건에 대해 **매니페스트 기준 15건 · `corpus.bodies` 기준 8건**이
+# 달라진 것으로 나왔다. 관문(`ko_eval_labels.expired`)은 후자를 보므로, 워크시트는 관문이 막지도
+# 않은 문서 일곱 건을 사람에게 다시 읽으라고 내밀고 있었다. 매니페스트는 2026-08-07 에 얼린 팩의
+# 해시이고 라벨은 2026-08-12 에 다시 서명됐기 때문이다 — 사본이 갈라진 자리다.
+
+from scripts.ko_eval_labels import expired  # noqa: E402
+from scripts.ko_eval_resign_worksheet import signed_bodies  # noqa: E402
+
+_MANIFEST = {"docs": [{"key": "a.md", "body_sha256": "sha256:old", "title": "가"}]}
+_BOUND = {"corpus": {"bodies": {"a.md": "sha256:new"}},
+          "queries": [{"id": "q1", "answerable": True, "gold": ["a.md"]}]}
+
+
+def test_the_labels_own_binding_wins_over_the_manifest():
+    """정본은 라벨의 `corpus.bodies` 다 — 관문이 그것을 보기 때문이다."""
+    sha, source = signed_bodies(_BOUND, _MANIFEST)
+    assert source == "corpus.bodies"
+    assert sha == {"a.md": "new"}, "매니페스트의 옛 해시를 집으면 없는 드리프트가 보인다"
+
+
+def test_the_manifest_is_the_fallback_only_when_the_label_carries_no_binding():
+    unbound = {"queries": _BOUND["queries"]}
+    sha, source = signed_bodies(unbound, _MANIFEST)
+    assert source == "manifest" and sha == {"a.md": "old"}
+
+
+def test_the_worksheet_and_the_gate_flag_the_same_documents():
+    """둘이 갈리면 사람은 관문이 막지 않은 문서를 읽고 서명한다 — 실제로 그랬다.
+
+    관문은 `expired()` 로, 워크시트는 `signed_bodies()` 로 판정한다. 같은 입력에서 같은 답이
+    나오는지를 **두 함수를 나란히 돌려** 확인한다 — 한쪽 소스 문자열을 읽는 것으로는 못 잡는다.
+    """
+    signed, _ = signed_bodies(_BOUND, _MANIFEST)
+
+    same = {"a.md": "new"}
+    assert ({k for k in same if same[k] != signed.get(k)}
+            == {k for keys in expired(_BOUND, same).values() for k in keys}
+            == set()), "안 바뀐 문서는 둘 다 조용히 넘겨야 한다"
+
+    moved = {"a.md": "moved"}
+    assert ({k for k in moved if moved[k] != signed.get(k)}
+            == {k for keys in expired(_BOUND, moved).values() for k in keys}
+            == {"a.md"})
