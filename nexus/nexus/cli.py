@@ -1017,6 +1017,62 @@ def evidence_share_cmd(
     _run(_do())
 
 
+@app.command("doc-age")
+def doc_age(
+    tenant: str = typer.Option("default", "--tenant", "-t", help="어느 코퍼스"),
+) -> None:
+    """문서가 **낡았는가** — 원본 수정 시각 기준. 적재 시각과 나란히 낸다.
+
+    ⛔ **두 나이는 다른 것이다** (실측 2026-09-02). `updated_at` 은 **우리가 적재한 때**라
+    재적재하면 모든 문서가 새것이 된다. 그 칸으로 재고 하마터면 *"126건 전부 3개월 이내"* 를
+    **문서가 안 낡았다**로 보고할 뻔했다 — 그 수가 말한 것은 우리가 8월에 적재했다 뿐이다.
+
+    그래서 둘을 **나란히** 낸다. 하나만 내면 읽는 사람이 방금 나처럼 오독한다.
+
+    ⚠ `미상` 은 **모른다**이지 새것이 아니다. 원본이 수정 시각을 안 주는 경로(파일 적재)와
+    이 칸이 생기기 전에 적재된 행이 여기 들어온다.
+    """
+
+    async def _do() -> None:
+        from nexus import db
+
+        buckets = """CASE
+            WHEN {col} IS NULL THEN '미상'
+            WHEN {col} > now()-interval '90 days'  THEN '3개월 이내'
+            WHEN {col} > now()-interval '180 days' THEN '3~6개월'
+            WHEN {col} > now()-interval '365 days' THEN '6~12개월'
+            ELSE '1년 이상' END"""
+        order = ["3개월 이내", "3~6개월", "6~12개월", "1년 이상", "미상"]
+        try:
+            out = {}
+            for name, col in (("원본 수정", "origin_updated_at"), ("우리 적재", "updated_at")):
+                rows = await db.fetch_all(
+                    f"SELECT {buckets.format(col=col)} b, count(*) n FROM documents "
+                    "WHERE tenant = $1 AND status = 'active' GROUP BY b", tenant)
+                out[name] = {r["b"]: r["n"] for r in rows}
+            total = sum(out["우리 적재"].values())
+            if not total:
+                typer.echo(f"문서 없음: {tenant}")
+                return
+            typer.echo(f"[{tenant}] 활성 문서 {total}건 — **두 나이는 다른 것이다**")
+            typer.echo(f"  {'':<12}{'원본 수정':>10}{'우리 적재':>12}")
+            for b in order:
+                a, c = out["원본 수정"].get(b, 0), out["우리 적재"].get(b, 0)
+                if a or c:
+                    typer.echo(f"  {b:<12}{a:>10}{c:>12}")
+            unknown = out["원본 수정"].get("미상", 0)
+            if unknown:
+                typer.echo("")
+                typer.echo(f"⚠ 원본 수정 시각을 모르는 문서 {unknown}건 — "
+                           "**모른다이지 새것이 아니다.** 다음 적재에서 채워진다(마이그레이션 039).")
+            typer.echo("⚠ 신선도 경고는 여전히 **적재 시각**으로 돈다 — 이 명령은 묻기 위한 것이지 "
+                       "판정을 바꾸지 않는다.")
+        finally:
+            await db.close_pool()
+
+    _run(_do())
+
+
 @app.command("entropy-signals")
 def entropy_signals(
     tenant: str = typer.Option("", "--tenant", "-t", help="이 테넌트만. 비우면 전부"),

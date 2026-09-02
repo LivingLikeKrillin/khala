@@ -31,6 +31,10 @@ CREATE TABLE documents (
     status          resource_status NOT NULL DEFAULT 'active',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- 문서 **자신의** 마지막 수정 시각(원본이 말하는 값, migration 039).
+    -- 위 `updated_at` 은 **우리 적재 시각**이라 재적재하면 모든 문서가 새것이 된다 —
+    -- 그 칸으로는 "문서가 낡았나" 를 구조상 못 묻는다. NULL = 모른다(≠ 새것).
+    origin_updated_at TIMESTAMPTZ,
     prov_pipeline   TEXT NOT NULL DEFAULT 'indexer-v1',
     prov_inputs     TEXT[] DEFAULT '{}',
     prov_transform  TEXT NOT NULL DEFAULT '',
