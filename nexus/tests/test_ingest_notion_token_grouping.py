@@ -36,6 +36,11 @@ def test_a_root_without_a_token_env_falls_back_to_the_default():
     assert got == {roots_store.DEFAULT_TOKEN_ENV: ["a", "b"]}
 
 
+async def _no_extracted_text(_tenant: str) -> int:
+    """이 시험들의 코퍼스에는 그림에서 읽은 청크가 없다 — 가드가 물 것이 없다."""
+    return 0
+
+
 def test_cli_walks_once_per_token_env(monkeypatch):
     """CLI 가 토큰 그룹마다 한 번씩 걷는가 — 한 번에 몰아 걷지 않는가."""
     from nexus import cli
@@ -62,6 +67,10 @@ def test_cli_walks_once_per_token_env(monkeypatch):
         walked.append(built[-1][1])
         return _Report()
 
+    # 적재 앞에 그림-텍스트 삭제 가드가 선다(사고 2026-09-02). 이 시험의 주제는 **루프·그룹핑**이지
+    # 가드가 아니고, 여기엔 DB 가 없다 — 조회만 갈아 끼운다. 가드 자체는
+    # `test_vision_drop_guard.py` 가 본다.
+    monkeypatch.setattr("nexus.ingest.vision_guard.count_machine_read", _no_extracted_text)
     monkeypatch.setattr("nexus.ingest.sources.notion_importer.import_notion", _import)
 
     cli.ingest_notion(tenant="default", roots="", token_env="NOTION_TOKEN",
@@ -100,6 +109,10 @@ def test_the_whole_command_runs_in_one_event_loop(monkeypatch):
         loops.append(asyncio.get_running_loop())
         return _Report()
 
+    # 적재 앞에 그림-텍스트 삭제 가드가 선다(사고 2026-09-02). 이 시험의 주제는 **루프·그룹핑**이지
+    # 가드가 아니고, 여기엔 DB 가 없다 — 조회만 갈아 끼운다. 가드 자체는
+    # `test_vision_drop_guard.py` 가 본다.
+    monkeypatch.setattr("nexus.ingest.vision_guard.count_machine_read", _no_extracted_text)
     monkeypatch.setattr("nexus.ingest.sources.notion_importer.import_notion", _import)
 
     cli.ingest_notion(tenant="default", roots="", token_env="NOTION_TOKEN",
@@ -131,6 +144,10 @@ def test_explicit_roots_also_stay_in_that_one_loop(monkeypatch):
         loops.append(asyncio.get_running_loop())
         return _Report()
 
+    # 적재 앞에 그림-텍스트 삭제 가드가 선다(사고 2026-09-02). 이 시험의 주제는 **루프·그룹핑**이지
+    # 가드가 아니고, 여기엔 DB 가 없다 — 조회만 갈아 끼운다. 가드 자체는
+    # `test_vision_drop_guard.py` 가 본다.
+    monkeypatch.setattr("nexus.ingest.vision_guard.count_machine_read", _no_extracted_text)
     monkeypatch.setattr("nexus.ingest.sources.notion_importer.import_notion", _import)
 
     cli.ingest_notion(tenant="default", roots="a", token_env="NOTION_TOKEN",

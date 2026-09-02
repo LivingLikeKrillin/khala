@@ -755,3 +755,28 @@ The value was dropped in `build_csf` — the function that builds the dict hande
 The signal we had was saying the opposite. Restricted to the Notion corpus: of the 19 documents that carry actual prose, **9 are over a year old** (newest 2025-07-20), **8 are 3–12 months** (newest 2025-11-02, and they hold most of the text), and 2 are under three months. The range runs 2023-12 to 2026-08.
 
 ⇒ The code moved; the policy prose mostly has not been touched in over ten months. The document-versus-code divergences observed earlier are exactly what that produces. **Fixing the documents is not this repository's work** — reporting the divergence precisely is.
+
+**I broke the live corpus (2026-09-02).** Backfilling the metadata column from the previous entry, I ran `ingest-notion --force`. The completion output was green. The corpus came out like this:
+
+```
+chunks          466 → 385
+machine_read     81 → 0
+```
+
+**Every piece of text read out of a screenshot was gone.** In this corpus most of the policy detail lives inside images, so live answers actually got worse — a question that had answered with a value now abstained with *"cannot determine."*
+
+One gate caused it. `NEXUS_VISION` defaults to **off** (sending document images to a provider is a decision the deployment owns), and when it is off, ingestion replaces each image slot with a blank image. I ran the re-ingest without checking that gate.
+
+⛔ **And what made that re-ingest possible was a change I had landed the same day.** Backfilling otherwise required the destructive `--reconcile`, which I did not want, so I opened `--force` on its own — **I opened a door to avoid one destructive path and walked into another.**
+
+It was recoverable. The extracted text was still in `vision_extractions` and the cache keys on the image hash, so a re-ingest with `NEXUS_VISION=on` restored **exactly 466/81**, with zero provider calls and zero spend. But that is a recovery only available to someone who knows all of that.
+
+## What was missing: a guard
+
+ADR-0010 §4 called marker-stripping — extracted text laundered into authored text — *"worse than not extracting at all."* This is worse still: not laundering but **deletion**. And that path had no warning, no confirmation, and no test.
+
+**There is no case where silently deleting it is correct.** So it now refuses: *vision off + something to lose + no declaration* exits with code 2. If deletion is the intent, it must be **declared** with `NEXUS_VISION_ALLOW_DROP=1`. That is the shape of a discipline this repo already has — a test database must declare itself disposable.
+
+Verified against the live deployment that the same command now stops, with the predicate kept in the **same function** the ingest path uses; a copy would eventually let the guard pass while ingestion deletes.
+
+⚠ And while recording this in the open-items list I **got the count wrong again**, adding a closed item to reach 23. The check I built a few hours earlier caught it on the spot.

@@ -1169,6 +1169,10 @@ def ingest_notion(
         if reconcile else None
     )
 
+    # ⛔ **적재가 이미 읽어 둔 그림 텍스트를 지우려 하는가** (사고 2026-09-02).
+    # 판독이 꺼진 채 재적재하면 그림 자리 표식이 빈 이미지로 바뀌고 `machine_read` 청크가
+    # 사라진다. 그날 466 → 385 로 지워졌고 라이브 답변이 값을 답하다가 기권으로 바뀌었다.
+    # 경고도 확인도 없었다 — 끝났다는 출력만 초록이었다.
     totals = {"ingested": 0, "idempotent": 0, "empty": 0, "skipped": 0,
               "holes": 0, "would_ingest": 0}
     # 이 실행이 공급자로 보낸 그림 판독. **그룹마다 리포트가 하나씩 오므로 여기서 합친다.**
@@ -1183,6 +1187,23 @@ def ingest_notion(
     # 적재와 같은 루프 안으로 들여야 그 상태가 성립하지 않는다.
     async def _walk() -> None:
         nonlocal report
+        # ⛔ **적재가 이미 읽어 둔 그림 텍스트를 지우려 하는가** (사고 2026-09-02).
+        # 판독이 꺼진 채 재적재하면 그림 자리 표식이 빈 이미지로 바뀌고 `machine_read` 청크가
+        # 사라진다. 그날 466 → 385 로 지워졌고, 라이브 답변이 값을 답하다가 기권으로 바뀌었다.
+        # 경고도 확인도 없었다 — **끝났다는 출력만 초록이었다.**
+        #
+        # 이 루프 안에서 센다. 같은 파일의 규칙이다 — `asyncio.run()` 을 두 번 부르면 첫 루프의
+        # asyncpg 풀이 죽은 루프에 묶인다(2026-08-11 에 112 페이지가 그렇게 skip 됐다).
+        import os
+
+        from nexus.ingest import vision_guard
+
+        if not dry_run:
+            n_mr = await vision_guard.count_machine_read(tenant)
+            if (why := vision_guard.refusal(n_mr, dict(os.environ))):
+                typer.echo(why)
+                raise typer.Exit(code=2)
+
 
         # **루트는 토큰별로 갈라 걷는다** (migration 009). Notion 의 integration 은 워크스페이스에
         # 속하므로, 한 토큰으로 두 워크스페이스의 루트를 함께 걸으면 그 토큰이 못 보는 쪽이 통째로
