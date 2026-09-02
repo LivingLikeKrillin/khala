@@ -581,7 +581,15 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
     asked_tenant = req.tenant if "tenant" in req.model_fields_set else None
     _scope, req.classification_max, _out = effective_read_scope(
         principal, asked_tenant, req.classification_max)
-    req.tenant = _scope[0] if len(_scope) == 1 else list(_scope)
+    # ⛔ **`req.tenant` 에 목록을 넣지 않는다** (실측 2026-09-02). 첫 판은 원소가 둘이면
+    # 리스트를 넣었는데, 그 필드는 `str` 이고 `search_log.tenant` 도 TEXT 다. 적재가 조용히
+    # 죽었고 — `record_search` 는 절대 raise 안 한다 — **범위를 붙인 그 시각부터 신호가 한 줄도
+    # 안 쌓였다.** 하루 넘게 몰랐다.
+    #
+    # 그래서 `req.tenant` 는 **귀속용 단일 값**(principal 의 테넌트)으로 두고, 범위는 로컬
+    # `_scope` 로만 흐른다. 신호에는 `read_scope` 로 따로 남긴다 — 교차 테넌트 조회를 단일
+    # 테넌트로 기록하면 `design_docs` 수요가 `default` 로 오귀속된다.
+    req.tenant = principal.tenant
     if _out:
         # ⛔ 오류를 내지 않는다(존재 누출 금지). 대신 **운영자에게 남긴다** — 그게 없으면
         # 오설정 하나가 "요청하지 않은 코퍼스의 답" 을 영구히 정상 응답으로 준다 (1R I-009).
@@ -612,7 +620,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         patterns = _build_entity_patterns(gazetteer)
         detected = find_entities_in_text(search_query, patterns)
         entity_rids = [
-            entity_rid(req.tenant, e.entity_type, e.name)
+            entity_rid(principal.tenant, e.entity_type, e.name)
             for e in detected
         ]
 
@@ -621,7 +629,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         # 검색
         search_result = await hybrid_search(
             query=search_query,
-            tenant=req.tenant,
+            tenant=_scope,
             clearance=req.classification_max,
             top_k=req.top_k,
             embedding_svc=embedding_svc,
@@ -634,7 +642,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
 
         # 답변용 근거 패킷은 한 함수로만 만든다 (`search/reconcile.py`).
         packet = await packet_for_answer(
-            search_result, req.tenant, req.classification_max,
+            search_result, _scope, req.classification_max,
             config=config, search=hybrid_search, embedding_svc=embedding_svc,
             question=req.query, pool=await db.get_pool())
 
@@ -661,7 +669,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
 
         sig = extract_signals(
             search_result, answer_result, path="search_answer",
-            tenant=req.tenant, clearance=req.classification_max, query=req.query,
+            tenant=req.tenant, read_scope=_scope,
+            clearance=req.classification_max, query=req.query,
             n_entities=len(entity_rids),
             fusion_channels=len(channels or [1]),
             rewrite=rw,

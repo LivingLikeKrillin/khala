@@ -104,6 +104,12 @@ class SearchSignals:
     n_image_bearing_docs: int = 0
 
 
+    #: 이 조회가 **실제로 읽은 테넌트들**. `tenant` 는 귀속용 단일 값이고 이것이 범위다.
+    #:
+    #: ⛔ **없으면 수요 신호가 오귀속된다** (SPEC-nexus-design-corpus-cutover §5.4). 슬랙이
+    #: `design_docs` 를 읽어도 행에는 `default` 만 남아, demand-pull 판단이 *"설계 코퍼스는
+    #: 아무도 안 본다"* 로 읽힌다. 컷오버가 그 오귀속을 만들어 놓고 시작하는 셈이다.
+    read_scope: str | None = None
 def extract_signals(
     result: SearchResult,
     answer: AnswerResult | None = None,
@@ -112,6 +118,7 @@ def extract_signals(
     tenant: str | None,
     clearance: str | None,
     query: str,
+    read_scope=None,
     n_entities: int = 0,
     fusion_channels: int = 1,
     rewrite=None,
@@ -147,6 +154,8 @@ def extract_signals(
     cost = cost_usd if cost_usd is not None else (
         _usage.get("cost_usd") if _usage else None)
     return SearchSignals(
+        read_scope=(",".join(read_scope)
+                    if read_scope and not isinstance(read_scope, str) else read_scope),
         path=path,
         tenant=tenant,
         clearance=clearance,
@@ -317,7 +326,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
     return await db.fetch_val(
         """
         INSERT INTO search_log (
-            path, tenant, clearance, route, query_sha256, query_len,
+            path, tenant, read_scope, clearance, route, query_sha256, query_len,
             n_snippets, top_score, n_entities, graph_requested, n_graph_edges,
             no_answer, llm_failed, latency_ms, n_citations, unverified_citations,
             prompt_tokens, completion_tokens, cost_usd, n_image_bearing_docs,
@@ -327,7 +336,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd,
             answer_prompt_sha, rewrite_prompt_sha,
             top_distance, top_bm25
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+        ) VALUES ($1,$2,$36,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
                   $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
                   $34, $35)
         RETURNING id
@@ -342,7 +351,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.rewrite_applied, sig.rephrased_sha256, sig.rephrased_len, sig.rewrite_changed,
         sig.rewrite_prompt_tokens, sig.rewrite_completion_tokens, sig.rewrite_cost_usd,
         sig.answer_prompt_sha, sig.rewrite_prompt_sha,
-        sig.top_distance, sig.top_bm25,
+        sig.top_distance, sig.top_bm25, sig.read_scope,
     )
 
 

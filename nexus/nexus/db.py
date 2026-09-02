@@ -124,6 +124,10 @@ CREATE TABLE IF NOT EXISTS search_log (
     cost_usd             DOUBLE PRECISION
 );
 -- 기존 테이블(IF NOT EXISTS 로 안 바뀐)에도 컬럼을 더한다(멱등). migration 005·006 과 동일.
+-- 이 조회가 실제로 읽은 테넌트들. `tenant` 는 귀속용 단일 값이라 교차 테넌트 조회를
+-- 구별하지 못한다 — 그러면 `design_docs` 수요가 `default` 로 귀속돼 demand-pull 판단이
+-- 거짓이 된다 (SPEC-nexus-design-corpus-cutover §5.4).
+ALTER TABLE search_log ADD COLUMN IF NOT EXISTS read_scope           TEXT;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS n_citations          INTEGER;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS unverified_citations INTEGER;
 ALTER TABLE search_log ADD COLUMN IF NOT EXISTS prompt_tokens        INTEGER;
