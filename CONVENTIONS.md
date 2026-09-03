@@ -117,6 +117,20 @@ tested was never the version we declared.
   Scope by tool when it helps, e.g. `feat(probe): add review grounder`.
 - Keep each PR scoped to a single tool and a single concern where possible.
 
+## Running the local guards
+
+- **Install the hooks once:** `task hooks`. Two layers — `commit-msg` refuses a partner
+  fingerprint in a commit message, `pre-commit` refuses one in the staged files.
+- **Never pipe a guard.** A pipeline exits with the status of its *last* command, so
+  `fingerprint_scan.py | tail -2 && git commit` commits even when the scan fails. On
+  2026-09-03 that put a real Notion page id on a public branch — the scan had run, and it
+  had failed. Redirect with `> /dev/null` when the output is noisy; that keeps the code.
+- **In a worktree, do not re-set `core.hooksPath`.** The shared relative path already
+  resolves to each worktree's own `scripts/hooks`. Setting it again freezes an absolute
+  path to the main checkout, and the hooks stop running where the work happens.
+- The hooks are a layer against mistakes, not an enforcement layer. `--no-verify` is not
+  blocked — CI is what enforces.
+
 ## Retracting a claim in a signed document
 
 An approved SPEC or accepted ADR is stamped with a hash of its **body**. Later work
