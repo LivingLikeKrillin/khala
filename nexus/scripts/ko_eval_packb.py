@@ -193,6 +193,86 @@ async def cmd_freeze(args) -> int:
         await db.close_pool()
 
 
+def extension_problems(keys: list[str], live: dict, frozen: dict) -> list[str]:
+    """더할 수 있는 문서인가. **이미 얼린 것을 조용히 갈아치우지 않는다.**
+
+    ⛔ 왜 거부하는가 (2026-09-03). `freeze` 는 스냅샷 테넌트를 **지우고 다시 만든다** — 두 시점이
+    한 테넌트에 섞이는 것을 막는 옳은 설계지만, 그래서 gold 문서 하나를 더하려고 부르면 이미 얼린
+    문서 전부의 본문이 함께 지금 것으로 바뀐다. 그 본문은 재서명 워크시트가 *"무엇이 달라졌나"* 를
+    보여 주는 유일한 재료다(`OPEN.md` A55). 하나를 더하려다 남의 서명 근거를 지우게 된다.
+
+    그래서 이 명령은 **더하기만** 한다. 이미 있는 키는 갱신이 아니라 거부다.
+    """
+    out = [f"{k}: 라이브 `default` 에 없다" for k in keys if k not in live]
+    out += [f"{k}: 이미 얼려 있다 — 갱신하려면 그 문서를 판정한 라벨을 먼저 재서명해야 한다"
+            for k in keys if k in frozen]
+    return out
+
+
+def extended_manifest(old: dict, added: list[dict], at: str) -> dict:
+    """매니페스트에 문서를 더한다. `frozen_at` 은 **안 건드린다** — 그날 얼린 것은 그날 얼린 것이다."""
+    docs = old["docs"] + added
+    return {**old, "documents": len(docs),
+            "chunks": sum(d["chunks"] for d in docs),
+            "extended_at": at, "docs": docs}
+
+
+async def cmd_extend(args) -> int:
+    """얼린 팩에 문서를 **더한다**. 나머지는 얼린 그대로 둔다."""
+    from nexus import db
+    from nexus.index.bm25 import index_chunk_bm25
+    from nexus.rid import chunk_rid, doc_rid
+
+    class _Indexable:
+        def __init__(self, text, section):
+            self.chunk_text, self.section_path, self.context_prefix = text, section, None
+
+    if not MANIFEST.exists():
+        print(f"✗ 매니페스트가 없다: {MANIFEST} — 더할 팩이 없다. 먼저 freeze 를 돌려라")
+        return 1
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+
+    pool = await db.get_pool()
+    try:
+        async with pool.acquire() as con:
+            live = await _collect(con, args.source_tenant)
+            frozen = await _collect(con, SNAPSHOT_TENANT)
+            if problems := extension_problems(args.keys, live, frozen):
+                print("✗ 더할 수 없다:", *problems, sep="\n  ")
+                return 1
+            added = []
+            for key in args.keys:
+                doc = live[key]
+                uri = f"{SNAPSHOT_TENANT}:{key}"
+                drid = doc_rid(uri)
+                await con.execute(
+                    "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, title, "
+                    "status) VALUES ($1,$2,$3,'h',$4,$5,'active')",
+                    drid, SNAPSHOT_TENANT, uri,
+                    _body_hash([t for _, _, t in doc["chunks"]]), doc["title"])
+                for section, idx, text in doc["chunks"]:
+                    crid = chunk_rid(drid, section or "root", idx)
+                    await con.execute(
+                        "INSERT INTO chunks (rid, tenant, source_uri, doc_rid, chunk_text, "
+                        "section_path, chunk_index, status, hash) "
+                        "VALUES ($1,$2,$3,$4,$5,$6,$7,'active','h')",
+                        crid, SNAPSHOT_TENANT, uri, drid, text, section or "root", idx)
+                    await index_chunk_bm25(crid, _Indexable(text, section or "root"))
+                added.append(_manifest_doc(key, doc))
+
+        at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        MANIFEST.write_text(
+            json.dumps(extended_manifest(manifest, added, at), ensure_ascii=False, indent=1) + "\n",
+            encoding="utf-8", newline="\n")
+        for d in added:
+            print(f"✓ 더했다: {d['key']} · 청크 {d['chunks']} · 본문 {d['body_chars']}자")
+        print(f"  팩 문서 {manifest['documents']} → {manifest['documents'] + len(added)}")
+        print("  ⚠ 얼린 나머지는 건드리지 않았다 — 그 본문이 재서명의 대조 기준이다")
+        return 0
+    finally:
+        await db.close_pool()
+
+
 async def cmd_verify(_args) -> int:
     """스냅샷이 매니페스트와 같은지. **검증되지 않는 실행은 결과가 아니다** (§4.1)."""
     from nexus import db
@@ -303,6 +383,9 @@ def main(argv: list[str] | None = None) -> int:
     f = sub.add_parser("freeze", help="라이브 테넌트를 얼린다")
     f.add_argument("--source-tenant", default="default")
     f.add_argument("--name", default="packb-" + datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    e = sub.add_parser("extend", help="얼린 팩에 문서를 더한다(나머지는 그대로)")
+    e.add_argument("keys", nargs="+", help="더할 문서 키")
+    e.add_argument("--source-tenant", default="default")
     sub.add_parser("verify", help="스냅샷 ↔ 매니페스트")
     sub.add_parser("status", help="자로서 작동할 크기인지")
     args = ap.parse_args(argv)
@@ -310,7 +393,7 @@ def main(argv: list[str] | None = None) -> int:
     if not os.getenv("DATABASE_URL"):
         print("✗ DATABASE_URL 이 없다")
         return 1
-    return asyncio.run({"freeze": cmd_freeze, "verify": cmd_verify,
+    return asyncio.run({"freeze": cmd_freeze, "extend": cmd_extend, "verify": cmd_verify,
                         "status": cmd_status}[args.cmd](args))
 
 
