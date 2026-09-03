@@ -69,7 +69,10 @@ def verdict(arms: list[dict], drift: list[str], noise_band: float) -> dict:
         if a["policy"]["covered"] < base["policy"]["covered"]:
             continue
         # §5.2 기제 대조군 — 좋아졌는데 청크가 풀에 안 들어왔으면 값이 다른 데서 온 것이다.
-        if not a.get("chunk_entered_pool"):
+        # **새로 커버된 질의마다** 본다. 실험군당 참/거짓 하나로는 "어느 질의에서 들어왔는가" 를
+        # 못 판다 — 무딘 답은 규칙이 묻지 않은 것에 답하는 것이다.
+        gained = set(covered_qids(a)) - set(covered_qids(base))
+        if not gained or not all(a.get("chunk_entered_pool", {}).get(q) for q in gained):
             noted.append(a["arm"])
             continue
         grew = a["median_chars"] / base["median_chars"] if base["median_chars"] else float("inf")
@@ -90,6 +93,12 @@ def verdict(arms: list[dict], drift: list[str], noise_band: float) -> dict:
             "adopt": candidates[0]["arm"] if candidates else None,
             "reason": ("§5.7 — 풀을 키워도 조립 실패가 안 사라진다" if not candidates
                        else "§5.6 — 풀 증가가 가장 작은 후보")}
+
+
+def covered_qids(arm: dict) -> list[str]:
+    """이 실험군이 요구를 다 받은 멀티홉 질의들."""
+    return [r["qid"] for r in arm.get("rows", [])
+            if r.get("group") == "multihop" and r.get("covered")]
 
 
 def determinism(a: dict, b: dict) -> list[str]:
@@ -121,7 +130,7 @@ async def run_arm(name: str, pool: int, groups: dict[str, list[dict]], tenant: l
     cfg = _load_config()
     cfg.setdefault("search", {})["bm25_top_k"] = pool
     svc, conn_pool = embedding_service_from_config(), await db.get_pool()
-    rows, entered = [], False
+    rows, entered = [], {}
 
     for group, queries in groups.items():
         for q in queries:
@@ -141,10 +150,12 @@ async def run_arm(name: str, pool: int, groups: dict[str, list[dict]], tenant: l
             present = facts_present(q.get("must_contain"), text)
 
             # §5.2 기제 관측 — 정답 청크가 **이 실험군의 BM25 풀에** 들어왔는가.
+            # ⚠ **질의별로** 남긴다. 첫 판은 실험군당 참/거짓 하나였고, 그러면 "어느 질의에서
+            # 들어왔는가" 를 못 판다 — 실제로 m01 은 들어오고 m02 는 안 들어온 회차를 하나의
+            # `True` 로 뭉쳤다(2026-09-02). 판정은 안 바뀌었지만 규칙이 묻는 것보다 무딘 답이었다.
             if holder_rid and group == "multihop":
                 bm, _ = await hybrid._bm25_search(q["query"], tenant, CLEARANCE, pool)
-                if any(x == holder_rid for x, _ in bm):
-                    entered = True
+                entered[q["id"]] = any(x == holder_rid for x, _ in bm)
 
             rows.append({
                 "group": group, "qid": q["id"],
@@ -198,7 +209,8 @@ async def _run(args) -> int:
     for a in arms:
         print(f"| {a['arm']} | {a['bm25_top_k']} | {a['multihop']['covered']}/{a['multihop']['n']}"
               f" | {a['policy']['covered']}/{a['policy']['n']}"
-              f" | {'예' if a['chunk_entered_pool'] else '아니오'} | {a['median_chars']:.0f}"
+              f" | {','.join(q for q, v in a['chunk_entered_pool'].items() if v) or '없음'}"
+              f" | {a['median_chars']:.0f}"
               f" | {cost_delta(a['median_chars'], b['median_chars'])}"
               f" | {a['median_ms']:.0f}ms | {cost_delta(a['median_ms'], b['median_ms'])} |")
     print(f"\n  결정론 대조군: {'통과' if not drift else '실패 — ' + ', '.join(drift)}")
