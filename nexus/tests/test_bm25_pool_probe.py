@@ -22,6 +22,10 @@ def _arm(name, pool, multihop, policy, chars=1000, ms=200, entered=True):
     qids = [f"m{i:02d}" for i in range(1, 5)]
     rows = [{"group": "multihop", "qid": q, "covered": i < multihop}
             for i, q in enumerate(qids)]
+    # 회귀 그룹도 행으로 만든다. 요약 딕셔너리만 두면 `regression_groups` 가 그룹을 못 보고
+    # 회귀 검사가 조용히 안 걸린다 — 실제로 그렇게 검사 하나가 통과했다(2026-09-02).
+    rows += [{"group": "policy", "qid": f"p{i:02d}", "covered": i < policy}
+             for i in range(8)]
     return {"arm": name, "bm25_top_k": pool, "median_chars": chars, "median_ms": ms,
             "rows": rows, "chunk_entered_pool": {q: entered for q in qids},
             "multihop": {"covered": multihop, "n": 4}, "policy": {"covered": policy, "n": 8}}
@@ -175,3 +179,35 @@ def test_covered_qids_reads_only_the_multihop_group():
                     {"group": "policy", "qid": "p01", "covered": True},
                     {"group": "multihop", "qid": "m02", "covered": False}]}
     assert covered_qids(arm) == ["m01"]
+
+
+# ── §7.1 회귀 집합이 여럿일 때 ───────────────────────────────────────────────
+#
+# Pack B 를 얹으면 회귀 그룹이 `policy` 하나가 아니다. 이름 하나를 코드에 박아 두면 그룹이
+# 늘어날 때 규칙이 **조용히 좁아진다** — 새 그룹에서 떨어져도 후보가 된다.
+
+def _with_group(arm, group, covered, n):
+    arm["rows"] += [{"group": group, "qid": f"{group}{i:02d}", "covered": i < covered}
+                    for i in range(n)]
+    arm[group] = {"covered": covered, "n": n}
+    return arm
+
+
+def test_every_regression_group_is_checked_not_just_the_first():
+    base = _with_group(_arm("base", 20, 2, 8, entered=False), "packb", 23, 23)
+    arm = _with_group(_arm("pool-25", 25, 3, 8), "packb", 22, 23)   # packb 에서 하나 떨어짐
+    assert verdict([base, arm], [], 5.0)["adopt"] is None
+
+
+def test_a_gain_that_holds_every_group_is_still_a_candidate():
+    base = _with_group(_arm("base", 20, 2, 8, entered=False), "packb", 23, 23)
+    arm = _with_group(_arm("pool-25", 25, 3, 8), "packb", 23, 23)
+    assert verdict([base, arm], [], 5.0)["adopt"] == "pool-25"
+
+
+def test_regression_groups_never_include_the_treatment_arm():
+    """처치군을 회귀 검사에 넣으면 '오르면 안 된다' 를 자기 자신에게 거는 셈이다."""
+    from scripts.bm25_pool_probe import regression_groups
+
+    arm = _with_group(_arm("base", 20, 2, 8), "packb", 23, 23)
+    assert regression_groups(arm) == ["packb", "policy"]
