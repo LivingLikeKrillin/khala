@@ -14,8 +14,16 @@ from scripts.bm25_pool_probe import COST_CEILING, cost_delta, determinism, total
 
 
 def _arm(name, pool, multihop, policy, chars=1000, ms=200, entered=True):
+    """멀티홉 4건 중 앞에서부터 `multihop` 건이 커버됐다고 본다.
+
+    ⚠ 첫 판의 이 도우미는 `rows` 를 안 만들었고, 그래서 §5.2 를 **질의별로** 읽도록 고쳤을 때
+    다섯 검사가 한꺼번에 깨졌다 — 픽스처가 규칙이 보는 모양을 안 담고 있었던 것이다.
+    """
+    qids = [f"m{i:02d}" for i in range(1, 5)]
+    rows = [{"group": "multihop", "qid": q, "covered": i < multihop}
+            for i, q in enumerate(qids)]
     return {"arm": name, "bm25_top_k": pool, "median_chars": chars, "median_ms": ms,
-            "chunk_entered_pool": entered,
+            "rows": rows, "chunk_entered_pool": {q: entered for q in qids},
             "multihop": {"covered": multihop, "n": 4}, "policy": {"covered": policy, "n": 8}}
 
 
@@ -132,3 +140,38 @@ def test_totals_carries_both_costs():
     t = totals(rows)
     assert t["median_chars"] == 20 and t["median_ms"] == 200
     assert t["multihop"] == {"covered": 1, "n": 1}
+
+
+# ── 질의별 기제 관측 (2026-09-02, 실물이 드러낸 무딤) ────────────────────────
+#
+# 첫 판은 `chunk_entered_pool` 이 실험군당 참/거짓 **하나**였다. 실제 실행에서 m01 은 풀에
+# 들어오고 m02 는 안 들어왔는데 그 둘이 하나의 `True` 로 뭉쳤다. 판정은 안 바뀌었지만(새로
+# 커버된 것은 m01 뿐이고 그건 실제로 들어왔다) 규칙이 묻는 것보다 무딘 답이었다.
+
+def _mixed(entered_map):
+    """m03 이 새로 커버된 실험군 — 어느 질의에서 들어왔는지를 지정한다."""
+    a = _arm("pool-25", 25, 3, 8)
+    a["chunk_entered_pool"] = entered_map
+    return a
+
+
+def test_the_gain_must_be_on_the_query_that_the_chunk_entered_for():
+    """다른 질의에서 들어온 것으로 이득을 설명할 수 없다 — 그건 다른 질의의 사실이다."""
+    v = verdict(_arms(_mixed({"m01": True, "m02": True, "m03": False, "m04": False})), [], 5.0)
+    assert v["adopt"] is None
+    assert v["improved_without_the_mechanism"] == ["pool-25"]
+
+
+def test_the_gain_counts_when_the_chunk_entered_for_that_query():
+    v = verdict(_arms(_mixed({"m01": False, "m02": False, "m03": True, "m04": False})), [], 5.0)
+    assert v["adopt"] == "pool-25"
+
+
+def test_covered_qids_reads_only_the_multihop_group():
+    """정책 질의가 섞이면 '새로 커버된 것' 이 회귀 검사까지 세게 된다."""
+    from scripts.bm25_pool_probe import covered_qids
+
+    arm = {"rows": [{"group": "multihop", "qid": "m01", "covered": True},
+                    {"group": "policy", "qid": "p01", "covered": True},
+                    {"group": "multihop", "qid": "m02", "covered": False}]}
+    assert covered_qids(arm) == ["m01"]
