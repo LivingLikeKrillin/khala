@@ -11,6 +11,10 @@
   ① 요구가 **gold 본문에서 성립**한다 — 없으면 어떤 답도 통과 못 하는 질의다.
   ② 요구가 **대조군 문서에서 불성립**한다 — 아무 문서에나 있는 낱말은 그 문서를 지목하지 못한다.
 
+대조군이 그 라벨의 gold 자신이면 ②는 **반드시** 걸리고 그 실패는 아무 뜻이 없다. 첫 실행에서
+실제로 그렇게 나왔다(후보 8건 중 4건). 그래서 그 조합은 판정하지 않고 건너뛰며, 건너뛴 것을
+세어서 **판정을 하나도 못 받은 후보**는 통과로 적지 않는다 — 안 재고 통과시키는 것이 제일 나쁘다.
+
 ⛔ **시스템이 답하는지는 보지 않는다.** 그것을 보고 라벨을 고치면 현직 시스템의 표현에 채점기를
 맞추는 것이고, 그 채점기로 잰 수는 다음 모델·다음 실험군에 불리하게 기운다(규칙 5). 여기 검사는
 전부 **문서에 대한 것**이지 답변에 대한 것이 아니다.
@@ -51,8 +55,16 @@ def holds_in(groups, body: str) -> bool:
     return bool(got) and all(got)
 
 
-def authoring_problems(q: dict, gold_body: str, control_body: str) -> list[str]:
-    """저술 규칙 둘. **문서에 대한 것이지 답변에 대한 것이 아니다.**"""
+def control_is_the_gold(q: dict, control_key: str, control_title: str) -> bool:
+    """대조군이 이 라벨의 gold 자신인가 — 그렇다면 규칙 ②는 판정이 아니라 동어반복이다."""
+    return control_key in (q.get("gold") or []) or control_title in (q.get("gold") or [])
+
+
+def authoring_problems(q: dict, gold_body: str, control_body: str | None) -> list[str]:
+    """저술 규칙 둘. **문서에 대한 것이지 답변에 대한 것이 아니다.**
+
+    `control_body` 가 None 이면 규칙 ②를 건너뛴다(대조군이 gold 자신인 경우).
+    """
     out = []
     groups = q.get("must_contain")
     if not holds_in(groups, gold_body):
@@ -60,7 +72,7 @@ def authoring_problems(q: dict, gold_body: str, control_body: str) -> list[str]:
                    if not ok]
         out.append(f"{q['id']}: 요구가 gold 본문에 없다 — {', '.join(missing)}"
                    " (어떤 답으로도 통과 못 하는 질의다)")
-    if holds_in(groups, control_body):
+    if control_body is not None and holds_in(groups, control_body):
         out.append(f"{q['id']}: 요구가 **대조군에서도** 성립한다 —"
                    " 그 낱말은 이 문서를 지목하지 못한다")
     return out
@@ -93,8 +105,10 @@ async def _run(args) -> int:
         return 1
 
     pool = await db.get_pool()
+    skipped: set[str] = set()
     async with pool.acquire() as con:
         control = await _body(con, args.tenant, title=args.control)
+        control_key = await _key_of(con, args.tenant, args.control)
         if not control.strip():
             print(f"✗ 대조군 본문이 비었다 — 「{args.control}」")
             return 1
@@ -105,17 +119,31 @@ async def _run(args) -> int:
             if not gold.strip():
                 problems.append(f"{q['id']}: gold 본문이 비었다 — {q.get('gold')}")
                 continue
-            problems += authoring_problems(q, gold, control)
+            same = control_is_the_gold(q, control_key, args.control)
+            if same:
+                skipped.add(q["id"])
+            problems += authoring_problems(q, gold, None if same else control)
     await db.close_pool()
 
     for q in queries:
-        ok = not any(p.startswith(f"{q['id']}:") for p in problems)
-        print(f"  {'OK ' if ok else '✗  '} {q['id']:14s} {q['stratum']:9s} {q['query'][:44]}")
+        bad = any(p.startswith(f"{q['id']}:") for p in problems)
+        mark = "✗  " if bad else ("·· " if q["id"] in skipped else "OK ")
+        print(f"  {mark} {q['id']:14s} {q['stratum']:9s} {q['query'][:44]}")
+    if skipped:
+        print(f"\n  ·· = 대조군이 이 라벨의 gold 자신이라 규칙 ②를 판정하지 않았다"
+              f" ({len(skipped)}건) — **다른 대조군으로 한 번 더 돌려야 한다**")
     if problems:
         print("\n✗ 저술 규칙 위반:", *problems, sep="\n  ")
         return 1
     print("\n✓ 후보 전부가 저술 규칙을 통과했다 — 사람의 검토와 서명이 남았다")
     return 0
+
+
+async def _key_of(con, tenant: str, title: str) -> str:
+    row = await con.fetchrow(
+        "SELECT split_part(source_uri, ':', 2) AS k FROM documents "
+        "WHERE tenant = $1 AND status = 'active' AND title = $2", tenant, title)
+    return row["k"] if row else ""
 
 
 async def _body(con, tenant: str, *, title: str = "", key: str = "") -> str:

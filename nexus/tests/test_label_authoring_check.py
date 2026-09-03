@@ -103,3 +103,20 @@ def test_unanswerable_labels_are_not_counted():
     """분모는 답변가능 40이지 45가 아니다."""
     existing = [{"id": "q0", "answerable": False, "stratum": "mixed"}]
     assert balance_after(existing, set(), [])["mixed"] == 0
+
+
+# ── 대조군이 gold 자신인 경우 ────────────────────────────────────────────────
+
+def test_a_control_that_is_the_gold_is_recognised():
+    """첫 실행에서 후보 8건 중 4건이 이 자리에서 뜻 없이 실패했다."""
+    from scripts.label_authoring_check import control_is_the_gold
+    assert control_is_the_gold(_q(gold=["a.md"]), "a.md", "어떤 제목")
+    assert control_is_the_gold(_q(gold=["어떤 제목"]), "b.md", "어떤 제목")
+    assert not control_is_the_gold(_q(gold=["a.md"]), "b.md", "다른 제목")
+
+
+def test_rule_two_is_skipped_not_faked_when_the_control_is_the_gold():
+    """건너뛰는 것이지 통과시키는 것이 아니다 — 규칙 ①은 그대로 판정한다."""
+    assert authoring_problems(_q(must_contain=[["CM"]]), GOLD, None) == []
+    got = authoring_problems(_q(must_contain=[["없는말"]]), GOLD, None)
+    assert got and "gold 본문에 없다" in got[0]
