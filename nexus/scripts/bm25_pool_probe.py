@@ -97,6 +97,28 @@ def verdict(arms: list[dict], drift: list[str], noise_band: float) -> dict:
                        else "§5.6 — 풀 증가가 가장 작은 후보")}
 
 
+def table(arms: list[dict]) -> list[str]:
+    """결과 표. **그룹을 코드에 박지 않는다.**
+
+    첫 판은 두 칸(`멀티홉`·`정책`)을 박아 뒀고, Pack B 를 회귀 집합에 얹은 실행에서 그 열이
+    아예 안 찍혔다(2026-09-02). 판정 함수는 모든 그룹을 봤으므로 결과는 옳았지만, **읽는
+    사람에게는 새 회귀 집합이 없는 것처럼 보였다** — 판정이 무엇 위에서 났는지가 표에 없으면
+    그 표는 판정을 뒷받침하지 못한다.
+    """
+    groups = ["multihop", *regression_groups(arms[0])]
+    out = ["| 실험군 | pool | " + " | ".join(groups)
+           + " | 풀 진입 | 근거 | vs base | 지연 | vs base |",
+           "|---" * (len(groups) + 6) + "|"]
+    b = arms[0]
+    for a in arms:
+        entered = ",".join(q for q, v in a["chunk_entered_pool"].items() if v) or "없음"
+        cells = " | ".join(f"{a[g]['covered']}/{a[g]['n']}" for g in groups)
+        out.append(f"| {a['arm']} | {a['bm25_top_k']} | {cells} | {entered} | "
+                   f"{a['median_chars']:.0f} | {cost_delta(a['median_chars'], b['median_chars'])} | "
+                   f"{a['median_ms']:.0f}ms | {cost_delta(a['median_ms'], b['median_ms'])} |")
+    return out
+
+
 def regression_groups(arm: dict) -> list[str]:
     """회귀 검사가 걸리는 그룹들 — 처치군(`multihop`)을 뺀 나머지 전부."""
     return sorted({r["group"] for r in arm.get("rows", [])} - {"multihop"})
@@ -239,16 +261,9 @@ async def _run(args) -> int:
     noise_band = abs(arms[0]["median_ms"] - again["median_ms"])
     v = verdict(arms, drift, noise_band)
 
-    print("\n| 실험군 | pool | 멀티홉 | 정책 | 풀 진입 | 근거 중앙값 | vs base | 지연 | vs base |")
-    print("|---|---|---|---|---|---|---|---|---|")
-    b = arms[0]
-    for a in arms:
-        print(f"| {a['arm']} | {a['bm25_top_k']} | {a['multihop']['covered']}/{a['multihop']['n']}"
-              f" | {a['policy']['covered']}/{a['policy']['n']}"
-              f" | {','.join(q for q, v in a['chunk_entered_pool'].items() if v) or '없음'}"
-              f" | {a['median_chars']:.0f}"
-              f" | {cost_delta(a['median_chars'], b['median_chars'])}"
-              f" | {a['median_ms']:.0f}ms | {cost_delta(a['median_ms'], b['median_ms'])} |")
+    print()
+    for line in table(arms):
+        print(line)
     print(f"\n  결정론 대조군: {'통과' if not drift else '실패 — ' + ', '.join(drift)}")
     print(f"  지연 잡음 폭(base vs base-again): {noise_band:.1f}ms "
           f"— 이보다 작은 차이는 대가라고 부르지 않는다")

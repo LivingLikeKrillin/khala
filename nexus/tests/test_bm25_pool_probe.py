@@ -211,3 +211,29 @@ def test_regression_groups_never_include_the_treatment_arm():
 
     arm = _with_group(_arm("base", 20, 2, 8), "packb", 23, 23)
     assert regression_groups(arm) == ["packb", "policy"]
+
+
+# ── 표가 판정이 선 자리를 보여주는가 (2026-09-02) ────────────────────────────
+#
+# 첫 판의 표는 `멀티홉`·`정책` 두 칸을 코드에 박아 뒀다. Pack B 23건을 회귀 집합에 얹은 실행에서
+# 그 열이 **아예 안 찍혔다.** 판정 함수는 모든 그룹을 봤으므로 결과는 옳았지만, 읽는 사람에게는
+# 새 회귀 집합이 없는 것처럼 보였다 — 판정이 무엇 위에서 났는지가 표에 없으면 그 표는 판정을
+# 뒷받침하지 못한다.
+
+def test_the_table_has_a_column_for_every_group():
+    from scripts.bm25_pool_probe import table
+
+    base = _with_group(_arm("base", 20, 2, 8, entered=False), "packb", 23, 23)
+    arm = _with_group(_arm("pool-25", 25, 3, 8), "packb", 23, 23)
+    head, _sep, *rows = table([base, arm])
+    assert "multihop" in head and "policy" in head and "packb" in head
+    assert "23/23" in rows[0] and "3/4" in rows[1]
+
+
+def test_the_table_grows_when_a_group_is_added():
+    """그룹을 더했는데 표가 그대로면, 그 표는 다음 판정도 못 뒷받침한다."""
+    from scripts.bm25_pool_probe import table
+
+    narrow = table([_arm("base", 20, 2, 8)])[0]
+    wide = table([_with_group(_arm("base", 20, 2, 8), "packb", 23, 23)])[0]
+    assert wide.count("|") > narrow.count("|")
