@@ -22,6 +22,10 @@ def _arm(name, pool, multihop, policy, chars=1000, ms=200, entered=True):
     qids = [f"m{i:02d}" for i in range(1, 5)]
     rows = [{"group": "multihop", "qid": q, "covered": i < multihop}
             for i, q in enumerate(qids)]
+    # 회귀 그룹도 행으로 만든다. 요약 딕셔너리만 두면 `regression_groups` 가 그룹을 못 보고
+    # 회귀 검사가 조용히 안 걸린다 — 실제로 그렇게 검사 하나가 통과했다(2026-09-02).
+    rows += [{"group": "policy", "qid": f"p{i:02d}", "covered": i < policy}
+             for i in range(8)]
     return {"arm": name, "bm25_top_k": pool, "median_chars": chars, "median_ms": ms,
             "rows": rows, "chunk_entered_pool": {q: entered for q in qids},
             "multihop": {"covered": multihop, "n": 4}, "policy": {"covered": policy, "n": 8}}
@@ -175,3 +179,61 @@ def test_covered_qids_reads_only_the_multihop_group():
                     {"group": "policy", "qid": "p01", "covered": True},
                     {"group": "multihop", "qid": "m02", "covered": False}]}
     assert covered_qids(arm) == ["m01"]
+
+
+# ── §7.1 회귀 집합이 여럿일 때 ───────────────────────────────────────────────
+#
+# Pack B 를 얹으면 회귀 그룹이 `policy` 하나가 아니다. 이름 하나를 코드에 박아 두면 그룹이
+# 늘어날 때 규칙이 **조용히 좁아진다** — 새 그룹에서 떨어져도 후보가 된다.
+
+def _with_group(arm, group, covered, n):
+    arm["rows"] += [{"group": group, "qid": f"{group}{i:02d}", "covered": i < covered}
+                    for i in range(n)]
+    arm[group] = {"covered": covered, "n": n}
+    return arm
+
+
+def test_every_regression_group_is_checked_not_just_the_first():
+    base = _with_group(_arm("base", 20, 2, 8, entered=False), "packb", 23, 23)
+    arm = _with_group(_arm("pool-25", 25, 3, 8), "packb", 22, 23)   # packb 에서 하나 떨어짐
+    assert verdict([base, arm], [], 5.0)["adopt"] is None
+
+
+def test_a_gain_that_holds_every_group_is_still_a_candidate():
+    base = _with_group(_arm("base", 20, 2, 8, entered=False), "packb", 23, 23)
+    arm = _with_group(_arm("pool-25", 25, 3, 8), "packb", 23, 23)
+    assert verdict([base, arm], [], 5.0)["adopt"] == "pool-25"
+
+
+def test_regression_groups_never_include_the_treatment_arm():
+    """처치군을 회귀 검사에 넣으면 '오르면 안 된다' 를 자기 자신에게 거는 셈이다."""
+    from scripts.bm25_pool_probe import regression_groups
+
+    arm = _with_group(_arm("base", 20, 2, 8), "packb", 23, 23)
+    assert regression_groups(arm) == ["packb", "policy"]
+
+
+# ── 표가 판정이 선 자리를 보여주는가 (2026-09-02) ────────────────────────────
+#
+# 첫 판의 표는 `멀티홉`·`정책` 두 칸을 코드에 박아 뒀다. Pack B 23건을 회귀 집합에 얹은 실행에서
+# 그 열이 **아예 안 찍혔다.** 판정 함수는 모든 그룹을 봤으므로 결과는 옳았지만, 읽는 사람에게는
+# 새 회귀 집합이 없는 것처럼 보였다 — 판정이 무엇 위에서 났는지가 표에 없으면 그 표는 판정을
+# 뒷받침하지 못한다.
+
+def test_the_table_has_a_column_for_every_group():
+    from scripts.bm25_pool_probe import table
+
+    base = _with_group(_arm("base", 20, 2, 8, entered=False), "packb", 23, 23)
+    arm = _with_group(_arm("pool-25", 25, 3, 8), "packb", 23, 23)
+    head, _sep, *rows = table([base, arm])
+    assert "multihop" in head and "policy" in head and "packb" in head
+    assert "23/23" in rows[0] and "3/4" in rows[1]
+
+
+def test_the_table_grows_when_a_group_is_added():
+    """그룹을 더했는데 표가 그대로면, 그 표는 다음 판정도 못 뒷받침한다."""
+    from scripts.bm25_pool_probe import table
+
+    narrow = table([_arm("base", 20, 2, 8)])[0]
+    wide = table([_with_group(_arm("base", 20, 2, 8), "packb", 23, 23)])[0]
+    assert wide.count("|") > narrow.count("|")
