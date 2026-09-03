@@ -114,3 +114,31 @@ def test_every_call_site_passes_the_question_and_the_pool():
                 missing.append(f"{py.relative_to(root)}:{node.lineno}")
 
     assert not missing, f"코드 값이 안 붙는 답변 경로: {missing}"
+
+
+# ── 넓히지 않기로 한 근거 (2026-09-03) ───────────────────────────────────────
+#
+# `matching.py` 가 *"넓히기 전에 안 붙은 질문을 세어 보고 정한다"* 고 적어 뒀고, 세어 봤다:
+# 라벨 52건에서 정확 5 · 근접(개념 일부만 맞음) 10. ⛔ **그 10건은 표기 변형이 아니었다** —
+# 빠진 개념이 거의 전부 `소개`·`이름` 이고 질문은 다른 속성을 묻고 있었다. 규칙을 "하나만
+# 겹쳐도" 로 넓히면 그 모듈이 예측해 둔 오부착이 그대로 난다.
+#
+# 아래 검사가 그 판단을 **행동으로** 박는다. 넓히면 앞의 둘이 깨진다.
+
+
+def test_a_claim_about_another_attribute_does_not_attach():
+    """실물에서 나온 모양 — 질문은 로그인 조건이고 claim 은 파티 **소개** 길이다."""
+    assert claims_for_question("파티를 개설하려면 어떤 로그인이 필요한가",
+                               [_Claim(["파티", "소개"])]) == []
+
+
+def test_a_shared_word_alone_is_not_enough():
+    """`이름` 하나로 파티 이름·플레이리스트 이름·닉네임 claim 이 전부 딸려 오면 안 된다."""
+    assert claims_for_question("플레이리스트는 몇 개까지 만들 수 있나",
+                               [_Claim(["플레이리스트", "이름"])]) == []
+
+
+def test_narrowing_did_not_turn_it_off():
+    """좁힌 것이지 끈 것이 아니다 — 개념이 전부 나오면 여전히 붙는다."""
+    assert claims_for_question("플레이리스트 이름은 몇 자까지 되나",
+                               [_Claim(["플레이리스트", "이름"])]) != []
