@@ -102,6 +102,10 @@ def image_slot(block_id: str) -> str:
 #: 블록 id 는 여기 안 넣는다(코퍼스에 남는 텍스트다). 진단용 id 는 `hole_sink` 와 로그에 있다.
 HOLE_NOTE = "> (읽지 못한 블록: {kind} — 원본이 이 integration 에 공유되지 않았습니다)"
 
+#: 데이터베이스가 있던 자리. **구멍 표식이 아니다** — 못 읽은 게 아니라 **다른 문서로 읽은 것**이고,
+#: 그 차이를 문장이 말해야 읽는 쪽이 "표가 잘렸다" 로 오해하지 않는다.
+DATABASE_NOTE = "> (데이터베이스 {name} — 각 행은 별도 문서로 적재되어 있습니다)"
+
 
 def _children(children_of, block: dict, hole_sink: list | None) -> list[dict] | None:
     """자식 블록을 가져온다. 못 가져오면 `None` 을 돌려주고 구멍으로 기록한다.
@@ -195,6 +199,20 @@ def blocks_to_markdown(blocks: list[dict], children_of=None,
             kids = _children(children_of, b, hole_sink)
             lines.extend(_table_rows_to_md(kids) if kids is not None
                          else [HOLE_NOTE.format(kind="표")])
+        elif bt == "child_database":
+            # **데이터베이스는 여기서 펼치지 않는다 — 자리만 남긴다.**
+            #
+            # 행은 각각 페이지이고 이미 별도 문서로 적재된다(`notion.py` 의 「속성도 본문이다」:
+            # 블록이 0개인 행이 통째로 빠지던 것을 고친 자리). 그러니 여기서 표로 펼치면 같은
+            # 내용이 두 벌이 되고, 행마다 API 를 한 번 더 쳐야 한다.
+            #
+            # ⛔ **그런데 아무것도 안 남기면 가리키는 문장이 갈 곳을 잃는다.** 실측 2026-09-03:
+            # 「프로필/아바타 정책」의 정정 문구가 *"정본은 아래 「…」 데이터베이스"* 라고 적는데
+            # 본문의 그 자리가 **비어 있었다** — `child_database` 는 미지원 블록으로 떨어지고
+            # `rich_text` 도 `caption` 도 없어 흔적조차 안 남았기 때문이다. `_collect` 은 이
+            # 블록을 알고 행을 재귀하는데 변환기만 몰랐다.
+            title = (data.get("title") or "").strip()
+            lines.append(DATABASE_NOTE.format(name=f"「{title}」" if title else "(이름 없음)"))
         elif bt in ("toggle", "synced_block", "column_list", "column") and children_of is not None:
             # 접힌 것도 본문이다. 토글 안에 규칙을 넣어 두는 문서가 흔하다.
             if rich:
