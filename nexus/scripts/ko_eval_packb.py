@@ -273,6 +273,110 @@ async def cmd_extend(args) -> int:
         await db.close_pool()
 
 
+def alignment_plan(signed: dict[str, str], live: dict[str, str],
+                   frozen: dict[str, str]) -> tuple[list[str], list[str]]:
+    """스냅샷을 서명에 맞출 문서 · 그냥 두는 문서(사유 포함).
+
+    ⛔ **왜 필요한가 (`OPEN.md` A55, 실측 2026-09-03).** 재서명 워크시트는 스냅샷 테넌트와 지금
+    본문을 대조해 *"무엇이 달라졌나"* 를 보여 준다. 그런데 스냅샷이 서명 시점과 묶여 있지 않아
+    스스로 흘러갔고, 본문이 달라진 문서 13장 중 **5장은 서명된 본문이 어디에도 없었다**. 결속은
+    해시만 저장하므로 옛 본문은 복원되지 않는다. 볼 것이 없는 사람이 하는 일은 계산된 블록을
+    붙여넣는 것이고, 그것이 이 워크시트가 존재하는 이유(§4)의 정반대다.
+
+    **안전 조건은 하나다: 지금 본문이 곧 서명된 본문인 문서만 맞춘다.**
+
+      서명 == 라이브 != 스냅샷  → 맞춘다. 서명이 이미 이 본문을 가리키므로 잃을 대조 근거가 없다.
+      서명 != 라이브            → **손대지 않는다.** 그 라벨은 만료 상태이고, 스냅샷이 들고 있는
+                                 옛 본문이 다음 재서명자가 볼 유일한 대조 기준이다.
+      서명 == 라이브 == 스냅샷  → 할 일 없음.
+      스냅샷에 없음             → 여기서 안 만든다. 그건 `extend` 의 일이다.
+    """
+    refresh, left = [], []
+    for k in sorted(signed):
+        if k not in live:
+            left.append(f"{k}: 라이브에 없다")
+        elif signed[k] != live[k]:
+            left.append(f"{k}: 서명 != 라이브(만료) — 옛 본문이 다음 재서명의 대조 기준이다")
+        elif k not in frozen:
+            left.append(f"{k}: 스냅샷에 없다 — `extend` 로 더할 것")
+        elif frozen[k] == signed[k]:
+            left.append(f"{k}: 이미 맞다")
+        else:
+            refresh.append(k)
+    return refresh, left
+
+
+async def cmd_align(args) -> int:
+    """스냅샷을 **서명된 본문**에 맞춘다. 그 서명이 다음 대조의 기준점이 된다."""
+    from nexus import db
+    from nexus.index.bm25 import index_chunk_bm25
+    from nexus.rid import chunk_rid, doc_rid
+
+    from scripts.ko_eval_labels import judged_keys, load
+
+    class _Indexable:
+        def __init__(self, text, section):
+            self.chunk_text, self.section_path, self.context_prefix = text, section, None
+
+    labels = load(args.labels)
+    bodies = ((labels.get("corpus") or {}).get("bodies") or {})
+    if not bodies:
+        print(f"✗ {args.labels} 에 corpus.bodies 가 없다 — 맞출 서명이 없다")
+        return 1
+    judged = {k for q in labels["queries"] if q.get("answerable") for k in judged_keys(q)}
+    signed = {k: v.split("sha256:")[-1] for k, v in bodies.items() if k in judged}
+
+    pool = await db.get_pool()
+    try:
+        async with pool.acquire() as con:
+            live = await _collect(con, args.source_tenant)
+            frozen = await _collect(con, SNAPSHOT_TENANT)
+            live_sha = {k: _body_hash([t for _, _, t in v["chunks"]]) for k, v in live.items()}
+            frozen_sha = {k: _body_hash([t for _, _, t in v["chunks"]]) for k, v in frozen.items()}
+            refresh, left = alignment_plan(signed, live_sha, frozen_sha)
+            print(f"판정 대상 {len(signed)} · 맞출 것 {len(refresh)} · 그냥 둘 것 {len(left)}")
+            for line in left:
+                print(f"  · {line}")
+            if args.dry_run:
+                for k in refresh:
+                    print(f"  → 맞춘다: {k}")
+                return 0
+            for key in refresh:
+                uri = f"{SNAPSHOT_TENANT}:{key}"
+                drid = doc_rid(uri)
+                await con.execute("DELETE FROM chunks WHERE tenant=$1 AND doc_rid=$2",
+                                  SNAPSHOT_TENANT, drid)
+                await con.execute("DELETE FROM documents WHERE tenant=$1 AND rid=$2",
+                                  SNAPSHOT_TENANT, drid)
+                doc = live[key]
+                await con.execute(
+                    "INSERT INTO documents (rid, tenant, source_uri, hash, content_hash, title, "
+                    "status) VALUES ($1,$2,$3,'h',$4,$5,'active')",
+                    drid, SNAPSHOT_TENANT, uri, live_sha[key], doc["title"])
+                for section, idx, text in doc["chunks"]:
+                    crid = chunk_rid(drid, section or "root", idx)
+                    await con.execute(
+                        "INSERT INTO chunks (rid, tenant, source_uri, doc_rid, chunk_text, "
+                        "section_path, chunk_index, status, hash) "
+                        "VALUES ($1,$2,$3,$4,$5,$6,$7,'active','h')",
+                        crid, SNAPSHOT_TENANT, uri, drid, text, section or "root", idx)
+                    await index_chunk_bm25(crid, _Indexable(text, section or "root"))
+                print(f"✓ 맞췄다: {key} · 청크 {len(doc['chunks'])}")
+
+            if refresh and MANIFEST.exists():
+                m = json.loads(MANIFEST.read_text(encoding="utf-8"))
+                by_key = {k: _manifest_doc(k, live[k]) for k in refresh}
+                m["docs"] = [by_key.get(d["key"], d) for d in m["docs"]]
+                m["chunks"] = sum(d["chunks"] for d in m["docs"])
+                m["aligned_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                MANIFEST.write_text(json.dumps(m, ensure_ascii=False, indent=1) + "\n",
+                                    encoding="utf-8", newline="\n")
+        print("  ⚠ 서명과 다른 본문은 손대지 않았다 — 그것이 다음 재서명의 대조 기준이다")
+        return 0
+    finally:
+        await db.close_pool()
+
+
 async def cmd_verify(_args) -> int:
     """스냅샷이 매니페스트와 같은지. **검증되지 않는 실행은 결과가 아니다** (§4.1)."""
     from nexus import db
@@ -386,6 +490,10 @@ def main(argv: list[str] | None = None) -> int:
     e = sub.add_parser("extend", help="얼린 팩에 문서를 더한다(나머지는 그대로)")
     e.add_argument("keys", nargs="+", help="더할 문서 키")
     e.add_argument("--source-tenant", default="default")
+    g = sub.add_parser("align", help="스냅샷을 서명된 본문에 맞춘다")
+    g.add_argument("--labels", type=Path, required=True, help="서명된 라벨 파일")
+    g.add_argument("--source-tenant", default="default")
+    g.add_argument("--dry-run", action="store_true")
     sub.add_parser("verify", help="스냅샷 ↔ 매니페스트")
     sub.add_parser("status", help="자로서 작동할 크기인지")
     args = ap.parse_args(argv)
@@ -393,8 +501,8 @@ def main(argv: list[str] | None = None) -> int:
     if not os.getenv("DATABASE_URL"):
         print("✗ DATABASE_URL 이 없다")
         return 1
-    return asyncio.run({"freeze": cmd_freeze, "extend": cmd_extend, "verify": cmd_verify,
-                        "status": cmd_status}[args.cmd](args))
+    return asyncio.run({"freeze": cmd_freeze, "extend": cmd_extend, "align": cmd_align,
+                        "verify": cmd_verify, "status": cmd_status}[args.cmd](args))
 
 
 if __name__ == "__main__":
