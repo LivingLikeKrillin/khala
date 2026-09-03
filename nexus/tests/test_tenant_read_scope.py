@@ -223,3 +223,65 @@ def test_the_scope_opens_only_when_the_tenant_was_omitted():
     p = _p(read_tenants=("default", "design_docs"))
     assert resolve_read_scope(p, None)[0] == ("default", "design_docs")
     assert resolve_read_scope(p, "default")[0] == ("default",)
+
+
+# ── 개발 토큰 신원의 읽기 범위 (2026-09-03) ─────────────────────────────────
+#
+# ⛔ **왜 필요한가 (실측 2026-09-03).** 컷오버는 `slack-bot` **하나에만** 정본을 읽을 권한을
+# 줬다(승인 SPEC 의 결정 문장 그대로, 범위 밖 선언 없음). 그런데 웹·CLI 는 `local-dev` 를 타고
+# 그 principal 의 읽기 범위는 `default` 하나다 — 그래서 설계 문서 **122건**이 사람이 쓰는
+# 표면에서 한 번도 근거로 안 나왔다(전체 질의 1,116건 중 `design_docs` 가 범위에 든 것 1건,
+# 근거로 온 것 **0건**). 컷오버가 `default` 에서 사본을 내렸으므로, 그 표면들은 **잃기만 했다**.
+#
+# 슬랙 쪽과 **같은 자물쇠**를 쓴다. 상한을 올리는 것이 아니라 사람의 선언에 거는 것이고,
+# 그 선언은 principal 마다 따로다 — 한 principal 의 확인이 다른 principal 을 열면 그 선언은
+# 무엇을 확인한 것인지 말할 수 없게 된다.
+
+
+def _dev_cfg(monkeypatch, **env):
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setenv("NEXUS_DEV_TOKEN", "d" * 40)
+    from nexus.auth.config import AuthConfig
+    return AuthConfig.from_dict({"auth": {"mode": "permissive", "principals": []}})
+
+
+def test_the_dev_principal_gets_no_scope_by_default(monkeypatch):
+    """⛔ 대조군. 환경변수를 안 주면 오늘과 같다 — **배선했다고 열리면 안 된다.**"""
+    cfg = _dev_cfg(monkeypatch)
+    dev = next(p for p in cfg.principals if p["name"] == "local-dev")
+    assert "read_tenants" not in dev
+
+
+def test_a_declared_scope_reaches_the_dev_principal(monkeypatch):
+    cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default, design_docs",
+                   NEXUS_DEV_CLEARANCE_VERIFIED="2026-08-31")
+    dev = next(p for p in cfg.principals if p["name"] == "local-dev")
+    assert dev["read_tenants"] == ["default", "design_docs"]
+    cfg.validate_startup()
+
+
+def test_two_tenants_without_the_declaration_refuse_to_boot_here_too(monkeypatch):
+    """⛔ **자물쇠는 principal 마다 물린다.** 슬랙에만 걸리면 다음 신원이 그것을 우회한다."""
+    import pytest
+
+    cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default,design_docs")
+    with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
+        cfg.validate_startup()
+
+
+def test_the_slack_declaration_does_not_open_the_dev_principal(monkeypatch):
+    """⛔ 선언은 **그 principal 의 것**이다. 다른 신원의 확인을 빌려 쓰면, 그 선언이 무엇을
+    확인한 것인지 말할 수 없게 된다 — 자물쇠가 이름만 남는다."""
+    import pytest
+
+    cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default,design_docs",
+                   NEXUS_SLACK_CLEARANCE_VERIFIED="2026-08-31")
+    with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
+        cfg.validate_startup()
+
+
+def test_a_single_tenant_needs_no_declaration(monkeypatch):
+    """좁히는 쪽은 막지 않는다 — 자물쇠가 잠그는 것은 **넓히는** 것뿐이다."""
+    cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default")
+    cfg.validate_startup()

@@ -108,13 +108,33 @@ class AuthConfig:
             dev_caps = auth.get("local_dev_capabilities")
             if dev_caps is None:
                 dev_caps = ["manage_sources", "manage_documents"]
-            principals.append({
+            entry = {
                 "name": "local-dev",
                 "token_sha256": hash_token(dev_token),
                 "tenant": "default",
                 "clearance": "INTERNAL",
                 "capabilities": list(dev_caps),
-            })
+            }
+            # 읽기 범위 — 슬랙과 **같은 자물쇠**를 쓴다(`_validate_read_tenants`).
+            #
+            # ⛔ **왜 이것이 없어서 문제였나 (실측 2026-09-03).** 컷오버는 `slack-bot` 하나에만
+            # 정본을 읽을 권한을 줬고, 웹·CLI 는 이 principal 을 탄다. 그래서 설계 문서 122건이
+            # 사람이 쓰는 표면에서 **한 번도 근거로 안 나왔다**(질의 1,116건 중 범위에 든 것 1건 ·
+            # 근거로 온 것 0건). 컷오버가 `default` 에서 사본을 내렸으므로 그 표면들은 **잃기만
+            # 했다** — 슬랙에는 개선이고 나머지에는 회귀였다.
+            #
+            # ⚠ 이 신원은 `manage_documents` 를 갖고 `GET /auth/dev-token` 이 토큰을 도달한
+            # 누구에게나 내준다. 읽기 범위를 넓히는 것은 **그 문을 통과한 사람이 읽는 코퍼스**를
+            # 넓히는 일이다. 그래서 자물쇠를 그대로 물린다 — 선언 없이는 기동하지 않는다.
+            raw_scope = os.getenv("NEXUS_DEV_READ_TENANTS", "")
+            if raw_scope.strip():
+                entry["read_tenants"] = [t.strip() for t in raw_scope.split(",") if t.strip()]
+                # ⛔ 선언은 **이 principal 의 것**이다. 슬랙의 확인을 빌려 쓰면 그 선언이 무엇을
+                # 확인한 것인지 말할 수 없게 되고, 자물쇠가 이름만 남는다.
+                verified = os.getenv("NEXUS_DEV_CLEARANCE_VERIFIED", "").strip()
+                if verified:
+                    entry["clearance_equivalence_verified"] = verified
+            principals.append(entry)
             dev_token_weak = (
                 dev_token == _WEAK_DEV_TOKEN_DEFAULT or len(dev_token) < _MIN_DEV_TOKEN_LEN
             )
