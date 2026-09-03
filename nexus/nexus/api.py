@@ -44,6 +44,7 @@ from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.anchor_status import summarize as _anchor_summary
 from nexus.search.evidence_packet import format_for_llm
+from nexus.search.evidence_share import counts as evidence_counts
 from nexus.search.reconcile import packet_for_answer
 from nexus.search import history as history_module
 from nexus.search.corpus_scope import visibility_counts
@@ -711,6 +712,12 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 그리고 **왜** 실패했는가. 불리언만으로는 "기다리면 되는 실패" 와 "사람이
                 # 결제해야 하는 실패" 가 같은 문장으로 나간다 (nexus/llm/failure.py).
                 "llm_failure_reason": answer_result.llm_failure_reason,
+                # **이 답이 무엇을 뒤졌는가.** 인용은 *어느 문서를 썼나*를 말하지만 *어느
+                # 코퍼스가 애초에 후보였나*는 응답 어디에도 없었다 — 그래서 설계 문서가 범위
+                # 밖인 채로 정책 코퍼스만 본 답이 확신 있게 나갔다(실측 2026-09-03).
+                # ⚠ 범위 **밖** 요청은 여기 안 싣는다: 그 테넌트의 존재가 새어 나간다(1R I-009).
+                "searched_tenants": packet.searched_tenants,
+                "evidence_tenants": dict(evidence_counts(packet.snippets)),
             },
         )
     except UnknownRoute as e:
@@ -1239,6 +1246,10 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                                      "cost_usd": u.cost_usd, "model": u.model})(usage_out[0])
                          if usage_out else None,
                 "n_stale": n_stale,
+                # 비스트리밍과 **같은 값을 같은 이름으로** 낸다. 이 경로만 빠뜨리는 것이
+                # 외부 평가 F2 가 잡은 모양이고, 웹 채팅이 타는 경로가 바로 여기다.
+                "searched_tenants": packet.searched_tenants,
+                "evidence_tenants": dict(evidence_counts(packet.snippets)),
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 

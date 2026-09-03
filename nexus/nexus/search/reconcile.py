@@ -180,4 +180,7 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
         except Exception:                                   # noqa: BLE001
             # 답변을 막지 않는다. 코드 값은 덤이고, 여기서 터지면 질문 전체가 죽는다.
             logger.warning("code_values_failed", tenant=tenant)
+    # 이 답이 **무엇을 뒤졌는지** 패킷에 실어 보낸다. 표면마다 붙이면 하나가 조용히 빠지고,
+    # 그 조합은 검사가 초록인 채로 프로덕션에서 틀린다 — 이 파일이 이미 데인 자리다(F2).
+    packet.searched_tenants = [tenant] if isinstance(tenant, str) else list(tenant)
     return packet

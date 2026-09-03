@@ -95,6 +95,16 @@ class EvidencePacket:
     #: 질문에 걸린 claim 의 **코드 현재값**. 문서와 나란히 놓기 위한 것이고, 비면 프롬프트는
     #: 오늘과 바이트 단위로 같다 (평가 팩과의 비교가 안 끊긴다).
     code_values: list[CodeValue] = field(default_factory=list)
+    #: 이 패킷이 **뒤진 테넌트들**. 프롬프트에는 안 들어간다 — 응답이 호출자에게 말하기 위한 것이다.
+    #:
+    #: ⛔ **왜 여기인가.** 실측 2026-09-03: 설계 문서 122건이 `design_docs` 에 있는데 웹·CLI 의
+    #: principal 은 읽기 범위가 `default` 하나였고, 그래서 설계 질문에 **정책 코퍼스만 본 답**이
+    #: 확신 있게 나갔다. 인용은 *어느 문서를 썼나*를 보여 주지만 *어느 코퍼스가 후보였나*는
+    #: 어디에도 없었다. 표면마다 붙이면 하나가 조용히 빠지므로(외부 평가 F2) 표면 넷이 전부
+    #: 지나는 이 자리에 둔다.
+    #:
+    #: ⚠ **비어 있는 것은 "모른다" 다.** 기본값으로 `default` 를 넣으면 틀린 사실을 답에 싣는다.
+    searched_tenants: list[str] = field(default_factory=list)
 
 
 async def assemble_packet(
