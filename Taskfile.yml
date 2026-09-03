@@ -170,7 +170,7 @@ tasks:
   # request; this only moves the catch earlier - to before the message is written, which for a
   # commit message is the only moment that is actually reversible.
   hooks:
-    desc: "Install the local git hooks (blocks a commit message carrying a partner fingerprint)"
+    desc: "Install the local git hooks (block a partner fingerprint in a commit message and in staged files)"
     cmds:
       - git config core.hooksPath scripts/hooks
       - 'echo "core.hooksPath = scripts/hooks. Undo with: git config --unset core.hooksPath"'
