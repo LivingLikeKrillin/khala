@@ -111,7 +111,7 @@ first, and each is enforced on every push rather than remembered.
 
 2,756 test functions and 17 CI jobs, including a job that runs the database-backed
 suite against a real Postgres with migrations applied — added after the discovery that
-those tests had never executed at all. Governance artifacts (10 ADRs, 52 SPECs) are
+those tests had never executed at all. Governance artifacts (10 ADRs, 53 SPECs) are
 stamped and checked for integrity in CI. Those four numbers are verified on every push
 by `scripts/check_readme_counts.py`; they drifted once, and a hand-mirrored count in
 this repository has never stayed true on its own.

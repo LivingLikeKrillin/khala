@@ -2,7 +2,7 @@
 id: SPEC-nexus-stage-spans
 type: spec
 title: Stage spans (Unit 1) — capture what each retrieval stage received and produced
-status: in_review
+status: approved
 linked_adrs:
 - ADR-0006
 tags:
@@ -10,6 +10,9 @@ tags:
 - observability
 - evaluation
 date: '2026-09-04'
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-09-04T12:03:06Z'
+content_hash: sha256:69c6397b15a15d11d371a6f5bca3ca33047a833e7713c393a89a5af440ebd7ac
 ---
 
 ## 1. Goal
@@ -328,7 +331,8 @@ log. Spans for a request whose `search_log` insert failed are prevented by the f
 
 ### 3.4 Retention — and the decision that is not the implementer's
 
-- `search_span_candidate` — cut on the parent span's `ts`, window `spans.candidate_retain_days`.
+- `search_span_candidate` — cut on the parent span's `ts`, window `spans.candidate_retain_days`,
+  **3 days** (owner decision, §7).
   The pass stamps `candidates_purged_at` **only on spans that actually had candidate rows**;
   stamping a span whose children were never written (or the `answer` stage, which has none by
   design) would collapse the very distinction the column exists to preserve.
@@ -348,13 +352,9 @@ the query that produced it. Full-pool capture, correlated with `search_log`'s `e
 timing and principal, is exactly the corpus that makes re-identification by correlation feasible —
 a weaker form of the thing the salting prevents. **This spec does not claim that risk away.**
 
-⛔ **Owner decision at sign-off**, same character as `A3` in the audit:
-
-| | option | trade |
-|---|---|---|
-| 1 | 14-day candidate window | as drafted; correlation risk accepted and recorded |
-| 2 | short first window (e.g. 3 days) | **the reversible opening** — a window widens once volume is known, but discarded data cannot be recovered |
-| 3 | `doc_rid` only, no `chunk_rid` | weaker fingerprint; costs Unit 2 its chunk-level FP3 attribution |
+**Decision taken (§7): option 2, a 3-day window.** The reversible opening — a window widens once
+volume is known, but discarded data cannot be recovered. `chunk_rid` is retained, so Unit 2 keeps
+chunk-level attribution; the correlation exposure is bounded by time instead of by resolution.
 
 ## 4. Deferred
 
@@ -476,10 +476,18 @@ posture as `SPEC-nexus-tenant-read-scope`: 36 accepted, 7 deferred).
 ⚠ **Superseded by the above**: round 3's `I-007` and round 4's `I-012` describe `span_write_ms` and
 the replay harness, both removed here. Those rows record what was decided then, not what stands.
 
-## 7. Sign-off needs two decisions
+## 7. Decisions taken at sign-off
 
-1. **The candidate retention window** — §3.4 options 1 (14 days), 2 (a short first window), or 3
-   (`doc_rid` only). Option 2 is the reversible opening: a window widens once volume is known, but
-   discarded data cannot be recovered.
-2. **Turning capture on.** `spans.enabled` ships `false`. Approval should say whether it goes on with
-   the window chosen above, or stays off until a later decision.
+| | decision |
+|---|---|
+| **Retention window** | **Option 2 — 3 days.** `chunk_rid` is kept, so Unit 2 retains chunk-level attribution and the correlation exposure is bounded by time rather than by resolution. The window can widen once volume is known; discarded rows cannot come back |
+| **Capture** | **Stays off.** `spans.enabled` ships `false` and is not turned on by this unit. Turning it on is a separate, explicit act |
+
+⇒ **Merging this unit accumulates nothing.** The tables, the writer, the purge and the tests land
+dark. That is deliberate: it lets the schema, the constraints and the destructive path be exercised
+in CI before a single production row exists, and it separates *does the capture work* from *do we
+want the capture running*. The second question is answered later, with the first one already
+settled.
+
+⚠ **Consequence for §1.4.** The cost figure is counted from the fixture query set only — no live
+rows will exist. A live number is available when capture is turned on, and not before.
