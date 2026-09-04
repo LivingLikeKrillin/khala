@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import asyncio
 import os
+from pathlib import Path
 
 import structlog
+import yaml
 
 from nexus import db
 
@@ -30,6 +32,11 @@ DEFAULT_INTERVAL_HOURS = 24.0
 #: 기동 직후 곧바로 돌지 않고 이만큼 기다린다. 부팅 경로에 DB 삭제를 얹으면 기동이 느려지고,
 #: 무엇보다 마이그레이션이 아직 안 끝난 배포에서 첫 질의를 이 작업이 밀어낸다.
 STARTUP_DELAY_S = 30.0
+
+#: config.yaml 에 `spans.candidate_retain_days` 가 없을 때만 쓴다 — config.yaml 자신이
+#: 적어 둔 기본값과 같은 수다. 되돌릴 수 있는 창을 여기 다시 하드코딩하지 않기 위해,
+#: 실제 배포에서는 항상 config.yaml 쪽 값이 이긴다.
+_DEFAULT_SPAN_RETAIN_DAYS = 3
 
 _LOCK_KEY = "nexus:query_retention:purge"
 
@@ -47,6 +54,22 @@ def interval_hours() -> float:
     return max(0.0, value)
 
 
+def _load_config() -> dict:
+    """config.yaml 로드. 없으면 빈 dict — 이 모듈이 나머지 코드베이스와 같은 관례를 쓴다
+    (`api.py`·`cli.py`·`ingest/pipeline.py` 가 각자 이 함수를 갖고 있다)."""
+    p = Path("config.yaml")
+    if not p.exists():
+        return {}
+    with open(p, encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def span_candidate_retain_days() -> int:
+    """`spans.candidate_retain_days`(config.yaml). 소유자 결정 — 여기서 값을 짓지 않는다."""
+    return _load_config().get("spans", {}).get(
+        "candidate_retain_days", _DEFAULT_SPAN_RETAIN_DAYS)
+
+
 async def run_once() -> dict[str, int]:
     """한 번 돈다. 락을 못 잡으면 `{}` — 다른 인스턴스가 돌고 있다는 뜻이다.
 
@@ -62,8 +85,15 @@ async def run_once() -> dict[str, int]:
                 return {}
             try:
                 from nexus.search.query_retention import purge
+                from nexus.search.span_store import purge_candidates
 
-                deleted = await purge()
+                deleted = dict(await purge())
+                # detail-tier span 후보도 같은 틱에서 만료시킨다 — 별도 스케줄러를 또 만들면
+                # "만든 건 있는데 아무도 안 부른다" 는 이 파일이 이미 한 번 겪은 실패를
+                # 두 번째 정리 작업에서 그대로 반복하게 된다.
+                n_spans = await purge_candidates(span_candidate_retain_days())
+                if n_spans:
+                    deleted["span_candidates"] = n_spans
                 # 지운 게 없으면 조용히 — 상시 로그는 진짜 신호를 묻는다.
                 if deleted:
                     logger.info("purge_ran", deleted=deleted)
