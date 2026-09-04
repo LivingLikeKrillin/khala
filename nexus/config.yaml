@@ -102,6 +102,19 @@ search:
   # embedding=nomic-embed-text(768) · embedding_1024=KURE-v1(1024). 화이트리스트 밖이면 기동 실패.
   embedding_column: embedding
 
+# 단계별 span (SPEC-nexus-stage-spans, Unit 1)
+#
+# ⛔ **기본이 꺼짐이다.** 캡처는 요청마다 순위 매겨진 후보 목록을 쌓는데, 그것은 질의의
+# 지문이고 테넌트 구성·시각·principal 과 상관된다. 그 위험을 묶는 보존 창이 정해지기 전에
+# 쌓기 시작하면 안 된다. 켜는 것은 별개의 명시적 행위다.
+spans:
+  enabled: false
+  # 소유자 결정: 되돌릴 수 있는 쪽. 창은 나중에 넓힐 수 있지만 버린 행은 못 되살린다.
+  candidate_retain_days: 3
+  # 한 span 의 후보 행 상한. diversify 는 **면제** — 잘린 행이 곧 진단 자료라
+  # 입력 순위로 자르면 정확히 그것을 버린다.
+  max_candidates_per_span: 100
+
 # LLM 단가 — 비용 추적(SPEC-nexus-llm-usage-capture). USD per 1M tokens, 운영자 관리.
 # 키는 NEXUS_LLM_MODEL 값과 일치해야 함(없거나 불완전하면 cost=None, 지어내지 않음).
 llm:
