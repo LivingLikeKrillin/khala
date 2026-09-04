@@ -335,6 +335,7 @@ def query(
                 query=q, packet=packet, llm_svc=llm_svc,
                 route_used=route_used, timing_ms=result.timing_ms,
                 confidence=result.confidence,
+                spans=getattr(result, "spans", None),
             )
             typer.echo(answer_result.answer)
             typer.echo(f"\n({answer_result.timing_ms.get('llm_ms', '?')}ms)")
@@ -358,7 +359,8 @@ def query(
                              config=config, llm_svc=llm_svc)
         # CLI 는 principal 이 없다 — 허용목록에 오를 수 없으므로 보존되지 않는다.
         # 도구 트래픽이 '실사용 질문' 집합을 오염시키면 이 기능의 목적이 무너진다.
-        await record_search(sig, await_persist=True, judge_input=_ji, query_text=q)
+        await record_search(sig, await_persist=True, judge_input=_ji, query_text=q,
+                            spans=getattr(result, "spans", None))
         await db.close_pool()
 
     _run(_query())

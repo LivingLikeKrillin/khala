@@ -463,7 +463,8 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         )
         # fire-and-forget; 답변 경로가 아니다 → not_applicable
         await record_search(sig, query_text=req.query, principal=principal.name,
-            rewritten_text=rw.query if (rw and rw.changed) else None)
+            rewritten_text=rw.query if (rw and rw.changed) else None,
+            spans=getattr(result, "spans", None))
         return NexusResponse(
             data={
                 "results": [_search_hit_to_dict(h) for h in result.hits],
@@ -666,6 +667,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             route_used=route,
             timing_ms=search_result.timing_ms,
             confidence=search_result.confidence,
+            spans=getattr(search_result, "spans", None),
         )
 
         sig = extract_signals(
@@ -684,7 +686,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             query=req.query, evidence=format_for_llm(packet),
             config=_load_config(), llm_svc=llm_svc),
             query_text=req.query, principal=principal.name,
-            rewritten_text=rw.query if (rw and rw.changed) else None)
+            rewritten_text=rw.query if (rw and rw.changed) else None,
+            spans=getattr(search_result, "spans", None))
         return NexusResponse(
             data={
                 "answer": answer_result.answer,
@@ -1227,7 +1230,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 query=req.query, evidence=evidence_text,
                 config=_load_config(), llm_svc=llm_svc) if has_answer else None,
                 query_text=req.query, principal=principal.name,
-            rewritten_text=rw.query if (rw and rw.changed) else None)
+            rewritten_text=rw.query if (rw and rw.changed) else None,
+            spans=getattr(search_result, "spans", None))
 
             done_data = {
                 "timing_ms": search_result.timing_ms,

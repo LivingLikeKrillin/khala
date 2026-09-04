@@ -171,8 +171,11 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
         from nexus.search.pairs import paired_chunks
         fill += [_as_hit(r) for r in await paired_chunks(
             result.hits, tenant, clearance, exclude_rids={f.rid for f in fill})]
+    # `result.spans` 는 SPEC-nexus-stage-spans 캡처(기본 꺼짐, None). 여기서 넘기지 않으면
+    # 답변 경로의 packet span 은 영원히 못 남는다 — 답변 경로 셋이 전부 이 함수 하나로 모이므로
+    # (docstring 참조), 캡처 배선도 여기 한 곳이면 된다.
     packet = await assemble_packet(result.hits, result.graph, tenant, fill=fill,
-                                   clearance=clearance)
+                                   clearance=clearance, spans=getattr(result, "spans", None))
     if search_cfg.get("code_values") and question and pool is not None:
         try:
             packet.code_values = await code_values_for(

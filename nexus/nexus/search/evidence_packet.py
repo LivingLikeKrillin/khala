@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import structlog
 
@@ -21,6 +22,10 @@ from nexus.search.anchor_status import (
 )
 from nexus.search.hybrid import SearchHit
 from nexus.search.provenance import PROMPT_NOTE, needs_note
+from nexus.search.spans import Candidate
+
+if TYPE_CHECKING:  # 런타임 import 불필요(순환 회피) — 타입 힌트만 쓴다
+    from nexus.search.spans import SpanSet
 
 logger = structlog.get_logger(__name__)
 
@@ -113,6 +118,7 @@ async def assemble_packet(
     tenant: str = "",
     fill: list[SearchHit] | None = None,
     clearance: str = "",
+    spans: "SpanSet | None" = None,
 ) -> EvidencePacket:
     """검색 결과에서 evidence packet 조립.
 
@@ -127,6 +133,8 @@ async def assemble_packet(
             (테스트 픽스처·평가 하니스)가 DB 없이 패킷을 만들 수 있어야 한다.
         fill: 상한을 채운 문서의 남은 절(`SearchResult.fill`). **순위가 아니라 근거**다 —
             뒤에 문서 순서로 붙는다. 안 주면 오늘과 바이트 단위로 같은 패킷이 나온다.
+        spans: `SearchResult.spans` (SPEC-nexus-stage-spans). None 이면(기본, 캡처 꺼짐)
+            packet span 을 안 남긴다 — 오늘과 바이트 단위로 같은 패킷이 나온다.
 
     Returns:
         EvidencePacket
@@ -174,6 +182,18 @@ async def assemble_packet(
                 approved_hash=hit.approved_hash,
                 doc_title=hit.doc_title,
             ))
+
+    if spans is not None:
+        # **프롬프트에 실린 것 그대로다.** `packet.snippets` 자체에서 짓는다 — `ordered` 를
+        # 다시 쓰면 이 사이에 `snippets.append` 가 실패한 행이 있을 때(오늘은 없다) 어긋난다.
+        # 그래프 findings 는 doc_rid 가 없는 사실이라 후보 행이 아니라 개수로만 남는다.
+        n_graph_edges = (len(graph.edges) + len(graph.observed_edges)) if graph else 0
+        packet_cands = [
+            Candidate(rank=i + 1, doc_rid=s.doc_rid, chunk_rid=s.chunk_rid, raw_score=s.score)
+            for i, s in enumerate(packet.snippets)
+        ]
+        spans.add_packet(candidates=packet_cands, n_snippets=len(packet.snippets),
+                         n_graph_edges=n_graph_edges)
 
     return packet
 

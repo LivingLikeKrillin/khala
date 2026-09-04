@@ -20,6 +20,7 @@ from nexus.search import evidence_share
 if TYPE_CHECKING:  # 런타임 import 불필요(순환 회피) — 속성 접근만 한다
     from nexus.llm.answer import AnswerResult
     from nexus.search.hybrid import SearchResult
+    from nexus.search.spans import SpanSet
 
 log = structlog.get_logger("nexus.search.signals")
 
@@ -119,6 +120,11 @@ class SearchSignals:
     #:
     #: ⚠ 테넌트 **이름과 개수**뿐이다. 조각 본문도, rid 도, 질의도 담지 않는다.
     evidence_tenants: str | None = None
+    #: 이번 요청에서 **쌓였어야 할** span 행 수(SPEC-nexus-stage-spans). `None` = 캡처 꺼짐.
+    #: 값이 있는데 `search_span` 에 그만큼이 없으면 배치가 통째로 유실된 것이다 — migration
+    #: 040 의 컬럼 설명 그대로다. 같은 INSERT 문 안에서 적는다: span 쓰기가 실패해도 이 값은
+    #: 남아야 "유실이 보인다" 는 계약이 성립한다.
+    spans_expected: int | None = None
 def extract_signals(
     result: SearchResult,
     answer: AnswerResult | None = None,
@@ -209,6 +215,10 @@ def extract_signals(
         prompt_tokens=ptok,
         completion_tokens=ctok,
         cost_usd=cost,
+        # `result.spans` 는 packet/answer 단계까지 같은 객체에 누적된 뒤 여기 도착한다 —
+        # 이 시점의 길이가 곧 "이번 요청이 실제로 지은" span 수다.
+        spans_expected=(len(result.spans.spans)
+                        if getattr(result, "spans", None) is not None else None),
     )
 
 
@@ -351,10 +361,10 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             rewrite_applied, rephrased_sha256, rephrased_len, rewrite_changed,
             rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd,
             answer_prompt_sha, rewrite_prompt_sha,
-            top_distance, top_bm25, evidence_tenants
+            top_distance, top_bm25, evidence_tenants, spans_expected
         ) VALUES ($1,$2,$36,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
                   $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                  $34, $35, $37)
+                  $34, $35, $37, $38)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -368,14 +378,16 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.rewrite_prompt_tokens, sig.rewrite_completion_tokens, sig.rewrite_cost_usd,
         sig.answer_prompt_sha, sig.rewrite_prompt_sha,
         sig.top_distance, sig.top_bm25, sig.read_scope, sig.evidence_tenants,
+        sig.spans_expected,
     )
 
 
 async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
                    query_text: str | None = None,
                    principal: str | None = None,
-                   rewritten_text: str | None = None) -> None:
-    """search_log에 1행 insert(+선택적 충분성 판정). 실패는 삼킴.
+                   rewritten_text: str | None = None,
+                   spans: "SpanSet | None" = None) -> None:
+    """search_log에 1행 insert(+선택적 충분성 판정, +선택적 span 적재). 실패는 삼킴.
 
     두 개의 지역 try/except 가 있고 **둘 다 필요하다**:
 
@@ -418,6 +430,14 @@ async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
     except Exception as exc:  # noqa: BLE001 - signal persistence must never break the request
         log.warning("search.signal.persist_failed", error=str(exc))
 
+    # `search_log` 행이 먼저다(위에서 이미 커밋됐다). span 은 **자기만의 트랜잭션**에서
+    # 따로 적재된다(`span_store.py` 머리말) — 부모와 한 트랜잭션이면 자식 제약 위반이
+    # `spans_expected` 를 남긴 행까지 통째로 굴린다. `persist_spans` 는 절대 raise 하지 않는다.
+    if spans is not None and row_id is not None:
+        from nexus.search.span_store import persist_spans
+
+        await persist_spans(row_id, spans)
+
     if not took_slot:
         return
     try:
@@ -443,7 +463,8 @@ async def record_search(sig: SearchSignals, *, await_persist: bool = False,
                         judge_input: JudgeInput | None = None,
                         query_text: str | None = None,
                         principal: str | None = None,
-                        rewritten_text: str | None = None) -> None:
+                        rewritten_text: str | None = None,
+                        spans: "SpanSet | None" = None) -> None:
     """structlog(항상, 동기) + best-effort DB 적재. 절대 raise 안 함.
 
     서버 경로(api/a2a)는 기본 fire-and-forget(create_task) — 응답 지연에 DB 쓰기 미가산.
@@ -467,9 +488,10 @@ async def record_search(sig: SearchSignals, *, await_persist: bool = False,
     if not db.has_pool():
         return
     if await_persist:
-        await _persist(sig, judge_input, query_text, principal, rewritten_text)
+        await _persist(sig, judge_input, query_text, principal, rewritten_text, spans)
     else:
         # Retain a strong reference so the task isn't GC'd before completion (stdlib-recommended pattern).
-        task = asyncio.create_task(_persist(sig, judge_input, query_text, principal, rewritten_text))
+        task = asyncio.create_task(
+            _persist(sig, judge_input, query_text, principal, rewritten_text, spans))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)

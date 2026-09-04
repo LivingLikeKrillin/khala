@@ -34,6 +34,7 @@ from nexus.repositories.graph import (
     ObservedEdgeResult,
     SubGraph,
 )
+from nexus.search.spans import Candidate, SpanSet
 
 logger = structlog.get_logger(__name__)
 
@@ -95,6 +96,9 @@ class SearchResult:
     #: 이번 검색이 얼마나 **잘 맞았는가**(`search/confidence.py`). 융합이 지우는 신호라 경로에서
     #: 직접 들고 온다. **랭킹에 쓰지 않는다** — 서술 계약에만 쓴다.
     confidence: Confidence = field(default_factory=Confidence)
+    #: 이번 요청의 단계 span (SPEC-nexus-stage-spans). **순수 데이터** — 여기서 DB 를 안 건드린다.
+    #: `spans.enabled` 가 꺼져 있으면 None 이고, 그러면 아무것도 안 쌓인다.
+    spans: "SpanSet | None" = None
 
 
 #: `ts_rank_cd` 의 **길이 정규화 비트마스크**. `1` = 점수를 `1 + log(문서 길이)` 로 나눈다.
@@ -134,6 +138,11 @@ async def _bm25_search(
     "코퍼스 밖" 의 가장 강한 증거다. 둘을 같은 `None` 으로 뭉개던 동안 그 강한 증거가
     `Confidence.weak` 에서 **못 측정한 것**으로 읽혀 신호가 안 켜졌다 — 2026-08-24 라이브에서
     *"오늘 서울 날씨 알려줘"* 가 거리 0.608(멀다)인데도 약함 판정을 못 받았다.
+
+    ⛔ **이 함수의 반환 모양을 바꾸지 않는다.** 여러 시험이 이 함수를(그리고 `_vector_search` /
+    `_vector_leg` 를) 직접 불러 튜플을 그 자리에서 푼다. span 후보가 필요한 자리(doc_rid)는
+    `hybrid_search` 가 `chunks` 테이블에 한 번 더 물어(span 이 켜졌을 때만) 채운다 — 이 함수는
+    몰라도 된다.
     """
     tokens = active_tokenizer().tokenize(query)
     tsquery = tokens_to_tsquery(tokens)
@@ -181,6 +190,8 @@ async def _vector_search(
 
     `column` 은 어느 임베딩 세대를 읽을지다 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버와
     롤백이 이 값 하나로 이뤄지므로, **화이트리스트를 통과한 이름만** SQL 에 닿는다.
+
+    ⛔ **이 함수의 반환 모양을 바꾸지 않는다** — `_bm25_search` 머리말과 같은 이유.
     """
     col = resolve_column(column)
     query_embedding = await embedding_svc.embed_query(query)
@@ -271,6 +282,23 @@ def _is_embedding_failure(exc: BaseException) -> bool:
     import httpx
 
     return isinstance(exc, (httpx.HTTPError, RuntimeError, WrongVectorDimensions))
+
+
+async def _resolve_doc_rids(chunk_rids: set[str]) -> dict[str, str]:
+    """chunk rid → doc_rid. **span 캡처가 켜졌을 때만** 불린다(SPEC-nexus-stage-spans).
+
+    leg/fusion 조회는 chunk rid 만 낸다(`_bm25_search`/`_vector_search` 참조) — doc_rid 는
+    다양성(diversify) 이후에야 `_enrich_hits` 가 join 으로 채운다. span 은 그보다 이른 두
+    단계에서도 doc_rid 가 필요하므로, 그 join 을 앞당기는 대신 **캡처가 켜졌을 때만** 한 번
+    더 가벼운 조회를 한다 — 꺼진 배포(기본)는 이 함수를 아예 안 부른다.
+    """
+    if not chunk_rids:
+        return {}
+    rows = await db.fetch_all(
+        "SELECT rid, doc_rid FROM chunks WHERE rid = ANY($1::text[])",
+        list(chunk_rids),
+    )
+    return {r["rid"]: r["doc_rid"] for r in rows}
 
 
 class UnknownRoute(ValueError):
@@ -604,11 +632,19 @@ async def hybrid_search(
     vector_top_k = search_cfg.get("vector_top_k", 20)
     rrf_k = search_cfg.get("rrf_k", 60)
 
+    # 단계 span 캡처(SPEC-nexus-stage-spans, Unit 1). **기본 꺼짐** — `spans.enabled` 가
+    # true 일 때만 만든다. None 이면 아래 모든 `if spans is not None:` 이 건너뛰어져
+    # 오늘과 바이트 단위로 같은 경로를 탄다.
+    spans_cfg = cfg.get("spans", {})
+    spans = SpanSet(max_candidates=spans_cfg.get("max_candidates_per_span", 100)) \
+        if spans_cfg.get("enabled") else None
+
     if route not in ROUTES:
         # 조용히 hybrid 로 처리하지 않는다. "당신의 route 는 무시됐다" 는 말이 아무 말보다 낫다.
         raise UnknownRoute(f"unknown_route: {route!r}. 가능한 값: {', '.join(sorted(ROUTES))}")
 
     result = SearchResult(route_used=route)
+    result.spans = spans
 
     # route 가 고르는 것은 그래프 보강만이 아니다 — 어느 **경로**를 돌릴지도 고른다.
     # 예전엔 둘 다 무조건 돌면서 route_used 로 "반영됐다" 고 보고했다.
@@ -642,6 +678,10 @@ async def hybrid_search(
     #: 적합도는 **첫 채널**(= 사용자가 물은 것)로 측정한다. 재작성 채널까지 섞으면 "무엇에 대한
     #: 적합도인가" 가 흐려진다 — 재작성이 잘 맞은 것과 질문이 잘 맞은 것은 다른 사실이다.
     top_distance = top_bm25 = None
+    # leg 별 (rid,rank) 결과 + fired 여부. **spans 캡처가 켜졌을 때만** 채운다 — 뒤에서 이
+    # rid 들의 doc_rid 를 한 번 더 물어(`_resolve_doc_rids`) 채운다. `_bm25_search`/`_vector_leg`
+    # 의 반환 모양은 안 바꾼다(여러 시험이 그 튜플을 직접 푼다).
+    leg_results: dict[tuple[int, str], tuple[list[tuple[str, int]], bool]] = {}
     for i, (_text, weight) in enumerate(active):
         vector_results, vector_degraded, vector_top = done.get((i, "vector"), ([], False, None))
         if vector_degraded and "vector" not in result.degraded:
@@ -652,12 +692,43 @@ async def hybrid_search(
         ch_results.append(ChannelResults(
             bm25=bm25_results, vector=vector_results, weight=weight,
             name=names[i] if i < len(names) else f"ch{i}"))
+        if spans is not None:
+            if (i, "bm25") in tasks:
+                leg_results[(i, "bm25")] = (bm25_results, True)
+            if (i, "vector") in tasks:
+                # degraded 는 **실패해서 죽은 것**이다 — 후보를 못 믿으므로 빈 목록으로 남긴다.
+                leg_results[(i, "vector")] = ([] if vector_degraded else vector_results,
+                                              not vector_degraded)
     result.confidence = Confidence(top_distance=top_distance, top_bm25=top_bm25)
 
     bm25_ms = int((time.time() - start) * 1000)
 
     # RRF Fusion (전체 병합, 컷은 다양성 이후)
     fused = fuse_channels(ch_results, k=rrf_k)
+
+    if spans is not None:
+        # 캡처가 켜졌을 때만 도는 **딱 한 번의 추가 조회** — leg 결과와 fused 결과에 나온
+        # chunk rid 전부의 doc_rid 를 한 번에 채운다. `_bm25_search`/`_vector_search` 는 이
+        # 컬럼을 모르는 채로 둔다(위 반환 모양 계약).
+        all_chunk_rids = {rid for results, _ in leg_results.values() for rid, _ in results}
+        all_chunk_rids |= {f["rid"] for f in fused}
+        doc_rid_by_chunk = await _resolve_doc_rids(all_chunk_rids)
+
+        for (i, leg), (results, fired) in leg_results.items():
+            channel_label = (names[i] if i < len(names) else f"ch{i}") or "default"
+            cands = [
+                Candidate(rank=rank, doc_rid=doc_rid_by_chunk.get(rid, ""), chunk_rid=rid)
+                for rid, rank in results
+            ]
+            spans.add_leg(channel=channel_label, leg=leg, candidates=cands, fired=fired)
+
+        # `fused` 는 컷 전 **전체 병합 리스트**다.
+        fusion_cands = [
+            Candidate(rank=i + 1, doc_rid=doc_rid_by_chunk.get(f["rid"], ""),
+                     chunk_rid=f["rid"], raw_score=f["score"])
+            for i, f in enumerate(fused)
+        ]
+        spans.add_fusion(candidates=fusion_cands, rrf_k=rrf_k, n_channels=len(ch_results))
 
     # 메타데이터 보강 (fused 순서 보존)
     enriched = await _enrich_hits(
@@ -666,6 +737,18 @@ async def hybrid_search(
     # 문서 다양성 + top_k 컷 — 한 문서가 결과를 도배하지 않게.
     per_doc_cap = search_cfg.get("diversity_per_doc_cap", 3)
     result.hits = _diversify(enriched, top_k, per_doc_cap)
+
+    if spans is not None:
+        # diversify 의 **입력**을 남긴다 — 잘린 행이 진단 자료다. `kept_rids` 로 "이 행이
+        # 최종 목록에 있는가" 를 묻는다: `_diversify` 는 순위가 아니라 문서 상한으로 거르므로
+        # 인덱스 비교로는 안 된다.
+        kept_rids = {h.rid for h in result.hits}
+        diversify_cands = [
+            Candidate(rank=i + 1, doc_rid=h.doc_rid, chunk_rid=h.rid, raw_score=h.score,
+                     dropped=(h.rid not in kept_rids))
+            for i, h in enumerate(enriched)
+        ]
+        spans.add_diversify(candidates=diversify_cands, top_k=top_k, per_doc_cap=per_doc_cap)
 
     # 상한을 꽉 채운 문서 = 검색이 몰표를 준 문서. 그 안의 **남은 절**을 근거에 채운다.
     # 순위에는 넣지 않는다 (SPEC 근거는 `search/section_fill.py` 머리말).
@@ -677,6 +760,21 @@ async def hybrid_search(
     # 배포는 config.yaml 로 켠다.
     if search_cfg.get("section_fill", False):
         result.fill = await _fill_sections(result.hits, tenant, clearance, per_doc_cap)
+        if spans is not None:
+            # 포화가 이 실행의 **방아쇠**였는가 — `_fill_sections` 내부의 `saturated_docs` 와
+            # 같은 순수 함수를 다시 불러 얻는다. 이미 있는 `result.hits` 위에서 도는 목록
+            # 스캔이라 추가 쿼리가 아니다.
+            from nexus.search.section_fill import saturated_docs
+            trigger_saturated = bool(saturated_docs(result.hits, per_doc_cap))
+            fill_cands = [
+                Candidate(rank=i + 1, doc_rid=h.doc_rid, chunk_rid=h.rid, raw_score=h.score)
+                for i, h in enumerate(result.fill)
+            ]
+            spans.add_section_fill(candidates=fill_cands, trigger_saturated=trigger_saturated)
+    elif spans is not None:
+        # 안 돌았다는 사실도 남긴다 — "이 단계는 켜져 있었는데 후보가 0 이었다" 와
+        # "이 단계가 아예 꺼져 있었다" 는 다른 사실이고, `fired` 가 그 둘을 가른다.
+        spans.add_section_fill(candidates=[], trigger_saturated=False, fired=False)
 
     # Graph 보강 (route에 따라)
     if graph_repo and entity_rids and route in ("hybrid_then_graph", "graph_then_hybrid"):

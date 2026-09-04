@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 import structlog
 
@@ -20,6 +21,9 @@ from nexus.providers.llm import LLMService
 from nexus.search.anchor_status import summarize
 from nexus.search.doc_debt import summarize as summarize_debt
 from nexus.search.evidence_packet import EvidencePacket, format_for_llm
+
+if TYPE_CHECKING:  # 런타임 import 불필요(순환 회피) — 타입 힌트만 쓴다
+    from nexus.search.spans import SpanSet
 
 logger = structlog.get_logger(__name__)
 
@@ -104,6 +108,7 @@ async def generate_answer(
     timing_ms: dict | None = None,
     user_query: str | None = None,
     confidence=None,
+    spans: "SpanSet | None" = None,
 ) -> AnswerResult:
     """근거 기반 답변 생성.
 
@@ -117,6 +122,8 @@ async def generate_answer(
             프롬프트는 오늘과 바이트 단위로 같다 (SPEC-nexus-multi-turn-narration §4 I1·I3).
         confidence: `SearchResult.confidence`. 약하면 **서술 계약**이 바뀐다 — 짧게, 범위 밖임을
             먼저. 안 주거나 약하지 않으면 프롬프트는 오늘과 바이트 단위로 같다.
+        spans: `SearchResult.spans` (SPEC-nexus-stage-spans). None 이면(기본, 캡처 꺼짐)
+            answer span 을 안 남긴다.
 
     Returns:
         AnswerResult
@@ -189,6 +196,12 @@ async def generate_answer(
     if not packet.snippets:
         result.answer = "제공된 문서에서 해당 정보를 찾을 수 없습니다."
         result.abstained, result.abstain_reason = True, "no_evidence"
+        if spans is not None:
+            spans.add_answer(
+                n_in=len(packet.snippets), n_citations=len(result.citations),
+                unverified_citations=result.unverified_citations,
+                unverified_numbers=result.unverified_numbers,
+                abstained=result.abstained, llm_failed=result.llm_failed)
         return result
 
     evidence_text = format_for_llm(packet)
@@ -230,5 +243,12 @@ async def generate_answer(
             "답변을 생성할 수 없습니다. 아래 근거를 직접 확인해주세요.\n\n"
             + evidence_text
         )
+
+    if spans is not None:
+        spans.add_answer(
+            n_in=len(packet.snippets), n_citations=len(result.citations),
+            unverified_citations=result.unverified_citations,
+            unverified_numbers=result.unverified_numbers,
+            abstained=result.abstained, llm_failed=result.llm_failed)
 
     return result
