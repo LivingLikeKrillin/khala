@@ -3,7 +3,8 @@ id: SPEC-nexus-bm25-length-normalization
 type: spec
 title: Length normalisation for the keyword leg — an amendment to the cover-density
   choice
-status: draft
+status: approved
+date: '2026-09-03T18:40:00Z'
 linked_adrs:
 - ADR-0004
 - ADR-0006
@@ -12,6 +13,9 @@ tags:
 - search
 - ranking
 - amendment
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-09-03T18:40:00Z'
+content_hash: sha256:93e29069dde3c7fe87a64bdc56e03ad4c893ae800aca07b0aa7a486136eea8ae
 ---
 
 ## 0. Why this is a separate document
