@@ -57,7 +57,7 @@ index:
   coverage_exempt_tenants: [ko_eval_arm, ko_eval_packb]
 
 search:
-  bm25_top_k: 20
+  bm25_top_k: 25
   vector_top_k: 20
   rrf_k: 60                    # RRF fusion 파라미터
   final_top_k: 10              # 최종 반환 수
