@@ -19,3 +19,4 @@
 | 문서 | 무엇 |
 |---|---|
 | [`2026-09-04-org-knowledge-systems.md`](2026-09-04-org-knowledge-systems.md) | AI 도구를 적극 쓰는 회사들이 공용 지식 베이스를 어떻게 구축·운용·소비하는가 |
+| [`2026-09-04-representation-in-ai-assisted-development.md`](2026-09-04-representation-in-ai-assisted-development.md) | AI 를 쓰는 개발에서 담당자의 시스템 모델은 어떻게 되는가 — 문헌·실측치와 그로부터 끌어낸 설계 판단 |
