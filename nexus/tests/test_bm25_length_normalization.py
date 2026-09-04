@@ -100,7 +100,7 @@ def test_normalisation_shifts_score_toward_the_short_exact_row():
 
             # 그리고 그 인자로 실제 프로덕션 경로가 돈다(예외 없이, 둘 다 반환).
             hits, _top = await hybrid._bm25_search("아바타 10 포인트", "acme", "INTERNAL", 10)
-            assert {rid for rid, _ in hits} == {"chunk_s", "chunk_l"}
+            assert {h.rid for h in hits} == {"chunk_s", "chunk_l"}
         finally:
             await pool.close()
             db._pool = None

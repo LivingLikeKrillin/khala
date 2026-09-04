@@ -144,8 +144,8 @@ async def leg_ranks(query: str, rid: str, tenant: list[str], cfg, svc) -> dict:
                                          s.get("vector_top_k", 20),
                                          column=configured_column(cfg))
     return {"bm25_pool": len(bm), "vector_pool": len(vec),
-            "bm25_rank": next((r for x, r in bm if x == rid), None),
-            "vector_rank": next((r for x, r in vec if x == rid), None)}
+            "bm25_rank": next((h.rank for h in bm if h.rid == rid), None),
+            "vector_rank": next((h.rank for h in vec if h.rid == rid), None)}
 
 
 async def explain(q: dict, present: list[bool], tenant: list[str], cfg, svc, search, con) -> dict:

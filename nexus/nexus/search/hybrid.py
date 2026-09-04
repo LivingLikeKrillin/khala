@@ -121,13 +121,31 @@ class SearchResult:
 BM25_LENGTH_NORMALIZATION = 1
 
 
+@dataclass(frozen=True)
+class LegHit:
+    """한 다리(leg)가 낸 한 행 — `rid`+`rank` 뿐이던 자리에 `doc_rid`/`score` 를 더한다.
+
+    **이름 있는 필드다, 넓힌 튜플이 아니다.** 이전 시도는 `(rid, rank)` 를 `(rid, rank, doc_rid,
+    score)` 로 넓혔다가 위치로 이 튜플을 묶어 둔 시험 스무 곳을 깨뜨리고 되돌려졌다. 위치는
+    다음에 또 깨진다 — 그래서 여기부터는 이름으로만 읽는다.
+
+    `score` 의 극성은 다리마다 다르다(`SCORE_KIND` 참조: bm25 는 `ts_rank_cd` 로 클수록 좋고,
+    vector 는 `cosine_distance` 로 작을수록 좋다). 이 dataclass 는 그 차이를 모른다 — 판단은
+    호출자(`search/spans.py::SCORE_KIND`)의 몫이다.
+    """
+    rid: str
+    rank: int
+    doc_rid: str
+    score: float | None
+
+
 async def _bm25_search(
     query: str,
     tenant: str | Sequence[str],
     clearance: str,
     top_k: int = 20,
-) -> tuple[list[tuple[str, int]], float | None]:
-    """BM25 검색. `((chunk_rid, rank) 목록, 1위 원점수)`.
+) -> tuple[list[LegHit], float | None]:
+    """BM25 검색. `(LegHit 목록, 1위 원점수)`.
 
     **원점수를 같이 돌려주는 이유**: 융합(RRF)은 순위만 쓰므로 "얼마나 잘 맞았는가" 가
     사라진다. 그 크기는 여기서 이미 계산해 정렬에까지 썼는데 버려지고 있었다
@@ -139,10 +157,14 @@ async def _bm25_search(
     `Confidence.weak` 에서 **못 측정한 것**으로 읽혀 신호가 안 켜졌다 — 2026-08-24 라이브에서
     *"오늘 서울 날씨 알려줘"* 가 거리 0.608(멀다)인데도 약함 판정을 못 받았다.
 
-    ⛔ **이 함수의 반환 모양을 바꾸지 않는다.** 여러 시험이 이 함수를(그리고 `_vector_search` /
-    `_vector_leg` 를) 직접 불러 튜플을 그 자리에서 푼다. span 후보가 필요한 자리(doc_rid)는
-    `hybrid_search` 가 `chunks` 테이블에 한 번 더 물어(span 이 켜졌을 때만) 채운다 — 이 함수는
-    몰라도 된다.
+    **반환 모양이 여기서 바뀌었다(2026-09).** `(chunk_rid, rank)` 튜플 목록이던 자리가
+    `LegHit`(행마다 `doc_rid`·`score` 포함) 목록으로 넓어졌다. 예전엔 "바꾸지 않는다" 고
+    적혀 있었고 그 이유는 span 이 필요로 하는 `doc_rid` 를 `hybrid_search` 가 `_resolve_doc_rids`
+    로 캡처가 켜졌을 때만 따로 물어 채웠기 때문이다 — 그런데 그 조회 자체가 검색 경로에
+    숨은 왕복이었고, `raw_score` 는 애초에 여기 없어서(1위만 돌려줬으므로) leg span 후보의
+    `raw_score` 가 캡처를 켜도 **한 번도 채워진 적이 없었다**. `ts_rank_cd`/`doc_rid` 는 이미
+    이 SELECT 가 계산·보유하고 있으므로, 넓히는 쪽이 옳다 — 대신 위치가 아니라 이름으로
+    (`LegHit`, 튜플 아님) 넓혀서 다음 호출부가 자리로 다시 묶이지 않게 한다.
     """
     tokens = active_tokenizer().tokenize(query)
     tsquery = tokens_to_tsquery(tokens)
@@ -153,7 +175,7 @@ async def _bm25_search(
     tenant_pred, tenant_val = tenant_predicate("c.tenant", 2, tenant)
     rows = await db.fetch_all(
         f"""
-        SELECT c.rid,
+        SELECT c.rid, c.doc_rid,
                ts_rank_cd(c.tsvector_ko, to_tsquery('simple', $1),
                           $5) as rank_score
         FROM chunks c
@@ -174,7 +196,8 @@ async def _bm25_search(
     )
 
     # 매칭 0건은 **측정해서 0점**이다(위 참조). 안 측정한 것이 아니다.
-    return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
+    return ([LegHit(rid=r["rid"], rank=i + 1, doc_rid=r["doc_rid"], score=float(r["rank_score"]))
+             for i, r in enumerate(rows)],
             float(rows[0]["rank_score"]) if rows else 0.0)
 
 
@@ -185,13 +208,13 @@ async def _vector_search(
     clearance: str,
     top_k: int = 20,
     column: str | None = None,
-) -> tuple[list[tuple[str, int]], float | None]:
-    """Vector 검색. `((chunk_rid, rank) 목록, 1위 코사인 거리)`.
+) -> tuple[list[LegHit], float | None]:
+    """Vector 검색. `(LegHit 목록, 1위 코사인 거리)`.
 
     `column` 은 어느 임베딩 세대를 읽을지다 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버와
     롤백이 이 값 하나로 이뤄지므로, **화이트리스트를 통과한 이름만** SQL 에 닿는다.
 
-    ⛔ **이 함수의 반환 모양을 바꾸지 않는다** — `_bm25_search` 머리말과 같은 이유.
+    반환 모양은 `_bm25_search` 와 같은 이유·같은 시점에 넓어졌다 — 그 함수 머리말 참조.
     """
     col = resolve_column(column)
     query_embedding = await embedding_svc.embed_query(query)
@@ -201,7 +224,7 @@ async def _vector_search(
 
     rows = await db.fetch_all(
         f"""
-        SELECT c.rid, c.{col} <=> $1::vector as distance
+        SELECT c.rid, c.doc_rid, c.{col} <=> $1::vector as distance
         FROM chunks c
         WHERE c.{col} IS NOT NULL
           AND {tenant_pred}
@@ -218,7 +241,8 @@ async def _vector_search(
         vec_str, tenant_val, clearance, top_k,
     )
 
-    return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
+    return ([LegHit(rid=r["rid"], rank=i + 1, doc_rid=r["doc_rid"], score=float(r["distance"]))
+             for i, r in enumerate(rows)],
             float(rows[0]["distance"]) if rows else None)
 
 
@@ -255,7 +279,7 @@ async def _vector_leg(
     clearance: str,
     top_k: int,
     column: str | None,
-) -> tuple[list[tuple[str, int]], bool, float | None]:
+) -> tuple[list[LegHit], bool, float | None]:
     """(결과, degraded, 1위 거리). **빈 결과와 죽은 경로를 구분해서 돌려준다.**
 
     예전엔 임베딩 실패를 조용히 삼켜 빈 리스트를 냈고 SQL 실패는 500 으로 나갔다 — 둘 다 틀렸다.
@@ -282,23 +306,6 @@ def _is_embedding_failure(exc: BaseException) -> bool:
     import httpx
 
     return isinstance(exc, (httpx.HTTPError, RuntimeError, WrongVectorDimensions))
-
-
-async def _resolve_doc_rids(chunk_rids: set[str]) -> dict[str, str]:
-    """chunk rid → doc_rid. **span 캡처가 켜졌을 때만** 불린다(SPEC-nexus-stage-spans).
-
-    leg/fusion 조회는 chunk rid 만 낸다(`_bm25_search`/`_vector_search` 참조) — doc_rid 는
-    다양성(diversify) 이후에야 `_enrich_hits` 가 join 으로 채운다. span 은 그보다 이른 두
-    단계에서도 doc_rid 가 필요하므로, 그 join 을 앞당기는 대신 **캡처가 켜졌을 때만** 한 번
-    더 가벼운 조회를 한다 — 꺼진 배포(기본)는 이 함수를 아예 안 부른다.
-    """
-    if not chunk_rids:
-        return {}
-    rows = await db.fetch_all(
-        "SELECT rid, doc_rid FROM chunks WHERE rid = ANY($1::text[])",
-        list(chunk_rids),
-    )
-    return {r["rid"]: r["doc_rid"] for r in rows}
 
 
 class UnknownRoute(ValueError):
@@ -678,26 +685,29 @@ async def hybrid_search(
     #: 적합도는 **첫 채널**(= 사용자가 물은 것)로 측정한다. 재작성 채널까지 섞으면 "무엇에 대한
     #: 적합도인가" 가 흐려진다 — 재작성이 잘 맞은 것과 질문이 잘 맞은 것은 다른 사실이다.
     top_distance = top_bm25 = None
-    # leg 별 (rid,rank) 결과 + fired 여부. **spans 캡처가 켜졌을 때만** 채운다 — 뒤에서 이
-    # rid 들의 doc_rid 를 한 번 더 물어(`_resolve_doc_rids`) 채운다. `_bm25_search`/`_vector_leg`
-    # 의 반환 모양은 안 바꾼다(여러 시험이 그 튜플을 직접 푼다).
-    leg_results: dict[tuple[int, str], tuple[list[tuple[str, int]], bool]] = {}
+    # leg 별 `LegHit` 목록 + fired 여부. **spans 캡처가 켜졌을 때만** 채운다. `LegHit` 은 이미
+    # `doc_rid`/`score` 를 갖고 있으므로(위 `_bm25_search`/`_vector_search` 참조) 여기서
+    # `chunks` 를 한 번 더 묻지 않는다 — 예전엔 이 자리에 `_resolve_doc_rids` 추가 조회가 있었다.
+    leg_results: dict[tuple[int, str], tuple[list[LegHit], bool]] = {}
     for i, (_text, weight) in enumerate(active):
-        vector_results, vector_degraded, vector_top = done.get((i, "vector"), ([], False, None))
+        vector_hits, vector_degraded, vector_top = done.get((i, "vector"), ([], False, None))
         if vector_degraded and "vector" not in result.degraded:
             result.degraded.append("vector")
-        bm25_results, bm25_top = done.get((i, "bm25"), ([], None))
+        bm25_hits, bm25_top = done.get((i, "bm25"), ([], None))
         if i == 0:
             top_distance, top_bm25 = vector_top, bm25_top
+        # RRF 융합은 순위만 쓴다(모듈 머리말) — `LegHit` 을 `(rid, rank)` 로 좁혀서 넘긴다.
         ch_results.append(ChannelResults(
-            bm25=bm25_results, vector=vector_results, weight=weight,
+            bm25=[(h.rid, h.rank) for h in bm25_hits],
+            vector=[(h.rid, h.rank) for h in vector_hits],
+            weight=weight,
             name=names[i] if i < len(names) else f"ch{i}"))
         if spans is not None:
             if (i, "bm25") in tasks:
-                leg_results[(i, "bm25")] = (bm25_results, True)
+                leg_results[(i, "bm25")] = (bm25_hits, True)
             if (i, "vector") in tasks:
                 # degraded 는 **실패해서 죽은 것**이다 — 후보를 못 믿으므로 빈 목록으로 남긴다.
-                leg_results[(i, "vector")] = ([] if vector_degraded else vector_results,
+                leg_results[(i, "vector")] = ([] if vector_degraded else vector_hits,
                                               not vector_degraded)
     result.confidence = Confidence(top_distance=top_distance, top_bm25=top_bm25)
 
@@ -707,18 +717,14 @@ async def hybrid_search(
     fused = fuse_channels(ch_results, k=rrf_k)
 
     if spans is not None:
-        # 캡처가 켜졌을 때만 도는 **딱 한 번의 추가 조회** — leg 결과와 fused 결과에 나온
-        # chunk rid 전부의 doc_rid 를 한 번에 채운다. `_bm25_search`/`_vector_search` 는 이
-        # 컬럼을 모르는 채로 둔다(위 반환 모양 계약).
-        all_chunk_rids = {rid for results, _ in leg_results.values() for rid, _ in results}
-        all_chunk_rids |= {f["rid"] for f in fused}
-        doc_rid_by_chunk = await _resolve_doc_rids(all_chunk_rids)
+        # leg 후보의 doc_rid 를 rid 로 재사용한다 — `chunks` 를 다시 묻지 않는다(위 참조).
+        doc_rid_by_chunk = {h.rid: h.doc_rid for hits, _ in leg_results.values() for h in hits}
 
-        for (i, leg), (results, fired) in leg_results.items():
+        for (i, leg), (hits, fired) in leg_results.items():
             channel_label = (names[i] if i < len(names) else f"ch{i}") or "default"
             cands = [
-                Candidate(rank=rank, doc_rid=doc_rid_by_chunk.get(rid, ""), chunk_rid=rid)
-                for rid, rank in results
+                Candidate(rank=h.rank, doc_rid=h.doc_rid, chunk_rid=h.rid, raw_score=h.score)
+                for h in hits
             ]
             spans.add_leg(channel=channel_label, leg=leg, candidates=cands, fired=fired)
 

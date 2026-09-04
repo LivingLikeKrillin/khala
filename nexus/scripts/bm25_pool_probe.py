@@ -184,7 +184,7 @@ async def run_arm(name: str, pool: int, groups: dict[str, list[dict]], tenant: l
             # `True` 로 뭉쳤다(2026-09-02). 판정은 안 바뀌었지만 규칙이 묻는 것보다 무딘 답이었다.
             if holder_rid and group == "multihop":
                 bm, _ = await hybrid._bm25_search(q["query"], tenant, CLEARANCE, pool)
-                entered[q["id"]] = any(x == holder_rid for x, _ in bm)
+                entered[q["id"]] = any(h.rid == holder_rid for h in bm)
 
             rows.append({
                 "group": group, "qid": q["id"],

@@ -287,6 +287,7 @@ async def run_keyword_leg(labels: dict, tenant: str, chunk_doc: dict[str, str],
         if not q.get("answerable"):
             continue
         hits, _top = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", top_k)
+        hits = [(h.rid, h.rank) for h in hits]  # _bm25_search 는 이제 LegHit 을 낸다
         docs = collapse_to_documents(hits, chunk_doc)
         result.scores.append(score_query(q["id"], docs, q["gold"]))
     return result
@@ -316,6 +317,7 @@ async def run_legs(labels: dict, tenant: str, chunk_doc: dict[str, str],
         if not q.get("answerable"):
             continue
         kw, _top = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", top_k)
+        kw = [(h.rid, h.rank) for h in kw]  # _bm25_search 는 이제 LegHit 을 낸다
         legs["keyword"].scores.append(
             score_query(q["id"], collapse_to_documents(kw, chunk_doc), q["gold"]))
 
@@ -348,6 +350,7 @@ async def leg_top_documents(labels: dict, tenant: str, chunk_doc: dict[str, str]
         if not q.get("answerable"):
             continue
         kw, _top = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", top_k)
+        kw = [(h.rid, h.rank) for h in kw]  # _bm25_search 는 이제 LegHit 을 낸다
         out["keyword"][q["id"]] = collapse_to_documents(kw, chunk_doc, limit=depth)
         if vector_search is None:
             continue
@@ -365,6 +368,7 @@ async def top_documents(query: str, tenant: str, chunk_doc: dict[str, str],
     from nexus.search import hybrid
 
     hits, _top = await hybrid._bm25_search(query, tenant, "INTERNAL", top_k)
+    hits = [(h.rid, h.rank) for h in hits]  # _bm25_search 는 이제 LegHit 을 낸다
     return collapse_to_documents(hits, chunk_doc, limit=depth)
 
 

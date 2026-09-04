@@ -94,11 +94,12 @@ async def test_a_working_leg_is_not_marked_degraded(monkeypatch):
     from nexus.search import hybrid
 
     async def _fake_fetch_all(sql, *args):
-        return [{"rid": "chunk_a", "distance": 0.1}]
+        return [{"rid": "chunk_a", "doc_rid": "doc_a", "distance": 0.1}]
 
     monkeypatch.setattr(hybrid.db, "fetch_all", _fake_fetch_all)
     hits, degraded, distance = await hybrid._vector_leg("결제", _Svc(), "default", "INTERNAL", 10, None)
-    assert hits == [("chunk_a", 1)] and degraded is False
+    assert hits == [hybrid.LegHit(rid="chunk_a", rank=1, doc_rid="doc_a", score=0.1)]
+    assert degraded is False
     assert distance == 0.1          # 정렬에 쓰고 버리던 크기가 실제로 올라온다
 
 
@@ -122,7 +123,7 @@ async def test_a_dimension_mismatch_degrades_and_keyword_results_survive(monkeyp
 
     async def _mismatch(sql, *args):
         if "tsvector_ko" in sql:
-            return [{"rid": "chunk_kw", "rank_score": 1.0}]
+            return [{"rid": "chunk_kw", "doc_rid": "doc_kw", "rank_score": 1.0}]
         raise asyncpg.exceptions.DataError("different vector dimensions 768 and 1024")
 
     async def _enriched(fused, tenant, max_snippet_chars=300):

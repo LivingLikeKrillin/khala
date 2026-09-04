@@ -40,8 +40,14 @@ async def _chunk_doc() -> dict[str, str]:
 
 
 def _patched_bm25(norm: int):
-    """`ts_rank_cd` 에 정규화 인자를 넣은 판. 나머지 SQL 은 프로덕션과 같은 모양이다."""
+    """`ts_rank_cd` 에 정규화 인자를 넣은 판. 나머지 SQL 은 프로덕션과 같은 모양이다.
+
+    반환은 프로덕션 `_bm25_search`(`nexus/search/hybrid.py`)와 같은 `LegHit` 모양이어야 한다 —
+    이 실험군이 `hybrid.hybrid_search()` 안에서도 그대로 갈아 끼워지므로, 모양이 다르면
+    그 안의 융합 코드가 깨진다.
+    """
     from nexus.index.bm25 import active_tokenizer, tokens_to_tsquery
+    from nexus.search.hybrid import LegHit
 
     async def _bm25(query, tenant, clearance, top_k=20):
         tsquery = tokens_to_tsquery(active_tokenizer().tokenize(query))
@@ -49,7 +55,7 @@ def _patched_bm25(norm: int):
             return [], None
         rows = await db.fetch_all(
             """
-            SELECT c.rid, ts_rank_cd(c.tsvector_ko, to_tsquery('simple', $1), $5) AS rank_score
+            SELECT c.rid, c.doc_rid, ts_rank_cd(c.tsvector_ko, to_tsquery('simple', $1), $5) AS rank_score
             FROM chunks c
             WHERE c.tsvector_ko @@ to_tsquery('simple', $1)
               AND c.tenant = $2 AND c.classification <= $3::classification_level
@@ -60,7 +66,8 @@ def _patched_bm25(norm: int):
             LIMIT $4
             """,
             tsquery, tenant, clearance, top_k, norm)
-        return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
+        return ([LegHit(rid=r["rid"], rank=i + 1, doc_rid=r["doc_rid"], score=float(r["rank_score"]))
+                 for i, r in enumerate(rows)],
                 float(rows[0]["rank_score"]) if rows else 0.0)
 
     return _bm25
@@ -94,6 +101,7 @@ async def main() -> int:
                 leg, hyb = [], []
                 for q in queries:
                     hits, _ = await hybrid._bm25_search(q["query"], TENANT, CLEARANCE, 20)
+                    hits = [(h.rid, h.rank) for h in hits]  # _bm25_search 는 이제 LegHit 을 낸다
                     leg.append(score_query(q["id"], collapse_to_documents(hits, cd), q["gold"]))
                     r = await hybrid.hybrid_search(q["query"], tenant=TENANT,
                                                    clearance=CLEARANCE, top_k=10,
