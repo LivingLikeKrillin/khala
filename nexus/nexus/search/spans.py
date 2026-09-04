@@ -24,7 +24,7 @@ class Candidate:
     doc_rid: str
     chunk_rid: str | None = None    # 보존 옵션 3 에서 비워진다
     raw_score: float | None = None
-    dropped: bool = False           # diversify 전용: 이 행이 잘렸다
+    dropped: bool = False           # diversify 전용: 이 행이 잘렸다. diversify 밖에서는 읽지 않는다
 
 
 @dataclass
@@ -61,6 +61,18 @@ class SpanSet:
 
     def _add(self, stage: str, candidates: list[Candidate], *, cap_exempt: bool = False,
              **kw) -> StageSpan:
+        """`candidates` 는 `rank` 순으로, 1부터 빈틈없이 도착한다는 계약이다.
+        `candidates[:cap]` 로 자르는 것이 "순위 1..cap 을 남긴다" 는 뜻이 되려면
+        이 순서가 지켜져야 한다 — 어겨도 조용히 그럴싸한 오답 기록이 남으므로,
+        자르기 전에 계약을 검사해 어긴 호출자를 그 자리에서 실패시킨다.
+        """
+        expected_ranks = list(range(1, len(candidates) + 1))
+        actual_ranks = [c.rank for c in candidates]
+        if actual_ranks != expected_ranks:
+            raise ValueError(
+                f"candidates must be ordered by rank, 1-based and contiguous; "
+                f"expected {expected_ranks}, got {actual_ranks}"
+            )
         detail = _check_scalar(kw.pop("detail", {}))
         cap = None if cap_exempt else self._max
         kept = candidates if cap is None else candidates[:cap]

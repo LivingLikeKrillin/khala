@@ -39,6 +39,27 @@ def test_truncation_keeps_the_head_and_still_reports_the_full_expectation():
     assert [c.rank for c in span.candidates] == [1, 2]   # 머리를 남기고 꼬리를 버린다
     assert span.candidates_expected == 5                 # 잘렸다는 사실이 보인다
     assert span.candidates_cap == 2                       # 그때의 상한을 행에 박는다
+    assert span.n_out == 5                                # 전체 풀 크기 — candidates 는 잘려도 이건 안 잘린다
+
+
+def test_misordered_ranks_are_rejected_before_truncation():
+    spans = SpanSet(max_candidates=2)
+    with pytest.raises(ValueError, match="rank"):
+        spans.add_leg(
+            channel="original", leg="vector",
+            candidates=[Candidate(rank=2, chunk_rid="c2", doc_rid="d1", raw_score=2.0),
+                        Candidate(rank=1, chunk_rid="c1", doc_rid="d1", raw_score=1.0)],
+        )
+
+
+def test_gapped_ranks_are_rejected_before_truncation():
+    spans = SpanSet(max_candidates=2)
+    with pytest.raises(ValueError, match="rank"):
+        spans.add_leg(
+            channel="original", leg="vector",
+            candidates=[Candidate(rank=1, chunk_rid="c1", doc_rid="d1", raw_score=1.0),
+                        Candidate(rank=3, chunk_rid="c3", doc_rid="d1", raw_score=3.0)],
+        )
 
 
 def test_diversify_is_exempt_from_the_cap_because_its_cut_rows_are_the_payload():
