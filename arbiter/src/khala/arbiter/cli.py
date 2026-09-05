@@ -75,7 +75,14 @@ def build_cli(root: Path, docs: Path, critic) -> typer.Typer:
     def status(artifact_id: str | None = typer.Argument(None)) -> None:
         """아티팩트 상태 조회. id 를 비우면 전체."""
         for row in ledger.status(artifact_id):
-            typer.echo(f"{row['id']:40} {row.get('status', '?'):10} {row.get('title', '')}")
+            # SPEC-arbiter-status-is-read-only §3.1 — `in_review` alone cannot tell
+            # "a critique was opened" from "the stamp went stale", and since status()
+            # no longer writes, the file will not say either. The flags are the reader.
+            flags = " ".join(k for k in ("needs_review", "tampered") if row.get(k))
+            typer.echo(
+                f"{row['id']:40} {row.get('status', '?'):10} {flags} "
+                f"{row.get('title', '')}".rstrip()
+            )
 
     @app.command(name="critique")
     def critique_cmd(artifact_id: str = typer.Argument(...)) -> None:
