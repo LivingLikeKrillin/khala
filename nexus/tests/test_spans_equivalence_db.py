@@ -249,9 +249,10 @@ _COST_QUERIES = [_QUERY, "gizmo status", "diagnostics notes for gizmo"]
 async def test_fixture_cost_observation(clean_db):
     """비용 관측 — **단언도 문턱도 없다.**
 
-    ⚠ 여기서 찍는 수는 이 파일의 두 문서·세 질의 픽스처에서 나온 값이다. `spans.enabled`
-    기본값은 false 라 라이브 행이 아직 없고, 그래서 "프로덕션에서 요청당 몇 행이 쌓이는가"
-    를 지금 잴 방법이 없다 — 이 수를 그 답으로 인용하지 않는다.
+    ⚠ 여기서 찍는 수는 이 파일의 두 문서·세 질의 픽스처에서 나온 값이다. 픽스처는 문서 두
+    건이라 융합·diversify 단계의 후보 수가 프로덕션 코퍼스와 자릿수부터 다르다 — "프로덕션
+    에서 요청당 몇 행이 쌓이는가" 는 `search_span` 의 라이브 행을 직접 집계해야 나오는 값이고,
+    이 수를 그 답으로 인용하지 않는다. (배포 설정은 2026-09-05 캡처를 켰다.)
     """
     await _seed()
     try:
@@ -260,7 +261,7 @@ async def test_fixture_cost_observation(clean_db):
         # ASCII 로만 찍는다 - 이 파일을 여는 셸의 코드페이지에 따라 em-dash 등
         # 비-ASCII 문자가 UnicodeEncodeError 를 낼 수 있다(레거시 코드페이지 콘솔에서 실측).
         print("\n[fixture cost observation - NOT a production measurement; "
-              "spans.enabled defaults to false, so no live rows exist yet]")
+              "two-document fixture, count live search_span rows instead]")
         for i, q in enumerate(_COST_QUERIES):
             path = f"{_PATH_COST_PREFIX}_{i}"
             result = await hybrid_search(
