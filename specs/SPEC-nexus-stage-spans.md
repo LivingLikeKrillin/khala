@@ -2,7 +2,7 @@
 id: SPEC-nexus-stage-spans
 type: spec
 title: Stage spans (Unit 1) — capture what each retrieval stage received and produced
-status: approved
+status: in_review
 linked_adrs:
 - ADR-0006
 tags:
@@ -107,12 +107,14 @@ deliverable**:
 - **no assertion, no threshold.** The first pass is observation, and this repository has already
   built a gate on a number it had never measured.
 
-**Bounded, not unbounded.** Worst case with a rewrite channel: legs `2 channels × 2 legs × 20` = 80,
-fusion's merged union ≤ 80 but capped at 100, diversify's inputs ≤ 80 (**uncapped by exemption**),
-fill additions ≤ `per_doc_cap`, packet ≈ `top_k`. With today's values that is **80 + 80 + 80 + 5 + 10
-= 255 rows**, and the cap binds only if pool sizes grow (round 5, I-014). `spans.max_candidates_per_span`
-(default 100) caps any single span, and a truncated span records `candidates_expected` above its row
-count so truncation is visible rather than silent.
+**Bounded, not unbounded.** Worst case with a rewrite channel: legs
+`2 channels × (bm25_top_k + vector_top_k)` = 90, fusion's merged union ≤ 90 but capped at 100,
+diversify's inputs ≤ 90 (**uncapped by exemption**), fill additions ≤ `per_doc_cap`, packet ≈ `top_k`.
+With this deployment's values (`bm25_top_k: 25`, `vector_top_k: 20`, `diversity_per_doc_cap: 5`,
+`final_top_k: 10`) that is **90 + 90 + 90 + 5 + 10 = 285 rows**, and the cap binds only if pool sizes
+grow (round 5, I-014; the figure is corrected in §8 — rounds 1–5 all worked from a wrong pool size).
+`spans.max_candidates_per_span` (default 100) caps any single span, and a truncated span records
+`candidates_expected` above its row count so truncation is visible rather than silent.
 
 ## 2. What exists
 
@@ -120,7 +122,8 @@ count so truncation is visible rather than silent.
   `n_snippets`, `top_score`, `n_citations`, `unverified_citations`, `fusion_channels`, tokens, cost.
   `_insert` returns the row id, so a parent key exists. ⚠ **`search_log` has no purge today** (§3.4).
 - **`hybrid_search`** (`search/hybrid.py`) — `tasks[(channel_index, "bm25"|"vector")]` holds each
-  leg's pool, sized by `search.bm25_top_k` / `search.vector_top_k` (both 20). `_rrf_fusion` returns
+  leg's pool, sized by `search.bm25_top_k` / `search.vector_top_k` (**25 and 20**, not both 20 —
+  §8). Implementations read the two values from `config.yaml`; no number here is a constant. `_rrf_fusion` returns
   the **whole merged list, uncut**; `fuse_channels(ch_results, k=rrf_k)` is called **once across all
   channels** (`hybrid.py:660`), so fusion is singular by construction even with a rewrite channel.
   `_diversify(hits, top_k, per_doc_cap)` applies both the `top_k` cut and the per-document cap.
@@ -491,3 +494,30 @@ settled.
 
 ⚠ **Consequence for §1.4.** The cost figure is counted from the fixture query set only — no live
 rows will exist. A live number is available when capture is turned on, and not before.
+
+## 8. Errata (2026-09-05, after Unit 1 merged)
+
+**The pool sizes were wrong in every round.** §2 stated `bm25_top_k` and `vector_top_k` were
+"both 20", and §1.4's worst case was derived from that. `config.yaml` has carried
+`bm25_top_k: 25` since well before this spec was drafted, on `master` and on this deployment. Five
+critique rounds read the sentence and none checked it against the file — including round 5's I-014,
+which recomputed the arithmetic *from the wrong input* and recorded 255 as a correction. That
+disposition line is left as written: it is what round 5 did.
+
+| | drafted | actual |
+|---|---|---|
+| leg pools per channel | 20 + 20 | **25 + 20** |
+| worst-case span rows | 255 | **285** |
+
+**What it did not affect.** The implementation never read either number from this document —
+`hybrid_search` reads `search.bm25_top_k` / `search.vector_top_k` from `config.yaml`, and
+`spans.max_candidates_per_span` (100) is what actually bounds a span. 285 is still under the
+per-span cap for every stage that has one, so no threshold, constraint or test changes. What was
+wrong was the spec's account of the system, which is the thing this document exists to be.
+
+**Why the correction was restamped without a sixth critique round.** The edit replaces two numbers
+with the values `config.yaml` holds and points the prose at the file instead of restating constants.
+Re-running the critic would open a fresh issue list on a settled document, and the house rule is
+that the gate guards decisions that are expensive to reverse — this one is arithmetic against a
+file CI already reads. The restamp is recorded here so the omission is visible rather than implied
+by an unchanged hash.
