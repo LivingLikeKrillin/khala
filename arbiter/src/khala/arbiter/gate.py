@@ -17,6 +17,7 @@ class Gate:
         self._marker.write_text(
             json.dumps({"spec_id": spec_id, "set_at": self._now(), "set_by": set_by}),
             encoding="utf-8",
+            newline="\n",
         )
 
     def end_implementation(self) -> None:
@@ -33,7 +34,7 @@ class Gate:
 
     def _log_exempt(self, path: str, tool: str = "") -> None:
         self._dir.mkdir(parents=True, exist_ok=True)
-        with (self._dir / "exempt.log").open("a", encoding="utf-8") as f:
+        with (self._dir / "exempt.log").open("a", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps({"ts": self._now(), "path": path, "tool": tool}) + "\n")
 
     def check_gate(self, paths: list[str], ledger, config, tool_name: str = "") -> dict:
