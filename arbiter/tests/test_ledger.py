@@ -38,7 +38,8 @@ def test_status_reports_all(docs_root):
     assert {r["id"] for r in rep} == {"SPEC-a", "ADR-0001"}
 
 
-def test_status_repairs_tampered_approved_spec(docs_root):
+def test_status_flags_tampered_approved_spec_without_rewriting_it(docs_root):
+    # SPEC-arbiter-status-is-read-only §3.1 — the report says in_review; the file does not.
     led = make_ledger(docs_root)
     sid = led.record("spec", "A")
     a = Artifact.load(docs_root / "specs" / f"{sid}.md")
@@ -48,10 +49,12 @@ def test_status_repairs_tampered_approved_spec(docs_root):
     a2 = Artifact.load(a.path)
     a2.body += "\nsneaky edit\n"
     a2.save()
+    before = a.path.read_bytes()
     rep = {r["id"]: r for r in led.status()}
     assert rep[sid]["status"] == "in_review"
-    assert Artifact.load(a.path).status == Status.IN_REVIEW
     assert rep[sid]["needs_review"] is True
+    assert a.path.read_bytes() == before
+    assert Artifact.load(a.path).status == Status.APPROVED
 
 
 def test_status_flags_tampered_accepted_adr_without_reset(docs_root):
@@ -136,10 +139,12 @@ def test_status_flags_approved_spec_missing_hash_as_needs_review(docs_root):
     a = Artifact.load(docs_root / "specs" / f"{sid}.md")
     a.meta["status"] = "approved"  # promoted with NO content_hash (bypass attempt)
     a.save()
+    before = a.path.read_bytes()
     rep = {r["id"]: r for r in led.status()}
     assert rep[sid]["status"] == "in_review"
     assert rep[sid]["needs_review"] is True
-    assert Artifact.load(a.path).status == Status.IN_REVIEW
+    assert a.path.read_bytes() == before
+    assert Artifact.load(a.path).status == Status.APPROVED
 
 
 def test_supersede_rejects_self(docs_root):

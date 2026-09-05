@@ -70,9 +70,10 @@ class Ledger:
                 # an approved artifact with no stamped hash, or a hash that no
                 # longer matches the body, has lost its accountable-review proof
                 if not stored or a.recompute_hash() != stored:
+                    # SPEC-arbiter-status-is-read-only §3.1 — flag, never write. A detector
+                    # that edits the evidence it reports on is why ledger_integrity.py had
+                    # to reimplement this comparison. SPECs now behave as ADRs always have.
                     if a.type is ArtifactType.SPEC:
-                        a.meta["status"] = str(Status.IN_REVIEW)
-                        a.save()
                         entry["status"] = str(Status.IN_REVIEW)
                         entry["needs_review"] = True
                     else:  # accepted ADR is immutable: flag, never reset
@@ -101,12 +102,27 @@ class Ledger:
         ("🟢 승인", {Status.APPROVED, Status.ACCEPTED}),
     ]
 
+    @staticmethod
+    def _grouping_status(entry: dict | None) -> Status | None:
+        """Which group an artifact belongs in — what the report found, not what the file says.
+
+        SPEC-arbiter-status-is-read-only §3.2: no artifact the report marks `needs_review`
+        or `tampered` is grouped under 승인. Report `status` alone is not enough — a
+        tampered ADR deliberately keeps `accepted`, because the record is immutable and its
+        status is never recomputed, so grouping on status would file it under 승인.
+        """
+        if entry is None:  # not in the report; fall back to nothing rather than guessing
+            return None
+        if entry.get("needs_review") or entry.get("tampered"):
+            return Status.IN_REVIEW
+        return Status(entry["status"])
+
     def index(self) -> Path:
-        self.status()  # repair first
+        report = {r["id"]: r for r in self.status()}
         arts = [Artifact.load(p) for p in self._all_paths()]
         lines = ["# Arbiter Index", ""]
         for label, statuses in self._GROUPS:
-            members = [a for a in arts if a.status in statuses]
+            members = [a for a in arts if self._grouping_status(report.get(a.id)) in statuses]
             lines.append(f"## {label} ({len(members)})")
             lines.append("")
             if members:
