@@ -63,6 +63,36 @@ def test_the_fold_refuses_an_orphaned_store_instead_of_scoring_zero():
     assert collapse_to_documents([], {"c1": "a.md"}) == []
 
 
+def test_the_fold_names_the_mistake_instead_of_dying_on_an_unpack():
+    """호출부가 경로의 반환을 통째로 넘기면, 이름을 붙여서 거절한다.
+
+    ⛔ **왜 이 검사가 있나 (실측 2026-09-05).** 러너 셋이 정확히 그렇게 하고 있었고, 그중 하나는
+    Pack B 판정이었다. 18일간 아무도 몰랐던 이유의 절반은 예외가 `cannot unpack non-iterable
+    float` 였다는 것이다 — 그 문장은 무엇을 잘못 넘겼는지 말하지 않는다.
+    """
+    from nexus.search.hybrid import LegHit
+    from scripts.ko_eval_harness import WrongRankedShape, collapse_to_documents
+
+    chunk_doc = {"c1": "a.md", "c2": "a.md"}
+
+    # ① 경로가 내는 모양 그대로 — `(행 목록, 1위 원점수)`
+    leg_return = ([LegHit(rid="c1", rank=1, doc_rid="d1", score=0.83)], 0.83)
+    with pytest.raises(WrongRankedShape) as e:
+        collapse_to_documents(leg_return, chunk_doc)
+    assert "통째로" in str(e.value), "무엇을 잘못했는지 말하지 않으면 이 가드는 값이 없다"
+
+    # ② 풀기는 했는데 투영을 안 한 경우 — 경로가 이름 있는 행을 내면서 생긴 이웃한 실수
+    rows, _top = leg_return
+    with pytest.raises(WrongRankedShape) as e2:
+        collapse_to_documents(rows, chunk_doc)
+    assert "LegHit" in str(e2.value)
+
+    # ③ 정상 경로와 빈 결과는 그대로다 — 가드가 채점을 바꾸면 안 된다
+    assert collapse_to_documents([(h.rid, h.rank) for h in rows], chunk_doc) == ["a.md"]
+    assert collapse_to_documents([("c2", 2), ("c1", 1)], chunk_doc) == ["a.md"]
+    assert collapse_to_documents([], chunk_doc) == []
+
+
 def test_ci_does_not_silently_enable_destruction():
     """CI 에서 파괴가 켜져 있으면 저장소는 사라지고 스위트는 초록이다."""
     assert os.getenv("NEXUS_TRUNCATE_KO_EVAL_STORE") != "1", (
