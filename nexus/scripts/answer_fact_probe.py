@@ -9,6 +9,12 @@ Recall 이 **오르는 동안 답변이 나빠졌다**(정답 숫자는 왔는�
 **LLM 심판을 쓰지 않는다.** 판정은 정규화 부분일치이고, 그래서 무르다 — 오탐이 아니라 **누락**을
 잡는 평가 하니스로 쓴다. 기권도 실패로 센다: 코퍼스가 답을 갖고 있는데 못 낸 것이다.
 
+**실패는 귀속까지 간다** (감사 B3). "사실이 답에 없다" 하나로는 검색을 고칠지 서술을 고칠지
+모른다. 그래서 못 낸 사실이 **LLM 이 본 근거 문자열에 있었는가**를 같은 정규화로 같이 보고,
+검색 쪽(FP1·FP2·FP3) · FP4(근거에 있었는데 하나도 안 뽑음) · FP7(반만 뽑음) 로 가른다.
+점수(`언급`·`주장`)는 이것과 **무관하게 예전 그대로**다 — `attribute` 의 `pass` 가 1판과 같은
+규칙이라는 것을 검사가 지킨다.
+
     docker exec nexus-app python -m scripts.answer_fact_probe \
         --labels /app/tests/eval/local/answer-facts.yaml
 """
@@ -59,6 +65,100 @@ def _all_groups_present(expect_all, normalized_text: str) -> bool:
         any(_norm(x) in normalized_text for x in ([e] if isinstance(e, str) else e))
         for e in expect_all
     )
+
+
+#: 판정 이름. FP4 와 FP7 은 `research/2026-09-04-rag-current-practice.md` 의 분류
+#: (Barnett et al., CAIN 2024)를 따른다 — FP4 = 근거에 있었는데 안 뽑음, FP7 = 반만 뽑음.
+VERDICTS = ("pass", "upstream", "fp4", "fp7", "mixed", "no_groups")
+
+
+def required_groups(q: dict) -> list[list[str]]:
+    """라벨이 요구하는 **사실 묶음**의 목록.
+
+    채점이 이미 쓰는 규칙 그대로다 — `expect_all` 은 묶음의 목록이고, `expect` 는 같은
+    값의 표기 후보라 **묶음 하나**다. 여기서 규칙을 새로 만들면 귀속과 점수가 서로 다른
+    것을 세게 된다.
+    """
+    if q.get("expect_all"):
+        return [list(g) if isinstance(g, list) else [g] for g in q["expect_all"]]
+    expect = list(q.get("expect") or [])
+    return [expect] if expect else []
+
+
+def attribute(groups: list[list[str]], evidence_norm: str, answer_norm: str) -> dict:
+    """답이 못 낸 사실이 **근거에 있었는가**로 실패를 가른다 (감사 B3).
+
+    ⛔ **왜 필요한가.** 지금까지 이 채점기는 "사실이 답에 없다" 까지만 말했다. 그 하나의
+    신호가 세 가지를 뭉쳐 놓는다 — 검색이 못 물어온 것 · 물어왔는데 안 뽑은 것(FP4) ·
+    반만 뽑은 것(FP7). 실패를 보고도 **검색을 고칠지 서술을 고칠지 모르는** 상태였다.
+
+    가르는 재료는 `format_for_llm(packet)` — **LLM 이 실제로 본 문자열**이다. 스니펫만이
+    아니라 그래프·코드값·부채까지 그 안에 들어간다. 근거 판정도 답변 판정과 **같은
+    정규화**(`_norm`)를 쓴다.
+
+    ⚠ **이 판정이 기우는 방향을 적어 둔다.** 부분일치는 무르다. 사실이 근거에 **다른 말로**
+    적혀 있으면 여기서는 "근거에 없음" 으로 읽히고, 그러면 FP4 가 실제보다 적게 세어지고
+    `upstream` 이 많게 세어진다. 반대 방향(없는 것을 있다고 읽는 것)은 훨씬 드물다.
+    그러니 **FP4/FP7 은 하한**으로, `upstream` 은 상한으로 읽어라.
+
+    Returns:
+        n_required · n_in_evidence · n_in_answer · missing(못 낸 묶음의 대표 표기) ·
+        verdict(`VERDICTS`).
+    """
+    if not groups:
+        return {"n_required": 0, "n_in_evidence": 0, "n_in_answer": 0,
+                "missing": [], "verdict": "no_groups"}
+
+    def _present(group: list[str], hay: str) -> bool:
+        return any(_norm(x) in hay for x in group)
+
+    in_ev = [_present(g, evidence_norm) for g in groups]
+    in_ans = [_present(g, answer_norm) for g in groups]
+
+    if all(in_ans):
+        verdict = "pass"
+    else:
+        missing_had_evidence = [ev for ev, ans in zip(in_ev, in_ans) if not ans]
+        if not any(missing_had_evidence):
+            # 못 낸 것이 전부 근거에도 없었다 — 서술 이전에 검색이 못 물어온 것이다.
+            verdict = "upstream"
+        elif all(missing_had_evidence):
+            # 못 낸 것이 전부 근거에는 있었다. 하나도 못 냈으면 FP4, 일부만 냈으면 FP7.
+            verdict = "fp4" if not any(in_ans) else "fp7"
+        else:
+            # 갈렸다. 한쪽으로 몰아 세면 그 순간 이 판정이 거짓말을 한다.
+            verdict = "mixed"
+
+    return {
+        "n_required": len(groups),
+        "n_in_evidence": sum(in_ev),
+        "n_in_answer": sum(in_ans),
+        "missing": [g[0] for g, ans in zip(groups, in_ans) if not ans],
+        "verdict": verdict,
+    }
+
+
+def attribution_lines(rows: list[dict]) -> list[str]:
+    """귀속 내역. **비율을 내지 않는다** — 이 리포는 찍힌 수가 인용되는 자리를 이미 안다."""
+    counted = [r for r in rows if r.get("verdict")]
+    if not counted:
+        return []
+    tally = {v: sum(1 for r in counted if r["verdict"] == v) for v in VERDICTS}
+    out = ["", "  실패 귀속 (감사 B3 — 못 낸 사실이 근거에 있었는가):"]
+    labels = {
+        "pass": "통과 — 요구한 사실이 전부 답에 있다",
+        "upstream": "검색 — 못 낸 사실이 근거에도 없었다 (FP1·FP2·FP3 쪽)",
+        "fp4": "FP4  — 근거에 있었는데 하나도 안 뽑았다",
+        "fp7": "FP7  — 근거에 있었는데 반만 뽑았다",
+        "mixed": "혼합 — 못 낸 것이 근거 있음과 없음으로 갈렸다",
+        "no_groups": "판정 안 함 — 요구 사실이 라벨에 없다",
+    }
+    for v in VERDICTS:
+        if tally[v]:
+            ids = [r["id"] for r in counted if r["verdict"] == v]
+            out.append(f"    {tally[v]:3}건  {labels[v]}  {ids}")
+    out.append("    ⚠ 부분일치는 무르다 — FP4/FP7 은 하한, 검색 쪽은 상한으로 읽어라.")
+    return out
 
 
 def sidecar_path(out: str, explicit: str, disabled: bool) -> str:
@@ -163,6 +263,10 @@ async def main() -> int:
         from nexus.providers.embedding import embedding_service_from_config
         from nexus.providers.llm import LLMService
         from nexus.search import hybrid
+        # **LLM 이 실제로 본 문자열**을 만드는 그 함수. 실패 귀속(B3)이 근거 쪽 판정을
+        # 여기서 가져온다 — 패킷 필드를 골라 다시 조립하면 프롬프트에 없는 것을 근거로
+        # 세게 된다. 두 번 불러도 같은 값이고 싸다(`api.py:1202` 가 같은 이유로 그렇게 한다).
+        from nexus.search.evidence_packet import format_for_llm
         from nexus.search.reconcile import packet_for_answer
 
         svc, cfg = embedding_service_from_config(), _load_config()
@@ -207,6 +311,14 @@ async def main() -> int:
                     print(f"  {q['id']:4} ⛔ 라벨 버림 — {why}", flush=True)
                     continue
                 said = asserts_current_not_stale(expect, q["superseded"], text)
+            # 실패 귀속(감사 B3) — 못 낸 사실이 **근거에 있었는가**.
+            attr = attribute(required_groups(q), _norm(format_for_llm(packet)), nt)
+            # 교차 검사: 귀속의 `pass` 는 1판(`ok`)과 **같은 규칙**이어야 한다. 갈리면
+            # 둘 중 하나가 옮겨 적히며 어긋난 것이고, 그때는 귀속을 믿으면 안 된다.
+            if (attr["verdict"] == "pass") != bool(ok) and attr["verdict"] != "no_groups":
+                print(f"  {q['id']:4} ⚠ 귀속과 1판이 갈렸다 — "
+                      f"ok={ok} verdict={attr['verdict']}", flush=True)
+
             # 두 정규화(쉼표 제거 vs 공백 축약)가 갈리는 자리를 드러내 둔다.
             # ⛔ **2026-08-31: `expect` 가 없는 라벨은 무조건 False 였다.** 모순·종합 라벨은
             # `expect_all` 만 갖는다. 그 상태로 요약이 `1판 14/15` 를 냈는데, 빠진 하나는
@@ -221,18 +333,24 @@ async def main() -> int:
             dis = [d for d in (q.get("distractor") or []) if _norm(d) in nt]
             rows.append({"id": q["id"], "pass": ok, "asserted": said,
                          "mentioned": mentioned, "distractor_seen": dis,
-                         "chars": len(text)})
+                         "chars": len(text), **attr})
             answers.append({"id": q["id"], "query": q["query"], "answer": text,
                             "expect": q.get("expect") or [],
                             "abstained": bool(getattr(ans, "abstained", False)),
                             "weak_evidence": bool(getattr(ans, "weak_evidence", False))})
+            # 귀속은 **서명 전에도** 찍는다 — 점수가 아니라 *왜 떨어졌는가*라서, 라벨을
+            # 읽는 사람에게 그것이 필요하다. 총계는 아래에서 서명 뒤에만 낸다.
+            where = "" if attr["verdict"] in ("pass", "no_groups") else f" 귀속={attr['verdict']}"
             print(f"  {q['id']:4} 언급={'통과' if ok else '실패'} 주장={'통과' if said else '실패'}"
+                  f"{where}"
                   f"{'  (낡은 값 언급: ' + ','.join(dis) + ')' if dis else ''}", flush=True)
 
         n = len(rows)
         p = sum(r["pass"] for r in rows)
         a = sum(r["asserted"] for r in rows)
         for line in summary_lines(rows, args.for_signature):
+            print(line)
+        for line in attribution_lines(rows):
             print(line)
         if args.for_signature:
             if args.save_answers:
@@ -242,7 +360,10 @@ async def main() -> int:
             return 0
         if args.out:
             Path(args.out).write_text(json.dumps(
-                {"n": n, "passed": p, "asserted": a, "rows": rows},
+                {"n": n, "passed": p, "asserted": a,
+                 "attribution": {v: sum(1 for r in rows if r.get("verdict") == v)
+                                 for v in VERDICTS},
+                 "rows": rows},
                 ensure_ascii=False, indent=2),
                 encoding="utf-8")
             print(f"  기록: {args.out}")
