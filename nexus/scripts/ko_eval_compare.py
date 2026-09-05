@@ -54,7 +54,8 @@ async def run_arm(tokenizer, labels: dict, pool, tenant: str) -> tuple[LegResult
         for q in labels["queries"]:
             if not q.get("answerable"):
                 continue
-            hits = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", 20)
+            hits, _top = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", 20)
+            hits = [(h.rid, h.rank) for h in hits]  # _bm25_search 는 이제 LegHit 을 낸다
             docs = collapse_to_documents(hits, chunk_doc, limit=POOL_DEPTH)
             tops[q["id"]] = docs
             leg.scores.append(score_query(q["id"], docs, q["gold"]))
