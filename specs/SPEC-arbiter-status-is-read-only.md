@@ -3,7 +3,7 @@ id: SPEC-arbiter-status-is-read-only
 type: spec
 title: status() must not edit what it reports — flag a stale SPEC stamp the way an
   ADR already is
-status: draft
+status: in_review
 linked_adrs:
 - ADR-0003
 tags:
