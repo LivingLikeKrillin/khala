@@ -1,0 +1,18 @@
+[
+  { "issue_id": "I-001", "disposition": "accepted" },
+  { "issue_id": "I-002", "disposition": "accepted" },
+  { "issue_id": "I-003", "disposition": "accepted" },
+  { "issue_id": "I-004", "disposition": "accepted" },
+  { "issue_id": "I-005", "disposition": "accepted" },
+  { "issue_id": "I-006", "disposition": "accepted" },
+  { "issue_id": "I-007", "disposition": "accepted" },
+  { "issue_id": "I-008", "disposition": "accepted" },
+  { "issue_id": "I-009", "disposition": "rejected",
+    "reason": "사실이 틀렸다. ADR-0003 의 frontmatter 는 status: accepted 다. 비평은 얼어붙은 본문 텍스트를 읽었는데, adr/README.md 가 '정본은 ledger 의 frontmatter 이고 accepted 본문은 얼어 있어 대부분 여전히 Proposed 라고 적혀 있다'고 명시한다. proposed 라는 전제가 성립하지 않으므로 '제안 단계 기록에서 강한 비목표를 끌어냈다'는 파생 지적도 성립하지 않는다. ADR-0003 의 권위를 과잉 원용했다는 별개 지적은 I-008 에서 accepted 로 처리했다." },
+  { "issue_id": "I-010", "disposition": "accepted" },
+  { "issue_id": "I-011", "disposition": "accepted" },
+  { "issue_id": "I-012", "disposition": "accepted" },
+  { "issue_id": "I-013", "disposition": "deferred",
+    "reason": "지금 확인할 자료가 없다. 'arbiter status 에 의존하는 사람 워크플로가 있는가' 를 답하려면 그 명령의 실사용 기록이 있어야 하는데, 이 리포는 호출을 남기지 않는다. 리뷰어 기억으로 닫는 것이 부정확하다는 지적 자체는 맞으므로 반박하지 않고, 근거가 생길 때까지 미룬다. §6 에 그 이유를 적어 두었다." },
+  { "issue_id": "I-014", "disposition": "accepted" }
+]
