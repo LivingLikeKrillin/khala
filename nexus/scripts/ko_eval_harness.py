@@ -37,6 +37,20 @@ class OrphanedStoreError(RuntimeError):
     """청크→문서 매핑이 비었거나 순위에 매핑 없는 rid 가 섞였다 — 채점하면 안 되는 상태."""
 
 
+class WrongRankedShape(TypeError):
+    """`ranked_chunks` 가 `(rid, rank)` 목록이 아니다 — 채점 이전에 호출부가 틀렸다.
+
+    ⛔ **왜 있나 (실측 2026-09-05).** 러너 셋이 검색 경로의 반환을 **통째로** 이 함수에 넘기고
+    있었다 — `ko_eval_compare` · `ko_eval_packb_disagreement`, 그리고 후자의 `run_arm` 을
+    가져다 쓰는 `ko_eval_packb_run`(Pack B 판정). 경로가 `(행 목록, 1위 원점수)` 쌍을 내게 된
+    2026-08-18 부터 18일간 죽어 있었고, 그동안 Pack B 판정은 한 번도 돌지 못했다.
+
+    **터진 자리가 원인을 말해 주지 않았다.** 아래 접기 루프의 `for rid, _ in ranked_chunks` 가
+    `ValueError: too many values to unpack` 또는 `TypeError: cannot unpack non-iterable float`
+    를 냈는데, 둘 다 *무엇을 잘못 넘겼는지* 는 말하지 않는다. 이 예외는 그것을 말한다.
+    """
+
+
 @dataclass
 class AbstentionResult:
     """답변불가 라벨에 대한 채점 — **분모 40 과 섞지 않는다.**
@@ -72,6 +86,33 @@ def score_abstention(results: dict[str, bool], unanswerable: list[dict]) -> Abst
     return r
 
 
+def _reject_wrong_shape(ranked_chunks) -> None:
+    """`(rid, rank)` 목록이 아니면 **여기서** 멈춘다 — 이름을 붙여서 (`WrongRankedShape` 참조).
+
+    두 가지를 갈라 말한다. 하나는 경로의 반환 쌍을 통째로 넘긴 것으로, 실제로 18일간 판정을
+    막은 실수다. 다른 하나는 `LegHit` 을 투영하지 않고 넘기는 것 — 경로가 이름 있는 행을 내게
+    되면서 **새로 생긴** 자리이고, 아직 난 적은 없다. 지어낸 걱정이 아니라 같은 변경이 만든
+    이웃한 실수라 같이 잡는다.
+
+    ⚠ 원소를 전부 본다. 상위 `top_k` 는 수십 행이라 값이 싸고, 첫 원소만 보는 검사는
+    "일부만 지키는 검사" 가 되어 이 파일이 이미 한 번 겪은 형태가 된다.
+    """
+    if (isinstance(ranked_chunks, tuple) and len(ranked_chunks) == 2
+            and isinstance(ranked_chunks[0], list)
+            and (ranked_chunks[1] is None or isinstance(ranked_chunks[1], (int, float)))):
+        raise WrongRankedShape(
+            "검색 경로의 반환을 통째로 넘겼다 — 이 함수는 `(rid, rank)` 목록을 받는다. "
+            "`rows, top = await hybrid._bm25_search(...)` 로 풀고 "
+            "`[(h.rid, h.rank) for h in rows]` 를 넘겨라.")
+
+    for item in ranked_chunks:
+        if not (isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], str)):
+            raise WrongRankedShape(
+                f"`(rid, rank)` 쌍이 아닌 원소가 있다: {type(item).__name__}. "
+                "검색 경로는 이제 `LegHit` 을 내므로 "
+                "`[(h.rid, h.rank) for h in rows]` 로 투영해서 넘겨라.")
+
+
 def collapse_to_documents(
     ranked_chunks: list[tuple[str, int]],
     chunk_doc: dict[str, str],
@@ -84,6 +125,7 @@ def collapse_to_documents(
     `Recall@10 = 0.000` 을 낸다 — 2026-08-05 에 실제로 나온, 기제상 불가능한 숫자다. 공식 경로는
     `verify_arm` 이 막지만 그 검사를 우회하는 코드가 여기까지 온다. 여기서 멈춘다.
     """
+    _reject_wrong_shape(ranked_chunks)
     if ranked_chunks and not chunk_doc:
         raise OrphanedStoreError(
             "청크→문서 매핑이 비었는데 순위 결과가 있다 — 평가 저장소가 고아 상태다. "
