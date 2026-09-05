@@ -35,6 +35,7 @@ from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import build_prompts
+from nexus.search.format_compliance import shape_if_measured
 from nexus.otel.aggregator import run_otel_aggregation
 from nexus.otel.diff_engine import run_diff
 from nexus.index.vector_index import configured_column
@@ -1231,6 +1232,10 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     unverified_numbers=nreport.unverified_count if has_answer else None,
                     abstained=not packet.snippets,
                     llm_failed=llm_failed,
+                    # 모양도 같은 `has_answer` 조건을 탄다 — 고정 안내문의 문장 수는 측정이
+                    # 아니다. 키는 빼지 않고 `None` 으로 남긴다(감사 B2).
+                    **shape_if_measured(full_answer,
+                                        measured=has_answer and not llm_failed),
                 )
 
             _u = usage_out[0] if usage_out else None   # 성공 완료 시 Usage(토큰 None 가능), 실패 시 없음
