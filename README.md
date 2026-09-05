@@ -109,7 +109,7 @@ first, and each is enforced on every push rather than remembered.
 | **Declared index generations** | Ingestion whose resolved embedding generation differs from the corpus's declared one | A documented command, run from the host, wrote vectors into a column no query reads. Nothing failed. |
 | **Pre-registered verdict rules** | An evaluation harness edited after seeing the score it produced | Evaluation labels are signed, and the rule that decides the verdict is written down before the run. |
 
-2,804 test functions and 17 CI jobs, including a job that runs the database-backed
+2,810 test functions and 17 CI jobs, including a job that runs the database-backed
 suite against a real Postgres with migrations applied — added after the discovery that
 those tests had never executed at all. Governance artifacts (10 ADRs, 53 SPECs) are
 stamped and checked for integrity in CI. Those four numbers are verified on every push

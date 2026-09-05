@@ -59,7 +59,9 @@ class Sidecar:
             "approved_by": self.approved_by,
             "approved_at": self.approved_at,
         }
-        Path(path).write_text(frontmatter.render(meta, self.narrative), encoding="utf-8")
+        Path(path).write_text(
+            frontmatter.render(meta, self.narrative), encoding="utf-8", newline="\n"
+        )
 
     @classmethod
     def read(cls, path: Path) -> "Sidecar":
