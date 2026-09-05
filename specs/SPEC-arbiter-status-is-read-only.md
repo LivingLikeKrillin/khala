@@ -3,7 +3,7 @@ id: SPEC-arbiter-status-is-read-only
 type: spec
 title: status() must not edit what it reports — flag a stale SPEC stamp the way an
   ADR already is
-status: in_review
+status: approved
 linked_adrs:
 - ADR-0003
 tags:
@@ -11,6 +11,9 @@ tags:
 - governance
 - integrity
 date: '2026-09-05T09:52:52Z'
+approved_by: LivingLikeKrillin
+reviewed_at: '2026-09-05T10:31:06Z'
+content_hash: sha256:4a92c6349497344aa920202b8fca1718f108245670e345992cca4e52fa8ff0a7
 ---
 
 ## 1. Goal

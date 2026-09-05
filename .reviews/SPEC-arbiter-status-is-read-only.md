@@ -13,7 +13,7 @@ issues:
     so the rewrite happens at most once per drift event, not on every subsequent edit.
     The motivating cost is overstated by an unbounded factor and no measurement is
     offered.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-002
   category: missing-invariant
@@ -24,7 +24,7 @@ issues:
     grouped under 승인 in the index — precisely the "silent regression in exactly the
     surface a reviewer looks at" that §3.2 exists to prevent. No invariant is stated
     for how `tampered` affects grouping, and §5 test 2 pins only the SPEC case.'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-003
   category: missing-invariant
@@ -35,7 +35,7 @@ issues:
     to `approved` and no way to distinguish it from a genuinely critiqued SPEC. The
     doc claims the tree has 0 mismatches today but never asserts 0 past demotions,
     and §5 adds no test or check for pre-existing demoted files.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-004
   category: undefined
@@ -46,7 +46,7 @@ issues:
     as reading `status` (§3.3 explicitly: `check_gate` reads `entry.get("status")`),
     and §3.2 makes `index()` group on report `status`. `needs_review` is therefore
     unread data; what any caller must do with it is undefined.'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-005
   category: unverifiable-claim
@@ -56,7 +56,7 @@ issues:
     computed status in the report, and §3.3 makes the gate depend on it. The semantic
     objection, if sound, applies equally to the retained report value; the doc gives
     no argument for why the same claim is dishonest on disk but honest in the report.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-006
   category: risky-assumption
@@ -68,7 +68,7 @@ issues:
     are mutable working documents and ADRs are immutable records — a difference that
     could well justify the asymmetry — and no author, commit, or review record is
     consulted.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-007
   category: risky-assumption
@@ -79,7 +79,7 @@ issues:
     name, or trigger configuration is cited, and §2.4 establishes that `ledger_integrity.py`''s
     coverage is itself selection-dependent. The mitigation for the sole accepted loss
     rests on an uncited CI property.'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-008
   category: adr-contradiction
@@ -90,7 +90,7 @@ issues:
     not decide; it never defines or governs the arbiter status vocabulary (`in_review`/`approved`/`accepted`)
     — that vocabulary is cited in §2.3 to `adr/README.md:68` and `specs/README.md`.
     The non-goal invokes authority ADR-0003 does not hold.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-009
   category: adr-contradiction
@@ -99,8 +99,11 @@ issues:
     ships zero code, yet §4 treats it as a binding constraint that blocks a vocabulary
     change. Deriving a hard non-goal from a proposed, unaccepted record is a governance
     inversion the doc does not acknowledge.
-  status: open
-  disposition_reason: null
+  status: rejected
+  disposition_reason: '사실이 틀렸다. ADR-0003 의 frontmatter 는 status: accepted 다. 비평은 얼어붙은
+    본문 텍스트를 읽었는데, adr/README.md 가 ''정본은 ledger 의 frontmatter 이고 accepted 본문은 얼어 있어
+    대부분 여전히 Proposed 라고 적혀 있다''고 명시한다. proposed 라는 전제가 성립하지 않으므로 ''제안 단계 기록에서 강한 비목표를
+    끌어냈다''는 파생 지적도 성립하지 않는다. ADR-0003 의 권위를 과잉 원용했다는 별개 지적은 I-008 에서 accepted 로 처리했다.'
 - issue_id: I-010
   category: adr-contradiction
   severity: medium
@@ -111,7 +114,7 @@ issues:
     in its own frontmatter after its body has diverged from its stamp. The doc does
     not reconcile this with the hash-bound approval the canonical tier assumes, nor
     state whether any `ken`-side staleness signal compensates.
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-011
   category: unverifiable-claim
@@ -122,7 +125,7 @@ issues:
     forward — §5 adds no guard test preventing a new external reader from assuming
     self-correction, unlike the precedent set by `SPEC-nexus-retrieval-backstop-detector`
     §5, which the doc itself cites approvingly for pinning such a property.'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-012
   category: unverifiable-claim
@@ -132,7 +135,7 @@ issues:
     (§6). They may be reconcilable (total / stamped / SPEC-only) but the doc never
     says which denominator is which, so the §2.1 scan-cost argument and the §2.4 coverage-gap
     argument cannot be checked against each other.'
-  status: open
+  status: accepted
   disposition_reason: null
 - issue_id: I-013
   category: untestable-requirement
@@ -142,8 +145,10 @@ issues:
     defers the only check on the risk to reviewer recall, with no search, no logged
     usage of `arbiter status`, and no acceptance criterion — nothing in §5 can fail
     if the assumption is wrong.
-  status: open
-  disposition_reason: null
+  status: deferred
+  disposition_reason: 지금 확인할 자료가 없다. 'arbiter status 에 의존하는 사람 워크플로가 있는가' 를 답하려면 그
+    명령의 실사용 기록이 있어야 하는데, 이 리포는 호출을 남기지 않는다. 리뷰어 기억으로 닫는 것이 부정확하다는 지적 자체는 맞으므로 반박하지
+    않고, 근거가 생길 때까지 미룬다. §6 에 그 이유를 적어 두었다.
 - issue_id: I-014
   category: scope-creep
   severity: low
@@ -153,9 +158,9 @@ issues:
     all artifact types, not only drifted SPECs. The change may be necessary, but it
     is a second behavioural change presented as a consequence rather than declared
     in the Goal.
-  status: open
+  status: accepted
   disposition_reason: null
-approved_by: null
-approved_at: null
+approved_by: LivingLikeKrillin
+approved_at: '2026-09-05T10:31:06Z'
 ---
 
