@@ -47,9 +47,20 @@ Four callers reach it:
 | `gate.py:48` — `check_gate` | **every `Write`/`Edit`**, via `hooks/pretooluse_gate.py:55` |
 
 The fourth is the one worth stating plainly. `check_gate` calls `ledger.status()` with **no id**,
-so every guarded file edit walks the whole ledger — 64 artifacts as this is written — and rewrites
-any SPEC whose stamp has gone stale. Today the tree has 0 mismatches, so the write does not fire;
-the moment one artifact drifts, every subsequent edit anywhere in the repo rewrites that file.
+so every guarded file edit walks the whole ledger — 64 artifacts as this is written — and a SPEC
+whose stamp has gone stale is rewritten from inside an unrelated edit to an unrelated file.
+
+**How often, exactly — corrected at critique (I-001).** An earlier draft of this section claimed
+that once an artifact drifts, *every subsequent edit anywhere in the repo* rewrites that file.
+That is wrong, and the size of the harm is smaller than it claimed. The write demotes the
+artifact to `in_review`, which no longer satisfies the `status in (APPROVED, ACCEPTED)` guard at
+`ledger.py:68`, so the branch is not re-entered. Measured over a scratch ledger holding one
+drifted SPEC — file digest before `de4bf6f0`, after the first `status()` `886660f9`, and
+identical across two further calls. **The write fires once per drift event.**
+
+What survives the correction is the shape, not the volume: the rewrite is unannounced, it is
+attributed to whoever happened to be editing something else, and it lands in their working tree.
+The argument of this SPEC does not rest on the frequency — it rests on §2.3 and §2.4.
 
 ### 2.2 ADRs already do the read-only thing
 

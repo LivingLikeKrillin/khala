@@ -1,0 +1,5 @@
+[
+  { "issue_id": "I-001", "disposition": "accepted" },
+  { "issue_id": "I-009", "disposition": "rejected",
+    "reason": "사실이 틀렸다. ADR-0003 의 frontmatter 는 status: accepted 다. 비평은 얼어붙은 본문 텍스트를 읽었는데, adr/README.md 가 '정본은 ledger 의 frontmatter 이고 accepted 본문은 얼어 있어 대부분 여전히 Proposed 라고 적혀 있다'고 명시한다. proposed 라는 전제가 성립하지 않으므로 '제안 단계 기록에서 강한 비목표를 끌어냈다'는 지적도 성립하지 않는다." }
+]
