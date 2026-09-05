@@ -1,5 +1,6 @@
 # Artifacts whose stamps ledger_integrity.py must keep checking.
-# A listed id that stops being selected fails the job - see the SPEC's bypasses (2) and (3).
+# A listed id that stops being selected fails the job - see the SPEC's
+# bypasses (2) and (3).
 ADR-0001
 ADR-0002
 ADR-0003
@@ -9,36 +10,54 @@ ADR-0006
 ADR-0007
 ADR-0008
 ADR-0009
+ADR-0010
 SPEC-arbiter-claude-code-critic
 SPEC-nexus-a2a-external-exposure-audit-phase2
 SPEC-nexus-a2a-server-phase0-spike
 SPEC-nexus-access-jwt-auth
+SPEC-nexus-answer-feedback
 SPEC-nexus-answer-number-verification
+SPEC-nexus-answer-quality-ruler
 SPEC-nexus-answer-staleness-warning
+SPEC-nexus-audit-query-hash
 SPEC-nexus-bm25-length-normalization
 SPEC-nexus-citation-validation
 SPEC-nexus-claude-code-llm-dev-backend
+SPEC-nexus-design-corpus-cutover
 SPEC-nexus-deterministic-retrieval-order
 SPEC-nexus-document-lifecycle
 SPEC-nexus-embed-generation-drift
 SPEC-nexus-embed-tokenizer-race
 SPEC-nexus-embedding-cutover-seam
+SPEC-nexus-embedding-provenance-grain
+SPEC-nexus-generation-of-record
 SPEC-nexus-graph-scope-filter
+SPEC-nexus-index-completeness
 SPEC-nexus-ko-eval-pool-sensitivity
 SPEC-nexus-korean-embedding-comparison
 SPEC-nexus-korean-retrieval-eval
 SPEC-nexus-kure-embedding-swap
 SPEC-nexus-llm-usage-capture
 SPEC-nexus-llm-usage-persistence
+SPEC-nexus-multi-turn-narration
+SPEC-nexus-multi-turn-retrieval
 SPEC-nexus-notion-connection-health
 SPEC-nexus-notion-reconciliation
 SPEC-nexus-notion-source-console
+SPEC-nexus-query-text-retention
 SPEC-nexus-ranking-precision
 SPEC-nexus-retrieval-backstop-detector
+SPEC-nexus-screenshot-text-extraction
 SPEC-nexus-search-recall
 SPEC-nexus-search-signal-completeness
 SPEC-nexus-slack-bot
 SPEC-nexus-snippet-boundary-truncation
+SPEC-nexus-stage-spans
+SPEC-nexus-sufficiency-signal
+SPEC-nexus-tenant-read-scope
+SPEC-nexus-vision-reader-of-record
+SPEC-nexus-vision-reproducibility
+SPEC-nexus-vision-source-ref
 SPEC-nexus-web-citation-verification
 SPEC-probe-a2a-client-phase1
 SPEC-probe-cli
