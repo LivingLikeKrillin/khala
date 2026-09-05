@@ -38,7 +38,7 @@ class Ledger:
             "id": aid, "type": str(atype), "title": title,
             "status": str(status), "date": self._now(),
         }
-        path.write_text(render(meta, f"# {title}\n\n"), encoding="utf-8")
+        path.write_text(render(meta, f"# {title}\n\n"), encoding="utf-8", newline="\n")
         return aid
 
     def _resolve(self, artifact_id: str) -> Path:
@@ -121,5 +121,5 @@ class Ledger:
                     )
             lines.append("")
         out = self.root / "INDEX.md"
-        out.write_text("\n".join(lines), encoding="utf-8")
+        out.write_text("\n".join(lines), encoding="utf-8", newline="\n")
         return out
