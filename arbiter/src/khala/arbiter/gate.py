@@ -63,7 +63,10 @@ class Gate:
             if active is None:
                 return {"allowed": False, "spec_id": None, "status": None,
                         "open_issue_count": 0,
-                        "reason": "활성 spec 없음 — begin_implementation 필요"}
+                        # 두 표면 모두에 대고 말한다: 이 문구는 훅을 통해 에이전트가
+                        # 보기도 하고, `arbiter check-gate` 로 사람이 보기도 한다.
+                        "reason": "활성 spec 없음 — begin_implementation(MCP) 또는 "
+                                  "arbiter begin-implementation <spec-id>"}
             if spec_status not in ("approved", "accepted"):
                 return {"allowed": False, "spec_id": active, "status": spec_status,
                         "open_issue_count": open_count,

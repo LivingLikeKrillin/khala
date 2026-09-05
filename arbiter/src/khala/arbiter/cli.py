@@ -8,7 +8,13 @@ MCP 전용이라, 승인 게이트를 돌리려면 `khala.arbiter.ledger` 에 �
     arbiter critique <id>               # 비평 실행 → 이슈 출력
     arbiter approve <id> --dispositions disp.json --approver 이름
     arbiter status [<id>]               # 상태 조회
+    arbiter begin-implementation <id>   # 구현 게이트 열기
+    arbiter end-implementation          # 구현 게이트 닫기
     arbiter check-gate <path>...        # 보호 경로 점검
+
+게이트를 여는 두 명령은 나중에 붙었다. `check-gate` 만 있던 동안 CLI 는 "활성 spec 없음 —
+begin_implementation 필요" 라고 거절만 하고 그것을 푸는 방법을 주지 않았다. 게이트를 확인은
+되는데 만족시킬 수 없으면 위 문단의 문제가 그대로 남는다.
 
 critic 은 주입 가능(테스트는 FakeCritic, 프로덕션은 AnthropicCritic).
 """
@@ -117,6 +123,22 @@ def build_cli(root: Path, docs: Path, critic) -> typer.Typer:
             typer.echo(f"거부: {e}", err=True)
             raise typer.Exit(1) from None
         typer.echo(f"승인됨: {artifact_id} (by {approver})")
+
+    @app.command(name="begin-implementation")
+    def begin_implementation(spec_id: str = typer.Argument(...)) -> None:
+        """구현 게이트를 연다 — 이 spec 에 대고 작업한다고 선언한다."""
+        # 없는 id 로 열면 게이트는 status=None 으로 계속 거절하고, 왜 거절하는지는
+        # 안 알려준다. 다른 CLI 명령과 같은 자리에서 먼저 걸러낸다.
+        _resolve_or_die(spec_id)
+        gate.begin_implementation(spec_id, set_by="cli")
+        typer.echo(f"구현 시작: {spec_id}")
+
+    @app.command(name="end-implementation")
+    def end_implementation() -> None:
+        """구현 게이트를 닫는다. 열려 있지 않아도 오류가 아니다."""
+        active = gate.active_spec()
+        gate.end_implementation()
+        typer.echo(f"구현 종료: {active}" if active else "열린 구현 없음")
 
     @app.command(name="check-gate")
     def check_gate(paths: list[str] = typer.Argument(...)) -> None:
