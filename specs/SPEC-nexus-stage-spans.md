@@ -2,7 +2,7 @@
 id: SPEC-nexus-stage-spans
 type: spec
 title: Stage spans (Unit 1) — capture what each retrieval stage received and produced
-status: in_review
+status: approved
 linked_adrs:
 - ADR-0006
 tags:
@@ -11,8 +11,8 @@ tags:
 - evaluation
 date: '2026-09-04'
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-09-04T12:03:06Z'
-content_hash: sha256:69c6397b15a15d11d371a6f5bca3ca33047a833e7713c393a89a5af440ebd7ac
+reviewed_at: '2026-09-05T06:36:03Z'
+content_hash: sha256:386261dff5f5b76cfece0ac391c78253df61ff10897d68d115ec6f0c2b6ba1b9
 ---
 
 ## 1. Goal
