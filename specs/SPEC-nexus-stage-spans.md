@@ -11,8 +11,8 @@ tags:
 - evaluation
 date: '2026-09-04'
 approved_by: LivingLikeKrillin
-reviewed_at: '2026-09-05T06:36:03Z'
-content_hash: sha256:386261dff5f5b76cfece0ac391c78253df61ff10897d68d115ec6f0c2b6ba1b9
+reviewed_at: '2026-09-05T06:43:06Z'
+content_hash: sha256:eb07b3fbec0a1998c2ab112086765659967534b0ac2a62a5075d50ef6f39ba35
 ---
 
 ## 1. Goal
@@ -498,11 +498,19 @@ rows will exist. A live number is available when capture is turned on, and not b
 ## 8. Errata (2026-09-05, after Unit 1 merged)
 
 **The pool sizes were wrong in every round.** §2 stated `bm25_top_k` and `vector_top_k` were
-"both 20", and §1.4's worst case was derived from that. `config.yaml` has carried
-`bm25_top_k: 25` since well before this spec was drafted, on `master` and on this deployment. Five
-critique rounds read the sentence and none checked it against the file — including round 5's I-014,
-which recomputed the arithmetic *from the wrong input* and recorded 255 as a correction. That
-disposition line is left as written: it is what round 5 did.
+"both 20", and §1.4's worst case was derived from that. The value on `master` is 25, and the
+timeline is the part worth keeping: `8ffdb6e` — *adopt pool-25* — merged at 12:07 on 2026-09-04
+(KST throughout) as its own signed decision; this spec was committed at 20:54 the same day and
+approved at 21:03 — the `reviewed_at` stamp above is the same instant in UTC.
+So the miss is not that nobody thought to open a file. The value had been deliberately changed
+that morning, and the document written that evening carried the one it replaced. Five critique
+rounds then read the sentence — including round 5's I-014, which recomputed the arithmetic *from
+the wrong input* and recorded 255 as a correction. That disposition line is left as written: it is
+what round 5 did.
+
+⚠ **The first version of this section got that wrong too**, claiming the value had held "since well
+before this spec was drafted, on `master` and on this deployment". Nine hours is not *well before*,
+and the second half was not checked at all: see the deployment note below.
 
 | | drafted | actual |
 |---|---|---|
@@ -514,6 +522,12 @@ disposition line is left as written: it is what round 5 did.
 `spans.max_candidates_per_span` (100) is what actually bounds a span. 285 is still under the
 per-span cap for every stage that has one, so no threshold, constraint or test changes. What was
 wrong was the spec's account of the system, which is the thing this document exists to be.
+
+⚠ **The deployment is a third value, and it is not master's.** The checkout the container reads is
+at #425 — before `8ffdb6e` merged — and carries `bm25_top_k: 25` as an *uncommitted working-tree
+edit*. The number matches by local edit, not because the deployment runs `master`. This is the same
+gap `nexus/tests/test_spans_deployment_switch.py` names in its docstring: *the file in the repo* and
+*the file the process reads* are two claims, and only the first has a check on it.
 
 **Why the correction was restamped without a sixth critique round.** The edit replaces two numbers
 with the values `config.yaml` holds and points the prose at the file instead of restating constants.
