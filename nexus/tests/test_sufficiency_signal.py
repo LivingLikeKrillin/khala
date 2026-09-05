@@ -116,6 +116,11 @@ def test_the_signal_object_carries_no_text():
         # 불리언(`weak`)이 아니라 크기인 것도 의도다 — 불리언은 문턱이 옮겨가면 지나간 행의
         # 뜻을 조용히 바꾼다.
         "top_distance", "top_bm25",
+        # 2026-09-04, SPEC-nexus-stage-spans (Unit 1). **정수 하나**다 — 이번 요청에서 쌓였어야
+        # 할 span 행 수. `None` = 캡처 꺼짐. 질의도 근거 본문도 담지 않는다; span 자체(후보 목록
+        # 포함)는 `SearchSignals` 가 아니라 `record_search`/`_persist` 에 별도 인자로 흐른다
+        # (judge_input 과 같은 관례).
+        "spans_expected",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (

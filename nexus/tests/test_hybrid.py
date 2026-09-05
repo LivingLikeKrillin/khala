@@ -239,11 +239,11 @@ def _spy_legs(monkeypatch):
 
     async def bm25(query, tenant, clearance, top_k=20):
         calls["bm25"].append(query)
-        return [(f"c-{query}", 1)], 3.0
+        return [_H.LegHit(rid=f"c-{query}", rank=1, doc_rid="d", score=3.0)], 3.0
 
     async def vector(query, svc, tenant, clearance, top_k=20, column=None):
         calls["vector"].append(query)
-        return [(f"v-{query}", 1)], 0.2
+        return [_H.LegHit(rid=f"v-{query}", rank=1, doc_rid="d", score=0.2)], 0.2
 
     monkeypatch.setattr(_H, "_bm25_search", bm25)
     monkeypatch.setattr(_H, "_vector_search", vector)

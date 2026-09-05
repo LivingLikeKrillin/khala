@@ -130,6 +130,7 @@ async def leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegResult:
         # **경로는 `(순위목록, 1위 원점수)` 를 돌려준다** — PR #292 가 원점수를 되살리면서
         # 모양이 바뀌었고, 그 뒤로 이 하니스를 아무도 안 돌려서 조용히 썩어 있었다.
         hits, _top = await hybrid._bm25_search(q["query"], arm, "INTERNAL", 20)
+        hits = [(h.rid, h.rank) for h in hits]  # _bm25_search 는 이제 LegHit 을 낸다
         res.scores.append(score_query(q["id"], collapse_to_documents(hits, chunk_doc), q["gold"]))
     return res
 
@@ -169,6 +170,7 @@ async def vector_leg(labels: dict, arm: str, chunk_doc: dict[str, str]) -> LegRe
         if not q.get("answerable"):
             continue
         hits, _top = await hybrid._vector_search(q["query"], svc, arm, "INTERNAL", 20, column=col)
+        hits = [(h.rid, h.rank) for h in hits]  # _vector_search 는 이제 LegHit 을 낸다
         res.scores.append(score_query(q["id"], collapse_to_documents(hits, chunk_doc), q["gold"]))
     return res
 

@@ -40,7 +40,13 @@ class _Pool:
         return self._con
 
 
-def _wire(monkeypatch, con, deleted=None, raises=False):
+def _wire(monkeypatch, con, deleted=None, raises=False, span_deleted=0):
+    """반환은 `(tenant_purge_calls, span_purge_calls)`.
+
+    span 후보 만료도 같은 틱에서 돈다(purge_schedule.run_once). 실제 asyncpg 호출을 태우지
+    않고 이 유닛에서는 "불렀는가·어떤 인자로·반환값이 접혔는가"만 보도록, `query_retention.purge`
+    와 같은 방식으로 갈아 끼운다 — SQL 자체는 test_spans_purge_db.py(통합)가 검증한다.
+    """
     async def get_pool():
         return _Pool(con)
     monkeypatch.setattr(P.db, "get_pool", get_pool)
@@ -55,16 +61,30 @@ def _wire(monkeypatch, con, deleted=None, raises=False):
 
     import nexus.search.query_retention as QR
     monkeypatch.setattr(QR, "purge", purge)
-    return calls
+
+    # 실제 config.yaml 값(배포마다 다를 수 있다)에 이 유닛이 묶이지 않도록 고정값으로 갈아
+    # 끼운다 — config 읽기 자체는 별도 시험(test_span_candidate_retain_days_...)이 본다.
+    monkeypatch.setattr(P, "span_candidate_retain_days", lambda: 3)
+
+    span_calls = []
+
+    async def purge_candidates(retain_days):
+        span_calls.append(retain_days)
+        return span_deleted
+
+    import nexus.search.span_store as SS
+    monkeypatch.setattr(SS, "purge_candidates", purge_candidates)
+    return calls, span_calls
 
 
 # ── 도는가 ────────────────────────────────────────────────────────────────────
 
 async def test_it_actually_calls_purge(monkeypatch):
     con = _Con()
-    calls = _wire(monkeypatch, con, deleted={"default": 3})
+    calls, span_calls = _wire(monkeypatch, con, deleted={"default": 3})
     assert await P.run_once() == {"default": 3}
     assert calls == [None], "전 테넌트를 대상으로 한 번 돌아야 한다"
+    assert span_calls == [3], "span 후보 만료도 같은 틱에서 돌아야 한다"
 
 
 async def test_the_lock_is_released_even_after_a_failure(monkeypatch):
@@ -77,9 +97,33 @@ async def test_the_lock_is_released_even_after_a_failure(monkeypatch):
 
 async def test_a_second_instance_does_not_double_purge(monkeypatch):
     con = _Con(lock_granted=False)
-    calls = _wire(monkeypatch, con)
+    calls, span_calls = _wire(monkeypatch, con)
     assert await P.run_once() == {}
     assert calls == [], "락을 못 잡았는데 지웠다"
+    assert span_calls == [], "락을 못 잡았는데 span 후보도 지웠다"
+
+
+async def test_span_candidate_purge_folds_into_the_returned_dict(monkeypatch):
+    """⛔ 0 이면 안 접는다 — 옛 배포(spans 미사용)의 반환 모양을 안 건드리려면
+    `query_retention` 만 지운 결과와 구분이 안 돼야 한다."""
+    con = _Con()
+    calls, span_calls = _wire(monkeypatch, con, deleted={"default": 3}, span_deleted=5)
+    assert await P.run_once() == {"default": 3, "span_candidates": 5}
+
+
+async def test_span_candidate_purge_is_omitted_when_nothing_expired(monkeypatch):
+    con = _Con()
+    _wire(monkeypatch, con, deleted={}, span_deleted=0)
+    assert await P.run_once() == {}
+
+
+async def test_span_candidate_retain_days_reads_config_not_a_hardcoded_three(monkeypatch, tmp_path):
+    """`candidate_retain_days` 를 config.yaml 밖에서 읽으면(예: 3 하드코딩) 소유자가 창을
+    넓혀도 배포가 못 따라간다 — 그 회귀를 여기서 막는다."""
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("spans:\n  candidate_retain_days: 9\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    assert P.span_candidate_retain_days() == 9
 
 
 async def test_a_failure_never_raises(monkeypatch):

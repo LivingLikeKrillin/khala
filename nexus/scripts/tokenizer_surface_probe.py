@@ -102,6 +102,7 @@ async def main() -> int:
                     leg, hyb = [], []
                     for q in queries:
                         hits, _ = await hybrid._bm25_search(q["query"], arm, CLEARANCE, 20)
+                        hits = [(h.rid, h.rank) for h in hits]  # _bm25_search 는 이제 LegHit 을 낸다
                         leg.append(score_query(q["id"],
                                                collapse_to_documents(hits, cd), q["gold"]))
                         r = await hybrid.hybrid_search(q["query"], tenant=arm,

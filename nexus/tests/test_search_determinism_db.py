@@ -171,7 +171,7 @@ async def test_the_vector_leg_reload_behaviour_is_measured_not_assumed(db_pool):
     assert orders[0] == orders[1] == orders[2], (
         "벡터 경로가 적재본마다 다른 결과를 냈다. 동점 키는 걸려 있으므로 원인은 "
         "**ivfflat 후보 집합**일 가능성이 높다 (SPEC-nexus-deterministic-retrieval-order §4.3) — "
-        f"정렬 키 문제로 읽지 말 것. 결과: {[[r for r, _ in o] for o in orders]}")
+        f"정렬 키 문제로 읽지 말 것. 결과: {[[h.rid for h in o] for o in orders]}")
 
 
 # ── 흔들릴 수 없는 절반 ──────────────────────────────────────────────────────

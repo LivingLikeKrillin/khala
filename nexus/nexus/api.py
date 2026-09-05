@@ -463,7 +463,8 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         )
         # fire-and-forget; 답변 경로가 아니다 → not_applicable
         await record_search(sig, query_text=req.query, principal=principal.name,
-            rewritten_text=rw.query if (rw and rw.changed) else None)
+            rewritten_text=rw.query if (rw and rw.changed) else None,
+            spans=getattr(result, "spans", None))
         return NexusResponse(
             data={
                 "results": [_search_hit_to_dict(h) for h in result.hits],
@@ -666,6 +667,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             route_used=route,
             timing_ms=search_result.timing_ms,
             confidence=search_result.confidence,
+            spans=getattr(search_result, "spans", None),
         )
 
         sig = extract_signals(
@@ -684,7 +686,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             query=req.query, evidence=format_for_llm(packet),
             config=_load_config(), llm_svc=llm_svc),
             query_text=req.query, principal=principal.name,
-            rewritten_text=rw.query if (rw and rw.changed) else None)
+            rewritten_text=rw.query if (rw and rw.changed) else None,
+            spans=getattr(search_result, "spans", None))
         return NexusResponse(
             data={
                 "answer": answer_result.answer,
@@ -1205,6 +1208,31 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 신호 기록은 done yield **전**에 — 클라이언트가 끊기면 제너레이터가 마지막 yield 뒤로
             # 재개 안 될 수 있어 '뒤에서' 기록하면 조용히 누락된다(fire-and-forget 이라 지연 없음).
             has_answer = bool(packet.snippets) and llm_svc.configured
+
+            # ⛔ **이 경로는 `generate_answer` 를 안 거친다** — `llm_svc.stream` 을 직접 부르므로
+            # 그 함수 안의 `spans.add_answer` 를 못 탄다(SPEC-nexus-stage-spans). writer 불변식은
+            # "answer 는 매 요청 정확히 한 행, 안 돌았으면 fired=false" 인데, 이 경로가 조용히
+            # 빠지면 그 행이 **유실인지 원래 안 남는 건지** 다음 사람이 못 가른다. 그래서 여기서
+            # 같은 규칙을 직접 채운다.
+            #
+            # `n_citations`/`unverified_citations` 는 **실제 LLM 답변이 나왔을 때만** 잰 값이다
+            # (`has_answer` = 근거가 있고 `llm_svc` 가 설정돼 있다). 그 조건이 거짓이면 `report` 는
+            # 고정 안내문(또는 빈 문자열)을 대조한 것이라 "측정" 이 아니다 — `None` 으로 남긴다.
+            # 바로 위 `sig` 가 이미 같은 규칙을 쓰고 있으므로 새로 지어낸 값이 아니다.
+            # `unverified_numbers` 도 같은 조건으로 `None` 이다 — `nreport` 도 같은 `full_answer`
+            # 를 대조한 것이다. `abstained` 는 근거 0건 분기의 조건 그 자체(`not packet.snippets`)라
+            # `has_answer` 와 무관하게 항상 안다. `llm_failed` 는 이미 추적하던 변수를 그대로 쓴다.
+            answer_spans = getattr(search_result, "spans", None)
+            if answer_spans is not None:
+                answer_spans.add_answer(
+                    n_in=len(packet.snippets),
+                    n_citations=len(report.citations) if has_answer else None,
+                    unverified_citations=report.unverified_count if has_answer else None,
+                    unverified_numbers=nreport.unverified_count if has_answer else None,
+                    abstained=not packet.snippets,
+                    llm_failed=llm_failed,
+                )
+
             _u = usage_out[0] if usage_out else None   # 성공 완료 시 Usage(토큰 None 가능), 실패 시 없음
             sig = extract_signals(
                 search_result, None, path="search_answer_stream",
@@ -1227,7 +1255,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 query=req.query, evidence=evidence_text,
                 config=_load_config(), llm_svc=llm_svc) if has_answer else None,
                 query_text=req.query, principal=principal.name,
-            rewritten_text=rw.query if (rw and rw.changed) else None)
+            rewritten_text=rw.query if (rw and rw.changed) else None,
+            spans=getattr(search_result, "spans", None))
 
             done_data = {
                 "timing_ms": search_result.timing_ms,

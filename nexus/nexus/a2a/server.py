@@ -350,6 +350,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
         query=query, packet=packet, llm_svc=llm_svc,
         route_used=route, timing_ms=search_result.timing_ms,
         confidence=search_result.confidence,
+        spans=getattr(search_result, "spans", None),
     )
     from nexus.search.signals import JudgeInput, extract_signals, record_search
     sig = extract_signals(
@@ -367,7 +368,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
         # 이고 여기엔 신원이 오지 않는다. 허용목록에 오를 수 없으므로 A2A 질문은 보존되지
         # 않는다. **에이전트 질문이 필요 없다는 판단이 아니라, 이 표면이 아직 자기를 식별하지
         # 못한다는 한계다** — 필요해지면 계약을 넓히는 것이 먼저다.
-        query_text=query)
+        query_text=query, spans=getattr(search_result, "spans", None))
     return answer_result
 
 

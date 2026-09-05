@@ -34,6 +34,7 @@ from nexus.repositories.graph import (
     ObservedEdgeResult,
     SubGraph,
 )
+from nexus.search.spans import Candidate, SpanSet
 
 logger = structlog.get_logger(__name__)
 
@@ -95,6 +96,9 @@ class SearchResult:
     #: 이번 검색이 얼마나 **잘 맞았는가**(`search/confidence.py`). 융합이 지우는 신호라 경로에서
     #: 직접 들고 온다. **랭킹에 쓰지 않는다** — 서술 계약에만 쓴다.
     confidence: Confidence = field(default_factory=Confidence)
+    #: 이번 요청의 단계 span (SPEC-nexus-stage-spans). **순수 데이터** — 여기서 DB 를 안 건드린다.
+    #: `spans.enabled` 가 꺼져 있으면 None 이고, 그러면 아무것도 안 쌓인다.
+    spans: "SpanSet | None" = None
 
 
 #: `ts_rank_cd` 의 **길이 정규화 비트마스크**. `1` = 점수를 `1 + log(문서 길이)` 로 나눈다.
@@ -117,13 +121,31 @@ class SearchResult:
 BM25_LENGTH_NORMALIZATION = 1
 
 
+@dataclass(frozen=True)
+class LegHit:
+    """한 다리(leg)가 낸 한 행 — `rid`+`rank` 뿐이던 자리에 `doc_rid`/`score` 를 더한다.
+
+    **이름 있는 필드다, 넓힌 튜플이 아니다.** 이전 시도는 `(rid, rank)` 를 `(rid, rank, doc_rid,
+    score)` 로 넓혔다가 위치로 이 튜플을 묶어 둔 시험 스무 곳을 깨뜨리고 되돌려졌다. 위치는
+    다음에 또 깨진다 — 그래서 여기부터는 이름으로만 읽는다.
+
+    `score` 의 극성은 다리마다 다르다(`SCORE_KIND` 참조: bm25 는 `ts_rank_cd` 로 클수록 좋고,
+    vector 는 `cosine_distance` 로 작을수록 좋다). 이 dataclass 는 그 차이를 모른다 — 판단은
+    호출자(`search/spans.py::SCORE_KIND`)의 몫이다.
+    """
+    rid: str
+    rank: int
+    doc_rid: str
+    score: float | None
+
+
 async def _bm25_search(
     query: str,
     tenant: str | Sequence[str],
     clearance: str,
     top_k: int = 20,
-) -> tuple[list[tuple[str, int]], float | None]:
-    """BM25 검색. `((chunk_rid, rank) 목록, 1위 원점수)`.
+) -> tuple[list[LegHit], float | None]:
+    """BM25 검색. `(LegHit 목록, 1위 원점수)`.
 
     **원점수를 같이 돌려주는 이유**: 융합(RRF)은 순위만 쓰므로 "얼마나 잘 맞았는가" 가
     사라진다. 그 크기는 여기서 이미 계산해 정렬에까지 썼는데 버려지고 있었다
@@ -134,6 +156,15 @@ async def _bm25_search(
     "코퍼스 밖" 의 가장 강한 증거다. 둘을 같은 `None` 으로 뭉개던 동안 그 강한 증거가
     `Confidence.weak` 에서 **못 측정한 것**으로 읽혀 신호가 안 켜졌다 — 2026-08-24 라이브에서
     *"오늘 서울 날씨 알려줘"* 가 거리 0.608(멀다)인데도 약함 판정을 못 받았다.
+
+    **반환 모양이 여기서 바뀌었다(2026-09).** `(chunk_rid, rank)` 튜플 목록이던 자리가
+    `LegHit`(행마다 `doc_rid`·`score` 포함) 목록으로 넓어졌다. 예전엔 "바꾸지 않는다" 고
+    적혀 있었고 그 이유는 span 이 필요로 하는 `doc_rid` 를 `hybrid_search` 가 `_resolve_doc_rids`
+    로 캡처가 켜졌을 때만 따로 물어 채웠기 때문이다 — 그런데 그 조회 자체가 검색 경로에
+    숨은 왕복이었고, `raw_score` 는 애초에 여기 없어서(1위만 돌려줬으므로) leg span 후보의
+    `raw_score` 가 캡처를 켜도 **한 번도 채워진 적이 없었다**. `ts_rank_cd`/`doc_rid` 는 이미
+    이 SELECT 가 계산·보유하고 있으므로, 넓히는 쪽이 옳다 — 대신 위치가 아니라 이름으로
+    (`LegHit`, 튜플 아님) 넓혀서 다음 호출부가 자리로 다시 묶이지 않게 한다.
     """
     tokens = active_tokenizer().tokenize(query)
     tsquery = tokens_to_tsquery(tokens)
@@ -144,7 +175,7 @@ async def _bm25_search(
     tenant_pred, tenant_val = tenant_predicate("c.tenant", 2, tenant)
     rows = await db.fetch_all(
         f"""
-        SELECT c.rid,
+        SELECT c.rid, c.doc_rid,
                ts_rank_cd(c.tsvector_ko, to_tsquery('simple', $1),
                           $5) as rank_score
         FROM chunks c
@@ -165,7 +196,8 @@ async def _bm25_search(
     )
 
     # 매칭 0건은 **측정해서 0점**이다(위 참조). 안 측정한 것이 아니다.
-    return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
+    return ([LegHit(rid=r["rid"], rank=i + 1, doc_rid=r["doc_rid"], score=float(r["rank_score"]))
+             for i, r in enumerate(rows)],
             float(rows[0]["rank_score"]) if rows else 0.0)
 
 
@@ -176,11 +208,13 @@ async def _vector_search(
     clearance: str,
     top_k: int = 20,
     column: str | None = None,
-) -> tuple[list[tuple[str, int]], float | None]:
-    """Vector 검색. `((chunk_rid, rank) 목록, 1위 코사인 거리)`.
+) -> tuple[list[LegHit], float | None]:
+    """Vector 검색. `(LegHit 목록, 1위 코사인 거리)`.
 
     `column` 은 어느 임베딩 세대를 읽을지다 (SPEC-nexus-kure-embedding-swap §4.2). 컷오버와
     롤백이 이 값 하나로 이뤄지므로, **화이트리스트를 통과한 이름만** SQL 에 닿는다.
+
+    반환 모양은 `_bm25_search` 와 같은 이유·같은 시점에 넓어졌다 — 그 함수 머리말 참조.
     """
     col = resolve_column(column)
     query_embedding = await embedding_svc.embed_query(query)
@@ -190,7 +224,7 @@ async def _vector_search(
 
     rows = await db.fetch_all(
         f"""
-        SELECT c.rid, c.{col} <=> $1::vector as distance
+        SELECT c.rid, c.doc_rid, c.{col} <=> $1::vector as distance
         FROM chunks c
         WHERE c.{col} IS NOT NULL
           AND {tenant_pred}
@@ -207,7 +241,8 @@ async def _vector_search(
         vec_str, tenant_val, clearance, top_k,
     )
 
-    return ([(r["rid"], i + 1) for i, r in enumerate(rows)],
+    return ([LegHit(rid=r["rid"], rank=i + 1, doc_rid=r["doc_rid"], score=float(r["distance"]))
+             for i, r in enumerate(rows)],
             float(rows[0]["distance"]) if rows else None)
 
 
@@ -244,7 +279,7 @@ async def _vector_leg(
     clearance: str,
     top_k: int,
     column: str | None,
-) -> tuple[list[tuple[str, int]], bool, float | None]:
+) -> tuple[list[LegHit], bool, float | None]:
     """(결과, degraded, 1위 거리). **빈 결과와 죽은 경로를 구분해서 돌려준다.**
 
     예전엔 임베딩 실패를 조용히 삼켜 빈 리스트를 냈고 SQL 실패는 500 으로 나갔다 — 둘 다 틀렸다.
@@ -604,11 +639,19 @@ async def hybrid_search(
     vector_top_k = search_cfg.get("vector_top_k", 20)
     rrf_k = search_cfg.get("rrf_k", 60)
 
+    # 단계 span 캡처(SPEC-nexus-stage-spans, Unit 1). **기본 꺼짐** — `spans.enabled` 가
+    # true 일 때만 만든다. None 이면 아래 모든 `if spans is not None:` 이 건너뛰어져
+    # 오늘과 바이트 단위로 같은 경로를 탄다.
+    spans_cfg = cfg.get("spans", {})
+    spans = SpanSet(max_candidates=spans_cfg.get("max_candidates_per_span", 100)) \
+        if spans_cfg.get("enabled") else None
+
     if route not in ROUTES:
         # 조용히 hybrid 로 처리하지 않는다. "당신의 route 는 무시됐다" 는 말이 아무 말보다 낫다.
         raise UnknownRoute(f"unknown_route: {route!r}. 가능한 값: {', '.join(sorted(ROUTES))}")
 
     result = SearchResult(route_used=route)
+    result.spans = spans
 
     # route 가 고르는 것은 그래프 보강만이 아니다 — 어느 **경로**를 돌릴지도 고른다.
     # 예전엔 둘 다 무조건 돌면서 route_used 로 "반영됐다" 고 보고했다.
@@ -642,22 +685,56 @@ async def hybrid_search(
     #: 적합도는 **첫 채널**(= 사용자가 물은 것)로 측정한다. 재작성 채널까지 섞으면 "무엇에 대한
     #: 적합도인가" 가 흐려진다 — 재작성이 잘 맞은 것과 질문이 잘 맞은 것은 다른 사실이다.
     top_distance = top_bm25 = None
+    # leg 별 `LegHit` 목록 + fired 여부. **spans 캡처가 켜졌을 때만** 채운다. `LegHit` 은 이미
+    # `doc_rid`/`score` 를 갖고 있으므로(위 `_bm25_search`/`_vector_search` 참조) 여기서
+    # `chunks` 를 한 번 더 묻지 않는다 — 예전엔 이 자리에 `_resolve_doc_rids` 추가 조회가 있었다.
+    leg_results: dict[tuple[int, str], tuple[list[LegHit], bool]] = {}
     for i, (_text, weight) in enumerate(active):
-        vector_results, vector_degraded, vector_top = done.get((i, "vector"), ([], False, None))
+        vector_hits, vector_degraded, vector_top = done.get((i, "vector"), ([], False, None))
         if vector_degraded and "vector" not in result.degraded:
             result.degraded.append("vector")
-        bm25_results, bm25_top = done.get((i, "bm25"), ([], None))
+        bm25_hits, bm25_top = done.get((i, "bm25"), ([], None))
         if i == 0:
             top_distance, top_bm25 = vector_top, bm25_top
+        # RRF 융합은 순위만 쓴다(모듈 머리말) — `LegHit` 을 `(rid, rank)` 로 좁혀서 넘긴다.
         ch_results.append(ChannelResults(
-            bm25=bm25_results, vector=vector_results, weight=weight,
+            bm25=[(h.rid, h.rank) for h in bm25_hits],
+            vector=[(h.rid, h.rank) for h in vector_hits],
+            weight=weight,
             name=names[i] if i < len(names) else f"ch{i}"))
+        if spans is not None:
+            if (i, "bm25") in tasks:
+                leg_results[(i, "bm25")] = (bm25_hits, True)
+            if (i, "vector") in tasks:
+                # degraded 는 **실패해서 죽은 것**이다 — 후보를 못 믿으므로 빈 목록으로 남긴다.
+                leg_results[(i, "vector")] = ([] if vector_degraded else vector_hits,
+                                              not vector_degraded)
     result.confidence = Confidence(top_distance=top_distance, top_bm25=top_bm25)
 
     bm25_ms = int((time.time() - start) * 1000)
 
     # RRF Fusion (전체 병합, 컷은 다양성 이후)
     fused = fuse_channels(ch_results, k=rrf_k)
+
+    if spans is not None:
+        # leg 후보의 doc_rid 를 rid 로 재사용한다 — `chunks` 를 다시 묻지 않는다(위 참조).
+        doc_rid_by_chunk = {h.rid: h.doc_rid for hits, _ in leg_results.values() for h in hits}
+
+        for (i, leg), (hits, fired) in leg_results.items():
+            channel_label = (names[i] if i < len(names) else f"ch{i}") or "default"
+            cands = [
+                Candidate(rank=h.rank, doc_rid=h.doc_rid, chunk_rid=h.rid, raw_score=h.score)
+                for h in hits
+            ]
+            spans.add_leg(channel=channel_label, leg=leg, candidates=cands, fired=fired)
+
+        # `fused` 는 컷 전 **전체 병합 리스트**다.
+        fusion_cands = [
+            Candidate(rank=i + 1, doc_rid=doc_rid_by_chunk.get(f["rid"], ""),
+                     chunk_rid=f["rid"], raw_score=f["score"])
+            for i, f in enumerate(fused)
+        ]
+        spans.add_fusion(candidates=fusion_cands, rrf_k=rrf_k, n_channels=len(ch_results))
 
     # 메타데이터 보강 (fused 순서 보존)
     enriched = await _enrich_hits(
@@ -666,6 +743,18 @@ async def hybrid_search(
     # 문서 다양성 + top_k 컷 — 한 문서가 결과를 도배하지 않게.
     per_doc_cap = search_cfg.get("diversity_per_doc_cap", 3)
     result.hits = _diversify(enriched, top_k, per_doc_cap)
+
+    if spans is not None:
+        # diversify 의 **입력**을 남긴다 — 잘린 행이 진단 자료다. `kept_rids` 로 "이 행이
+        # 최종 목록에 있는가" 를 묻는다: `_diversify` 는 순위가 아니라 문서 상한으로 거르므로
+        # 인덱스 비교로는 안 된다.
+        kept_rids = {h.rid for h in result.hits}
+        diversify_cands = [
+            Candidate(rank=i + 1, doc_rid=h.doc_rid, chunk_rid=h.rid, raw_score=h.score,
+                     dropped=(h.rid not in kept_rids))
+            for i, h in enumerate(enriched)
+        ]
+        spans.add_diversify(candidates=diversify_cands, top_k=top_k, per_doc_cap=per_doc_cap)
 
     # 상한을 꽉 채운 문서 = 검색이 몰표를 준 문서. 그 안의 **남은 절**을 근거에 채운다.
     # 순위에는 넣지 않는다 (SPEC 근거는 `search/section_fill.py` 머리말).
@@ -677,6 +766,21 @@ async def hybrid_search(
     # 배포는 config.yaml 로 켠다.
     if search_cfg.get("section_fill", False):
         result.fill = await _fill_sections(result.hits, tenant, clearance, per_doc_cap)
+        if spans is not None:
+            # 포화가 이 실행의 **방아쇠**였는가 — `_fill_sections` 내부의 `saturated_docs` 와
+            # 같은 순수 함수를 다시 불러 얻는다. 이미 있는 `result.hits` 위에서 도는 목록
+            # 스캔이라 추가 쿼리가 아니다.
+            from nexus.search.section_fill import saturated_docs
+            trigger_saturated = bool(saturated_docs(result.hits, per_doc_cap))
+            fill_cands = [
+                Candidate(rank=i + 1, doc_rid=h.doc_rid, chunk_rid=h.rid, raw_score=h.score)
+                for i, h in enumerate(result.fill)
+            ]
+            spans.add_section_fill(candidates=fill_cands, trigger_saturated=trigger_saturated)
+    elif spans is not None:
+        # 안 돌았다는 사실도 남긴다 — "이 단계는 켜져 있었는데 후보가 0 이었다" 와
+        # "이 단계가 아예 꺼져 있었다" 는 다른 사실이고, `fired` 가 그 둘을 가른다.
+        spans.add_section_fill(candidates=[], trigger_saturated=False, fired=False)
 
     # Graph 보강 (route에 따라)
     if graph_repo and entity_rids and route in ("hybrid_then_graph", "graph_then_hybrid"):
