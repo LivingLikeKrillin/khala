@@ -95,7 +95,8 @@ async def run_arm(tokenizer, rows, queries, pool, tenant: str) -> dict[str, list
 
         tops: dict[str, list[str]] = {}
         for q in queries:
-            hits = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", WINDOW * 3)
+            hits, _top = await hybrid._bm25_search(q["query"], tenant, "INTERNAL", WINDOW * 3)
+            hits = [(h.rid, h.rank) for h in hits]  # _bm25_search 는 이제 LegHit 을 낸다
             # 손으로 접지 않는다. 하니스의 접기는 **고아 저장소 가드**를 품고 있다 — 매핑이 빈
             # 채로 접으면 두 실험군이 나란히 0 을 내고, 2026-08-05 에 실제로 그 숫자가 나왔다.
             tops[q["id"]] = collapse_to_documents(hits, chunk_doc, limit=WINDOW)
