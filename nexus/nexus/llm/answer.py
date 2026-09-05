@@ -17,6 +17,7 @@ from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
 from nexus.llm.prompts import build_prompts
+from nexus.search.format_compliance import shape_if_measured
 from nexus.providers.llm import LLMService
 from nexus.search.anchor_status import summarize
 from nexus.search.doc_debt import summarize as summarize_debt
@@ -197,11 +198,13 @@ async def generate_answer(
         result.answer = "제공된 문서에서 해당 정보를 찾을 수 없습니다."
         result.abstained, result.abstain_reason = True, "no_evidence"
         if spans is not None:
+            # 모양은 **답변일 때만** 잰다 — 여기 문자열은 고정 안내문이라 세면 상수를 센다.
             spans.add_answer(
                 n_in=len(packet.snippets), n_citations=len(result.citations),
                 unverified_citations=result.unverified_citations,
                 unverified_numbers=result.unverified_numbers,
-                abstained=result.abstained, llm_failed=result.llm_failed)
+                abstained=result.abstained, llm_failed=result.llm_failed,
+                **shape_if_measured(result.answer, measured=False))
         return result
 
     evidence_text = format_for_llm(packet)
@@ -245,10 +248,14 @@ async def generate_answer(
         )
 
     if spans is not None:
+        # 답변 모양(감사 B2 — FP5 계측기를 라이브에 꽂는다). **판정이 아니라 기록**이고,
+        # 기권·생성실패면 문자열이 고정 안내문이라 같은 키를 `None` 으로 남긴다.
+        measured = (not result.abstained) and (not result.llm_failed)
         spans.add_answer(
             n_in=len(packet.snippets), n_citations=len(result.citations),
             unverified_citations=result.unverified_citations,
             unverified_numbers=result.unverified_numbers,
-            abstained=result.abstained, llm_failed=result.llm_failed)
+            abstained=result.abstained, llm_failed=result.llm_failed,
+            **shape_if_measured(result.answer, measured=measured))
 
     return result

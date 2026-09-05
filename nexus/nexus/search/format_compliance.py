@@ -1,6 +1,6 @@
 """형식 요청을 지켰는가 — **기계가 판정한다** (SPEC-nexus-multi-turn-narration §5.2).
 
-사용자가 "세 줄로" 라고 하면 답이 세 줄이어야 한다. 그것을 측정하는 자다.
+사용자가 "세 줄로" 라고 하면 답이 세 줄이어야 한다. 그것을 측정하는 채점기다.
 
 **LLM 판정자를 쓰지 않는다.** 판정자가 흔들리면 채점기가 흔들리고, 그러면 개선인지 잡음인지 못
 가른다. 여기 규칙은 전부 문자열 연산이고, 각 규칙에는 **왜 더 순진한 규칙을 안 썼는지**가
@@ -81,3 +81,46 @@ def check(kind: str, answer: str, prior: str = "") -> bool:
     if kind not in CHECKS:
         raise KeyError(f"알 수 없는 형식 유형: {kind!r} (아는 것: {', '.join(CHECKS)})")
     return CHECKS[kind](answer, prior)
+
+
+#: 라이브에 남기는 모양의 키. `None` 으로 채울 때도 **키는 그대로 있어야** 다음 사람이
+#: "안 쟀다" 와 "유실됐다" 를 가른다.
+SHAPE_KEYS = ("n_sentences", "has_table", "n_list_items", "n_chars")
+
+
+def shape(answer: str | None) -> dict:
+    """이 답변의 **모양**. 요청이 무엇이었는지는 보지 않는다 (감사 B2).
+
+    ⛔ **왜 준수가 아니라 모양인가.** 위 `check` 는 (요청 유형, 답변) 둘을 받는다. 평가에서는
+    라벨이 유형을 주지만 **라이브에는 그것을 아는 것이 없다** — 질의에서 형식 요청을 알아내는
+    부품은 이 리포에 없다. 그것을 지금 지어내면 오탐이 새 실패 유형으로 들어오고, 그건
+    측정 없이 옳은 변경이 아니라 사전 등록이 필요한 기법 추가다.
+
+    그래서 여기서는 **판정하지 않고 남긴다.** 답변의 모양은 요청과 무관하게 결정론이고,
+    남겨 두면 나중에 요청을 알게 됐을 때(실제 질의 채굴) 과거까지 되짚을 수 있다.
+    안 남기면 그때 가서도 없다.
+
+    ⚠ **답변이 아닌 문자열에는 부르지 마라.** 기권 안내문·생성 실패 안내문의 모양을 세면
+    그것은 측정이 아니라 상수를 센 것이다. 호출부가 그 조건을 판정하고, 아닐 때는 같은
+    키를 `None` 으로 남긴다.
+    """
+    text = answer or ""
+    return {"n_sentences": sentence_count(text),
+            "has_table": has_table(text),
+            "n_list_items": len(list_items(text)),
+            "n_chars": len(text)}
+
+
+def shape_unmeasured() -> dict:
+    """모양을 잴 수 없을 때의 같은 키. **키를 빼지 않는다** — 위 docstring 의 그 이유다."""
+    return dict.fromkeys(SHAPE_KEYS)
+
+
+def shape_if_measured(answer: str | None, *, measured: bool) -> dict:
+    """모양을 재거나, 같은 키를 비워 둔다. **호출부는 이것만 쓴다.**
+
+    분기를 호출부마다 따로 쓰면 한 표면만 고쳐지고 나머지가 조용히 다른 규칙을 쓴다 —
+    이 리포에서 답변 표면 셋이 정확히 그렇게 갈렸던 적이 있다(`packet_for_answer` 머리말).
+    조건 자체는 표면마다 다르므로 호출부에 남고, **갈래는 여기 하나**다.
+    """
+    return shape(answer) if measured else shape_unmeasured()
