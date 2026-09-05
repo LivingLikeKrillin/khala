@@ -51,4 +51,9 @@ class Artifact:
         return content_hash(self.body)
 
     def save(self) -> None:
-        self.path.write_text(frontmatter.render(self.meta, self.body), encoding="utf-8")
+        # newline="\n" is not cosmetic: left at None, write_text translates every "\n" to
+        # the platform's separator, so on Windows one save rewrites the whole file in line
+        # endings only. .gitattributes hides that from git and not from the working tree.
+        self.path.write_text(
+            frontmatter.render(self.meta, self.body), encoding="utf-8", newline="\n"
+        )
