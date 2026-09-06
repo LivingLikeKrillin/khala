@@ -21,4 +21,5 @@
 | [`2026-09-04-org-knowledge-systems.md`](2026-09-04-org-knowledge-systems.md) | AI 도구를 적극 쓰는 회사들이 공용 지식 베이스를 어떻게 구축·운용·소비하는가 |
 | [`2026-09-04-rag-current-practice.md`](2026-09-04-rag-current-practice.md) | RAG 현행 관행 정본 — 층 구조·실패 귀속·평가·부패·코퍼스·문서 타입·도구. khala 대조의 기준선 |
 | [`2026-09-04-representation-in-ai-assisted-development.md`](2026-09-04-representation-in-ai-assisted-development.md) | AI 를 쓰는 개발에서 담당자의 시스템 모델은 어떻게 되는가 — 문헌·실측치와 그로부터 끌어낸 설계 판단 |
+| [`2026-09-06-getting-org-documents-into-rag.md`](2026-09-06-getting-org-documents-into-rag.md) | 조직 문서를 RAG 에 붙이는 층 — 파싱·변경 동기화·ACL·큐레이션·소유권. **운영 실패가 코어가 아니라 여기서 난다**는 가설의 검증 |
 | [`2026-09-06-rag-communities.md`](2026-09-06-rag-communities.md) | RAG 실무자가 어디서 무엇을 이야기하나 — 커뮤니티 8곳·워크숍 3곳, 그리고 khala 가 무엇을 들고 갈 수 있고 무엇을 말하면 안 되는가 |
