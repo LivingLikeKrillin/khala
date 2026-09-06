@@ -34,6 +34,12 @@ import yaml  # noqa: E402
 
 from nexus import db  # noqa: E402
 from scripts.ko_eval_answer_quality import VERDICTS as _VERDICTS  # noqa: E402
+from scripts.ko_eval_corpus_reach import (  # noqa: E402
+    aiming_is_wrong,
+    groups_reached,
+    needles_in_corpus,
+    unreachable_ids,
+)
 from scripts.ko_eval_answer_quality import (  # noqa: E402
     asserts_all,
     attribute_facts,
@@ -253,9 +259,28 @@ async def main() -> int:
         if args.fill:
             cfg.setdefault("search", {})["section_fill"] = (args.fill == "on")
         print(f"  절 채움: {cfg.get('search', {}).get('section_fill')}", flush=True)
+        scope = [t.strip() for t in args.tenant.split(",") if t.strip()]
+
+        # ── 겨냥 검사: 이 라벨들이 **이 코퍼스에서** 답해질 수 있는가 ──────────
+        # 실측 2026-09-05: 네 건이 전부 `귀속=upstream` 으로 나와 코퍼스 결함으로 읽었는데,
+        # 요구한 사실은 전부 `design_docs` 에 있었고 라벨 파일은 테넌트를 안 적는다.
+        # 테넌트를 바꾸니 곧바로 통과했다. 주석은 이미 있었다 — 사람이 읽어야 작동했을 뿐이다.
+        groups_by_q = [required_groups(q) for q in queries]
+        found = await needles_in_corpus(
+            [alt for gs in groups_by_q for g in gs for alt in g], scope, await db.get_pool())
+        reach = [groups_reached(gs, found) for gs in groups_by_q]
+        unreachable = unreachable_ids([q["id"] for q in queries], reach)
+        if aiming_is_wrong(reach):
+            print(f"\n⛔ 요구 사실이 있는 라벨이 **하나도** `{args.tenant}` 에 닿지 못한다.")
+            print("   이 상태의 수는 시스템이 아니라 **겨냥**을 측정한다 — 테넌트를 확인하라.")
+            print("   (라벨 파일은 자기 테넌트를 안 적는다. `--tenant` 로 준다.)")
+            return 1
+        if unreachable:
+            print(f"  ⚠ 요구 사실이 `{args.tenant}` 에 하나도 없는 라벨: {unreachable}")
+            print("    코퍼스 부재(FP1)일 수도, 테넌트를 잘못 물은 것일 수도 있다 — 사람이 가른다.")
+
         rows, answers = [], []
         for q in queries:
-            scope = [t.strip() for t in args.tenant.split(",") if t.strip()]
             r = await hybrid.hybrid_search(q["query"], tenant=scope, clearance=CLEARANCE,
                                            top_k=args.top_k, embedding_svc=svc, config=cfg)
             # **프로덕션이 답변용 근거를 만드는 그 함수**를 쓴다. 직접 조립하면
