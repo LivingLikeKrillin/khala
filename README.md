@@ -108,6 +108,7 @@ first, and each is enforced on every push rather than remembered.
 | **Fingerprint scanner** | A push carrying identifying details — files, commit messages, and PR bodies alike | Details scrubbed before the repo went public came back through ordinary work a month later. |
 | **Declared index generations** | Ingestion whose resolved embedding generation differs from the corpus's declared one | A documented command, run from the host, wrote vectors into a column no query reads. Nothing failed. |
 | **Pre-registered verdict rules** | An evaluation harness edited after seeing the score it produced | Evaluation labels are signed, and the rule that decides the verdict is written down before the run. |
+| **Declared evaluation corpus** | A label run where nobody said which corpus to ask, or where no label can reach the one being asked | A harness defaulting quietly to one tenant measured a corpus the labels were not written against. The same mistake happened three times; twice it was recorded only in a comment. |
 
 2,868 test functions and 17 CI jobs, including a job that runs the database-backed
 suite against a real Postgres with migrations applied — added after the discovery that
