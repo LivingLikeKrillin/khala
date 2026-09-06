@@ -35,9 +35,11 @@ import yaml  # noqa: E402
 from nexus import db  # noqa: E402
 from scripts.ko_eval_answer_quality import VERDICTS as _VERDICTS  # noqa: E402
 from scripts.ko_eval_corpus_reach import (  # noqa: E402
+    UndeclaredCorpus,
     aiming_is_wrong,
     groups_reached,
     needles_in_corpus,
+    resolve_tenant,
     unreachable_ids,
 )
 from scripts.ko_eval_answer_quality import (  # noqa: E402
@@ -50,10 +52,13 @@ from scripts.ko_eval_answer_quality import (  # noqa: E402
     label_is_usable,
 )
 
-#: 기본 코퍼스. `--tenant` 로 바꿀 수 있다 — 합친 코퍼스(`merge_probe`)와 견주려면
-#: **같은 라벨·같은 채점기**로 양쪽을 돌려야 하기 때문이다. 채점은 답변 텍스트만 보므로
-#: 테넌트가 달라도 판정 규칙은 그대로다.
-TENANT = "default"
+#: ⛔ **기본 코퍼스 상수를 두지 않는다** (2026-09-05, `OPEN.md` A87). 여기 `TENANT = "default"`
+#: 가 있었고 그것이 `--tenant` 의 기본값이었다 — 설계 라벨을 물으면서 아무 말 없이 다른
+#: 코퍼스를 측정한 사고의 재료다. 코퍼스는 라벨이 선언하거나 사람이 준다
+#: (`ko_eval_corpus_reach.resolve_tenant`).
+#:
+#: 여러 테넌트는 쉼표로 준다 — 합친 코퍼스와 견주려면 **같은 라벨·같은 채점기**로 양쪽을
+#: 돌려야 하고, 라이브 경로도 principal 의 읽기 범위를 여럿으로 해소한다.
 CLEARANCE = "INTERNAL"
 
 
@@ -206,8 +211,13 @@ async def main() -> int:
     # principal 의 읽기 범위를 해소해 두 테넌트를 보는데(SPEC-nexus-tenant-read-scope),
     # 하니스는 문자열 하나를 그대로 넘겨 **아무도 안 지나는 경로를 측정**하고 있었다.
     # 같은 파일 아래 주석이 2026-08-29 에 같은 실수를 적어 두었는데 또 났다.
-    ap.add_argument("--tenant", default=TENANT,
-                    help="어느 코퍼스에 물을 것인가 (기본: default)")
+    # ⛔ **기본값이 없다** (2026-09-05). 위 두 주석이 같은 사고를 두 번 적어 뒀는데 세 번째가
+    # 났다 — `synthesis-recency` 4건이 전부 떨어졌고 나는 그것을 코퍼스 결함으로 읽었다.
+    # 요구한 사실은 `design_docs` 에 있었고, 라벨은 자기 코퍼스를 안 밝히고, 기본값이 조용히
+    # `default` 였다. **말없이 고르는 기본값이 이 사고의 재료다.** 이제 라벨이 `corpus.tenant`
+    # 로 선언하거나 사람이 `--tenant` 로 준다. 둘 다 없으면 돌지 않는다.
+    ap.add_argument("--tenant", default="",
+                    help="어느 코퍼스에 물을 것인가. 안 주면 라벨의 `corpus.tenant` 를 쓴다")
     ap.add_argument("--for-signature", action="store_true",
                     help="서명 전 라벨을 사람이 읽으려고 돌린다 — 답변은 내고 **점수는 안 낸다**")
     ap.add_argument("--out", default="")
@@ -223,6 +233,15 @@ async def main() -> int:
 
     labels = yaml.safe_load(Path(args.labels).read_text(encoding="utf-8"))
     queries = labels["queries"]
+    # ⛔ **어느 코퍼스를 물을지 먼저 정한다** — DB 도 LLM 도 건드리기 전에. 말없이 고른
+    # 기본값이 2026-09-05 사고의 재료였다(`OPEN.md` A87).
+    try:
+        tenant, tenant_note = resolve_tenant(labels, args.tenant)
+    except UndeclaredCorpus as e:
+        print(f"⛔ {e}")
+        return 2
+    if tenant_note:
+        print(tenant_note)
     # ⛔ **서명 전 라벨로 점수를 내지 않는다** (README §3판). 키가 없는 옛 라벨 파일은
     #    이미 서명된 것으로 읽는다 — 새 규칙이 옛 측정을 소급해서 막으면 안 된다.
     signed = bool(labels.get("signed_off", True))
@@ -259,7 +278,7 @@ async def main() -> int:
         if args.fill:
             cfg.setdefault("search", {})["section_fill"] = (args.fill == "on")
         print(f"  절 채움: {cfg.get('search', {}).get('section_fill')}", flush=True)
-        scope = [t.strip() for t in args.tenant.split(",") if t.strip()]
+        scope = [t.strip() for t in tenant.split(",") if t.strip()]
 
         # ── 겨냥 검사: 이 라벨들이 **이 코퍼스에서** 답해질 수 있는가 ──────────
         # 실측 2026-09-05: 네 건이 전부 `귀속=upstream` 으로 나와 코퍼스 결함으로 읽었는데,
@@ -271,12 +290,12 @@ async def main() -> int:
         reach = [groups_reached(gs, found) for gs in groups_by_q]
         unreachable = unreachable_ids([q["id"] for q in queries], reach)
         if aiming_is_wrong(reach):
-            print(f"\n⛔ 요구 사실이 있는 라벨이 **하나도** `{args.tenant}` 에 닿지 못한다.")
+            print(f"\n⛔ 요구 사실이 있는 라벨이 **하나도** `{tenant}` 에 닿지 못한다.")
             print("   이 상태의 수는 시스템이 아니라 **겨냥**을 측정한다 — 테넌트를 확인하라.")
             print("   (라벨 파일은 자기 테넌트를 안 적는다. `--tenant` 로 준다.)")
             return 1
         if unreachable:
-            print(f"  ⚠ 요구 사실이 `{args.tenant}` 에 하나도 없는 라벨: {unreachable}")
+            print(f"  ⚠ 요구 사실이 `{tenant}` 에 하나도 없는 라벨: {unreachable}")
             print("    코퍼스 부재(FP1)일 수도, 테넌트를 잘못 물은 것일 수도 있다 — 사람이 가른다.")
 
         rows, answers = [], []
