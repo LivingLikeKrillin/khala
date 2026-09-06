@@ -110,7 +110,7 @@ first, and each is enforced on every push rather than remembered.
 | **Pre-registered verdict rules** | An evaluation harness edited after seeing the score it produced | Evaluation labels are signed, and the rule that decides the verdict is written down before the run. |
 | **Declared evaluation corpus** | A label run where nobody said which corpus to ask, or where no label can reach the one being asked | A harness defaulting quietly to one tenant measured a corpus the labels were not written against. The same mistake happened three times; twice it was recorded only in a comment. |
 
-2,868 test functions and 17 CI jobs, including a job that runs the database-backed
+2,873 test functions and 17 CI jobs, including a job that runs the database-backed
 suite against a real Postgres with migrations applied — added after the discovery that
 those tests had never executed at all. Governance artifacts (10 ADRs, 54 SPECs) are
 stamped and checked for integrity in CI. Those four numbers are verified on every push
