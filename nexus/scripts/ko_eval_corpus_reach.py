@@ -71,6 +71,42 @@ def aiming_is_wrong(reach: list[list[bool]]) -> bool:
     return bool(scored) and not any(any(r) for r in scored)
 
 
+class UndeclaredCorpus(Exception):
+    """어느 코퍼스를 물을지 **아무도 말하지 않았다.**"""
+
+
+def resolve_tenant(labels: dict, cli_tenant: str) -> tuple[str, str]:
+    """이 실행이 물을 코퍼스를 정한다. `(테넌트 문자열, 사람에게 할 말)`.
+
+    ⛔ **기본값을 두지 않는다.** 2026-09-05 사고의 재료가 정확히 그것이다 — 라벨은 자기 코퍼스를
+    안 밝히고 러너 기본값은 `default` 라, 설계 라벨을 물으면서 아무 말 없이 **다른 코퍼스를
+    측정**했다. 같은 사고가 이 리포에서 세 번 났고 두 번은 주석으로만 적혔다.
+
+    선언 자리는 **이미 있다** — `corpus.tenant` 는 Pack B 계열이 쓰고 `ko_eval_labels.check`
+    가 `require_corpus_binding` 에서 요구한다. 새 칸을 만들지 않고 그것을 읽는다.
+
+    - 라벨이 선언하고 `--tenant` 가 없으면 → 선언을 쓴다
+    - 둘 다 있으면 → **`--tenant` 가 이기되 크게 말한다.** 조용한 불일치가 사고의 모양이다
+    - 둘 다 없으면 → `UndeclaredCorpus`. 사람이 한 줄 적는 것이 옳은 처방이다
+    """
+    declared = str((labels.get("corpus") or {}).get("tenant") or "").strip()
+    given = (cli_tenant or "").strip()
+    if given and declared and given != declared:
+        return given, (f"  ⚠ `--tenant {given}` 이 라벨의 선언 `{declared}` 를 덮어쓴다 — "
+                       "다른 코퍼스를 측정하는 중이다")
+    if given:
+        return given, ""
+    if declared:
+        return declared, f"  코퍼스: `{declared}` (라벨의 `corpus.tenant`)"
+    raise UndeclaredCorpus(
+        "어느 코퍼스를 물을지 아무도 말하지 않았다.\n"
+        "  라벨 파일에 한 줄 적거나(권장):\n"
+        "      corpus:\n"
+        "        tenant: default\n"
+        "  아니면 실행마다 `--tenant <이름>` 을 준다.\n"
+        "  ⛔ 기본값을 도로 넣지 마라 — 말없이 고른 코퍼스가 이 리포를 세 번 속였다.")
+
+
 def unreachable_ids(ids: Sequence[str], reach: list[list[bool]]) -> list[str]:
     """요구 사실이 **하나도** 코퍼스에 없는 라벨의 id. 멈추지는 않는다 — 이름을 부른다."""
     return [qid for qid, r in zip(ids, reach) if r and not any(r)]

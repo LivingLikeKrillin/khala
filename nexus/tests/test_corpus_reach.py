@@ -12,10 +12,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 from scripts.ko_eval_corpus_reach import (
+    UndeclaredCorpus,
     aiming_is_wrong,
     escape_like,
     groups_reached,
+    resolve_tenant,
     unreachable_ids,
 )
 
@@ -57,3 +61,40 @@ def test_labels_with_nothing_to_reach_do_not_make_the_aim_look_wrong():
 def test_unreachable_labels_are_named_not_silently_dropped():
     """일부만 못 닿으면 멈추지 않는다 — 진짜 문서 부재(FP1)일 수 있고 그건 사람이 가른다."""
     assert unreachable_ids(["a", "b", "c"], [[True], [False], []]) == ["b"]
+
+
+# ── 어느 코퍼스를 물을 것인가 (`OPEN.md` A87) ─────────────────────────────────
+
+def test_the_label_declaration_is_used_when_no_tenant_is_given():
+    """선언 자리는 **이미 있었다** — `corpus.tenant` 는 Pack B 계열이 쓰고
+    `ko_eval_labels.check` 가 `require_corpus_binding` 에서 요구한다. 새 칸을 만들지 않는다."""
+    tenant, note = resolve_tenant({"corpus": {"tenant": "design_docs"}}, "")
+    assert tenant == "design_docs"
+    assert "design_docs" in note
+
+
+def test_an_explicit_tenant_wins_but_says_so_out_loud():
+    """⛔ 조용한 불일치가 사고의 모양이다 — 덮어쓸 수는 있어도 말없이는 못 한다."""
+    tenant, note = resolve_tenant({"corpus": {"tenant": "design_docs"}}, "default")
+    assert tenant == "default"
+    assert "design_docs" in note and "default" in note
+
+
+def test_no_note_when_there_is_nothing_to_warn_about():
+    assert resolve_tenant({"corpus": {"tenant": "default"}}, "default") == ("default", "")
+    assert resolve_tenant({}, "default") == ("default", "")
+
+
+def test_nobody_saying_which_corpus_is_a_refusal_not_a_default():
+    """⛔ **이것이 A87 의 전부다.** 말없이 고른 코퍼스가 이 리포를 세 번 속였다."""
+    with pytest.raises(UndeclaredCorpus) as e:
+        resolve_tenant({"queries": []}, "")
+    assert "corpus:" in str(e.value)          # 사람이 무엇을 적어야 하는지 말한다
+    assert "--tenant" in str(e.value)
+
+
+def test_a_blank_declaration_is_not_a_declaration():
+    """빈 문자열·공백만 있는 선언을 통과시키면 검사가 조용히 꺼진다."""
+    for block in ({"corpus": {"tenant": ""}}, {"corpus": {"tenant": "   "}}, {"corpus": {}}):
+        with pytest.raises(UndeclaredCorpus):
+            resolve_tenant(block, "")

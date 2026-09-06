@@ -45,6 +45,17 @@
     docker exec nexus-app python -m scripts.answer_fact_probe \
         --labels /app/tests/eval/local/answer-facts.yaml
 
+⛔ **라벨은 자기 코퍼스를 밝혀야 돈다** (2026-09-05, `OPEN.md` A87). 파일 맨 위에 한 줄:
+
+    corpus:
+      tenant: default          # 여럿이면 쉼표 — 라이브 읽기 범위와 같게
+
+선언도 `--tenant` 도 없으면 러너가 **거부한다**(exit 2). 기본값을 두지 않는 이유는 하나다 —
+말없이 고른 `default` 때문에 설계 라벨을 물으면서 다른 코퍼스를 측정했고, 나는 그 결과를
+코퍼스 결함으로 읽었다. 같은 사고가 이 리포에서 세 번 났고 앞의 두 번은 주석으로만 남았다.
+
+둘 다 주면 `--tenant` 가 이기되 **덮어쓴다고 크게 말한다.** 조용한 불일치가 사고의 모양이다.
+
 ---
 
 ## 첫 실행 결과 (2026-08-26 · 15문항 · 키리스 브리지 · 지출 0)
