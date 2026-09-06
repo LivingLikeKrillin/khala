@@ -9,7 +9,9 @@ This page is safe to hand-write, which most of the documentation here is not. Ev
 
 ## Who caught what
 
-Twenty entries below, sorted by what actually surfaced the defect. The shape matters more than the count: automated checks caught the infrastructure problems, measurement caught the data problems, and the single most consequential defect — the one that had passed every automated check for weeks — was caught by one sentence from a person. The most recent ones were found the same way: by checking a claim against the thing it describes — including the newest, where a person's question exposed a capability that had been built and then never wired to anything that reads it.
+The figure covers **July and August**, and it is not redrawn as the page grows — a dated record says what was true on a day, and the months below it have their own sections. Twenty defects fell in that window, sorted by what actually surfaced each one. The shape matters more than the count: automated checks caught the infrastructure problems, measurement caught the data problems, and the single most consequential defect — the one that had passed every automated check for weeks — was caught by one sentence from a person.
+
+⚠ The count is a hand count, and the page states elsewhere why it has no guard: what counts as an entry here is ambiguous — a heading, or a bold paragraph? — and a counter would pin that ambiguity into code. So the number below is not extended month by month. **September is not tallied**, and its section says why the tally would mislead: its entries are not defects the system had, but readings of it that were wrong.
 
 <svg class="kh-fig" viewBox="0 0 600 214" role="img" aria-label="A timeline from July to August 2026 with three lanes. The 'CI and guards' lane holds four defects, the 'measurement' lane holds twelve, and the 'a person' lane holds four. Density increases sharply through August, with entries clustered at the end of the month. The person lane ends with a question that exposed a capability built but never wired to anything that reads it.">
   <text class="kh-fig-h" x="0" y="14">WHAT SURFACED IT</text>
@@ -1007,7 +1009,7 @@ The material for the split was already there — the exact string the model was 
 
 **2026-09-05** · `answer: record the shape of every answer, on every surface`
 
-A deterministic, model-free check for whether an answer obeyed a formatting request had existed for weeks — in the evaluation harness only. This is the log's most repeated shape, now on its fifth appearance: **the detector exists, the delivery does not.**
+A deterministic, model-free check for whether an answer obeyed a formatting request had existed for weeks — in the evaluation harness only. This is the log's most repeated shape, and it appears twice more before the month ends: **the detector exists, the delivery does not.**
 
 Plugging it in exposed a limit worth stating rather than papering over. Compliance needs *(requested format, answer)*, and live there is nothing that knows the request. Inventing a detector for it would add false positives as a new failure mode. So the live path records the answer's **shape** — sentence count, table, list items, length — and judges nothing. Canned strings are not measured; the abstention and generation-failure notices write the same keys as null, because a constant's sentence count is not a measurement. The keys are never dropped, which is what lets the next reader tell *not measured* from *lost*.
 
@@ -1060,10 +1062,58 @@ They were never forced into view because the code behind them was not among that
 
 ⚠ One limit is now recorded next to the number it qualifies: **the drift count does not know why a document was edited.** A terminology sweep resets it to zero. The Korean page was showing 7 against the English page's 17 while carrying identical content, because its last edit changed a single word.
 
+### The hypothesis was mine, and the measurement I wrote to test it refuted it
+
+**2026-09-06** · `measure: what a rechunk actually costs`
+
+Outside practice derives a chunk's identity from the source record plus a hash of that chunk's own content, so re-chunking keeps the identity of anything that did not change. This system derives it from position — document, section path, index — and the index counts monotonically across the whole document. From that I wrote down the consequence: **insert a sentence near the top and every identity below it shifts**, orphaning whatever referenced them.
+
+The measurement says **zero**. Across six documents and three edit shapes, not one identity moved. A small edit does not move a chunk boundary, so the *(section, index)* pair it is named by is unchanged; only one chunk's body differs.
+
+What does move them is a change in the **number** of chunks. Inserting a paragraph long enough to add one shifts almost everything after it — 21 of 22, 24 of 36, 14 of 15 — and in every one of those cases exactly **one** chunk's body had actually changed. So when the cost is paid it is paid almost entirely on chunks whose content is identical: recomputed vectors, and orphaned references from spans, labels and feedback.
+
+The remedy was not adopted. Changing an identity scheme is expensive to reverse, and the frequency of the edit that triggers it was unknown — so the next unit recorded chunk counts before and after each re-ingest, which makes the frequency answerable from that day forward and never backwards.
+
+### A stamp had been accumulating for three weeks and nothing read it
+
+**2026-09-06** · `feat: read the provenance stamp nothing was reading`
+
+Twice this system hit the same defect: a derived value that a repair queue looking for `NULL` **cannot see**, because invalidation missed it and the value was never emptied. Coverage counts it as filled, so no number looks wrong. Asked whether a third instance existed, the sweep found none — of six derived artifacts, four already close the class with a hash stamp, and three further hypotheses were ruled out, one of them by measuring zero live.
+
+What the sweep found instead was the log's most repeated shape again. The table recording which model wrote each vector also records **when** it was written. That column had been filled since mid-August and **no code read it.**
+
+Reading it splits the corpus in a way that costs one query: a vector written at or after its row's last update **cannot** be stale. That rules out 1,736 of 2,045 rows and leaves 309 to check — where the only previous way to see a stale-but-present vector was recomputing every embedding.
+
+The number it produces is deliberately not a verdict. A row's timestamp also moves on a re-ingest whose text did not change, and no invalidation fires then, so the figure is an **upper bound on what to check**, not a count of what is wrong. Rows with no stamp at all are reported as a third state, because hiding them would make *unknown* and *fine* look the same.
+
+### The control group was pinned to a date, so it silently stopped existing
+
+**2026-09-06**
+
+The harness that detects a stale vector by recomputing it carries its own rule at the top: read the control group first, and if the control does not come out clean, the rest of the numbers are unusable. The control was defined as rows edited on a particular date. No such rows remain, so the control line **is not printed at all** — and its absence is silent.
+
+That matters because the run came back **0 stale out of 466**, and every cached comparison was exactly 1.000000. A perfect score is equally consistent with *nothing is stale* and *this instrument distinguishes nothing*.
+
+So a control was supplied by hand: two chunks in a scratch tenant, one of them given the other's vector. The harness flagged **one of two, at 0.65 against a 0.9999 threshold**. Only then was the zero worth reporting.
+
+The harness was not changed in the same unit — it was the instrument in use, and altering an instrument mid-measurement is precisely what this repository forbids. The fix is recorded instead: define the control by the timestamp comparison above, which cannot rot into an empty set.
+
+### A test failed once, and the first explanation was the familiar one
+
+**2026-09-06**
+
+A full suite run went red on two tests. One was a real defect and the check was right to catch it: a hand-written database stand-in, which is effectively a whitelist of what one function may call, did not implement a method that had just been added — exactly the visibility that stand-in exists to provide.
+
+The other was reported here as *my new tests contaminated another module's fixtures*, because that had happened the day before. It does not hold. The test passes alone, passes beside the new module, and passed in a full green suite afterwards; the new module also sorts **after** it, so it cannot disturb what ran earlier. Two candidate mechanisms were ruled out by reading the code.
+
+It is filed as unexplained rather than fixed. The path it exercises is an exact scan with a deterministic tie-break over deterministic vectors, so identical rows must give an identical answer — which means the rows differed, and nothing yet says why. **One green run is not evidence of absence**, and this repository has been fooled once by a green from a stale baseline.
+
 ## What September adds to the log
 
-August's lesson was that the instrument was wrong more often than the system. September's is narrower and, for anyone operating one of these, more useful: **the instrument was right every time, and the reading of it was wrong.**
+August's lesson was that the instrument was wrong more often than the system. For most of September the opposite held and it was more useful: **the verdict was accurate, and the reading of it was wrong.** A verdict names a state. Every wrong conclusion this month came from treating that state as if it named a cause — a missing fact, a narrow corpus, a misaimed run and a contaminated fixture all produce the same signal, and the difference between them is other evidence nobody had gone and gathered.
 
-Every verdict this month was accurate as a statement about a state. Every wrong conclusion came from treating that state as if it named a cause. The defences that actually worked were not better instruments — they were a pre-registration written before the run, a rule that counts open items rather than describing them, and the habit of breaking a check on purpose to see whether it goes red.
+⚠ **That framing did not survive the last day of the section.** On the 6th an instrument was wrong again, and in the worst way available to one: its control group had been pinned to a date, the rows matching that date were gone, and the check therefore reported nothing rather than reporting that it could not run. A green from an instrument that cannot fail is not a result. So the month ends with both lessons live, and the second is the older one restated: **an instrument that cannot say "I could not measure this" will eventually say "fine" instead.**
+
+The defences that actually worked were not better instruments. They were a pre-registration written before the run, a rule that counts open items rather than describing them, the habit of breaking a check on purpose to see whether it goes red, and — twice this month — a person asking a question the record could not answer.
 
 ⚠ And the same period shows the shape of what is *not* here. Against a published list of ten RAG failure modes, this system's diagnostic questions cover six. The four they miss — retrieval timing, context position bias, retrieval-generation model mismatch, recursive retrieval loops — are missing for one reason: **this system has none of those components.** Not having met a failure is not the same as knowing it cannot happen.
