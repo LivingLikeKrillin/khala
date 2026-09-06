@@ -22,6 +22,14 @@ docs:
       - nexus/nexus/llm/citations.py
       - nexus/nexus/search/provenance.py
       - nexus/nexus/documents/staleness.py
+      # 2026-09-05 대조에서 드러난 넷. 이 페이지가 **아직 말하지 않는** 기능들인데, 말하지
+      # 않는다는 사실 자체가 드리프트다 — 앵커가 없으면 그 누락이 신호로도 안 뜬다.
+      # 08-27 이후 출하됐고 배포에서 켜져 있다(`test_deployment_search_switches.py` 가 앞의
+      # 셋을 못 박는다). 페이지 본문은 사람이 쓴다.
+      - nexus/nexus/search/reconcile.py      # 정정 확인 패스
+      - nexus/nexus/search/pairs.py          # 짝 확장(설계+계획)
+      - nexus/nexus/claims/matching.py       # 문서 값 옆의 코드 값
+      - nexus/nexus/auth/scope.py            # 읽기 범위·검색한 코퍼스
       - nexus/nexus/index/generation.py
       - nexus/nexus/index/vector_index.py
       - nexus/nexus/otel/diff_engine.py
