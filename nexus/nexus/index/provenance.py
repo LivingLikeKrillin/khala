@@ -119,3 +119,73 @@ async def fetch_mismatch(column_name: str, *, tenant: str) -> int:
         """,
         tenant, column_name)
     return int(row["n"]) if row else 0
+
+
+# ── 시간 축 — 벡터가 그 행보다 나중에 쓰였는가 ────────────────────────────────
+
+
+async def fetch_freshness(column_name: str, *, tenant: str | None = None) -> dict:
+    """`written_at` 을 읽어 **낡을 수 있는 것과 없는 것**을 가른다.
+
+    ⛔ **왜 있나.** 이 리포는 같은 계열의 결함을 두 번 겪었다 — 텍스트가 바뀌었는데 파생 벡터가
+    NULL 로 안 돌아갔고, 재임베딩 큐가 `WHERE <컬럼> IS NULL` 이라 **큐에 영영 안 들어갔다.**
+    커버리지는 그것을 "채워짐" 으로 세므로 아무 수도 이상해 보이지 않는다. 있는데 틀린 상태를
+    보는 방법은 지금까지 **전수 재계산**뿐이었다(`scripts/check_stale_vectors.py`, 손으로 부르는
+    수십 분짜리).
+
+    ⭐ **그런데 그 판정에 쓸 도장이 이미 있었다.** `chunk_vector_provenance.written_at` 은
+    2026-08-14 부터 쓰이고 있었고 **읽는 코드가 하나도 없었다.** 이 리포가 이미 한 번 적은
+    모양이다 — *감지기는 있었고 전달이 없었다.*
+
+    ⭐ **값은 부정 쪽에 있다.** `written_at >= updated_at` 인 행은 마지막 행 갱신 **뒤에** 벡터가
+    쓰였으므로 **낡을 수 없다.** 그래서 이 함수의 산출물은 *"낡았다"* 가 아니라
+    **"낡을 수 있는 것은 이만큼뿐이다"** 이고, 재계산 범위가 그만큼 줄어든다.
+
+    ⛔ **`candidates` 를 낡은 벡터 수로 읽지 마라.** `updated_at` 은 **내용이 안 바뀐 재적재에도**
+    움직이는데 그때는 무효화가 안 걸린다(걸릴 이유가 없다). 즉 이 수는 **상한**이지 개수가
+    아니다. 개수를 원하면 그 상한만 재계산하면 된다 — 그것이 이 함수의 용도다.
+
+    ⚠ **`unstamped` 는 셋째 상태다.** 벡터는 있는데 출처 행이 없는 것(025 백필 이전 · 출처 쓰기
+    실패)이고, 시간을 모르므로 **신선하다고도 낡았다고도 말할 수 없다.** 숨기면 "모른다" 와
+    "괜찮다" 가 같아 보인다 — `summarize` 가 `unknown` 을 따로 내는 것과 같은 이유다.
+    """
+    # 컬럼명은 화이트리스트를 통과한 것만 SQL 에 닿는다 — 설정값이 문자열로 조립되는 경로가
+    # 아니다(`_invalidate_derived` 와 같은 규칙). 그리고 **벡터가 실제로 있는 행만** 센다:
+    # NULL 인 행은 재임베딩 큐가 이미 보고 있으므로 이 감지기의 대상이 아니다.
+    from nexus.index.vector_index import resolve_column
+    col = resolve_column(column_name)
+    row = await db.fetch_one(
+        f"""
+        SELECT
+          count(*) AS filled,
+          count(*) FILTER (WHERE p.written_at >= c.updated_at) AS provably_fresh,
+          count(*) FILTER (WHERE p.written_at <  c.updated_at) AS candidates,
+          count(*) FILTER (WHERE p.written_at IS NULL)         AS unstamped
+          FROM chunks c
+          LEFT JOIN chunk_vector_provenance p
+                 ON p.chunk_rid = c.rid AND p.column_name = $1
+         WHERE c.status = 'active' AND c.is_quarantined = false
+           AND c.{col} IS NOT NULL
+           AND ($2::text IS NULL OR c.tenant = $2)
+           AND EXISTS (SELECT 1 FROM documents d
+                       WHERE d.rid = c.doc_rid AND d.status = 'active')
+        """,
+        col, tenant)
+    return {k: int(row[k] or 0) for k in ("filled", "provably_fresh", "candidates", "unstamped")}
+
+
+def summarize_freshness(counts: dict) -> dict:
+    """분포 → 재계산 범위. 순수·결정론.
+
+    ⛔ **판정하지 않는다.** 여기서 나오는 것은 *무엇이 낡았나* 가 아니라 *무엇을 확인해야
+    하는가* 다. 문턱도 비율도 없다 — 이 리포는 비율을 신호가 쌓이기 전에 내지 않는다.
+    """
+    return {
+        **counts,
+        # 재계산해야 하는 집합. 후보(시간이 어긋남) + 미상(시간을 모름).
+        "must_recheck": counts["candidates"] + counts["unstamped"],
+        # 재계산이 **필요 없다고 증명된** 집합. 감지기의 실제 산출물이다.
+        "ruled_out": counts["provably_fresh"],
+        # 도장이 하나도 없으면 이 감지기는 아무 말도 못 한다. 그 사실이 보여야 한다.
+        "blind": counts["filled"] > 0 and counts["provably_fresh"] + counts["candidates"] == 0,
+    }

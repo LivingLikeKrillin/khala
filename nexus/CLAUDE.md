@@ -66,6 +66,7 @@
 | 검색/임베딩 텍스트 | `utils.get_search_text()` | `chunk_text` 직접 사용 금지 — Contextual Enrichment 대비 |
 | entity rid | `rid.canonicalize_entity_name()` | 추출기 교체 시 rid 안정성 |
 | 벡터 컬럼 선택 | `index/vector_index.py` (`configured_column`/`VECTOR_COLUMNS`) | 화이트리스트 밖이면 기동 실패 |
+| 벡터가 **낡았을 수 있는지** 보기 | `index/provenance.py` (`fetch_freshness`) | 복구 큐는 `WHERE <컬럼> IS NULL` 이라 **안 지워진 낡은 값을 구조적으로 못 본다** — 이 리포가 그 계열로 두 번 데였다. 같은 표의 `written_at` 이 2026-08-14 부터 쌓이고 있었는데 **읽는 코드가 하나도 없었다.** ⭐ 값은 부정 쪽이다: `written_at >= updated_at` 이면 **낡을 수 없다** ⇒ 전수 재계산(수십 분)이 그만큼 줄어든다. ⛔ **`candidates` 는 낡은 개수가 아니라 상한이다** — `updated_at` 은 내용이 안 바뀐 재적재에도 움직인다. 판정은 `scripts/check_stale_vectors.py` 가 재계산으로 한다 |
 | 적재 (모든 경로) | `ingest/pipeline.py` (`run_ingest`) | CLI·HTTP·A2A·Notion 이 전부 여기로 모이므로 세대 게이트가 한 곳이면 된다 |
 | 출처 등급 표기 | `search/provenance.py` | 프롬프트·응답·MCP·웹이 같은 어휘를 써야 한다. 사본 금지 |
 | 근거에 무언가 덧붙이기 | `search/reconcile.py` (`packet_for_answer`) | 네 표면(web API ×2·A2A·CLI)이 전부 여기로 모인다. 표면마다 붙이면 하나가 조용히 빠진다 — **2026-09-02 에 실제로 그랬다**: 스트리밍 경로가 `assemble_packet` 을 직접 불러 정정·짝·코드 값이 웹 채팅에서만 빠졌다(외부 평가 F2). 지금은 `tests/test_answer_surfaces_share_the_seam.py` 가 표면을 센다 |

@@ -579,6 +579,28 @@ def status() -> None:
                 except Exception:  # noqa: BLE001 — 선언 표가 없는 배포
                     pass
 
+            # 벡터가 **그 행보다 나중에 쓰였는가** — 같은 출처 표의 `written_at` 을 읽는다.
+            # ⛔ 이 줄이 없던 동안 `written_at` 은 2026-08-14 부터 쓰이기만 하고 **읽는 코드가
+            # 하나도 없었다**. 있는데 틀린 벡터를 보는 방법은 전수 재계산(수십 분)뿐이었다.
+            # ⭐ 여기서 내는 것은 경보가 아니라 **범위**다: 확인해야 할 것이 몇 개인가.
+            from nexus.index.provenance import fetch_freshness, summarize_freshness
+            try:
+                fr = summarize_freshness(await fetch_freshness(_col))
+                if fr["filled"]:
+                    typer.echo(
+                        f"벡터 신선도({_col}): 확인 불필요 {fr['ruled_out']} · "
+                        f"재계산 대상 {fr['must_recheck']}"
+                        + (f" (그중 도장 없음 {fr['unstamped']})" if fr["unstamped"] else ""))
+                    # ⛔ **낡았다고 말하지 않는다.** `updated_at` 은 내용이 안 바뀐 재적재에도
+                    # 움직이므로 이 수는 상한이다. 개수를 원하면 그 상한만 재계산하면 된다.
+                    if fr["must_recheck"]:
+                        typer.echo("  ⚠ 이 수는 **상한**이다 — 낡은 개수가 아니라 확인할 범위다. "
+                                   "scripts/check_stale_vectors.py 가 그것을 판정한다")
+                    if fr["blind"]:
+                        typer.echo("  ⚠ 도장이 하나도 없다 — 이 감지기는 지금 아무것도 못 본다")
+            except Exception:  # noqa: BLE001 — 출처 표가 없는 배포
+                pass
+
             # 임베딩을 포기한 청크 — 벡터 검색에서 빠진 내용의 양이다
             # (SPEC-nexus-kure-embedding-swap §4.5). 0 이 아니면 조용히 넘어가지 않는다.
             from nexus.index.embed_health import fetch_waived_count
