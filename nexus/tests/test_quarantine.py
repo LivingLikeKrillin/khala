@@ -178,10 +178,19 @@ class TestChunkLevelQuarantine:
 
         written = []
 
+        # ⭐ **이 스텁은 `_save_chunks` 가 써도 되는 db 표면의 화이트리스트다.** 프로덕션이
+        # 새 호출을 더하면 여기서 `AttributeError` 로 터진다 — 2026-09-06 에 041(재적재 청크
+        # 수)이 `fetch_val` 을 더하면서 실제로 그렇게 됐다. 그 터짐이 결함이 아니라 **신호**다:
+        # 이 경로는 비밀이 테이블에 앉지 않는 것을 지키는 자리라, 무엇을 더 부르는지 눈에
+        # 띄어야 한다. 조용히 통과시키는 `Mock` 으로 바꾸지 마라.
         class _DB:
             @staticmethod
             async def fetch_one(*a, **k):
                 return {"status": "active", "title": "T"}
+
+            @staticmethod
+            async def fetch_val(*a, **k):
+                return 0          # 재적재 전 active 청크 수 — 이 검사가 보는 값이 아니다
 
             @staticmethod
             async def execute(sql, *args):

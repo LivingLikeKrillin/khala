@@ -272,6 +272,12 @@ async def _save_chunks(
     # 하나이고, 실험 실험군도 같은 함수를 썼다.
     doc_title = (parent["title"] if parent is not None else "") or ""
 
+    # **지우기 전에 센다** (041, `OPEN.md` A90). `db.execute` 는 드라이버 상태 문자열을 그대로
+    # 돌려주므로 거기서 수를 뽑을 수도 있지만, 그 파싱은 문자열 형식에 기대는 것이고 이 자리는
+    # 초당 수천 번 도는 경로가 아니다. 질의 하나가 명시적이다.
+    chunks_before = await db.fetch_val(
+        "SELECT count(*) FROM chunks WHERE doc_rid = $1 AND status = 'active'", parent_rid)
+
     # 기존 청크 soft_delete
     await db.execute(
         "UPDATE chunks SET status = 'superseded', updated_at = $1 WHERE doc_rid = $2 AND status = 'active'",
@@ -344,6 +350,26 @@ async def _save_chunks(
             pos in bad,
         )
         saved += 1
+
+    # ── 이 재적재가 청크 수를 바꿨는가 (041, `OPEN.md` A90) ────────────────
+    # rid 이탈의 트리거는 편집 위치가 아니라 **청크 수 변화**다(측정: `scripts/rechunk_churn.py`).
+    # 남은 미지수는 *그런 편집이 얼마나 자주 오는가* 하나이고, 그 답은 여기서만 쌓인다.
+    #
+    # **이벤트를 `(rid, new_content_hash)` 로 겨눈다.** 처음엔 `_save_document` 가 이벤트 id 를
+    # 돌려주게 고쳤는데, 그 반환형 변경이 검사 20여 곳을 건드렸다 — 그리고 rid 와 새 해시는
+    # 이미 그 이벤트의 신원이라, 굳이 세 번째 이름을 두 층에 걸쳐 나를 이유가 없다.
+    # ⛔ *"이 rid 의 가장 최근 이벤트"* 로는 절대 겨누지 마라 — 그건 동시 적재가 생기는 날
+    # 조용히 엉뚱한 행을 채운다.
+    #
+    # ⚠ `chunks_before IS NULL` 이 없으면 같은 해시로 되돌아온 옛 이벤트까지 덮는다. 값 자체는
+    # 같겠지만(같은 본문 → 같은 청크 수) 이미 적힌 사실을 다시 쓰는 것은 이 리포의 습관이 아니다.
+    updated = await db.execute(
+        "UPDATE doc_reingest_events SET chunks_before = $1, chunks_after = $2 "
+        "WHERE rid = $3 AND new_content_hash = $4 AND chunks_before IS NULL",
+        chunks_before, saved, parent_rid, collected.content_hash,
+    )
+    logger.debug("reingest_chunk_counts", rid=parent_rid, before=chunks_before,
+                 after=saved, rows=updated)
 
     return saved
 
