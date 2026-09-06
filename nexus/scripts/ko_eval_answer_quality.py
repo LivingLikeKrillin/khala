@@ -125,6 +125,53 @@ def facts_present(must_contain: list[list[str]] | None, text: str) -> list[bool]
     return [any(_norm(alt) in body for alt in group) for group in (must_contain or [])]
 
 
+#: 실패 귀속의 판정 이름 (감사 B3). FP4·FP7 은 Barnett et al., CAIN 2024 의 분류를 따른다 —
+#: FP4 = 근거에 있었는데 안 뽑음, FP7 = 반만 뽑음.
+VERDICTS = ("pass", "upstream", "fp4", "fp7", "mixed", "no_groups")
+
+
+def attribute_facts(in_evidence: list[bool], in_answer: list[bool]) -> dict:
+    """못 낸 사실이 **근거에 있었는가**로 실패를 가른다. 인자는 **불리언 목록 둘**이다.
+
+    ⛔ **왜 문자열이 아니라 불리언을 받나.** 이 리포에는 정규화가 둘 있고 갈린 적이 있다
+    (`OPEN.md` A22: 같은 라벨에서 1판과 2판이 반대로 나왔다). 귀속이 자기 정규화를 들고 다니면
+    그것이 셋째가 된다. 그래서 **존재 판정은 부르는 쪽이 자기 규칙으로 끝내고**, 여기서는
+    이미 판정된 것만 조합한다 — 잘못된 정규화를 들고 올 방법 자체가 없다.
+
+    - `answer_fact_probe` — `expect`/`expect_all` 을 자기 `_norm`(쉼표·공백 제거)으로 본다
+    - `ko_eval_answer_run` — `must_contain` 을 `facts_present`(공백 축약)와
+      `delivered_text`(거절 세그먼트 제외)로 본다
+
+    Returns:
+        n_required · n_in_evidence · n_in_answer · verdict(`VERDICTS`).
+    """
+    if len(in_evidence) != len(in_answer):
+        raise ValueError(
+            f"묶음 수가 다르다: 근거 {len(in_evidence)} · 답변 {len(in_answer)} — "
+            "같은 `must_contain`/`expect_all` 로 두 번 판정한 것이 아니다")
+    if not in_answer:
+        return {"n_required": 0, "n_in_evidence": 0, "n_in_answer": 0, "verdict": "no_groups"}
+
+    if all(in_answer):
+        verdict = "pass"
+    else:
+        missing_had_evidence = [ev for ev, ans in zip(in_evidence, in_answer) if not ans]
+        if not any(missing_had_evidence):
+            # 못 낸 것이 전부 근거에도 없었다 — 서술 이전에 검색이 못 물어온 것이다.
+            verdict = "upstream"
+        elif all(missing_had_evidence):
+            # 못 낸 것이 전부 근거에는 있었다. 하나도 못 냈으면 FP4, 일부만 냈으면 FP7.
+            verdict = "fp4" if not any(in_answer) else "fp7"
+        else:
+            # 갈렸다. 한쪽으로 몰아 세는 순간 이 판정이 거짓말을 한다.
+            verdict = "mixed"
+
+    return {"n_required": len(in_answer),
+            "n_in_evidence": sum(in_evidence),
+            "n_in_answer": sum(in_answer),
+            "verdict": verdict}
+
+
 #: **언급과 주장은 다르다.** 2026-08-26 에 이 구분이 없어서 채점기가 천장에 붙었다.
 #:
 #: 같은 질문에 두 답변이 나왔다. 하나는 *"…4,000점입니다"* 로 열고 낡은 값을 기각했고, 다른
@@ -260,6 +307,11 @@ class AnswerScore:
     #: 인용된 문서 중 **라벨이 한 번도 판정한 적 없는** 것(테넌트에는 실재한다). gold 도 아니고
     #: not_gold 도 아니다 — 사람이 읽고 둘 중 하나로 보내야 닫힌다.
     unjudged: list[str] = field(default_factory=list)
+    #: 요구한 사실이 **LLM 이 본 근거에** 있었는가 (묶음별). `facts` 와 짝이다.
+    facts_in_evidence: list[bool] = field(default_factory=list)
+    #: 실패 귀속 (`VERDICTS`). **빈 문자열은 판정 안 함**이다 — 근거 문자열을 안 받았거나
+    #: LLM 이 실패한 회차. 실패로 세지 마라, 이 리포는 그 구분을 이미 한 번 잃었다.
+    verdict: str = ""
 
     @property
     def has_facts(self) -> bool:
@@ -324,7 +376,8 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
                  gold_titles: set[str], must_contain: list[list[str]],
                  abstained: bool = False, llm_failed: bool = False,
                  not_gold_titles: set[str] | None = None,
-                 known_titles: set[str] | None = None) -> AnswerScore:
+                 known_titles: set[str] | None = None,
+                 evidence_text: str = "") -> AnswerScore:
     """한 질의의 답변을 채점한다. 순수 함수 — DB 도 네트워크도 안 탄다.
 
     `known_titles` 는 **측정하고 있는 테넌트**의 문서 제목이다. 팩이 아니라 테넌트인 이유: 팩은
@@ -367,6 +420,19 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
     # **사실은 배달돼야 센다.** 거절 세그먼트 안에서 질문 어휘가 되풀이된 것은 배달이 아니다
     # (`pb-part-07`: 거절하면서 `태스크`·`다른` 을 담아 사실검사를 통과했다).
     s.facts = facts_present(must_contain, delivered_text(answer_text))
+
+    # ── 실패 귀속 (감사 B3) ──────────────────────────────────────────────
+    # 근거 쪽도 **같은 `facts_present`** 로 본다. 관대한 사본을 따로 두면 '근거에는 있다' 면서
+    # 답변 쪽은 떨어뜨리는 조합이 나오고, 그 갈림이 곧 오귀속이다.
+    #
+    # ⛔ **거절 세그먼트는 근거에서 걷어내지 않는다.** `delivered_text` 는 *답변자가 무엇을
+    # 배달했는가* 를 보는 규칙이고, 근거는 배달된 것이 아니라 **주어진 것**이다.
+    #
+    # LLM 이 실패했으면 판정하지 않는다 — 그때 답변 자리에 있는 것은 근거 원문 덤프라
+    # 두 쪽이 같은 문자열이 되고, 그 비교는 무엇도 뜻하지 않는다(`has_facts` 와 같은 이유).
+    if evidence_text and not llm_failed:
+        s.facts_in_evidence = facts_present(must_contain, evidence_text)
+        s.verdict = attribute_facts(s.facts_in_evidence, s.facts)["verdict"]
     return s
 
 
@@ -398,6 +464,13 @@ def aggregate(scores: list[AnswerScore]) -> dict:
         "outcomes": {k: sum(1 for s in scores if s.outcome == k)
                      for k in ("correct", "incorrect", "abstained", "unadjudicated",
                                "unmeasurable")},
+        # 실패 귀속 (감사 B3). **판정 안 한 회차(`verdict == ""`)는 어느 칸에도 안 들어간다** —
+        # 근거 문자열을 안 받았거나 LLM 이 실패한 것이라 실패로 세면 안 된다.
+        "attribution": {v: sum(1 for s in scores if s.verdict == v) for v in VERDICTS},
+        "attribution_unjudged": sum(1 for s in scores if not s.verdict),
+        "fp4_qids": [s.qid for s in scores if s.verdict == "fp4"],
+        "fp7_qids": [s.qid for s in scores if s.verdict == "fp7"],
+        "upstream_qids": [s.qid for s in scores if s.verdict == "upstream"],
         "abstained_qids": [s.qid for s in scores if s.outcome == "abstained"],
         "incorrect_qids": [s.qid for s in scores if s.outcome == "incorrect"],
         "unadjudicated_qids": [s.qid for s in scores if s.outcome == "unadjudicated"],

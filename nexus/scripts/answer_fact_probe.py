@@ -33,8 +33,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import yaml  # noqa: E402
 
 from nexus import db  # noqa: E402
+from scripts.ko_eval_answer_quality import VERDICTS as _VERDICTS  # noqa: E402
 from scripts.ko_eval_answer_quality import (  # noqa: E402
     asserts_all,
+    attribute_facts,
     asserts_current_not_stale,
     asserts_value,
     facts_present,
@@ -67,9 +69,9 @@ def _all_groups_present(expect_all, normalized_text: str) -> bool:
     )
 
 
-#: 판정 이름. FP4 와 FP7 은 `research/2026-09-04-rag-current-practice.md` 의 분류
-#: (Barnett et al., CAIN 2024)를 따른다 — FP4 = 근거에 있었는데 안 뽑음, FP7 = 반만 뽑음.
-VERDICTS = ("pass", "upstream", "fp4", "fp7", "mixed", "no_groups")
+#: 판정 이름 — **정본은 `ko_eval_answer_quality.VERDICTS`** 다. 두 러너가 같은 이름을 써야
+#: 리포트를 나란히 읽을 수 있다(감사 B3, `research/2026-09-04-rag-current-practice.md`).
+VERDICTS = _VERDICTS
 
 
 def required_groups(q: dict) -> list[list[str]]:
@@ -94,7 +96,8 @@ def attribute(groups: list[list[str]], evidence_norm: str, answer_norm: str) -> 
 
     가르는 재료는 `format_for_llm(packet)` — **LLM 이 실제로 본 문자열**이다. 스니펫만이
     아니라 그래프·코드값·부채까지 그 안에 들어간다. 근거 판정도 답변 판정과 **같은
-    정규화**(`_norm`)를 쓴다.
+    정규화**(이 파일의 `_norm`)를 쓴다. 조합 규칙 자체는 공용이다
+    (`ko_eval_answer_quality.attribute_facts`) — Pack B 러너와 판정이 갈리면 안 된다.
 
     ⚠ **이 판정이 기우는 방향을 적어 둔다.** 부분일치는 무르다. 사실이 근거에 **다른 말로**
     적혀 있으면 여기서는 "근거에 없음" 으로 읽히고, 그러면 FP4 가 실제보다 적게 세어지고
@@ -105,37 +108,14 @@ def attribute(groups: list[list[str]], evidence_norm: str, answer_norm: str) -> 
         n_required · n_in_evidence · n_in_answer · missing(못 낸 묶음의 대표 표기) ·
         verdict(`VERDICTS`).
     """
-    if not groups:
-        return {"n_required": 0, "n_in_evidence": 0, "n_in_answer": 0,
-                "missing": [], "verdict": "no_groups"}
-
     def _present(group: list[str], hay: str) -> bool:
         return any(_norm(x) in hay for x in group)
 
     in_ev = [_present(g, evidence_norm) for g in groups]
     in_ans = [_present(g, answer_norm) for g in groups]
-
-    if all(in_ans):
-        verdict = "pass"
-    else:
-        missing_had_evidence = [ev for ev, ans in zip(in_ev, in_ans) if not ans]
-        if not any(missing_had_evidence):
-            # 못 낸 것이 전부 근거에도 없었다 — 서술 이전에 검색이 못 물어온 것이다.
-            verdict = "upstream"
-        elif all(missing_had_evidence):
-            # 못 낸 것이 전부 근거에는 있었다. 하나도 못 냈으면 FP4, 일부만 냈으면 FP7.
-            verdict = "fp4" if not any(in_ans) else "fp7"
-        else:
-            # 갈렸다. 한쪽으로 몰아 세면 그 순간 이 판정이 거짓말을 한다.
-            verdict = "mixed"
-
-    return {
-        "n_required": len(groups),
-        "n_in_evidence": sum(in_ev),
-        "n_in_answer": sum(in_ans),
-        "missing": [g[0] for g, ans in zip(groups, in_ans) if not ans],
-        "verdict": verdict,
-    }
+    out = attribute_facts(in_ev, in_ans)
+    out["missing"] = [g[0] for g, ans in zip(groups, in_ans) if not ans]
+    return out
 
 
 def attribution_lines(rows: list[dict]) -> list[str]:
