@@ -978,3 +978,92 @@ The evaluator's point was exact. This repo had already mis-stated the open-items
 ⚠ And the hand-counted *"record of thirteen defects"* lost its number entirely. What counts as a log entry is ambiguous — a heading, or a bold paragraph? — and adding a counter would pin that ambiguity into code. What cannot be counted is not counted.
 
 ⭐ **And the counter caught me on its own pull request.** Locally it was green at 2,585; CI went red at 2,592 — `git grep` counts **tracked files only**, and the test file I had just written was not yet committed. Adding `--untracked` makes local and CI count the same set. **The counter's first defect was found by the counter.**
+
+---
+
+## September — the diagnoses that were wrong
+
+August's entries are mostly *the instrument was wrong*. September's are a different shape: **the instrument was right every time, and the reading of it was wrong.** That distinction is the month's whole content.
+
+### A request could not say which stage lost the answer
+
+**2026-09-05** · `spans: turn capture on, and register a guard that the line stays on`
+
+Retrieval ran two legs, fused them, cut by a diversity cap, filled sections, assembled a packet and narrated — and recorded **one flat row per request**. So when a production query answered badly, nothing in the record separated *the candidate pool never held it* from *fusion lost it* from *the diversity cap cut it* from *it reached the prompt and the model dropped it*. The only way to tell was to reproduce the query against labelled data.
+
+Each stage now writes a span with its inputs, outputs and ranked candidates. The unit shipped **with capture switched off** so the schema, the constraints and the destructive purge path could be exercised in CI while no row existed; turning it on was a separate, dated decision. The switch is one line of configuration and the code default is off, so a lost line would leave every unit test green — the flip therefore came with its own check, broken both ways before being restored.
+
+### One signal was carrying three different failures
+
+**2026-09-05** · `probe: split "the model did not extract it" from "retrieval never delivered it"`
+
+The answer grader said *a required fact is missing*. That single signal bundled three unrelated causes: retrieval never delivered the fact, the model had it and extracted none of it, or the model had it and extracted only part. Reading such a failure told you nothing about whether to go fix retrieval or fix generation.
+
+The material for the split was already there — the exact string the model was shown. Evidence presence is now judged with **the same normaliser as answer presence**, because two graders in this repository once disagreed on a single label after their normalisers drifted apart. The combining rule takes two lists of booleans and nothing else, so a third normaliser cannot travel inside it.
+
+**The first real result arrived the same day**: a policy label that had both required facts in its evidence and delivered one. Before the split, that row read identically to a retrieval miss.
+
+### An instrument that only ever ran in the harness
+
+**2026-09-05** · `answer: record the shape of every answer, on every surface`
+
+A deterministic, model-free check for whether an answer obeyed a formatting request had existed for weeks — in the evaluation harness only. This is the log's most repeated shape, now on its fifth appearance: **the detector exists, the delivery does not.**
+
+Plugging it in exposed a limit worth stating rather than papering over. Compliance needs *(requested format, answer)*, and live there is nothing that knows the request. Inventing a detector for it would add false positives as a new failure mode. So the live path records the answer's **shape** — sentence count, table, list items, length — and judges nothing. Canned strings are not measured; the abstention and generation-failure notices write the same keys as null, because a constant's sentence count is not a measurement. The keys are never dropped, which is what lets the next reader tell *not measured* from *lost*.
+
+### I named the bottleneck wrong three times in one day
+
+**2026-09-05** · `probe: attribute the must_contain labels too, and retract what I said about them`
+
+The audit that organised this work predicted the misalignments would converge on one missing instrument. They did — and then the convergence point moved, three times, and each move was recorded as fact before it was checked.
+
+| recorded as the bottleneck | what refuted it |
+|---|---|
+| no stage spans | correct — adding them opened the next item |
+| **no labels** requiring more than one fact | only one label set had been looked at. Counting all of them: **41** such labels |
+| **the corpus** does not hold the answer | the answer was in another **tenant** |
+| the harness was **aimed** at the wrong corpus | fixing the tenant passed three of the four labels immediately |
+
+Two of those are the same mistake. The verdict `upstream` says *the required fact was not in the evidence*, and it was true every time. It does not distinguish a corpus gap from a retrieval miss from a misaimed run — that takes other evidence, and it was read without any being gathered.
+
+**Standing rule since: a verdict names a state, not a cause.** Before writing a cause down, name what else could produce the same verdict, and go and look.
+
+### Two tests looked right and protected nothing
+
+**2026-09-05**
+
+Twice in one day a test was written, reviewed, passed — and then passed again with the defect it existed to catch deliberately introduced.
+
+The first asserted that a refusal-stripping rule is not applied to evidence, but chose an example where both required facts sat outside the refusal segment, so stripping changed no verdict. The second asserted a distinction between *unreachable by search* and *unreachable by search but reachable by vectors* — a distinction that had halved a measured figure — while the logic making it lived inside a database function no pure test could reach.
+
+Neither would have been found by reading. Both were found by **breaking the code on purpose and watching whether the suite went red**, which this repository already required and which is cheap enough that there is no excuse for skipping it.
+
+### A pre-registration stopped a report of noise as an improvement
+
+**2026-09-05** · `measure: answer-facts on the scope production reads, three runs`
+
+A signed label set had been measured against one tenant while live readers see two, so every recorded number came from a corpus nobody queries. Widening it to match required changing what a signed set measures, so the expectation was written down first, in its own commit: *widening adds competing evidence, so the number can hold or fall; a fall is not a regression but the first honest reading; **if it rises, be suspicious.***
+
+The first judgement held at 15/15. The second judgement went from 13/15 on the narrow corpus to 15/15 on the wide one — a clean-looking gain. Three runs on the *same* corpus then produced **15, 14, 15**.
+
+The difference was inside the run-to-run spread. Without that sentence written before the run, it would have been reported as a win for widening the corpus. **The output of the round was therefore a property, not a number**: the second judgement varies by at least 1 in 15 under identical conditions, and the first does not vary at all — so one is quotable from a single run and the other is not.
+
+### A page cannot drift on code nobody told it about
+
+**2026-09-06** · `guard: anchor the code behind four claims the public page does not make yet`
+
+Checking the public pages against the code they describe found **no false claim** — the page never states pool sizes, so a change to one falsified nothing, and a fix to a leaking document title made its security claim more true rather than less.
+
+What it found was omission. Four capabilities shipped and appear on neither the English nor the Korean page: fetching a correcting document so the corrected one stops winning, fetching a design and its implementation plan together, putting the code's value beside the document's, and reading more than one corpus. Three of them are the exact switches a deployment check pins as **on**, with their measured effects written beside them.
+
+They were never forced into view because the code behind them was not among that page's anchors. Registered now — and only on the pages that describe them, since anchoring code a page does not mention teaches people to ignore the signal.
+
+⚠ One limit is now recorded next to the number it qualifies: **the drift count does not know why a document was edited.** A terminology sweep resets it to zero. The Korean page was showing 7 against the English page's 17 while carrying identical content, because its last edit changed a single word.
+
+## What September adds to the log
+
+August's lesson was that the instrument was wrong more often than the system. September's is narrower and, for anyone operating one of these, more useful: **the instrument was right every time, and the reading of it was wrong.**
+
+Every verdict this month was accurate as a statement about a state. Every wrong conclusion came from treating that state as if it named a cause. The defences that actually worked were not better instruments — they were a pre-registration written before the run, a rule that counts open items rather than describing them, and the habit of breaking a check on purpose to see whether it goes red.
+
+⚠ And the same period shows the shape of what is *not* here. Against a published list of ten RAG failure modes, this system's diagnostic questions cover six. The four they miss — retrieval timing, context position bias, retrieval-generation model mismatch, recursive retrieval loops — are missing for one reason: **this system has none of those components.** Not having met a failure is not the same as knowing it cannot happen.
