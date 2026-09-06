@@ -354,11 +354,15 @@ async def _run(args) -> int:
                 print("  답변 자리에는 근거 원문이 들어가므로 사실 검사가 거저 통과한다.")
                 print(f"  받은 것: {ans.answer[:80]}…")
                 return 1
+            # **LLM 이 본 그 문자열**을 채점기에 같이 넘긴다 — 못 낸 사실이 근거에 있었는지가
+            # 검색 결함과 서술 결함을 가르는 유일한 재료다(감사 B3). 패킷 필드를 골라 다시
+            # 조립하면 프롬프트에 없던 것을 근거로 세게 되므로 프로덕션과 같은 함수를 쓴다.
+            evidence_text = format_for_llm(packet)
             s = score_answer(q["id"], ans.answer, ans.citations,
                              {titles[g] for g in q["gold"]}, q.get("must_contain") or [],
                              abstained=ans.abstained, llm_failed=ans.llm_failed,
                              not_gold_titles={titles[g] for g in q.get("not_gold") or []},
-                             known_titles=known_titles)
+                             known_titles=known_titles, evidence_text=evidence_text)
             scores.append(s)
 
             # ── 축 1: 근거가 충분했는가 ────────────────────────────────────
@@ -367,17 +371,21 @@ async def _run(args) -> int:
             # 판정자는 답변을 보지 않는다 — 질의와 근거만 본다(nexus/llm/sufficiency.py).
             if args.sufficiency:
                 from nexus.llm.sufficiency import judge
-                v = await judge(q["query"], format_for_llm(packet), llm)
+                v = await judge(q["query"], evidence_text, llm)
                 spend.add(None, kind="sufficiency")
                 sufficiency[q["id"]] = v.label.value
 
             rows.append({"qid": q["id"], "grounded": s.grounded, "cites_gold": s.cites_gold,
-                         "facts": s.facts, "outcome": s.outcome, "refused": s.refused,
+                         "facts": s.facts, "facts_in_evidence": s.facts_in_evidence,
+                         "verdict": s.verdict, "outcome": s.outcome, "refused": s.refused,
                          "sufficiency": sufficiency.get(q["id"]), "answer": ans.answer})
             mark = "OK " if s.ok else "   "
+            # 귀속은 **떨어진 줄에만** 붙인다 — 통과한 줄에 `귀속=pass` 를 달면 눈이 그 열을
+            # 읽지 않게 되고, 이 열이 존재하는 이유는 실패를 어디로 보낼지 정하는 것뿐이다.
+            where = "" if s.verdict in ("pass", "no_groups", "") else f"  귀속={s.verdict}"
             print(f"{mark} {q['id']:12s} 근거{'✓' if s.grounded else '✗'} "
                   f"정답문서{'✓' if s.cites_gold else '✗'} 사실{'✓' if s.has_facts else '✗'}"
-                  f"  인용 {s.n_citations}")
+                  f"  인용 {s.n_citations}{where}")
 
         # ── 대조군: 코퍼스가 답을 못 가진 질의에서 답변자는 거절해야 한다 ──────
         # 이 실험군이 없으면 기권 탐지기에는 **양성 대조군이 없다**. 라벨엔 5건이 일주일째 있었고
