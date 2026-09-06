@@ -53,6 +53,10 @@ docs:
   - doc: nexus/CLAUDE.md
     sources:
       - nexus/scripts/ko_eval_answer_quality.py
+      # 2026-09-05 신설 이음매 셋. 지도에 줄을 더하면 앵커도 같이 더한다 —
+      # 그물은 등록된 것만 지키고, 등록을 빼먹으면 지도가 조용히 낡는다.
+      - nexus/nexus/search/format_compliance.py
+      - nexus/scripts/ko_eval_corpus_reach.py
       - nexus/nexus/search/hybrid.py
       - nexus/nexus/providers/embedding.py
       - nexus/nexus/providers/llm.py
