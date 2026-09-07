@@ -1056,7 +1056,9 @@ The difference was inside the run-to-run spread. Without that sentence written b
 
 Checking the public pages against the code they describe found **no false claim** — the page never states pool sizes, so a change to one falsified nothing, and a fix to a leaking document title made its security claim more true rather than less.
 
-What it found was omission. Four capabilities shipped and appear on neither the English nor the Korean page: fetching a correcting document so the corrected one stops winning, fetching a design and its implementation plan together, putting the code's value beside the document's, and reading more than one corpus. Three of them are the exact switches a deployment check pins as **on**, with their measured effects written beside them.
+What it found was omission. Four capabilities shipped and appear on neither the English nor the Korean page: fetching a correcting document so the corrected one stops winning, fetching a design and its implementation plan together, putting the code's value beside the document's, and reading more than one corpus. Three of them are configuration switches whose code default is off, each with its measured effect written beside it.
+
+⛔ **Correction (2026-09-07).** The sentence above said three of them were *the exact switches a deployment check pins as on*. **Two are.** The deployment check pins three switches, but one of those is section fill, which the page already describes and which is not among the four; the third missing capability is a switch nobody pins. It was caught while writing the page text these anchors were registered for — and the tempting repair was to add the unpinned switch to the check, which would have made the published sentence true by changing the world to fit it. Filed as an open item instead, to be decided on its own merits.
 
 They were never forced into view because the code behind them was not among that page's anchors. Registered now — and only on the pages that describe them, since anchoring code a page does not mention teaches people to ignore the signal.
 
