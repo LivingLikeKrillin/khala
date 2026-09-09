@@ -56,7 +56,7 @@ def build_agent_card(cfg: A2AConfig) -> dict:
             "provenance + confidence. Never asserts ungrounded claims."
         ),
         tags=[
-            "rag", "graphrag", "grounded", "evidence-bound",
+            "rag", "grounded", "evidence-bound",
             "server-enforced-clearance", "korean",
         ],
         examples=["결제 서비스가 발행하는 토픽이 뭐야?"],

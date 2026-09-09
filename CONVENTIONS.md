@@ -8,8 +8,8 @@ across the ecosystem.
 
 - **Khala = the ecosystem** — the umbrella over all the tools, the shared link
   through which they connect. "Khala" is never a single runnable component.
-- **Nexus = the knowledge-base component** — one of the tools (Enterprise RAG +
-  GraphRAG), the grounded body the others read from and write to.
+- **Nexus = the knowledge-base component** — one of the tools (grounded
+  enterprise RAG), the grounded body the others read from and write to.
 
 Do not use "Khala" to mean the knowledge base, and do not use "Nexus" to mean the
 ecosystem. When in doubt: Khala is the alliance, Nexus is a member.

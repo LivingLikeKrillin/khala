@@ -13,7 +13,7 @@
 <h1 align="center">Nexus</h1>
 
 <p align="center">
-  <strong>Enterprise RAG + GraphRAG for Grounded Knowledge Retrieval</strong><br/>
+  <strong>Grounded Enterprise RAG for Knowledge Retrieval</strong><br/>
   문서 기반 설계와 OTel 기반 관측을 결합하여, 근거 있는 답변만 제공하는 지식 검색 시스템
 </p>
 
