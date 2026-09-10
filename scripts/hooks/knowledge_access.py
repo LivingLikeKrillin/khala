@@ -47,15 +47,65 @@ _MARKERS = ("nexus.cli", "nexus query", "nexus_search", "nexus_answer",
 
 
 def _root() -> str:
+    """이 훅이 도는 체크아웃의 루트."""
     import os
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_HERE))))
+
+
+def main_checkout(root: str | None = None) -> str:
+    """기록이 사는 곳 — **워크트리가 아니라 리포 하나에 하나**다.
+
+    ⛔ **왜 (실측 2026-09-11).** `_root()` 는 훅 파일 기준으로 세 단계 위라 워크트리에서는
+    워크트리 루트를 낸다. 그래서 `.khala/` 가 워크트리마다 따로 생겼고, 그날 기록은 셋으로
+    갈려 있었다 — 워크트리 97 · 15, 메인 157. `--report` 를 어디서 돌리느냐에 따라
+    **0.08 이거나 0.21** 이 찍혔고, 둘 다 조각인데 둘 다 전체인 것처럼 보였다. 메인 기록은
+    2026-09-02 에서 멈춰 있었다 — 작업이 워크트리로 옮겨간 날 **회계가 조용히 따라 갈렸다.**
+
+    워크트리의 `.git` 은 디렉터리가 아니라 `gitdir: <메인>/.git/worktrees/<이름>` 한 줄이
+    든 **파일**이다. 그 줄에서 `/worktrees/` 앞을 끊으면 메인의 `.git` 이고, 그 부모가
+    메인 체크아웃이다. git 을 부르지 않는다 — 이 훅은 모든 도구 호출 앞에 선다.
+    """
+    import os
+    root = root or _root()
+    dot = os.path.join(root, ".git")
+    if not os.path.isfile(dot):
+        return root                      # 메인 체크아웃이거나 git 이 아니다
+    try:
+        with open(dot, encoding="utf-8") as f:
+            line = f.read().strip()
+    except OSError:
+        return root
+    if not line.startswith("gitdir:"):
+        return root
+    gitdir = line.split(":", 1)[1].strip().replace("\\", "/")
+    marker = "/.git/worktrees/"
+    if marker not in gitdir:
+        return root                      # 모르는 모양이면 건드리지 않는다
+    return os.path.normpath(gitdir[:gitdir.index(marker)])
 
 
 def _log_path():
     if LOG is not None:
         return LOG
     import os
-    return os.path.join(_root(), ".khala", "knowledge-access.jsonl")
+    return os.path.join(main_checkout(), ".khala", "knowledge-access.jsonl")
+
+
+def stray_logs(main: str) -> list[str]:
+    """옛 판이 워크트리에 남긴 기록 파일.
+
+    ⛔ **옮기지 않는다.** 그 줄들은 진짜 기록이고, 파일을 합치면 되돌릴 수 없다.
+    쓰기는 이제 한 곳으로 가고, **읽기가 흩어진 것을 마저 읽는다.** 워크트리를 지워도
+    남은 것만 세어지므로 수가 조용히 줄지 않는다 — 없어진 파일은 없어진 것으로 드러난다.
+    """
+    import glob
+    import os
+    #: ⛔ 경로를 그대로 넣으면 안 된다 (실측 2026-09-11). 이 리포가 사는 디렉터리 이름에
+    #: `[...]` 가 들어 있고 `glob` 은 그것을 **문자 클래스로 읽는다** — 첫 판이 그래서
+    #: 흩어진 기록 112줄을 하나도 못 찾고 조용히 빈 목록을 냈다. 찾는 자리만 `*` 다.
+    pattern = os.path.join(glob.escape(main), ".claude", "worktrees", "*",
+                           glob.escape(".khala"), glob.escape("knowledge-access.jsonl"))
+    return sorted(p for p in glob.glob(pattern) if os.path.isfile(p))
 
 
 def _squash(text: str) -> str:
@@ -198,7 +248,12 @@ def _say(line: str) -> None:
     try:
         print(line)
     except UnicodeEncodeError:
+        #: ⛔ 먼저 비운다 (실측 2026-09-11). 바이트를 바로 쓰면 텍스트 계층에 남아 있던
+        #: 줄보다 **먼저 나가서 순서가 뒤집힌다** — cp949 로 찍히는 줄과 안 찍히는 줄이
+        #: 섞이면 보고서가 거꾸로 읽힌다.
+        sys.stdout.flush()
         sys.stdout.buffer.write(line.encode("utf-8", "replace") + b"\n")
+        sys.stdout.buffer.flush()
 
 
 def report() -> int:
@@ -210,11 +265,29 @@ def report() -> int:
     import os
 
     path = _log_path()
-    if not os.path.exists(path):
+    #: ⛔ 흩어진 것을 마저 읽는다. 한 곳만 읽으면 조각을 전체로 보고한다 — 2026-09-11 에
+    #: 실제로 그랬다(같은 리포에서 0.08 과 0.21).
+    files = [path] + ([] if LOG is not None else stray_logs(main_checkout()))
+    files = [f for f in files if os.path.exists(f)]
+    if not files:
         _say("기록 없음 — 훅이 아직 한 번도 안 걸렸다 (또는 조직 지식을 안 꺼냈다)")
         return 0
-    with open(path, encoding="utf-8") as f:
-        rows = [json.loads(ln) for ln in f.read().splitlines() if ln.strip()]
+    rows = []
+    for f_path in files:
+        with open(f_path, encoding="utf-8") as f:
+            rows += [json.loads(ln) for ln in f.read().splitlines() if ln.strip()]
+    #: 같은 초에 같은 명령이 두 파일에 있으면 한 번만 센다. 옛 판이 갈라 쓰는 동안
+    #: 겹칠 일은 없었지만, 겹쳐도 분모가 부풀지 않게 둔다.
+    seen, unique = set(), []
+    for r in rows:
+        key = (r.get("ts"), r.get("cmd_sha"), r.get("kind"))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(r)
+    rows = sorted(unique, key=lambda r: r.get("ts") or "")
+    if len(files) > 1:
+        _say(f"  기록 파일 {len(files)}개를 합쳐 센다 (옛 판이 워크트리마다 따로 썼다)")
     khala = sum(1 for r in rows if r["kind"] == "khala")
     bypass = sum(1 for r in rows if r["kind"] == "bypass")
     n = khala + bypass
