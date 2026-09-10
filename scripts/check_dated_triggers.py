@@ -31,16 +31,30 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SPECS = ROOT / "specs"
 OPEN_MD = ROOT / "OPEN.md"
 
-#: `- <SPEC 이름> — YYYY-MM-DD — <그날 무엇을 하는가>`
-DECLARED = re.compile(r"^-\s+`(SPEC-[a-z0-9-]+)`\s+—\s+(20\d\d-\d\d-\d\d)\s+—\s+(\S.*)$")
+#: `- <SPEC 이름 또는 항목 번호> — YYYY-MM-DD — <그날 무엇을 하는가>`
+#:
+#: ⛔ **항목 번호도 받는다 (실측 2026-09-11).** §1·§2 의 트리거 칸에도 날짜가 박힌 것이
+#: 있는데(H3 2026-11-12 · H10 2026-11-10) 아무것도 그 날짜를 안 보고 있었다.
+#: `check_open_counts.py` 는 `DATED` 라는 이름의 정규식을 *"그날이 오면 울린다"* 는 주석과
+#: 함께 들고 있었지만 **어디서도 쓰지 않았다** — 이름이 붙어 있어서 지켜지는 것처럼 보였다.
+DECLARED = re.compile(
+    r"^-\s+`((?:SPEC-[a-z0-9-]+)|(?:[HA]\d+))`\s+—\s+(20\d\d-\d\d-\d\d)\s+—\s+(\S.*)$")
+
+#: 항목 번호의 트리거 칸. 마지막 칸이 트리거다.
+ITEM_ROW = re.compile(r"^\|\s*(~~)?([HA]\d+)~*\s*\|.*\|([^|]*)\|\s*$")
 
 SECTION = re.compile(r"^##\s+\d+\.\s+(Open items|Open questions|미해결)\s*$")
 
 
-def _section_4(text: str) -> list[str]:
+#: 선언이 사는 절. §4 가 아니라 자기 절이다 — §4 의 `- \`SPEC-x\` — 어디서 세는가` 목록과
+#: 서식이 겹쳐서, 한 절에 두면 어느 쪽 검사기가 무엇을 읽는지가 서식에만 달리게 된다.
+HOME = "## 5. 달력에 걸린 트리거"
+
+
+def _home(text: str) -> list[str]:
     lines = text.splitlines()
     try:
-        i = next(n for n, ln in enumerate(lines) if ln.startswith("## 4. 조건부 잔여"))
+        i = next(n for n, ln in enumerate(lines) if ln.startswith(HOME))
     except StopIteration:
         return []
     j = next((n for n, ln in enumerate(lines) if n > i and ln.startswith("## ")), len(lines))
@@ -50,7 +64,7 @@ def _section_4(text: str) -> list[str]:
 def declared(text: str) -> list[tuple[str, dt.date, str]]:
     """§4 가 선언한 (SPEC, 날짜, 그날 할 일)."""
     out = []
-    for line in _section_4(text):
+    for line in _home(text):
         m = DECLARED.match(line.strip())
         if m:
             out.append((m.group(1), dt.date.fromisoformat(m.group(2)), m.group(3).strip()))
@@ -71,15 +85,34 @@ def open_section_of(spec: str) -> str | None:
     return "\n".join(lines[i:j])
 
 
+def trigger_cell(text: str, item: str) -> str | None:
+    """`OPEN.md` 그 항목의 트리거 칸. 항목이 없으면 None."""
+    for line in text.splitlines():
+        m = ITEM_ROW.match(line)
+        if m and m.group(2) == item:
+            return m.group(3)
+    return None
+
+
 def unanchored(text: str) -> list[str]:
-    """선언했는데 그 SPEC 본문에 그 날짜가 없는 것. **판정 자격이 없다는 뜻이다.**"""
+    """선언했는데 원본에 그 날짜가 없는 것. **판정 자격이 없다는 뜻이다.**
+
+    원본은 둘 중 하나다 — SPEC 의 미해결 절이거나, `OPEN.md` 그 항목의 트리거 칸이거나.
+    """
     out = []
-    for spec, when, _ in declared(text):
-        body = open_section_of(spec)
+    for name, when, _ in declared(text):
+        if name.startswith("SPEC-"):
+            body = open_section_of(name)
+            where = "그 SPEC 미해결 절"
+            missing = "미해결 절을 못 찾았다"
+        else:
+            body = trigger_cell(text, name)
+            where = "그 항목의 트리거 칸"
+            missing = "그 번호의 행을 못 찾았다"
         if body is None:
-            out.append(f"{spec}: 미해결 절을 못 찾았다")
+            out.append(f"{name}: {missing}")
         elif when.isoformat() not in body:
-            out.append(f"{spec}: 선언한 {when.isoformat()} 이 그 SPEC 미해결 절에 없다")
+            out.append(f"{name}: 선언한 {when.isoformat()} 이 {where}에 없다")
     return out
 
 

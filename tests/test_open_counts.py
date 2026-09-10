@@ -13,7 +13,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from check_open_counts import claimed, counts, problems  # noqa: E402
+from check_open_counts import claimed, counts, problems, state_of  # noqa: E402
 
 _DOC = """# 열린 항목
 
@@ -88,3 +88,18 @@ def test_the_script_exits_nonzero_when_it_finds_something(tmp_path, monkeypatch)
     out = subprocess.run([sys.executable, "scripts/check_open_counts.py"],
                          cwd=str(ROOT), capture_output=True)
     assert out.returncode == 0, out.stdout.decode("utf-8", "replace")
+
+
+def test_a_cell_that_says_it_fired_is_waiting():
+    """⛔ 실제로 난 사고 (2026-09-11) — A21 의 트리거 칸이 2026-08-30 부터
+    *"트리거가 두 번 울렸다"* 라고 적고 있었는데 `조건` 으로 세어졌다. 판정이 트리거
+    문자열만 보는 것은 맞지만, **그 문자열이 울렸다고 말하는데 안 읽으면** 대기/조건은
+    사실이 아니라 문장의 서식을 세는 것이다."""
+    assert state_of("⚠ 확인 2026-08-30: **트리거가 두 번 울렸다**(#330 · #346)") == "대기"
+
+
+def test_a_conditional_cell_is_still_conditional():
+    """대조군 — 그 말을 넣어 모든 칸이 대기가 되면 구분 자체가 없어진다."""
+    assert state_of("다음 저술 라운드") == "조건"
+    assert state_of("두 번째 조직") == "조건"
+    assert state_of("—") == "조건"
