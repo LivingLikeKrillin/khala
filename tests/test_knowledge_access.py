@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "hooks"))
 
 import knowledge_access  # noqa: E402
-from knowledge_access import classify, host_code_tree  # noqa: E402
+from knowledge_access import classify, host_code_tree, strip_data_payloads  # noqa: E402
 
 
 def test_the_khala_door_is_counted_as_the_door():
@@ -293,3 +293,46 @@ def test_an_ascii_command_still_counts_in_the_same_process(tmp_path):
 
     assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
     assert [r["kind"] for r in rows] == ["bypass"]
+
+# ── A21: 문을 *언급한* 글과 문을 *지난* 행위 ──────────────────────────────────
+
+_TREE = "C:/labs/team-platform"
+
+
+def test_writing_the_marker_into_a_file_is_not_an_access():
+    """⛔ 실제로 난 사고 (A21, 확인 2026-08-27) — 이 훅 자신의 표식을 파일에 써 넣는
+    명령이 우회 1건으로 세어졌다. 검색 패턴은 이미 안 읽는데 heredoc 은 명령 본문에
+    그 글이 실려 온다."""
+    cmd = "cat > note.md <<'EOF'\n우회는 /code-src 를 직접 뒤지는 것이다\nEOF"
+    assert classify(cmd, code_src=_TREE) is None
+
+
+def test_writing_the_door_name_into_a_file_is_not_an_access_either():
+    """분자 쪽도 같다. 이쪽으로 틀리면 비율이 **좋은 방향으로** 거짓이 된다."""
+    cmd = "cat > doc.md <<'EOF'\ndocker exec nexus-app python -m nexus.cli query 'x'\nEOF"
+    assert classify(cmd, code_src=_TREE) is None
+
+
+def test_a_powershell_here_string_is_written_text_too():
+    cmd = "Set-Content f.md @'\n/code-src 를 뒤진다\n'@"
+    assert classify(cmd, code_src=_TREE) is None
+
+
+def test_a_heredoc_an_interpreter_eats_is_still_counted():
+    """⚠ **대조군 — 분모를 줄이는 쪽으로 틀리면 안 된다.** heredoc 을 통째로 덜어내면
+    이건 안 세어지고, 우회를 숨기면 비율이 좋아 보인다. 이 파일이 경계하는 방향이다."""
+    assert classify("bash <<'EOF'\npsql -d nexus -c 'select 1'\nEOF") == "bypass"
+    assert classify("python <<'EOF'\nprint(open('/code-src/a').read())\nEOF") == "bypass"
+
+
+def test_quotes_are_not_stripped():
+    """⛔ 따옴표 안까지 벗기면 진짜 접근이 안 세어진다."""
+    assert classify('grep -rn X "C:/labs/team-platform/src"', code_src=_TREE) == "bypass"
+
+
+def test_an_ordinary_command_is_untouched_by_the_stripper():
+    """대조군 — 덜어내기가 평범한 명령을 갉으면 그 뒤의 모든 판정이 흔들린다."""
+    for cmd in ("psql -d nexus -c 'select 1'",
+                "docker exec nexus-app python -m nexus.cli query '정책'",
+                "grep -rn 'hybrid' nexus/nexus/search/hybrid.py"):
+        assert strip_data_payloads(cmd) == cmd

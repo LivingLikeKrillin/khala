@@ -13,7 +13,9 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from check_open_counts import claimed, counts, problems, state_of  # noqa: E402
+from check_open_counts import (  # noqa: E402
+    claimed, counts, problems, ragged, rows, state_of,
+)
 
 _DOC = """# 열린 항목
 
@@ -103,3 +105,58 @@ def test_a_conditional_cell_is_still_conditional():
     assert state_of("다음 저술 라운드") == "조건"
     assert state_of("두 번째 조직") == "조건"
     assert state_of("—") == "조건"
+
+
+# ── 표의 모양 ────────────────────────────────────────────────────────────────
+
+_GOOD = "| A1 | 본문 | 트리거 |"
+_EXTRA = "| A2 | 본문 | 트리거 | 안 그려지는 넷째 칸 |"
+_UNCLOSED = "| A3 | 본문 | 트리거 | 표 밖으로 흐른 글"
+_RAWPIPE = "| A4 | 본문에 `env | grep` 이 있다 | 트리거 |"
+_ESCAPED = "| A5 | 본문에 `env \\| grep` 이 있다 | 트리거 |"
+
+
+def _sec2(*lines):
+    return "## 2. 내가 할 수 있는 것 (1)\n" + "\n".join(lines) + "\n## 3. 결정\n"
+
+
+def test_a_fourth_column_is_caught():
+    """⛔ 실제로 난 사고 (2026-09-11) — 항목 행 111개 중 넷이 3칸이 아니었다.
+    마크다운은 머리글보다 많은 칸을 **말없이 버리므로** 그 글은 파일에만 있고 화면에는
+    없었다. A18 의 넷째 칸에는 *트리거가 울렸지만 이 항목은 물지 않는다* 는 판단이
+    들어 있었고, 그것을 읽은 사람이 없었다."""
+    assert ragged(_sec2(_EXTRA))
+    assert not ragged(_sec2(_GOOD))
+
+
+def test_a_row_that_never_closes_is_caught():
+    """닫는 파이프가 없으면 마지막 칸 뒤의 글이 표 밖으로 흐른다(H4 · A18 이 그랬다)."""
+    assert ragged(_sec2(_UNCLOSED))
+
+
+def test_an_unescaped_pipe_in_the_body_is_caught():
+    """H27 의 본문에 `env | grep` 이 그대로 있어 칸이 하나 늘었고, 진짜 트리거
+    `즉시` 가 넷째 칸으로 밀려 화면에서 사라졌다."""
+    assert ragged(_sec2(_RAWPIPE))
+
+
+def test_an_escaped_pipe_is_not_a_column_boundary():
+    """대조군 — 이스케이프한 파이프까지 경계로 세면 고친 행이 영원히 붉어진다."""
+    assert not ragged(_sec2(_ESCAPED))
+
+
+def test_the_trigger_is_read_from_the_last_real_column():
+    """이스케이프한 파이프가 있어도 트리거 칸을 집어야 한다 — 이 규칙이 **행마다 다른
+    칸을 집던 것**이 이번 결함의 실체다."""
+    got = [t for _, i, t in rows(_sec2(_ESCAPED)) if i == "A5"]
+    assert got and got[0].strip() == "트리거"
+
+
+def test_shape_is_checked_before_the_numbers():
+    """⛔ 모양이 어긋난 채로 수만 맞으면, 틀린 판정 위에서 대조가 맞아떨어진다."""
+    bad = problems(_sec2(_EXTRA))
+    assert any("칸이" in b for b in bad)
+
+
+def test_the_real_file_has_no_ragged_row():
+    assert ragged((ROOT / "OPEN.md").read_text(encoding="utf-8")) == []
