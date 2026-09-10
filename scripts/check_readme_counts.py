@@ -32,9 +32,15 @@ def _test_functions() -> int:
     # ⛔ `--untracked` 가 있어야 한다 (실측 2026-09-02). 없으면 `git grep` 이 **추적된 파일만**
     # 세고, 새 시험 파일을 만든 뒤 커밋 전에 돌리면 CI 와 다른 수가 나온다. 이 검사기가
     # **자기 PR 에서 그 함정에 빠졌다** — 로컬 2,585 · CI 2,592. 무시된 파일은 여전히 안 센다.
+    #
+    # ⛔ **이름 자리를 `[a-zA-Z0-9_]` 로 적으면 한국어 이름을 안 센다 (실측 2026-09-10).**
+    # POSIX ERE 의 그 문자군에는 한글이 없어서 `def test_표면이_없으면...` 은 `test_` 뒤에서
+    # 매치가 끊기고 **줄 전체가 안 세어진다**. 이 리포는 시험 이름을 한국어로 쓰는데,
+    # 그날 새 파일 하나의 15건 중 **11건이 조용히 빠졌다** — 검사기는 초록이 아니라
+    # *틀린 수*로 초록이었다. 이름은 「공백도 여는 괄호도 아닌 것 하나 이상」으로 받는다.
     out = subprocess.run(
         ["git", "grep", "--untracked", "-hoE",
-         r"^\s*(async )?def test_[a-zA-Z0-9_]+", "--", "*.py"],
+         r"^\s*(async )?def test_[^[:space:](]+", "--", "*.py"],
         cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return len([ln for ln in out.stdout.splitlines() if ln.strip()])
 
