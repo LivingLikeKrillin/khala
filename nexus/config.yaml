@@ -56,6 +56,19 @@ index:
   # 2026-08-10 에 51개 청크가 그렇게 하루를 지나갔다. 추론하지 않는 이유는 §3.3 에 있다.
   coverage_exempt_tenants: [ko_eval_arm, ko_eval_packb]
 
+  # **답변에 쓰이라고 유지하는** 코퍼스. `scripts/check_read_scope_per_surface.py` 가 이 목록의
+  # 테넌트마다 그것에 닿는 표면이 하나라도 있는지 센다.
+  #
+  # ⛔ 추론하지 않는 이유는 위와 같다. 「활성 문서가 있으니 서빙 대상이겠지」로 읽으면 평가 팩과
+  # 실험 테넌트(merge2·merge_probe·tool_probe…)가 전부 대상이 되고, 그러면 그 검사는 매번 붉고
+  # 곧 꺼진다. 코퍼스를 서빙에 올리는 것은 사람의 결정이므로 사람이 여기 적는다.
+  #
+  # ⛔ **이 줄이 없어서 무엇을 놓쳤나 (실측 2026-09-03).** 컷오버가 `slack-bot` 하나에만 정본을
+  # 줬고 웹·CLI 는 `local-dev` 를 탄다. `design_docs` 활성 문서 122건이 사람 표면에서 근거로
+  # 나올 수 없는 상태로 지냈는데, 설정은 맞았고 검사는 초록이었다. 선언이 없으면 「빠졌다」를
+  # 표현할 방법 자체가 없다.
+  served_corpora: [default, design_docs]
+
 search:
   bm25_top_k: 25
   vector_top_k: 20
@@ -198,6 +211,18 @@ auth:
   mode: enforced
   allowed_origins:
     - "http://localhost:8000"
+
+  # **사람의 질문에 답하는** principal 들. `scripts/check_read_scope_per_surface.py` 가 이
+  # 이름들의 읽기 범위를 `index.served_corpora` 와 대조한다. 평가·실험 principal 은 여기
+  # 넣지 않는다 — 그것들의 좁은 범위는 결함이 아니라 설계다.
+  #
+  # ⛔ **코퍼스 단위로 세면 진짜 결함을 놓친다.** 「서빙 코퍼스에 닿는 표면이 하나라도
+  # 있는가」로 검사하면 2026-09-03 의 실제 상태(슬랙은 닿고 웹·CLI 는 못 닿음)가 초록으로
+  # 나온다. 그래서 표면을 이름으로 선언하고 표면마다 센다.
+  #
+  # 이 배포에 없는 이름은 건너뛴다(로컬 상자에 슬랙 토큰이 없는 것은 결함이 아니다). 다만
+  # 선언된 것이 하나도 안 떠 있으면 검사는 판정하지 않고 종료 코드 76 으로 끝난다.
+  serving_surfaces: [local-dev, slack-bot]
   principals: []
     # - name: "analyst"
     #   token_sha256: "REPLACE_ME"
