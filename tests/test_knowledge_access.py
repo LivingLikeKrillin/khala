@@ -20,7 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "hooks"))
 
 import knowledge_access  # noqa: E402
-from knowledge_access import classify, host_code_tree, strip_data_payloads  # noqa: E402
+from knowledge_access import (  # noqa: E402
+    classify, host_code_tree, main_checkout, strip_data_payloads, stray_logs,
+)
 
 
 def test_the_khala_door_is_counted_as_the_door():
@@ -336,3 +338,57 @@ def test_an_ordinary_command_is_untouched_by_the_stripper():
                 "docker exec nexus-app python -m nexus.cli query '정책'",
                 "grep -rn 'hybrid' nexus/nexus/search/hybrid.py"):
         assert strip_data_payloads(cmd) == cmd
+
+
+# ── 기록은 리포 하나에 하나다 ────────────────────────────────────────────────
+
+
+def _make_worktree(tmp_path, name="wt-1"):
+    """메인 체크아웃 하나와 그 아래 워크트리 하나를 흉내 낸다."""
+    main = tmp_path / "[projects] repo"          # 이름의 대괄호가 이 테스트의 핵심이다
+    (main / ".git").mkdir(parents=True)
+    wt = main / ".claude" / "worktrees" / name
+    wt.mkdir(parents=True)
+    (wt / ".git").write_text(
+        f"gitdir: {main.as_posix()}/.git/worktrees/{name}\n", encoding="utf-8")
+    return main, wt
+
+
+def test_a_worktree_resolves_to_the_main_checkout(tmp_path):
+    """⛔ 실제로 난 사고 (2026-09-11) — 기록이 워크트리마다 따로 생겨 셋으로 갈렸고,
+    `--report` 를 어디서 돌리느냐에 따라 0.08 이거나 0.21 이 찍혔다. 둘 다 조각인데
+    둘 다 전체인 것처럼 보였다."""
+    main, wt = _make_worktree(tmp_path)
+    assert Path(main_checkout(str(wt))) == main
+
+
+def test_the_main_checkout_resolves_to_itself(tmp_path):
+    """대조군 — 메인에서 돌 때 엉뚱한 곳을 가리키면 기록이 통째로 옮겨간다."""
+    main, _ = _make_worktree(tmp_path)
+    assert Path(main_checkout(str(main))) == main
+
+
+def test_an_unknown_gitdir_shape_is_left_alone(tmp_path):
+    """모르는 모양이면 건드리지 않는다 — 추측해서 옮기면 기록이 사라진 것처럼 보인다."""
+    root = tmp_path / "plain"
+    root.mkdir()
+    (root / ".git").write_text("gitdir: /somewhere/else\n", encoding="utf-8")
+    assert Path(main_checkout(str(root))) == root
+
+
+def test_stray_logs_are_found_even_when_the_path_has_brackets(tmp_path):
+    """⛔ 실제로 난 사고 (2026-09-11) — 이 리포가 사는 디렉터리 이름에 `[...]` 가 있고
+    `glob` 은 그것을 **문자 클래스로 읽는다.** 첫 판이 그래서 흩어진 112줄을 하나도 못
+    찾고 조용히 빈 목록을 냈다 — 빈 목록은 "없다" 가 아니라 "못 찾았다" 였다."""
+    main, wt = _make_worktree(tmp_path)
+    log = wt / ".khala" / "knowledge-access.jsonl"
+    log.parent.mkdir(parents=True)
+    log.write_text('{"ts": "2026-09-01T00:00:00+00:00", "kind": "khala", "cmd_sha": "a"}\n',
+                   encoding="utf-8")
+    found = stray_logs(str(main))
+    assert [Path(f) for f in found] == [log], found
+
+
+def test_no_worktrees_is_an_empty_list_not_an_error(tmp_path):
+    main, _ = _make_worktree(tmp_path)
+    assert stray_logs(str(main)) == []
