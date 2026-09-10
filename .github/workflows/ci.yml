@@ -136,6 +136,15 @@ jobs:
       - name: That check has teeth (drift, thousands separator, missing sentence)
         run: python -m pytest tests/test_readme_counts.py -q
 
+      # 그 둘은 §1·§2 를 센다. §4(조건부 잔여)의 수는 표에 손으로 적은 SPEC 목록에서만 나와서,
+      # 새 SPEC 이 미해결 절을 달고 표에 안 들어가면 그 항목들은 어디에도 안 세어진다.
+      # 2026-09-10 에 실제로 하나가 그렇게 빠져 있었다. 항목이 아니라 **집합**을 검사한다 —
+      # 항목마다 표식을 달려면 승인 시점 바이트로 얼어 있는 SPEC 본문을 고쳐야 한다(A37).
+      - name: OPEN.md §4 counts every spec that carries open items
+        run: python scripts/check_conditional_scope.py
+      - name: That check has teeth (all three heading forms, both directions, empty set)
+        run: python -m pytest tests/test_conditional_scope.py -q
+
       # 그 검사는 `.md` diff 만 본다. 규칙을 넣은 당일부터 어긴 자리는 diff 가 아니라
       # **에이전트의 보고 문장**이었고, 거기에는 아무 검사도 없었다. `Stop` 훅이 그 문을 단다.
       - name: The same rule, applied to what the agent says (Stop hook)
