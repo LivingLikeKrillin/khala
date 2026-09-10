@@ -25,7 +25,7 @@ NEXUS_API_URL = os.getenv("NEXUS_API_URL", "http://localhost:8000")
 
 mcp = MCPServer(
     "Nexus",
-    instructions="Enterprise RAG + GraphRAG — 조직 내부 지식과 운영 사실 기반 검색·추론",
+    instructions="근거 기반 사내 지식 검색 — 조직 내부 지식과 운영 사실 기반 검색·추론",
 )
 
 

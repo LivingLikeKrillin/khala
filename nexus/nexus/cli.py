@@ -22,7 +22,7 @@ if sys.platform == "win32":
 
 app = typer.Typer(
     name="nexus",
-    help="Nexus — Enterprise RAG + GraphRAG CLI",
+    help="Nexus — grounded enterprise RAG CLI",
     no_args_is_help=True,
 )
 
