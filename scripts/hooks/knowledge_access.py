@@ -124,6 +124,48 @@ def _same_tree(cmd: str, tree: str) -> bool:
     return norm(tree) in norm(cmd)
 
 
+#: heredoc 을 **먹는** 명령. 이 낱말이 여는 줄에 있으면 본문은 데이터가 아니라 실행이다.
+_INTERPRETERS = ("sh", "bash", "zsh", "dash", "ksh", "python", "python3", "node",
+                 "ruby", "perl", "psql", "mysql", "sqlite3", "ssh", "docker")
+
+
+def strip_data_payloads(cmd: str) -> str:
+    """명령이 **써 넣는 글**을 덜어낸다. 실행되는 부분만 남긴다.
+
+    ⛔ **왜 (A21, 확인 2026-08-27).** 이 훅 자신의 표식 문자열을 파일에 써 넣는 명령이
+    우회 1건으로 세어졌다. 검색 **패턴**은 이미 안 읽는데(`_subject`), 셸 heredoc 은
+    명령 본문에 그 글이 실려 오므로 같은 구멍이 남아 있었다.
+
+    ⚠ **분모를 줄이는 쪽으로 틀리면 안 된다.** 우회를 숨기면 비율이 좋아 보이고, 이 파일이
+    경계하는 실패가 정확히 그 방향이다. 그래서 heredoc 본문은 **여는 줄이 그것을 먹는
+    명령일 때 그대로 둔다** — `bash <<EOF … psql nexus … EOF` 는 진짜 우회다.
+
+    ⛔ 따옴표 안까지 덜어내지는 않는다. `psql -c "select … nexus"` 는 진짜 접근이고,
+    거기까지 벗기면 세어야 할 것이 안 세어진다.
+    """
+    import re
+
+    out, lines, i = [], cmd.split("\n"), 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        m = re.search(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1", line)
+        if m:
+            head = re.split(r"<<", line, maxsplit=1)[0]
+            eats = any(re.search(rf"(^|[\s/\\]){w}(\s|$)", head) for w in _INTERPRETERS)
+            delim, i = m.group(2), i + 1
+            while i < len(lines) and lines[i].strip() != delim:
+                if eats:
+                    out.append(lines[i])
+                i += 1
+            if i < len(lines):
+                out.append(lines[i])
+        i += 1
+    text = "\n".join(out)
+    #: PowerShell 의 here-string. 같은 이유로 덜어낸다.
+    return re.sub(r"@(['\"])[\s\S]*?\1@", " ", text)
+
+
 def classify(cmd: str, code_src: str | None = None) -> str | None:
     """`code_src` = **호스트에서의** 팀 코드 트리 경로.
 
@@ -134,6 +176,9 @@ def classify(cmd: str, code_src: str | None = None) -> str | None:
     if not cmd:
         return None
     import re
+
+    #: 써 넣는 글은 문을 지난 것이 아니다 — 분자 쪽도 마찬가지다.
+    cmd = strip_data_payloads(cmd)
 
     #: khala 를 통해 간 것. CLI·MCP·HTTP 어느 문이든 이 이름을 지난다.
     if re.search(r"nexus\.cli\s+query|nexus\s+query|nexus_search|nexus_answer|/search/answer",
