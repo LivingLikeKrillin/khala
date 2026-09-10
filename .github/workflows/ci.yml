@@ -145,6 +145,14 @@ jobs:
       - name: That check has teeth (all three heading forms, both directions, empty set)
         run: python -m pytest tests/test_conditional_scope.py -q
 
+      # 울린 트리거를 놓친 적이 있다 — 2026-08-15 훑기가 H7 을 그렇게 찾아냈다(트리거가
+      # "승인 직후" 였고 승인은 이미 지나 있었다). 사람이 다시 읽어야만 보이는 트리거는
+      # 읽을 때까지 안 울린 것과 구별되지 않는다. 날짜로 울리는 것은 기계가 대신 본다.
+      - name: No calendar trigger has fired unnoticed
+        run: python scripts/check_dated_triggers.py
+      - name: That check has teeth (the day itself, the day before, an unanchored date)
+        run: python -m pytest tests/test_dated_triggers.py -q
+
       # 그 검사는 `.md` diff 만 본다. 규칙을 넣은 당일부터 어긴 자리는 diff 가 아니라
       # **에이전트의 보고 문장**이었고, 거기에는 아무 검사도 없었다. `Stop` 훅이 그 문을 단다.
       - name: The same rule, applied to what the agent says (Stop hook)
