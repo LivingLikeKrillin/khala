@@ -44,6 +44,7 @@ from nexus.providers.llm import LLMService
 from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.anchor_status import summarize as _anchor_summary
+from nexus.search.provenance import mark as _tier_mark
 from nexus.search.evidence_packet import format_for_llm
 from nexus.search.evidence_share import counts as evidence_counts
 from nexus.search.reconcile import packet_for_answer
@@ -1123,6 +1124,12 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     "score": s.score,
                     "doc_type": s.doc_type,
                     "provenance_tier": getattr(s, "provenance_tier", "authored"),
+                    # 등급을 **말로 바꾼 것**도 같이 보낸다. ADR-0010 hop 5 는 API 응답을
+                    # "and thereby the web client" 라고 적었는데 그 thereby 가 성립하지
+                    # 않았다 — 웹도 슬랙도 등급을 받고도 안 그렸다. 표현계층이 어휘를
+                    # 지어내면 표면마다 다른 말이 되므로(`search/provenance.py` 머리말)
+                    # 문자열은 여기서 만들어 보낸다.
+                    "provenance_mark": _tier_mark(getattr(s, "provenance_tier", "authored")),
                     # 스트리밍도 같은 사실을 낸다 — 표면마다 다른 근거를 보이면 안 된다.
                     "code_anchors": _anchor_summary(getattr(s, "code_anchors", []),
                                                     getattr(s, "code_deleted", []),
