@@ -85,6 +85,67 @@ class TestRelationExtraction:
         assert len(candidates) == 0
 
 
+class TestRelationDirection:
+    """방향은 **문장**이 정한다.
+
+    ⛔ **왜 있나 (실측 2026-09-11).** 위 `TestRelationExtraction` 넷은 `edge_type` 과 개수만
+    단언한다. 방향을 묻는 검사가 하나도 없어서, 방향을 정하는 것이 문장이 아니라 **엔티티
+    이름의 길이**라는 사실이 초록 아래에 그대로 살아 있었다(`_build_entity_patterns` 가 긴
+    패턴부터 정렬하고 `find_entities_in_text` 가 그 순서로 돌려줬다).
+
+    ⭐ 아래 `test_the_opposite_sentence_gives_the_opposite_edge` 가 이 묶음의 대조군이다.
+    한 문장만 보면 어떤 규칙이든 절반은 맞으므로 **뒤집은 문장과 나란히** 물어야 한다.
+    """
+
+    def test_direction_follows_the_sentence(self):
+        """⚠ 별칭을 **길이가 다른 것**으로 고른다.
+
+        처음에는 `결제 서비스가 알림 서비스를…` 로 썼는데 두 별칭의 길이가 같아,
+        정렬을 빼도 원래 목록 순서 덕에 우연히 통과했다. 이름이 긴 쪽(`결제 서비스`)이
+        문장에서 **뒤에** 오게 두어야 이 검사가 무언가를 묻는다.
+        """
+        patterns = _build_entity_patterns(SAMPLE_ENTITIES)
+        text = "알림서비스가 결제 서비스를 호출한다."
+        candidates = extract_relations(text, "chunk_dir_1", patterns, SAMPLE_TRIGGERS)
+        calls = [c for c in candidates if c.edge_type == "CALLS"]
+        assert calls, "CALLS 후보가 없다"
+        assert calls[0].from_entity == "notification-service"
+        assert calls[0].to_entity == "payment-service"
+
+    def test_the_opposite_sentence_gives_the_opposite_edge(self):
+        """뒤집은 문장은 뒤집힌 엣지를 내야 한다 — 같으면 문장을 안 읽고 있는 것이다."""
+        patterns = _build_entity_patterns(SAMPLE_ENTITIES)
+
+        def one_call(text: str) -> tuple[str, str]:
+            cands = extract_relations(text, "chunk_dir_2", patterns, SAMPLE_TRIGGERS)
+            calls = [c for c in cands if c.edge_type == "CALLS"]
+            assert calls, f"CALLS 후보가 없다: {text}"
+            return calls[0].from_entity, calls[0].to_entity
+
+        forward = one_call("payment-service 가 notification-service 를 호출한다")
+        backward = one_call("notification-service 가 payment-service 를 호출한다")
+
+        assert forward == ("payment-service", "notification-service")
+        assert backward == ("notification-service", "payment-service")
+        assert forward != backward, "정반대 문장 둘이 같은 엣지를 냈다"
+
+    def test_matches_come_back_in_text_order(self):
+        """`notification-service` 는 이름이 더 길다. 뒤에 나오면 뒤에 와야 한다."""
+        patterns = _build_entity_patterns(SAMPLE_ENTITIES)
+        found = find_entities_in_text(
+            "payment-service 가 notification-service 를 호출한다", patterns)
+        assert [m.name for m in found] == ["payment-service", "notification-service"]
+        assert [m.position for m in found] == sorted(m.position for m in found)
+
+    def test_an_alias_and_the_canonical_name_report_the_first_position(self):
+        """같은 엔티티가 두 이름으로 나오면 **먼저 나온 자리**가 그 엔티티의 자리다."""
+        patterns = _build_entity_patterns(SAMPLE_ENTITIES)
+        text = "결제 서비스는 주문 서비스를 호출한다. payment-service 로도 적는다."
+        found = find_entities_in_text(text, patterns)
+        by_name = {m.name: m.position for m in found}
+        assert by_name["payment-service"] < by_name["order-service"]
+
+
 class TestNegationFilter:
     def test_negation_korean(self):
         assert _check_negation("서비스를 호출하지 않는다", 10) is True
