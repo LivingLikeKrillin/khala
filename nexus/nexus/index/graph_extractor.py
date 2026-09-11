@@ -82,22 +82,37 @@ def find_entities_in_text(
     text: str,
     entity_patterns: list[tuple[re.Pattern, dict]],
 ) -> list[EntityMatch]:
-    """텍스트에서 gazetteer에 정의된 엔티티를 찾는다."""
-    found: list[EntityMatch] = []
-    seen_names: set[str] = set()
+    """텍스트에서 gazetteer에 정의된 엔티티를 찾는다.
+
+    ⭐ **반환 순서는 텍스트에 나온 순서다.** 이 순서가 관계의 from/to 를 정하므로
+    (`extract_relations`) 여기서 순서를 흘리면 방향이 문장과 무관해진다.
+
+    ⛔ **왜 이렇게 적혀 있나 (실측 2026-09-11).** 예전에는 `entity_patterns` 를 도는 순서
+    그대로 돌려줬는데, `_build_entity_patterns` 가 **긴 패턴부터** 정렬한다. 그래서 방향을
+    정한 것은 문장이 아니라 **이름의 길이**였다:
+
+        "payment-service 가 notification-service 를 호출한다"
+        "notification-service 가 payment-service 를 호출한다"
+
+    정반대를 말하는 두 문장이 **같은 엣지**(`notification-service -> payment-service`)를 냈다.
+    `position` 은 그때도 채워지고 있었지만 **읽는 곳이 하나도 없었다.**
+
+    같은 엔티티가 이름과 별칭으로 두 번 나오면 **먼저 나온 자리**를 쓴다.
+    """
+    first_at: dict[str, EntityMatch] = {}
 
     for pattern, ent in entity_patterns:
         for match in pattern.finditer(text):
             canonical = canonicalize_entity_name(ent["name"], ent["type"])
-            if canonical not in seen_names:
-                found.append(EntityMatch(
+            prev = first_at.get(canonical)
+            if prev is None or match.start() < prev.position:
+                first_at[canonical] = EntityMatch(
                     name=canonical,
                     entity_type=ent["type"],
                     position=match.start(),
-                ))
-                seen_names.add(canonical)
+                )
 
-    return found
+    return sorted(first_at.values(), key=lambda m: m.position)
 
 
 def _check_negation(text: str, trigger_pos: int) -> bool:
@@ -172,7 +187,12 @@ def extract_relations(
                 if _check_negation(window_text, trigger_pos):
                     continue
 
-                # 위치 기반으로 from/to 결정 (트리거 앞 = from, 뒤 = to)
+                # from/to 는 **텍스트에 나온 순서**다 — `find_entities_in_text` 가 그 순서로 준다.
+                #
+                # ⚠ 트리거 위치로 가르지 않는다. 한국어 "A가 B를 호출한다" 는 두 엔티티가 모두
+                # 트리거 **앞**에 있어서 그 규칙이 서지 않는다. 순서는 어림이고 수동태·도치는
+                # 여전히 뒤집힌다 — 그 한계를 confidence 0.6 이 말한다. 어림이라는 것과
+                # 문장과 무관하다는 것은 다르고, 2026-09-11 까지는 후자였다.
                 for j, from_ent in enumerate(entities):
                     for to_ent in entities[j + 1:]:
                         key = (edge_type, from_ent.name, to_ent.name)
