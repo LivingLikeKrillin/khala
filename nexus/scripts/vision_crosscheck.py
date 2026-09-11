@@ -27,9 +27,7 @@ import asyncio
 import base64
 import json
 import os
-import re
 import sys
-import unicodedata
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -51,32 +49,17 @@ CACHE = LOCAL / f"crosscheck-gemini{_ARM}.json"
 OUT = LOCAL / f"crosscheck{_ARM}.json"
 SAMPLE = LOCAL / "fidelity-sample" / "sample.json"
 
-_SCAFFOLD = re.compile(r"^\s*[|#>\-\s]*$")
-_IDENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.\-]*")
-_HANGUL = re.compile(r"[가-힣]{2,}")
-
-
-def normalize(text: str) -> str:
-    """서식 차이를 접는다. **내용 차이는 접지 않는다** — 그것이 측정하려는 것이다."""
-    t = unicodedata.normalize("NFKC", text or "")
-    t = t.replace("−", "-").replace("–", "-").replace("—", "-")
-    out = []
-    for ln in t.splitlines():
-        if _SCAFFOLD.match(ln):          # 표 구분선·빈 헤딩 — 내용이 없는 줄
-            continue
-        ln = ln.replace("|", " ").lstrip("#> ").strip()
-        if ln:
-            out.append(re.sub(r"\s+", " ", ln))
-    return "\n".join(out)
-
-
-def tokens(text: str) -> tuple[set[str], set[str]]:
-    """(식별자·숫자, 한글) 토큰 집합."""
-    n = normalize(text)
-    idents = {m.group(0) for m in _IDENT.finditer(n) if len(m.group(0)) > 1}
-    hangul = {m.group(0) for m in _HANGUL.finditer(n)}
-    return idents, hangul
-
+#: ⛔ **여기 `normalize`·`tokens` 의 사본이 있었다 (실측 2026-09-11).** 그 사본의 식별자
+#: 패턴은 `[A-Za-z0-9]` 로 시작해야 해서 `툴팁_사용가이드_02` 를 `02` 로 잘랐다. 같은 결함을
+#: 2026-08-11 에 `ingest/vision_health.py` 에서 고치면서(커밋 7c2d75a) **이 파일은 안 고쳤다** —
+#: 고침 커밋이 건드린 것은 그 모듈과 그 검사 둘뿐이다.
+#:
+#: 그래서 자기 변동(재현율)은 정정됐는데 **판독기 사이 차이는 옛 값 그대로 남았고**, 승인 문서의
+#: 철회 기록이 두 백분율만 되돌린 이유가 그것이다. 셋째 수의 계측기는 고쳐진 적이 없었다.
+#: 저장분으로 다시 채점하니 **6.7% → 8.0%** 다(같은 40쌍, 합집합 대비 대칭차).
+#:
+#: **사본을 두지 않는다.** 판정 어휘가 둘이면 어느 하나를 고쳐도 다른 하나가 조용히 남는다.
+from nexus.ingest.vision_health import normalize, tokens  # noqa: E402,F401
 
 async def _catalogue() -> list[dict]:
     await db.get_pool()
