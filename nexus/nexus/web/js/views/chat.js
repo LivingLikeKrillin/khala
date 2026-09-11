@@ -401,6 +401,12 @@ function renderEvidence(snippets, provenance) {
       <div class="ev-head">
         <span class="ev-index">${i + 1}</span>
         <span class="ev-title">${escapeHtml(s.doc_title || '(제목 없음)')}</span>
+        ${/* ⛔ ADR-0010 §4 hop 5 는 API 응답을 "and thereby the web client" 라고 적었는데
+              그 thereby 가 성립하지 않았다 — 2026-09-11 까지 이 목록은 신뢰 배지와 앵커
+              배지를 달면서 **등급만 안 달았다**. 그림에서 기계가 읽은 표가 사람이 쓴
+              문장과 똑같이 보였다. 문자열은 서버가 만들어 보낸다(`provenance_mark`):
+              표현계층이 어휘를 지어내면 표면마다 다른 말이 된다. */
+          escapeHtml(s.provenance_mark || '')}
         ${(() => { const t = trustSignal(s.doc_type);
           return `<span class="trust-badge trust-badge--${t.tone}" title="${escapeHtml(t.note)}">${escapeHtml(t.label)}</span>`; })()}
         ${(() => { const a = anchorSignal(s.code_anchors);

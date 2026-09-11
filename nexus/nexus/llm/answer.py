@@ -20,6 +20,7 @@ from nexus.llm.prompts import build_prompts
 from nexus.search.format_compliance import shape_if_measured
 from nexus.providers.llm import LLMService
 from nexus.search.anchor_status import summarize
+from nexus.search.provenance import mark as tier_mark
 from nexus.search.doc_debt import summarize as summarize_debt
 from nexus.search.evidence_packet import EvidencePacket, format_for_llm
 
@@ -146,6 +147,8 @@ async def generate_answer(
             "doc_type": s.doc_type,  # 축-A 타입(S3) — 웹 클라이언트 타입 배지용
             # 등급은 응답까지 간다 (ADR-0010 hop 5) — 배지를 달 수 있어야 한다.
             "provenance_tier": getattr(s, "provenance_tier", "authored"),
+            # 표면 둘이 같은 사실을 낸다 (api.py 의 같은 자리 주석 참조).
+            "provenance_mark": tier_mark(getattr(s, "provenance_tier", "authored")),
             # 이 문단이 부른 코드 이름의 현재 상태. 앵커가 없으면 `None` 이고, 그때 응답은
             # 오늘과 같은 모양이다. 표현계층이 셈을 다시 하지 않도록 **여기서 요약해** 보낸다.
             "code_anchors": summarize(getattr(s, "code_anchors", []),
