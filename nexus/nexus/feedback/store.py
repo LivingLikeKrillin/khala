@@ -258,3 +258,28 @@ async def recent_downvotes(*, tenant: str, days: int = 30, limit: int = 50) -> l
          ORDER BY v.voted_at DESC
          LIMIT $3
         """, tenant, days, limit)]
+
+
+def status_lines(row: dict | None) -> list[str]:
+    """`nexus status` 에 나가는 줄. **서식을 여기 두는 이유는 검사를 붙이려는 것이다.**
+
+    ⛔ **왜 있나 (실측 2026-09-11).** SPEC §3.7 은 푸시를 지우면서 *"수는 `nexus status` 에도
+    한 줄로 나온다 — 이미 보는 자리에 놓는 것이 이 단계에서 할 수 있는 전부"* 를 대안으로
+    내걸었다. 그런데 그 한 줄이 없었다. 수는 `persistence-health` 에만 있었고, 그것은 사람이
+    따로 떠올려 쳐야 하는 **또 하나의 조회 명령**이다. §3.7 이 스스로 적어 둔 잔여 위험이
+    *"아무도 조회를 안 하면 자료는 쌓이기만 한다"* 인데, 그 위험을 덜려던 대안이 같은 모양으로
+    들어가 있었다.
+
+    ⚠ **0 을 고장으로 적지 않는다.** 이 표는 사람이 누를 때만 쌓이고, 오래 비어 있는 것이
+    기본값이다(`health/persistence.py` 의 같은 판단). 빈 것과 안 도는 것을 한 문장으로
+    말하면 읽는 사람이 못 가른다.
+    """
+    if not row or not row.get("votes"):
+        return ["답변 피드백: 아직 없음 (사람이 누를 때만 쌓인다)"]
+    last_at = row.get("last_at")
+    seen = last_at.date().isoformat() if last_at else "—"
+    out = [f"답변 피드백: 투표 {row['votes']:,}건 · 👎 {row['down']:,}"
+           f"(사유 {row['reasoned']:,}) · 마지막 {seen}"]
+    if row["down"]:
+        out.append("   └ nexus feedback 으로 목록과 퍼머링크를 연다")
+    return out

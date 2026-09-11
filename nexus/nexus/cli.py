@@ -796,6 +796,30 @@ def status() -> None:
         except Exception:
             typer.echo("검색 신호: 없음")   # 구버전 DB(테이블 부재) 우아한 격하
 
+        # 👎 는 **푸시하지 않는다**(SPEC-nexus-answer-feedback §3.7, 개정 2026-08-14). 그 절이
+        # 푸시를 지우면서 내건 대안이 *"수는 `nexus status` 에도 한 줄로 나온다 — 이미 보는
+        # 자리에 놓는 것이 이 단계에서 할 수 있는 전부"* 였다.
+        #
+        # ⛔ **그 한 줄이 없었다** (실측 2026-09-11). 수는 `persistence-health` 에만 있었고,
+        # 그건 사람이 따로 떠올려 쳐야 하는 또 하나의 조회 명령이다. §3.7 이 스스로 적어 둔
+        # 잔여 위험이 *"아무도 조회를 안 하면 자료는 쌓이기만 한다"* 였는데, 그 위험을 덜려고
+        # 내건 대안이 같은 모양으로 들어가 있었다.
+        try:
+            fb = await db.fetch_one(
+                """
+                SELECT count(*) FILTER (WHERE verdict = 'down')                    AS down,
+                       count(*) FILTER (WHERE verdict = 'down' AND reason IS NOT NULL) AS reasoned,
+                       count(*)                                                    AS votes,
+                       max(voted_at)                                               AS last_at
+                FROM answer_vote
+                """
+            )
+            from nexus.feedback.store import status_lines
+            for line in status_lines(dict(fb) if fb else None):
+                typer.echo(line)
+        except Exception:
+            typer.echo("답변 피드백: 없음")   # 구버전 DB(테이블 부재) 우아한 격하
+
         await db.close_pool()
 
     _run(_status())
