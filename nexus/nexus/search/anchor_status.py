@@ -69,10 +69,34 @@ class DeletedMention:
 
 
 @dataclass(frozen=True)
+class ScanBasis:
+    """이 판정이 **무엇과 비교한 것인가**.
+
+    ⛔ **왜 있나 (실측 2026-09-11).** 이 경로는 `code_symbols` 와 대조해 fresh·changed 를
+    가르는데, 그 표가 마지막으로 채워진 시점을 아무 데도 안 실었다. 그래서 표면은 언제나
+    *"현재 코드에 그대로 있습니다"* 라고 적었다. 그런데 라이브에서 스캔은 리포당 **한 번**만
+    돌아 있었다(`code-src` 2026-08-18 · khala 2026-08-16, `scan_commit` 각 1개). 앵커 5,440건이
+    전부 fresh 로 나온 것은 코드가 안 바뀌어서가 아니라 **비교 대상이 안 움직여서**였다.
+
+    ⭐ 같은 리포가 이 규율을 이미 적어 뒀다 — `nexus code drift` 는 작업 트리가 스캔 커밋이
+    아니면 `unknown` 을 내고 드리프트를 보고하지 않는다("모름은 정답이다"). 요청 경로는 그
+    확인을 할 수 없다(배포된 코드가 어디 있는지 모른다). 그래서 여기서 하는 일은 **판정을
+    멈추는 것이 아니라 판정의 기준을 같이 내보내는 것**이다.
+    """
+    commit: str
+    at: str          # YYYY-MM-DD. 시각까지는 필요 없고, 날짜는 사람이 바로 읽는다
+
+
+@dataclass(frozen=True)
 class ChunkAnchors:
-    """한 청크가 부른 코드 이름들의 읽기 — 앵커 상태와 지워진 이름."""
+    """한 청크가 부른 코드 이름들의 읽기 — 앵커 상태와 지워진 이름.
+
+    `scan` 은 앵커 판정이 무엇과 비교한 것인지다. 앵커가 없거나 스캔 기록이 없으면 `None`
+    이고, 그때 표면은 기준을 **모른다고** 말해야 한다.
+    """
     anchors: list[AnchorStatus]
     deleted: list[DeletedMention]
+    scan: ScanBasis | None = None
 
 
 async def statuses_for_chunks(
@@ -102,21 +126,31 @@ async def statuses_for_chunks(
                    'anchor'                                              AS kind,
                    count(s.symbol_name)                                  AS n_match,
                    count(*) FILTER (WHERE s.span_hash = a.span_hash)     AS n_same,
-                   ''::text AS deleted_date, ''::text AS deleted_commit, ''::text AS subject
+                   ''::text AS deleted_date, ''::text AS deleted_commit, ''::text AS subject,
+                   -- 판정의 **기준**. 이 두 칸이 없으면 표면이 "현재 코드" 라고 단정하게 된다
+                   -- (`ScanBasis` 머리말). 리포당 한 행짜리 조인이라 쿼리는 여전히 한 개다.
+                   coalesce(sc.scan_commit, '')                          AS scan_commit,
+                   coalesce(to_char(sc.scanned_at, 'YYYY-MM-DD'), '')    AS scan_at
               FROM doc_code_anchors a
               LEFT JOIN code_symbols s
                      ON s.tenant = a.tenant
                     AND s.repo   = a.repo
                     AND s.symbol_name = a.symbol_name
+              -- `code_scans` 는 (tenant, repo) 가 기본키라 리포당 한 행이다. 심볼 표를
+              -- 훑어 최신 스캔을 고르지 않는다 — 같은 사실을 두 곳에서 구하면 갈린다.
+              LEFT JOIN code_scans sc
+                     ON sc.tenant = a.tenant
+                    AND sc.repo   = a.repo
              WHERE {_a_pred}
                AND a.chunk_rid = ANY($2::text[])
-             GROUP BY a.chunk_rid, a.candidate, a.span_hash
+             GROUP BY a.chunk_rid, a.candidate, a.span_hash, sc.scan_commit, sc.scanned_at
 
              UNION ALL
 
             SELECT r.chunk_rid,
                    r.candidate, 'deleted', 0, 0,
-                   d.deleted_date, d.deleted_commit, d.subject
+                   d.deleted_date, d.deleted_commit, d.subject,
+                   ''::text, ''::text
               FROM doc_code_refusals r
               JOIN code_deleted_symbols d
                      ON d.tenant = r.tenant
@@ -138,6 +172,7 @@ async def statuses_for_chunks(
 
     anchors: dict[str, list[AnchorStatus]] = {}
     deleted: dict[str, list[DeletedMention]] = {}
+    scans: dict[str, ScanBasis] = {}
     for r in rows:
         rid = r["chunk_rid"]
         if r["kind"] == "deleted":
@@ -146,13 +181,21 @@ async def statuses_for_chunks(
         else:
             anchors.setdefault(rid, []).append(
                 AnchorStatus(r["name"], status_from_counts(r["n_match"], r["n_same"])))
+            # 한 청크의 앵커가 리포 둘에 걸치면 기준도 둘이다. **오래된 쪽을 택한다** —
+            # 표면이 말하는 기준은 이 판정 전체가 서 있는 바닥이어야 하고, 바닥은 가장
+            # 낡은 쪽이다. 새 쪽을 적으면 실제보다 최근에 확인한 것처럼 읽힌다.
+            if r["scan_at"]:
+                prev = scans.get(rid)
+                if prev is None or r["scan_at"] < prev.at:
+                    scans[rid] = ScanBasis(r["scan_commit"], r["scan_at"])
 
-    return {rid: ChunkAnchors(anchors.get(rid, []), deleted.get(rid, []))
+    return {rid: ChunkAnchors(anchors.get(rid, []), deleted.get(rid, []), scans.get(rid))
             for rid in set(anchors) | set(deleted)}
 
 
 def summarize(anchors: Sequence[AnchorStatus],
-              deleted: Sequence[DeletedMention] = ()) -> dict | None:
+              deleted: Sequence[DeletedMention] = (),
+              scan: ScanBasis | None = None) -> dict | None:
     """응답에 실리는 모양. **수는 전부 세고 이름은 어긋난 것만** 낸다.
 
     fresh 20개를 나열하면 아무도 안 읽고, 분모를 빼면 "1개 없어짐" 이 1/1 인지 1/40 인지
@@ -160,6 +203,11 @@ def summarize(anchors: Sequence[AnchorStatus],
 
     `deleted` 는 `total` 에 **안 들어간다**. 분모는 바인딩된 참조의 수이고, 지워진 이름은
     바인딩된 적이 없다. 합치면 "7개 중 5개" 가 무엇의 5개인지 아무도 모르게 된다.
+
+    `scan` 은 수가 **무엇과 비교해서 나온 것인지**다(`ScanBasis`). `None` 이면 모른다는
+    뜻이고, 표면은 모른다고 말해야 한다. ⚠ 이 키는 `describe` 가 읽지 않는다 — 프롬프트는
+    바이트 단위로 같아야 하고 평가 팩이 거기서 돈다(`test_anchor_status_surface.py` 가
+    그것을 고정한다).
     """
     if not anchors and not deleted:
         return None
@@ -172,6 +220,7 @@ def summarize(anchors: Sequence[AnchorStatus],
         # 날짜와 사유가 같이 간다 — 이름만으로는 문서를 고칠 수 없다.
         "deleted": [{"name": d.name, "date": d.date,
                      "commit": d.commit, "subject": d.subject} for d in deleted],
+        "scan": {"commit": scan.commit, "at": scan.at} if scan else None,
     }
 
 

@@ -28,6 +28,7 @@ from nexus.index.anchors import (
 from nexus.search.anchor_status import (
     AnchorStatus,
     DeletedMention,
+    ScanBasis,
     describe,
     statuses_for_chunks,
     summarize,
@@ -135,11 +136,12 @@ async def test_prompt_carries_the_anchor_line_when_anchors_exist():
 # ------------------------------------------------- 요청 경로의 모양
 
 def _row(chunk_rid, name, *, kind="anchor", n_match=1, n_same=1,
-         date="", commit="", subject=""):
+         date="", commit="", subject="", scan_commit="", scan_at=""):
     """쿼리가 돌려주는 행 하나. 앵커 가지와 삭제 가지가 **같은 모양**으로 온다(UNION ALL)."""
     return {"chunk_rid": chunk_rid, "name": name, "kind": kind,
             "n_match": n_match, "n_same": n_same,
-            "deleted_date": date, "deleted_commit": commit, "subject": subject}
+            "deleted_date": date, "deleted_commit": commit, "subject": subject,
+            "scan_commit": scan_commit, "scan_at": scan_at}
 
 
 class _Counter:
@@ -280,3 +282,108 @@ async def test_statuses_are_keyed_back_to_their_chunk(monkeypatch):
 
     assert out["c1"].anchors == [AnchorStatus("Alpha", FRESH)]
     assert out["c2"].anchors == [AnchorStatus("Beta", ORPHANED)]
+
+
+# --------------------------------- 판정은 무엇과 비교한 것인가 (2026-09-11)
+#
+# ⛔ 이 묶음이 없어서 표면이 "모두 **현재** 코드에 그대로 있습니다" 라고 적고 있었다.
+# 비교 대상은 현재 코드가 아니라 마지막 스캔이고, 라이브에서 그 스캔은 리포당 한 번만
+# 돌아 있었다(2026-08-16 · 2026-08-18). 앵커 5,440건이 전부 fresh 로 나온 것은 코드가
+# 안 바뀌어서가 아니라 비교 대상이 안 움직여서였다.
+
+FRESH_ANCHORS = [AnchorStatus("Alpha", FRESH), AnchorStatus("Beta", FRESH)]
+
+
+def test_the_summary_says_what_it_compared_against():
+    out = summarize(FRESH_ANCHORS, (), ScanBasis("780f94d6a7d5aaaa", "2026-08-18"))
+
+    assert out["scan"] == {"commit": "780f94d6a7d5aaaa", "at": "2026-08-18"}
+
+
+def test_the_summary_says_it_does_not_know_when_there_is_no_scan():
+    """`None` 은 빠뜨린 것이 아니라 **모른다**는 값이다. 키 자체가 없으면 표면이 옛 문구로 돈다."""
+    out = summarize(FRESH_ANCHORS)
+
+    assert "scan" in out
+    assert out["scan"] is None
+
+
+def test_the_prompt_does_not_change_when_the_scan_basis_arrives():
+    """⛔ 대조군. 프롬프트는 바이트 단위로 같아야 한다 — 평가 팩이 거기서 돈다.
+
+    `describe` 는 `summarize` 를 부르지만 키를 이름으로 읽는다. 그 사실이 깨지면
+    (예: 요약 전체를 순회해 문장을 만들면) 새 키가 조용히 프롬프트로 샌다.
+    """
+    before = describe(FRESH_ANCHORS)
+    after = describe(FRESH_ANCHORS)   # summarize 안에서 scan=None 으로 같은 자리를 지난다
+
+    assert before == after
+    assert "스캔" not in before
+    assert "2026-" not in before
+
+
+async def test_the_reading_carries_the_scan_basis(monkeypatch):
+    rows = [_row("c1", "Alpha", scan_commit="780f94d6a7d5", scan_at="2026-08-18")]
+    monkeypatch.setattr("nexus.search.anchor_status.db.fetch_all", _Counter(rows))
+
+    out = await statuses_for_chunks("t", ["c1"])
+
+    assert out["c1"].scan == ScanBasis("780f94d6a7d5", "2026-08-18")
+
+
+async def test_the_oldest_basis_wins_when_a_chunk_calls_two_repos(monkeypatch):
+    """바닥은 가장 낡은 쪽이다. 새 쪽을 적으면 실제보다 최근에 확인한 것처럼 읽힌다."""
+    rows = [
+        _row("c1", "Alpha", scan_commit="new", scan_at="2026-09-01"),
+        _row("c1", "Beta", scan_commit="old", scan_at="2026-08-16"),
+    ]
+    monkeypatch.setattr("nexus.search.anchor_status.db.fetch_all", _Counter(rows))
+
+    out = await statuses_for_chunks("t", ["c1"])
+
+    assert out["c1"].scan == ScanBasis("old", "2026-08-16")
+
+
+async def test_a_missing_scan_row_reads_as_unknown_not_as_fresh(monkeypatch):
+    """스캔 기록이 없으면 `None` 이다. 빈 문자열을 기준인 척 흘려보내지 않는다."""
+    rows = [_row("c1", "Alpha")]
+    monkeypatch.setattr("nexus.search.anchor_status.db.fetch_all", _Counter(rows))
+
+    out = await statuses_for_chunks("t", ["c1"])
+
+    assert out["c1"].anchors == [AnchorStatus("Alpha", FRESH)]
+    assert out["c1"].scan is None
+
+
+def test_every_surface_that_summarises_also_passes_the_basis():
+    """⛔ 표면 둘이 각자 요약을 만든다 — 하나만 고치면 그쪽만 기준을 말한다.
+
+    이 리포는 정확히 그 모양으로 데였다(2026-09-02, 스트리밍 경로만 근거 조립을 직접 불러
+    정정·짝·코드 값이 웹 채팅에서만 빠졌다). 그래서 **소스를 읽어서** 센다 — 호출을 흉내
+    내면 어느 한쪽을 안 부르는 실수를 그대로 통과시킨다.
+    """
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    surfaces = {
+        "nexus/api.py": re.compile(r"_anchor_summary\(", re.M),
+        # `summarize_debt(` 은 안 걸린다 — 여는 괄호가 바로 뒤에 와야 한다.
+        "nexus/llm/answer.py": re.compile(r"summarize\("),
+    }
+    for rel, call in surfaces.items():
+        src = (root / rel).read_text(encoding="utf-8")
+        starts = [m.start() for m in call.finditer(src)]
+        assert starts, f"{rel} 이 요약을 안 만든다 — 목록이 낡았으면 고쳐라"
+        for i in starts:
+            # 호출 한 건의 인자 목록. 줄바꿈을 넘어가므로 닫는 괄호까지 훑는다.
+            depth, j = 0, src.index("(", i)
+            for j in range(j, len(src)):
+                if src[j] == "(":
+                    depth += 1
+                elif src[j] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+            args = src[i:j]
+            assert "code_scan" in args, f"{rel} 의 요약 호출이 판정 기준을 안 넘긴다"

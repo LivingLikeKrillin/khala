@@ -17,6 +17,7 @@ from nexus.search.doc_debt import DocDebt, debts_for_docs
 from nexus.search.anchor_status import (
     AnchorStatus,
     DeletedMention,
+    ScanBasis,
     describe,
     statuses_for_chunks,
 )
@@ -55,6 +56,10 @@ class EvidenceSnippet:
     #: 이 문단이 부르는데 **코드에서 지워진** 이름들(마이그레이션 029). 앵커와 나란히 두되
     #: 섞지 않는다 — 하나는 걸린 참조, 하나는 걸 곳이 사라진 참조다.
     code_deleted: list[DeletedMention] = field(default_factory=list)
+    #: 위 앵커 판정이 **무엇과 비교한 것인가**(`search/anchor_status.py: ScanBasis`). 이 값이
+    #: 없으면 표면은 "현재 코드" 라고 단정하게 되고, 라이브에서 그 단정은 틀렸다 — 스캔이
+    #: 리포당 한 번만 돌아 있었다. `None` 은 모른다는 뜻이고 모른다고 말해야 한다.
+    code_scan: "ScanBasis | None" = None
     #: 이 조각이 **어느 코퍼스에서 왔는가** (`search/evidence_share.py`). 답변이 실제로 무엇에
     #: 기댔는지는 히트가 아니라 **패킷**에서 세어야 한다 — 채운 절·짝 문서·정정 확인 패스가
     #: 랭킹을 거치지 않고 여기 들어오기 때문이다.
@@ -171,6 +176,7 @@ async def assemble_packet(
             provenance_tier=getattr(hit, "provenance_tier", "authored"),
             code_anchors=reading.anchors if reading else [],
             code_deleted=reading.deleted if reading else [],
+            code_scan=reading.scan if reading else None,
         ))
 
         if hit.doc_rid not in seen_docs:

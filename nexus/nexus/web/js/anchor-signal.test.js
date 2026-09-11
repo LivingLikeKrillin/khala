@@ -79,4 +79,52 @@ describe('anchorSignal — 지워진 이름', () => {
     expect(anchorSignal({ total: 2, fresh: 2, deleted: [] }).tone).toBe('ok');
     expect(anchorSignal({ total: 0, fresh: 0, deleted: [] })).toBe(null);
   });
+
+  // ---------------------------------- 판정의 기준 (2026-09-11)
+  //
+  // ⛔ 이 묶음이 없어서 배지가 "모두 현재 코드에 그대로 있습니다" 라고 적고 있었다.
+  // 비교 대상은 현재 코드가 아니라 마지막 스캔이고, 라이브에서 그 스캔은 리포당 한 번만
+  // 돌아 있었다. 앵커가 전부 일치로 나온 것은 코드가 안 바뀌어서가 아니라 비교 대상이
+  // 안 움직여서였다. 배지는 모른다고 하지 않고 안심시키고 있었다.
+
+  const scan = { commit: '780f94d6a7d5aaaa', at: '2026-08-18' };
+
+  it('일치 배지가 무엇과 비교했는지 라벨에 적는다 — 툴팁에 숨기면 아무도 안 본다', () => {
+    const sig = anchorSignal({ total: 27, fresh: 27, changed: [], orphaned: [], ambiguous_now: [], scan });
+
+    expect(sig.label).toContain('27');
+    expect(sig.label).toContain('2026-08-18');
+    expect(sig.note).toContain('780f94d6a7d5');
+  });
+
+  it('어긋남 배지도 기준을 적는다 — 어긋난 수만 말하면 언제 기준인지 모른다', () => {
+    const sig = anchorSignal({
+      total: 40, fresh: 38, changed: ['Beta'], orphaned: ['Gamma'], ambiguous_now: [], scan,
+    });
+
+    expect(sig.label).toContain('2/40');
+    expect(sig.label).toContain('2026-08-18');
+    expect(sig.note).toContain('Gamma');
+  });
+
+  it('⛔ 「현재 코드」라고 단정하지 않는다 — 요청 경로는 배포된 코드가 어느 커밋인지 모른다', () => {
+    const sig = anchorSignal({ total: 3, fresh: 3, changed: [], orphaned: [], ambiguous_now: [], scan });
+
+    expect(sig.note).not.toContain('현재 코드');
+    expect(`${sig.label} ${sig.note}`).toContain('2026-08-18');
+  });
+
+  it('기준이 없으면 미상이라고 말한다 — 모르는 것을 조용히 넘기면 안심시키는 쪽으로 읽힌다', () => {
+    const sig = anchorSignal({ total: 3, fresh: 3, changed: [], orphaned: [], ambiguous_now: [] });
+
+    expect(sig.tone).toBe('ok');
+    expect(sig.label).toContain('미상');
+    expect(sig.note).not.toContain('현재 코드');
+  });
+
+  it('지워진 이름 배지에는 스캔 기준을 안 붙인다 — 그 목록은 git 이력에서 온다', () => {
+    const sig = anchorSignal({ total: 5, fresh: 5, deleted: [gone('Avatar', '2026-02-19')], scan });
+
+    expect(sig.label).not.toContain('2026-08-18');
+  });
 });
