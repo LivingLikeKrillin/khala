@@ -149,7 +149,8 @@ async def generate_answer(
             # 이 문단이 부른 코드 이름의 현재 상태. 앵커가 없으면 `None` 이고, 그때 응답은
             # 오늘과 같은 모양이다. 표현계층이 셈을 다시 하지 않도록 **여기서 요약해** 보낸다.
             "code_anchors": summarize(getattr(s, "code_anchors", []),
-                                      getattr(s, "code_deleted", [])),
+                                      getattr(s, "code_deleted", []),
+                                      getattr(s, "code_scan", None)),
             "updated_at": s.updated_at,
         }
         for s in packet.snippets

@@ -14,6 +14,31 @@
 /** 이름을 몇 개까지 툴팁에 부를 것인가. 40건짜리 문단이 툴팁을 채우면 아무도 안 읽는다. */
 const MAX_NAMES = 6;
 
+/**
+ * 이 판정이 **무엇과 비교한 것인가**를 말로 바꾼다.
+ *
+ * ⛔ **왜 있나 (실측 2026-09-11).** 예전에는 일치일 때 "모두 **현재** 코드에 그대로 있습니다"
+ * 라고 적었다. 비교 대상은 현재 코드가 아니라 마지막 코드 스캔이고, 라이브에서 그 스캔은
+ * 리포당 **한 번**만 돌아 있었다(2026-08-16 · 2026-08-18). 앵커 5,440건이 전부 일치로 나온
+ * 것은 코드가 안 바뀌어서가 아니라 비교 대상이 안 움직여서였다. 배지는 「모름」이라고 하지
+ * 않고 「일치」라고 안심시키고 있었다.
+ *
+ * 요청 경로는 배포된 코드가 지금 어느 커밋인지 알 수 없다(운영자용 `nexus code drift` 는
+ * 작업 트리를 확인하고 모르면 보고를 거부한다). 그래서 여기서 하는 일은 판정을 멈추는 것이
+ * 아니라 **기준을 같이 적는 것**이다.
+ */
+function basisPhrase(scan) {
+  if (!scan || !scan.at) {
+    return { short: '기준 스캔 미상', long: '이 판정이 무엇과 비교한 것인지 기록이 없습니다' };
+  }
+  const commit = String(scan.commit || '').slice(0, 12);
+  const head = `${scan.at} 코드 스캔`;
+  return {
+    short: `${scan.at} 스캔 기준`,
+    long: `${commit ? `${head}(${commit})` : head} 기준이고, 그 뒤의 코드 변경은 여기에 안 들어갑니다`,
+  };
+}
+
 function joinNames(names) {
   const head = names.slice(0, MAX_NAMES).join(', ');
   const rest = names.length - MAX_NAMES;
@@ -47,14 +72,21 @@ export function anchorSignal(summary) {
 
   if (deleted.length) {
     // 분모를 붙이지 않는다 — 지워진 이름은 바인딩된 적이 없어 total 의 일부가 아니다.
+    // 기준 문구도 붙이지 않는다: 이 목록은 코드 스캔이 아니라 git 이력에서 온다.
     return { label: `지워진 이름 ${deleted.length}개`, tone: 'drift', note: parts.join(' · ') };
   }
+
+  const basis = basisPhrase(summary.scan);
   if (drifted === 0) {
     return {
-      label: `코드 ${summary.total}개 일치`,
+      label: `코드 ${summary.total}개 일치 · ${basis.short}`,
       tone: 'ok',
-      note: `이 근거가 부른 코드 이름 ${summary.total}개가 모두 현재 코드에 그대로 있습니다`,
+      note: `이 근거가 부른 코드 이름 ${summary.total}개가 모두 그대로 있습니다. ${basis.long}.`,
     };
   }
-  return { label: `코드 ${drifted}/${summary.total} 어긋남`, tone: 'drift', note: parts.join(' · ') };
+  return {
+    label: `코드 ${drifted}/${summary.total} 어긋남 · ${basis.short}`,
+    tone: 'drift',
+    note: `${parts.join(' · ')} · ${basis.long}`,
+  };
 }
