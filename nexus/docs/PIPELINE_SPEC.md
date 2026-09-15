@@ -8,7 +8,7 @@
 ## 1. Ingestion Pipeline
 
 ### 개요
-Markdown 문서를 수집하여 Nexus DB에 인덱싱한다. 소스는 두 갈래다 — 파일시스템(Git repo)과 Notion. 어느 쪽이든 `run_ingest()` 한 곳으로 모인다.
+마크다운 문서를 수집하여 Nexus 데이터베이스에 색인합니다. 수집 소스는 파일시스템(Git 저장소)과 Notion API 경로를 지원하며, 모든 유입 데이터는 `run_ingest()` 단일 파이프라인 진입점으로 수렴됩니다.
 
 ### 전체 흐름
 ```
@@ -21,9 +21,9 @@ Markdown 문서를 수집하여 Nexus DB에 인덱싱한다. 소스는 두 갈�
   → Chunk → Index(BM25 + Vector) → Extract Graph → Store
 ```
 
-**세대 게이트가 맨 앞인 것은 의도다.** `collect`보다 먼저 본다 — "아무것도 쓰기 전에 거부한다"는 문서 한 행도 안 남긴다는 뜻이다. 모든 쓰기 경로(CLI·HTTP·A2A·ingest-notion)가 `run_ingest()`로 모이므로 검사는 이 한 곳이면 된다.
+색인 세대 무결성 게이트(Generation Gate)는 데이터 수집의 최우선 단계(`assert_writable`)에 배치되어, 런타임 구성과 DB 선언 세대 불일치 시 쓰기 작업을 원천 차단합니다. CLI, HTTP, A2A, ingest-notion 등 모든 쓰기 인터페이스가 `run_ingest()`를 경유하므로 단일 검증 지점에서 일관되게 적용됩니다.
 
-**Notion 경로의 이미지는 적재 시점에 텍스트로 판독된다.** 판독된 텍스트에서 나온 청크는 `provenance_tier='machine_read'`로 표시되고, 그 표시는 프롬프트·API 응답·웹 UI까지 따라간다. 사람이 쓴 청크와 같은 근거로 취급되지 않는다.
+Notion 경로에서 수집된 이미지는 비전 모델을 통해 텍스트로 추출되며, 해당 청크는 `provenance_tier='machine_read'` 메타데이터가 부여되어 프롬프트, API 응답, 웹 콘솔 전반에 전파되어 인간 작성 문서와 명확히 식별됩니다.
 
 ### 1.1 Collect (collector.py)
 

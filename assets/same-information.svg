@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="660" height="312" viewBox="0 0 660 312" role="img" aria-label="Four kinds of information — documented knowledge, design decisions, operational facts, comprehension — flow into one governed substrate that keeps them approved, current, and cited. A human and an agent read it through two doors and see the same view.">
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="312" viewBox="0 0 660 312" role="img" aria-label="Four kinds of information — documented knowledge, design decisions, operational facts, comprehension — flow into one governed substrate that keeps them approved, current, and cited. A human and an agent read it through dual access interfaces and see the same view.">
   <style>
     text { font-family: ui-monospace, 'JetBrains Mono', 'Cascadia Code', monospace; dominant-baseline: middle; }
     .lbl { fill: #6b7480; font-size: 10px; letter-spacing: .14em; }
@@ -17,7 +17,7 @@
   </defs>
 
   <text class="lbl" x="24" y="24">FOUR KINDS OF INFORMATION</text>
-  <text class="lbl" x="636" y="24" text-anchor="end">TWO DOORS · ONE VIEW</text>
+  <text class="lbl" x="636" y="24" text-anchor="end">DUAL ACCESS · ONE VIEW</text>
 
   <path class="fl" d="M208 66 L302 153"/>
   <path class="fl" d="M208 124 L302 153"/>

@@ -73,27 +73,25 @@ The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.m
 | **Adept web** | Team surface for the same meter — browser UI + server-backed (file or Postgres). | [`./adept-web`](./adept-web) |
 | **docs** | Astro Starlight bilingual ecosystem documentation site. | [`./docs`](./docs) |
 
-## Quickstart (Nexus · ~5분)
+## 빠른 시작 가이드 (Nexus Quickstart)
 
-전제: Docker + Docker Compose. ([go-task](https://taskfile.dev) 있으면 `task`, 없으면 우측 명령 그대로)
+실행 환경 요구사항: Docker 및 Docker Compose ([go-task](https://taskfile.dev) 설치 권장, 미설치 시 Compose 명령어 직접 실행).
 
 ```bash
-# (선택) LLM 답변 생성용 — 없어도 근거 검색은 동작
+# (선택 사항) LLM 답변 생성용 API 키 설정 — 미설정 시에도 근거 패킷 검색 파이프라인은 정상 동작
 export ANTHROPIC_API_KEY=sk-ant-...
 
 task up        # 또는: cd nexus && docker compose up -d
-task models    # 최초 1회 임베딩 모델 — 또는: docker compose exec nexus-ollama ollama pull nomic-embed-text
+task models    # 최초 1회 임베딩 모델 로드 (docker compose exec nexus-ollama ollama pull nomic-embed-text)
 ```
 
-> **키 없이 답변 생성(dev):** 유료 키 없이도 서술을 돌릴 수 있습니다 — `NEXUS_LLM_PROVIDER=claude-code`
-> 로 두고 `task llm-bridge` 를 띄우면 실행 중인 Claude Code 를 LLM 백엔드로 씁니다. 키는 품질 계층이지
-> 핵심이 아닙니다.
+> **개발 환경 무키(Keyless) 실행 옵션:** 외부 유료 API 키 없이도 답변 생성이 가능합니다. `NEXUS_LLM_PROVIDER=claude-code` 환경변수를 지정하고 `task llm-bridge`를 실행하면 호스트의 Claude Code 프로세스를 LLM 백엔드로 연동합니다.
 
-→ 브라우저에서 **http://localhost:8000** 열기 → **채팅**에 질문하면 *근거와 함께* 답합니다.
+브라우저에서 **http://localhost:8000** 접속 후 웹 인터페이스에서 질의를 수행하면 검증된 근거 및 출처 링크와 함께 답변이 생성됩니다.
 
-- **문서 넣기:** 좌측 **업로드**, 또는 `docker compose exec nexus-app nexus ingest ./docs`
-- **업데이트:** `git pull` 후 `task update` — 이미지 재빌드·재기동 + DB 마이그레이션 적용([nexus/migrations](nexus/migrations/README.md))
-- **정지:** `task down` (또는 `docker compose down`)
+- **문서 수집(Ingestion):** 웹 UI 내 업로드 기능 사용 또는 CLI 명령 실행: `docker compose exec nexus-app nexus ingest ./docs`
+- **서비스 갱신 및 마이그레이션:** 소스 동기화 후 `task update` 실행 — 컨테이너 재빌드 및 DB 스키마 마이그레이션 적용 ([nexus/migrations](nexus/migrations/README.md))
+- **서비스 중지:** `task down` (또는 `docker compose down`)
 
 ## How this repository is kept honest
 
@@ -130,9 +128,8 @@ Full ecosystem reference, philosophy, and per-tool guides live at the docs site:
 **https://livinglikekrillin.github.io/khala/** (source in [`./docs`](./docs)).
 
 ## Conventions & license
-
+ 
 - Contribution flow, naming, versioning, and terminology rules: [CONVENTIONS.md](./CONVENTIONS.md).
-- What each thing is called, and why: [GLOSSARY.md](./GLOSSARY.md). It is the record of
-  the words this repo retired and the ones it deliberately kept, and it is what
-  `scripts/check_terms.py` reads.
+- Standard technical glossary: [docs/glossary.md](docs/glossary.md).
+- Terminology governance & retired terms record: [GLOSSARY.md](./GLOSSARY.md) (enforced by `scripts/check_terms.py`).
 - Licensed under the [MIT License](./LICENSE).

@@ -1,17 +1,17 @@
 ---
-title: Ecosystem
-description: How the tools connect, only through Khala.
+title: Ecosystem Topology
+description: Inter-tool interface and architectural topology over the Khala substrate.
 ---
 
-The producer tools never call each other directly. They connect **only through Khala**: one link, not a web of point-to-point wires.
+Producer tools across the Khala ecosystem avoid direct coupling, exchanging all state and specifications via the **Khala common substrate and protocol contracts**. This eliminates point-to-point mesh dependencies in favor of a centralized hub topology.
 
 <img
   src="/diagrams/ecosystem.svg"
-  alt="Fragmented sources — docs, specs, traces, configs, know-how — flow into one link, Khala. A developer and an agent read the same shared view from it, and Adept reads the same link as a ledger: what must be known, measured as vouch coverage. The tools connect only through Khala."
+  alt="Khala ecosystem topology: Fragmented sources (docs, specs, traces, configs) flow into one governed link; humans and agents query the same shared view, and Adept audits the link as a ledger of comprehension."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
 
-- **Archon** is the single authority window: people and agents come to it for domain truth.
-- **Observer** is one client of that window, alongside developers.
-- **Arbiter** publishes approved specs into Khala, but it isn't the source of truth; the authoritative frontmatter is.
-- **Adept** reads the same link from the other side: the warehouse is the denominator of cognitive debt — what must be known — and vouch coverage is measured against it.
+- **Archon**: Provides a single authority window directly mapped to static codebase constants and domain invariants.
+- **Observer**: Consumes the Khala substrate alongside human reviewers to verify PR architectural integrity and runtime telemetry impacts.
+- **Arbiter**: Publishes verified, approved architectural specifications (SPECs) into the substrate; validity is guaranteed by immutable frontmatter content hashes.
+- **Adept**: Audits the substrate as an evaluation ledger, measuring vouch coverage of human comprehension against the full knowledge corpus denominator.

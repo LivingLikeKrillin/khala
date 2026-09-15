@@ -39,14 +39,15 @@ Without `ANTHROPIC_API_KEY` you still get the retrieved evidence — just not a 
 
 To stop: `task down`. To update after `git pull`: `task update` (rebuilds **and** runs DB migrations).
 
-## Pick your goal
-| I want to… | → Tool |
-|---|---|
-| get grounded answers about my codebase/domain | [Nexus](/tools/nexus/) / [Archon](/tools/archon/) |
-| ground my PRs & troubleshooting in org context | [Observer](/tools/observer/) |
-| stop rubber-stamping specs | [Arbiter](/tools/arbiter/) |
-| make AI-generated tests actually verify behavior | [Probe](/tools/probe/) |
-| know whether a human can still vouch for what the AI wrote | [Adept](/tools/adept/) |
+## Routing by Engineering Goal
+
+| Engineering Objective | Recommended Tool | Verification Mechanism |
+|---|---|---|
+| Query codebase and domain specs with citable grounding | [Nexus](/tools/nexus/) / [Archon](/tools/archon/) | Hybrid retrieval (BM25 + Vector) & static invariant checking |
+| Ground PR impact analysis & incident triage in live telemetry | [Observer](/tools/observer/) | Nexus knowledge substrate + OpenTelemetry trace correlation |
+| Establish accountable architectural review gates | [Arbiter](/tools/arbiter/) | Pre-implementation specification review & cryptographic content hashing |
+| Measure empirical fault-detection capabilities of test suites | [Probe](/tools/probe/) | Mutation testing harness via AST manipulation |
+| Quantify organizational comprehension deficit against codebase | [Adept](/tools/adept/) | Vouch coverage measurement over knowledge corpus |
 
 ## 5-minute tour
 [What is Khala?](/) → [Philosophy](/philosophy/) → [Ecosystem](/ecosystem/)

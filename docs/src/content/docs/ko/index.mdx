@@ -7,9 +7,9 @@ template: splash
 <div class="kh-hero kh-blueprint">
   <div class="kh-hero-grid">
     <div>
-      <span class="kh-eyebrow">근거 기반 지식</span>
-      <h1 class="kh-hero-title">모든 답에<br/>출처가 붙는다.</h1>
-      <p class="kh-hero-sub">Khala는 코드·문서·서비스에 대한 질문에 인용할 수 있는 근거로만 답합니다. 뒷받침할 근거가 없으면 지어내지 않고 그렇다고 말합니다.</p>
+      <span class="kh-eyebrow">근거 기반 아키텍처 거버넌스</span>
+      <h1 class="kh-hero-title">모든 주장에<br/>근거를 검증한다.</h1>
+      <p class="kh-hero-sub">Khala는 코드·서비스에 대해 질의할 때, 인용 가능한 기술적 근거를 기반으로만 응답하도록 강제하는 아키텍처 거버넌스 플랫폼입니다. 뒷받침할 근거가 없으면 추측하지 않고 근거 부재를 명시합니다.</p>
       <div class="kh-hero-actions">
         <a class="kh-btn kh-btn--solid" href="/ko/start/">시작하기</a>
         <a class="kh-link" href="/ko/philosophy/">철학 읽기 →</a>
@@ -46,133 +46,133 @@ template: splash
   </div>
 </div>
 
-<p class="kh-section-lead">여기서 시작</p>
+<p class="kh-section-lead">문서 탐색</p>
 
 <div class="kh-tiles">
   <a class="kh-tile" href="/ko/start/">
     <span class="kh-num">01</span>
     <h3>시작하기</h3>
-    <p>설치하고 몇 분 만에 첫 근거 기반 답을 받아본다.</p>
+    <p>시스템 설치 및 초기 근거 패킷 기반 질의응답 파이프라인 검증.</p>
     <span class="kh-arrow">→</span>
   </a>
   <a class="kh-tile" href="/ko/philosophy/">
     <span class="kh-num">02</span>
     <h3>철학</h3>
-    <p>Khala의 아이디어와, 근거(grounding)가 왜 중요한지.</p>
+    <p>Khala 아키텍처 철학 및 근거 기반 검증(Grounding Verification) 원칙.</p>
     <span class="kh-arrow">→</span>
   </a>
   <a class="kh-tile" href="/ko/ecosystem/">
     <span class="kh-num">03</span>
     <h3>생태계</h3>
-    <p>도구들이 하나의 공유 링크로 어떻게 연결되는지.</p>
+    <p>단일 데이터 플레인 기반의 도구 간 인터페이스 토폴로지.</p>
     <span class="kh-arrow">→</span>
   </a>
 </div>
 
-<p class="kh-section-lead">AI 작업이 어긋나는 두 지점</p>
+<p class="kh-section-lead">AI 기반 개발에서 발생하는 핵심 위험</p>
 
 <div class="kh-grid-2">
   <div class="kh-cell">
     <span class="kh-num">01</span>
     <h3>확신에 찬 오답</h3>
-    <p>모델은 낡거나 틀린 사실도 완전한 확신으로 말한다. <strong>Nexus</strong>와 <strong>Archon</strong>은 인용할 수 있는 출처에서만 답하므로, 주장에는 항상 근거가 따라온다.</p>
+    <p>모델은 만료되거나 부정확한 사실도 확신을 갖고 생성합니다. <strong>Nexus</strong>와 <strong>Archon</strong>은 인용 가능한 공식 출처에만 한정하여 응답하므로, 모든 주장에 검증 가능한 근거가 결속됩니다.</p>
   </div>
   <div class="kh-cell">
     <span class="kh-num">02</span>
-    <h3>검토 없는 AI 출력</h3>
-    <p>AI가 쓴 코드가 제대로 읽히지도 않은 채 승인된다. <strong>Arbiter</strong>는 코드가 작성되기 전에 리뷰를 명시적이고 기록되는 게이트로 만든다.</p>
+    <h3>형식적 검토 및 무비판적 수용</h3>
+    <p>AI 생성 코드가 엔지니어링 검토 없이 승인되는 위험을 차단합니다. <strong>Arbiter</strong>는 코드 구현 착수 이전에 설계 및 인터페이스 리뷰를 명시적이고 영속적인 거버넌스 게이트로 강제합니다.</p>
   </div>
 </div>
 
-<p class="kh-section-lead">하나의 기판, 네 종류의 정보</p>
+<p class="kh-section-lead">단일 기판, 네 종류의 정보 흐름</p>
 
 <div class="kh-grid-2">
   <div class="kh-cell">
     <span class="kh-num">01</span>
-    <h3>조직이 아는 것</h3>
-    <p>창고는 하나, 문은 둘 — 사람(웹)과 에이전트(MCP)가 같은 통제된 코퍼스를 읽는다: 같은 승인, 같은 최신 버전, 같은 인용.</p>
+    <h3>조직의 공인 지식</h3>
+    <p>단일 지식 기판, 이중 접근 인터페이스 — 사람(Web UI)과 에이전트(MCP)가 동일한 통제 코퍼스를 참조합니다: 단일 진실 공급원, 최신 버전 동기화, 검증된 인용 체계.</p>
     <span class="kh-tag">Nexus</span>
   </div>
   <div class="kh-cell">
     <span class="kh-num">02</span>
-    <h3>왜 만들었는가</h3>
-    <p>설계 결정의 블랙박스 — 에이전트가 수백 개씩 만드는 결정을 비용 0으로 기록하고, 승인은 이름 있는 사람의 책임 있는 행위로 남긴다.</p>
+    <h3>설계 의도 및 의사결정 이력</h3>
+    <p>아키텍처 결정 레코더 — 에이전트가 생성하는 대규모 의사결정 트레이드오프를 결정론적으로 기록하고, 승인은 공인된 엔지니어의 명시적 책임 행위로 영속화합니다.</p>
     <span class="kh-tag">Arbiter</span>
   </div>
   <div class="kh-cell">
     <span class="kh-num">03</span>
-    <h3>시스템이 지금 하는 것</h3>
-    <p>또 하나의 대시보드가 아니라 판단 맥락 — 텔레메트리를 승인된 지식과 결합해 리뷰·트러블슈팅의 증거로 만든다.</p>
+    <h3>런타임 시스템 관측 상태</h3>
+    <p>단순 모니터링을 넘어선 판단 맥락 제공 — 실시간 텔레메트리를 승인된 지식과 결합하여 리뷰 및 장애 분석의 신뢰할 수 있는 증거를 구성합니다.</p>
     <span class="kh-tag">Observer · Nexus</span>
   </div>
   <div class="kh-cell">
     <span class="kh-num">04</span>
-    <h3>누가 아직 이해하는가</h3>
-    <p>인지부채 원장 — 창고가 분모, 보증(vouch)이 분자; 그 간극이 팀이 갚을 수 있는 숫자가 된다.</p>
+    <h3>인지 이해도 및 보증 현황</h3>
+    <p>인지 부채 원장 — 전체 배포 아티팩트가 분모, 유효한 인간 보증(Vouch)이 분자; 미검증 자산의 간극을 정량화하여 측정 가능한 지표로 통제합니다.</p>
     <span class="kh-tag">Adept</span>
   </div>
 </div>
 
-<p class="kh-section-lead">Khala가 갚는 세 가지 부채</p>
+<p class="kh-section-lead">Khala가 통제하는 3대 엔지니어링 부채</p>
 
 <div class="kh-debts">
   <div class="kh-cell">
     <span class="kh-num">01</span>
-    <h3>기술부채</h3>
-    <p>코드와 산출물이 유지보수 속도보다 빨리 쌓인다.</p>
-    <span class="kh-tag">Probe · Observer 가 갚는다</span>
+    <h3>기술 부채 (Technical Debt)</h3>
+    <p>코드와 배포 산출물이 유지보수 수용 속도보다 빠르게 누적되는 현상.</p>
+    <span class="kh-tag">Probe · Observer로 완화</span>
   </div>
   <div class="kh-cell">
     <span class="kh-num">02</span>
-    <h3>의도부채</h3>
-    <p>결정의 이유와 트레이드오프가 사라진다.</p>
-    <span class="kh-tag">Arbiter 가 갚는다</span>
+    <h3>의도 부채 (Intent Debt)</h3>
+    <p>설계 결정의 배경, 대안 평가 및 엔지니어링 트레이드오프가 망실되는 현상.</p>
+    <span class="kh-tag">Arbiter로 추적 관리</span>
   </div>
   <div class="kh-cell kh-cell--wide">
     <span class="kh-num">03</span>
-    <h3>인지부채</h3>
-    <p>팀이 내보내는 시스템을 아무도 온전히 이해하지 못한다. 그 간극을 닫는 것이 Khala의 목적이다: <strong>AI가 만든 것을 당신이 읽고 신뢰할 수 있다.</strong> Adept가 그 간극을 보증 커버리지라는 숫자로 만들어, 상환을 계획할 수 있게 한다.</p>
-    <span class="kh-tag">Adept가 측정하고 갚게 한다</span>
+    <h3>인지 부채 (Cognitive Debt)</h3>
+    <p>팀이 배포하는 시스템의 내부 동작을 엔지니어가 완전히 이해하지 못하는 불일치 현상입니다. Khala는 이 간극을 제거합니다: <strong>AI가 생성한 산출물을 엔지니어가 명확히 검증하고 신뢰할 수 있도록 보장합니다.</strong> Adept는 이를 보증 커버리지(Vouch Coverage) 메트릭으로 정량화하여 체계적인 해소를 지원합니다.</p>
+    <span class="kh-tag">Adept로 정량화 및 통제</span>
   </div>
 </div>
 
-<p class="kh-section-lead">도구</p>
+<p class="kh-section-lead">핵심 도구군</p>
 
 <div class="kh-tools">
   <a class="kh-tile" href="/ko/tools/nexus/">
     <span class="kh-tile-kind">Hybrid retrieval · cited answers</span>
     <h3>Nexus</h3>
-    <p>문서와 텔레메트리에서 답하고, 각 답에 인용을 붙인다.</p>
+    <p>문서 및 관측 텔레메트리를 분석하여 인용 가능한 근거 패킷 기반 답변을 생성합니다.</p>
     <span class="kh-arrow">→</span>
   </a>
   <a class="kh-tile" href="/ko/tools/archon/">
     <span class="kh-tile-kind">도메인 진실</span>
     <h3>Archon</h3>
-    <p>도메인의 규칙과 상수에 대한 권위 있는 답.</p>
+    <p>도메인 규칙 및 불변 상수에 대한 권위 창(Authoritative Window) 기반 질의응답을 제공합니다.</p>
     <span class="kh-arrow">→</span>
   </a>
   <a class="kh-tile" href="/ko/tools/observer/">
     <span class="kh-tile-kind">코드 리뷰</span>
     <h3>Observer</h3>
-    <p>PR의 범위·API 계약·응집도를 검토한다.</p>
+    <p>풀 리퀘스트(PR)의 변경 범위, 인터페이스 계약 및 모듈 응집도를 정적 분석합니다.</p>
     <span class="kh-arrow">→</span>
   </a>
   <a class="kh-tile" href="/ko/tools/arbiter/">
     <span class="kh-tile-kind">명세 / ADR 게이트</span>
     <h3>Arbiter</h3>
-    <p>명세·ADR 승인을 코딩 전 기록되는 게이트로 만든다.</p>
+    <p>명세 및 ADR 승인을 코드 작성 이전의 결정론적 게이트로 통제합니다.</p>
     <span class="kh-arrow">→</span>
   </a>
   <a class="kh-tile" href="/ko/tools/probe/">
     <span class="kh-tile-kind">변이 테스트</span>
     <h3>Probe</h3>
-    <p>green 스위트가 놓치는 공백을 변이 테스트로 찾는다.</p>
+    <p>단위 테스트 스위트가 통과시키는 논리적 결함을 변이 분석으로 검출합니다.</p>
     <span class="kh-arrow">→</span>
   </a>
   <a class="kh-tile" href="/ko/tools/adept/">
     <span class="kh-tile-kind">인지부채 원장</span>
     <h3>Adept</h3>
-    <p>내보낸 것을 이름 있는 사람이 여전히 보증할 수 있는지 측정한다.</p>
+    <p>배포 아티팩트에 대한 엔지니어의 명시적 보증(Vouch) 유효성을 측정합니다.</p>
     <span class="kh-arrow">→</span>
   </a>
 </div>

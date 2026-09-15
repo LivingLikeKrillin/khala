@@ -37,7 +37,7 @@ AI Agent(Code Review, Troubleshooting)의 **context provider**로서, 추측이 
 ```
 "결제 서비스가 발행하는 토픽이 뭐야?"
 
-→ 검색: BM25(한국어 형태소) + Vector(768d) + Graph(2-hop)
+→ 검색: Hybrid(BM25 형태소 + Vector 768d by RRF) + Graph 2-hop context
 → 근거: API_CONTRACT.md §5.2, 최근 OTel trace 47건
 → 답변: "payment-service는 payment.completed 토픽을 발행합니다. (confidence: 0.85)"
          + 출처 링크 + trace 포인터
@@ -111,19 +111,20 @@ AI Agent(Code Review, Troubleshooting)의 **context provider**로서, 추측이 
 
 ## Key Features
 
-### Hybrid Search: BM25 + Vector + Graph
+### Hybrid Retrieval: BM25 + Vector (RRF Fusion) & Graph Context
 
-3가지 검색을 병렬 실행하고 RRF(Reciprocal Rank Fusion)로 통합합니다.
+BM25와 벡터 검색 경로를 병렬 실행하고 RRF(Reciprocal Rank Fusion, `k=60`)로 융합한 후, 융합 상위 결과에 대해 Entity 2-hop 지식 그래프 맥락을 독립적으로 결합합니다.
 
 ```python
-# BM25: mecab-ko 형태소 분석으로 한국어 조사/어미를 정확히 처리
-"서비스가" → ["서비스"]  # 조사 '가' 제거
-"발행한다" → ["발행"]    # 어미 '한다' 제거
+# 1. BM25 경로: mecab-ko 형태소 분석을 통해 한국어 조사 및 어미를 정밀 분리
+"서비스가" → ["서비스"]  # 조사 '가' 분리
+"발행한다" → ["발행"]    # 어미 '한다' 분리
 
-# Vector: nomic-embed-text (768d) 다국어 임베딩
-# Graph: Entity 관계 2-hop 탐색
+# 2. Vector 경로: nomic-embed-text (768d) 밀집 벡터 임베딩 (pgvector 연계)
 
-# RRF Fusion: score = Σ 1/(k + rank + 1), k=60
+# 3. RRF 융합: score = Σ 1/(k + rank + 1), k=60
+
+# 4. Graph 맥락 확장: 융합 완료 후 엔티티 2-hop 인접 관계 엣지 추가 (랭킹 점수 비관여)
 ```
 
 ### Dual Knowledge Layer: Designed + Observed
