@@ -69,7 +69,7 @@ The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.m
 | **Nexus** | Hybrid retrieval over your docs and OTel telemetry — every answer carries citations that are verified in code. | [`./nexus`](./nexus) |
 | **Archon** | Authority window over domain invariants — reads values from code constants at query time. Ships inside Nexus. | [`./nexus/nexus/claims`](./nexus/nexus/claims) |
 | **Observer** | Platform-aware PR analyzer — PR scope, API spec lint/diff, review checklists; consumes Nexus. | [`./observer`](./observer) |
-| **Arbiter** | ADR/SDD governance MCP — reviewable, traceable decision records; publishes to Nexus. | [`./arbiter`](./arbiter) |
+| **Arbiter** | ADR/SDD governance MCP — intercepts Write/Edit/MultiEdit when the PreToolUse hook is registered (Bash shell execution not gated); publishes approved specs to Nexus. | [`./arbiter`](./arbiter) |
 | **Probe** | Mutation-driven test-quality harness — catches what advisory review misses. | [`./probe`](./probe) |
 | **Adept** | Cognitive-debt meter — graded, grounded comprehension vouches; coverage + orphan hotlist. | [`./adept`](./adept) |
 | **Adept web** | Team surface for the same meter — browser UI + server-backed (file or Postgres). | [`./adept-web`](./adept-web) |
@@ -97,18 +97,18 @@ Open **http://localhost:8000** in your browser to query documentation with cited
 
 ## How this repository is kept honest
 
-A system whose promise is calibration must hold itself to the same standard. The guards below are enforced on every push rather than remembered:
+A system whose promise is calibration must hold itself to the same standard. The guards below are enforced on every push and pull request:
 
-| Guard | What it refuses | Why it exists |
-|---|---|---|
-| **Doc-to-code anchors** — [`doc-anchors.yml`](./doc-anchors.yml) | A document whose anchored source paths no longer exist | Prevents documentation drift deterministically by joining docs with code symbols. |
-| **Disposable-database marker** | A test run against a database that has not declared itself scratch | Prevents catastrophic data loss in development/production databases. |
-| **Fingerprint scanner** | A push carrying identifying details — files, commit messages, and PR bodies alike | Scans all tracked files for accidental leaks of private keys or identifiers. |
-| **Declared index generations** | Ingestion whose resolved embedding generation differs from the corpus's declared one | Prevents silent index corruption across mismatched embedding models. |
-| **Pre-registered verdict rules** | An evaluation harness edited after seeing the score it produced | Enforces objective evaluation rules before benchmark execution. |
-| **Declared evaluation corpus** | A label run where nobody said which corpus to ask, or where no label can reach the one being asked | Prevents benchmark evaluation against invalid tenants or corpora. |
+| Guard | When enforced | What it refuses | Why it exists |
+|---|---|---|---|
+| **Doc-to-code anchors** — [`doc-anchors.yml`](./doc-anchors.yml) | Push · PR | A document whose anchored source paths no longer exist | Prevents documentation drift deterministically by joining docs with code symbols. |
+| **Disposable-database marker** | Push · PR | A test run against a database that has not declared itself scratch | Prevents catastrophic data loss in development/production databases. |
+| **Fingerprint scanner** | Push (tracked files)<br/>PR (messages, title, body) | Identifying details (partner org names, real emails, SSO tenant hosts, Notion page IDs) | Prevents identifying information leaks across files and PR metadata. |
+| **Declared index generations** | Push · PR | Ingestion whose resolved embedding generation differs from the corpus's declared one | Prevents silent index corruption across mismatched embedding models. |
+| **Pre-registered verdict rules** | Push · PR | An evaluation harness edited after seeing the score it produced | Enforces objective evaluation rules before benchmark execution. |
+| **Declared evaluation corpus** | Push · PR | A label run where nobody said which corpus to ask, or where no label can reach the one being asked | Prevents benchmark evaluation against invalid tenants or corpora. |
 
-2,988 test functions and 17 CI jobs run across the repository, including real Postgres integration with schema migrations. Governance artifacts (10 ADRs, 54 SPECs) are stamped and cryptographically verified for integrity in CI via `scripts/ledger_integrity.py`.
+Across the repository, 2,988 test functions are declared and 17 CI jobs run in CI, including real Postgres integration with schema migrations. Among governance artifacts (10 ADRs, 54 SPECs), 61 approved or accepted artifacts are stamped and cryptographically verified for integrity in CI via `scripts/ledger_integrity.py`.
 
 - **[→ Engineering log](https://livinglikekrillin.github.io/khala/engineering-log/)** — A dated record of what went wrong, how defects were discovered, and what was remediated.
 - Open items are tracked deterministically in [OPEN.md](./OPEN.md).
