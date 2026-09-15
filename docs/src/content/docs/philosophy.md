@@ -27,7 +27,7 @@ Adept interacts with Nexus and Arbiter not as an isolated dashboard, but by dire
 The first failure mode occurs when generative models assert obsolete or fabricated domain logic with maximum confidence. When queried regarding domain invariants, business rules, or status codes, models often synthesize plausible yet erroneous answers.
 
 - **Archon** establishes an authority window directly over codebase constants and domain invariants, resolving truth deterministically from static code declarations.
-- **Nexus** implements multi-path retrieval with mandatory citation verification. If candidate chunks fail to provide verifiable grounding for statements and numbers, the query is explicitly abstained.
+- **Nexus** implements multi-path retrieval and deterministically abstains with a fixed message when no evidence snippets are retrieved. Citation verification and numeric grounding are evaluated post-generation as audit metrics rather than gating abstention.
 
 ## Failure Mode 2 — Human Rubber-Stamping
 
@@ -59,7 +59,7 @@ All tools across the Khala ecosystem enforce **calibration** as an architectural
 | **Archon** | Domain Invariants Authority | System Constants & Business Rules | Planners, Architects, Agents | Invariant Provider | On-demand queries |
 | **Arbiter** | Decision & Spec Ledger | Architectural Design & Approval Integrity | Decision Makers | Spec Provider | Pre-implementation gate |
 | **Observer** | Grounded Analysis Agent | PR Scope, API Spec Diffs, Triage | Reviewers, SREs | Substrate Consumer | Pre-merge & Incident triage |
-| **Probe** | Mutation Quality Harness | Test Suite Fault-Detection Efficacy | Test Authors, Reviewers | Deterministic Gate | Pre-commit / CI gate |
+| **Probe** | Mutation Quality Harness | Test Suite Fault-Detection Efficacy | Test Authors, Reviewers | Advisory Harness | Pre-commit advisory report |
 | **Adept** | Cognitive Debt Meter | Comprehension Validity & Vouch Coverage | Engineering Leadership | Corpus Auditor | Continuous / Doc mutation |
 
 ## Inter-Tool Topology
