@@ -1,10 +1,10 @@
 ---
-title: 기여하기
-description: 미래의 협업자와 오픈소스 기여자를 위해.
+title: 기여 가이드 (Contributing)
+description: Khala 오픈소스 생태계 기여 절차 및 컨벤션 안내.
 ---
 
-이 문서와 여기서 설명하는 도구들은 미래의 협업자를 위해 공개적으로 만들어집니다. 지금은 [Khala 모노레포](https://github.com/LivingLikeKrillin/khala)에서 기여가 이루어집니다 — 각 도구는 그 안의 자체 디렉터리(`nexus/`, `observer/`, `arbiter/`, `probe/`, `adept/`)에 있습니다 — 여기서 이슈와 풀 리퀘스트를 열 수 있습니다.
+본 프로젝트와 관련 도구군은 오픈소스 엔지니어링 표준에 따라 공개적으로 개발 및 유지보수됩니다. 기여 작업은 [Khala 모노레포](https://github.com/LivingLikeKrillin/khala)의 서브프로젝트 디렉터리(`nexus/`, `observer/`, `arbiter/`, `probe/`, `adept/`)를 기반으로 수행되며, GitHub 이슈 트래커 및 풀 리퀘스트(PR)를 통해 진행됩니다.
 
-생태계 전반의 공유 컨벤션 — 용어, 네이밍, 도구별 버저닝, Conventional Commits 형식 — 은 [`CONVENTIONS.md`](https://github.com/LivingLikeKrillin/khala/blob/master/CONVENTIONS.md)에 있습니다.
+생태계 공통 규약(아키텍처 불변식, 컴포넌트 네이밍, 도구별 독립 시맨틱 버저닝, Conventional Commits 규칙)은 [`CONVENTIONS.md`](https://github.com/LivingLikeKrillin/khala/blob/master/CONVENTIONS.md) 및 표준 용어집 [`docs/glossary.md`](/ko/glossary/)에 정의되어 있습니다.
 
-이 문서 사이트를 위한 정식 기여 흐름과 리뷰 가이드라인은 생태계가 성숙하면서 여기서 확장될 예정입니다. 그동안 돕고 싶다면, 관련 저장소에서 디스커션을 열어 주세요.
+풀 리퀘스트 제출 전 로컬 환경에서 테스트 스위트 및 거버넌스 게이트(`check_readme_counts.py`, `check_terms.py`, `check_svg_fit.py`, `ledger_integrity.py` 등)의 통과를 확인해야 합니다.

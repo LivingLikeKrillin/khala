@@ -1,76 +1,76 @@
 ---
 title: Philosophy
-description: The calibration thesis behind Khala.
+description: The calibration architectural thesis behind Khala.
 ---
 
-*Khala doesn't promise correctness. It promises **calibration**: it won't let the system sound more certain than the evidence allows.*
+*Khala does not promise absolute correctness. It guarantees **calibration**: aligning system confidence strictly with observable, verifiable evidence and blocking ungrounded assertions.*
 
-## The link
+## The Architecture Backbone (Khala Link)
 
-Khala is a name borrowed from StarCraft. Among the Protoss, the Khala is the psychic link that joins a people into one mind without erasing the individual. It isn't the only name borrowed — Nexus, Archon, Arbiter, Adept, Probe, and Observer all come from that same faction, and each keeps the role it played there. Here it means something more concrete: the shared layer that lets a set of independent tools speak with one calibrated voice. Khala isn't a tool you run. It's the link the tools share: where grounded knowledge lives, and the discipline that keeps each tool honest about what it does and doesn't know.
+Khala is the shared knowledge and governance backbone that unifies independent engineering tools (Nexus, Archon, Arbiter, Adept, Probe, Observer) under standardized calibration contracts. Khala is not an independent runnable CLI; it is the protocol and interoperability layer connecting these tools. It enforces that all components operate against a single substrate of grounded knowledge and explicitly state the provenance and uncertainty bounds of their outputs.
 
-This matters now because large language models are extraordinarily fluent and extraordinarily willing: they answer anything, in confident prose, whether or not they have grounds to. That fluency changes how teams build software, and it opens two distinct failure modes that no single tool can close on its own. Khala exists to defend against both.
+Large language models (LLMs) exhibit high fluency regardless of factual grounding, generating confident outputs in the absence of verified premises. In engineering pipelines, this leads to two critical failure modes that single-purpose tools fail to address concurrently. Khala is architected to deterministically defend against both.
 
-## The same information
+## Four Information Domains on a Governed Substrate
 
-Khala's founding expectation is simple to state: everyone who builds and runs the service thinks from the **same information**. The AI era changes that sentence twice. "Everyone" now includes agents — a stakeholder that reads faster than any human and never asks a colleague. And "information" turns out to be four different things, drifting apart at four different speeds:
+Khala ensures that software engineers and autonomous coding agents operate from the **same single source of truth**. Engineering knowledge is structured into four distinct domains with different lifecycles and mutation dynamics:
 
-1. **What the org knows** — documents, specs, know-how. Kept the same by one warehouse with two doors: humans and agents read the same governed corpus — same approvals, same current version, same citations. (**Nexus**)
-2. **Why it was built** — design decisions. Coding agents make hundreds of micro-decisions nobody would have documented before; recording them now costs nothing, and approval remains a named human's accountable act. A flight recorder, not paperwork. (**Arbiter**)
-3. **What the system is actually doing** — traces, metrics, logs. Khala doesn't try to be another observability stack; it joins telemetry with approved knowledge — specs, runbooks, decisions — into judgment context for review and troubleshooting. (**Observer**, over Nexus)
-4. **Who still understands it** — comprehension. The quiet one. It lives in heads, not files, and it decays silently as agent output grows. It becomes manageable only next to the warehouse: what must be known is the denominator, what a named human can still vouch for is the numerator, and the gap is cognitive debt — measured, listed, repayable. (**Adept**)
+1. **Domain & Organizational Knowledge** — Specifications, design documents, operational policies, runbooks. Persisted in a unified corpus and accessed identically by humans (Web UI) and agents (MCP/A2A contracts). (**Nexus**)
+2. **Architectural & Design Decisions** — Architecture Decision Records (ADR/SDD). Automatically records micro-decisions made by agents while requiring human sign-off for accountable approval gates. (**Arbiter**)
+3. **Runtime Telemetry & State** — Distributed traces, metrics, logs. Combines live telemetry with approved knowledge into structured evidence packets for PR review and incident root-cause analysis. (**Observer**, on Nexus)
+4. **System Comprehension & Cognitive Debt** — Structural debt metrics. Measures the divergence between codebase complexity and human verification coverage. Evaluates the knowledge corpus as the denominator (required knowledge) and human vouches as the numerator to quantify cognitive debt. (**Adept**)
 
-The fourth kind is why the other three live in one place. You cannot measure "what we should know but don't" without an inventory of what should be known — the warehouse *is* that inventory. Cognitive debt isn't managed by a dashboard bolted onto a search tool; it's the same substrate, read as a ledger.
+Adept interacts with Nexus and Arbiter not as an isolated dashboard, but by directly reading the approved knowledge corpus as an auditable ledger.
 
-## Failure ① — the machine lies
+## Failure Mode 1 — Model Hallucination & Ungrounded Assertion
 
-The first failure is the obvious one, the one everyone has felt: the machine states something stale or wrong with the same confidence it uses for what it actually knows. It doesn't lie out of malice; it lies because a plausible answer is cheaper to generate than a true one. Ask it about your domain (your invariants, your business rules, the meaning of a status code in your own system) and it will happily invent an answer that sounds right and isn't.
+The first failure mode occurs when generative models assert obsolete or fabricated domain logic with maximum confidence. When queried regarding domain invariants, business rules, or status codes, models often synthesize plausible yet erroneous answers.
 
-**Archon** is the defense: the authority window over domain truth, the one place a person or an agent asks "what is true here, and on whose authority?" Instead of letting a model improvise the meaning of a value or the boundary of an invariant, Archon grounds the answer in a governed source and points you to it. When there's no authoritative source, it doesn't soften the answer; it declines to answer. Behind it, **Nexus** is the knowledge base the same principle rests on: retrieval over your real documents and telemetry, so an answer either has a citable source or it doesn't get made. The machine stops lying not because it got smarter, but because the system won't let it answer ungrounded.
+- **Archon** establishes an authority window directly over codebase constants and domain invariants, resolving truth deterministically from static code declarations.
+- **Nexus** implements multi-path retrieval with mandatory citation verification. If candidate chunks fail to provide verifiable grounding for statements and numbers, the query is explicitly abstained.
 
-## Failure ② — the human stops judging
+## Failure Mode 2 — Human Rubber-Stamping
 
-The second failure is quieter and, over time, more corrosive: the human stops judging. When an assistant produces a confident plan, a confident diff, a confident spec, the easiest thing to do is approve it. Reading carefully is work; rubber-stamping is free. Review turns into ceremony: a green check on text nobody really read. The machine didn't lie this time; the human just gave up the judgment that was supposed to be the safeguard.
+The second failure mode arises when human reviewers, overwhelmed by high-volume agent-generated diffs and specifications, approve changes without critical verification, collapsing the quality gate.
 
-**Arbiter** is the defense. It treats human judgment as something that has to be accountable, not assumed: by making reviewed, approved specs and decision records a gate *before* code is written, it forces the moment of judgment to happen where it's cheap and where it leaves a record. The point isn't more paperwork; it's that a decision becomes a recorded, attributable act instead of a reflex. You can't rubber-stamp your way past a ledger that asks who approved what, and why.
+- **Arbiter** elevates architecture decisions and specifications into formal pre-implementation gates. By cryptographically stamping content hashes, timestamps, and named human approvers into decision ledgers, it enforces full accountability and auditability across all code changes.
 
-## The blind spot — tests that verify nothing
+## Latent Quality Defect — Superficial Test Coverage
 
-Beneath both failures sits a blind spot. AI-generated tests look fine: syntactically valid, plausibly named, green, and coverage climbs. Yet they can verify essentially zero behavior — asserting trivialities, exercising code without checking its outcome, or mocking away the very thing that mattered. Advisory review, human or LLM, waves them through, because the tests *look* like tests.
+Automatically generated test suites can report high line coverage while asserting trivial conditions, skipping execution checks, or over-mocking critical subsystems.
 
-**Probe** closes the blind spot deterministically. By mutating the code under test and checking whether the suite notices, it turns the soft claim "these tests verify behavior" into a hard, measurable fact. A test that survives a mutation it should have caught is exposed as theater. This isn't advice or a vibe; it's a forcing function that an LLM-saturated review can't fake its way past.
+- **Probe** executes mutation testing harnesses that programmatically alter AST nodes and measure whether existing test suites catch these mutations. It converts nominal coverage into empirical fault-detection metrics.
 
-## The thesis — calibration
+## The Calibration Thesis
 
-The thread through all of this is **calibration**. Khala doesn't promise correctness; no tool can. It promises not to assert soft or stale answers as if they were solid. Where advisory, LLM-mediated review breaks down (everything looks fine, and confidence is free) Khala adds deterministic grounding and deterministic checks instead:
+All tools across the Khala ecosystem enforce **calibration** as an architectural invariant:
 
-- **Archon** grounds claims in authority.
-- **Nexus** grounds knowledge in sources.
-- **Arbiter** grounds approval in accountable judgment.
-- **Probe** grounds the test suite's promise in measurable fact.
-- **Adept** grounds the claim "a human still understands this" in tested comprehension.
+- **Archon** binds domain claims to verified static code constants.
+- **Nexus** binds generative answers to verified evidence packets.
+- **Arbiter** binds architectural approval to attributable decision ledgers.
+- **Probe** binds test suite assertions to deterministic mutation survival rates.
+- **Adept** binds organizational comprehension claims to measured vouch coverage.
 
-Each narrows the gap between how confident the system sounds and how much it actually knows. That gap, closed, is calibration.
+## Calibration Role Matrix
 
-## The calibration map
-
-| Tool | Identity | Calibrates | Audience | Khala relation | Timing |
+| Tool Identifier | Architectural Role | Calibrated Domain | Target Consumers | Khala Topology | Execution Trigger |
 |---|---|---|---|---|---|
-| Nexus | Shared grounded-knowledge base | Grounded knowledge (no source → blocked) | Everyone | The body | Always |
-| Archon | Authority window over domain truth | The machine's truthfulness | Planners + devs + agents | Producer + read window | Always |
-| Arbiter | Human-judgment accountability ledger | The human's judgment | Decision-makers | Producer (approved specs) | Decision gate (pre-code) |
-| Observer | Grounding agent | Engineering output (review/troubleshoot) | Engineers + AI | Consumer | Post-code + runtime |
-| Probe | Mutation-driven test-quality harness | The claim "these tests verify behavior" | Devs writing/reviewing tests | Independent (deterministic) | Pre-commit (gate, roadmap M3) |
-| Adept | Cognitive-debt meter | The claim "a named human still understands this" | Teams + artifact owners | Consumer (reads the warehouse as denominator) | Continuous (vouches go stale with content) |
+| **Nexus** | Grounded Knowledge Base | Domain Knowledge & Telemetry (No source → Abstain) | All Engineers & Agents | Central Substrate | On-demand queries |
+| **Archon** | Domain Invariants Authority | System Constants & Business Rules | Planners, Architects, Agents | Invariant Provider | On-demand queries |
+| **Arbiter** | Decision & Spec Ledger | Architectural Design & Approval Integrity | Decision Makers | Spec Provider | Pre-implementation gate |
+| **Observer** | Grounded Analysis Agent | PR Scope, API Spec Diffs, Triage | Reviewers, SREs | Substrate Consumer | Pre-merge & Incident triage |
+| **Probe** | Mutation Quality Harness | Test Suite Fault-Detection Efficacy | Test Authors, Reviewers | Deterministic Gate | Pre-commit / CI gate |
+| **Adept** | Cognitive Debt Meter | Comprehension Validity & Vouch Coverage | Engineering Leadership | Corpus Auditor | Continuous / Doc mutation |
 
-## How they connect
+## Inter-Tool Topology
 
 <img
   src="/khala/diagrams/ecosystem.svg"
-  alt="Fragmented sources — docs, specs, traces, configs, know-how — flow into one link, Khala. A developer and an agent read the same shared view from it, and Adept reads the same link as a ledger: what must be known, measured as vouch coverage. The tools connect only through Khala."
+  alt="Khala ecosystem topology: Fragmented sources (docs, specs, traces, configs) flow into one governed link; humans and agents query the same shared view, and Adept audits the link as a ledger of comprehension."
   style="max-width: 100%; height: auto; display: block; margin: 1.5rem auto;"
 />
 
-The most important architectural relationship is also the simplest: the producer tools never call each other directly. They connect **only through Khala**. Archon publishes claims and values into the shared body; Arbiter publishes approved specs into it; everything that needs grounded knowledge reads from the same place. That's what keeps the ecosystem coherent rather than tangled: one link, not N² wires.
-
-[**Observer**](/tools/observer/) sits on the other side of that link as a consumer: a grounding agent for engineering work (PR scope, API contracts, troubleshooting) that reaches its conclusions by querying Khala rather than reaching into the producers. And [**Archon**](/tools/archon/) is the single authority window for domain truth: when a developer or an agent needs to know what's true in the domain, there's exactly one window to ask, and exactly one answer, with its source.
+Khala enforces a decoupled hub-and-spoke topology: producer tools never invoke each other directly. All interactions flow through the **Khala substrate**:
+- **Archon** and **Arbiter** publish verified constants and approved specifications into the substrate.
+- [**Observer**](/tools/observer/) queries the substrate to evaluate pull requests against approved specifications and runtime traces.
+- [**Archon**](/tools/archon/) provides a deterministic API for invariant lookup.
