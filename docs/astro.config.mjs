@@ -97,7 +97,7 @@ export default defineConfig({
         PageTitle: './src/components/PageTitle.astro',
       },
       logo: { src: './src/assets/logo.svg', alt: 'Khala' },
-      defaultLocale: 'root',
+      defaultLocale: 'ko',
       locales: {
         root: { label: 'English', lang: 'en' },
         ko: { label: '한국어', lang: 'ko' },
