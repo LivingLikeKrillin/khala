@@ -27,7 +27,7 @@ Adept interacts with Nexus and Arbiter not as an isolated dashboard, but by dire
 The first failure mode occurs when generative models assert obsolete or fabricated domain logic with maximum confidence. When queried regarding domain invariants, business rules, or status codes, models often synthesize plausible yet erroneous answers.
 
 - **Archon** establishes an authority window directly over codebase constants and domain invariants, resolving truth deterministically from static code declarations.
-- **Nexus** implements multi-path retrieval and deterministically abstains with a fixed message when no evidence snippets are retrieved. Citation verification and numeric grounding are evaluated post-generation as audit metrics rather than gating abstention.
+- **Nexus** implements multi-path retrieval and deterministically abstains with a fixed message when no evidence snippets are retrieved. Citation source-matching is verified post-generation and aggregated as an unverified-citation rate rather than gating abstention.
 
 ## Failure Mode 2 — Human Rubber-Stamping
 
