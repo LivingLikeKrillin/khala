@@ -404,7 +404,24 @@ async def _search_channels(req, llm_svc):
 @app.post("/search", response_model=NexusResponse)
 async def search(req: SearchRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
     """Hybrid 검색."""
-    req.tenant, req.classification_max = effective_scope(principal, req.tenant, req.classification_max)
+    # ⛔ **이 자리는 오래 `effective_scope` 였다 — 쓰기 경로용 클램프다.** 그 함수는 요청
+    # tenant 를 아예 안 보고 `principal.tenant` 하나를 돌려준다. 결과가 둘이었다: 범위 안의
+    # 테넌트를 지목해도 **조용히 무시**됐고, `read_scope` 가 여럿이어도 이 엔드포인트만
+    # 언제나 하나만 봤다. `auth/scope.py` 머리말이 이미 *"읽기 경로는 effective_read_scope 로
+    # 옮긴다"* 고 적어 뒀는데 `/search/answer` 만 옮겨 갔다.
+    #
+    # 아래 세 줄은 그 답변 경로에서 그대로 가져온 것이다 — 사본을 만드는 게 아니라 같은
+    # 이음매를 쓰는 것이고, 거기 달린 두 실측(기본값 · 귀속)이 여기에도 그대로 걸린다.
+    asked_tenant = req.tenant if "tenant" in req.model_fields_set else None
+    _scope, req.classification_max, _out = effective_read_scope(
+        principal, asked_tenant, req.classification_max)
+    # 범위는 로컬 `_scope` 로만 흐르고 `req.tenant` 는 귀속용 단일 값으로 남는다
+    # (`search_log.tenant` 가 TEXT 다 — 목록을 넣으면 적재가 조용히 죽는다).
+    req.tenant = principal.tenant
+    if _out:
+        import structlog
+        structlog.get_logger(__name__).warning(
+            OUT_OF_SCOPE_EVENT, principal=principal.name, resolved=list(_scope))
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="쿼리가 비어있습니다.")
     _validate_route(req.route)
@@ -428,7 +445,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         patterns = _build_entity_patterns(gazetteer)
         detected = find_entities_in_text(search_query, patterns)
         entity_rids = [
-            entity_rid(req.tenant, e.entity_type, e.name)
+            entity_rid(principal.tenant, e.entity_type, e.name)
             for e in detected
         ]
 
@@ -438,7 +455,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         result = await hybrid_search(
             window=_origin_window(req),
             query=search_query,
-            tenant=req.tenant,
+            tenant=_scope,
             clearance=req.classification_max,
             top_k=req.top_k,
             embedding_svc=embedding_svc,
@@ -480,7 +497,10 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
 
         sig = extract_signals(
             result, None, path="search",
-            tenant=req.tenant, clearance=req.classification_max, query=req.query,
+            # 범위를 따로 남긴다. 교차 테넌트 조회를 단일 테넌트로 기록하면 `design_docs`
+            # 수요가 `default` 로 오귀속된다 — 답변 경로가 같은 이유로 같은 것을 남긴다.
+            tenant=req.tenant, read_scope=_scope,
+            clearance=req.classification_max, query=req.query,
             n_entities=len(entity_rids),
             fusion_channels=len(channels or [1]),
             rewrite=rw,
