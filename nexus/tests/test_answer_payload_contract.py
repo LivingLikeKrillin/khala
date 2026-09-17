@@ -34,6 +34,9 @@ class _Search:
     def __init__(self, confidence):
         self.hits, self.graph, self.fill = [], None, None
         self.timing_ms, self.degraded, self.confidence = {}, False, confidence
+        # 엔드포인트가 응답에 싣는 값이 하나 늘었다(시각 범위 미상 건수).
+        # `getattr` 로 덮지 않는다 — 덮으면 이 칸이 진짜로 사라진 날에도 초록이다.
+        self.n_unknown_origin_time = None
 
 
 @pytest.fixture

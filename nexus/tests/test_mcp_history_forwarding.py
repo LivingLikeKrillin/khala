@@ -104,3 +104,48 @@ def test_the_canonical_rule_still_lives_in_one_place():
 
     assert history.MAX_TURNS and history.MAX_BYTES
     assert issubclass(history.HistoryTooLarge, ValueError)
+
+
+# ── 4. 시각 범위도 같은 길로 간다 ──────────────────────────────────────────
+#
+# 이력과 같은 파일에 두는 이유: 둘 다 *"표면이 받은 것을 그대로 넘기는가"* 하나를 묻는다.
+# 넘기는 규칙도 같다 — 안 물었으면 키를 안 보낸다.
+
+@pytest.mark.parametrize("tool", ["nexus_search", "nexus_answer"])
+@pytest.mark.parametrize("field", ["origin_since", "origin_until"])
+def test_the_tool_schema_declares_the_time_window(mcp_tools, tool, field):
+    props = mcp_tools[tool].input_schema.get("properties", {})
+    assert field in props, f"{tool} 의 인자: {sorted(props)}"
+
+
+@pytest.mark.parametrize("tool", ["nexus_search", "nexus_answer"])
+def test_the_window_reaches_the_request_body(sent, tool):
+    asyncio.run(getattr(server, tool)(
+        query="어제도 같은 일 있었어?",
+        origin_since="2026-09-17T00:00:00Z", origin_until="2026-09-18T00:00:00Z"))
+    assert sent.body["origin_since"] == "2026-09-17T00:00:00Z"
+    assert sent.body["origin_until"] == "2026-09-18T00:00:00Z"
+
+
+@pytest.mark.parametrize("tool", ["nexus_search", "nexus_answer"])
+def test_no_window_sends_no_key(sent, tool):
+    """대조군. 키를 보내면 API 가 "물었다" 로 읽고, 미상 건수가 `None`(미측정) 대신 0 으로
+    나가 뜻이 뒤집힌다."""
+    asyncio.run(getattr(server, tool)(query="결제 한도는?"))
+    assert "origin_since" not in sent.body and "origin_until" not in sent.body
+
+
+@pytest.mark.parametrize("tool", ["nexus_search", "nexus_answer"])
+def test_one_bound_alone_is_allowed(sent, tool):
+    """"어제 이후" 만 묻는 것이 흔한 모양이다. 둘 다 요구하면 그 질문을 못 한다."""
+    asyncio.run(getattr(server, tool)(query="x", origin_since="2026-09-17T00:00:00Z"))
+    assert sent.body["origin_since"] and "origin_until" not in sent.body
+
+
+def test_the_unknown_time_note_is_silent_when_not_measured():
+    """⛔ 안 물었으면 아무 말도 안 한다 — `None` 에 「미상 0건」 을 붙이면, 물어본 적 없는
+    좁히기가 완벽했던 것처럼 읽힌다."""
+    assert server._unknown_time_note({}) == []
+    assert server._unknown_time_note({"n_unknown_origin_time": None}) == []
+    assert server._unknown_time_note({"n_unknown_origin_time": 0}) == []
+    assert len(server._unknown_time_note({"n_unknown_origin_time": 3})) == 1

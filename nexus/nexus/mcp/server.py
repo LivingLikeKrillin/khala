@@ -69,6 +69,29 @@ def _with_history(body: dict, history: list[dict] | None) -> dict:
     return {**body, "history": history} if history else body
 
 
+#: 시각 범위도 같은 규칙이다 — 안 물었으면 키를 안 보낸다. 보내면 `None` 이 "안 물었다" 가
+#: 아니라 "그 값" 이 되고, 그러면 미상 건수가 `None`(미측정) 대신 0 으로 나가 뜻이 뒤집힌다.
+def _unknown_time_note(data: dict) -> list[str]:
+    """좁히기가 닿지 못한 만큼을 에이전트에게 알린다.
+
+    **`None` 이면 아무 말도 안 한다.** 시각 범위를 안 물은 요청에 「미상 0건」 을 붙이면, 물어본
+    적도 없는 좁히기가 완벽했던 것처럼 읽힌다 — 0 과 미측정을 가르는 것이 이 값의 전부다.
+    """
+    n = data.get("n_unknown_origin_time")
+    if not n:
+        return []
+    return [f"\n⚠ 근거 {n}건은 원본 시각을 모른다 — 시각 범위로 거르지 못한 것이다."]
+
+
+def _with_window(body: dict, since: str | None, until: str | None) -> dict:
+    out = dict(body)
+    if since:
+        out["origin_since"] = since
+    if until:
+        out["origin_until"] = until
+    return out
+
+
 @mcp.tool()
 async def nexus_search(
     query: str,
@@ -78,6 +101,8 @@ async def nexus_search(
     tenant: str = "default",
     include_graph: bool = True,
     history: list[dict] | None = None,
+    origin_since: str | None = None,
+    origin_until: str | None = None,
 ) -> str:
     """Nexus 하이브리드 검색 (BM25 + Vector + Graph).
 
@@ -94,15 +119,19 @@ async def nexus_search(
         history: 앞선 대화 턴 `[{"role": "user"|"assistant", "content": "…"}]`, 오래된 것부터.
             **이번 `query` 는 넣지 않는다.** 주면 생략형 질문("그건 언제부터야?")의 지시대명사를
             앞턴에서 채워 검색하고, 원문도 별도 채널로 남긴다. 상한을 넘으면 API 가 거절한다.
+        origin_since: 이 시각 **이후**에 원본이 수정된 문서로 좁힌다 (ISO 8601).
+        origin_until: 이 시각 **이전**으로 좁힌다.
+            ⛔ 적재 시각이 아니라 **문서 자신의 시각**이다. ⭐ **시각을 모르는 문서는 안 떨군다** —
+            응답 끝의 「시각 미상」 건수가 좁히기가 닿지 못한 만큼이다.
     """
-    result = await _api_call("post", "/search", json=_with_history({
+    result = await _api_call("post", "/search", json=_with_window(_with_history({
         "query": query,
         "top_k": top_k,
         "route": route,
         "classification_max": classification_max,
         "tenant": tenant,
         "include_graph": include_graph,
-    }, history))
+    }, history), origin_since, origin_until))
 
     if not result.get("success"):
         return f"검색 실패: {result.get('error', '알 수 없는 오류')}"
@@ -130,6 +159,7 @@ async def nexus_search(
             for o in gf["observed_edges"]:
                 lines.append(f"  {o['from_name']} --{o['edge_type']}--> {o['to_name']} ({o['call_count']} calls)")
 
+    lines.extend(_unknown_time_note(data))
     lines.append(f"\n경로: {data.get('route_used', 'N/A')}")
     return "\n".join(lines) if lines else "검색 결과가 없습니다."
 
@@ -142,6 +172,8 @@ async def nexus_answer(
     classification_max: str = "INTERNAL",
     tenant: str = "default",
     history: list[dict] | None = None,
+    origin_since: str | None = None,
+    origin_until: str | None = None,
 ) -> str:
     """Nexus 검색 + LLM 근거 기반 답변 생성.
 
@@ -157,14 +189,18 @@ async def nexus_answer(
         history: 앞선 대화 턴 `[{"role": "user"|"assistant", "content": "…"}]`, 오래된 것부터.
             **이번 `query` 는 넣지 않는다.** 여러 턴에 걸친 진단 질문이 이어지려면 이것이 필요하다 —
             주지 않으면 "그때 그 조치는" 이 무엇을 가리키는지 알 길이 없다. 상한은 API 가 건다.
+        origin_since: 이 시각 **이후**에 원본이 수정된 문서로 좁힌다 (ISO 8601).
+        origin_until: 이 시각 **이전**으로 좁힌다.
+            ⛔ 적재 시각이 아니라 **문서 자신의 시각**이다. ⭐ **시각을 모르는 문서는 안 떨군다** —
+            응답 끝의 「시각 미상」 건수가 좁히기가 닿지 못한 만큼이다.
     """
-    result = await _api_call("post", "/search/answer", json=_with_history({
+    result = await _api_call("post", "/search/answer", json=_with_window(_with_history({
         "query": query,
         "top_k": top_k,
         "route": route,
         "classification_max": classification_max,
         "tenant": tenant,
-    }, history))
+    }, history), origin_since, origin_until))
 
     if not result.get("success"):
         return f"답변 생성 실패: {result.get('error', '알 수 없는 오류')}"
@@ -188,6 +224,7 @@ async def nexus_answer(
         sources = [p["source_uri"] for p in provenance[:3]]
         lines.append(f"\n출처: {', '.join(sources)}")
 
+    lines.extend(_unknown_time_note(data))
     lines.append(f"경로: {data.get('route_used', 'N/A')}")
     return "\n".join(lines)
 
