@@ -109,7 +109,13 @@ def ingest(
 
     async def _ingest() -> None:
         from nexus.ingest.pipeline import run_ingest
+        from nexus.ingest import runs_store
         from nexus import db
+
+        # **돌았다는 사실 자체**를 남긴다 (migration 042). 주기 재적재에서는 "바뀐 게 없다" 가
+        # 보통값이라, 변경 기반 신호(`documents.updated_at`·`doc_reingest_events`)만으로는
+        # 잡이 죽은 것과 조용한 것이 같은 모양이 된다. 기록 실패는 적재를 죽이지 않는다.
+        run_id = await runs_store.start(tenant, path)
 
         # 세대 불일치는 **거부**이지 크래시가 아니다 (SPEC-nexus-generation-of-record §3.2).
         # 트레이스백으로 던지면 읽는 사람이 고치는 법 대신 스택을 본다.
@@ -124,9 +130,18 @@ def ingest(
                 skip_graph=not extract_graph,
             )
         except GenerationMismatch as e:
+            # ⛔ `refused` 는 `failed` 가 아니다. 우리가 **막은** 것이고, 읽는 사람이 고칠
+            # 자리가 다르다 — 코드가 아니라 세대 선언이다.
+            await runs_store.finish(run_id, status="refused", reason=str(e))
             typer.echo(f"\n거부: {e}", err=True)
             await db.close_pool()
             raise typer.Exit(2) from None
+        except Exception as e:
+            await runs_store.finish(run_id, status="failed", reason=str(e))
+            await db.close_pool()
+            raise
+        await runs_store.finish(run_id, status="succeeded",
+                                counts=runs_store.summarize(result))
 
         # **셋을 나눠 찍는다.** 하나로 덮으면 "못 봤다" 와 "안 바뀌었다" 가 같은 숫자가 되고,
         # 2026-08-28 에 그 줄 하나 때문에 없는 결함을 보고했다.
