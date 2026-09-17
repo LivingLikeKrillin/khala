@@ -11,6 +11,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from nexus.search.scope_sql import tenant_predicate
+from nexus.search.time_window import (
+    OriginWindow,
+    count_unknown,
+    origin_window_predicate,
+)
 
 import asyncio
 import re
@@ -70,6 +75,9 @@ class SearchHit:
     approved_hash: str = ""  # documents.approved_hash — accountable-review stamp (SPEC §5.4)
     doc_type: str = ""  # documents.doc_type — 축-A 타입(S3 intake 보존)
     updated_at: datetime | None = None  # documents.updated_at — 신선도 판정용(SPEC-nexus-answer-staleness-warning)
+    #: documents.origin_updated_at — **원본이 말하는 문서 자신의 시각**(migration 039).
+    #: `updated_at`(우리 적재 시각)과 섞지 마라. `None` 은 **모른다**이지 새것도 옛것도 아니다.
+    origin_updated_at: datetime | None = None
     #: 이 청크가 **어느 코퍼스에서 왔는가** (SPEC-nexus-design-corpus-cutover §5.3).
     #:
     #: 읽기 범위가 목록이 된 뒤로 한 답변의 근거는 여러 테넌트에서 온다. `search_log.tenant` 는
@@ -99,6 +107,9 @@ class SearchResult:
     #: 이번 요청의 단계 span (SPEC-nexus-stage-spans). **순수 데이터** — 여기서 DB 를 안 건드린다.
     #: `spans.enabled` 가 꺼져 있으면 None 이고, 그러면 아무것도 안 쌓인다.
     spans: "SpanSet | None" = None
+    #: 돌려준 근거 중 **원본 시각을 모르는** 건수. 시각 범위를 **안 물었으면 `None`** 이다.
+    #: 0 으로 내보내면 "물었고 전부 안다" 와 구별되지 않는다 — `search/time_window.py` 참조.
+    n_unknown_origin_time: int | None = None
 
 
 #: `ts_rank_cd` 의 **길이 정규화 비트마스크**. `1` = 점수를 `1 + log(문서 길이)` 로 나눈다.
@@ -144,6 +155,7 @@ async def _bm25_search(
     tenant: str | Sequence[str],
     clearance: str,
     top_k: int = 20,
+    window: OriginWindow = OriginWindow(),
 ) -> tuple[list[LegHit], float | None]:
     """BM25 검색. `(LegHit 목록, 1위 원점수)`.
 
@@ -173,6 +185,8 @@ async def _bm25_search(
         return [], None
 
     tenant_pred, tenant_val = tenant_predicate("c.tenant", 2, tenant)
+    # 바인딩 여섯째부터가 시각 범위다 — 앞 다섯은 아래 인자 순서로 고정돼 있다.
+    win_pred, win_vals = origin_window_predicate("d.origin_updated_at", 6, window)
     rows = await db.fetch_all(
         f"""
         SELECT c.rid, c.doc_rid,
@@ -185,14 +199,15 @@ async def _bm25_search(
           AND c.is_quarantined = false
           AND c.status = 'active'
           AND EXISTS (SELECT 1 FROM documents d
-                      WHERE d.rid = c.doc_rid AND d.status = 'active')
+                      WHERE d.rid = c.doc_rid AND d.status = 'active'
+                      {win_pred})
         -- `c.rid` 는 장식이 아니라 **전순서**를 만드는 키다. ts_rank_cd 동점이 빽빽해서
         -- (상위 25행에 13~16종 점수) 동점 안 순서가 물리적 행 순서를 따라가고, 그게 LIMIT
         -- 경계를 흔들어 같은 질의가 적재본마다 다른 답을 냈다 (SPEC-nexus-deterministic-retrieval-order §1).
         ORDER BY rank_score DESC, c.rid ASC
         LIMIT $4
         """,
-        tsquery, tenant_val, clearance, top_k, BM25_LENGTH_NORMALIZATION,
+        tsquery, tenant_val, clearance, top_k, BM25_LENGTH_NORMALIZATION, *win_vals,
     )
 
     # 매칭 0건은 **측정해서 0점**이다(위 참조). 안 측정한 것이 아니다.
@@ -208,6 +223,7 @@ async def _vector_search(
     clearance: str,
     top_k: int = 20,
     column: str | None = None,
+    window: OriginWindow = OriginWindow(),
 ) -> tuple[list[LegHit], float | None]:
     """Vector 검색. `(LegHit 목록, 1위 코사인 거리)`.
 
@@ -221,6 +237,8 @@ async def _vector_search(
 
     vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
     tenant_pred, tenant_val = tenant_predicate("c.tenant", 2, tenant)
+    # 이 경로는 바인딩이 넷이라 다섯째부터가 시각 범위다 — 키워드 경로와 번호가 다르다.
+    win_pred, win_vals = origin_window_predicate("d.origin_updated_at", 5, window)
 
     rows = await db.fetch_all(
         f"""
@@ -232,13 +250,14 @@ async def _vector_search(
           AND c.is_quarantined = false
           AND c.status = 'active'
           AND EXISTS (SELECT 1 FROM documents d
-                      WHERE d.rid = c.doc_rid AND d.status = 'active')
+                      WHERE d.rid = c.doc_rid AND d.status = 'active'
+                      {win_pred})
         -- 키워드 경로와 같은 이유의 전순서 키. 다만 이 경로는 ivfflat(ANN)이라 **후보 집합
         -- 자체**가 흔들릴 수 있고, 정렬 키는 그걸 고치지 못한다 (같은 SPEC §4.3 — 측정해서 기록한다).
         ORDER BY distance ASC, c.rid ASC
         LIMIT $4
         """,
-        vec_str, tenant_val, clearance, top_k,
+        vec_str, tenant_val, clearance, top_k, *win_vals,
     )
 
     return ([LegHit(rid=r["rid"], rank=i + 1, doc_rid=r["doc_rid"], score=float(r["distance"]))
@@ -279,6 +298,7 @@ async def _vector_leg(
     clearance: str,
     top_k: int,
     column: str | None,
+    window: OriginWindow = OriginWindow(),
 ) -> tuple[list[LegHit], bool, float | None]:
     """(결과, degraded, 1위 거리). **빈 결과와 죽은 경로를 구분해서 돌려준다.**
 
@@ -288,7 +308,8 @@ async def _vector_leg(
     읽히고, 못 측정한 것과 측정해서 좋은 것이 같은 값이 된다.
     """
     try:
-        hits, dist = await _vector_search(query, embedding_svc, tenant, clearance, top_k, column)
+        hits, dist = await _vector_search(query, embedding_svc, tenant, clearance, top_k, column,
+                                          window=window)
         return hits, False, dist
     except Exception as e:                      # noqa: BLE001 — 분류가 이 함수의 일이다
         if isinstance(e, (UnknownVectorColumn,)):
@@ -501,6 +522,7 @@ async def _enrich_hits(
                c.classification, c.source_version, c.tenant,
                d.title as doc_title, d.approved_hash as approved_hash,
                d.doc_type as doc_type, d.updated_at as updated_at,
+               d.origin_updated_at as origin_updated_at,
                coalesce(d.n_images, 0) as n_images,
                c.provenance_tier as provenance_tier
         FROM chunks c
@@ -536,6 +558,7 @@ async def _enrich_hits(
             approved_hash=r["approved_hash"] or "",
             doc_type=r["doc_type"] or "",
             updated_at=r["updated_at"],
+            origin_updated_at=r["origin_updated_at"],
             tenant=r["tenant"] or "",
         ))
 
@@ -614,6 +637,7 @@ async def hybrid_search(
     entity_rids: list[str] | None = None,
     config: dict | None = None,
     channels: list[tuple[str, float]] | None = None,
+    window: OriginWindow = OriginWindow(),
 ) -> SearchResult:
     """3-way Hybrid 검색 실행.
 
@@ -671,13 +695,13 @@ async def hybrid_search(
     for i, (text, _w) in enumerate(active):
         if use_bm25:
             tasks[(i, "bm25")] = asyncio.create_task(
-                _bm25_search(text, tenant, clearance, bm25_top_k))
+                _bm25_search(text, tenant, clearance, bm25_top_k, window=window))
         # embedding_svc 가 없으면 벡터 경로는 못 돈다. 그렇다고 BM25 로 슬그머니 바꿔치기하고
         # route_used='vector_only' 라 보고하지는 않는다 — 빈 결과가 정직하다.
         if use_vector and embedding_svc:
             tasks[(i, "vector")] = asyncio.create_task(
                 _vector_leg(text, embedding_svc, tenant, clearance, vector_top_k,
-                            column=configured_column(cfg)))
+                            column=configured_column(cfg), window=window))
 
     done = dict(zip(tasks, await asyncio.gather(*tasks.values()))) if tasks else {}
 
@@ -743,6 +767,9 @@ async def hybrid_search(
     # 문서 다양성 + top_k 컷 — 한 문서가 결과를 도배하지 않게.
     per_doc_cap = search_cfg.get("diversity_per_doc_cap", 3)
     result.hits = _diversify(enriched, top_k, per_doc_cap)
+    # **좁혔는데 안 좁혀진 만큼**을 호출자가 봐야 한다. 세는 대상은 사람이 실제로 받는 목록이다.
+    result.n_unknown_origin_time = count_unknown(
+        [h.origin_updated_at for h in result.hits], window)
 
     if spans is not None:
         # diversify 의 **입력**을 남긴다 — 잘린 행이 진단 자료다. `kept_rids` 로 "이 행이

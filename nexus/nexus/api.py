@@ -50,7 +50,10 @@ from nexus.search.evidence_share import counts as evidence_counts
 from nexus.search.reconcile import packet_for_answer
 from nexus.search import history as history_module
 from nexus.search.corpus_scope import visibility_counts
+from datetime import datetime
+
 from nexus.search.hybrid import hybrid_search
+from nexus.search.time_window import OriginWindow
 from nexus.search.rewrite import W_ORIGINAL, W_REWRITTEN, rewrite as rewrite_query
 from nexus.search.hybrid import ROUTES as hybrid_routes
 from nexus.search.hybrid import UnknownRoute
@@ -239,6 +242,12 @@ class Turn(BaseModel):
     content: str
 
 
+def _origin_window(req) -> OriginWindow:
+    """요청의 두 경계를 검색이 아는 모양으로. 둘 다 없으면 **안 물은 것**이다."""
+    return OriginWindow(since=getattr(req, "origin_since", None),
+                        until=getattr(req, "origin_until", None))
+
+
 def _history(raw: list["Turn"] | None) -> list[history_module.Turn]:
     """요청의 이력을 정본 규칙(`nexus.search.history`)으로 검증한다.
 
@@ -265,6 +274,16 @@ class SearchRequest(BaseModel):
     tenant: str = "default"
     include_graph: bool = True
     include_evidence: bool = True
+    #: 문서 **자신의** 시각으로 범위를 좁힌다 (`documents.origin_updated_at`, migration 039).
+    #: ⛔ 적재 시각(`updated_at`)이 아니다 — 재적재하면 모든 문서가 새것이 되는 그 칸으로는
+    #: *"어제도 같은 일 있었나"* 를 못 묻는다.
+    #: ⭐ **시각을 모르는 문서는 떨구지 않는다.** 라이브에서 `origin_updated_at` 이 채워진 비율이
+    #: 테넌트마다 0~45% 라(`search/time_window.py` 의 실측), 미상을 제외하면 좁힌 순간
+    #: 코퍼스 하나가 통째로 사라지고 화면엔 "없습니다" 가 뜬다. 대신 몇 건이 미상이었는지를
+    #: 응답의 `n_unknown_origin_time` 으로 돌려준다.
+    origin_since: datetime | None = None
+    origin_until: datetime | None = None
+
 
 
 class AnswerRequest(BaseModel):
@@ -290,6 +309,9 @@ class AnswerRequest(BaseModel):
     route: str = "auto"
     classification_max: str = "INTERNAL"
     tenant: str = "default"
+    #: `SearchRequest` 와 같은 뜻 — 설명은 거기 한 번만 둔다.
+    origin_since: datetime | None = None
+    origin_until: datetime | None = None
 
 
 class IngestRequest(BaseModel):
@@ -414,6 +436,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
         route = determine_route(search_query, req.route, [e.name for e in detected])
 
         result = await hybrid_search(
+            window=_origin_window(req),
             query=search_query,
             tenant=req.tenant,
             clearance=req.classification_max,
@@ -472,6 +495,9 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 "results": [_search_hit_to_dict(h) for h in result.hits],
                 "graph_findings": graph_findings,
                 "route_used": result.route_used,
+                # **안 물었으면 `None`** 이다 — 0 으로 내보내면 "물었고 전부 안다" 와
+                # 구별되지 않는다. 좁혔는데 안 좁혀진 만큼이 여기 보인다.
+                "n_unknown_origin_time": result.n_unknown_origin_time,
                 "timing_ms": result.timing_ms,
                 # 죽은 경로는 호출자에게도 보여야 한다 — 로그에만 있으면 "건강해 보이는" 상태가
                 # 그대로다 (SPEC-nexus-embedding-cutover-seam §4.5).
@@ -632,6 +658,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
 
         # 검색
         search_result = await hybrid_search(
+            window=_origin_window(req),
             query=search_query,
             tenant=_scope,
             clearance=req.classification_max,
@@ -697,6 +724,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 "graph_findings": answer_result.graph_findings,
                 "provenance": answer_result.provenance,
                 "route_used": answer_result.route_used,
+                "n_unknown_origin_time": search_result.n_unknown_origin_time,
                 "timing_ms": answer_result.timing_ms,
                 "citations": answer_result.citations,
                 "unverified_citations": answer_result.unverified_citations,
@@ -1090,6 +1118,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
 
             # 검색 (검색 완료 시 evidence 먼저 전송)
             search_result = await hybrid_search(
+            window=_origin_window(req),
                 query=search_query,
                 tenant=_scope,
                 clearance=req.classification_max,
