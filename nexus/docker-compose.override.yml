@@ -31,3 +31,10 @@ services:
       # CODE_SRC_PATH 미설정 시 placeholder(./docs)로 폴백해 compose 에러 방지.
       # 코드 상수 해석을 쓰려면 .env에 CODE_SRC_PATH 설정 → config code_source.repo_path: /code-src
       - ${CODE_SRC_PATH:-./docs}:/code-src:ro
+      # 리포 **밖의 문서 코퍼스**를 적재할 때 여는 문. `/code-src` 와 같은 모양·같은 이유로
+      # 읽기 전용이다 — 적재는 읽는 일이고, 쓰기 권한을 주면 남의 리포를 고칠 수 있게 된다.
+      #
+      # ⚠ **적재는 반드시 컨테이너 안에서 돈다.** 임베딩 세대가 env 로 오고 그 env 는 여기만
+      # 있어서, 호스트 셸의 `nexus ingest` 는 config 기본값(768/nomic)으로 해석해 **검색되지
+      # 않는 컬럼**에 넣는다. 2026-08-10 에 실제로 그렇게 됐다.
+      - ${INGEST_SRC_PATH:-./docs}:/ingest-src:ro
