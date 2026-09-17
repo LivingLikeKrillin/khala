@@ -71,6 +71,16 @@ def _with_history(body: dict, history: list[dict] | None) -> dict:
 
 #: 시각 범위도 같은 규칙이다 — 안 물었으면 키를 안 보낸다. 보내면 `None` 이 "안 물었다" 가
 #: 아니라 "그 값" 이 되고, 그러면 미상 건수가 `None`(미측정) 대신 0 으로 나가 뜻이 뒤집힌다.
+def _synthetic_mark(row: dict) -> str:
+    """합성 자료 표식. **없으면 빈 문자열** — 실제 자료에 아무 글자도 안 붙인다.
+
+    `_tier_mark` 와 같은 자리에 같은 이유로 붙는다: 에이전트 표면에서 표식이 벗겨지면
+    지어낸 절차가 실제 운영 문서와 같은 얼굴로 근거에 실리고, 그 답을 사람이 다시 검증할
+    길이 없다(ADR-0010 §4 와 같은 논증).
+    """
+    return " [합성]" if row.get("synthetic") else ""
+
+
 def _unknown_time_note(data: dict) -> list[str]:
     """좁히기가 닿지 못한 만큼을 에이전트에게 알린다.
 
@@ -143,7 +153,8 @@ async def nexus_search(
         # 저자가 쓴 문장과 같은 것으로 다루고, 그 답을 사람이 다시 검증할 길이 없다.
         tier = _tier_mark(r.get("provenance_tier"))
         lines.append(
-            f"[{i}] {r['doc_title']} > {r['section_path']}{tier} (score: {r['score']:.2f})\n"
+            f"[{i}] {r['doc_title']} > {r['section_path']}{tier}{_synthetic_mark(r)} "
+            f"(score: {r['score']:.2f})\n"
             f"    {r['snippet'][:200]}\n"
             f"    출처: {r['source_uri']}"
         )
@@ -215,7 +226,7 @@ async def nexus_answer(
         for i, s in enumerate(snippets[:5], 1):
             tier = _tier_mark(s.get("provenance_tier"))
             lines.append(
-                f"[{i}] {s['doc_title']} > {s['section_path']}{tier} "
+                f"[{i}] {s['doc_title']} > {s['section_path']}{tier}{_synthetic_mark(s)} "
                 f"(score: {s.get('score', 0):.2f})")
 
     # 출처

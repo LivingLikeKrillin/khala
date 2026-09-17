@@ -53,6 +53,7 @@ from nexus.search.corpus_scope import visibility_counts
 from datetime import datetime
 
 from nexus.search.hybrid import hybrid_search
+from nexus.labels import SYNTHETIC_LABEL
 from nexus.search.time_window import OriginWindow
 from nexus.search.rewrite import W_ORIGINAL, W_REWRITTEN, rewrite as rewrite_query
 from nexus.search.hybrid import ROUTES as hybrid_routes
@@ -365,6 +366,10 @@ def _search_hit_to_dict(h) -> dict:
         "doc_type": h.doc_type,
         # ADR-0010 hop 5. 벗겨지면 읽는 사람이 저자 텍스트와 기계 텍스트를 구별할 수 없다.
         "provenance_tier": getattr(h, "provenance_tier", "authored"),
+        # CRM 표식(`nexus/labels.py`) — 합성 자료인지가 여기서 드러나야 한다. 표식을 문서
+        # 행에만 두면 읽는 사람 앞에는 지어낸 절차가 실제 운영 문서와 같은 얼굴로 온다.
+        "labels": list(getattr(h, "labels", ()) or ()),
+        "synthetic": SYNTHETIC_LABEL in (getattr(h, "labels", ()) or ()),
     }
 
 
