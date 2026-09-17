@@ -1,3 +1,46 @@
+# ⛔ **적재하는 것과 읽는 것이 같은 환경을 봐야 한다.** 세대 셋(`NEXUS_EMBEDDING_*`)의
+# 기본값을 서비스마다 따로 적으면 한쪽만 고쳐도 아무것도 안 깨지고, 그 다음 적재가
+# **검색되지 않는 컬럼**에 들어간다 — 2026-08-10 에 실제로 그렇게 됐다. 그래서 정본은
+# 여기 하나이고, 앱도 재적재 잡도 이 앵커를 받는다.
+x-nexus-env: &nexus-env
+    DATABASE_URL: postgresql://nexus:nexus@nexus-db:5432/nexus
+    OLLAMA_URL: http://nexus-ollama:11434
+    TEMPO_URL: http://nexus-tempo:3200   # OTel 집계(nexus otel-aggregate) 시에만 사용 — 그 땐 --profile observability
+    DEFAULT_TENANT: default
+    # ── 자격증명 ──
+    # 앱이 쓰는 시크릿은 **여기 한 곳**에서 주입한다. compose 는 이 파일 옆의 `.env` 를 읽어
+    # 치환하므로 어떤 오버레이를 얹든 값이 따라온다. 오버레이에만 적으면 그 오버레이를 안
+    # 얹는 배포(=prod)에서 조용히 사라진다 — NOTION_TOKEN 이 실제로 그랬다.
+    # 기본값 빈 문자열: 토큰 없이도 부팅하고, 그 기능만 못 쓴다.
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    NOTION_TOKEN: ${NOTION_TOKEN:-}
+    # 워크스페이스가 늘 때마다 여기 한 줄씩 박지 않는다 — 루트마다 다른 integration 토큰을
+    # 쓰게 되면서(`notion_sources.token_env`) 그 목록이 계속 자란다. 아래 `env_file` 이
+    # `.env` 를 통째로 주입하므로, 새 토큰은 `.env` 에 한 줄 더하고 재기동하면 끝이다.
+    # 오타는 조용히 넘어가지 않는다: 루트가 가리키는 변수가 비어 있으면 preview/sync 가
+    # 기본 토큰으로 떨어지는 대신 그 이름을 대고 거부한다.
+    # LLM 백엔드 선택(dev). 미설정이면 anthropic 기본 — 프로덕션 무영향.
+    # claude-code = 호스트에서 도는 Claude Code 를 브리지 경유로 써서 키 없이 서술(`task llm-bridge`).
+    NEXUS_LLM_PROVIDER: ${NEXUS_LLM_PROVIDER:-}
+    NEXUS_LLM_BRIDGE_URL: ${NEXUS_LLM_BRIDGE_URL:-}
+    NEXUS_LLM_BRIDGE_TOKEN: ${NEXUS_LLM_BRIDGE_TOKEN:-}
+    # ── 임베딩 세대 (SPEC-nexus-embedding-cutover-seam §4.2) ──
+    # 컷오버는 이 셋을 **함께** 움직이는 일이고, 배포는 `.env` 에서 움직인다.
+    # 반드시 `${VAR:-default}` 보간이어야 한다 — 리터럴을 적으면 compose 값이 `.env` 를 이겨서
+    # flip 이 "성공했다" 고 보고하면서 아무것도 안 바꾼다. 정합성 검사는 셋 다 옛 값이라 통과한다.
+    NEXUS_EMBEDDING_MODEL: ${NEXUS_EMBEDDING_MODEL:-nomic-embed-text}
+    NEXUS_EMBEDDING_COLUMN: ${NEXUS_EMBEDDING_COLUMN:-embedding}
+    NEXUS_EMBEDDING_BACKEND: ${NEXUS_EMBEDDING_BACKEND:-ollama}
+    # 사이드카는 프로파일 뒤에 있어 안 떠 있을 수 있다. depends_on 을 걸면 프로파일을 안 켠
+    # 배포가 `depends on undefined service` 로 아예 죽는다(실측) — 없는 사이드카는 벡터 경로의
+    # degrade 경로가 맡는다 (§4.4).
+    EMBED_URL: ${EMBED_URL:-http://nexus-embed:8080}
+    # 슬랙 봇 신원 — **봇과 같은 변수**를 앱도 읽는다. 앱은 이 토큰의 해시로 읽기 전용
+    # principal `slack-bot` 을 만들고, 봇은 같은 토큰을 bearer 로 보낸다. 둘이 어긋날 수 없다.
+    # 비어 있으면 principal 도 안 생긴다(기본은 슬랙 표면 없음).
+    NEXUS_SLACK_TOKEN: ${NEXUS_SLACK_TOKEN:-}
+    NEXUS_SLACK_CLEARANCE: ${NEXUS_SLACK_CLEARANCE:-PUBLIC}
+
 services:
   # ── PostgreSQL + pgvector ──
   nexus-db:
@@ -120,43 +163,7 @@ services:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: postgresql://nexus:nexus@nexus-db:5432/nexus
-      OLLAMA_URL: http://nexus-ollama:11434
-      TEMPO_URL: http://nexus-tempo:3200   # OTel 집계(nexus otel-aggregate) 시에만 사용 — 그 땐 --profile observability
-      DEFAULT_TENANT: default
-      # ── 자격증명 ──
-      # 앱이 쓰는 시크릿은 **여기 한 곳**에서 주입한다. compose 는 이 파일 옆의 `.env` 를 읽어
-      # 치환하므로 어떤 오버레이를 얹든 값이 따라온다. 오버레이에만 적으면 그 오버레이를 안
-      # 얹는 배포(=prod)에서 조용히 사라진다 — NOTION_TOKEN 이 실제로 그랬다.
-      # 기본값 빈 문자열: 토큰 없이도 부팅하고, 그 기능만 못 쓴다.
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      NOTION_TOKEN: ${NOTION_TOKEN:-}
-      # 워크스페이스가 늘 때마다 여기 한 줄씩 박지 않는다 — 루트마다 다른 integration 토큰을
-      # 쓰게 되면서(`notion_sources.token_env`) 그 목록이 계속 자란다. 아래 `env_file` 이
-      # `.env` 를 통째로 주입하므로, 새 토큰은 `.env` 에 한 줄 더하고 재기동하면 끝이다.
-      # 오타는 조용히 넘어가지 않는다: 루트가 가리키는 변수가 비어 있으면 preview/sync 가
-      # 기본 토큰으로 떨어지는 대신 그 이름을 대고 거부한다.
-      # LLM 백엔드 선택(dev). 미설정이면 anthropic 기본 — 프로덕션 무영향.
-      # claude-code = 호스트에서 도는 Claude Code 를 브리지 경유로 써서 키 없이 서술(`task llm-bridge`).
-      NEXUS_LLM_PROVIDER: ${NEXUS_LLM_PROVIDER:-}
-      NEXUS_LLM_BRIDGE_URL: ${NEXUS_LLM_BRIDGE_URL:-}
-      NEXUS_LLM_BRIDGE_TOKEN: ${NEXUS_LLM_BRIDGE_TOKEN:-}
-      # ── 임베딩 세대 (SPEC-nexus-embedding-cutover-seam §4.2) ──
-      # 컷오버는 이 셋을 **함께** 움직이는 일이고, 배포는 `.env` 에서 움직인다.
-      # 반드시 `${VAR:-default}` 보간이어야 한다 — 리터럴을 적으면 compose 값이 `.env` 를 이겨서
-      # flip 이 "성공했다" 고 보고하면서 아무것도 안 바꾼다. 정합성 검사는 셋 다 옛 값이라 통과한다.
-      NEXUS_EMBEDDING_MODEL: ${NEXUS_EMBEDDING_MODEL:-nomic-embed-text}
-      NEXUS_EMBEDDING_COLUMN: ${NEXUS_EMBEDDING_COLUMN:-embedding}
-      NEXUS_EMBEDDING_BACKEND: ${NEXUS_EMBEDDING_BACKEND:-ollama}
-      # 사이드카는 프로파일 뒤에 있어 안 떠 있을 수 있다. depends_on 을 걸면 프로파일을 안 켠
-      # 배포가 `depends on undefined service` 로 아예 죽는다(실측) — 없는 사이드카는 벡터 경로의
-      # degrade 경로가 맡는다 (§4.4).
-      EMBED_URL: ${EMBED_URL:-http://nexus-embed:8080}
-      # 슬랙 봇 신원 — **봇과 같은 변수**를 앱도 읽는다. 앱은 이 토큰의 해시로 읽기 전용
-      # principal `slack-bot` 을 만들고, 봇은 같은 토큰을 bearer 로 보낸다. 둘이 어긋날 수 없다.
-      # 비어 있으면 principal 도 안 생긴다(기본은 슬랙 표면 없음).
-      NEXUS_SLACK_TOKEN: ${NEXUS_SLACK_TOKEN:-}
-      NEXUS_SLACK_CLEARANCE: ${NEXUS_SLACK_CLEARANCE:-PUBLIC}
+      <<: *nexus-env
     volumes:
       - .:/app                    # 개발 중 코드 변경 반영 (hot reload)
       - ./docs:/app/docs:ro       # 인덱싱할 문서 폴더
@@ -166,6 +173,65 @@ services:
       nexus-ollama:
         condition: service_started
       # nexus-otel/tempo 의존 제거 — 앱은 collector 에 접속하지 않는다(코드 미참조). 관측은 옵트인 profile.
+
+  # ── 주기 재적재 (프로파일 `reingest`) ──
+  #
+  # ⛔ **왜 컨테이너 안인가.** 임베딩 세대가 env 로 오고 그 env 는 여기에만 있다. 호스트 셸의
+  # `nexus ingest` 는 config 기본값(768/nomic)으로 해석해 **검색되지 않는 컬럼**에 넣는다.
+  #
+  # ⚠ **`depends_on: nexus-embed` 를 일부러 안 건다.** 사이드카는 프로파일 뒤에 있고, 의존을
+  # 걸면 그 프로파일을 안 켠 배포가 `depends on undefined service` 로 아예 죽는다 —
+  # 앱 쪽에 이미 실측으로 적혀 있는 사실이다. 대신 **실행 직전에 물어보고**, 못 닿으면 그
+  # 회차를 건너뛴다. 조용히 도는 것보다 낫다: 2026-09-18 에 사이드카 없이 적재가 돌아
+  # 366조각이 전부 거부됐고, 코퍼스가 키워드로만 찾히는 상태로 남을 뻔했다.
+  #
+  # ⛔ **경로와 테넌트에 기본값을 주지 않는다.** `INGEST_SRC_PATH` 가 비면 마운트가 `./docs`
+  # (=khala 자기 문서)로 폴백하므로, 기본 테넌트까지 있으면 이 잡은 **남의 코퍼스에 우리
+  # 문서를 주기적으로 밀어 넣는다.** 둘 중 하나라도 비면 시동을 거부한다.
+  nexus-reingest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-reingest
+    profiles: ["reingest"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *nexus-env
+      # 이 셋이 이 잡의 전부다. 기본값 없음 — 위 ⛔ 참고.
+      REINGEST_TENANT: ${REINGEST_TENANT:-}
+      REINGEST_SRC: ${INGEST_SRC_PATH:-}
+      REINGEST_INTERVAL_SECONDS: ${REINGEST_INTERVAL_SECONDS:-3600}
+    volumes:
+      - .:/app
+      - ${INGEST_SRC_PATH:-./docs}:/ingest-src:ro
+    depends_on:
+      nexus-db:
+        condition: service_healthy
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -u
+        if [ -z "$${REINGEST_TENANT}" ] || [ -z "$${REINGEST_SRC}" ]; then
+          echo "거부: REINGEST_TENANT 와 INGEST_SRC_PATH 를 .env 에 둘 다 적어라."
+          echo "      비우면 마운트가 ./docs 로 폴백해 **khala 자기 문서**를 적재한다."
+          exit 2
+        fi
+        echo "재적재 잡 시작 — 테넌트 $${REINGEST_TENANT} · 주기 $${REINGEST_INTERVAL_SECONDS}초"
+        while true; do
+          # 선언된 세대가 사이드카를 요구하면, 사이드카가 뜨기 전에는 적재하지 않는다.
+          if [ "$${NEXUS_EMBEDDING_BACKEND}" = "sidecar" ] \
+             && ! python -c "import urllib.request,sys,os; sys.exit(0 if urllib.request.urlopen(os.environ['EMBED_URL'] + '/health', timeout=5).status == 200 else 1)" 2>/dev/null; then
+            echo "건너뜀: 세대가 sidecar 인데 $${EMBED_URL} 에 못 닿는다 (docker compose --profile embed up -d nexus-embed)"
+          else
+            python -m nexus.cli ingest /ingest-src --tenant "$${REINGEST_TENANT}" || \
+              echo "이번 회차 실패 — 다음 주기에 다시 시도한다 (기록은 ingest_runs 에 남는다)"
+          fi
+          sleep "$${REINGEST_INTERVAL_SECONDS}"
+        done
 
   # Slack 봇 — opt-in. `docker compose --profile slack up -d` 로만 뜬다.
   # inbound 포트 없음(Socket Mode): 두 Slack 토큰으로 아웃바운드 연결만 연다 → 터널/도메인 불필요.
