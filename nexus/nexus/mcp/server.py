@@ -58,6 +58,17 @@ async def _api_call(method: str, path: str, **kwargs) -> dict:
     return data
 
 
+#: 이력을 실어 보내는 자리. **상한도 거절 규칙도 여기에 적지 않는다** — 정본은
+#: `nexus.search.history` 하나이고 API 가 그것으로 검증한다. 여기에 한 줄이라도 옮겨 적으면
+#: 사본이 둘이 되고, 이 리포는 그 자리에서 이미 데였다(등급 목록이 사본에만 달라 게이트를
+#: 통과한 값이 SQL 캐스트에서 터졌다). 상한 초과는 API 가 413 으로 돌려주고 그 문구가 그대로
+#: 호출자에게 간다.
+#:
+#: 비었으면 키를 아예 안 보낸다. `null` 을 보내면 `list[Turn]` 기본값 분기를 못 타고 422 가 된다.
+def _with_history(body: dict, history: list[dict] | None) -> dict:
+    return {**body, "history": history} if history else body
+
+
 @mcp.tool()
 async def nexus_search(
     query: str,
@@ -66,6 +77,7 @@ async def nexus_search(
     classification_max: str = "INTERNAL",
     tenant: str = "default",
     include_graph: bool = True,
+    history: list[dict] | None = None,
 ) -> str:
     """Nexus 하이브리드 검색 (BM25 + Vector + Graph).
 
@@ -79,15 +91,18 @@ async def nexus_search(
         classification_max: 최대 접근 등급 (PUBLIC|INTERNAL|RESTRICTED)
         tenant: 테넌트 ID
         include_graph: 그래프 관계 포함 여부
+        history: 앞선 대화 턴 `[{"role": "user"|"assistant", "content": "…"}]`, 오래된 것부터.
+            **이번 `query` 는 넣지 않는다.** 주면 생략형 질문("그건 언제부터야?")의 지시대명사를
+            앞턴에서 채워 검색하고, 원문도 별도 채널로 남긴다. 상한을 넘으면 API 가 거절한다.
     """
-    result = await _api_call("post", "/search", json={
+    result = await _api_call("post", "/search", json=_with_history({
         "query": query,
         "top_k": top_k,
         "route": route,
         "classification_max": classification_max,
         "tenant": tenant,
         "include_graph": include_graph,
-    })
+    }, history))
 
     if not result.get("success"):
         return f"검색 실패: {result.get('error', '알 수 없는 오류')}"
@@ -126,6 +141,7 @@ async def nexus_answer(
     route: str = "auto",
     classification_max: str = "INTERNAL",
     tenant: str = "default",
+    history: list[dict] | None = None,
 ) -> str:
     """Nexus 검색 + LLM 근거 기반 답변 생성.
 
@@ -138,14 +154,17 @@ async def nexus_answer(
         route: 검색 경로 (auto|keyword_only|vector_only|hybrid_then_graph)
         classification_max: 최대 접근 등급
         tenant: 테넌트 ID
+        history: 앞선 대화 턴 `[{"role": "user"|"assistant", "content": "…"}]`, 오래된 것부터.
+            **이번 `query` 는 넣지 않는다.** 여러 턴에 걸친 진단 질문이 이어지려면 이것이 필요하다 —
+            주지 않으면 "그때 그 조치는" 이 무엇을 가리키는지 알 길이 없다. 상한은 API 가 건다.
     """
-    result = await _api_call("post", "/search/answer", json={
+    result = await _api_call("post", "/search/answer", json=_with_history({
         "query": query,
         "top_k": top_k,
         "route": route,
         "classification_max": classification_max,
         "tenant": tenant,
-    })
+    }, history))
 
     if not result.get("success"):
         return f"답변 생성 실패: {result.get('error', '알 수 없는 오류')}"
