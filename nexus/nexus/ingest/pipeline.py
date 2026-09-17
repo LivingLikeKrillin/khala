@@ -23,6 +23,10 @@ from nexus.ingest.classifier import (
 from nexus.ingest.chunker import ChunkData, chunk_document
 from nexus.ingest.collector import CollectedFile, collect_files
 from nexus.ingest.title import derive_title
+from nexus.ingest.vendor_guard import (
+    VendorOriginalRefused,
+    refuse_if_vendor_original,
+)
 from nexus.rid import chunk_rid, doc_rid
 from nexus.utils import context_prefix_for
 
@@ -41,6 +45,9 @@ class IngestResult:
     indexed: int = 0
     skipped: int = 0
     quarantined: int = 0
+    #: 벤더 원문으로 식별돼 **거절한** 수. `failed` 와 다른 사건이다 — 실패는 우리 쪽 문제이고
+    #: 이것은 규율이 작동한 것이다. 한 수로 뭉치면 읽는 사람이 고칠 자리를 잘못 찾는다.
+    refused_vendor: int = 0
     #: 문서는 살아 있고 **조각만** 빠진 수. 문서 격리(위)와 다른 사건이다.
     quarantined_chunks: int = 0
     failed: int = 0
@@ -523,6 +530,11 @@ async def run_ingest(
     # 2. Classify + Quarantine Gate + Chunk + Save
     for collected in collected_files:
         try:
+            # 벤더 원문 거절 — **분류보다 먼저**다. 격리는 저장한 뒤 숨기는 것이고, 이건
+            # 저장 자체가 규율 위반이라 청크가 되기 전에 돌려보낸다. 조용히 건너뛰지 않는
+            # 이유는 아래 `except` 가 이것을 따로 세기 때문이다.
+            refuse_if_vendor_original(collected.relative_path, collected.content)
+
             # Classify
             classification = classify(
                 collected.relative_path,
@@ -576,6 +588,15 @@ async def run_ingest(
                         path=collected.relative_path,
                         chunks=saved)
 
+        except VendorOriginalRefused as e:
+            # **실패와 섞지 않는다.** 실패는 우리 쪽이 잘못한 것이고 이것은 규율이 제대로
+            # 작동한 것이다. 둘을 한 수로 뭉치면 "적재가 12건 실패했다" 를 읽는 사람이
+            # 고칠 것이 있다고 오해한다 — 여기서 고칠 것은 넣지 말았어야 할 파일이다.
+            result.refused_vendor += 1
+            info = {"file_path": collected.relative_path, "error": str(e), "stage": "vendor_guard"}
+            result.errors.append(info)
+            logger.warning("vendor_original_refused", file_path=collected.relative_path,
+                           found=e.found)
         except Exception as e:
             result.failed += 1
             stage = "classify" if "classif" in str(e).lower() else "chunk" if "chunk" in str(e).lower() else "save"
