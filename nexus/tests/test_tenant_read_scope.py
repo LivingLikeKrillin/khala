@@ -167,9 +167,32 @@ def test_boot_does_not_ask_the_database_whether_the_tenant_exists():
 
 # ── 배포 배선 (SPEC-nexus-design-corpus-cutover §4.3) ────────────────────────
 
-def _slack_cfg(monkeypatch, **env):
+#: 읽기 범위를 정하는 네 변수. 검사는 **이 넷을 먼저 지우고** 자기가 쓸 것만 넣는다.
+#:
+#: ⛔ **안 지우면 검사가 코드가 아니라 그 기계를 본다** (실측 2026-09-18). `picasso` 를
+#: 범위에 넣은 배포의 컨테이너에서 이 파일을 돌렸더니 5건이 빨갛게 났다 — 코드는 멀쩡했고
+#: 주변 환경에 선언이 있었을 뿐이다. 빨간 쪽은 그나마 눈에 띈다. 반대 방향이 진짜 위험이다:
+#: 「선언이 없으면 기동을 막는다」를 확인하려는 검사가, 주변에 선언이 **있는** 기계에서는
+#: 자물쇠를 한 번도 시험하지 않고 통과할 수 있었다.
+#:
+#: 이 파일 맨 위가 *"단위 검사만 통과하고 실제 배선에서 안 걸리면 그 검사는 아무것도 안 지킨
+#: 것이다"* 라고 적어 뒀는데, 검사들 자신이 그 규율 밖에 있었다.
+_SCOPE_ENV = (
+    "NEXUS_SLACK_READ_TENANTS", "NEXUS_SLACK_CLEARANCE_VERIFIED",
+    "NEXUS_DEV_READ_TENANTS", "NEXUS_DEV_CLEARANCE_VERIFIED",
+)
+
+
+def _only(monkeypatch, **env):
+    """넷을 지우고 주어진 것만 남긴다."""
+    for k in _SCOPE_ENV:
+        monkeypatch.delenv(k, raising=False)
     for k, v in env.items():
         monkeypatch.setenv(k, v)
+
+
+def _slack_cfg(monkeypatch, **env):
+    _only(monkeypatch, **env)
     monkeypatch.setenv("NEXUS_SLACK_TOKEN", "t" * 40)
     from nexus.auth.config import AuthConfig
     return AuthConfig.from_dict({"auth": {"mode": "permissive", "principals": []}})
@@ -239,8 +262,7 @@ def test_the_scope_opens_only_when_the_tenant_was_omitted():
 
 
 def _dev_cfg(monkeypatch, **env):
-    for k, v in env.items():
-        monkeypatch.setenv(k, v)
+    _only(monkeypatch, **env)
     monkeypatch.setenv("NEXUS_DEV_TOKEN", "d" * 40)
     from nexus.auth.config import AuthConfig
     return AuthConfig.from_dict({"auth": {"mode": "permissive", "principals": []}})
@@ -285,3 +307,34 @@ def test_a_single_tenant_needs_no_declaration(monkeypatch):
     """좁히는 쪽은 막지 않는다 — 자물쇠가 잠그는 것은 **넓히는** 것뿐이다."""
     cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default")
     cfg.validate_startup()
+
+
+# ── 이 검사들이 자기 입력을 통제하는가 ──────────────────────────────────────
+
+def test_the_helpers_clear_the_environment_they_do_not_use(monkeypatch):
+    """⛔ **이 파일의 자물쇠 검사들이 기대는 전제.** 주변에 선언이 깔린 기계에서도
+    「선언 없음」을 실제로 만들어 내지 못하면, 그 검사들은 통과해도 아무 말을 안 한 것이다.
+
+    그래서 배포된 컨테이너와 같은 모양을 일부러 만들어 놓고 — 넷 다 채워 놓고 — 헬퍼가
+    그것을 지우는지 본다."""
+    for k in _SCOPE_ENV:
+        monkeypatch.setenv(k, "배포에-이미-깔려-있는-값")
+
+    cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default,design_docs")
+    with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
+        cfg.validate_startup()
+
+    cfg = _slack_cfg(monkeypatch, NEXUS_SLACK_READ_TENANTS="default,design_docs")
+    with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
+        cfg.validate_startup()
+
+
+def test_the_control_group_is_a_control_group_even_on_a_configured_box(monkeypatch):
+    """⛔ 대조군이 대조군이려면 주변 값이 그 자리에 들어오면 안 된다."""
+    for k in _SCOPE_ENV:
+        monkeypatch.setenv(k, "default,design_docs,picasso")
+
+    assert "read_tenants" not in next(
+        p for p in _dev_cfg(monkeypatch).principals if p["name"] == "local-dev")
+    assert "read_tenants" not in next(
+        p for p in _slack_cfg(monkeypatch).principals if p["name"] == "slack-bot")
