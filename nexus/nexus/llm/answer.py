@@ -16,6 +16,7 @@ from nexus.documents.staleness import annotate_staleness
 from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
+from nexus.labels import SYNTHETIC_LABEL
 from nexus.llm.prompts import build_prompts
 from nexus.search.format_compliance import shape_if_measured
 from nexus.providers.llm import LLMService
@@ -154,6 +155,11 @@ async def generate_answer(
             "code_anchors": summarize(getattr(s, "code_anchors", []),
                                       getattr(s, "code_deleted", []),
                                       getattr(s, "code_scan", None)),
+            # CRM 표식(`nexus/labels.py`) — 등급과 같은 자리, 같은 이유로 응답까지 간다.
+            # 합성 자료임을 근거 옆에 못 달면, 지어낸 절차가 실제 운영 문서와 같은 얼굴로
+            # 인용된다. 검색이 잘될수록 나쁜 종류의 결함이다.
+            "labels": list(getattr(s, "labels", ()) or ()),
+            "synthetic": SYNTHETIC_LABEL in (getattr(s, "labels", ()) or ()),
             "updated_at": s.updated_at,
         }
         for s in packet.snippets

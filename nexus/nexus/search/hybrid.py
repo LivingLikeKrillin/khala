@@ -78,6 +78,12 @@ class SearchHit:
     #: documents.origin_updated_at — **원본이 말하는 문서 자신의 시각**(migration 039).
     #: `updated_at`(우리 적재 시각)과 섞지 마라. `None` 은 **모른다**이지 새것도 옛것도 아니다.
     origin_updated_at: datetime | None = None
+    #: documents.labels — CRM 표식(`nexus/labels.py`). **등급이 아니다.**
+    #:
+    #: ⛔ **문서 행에만 있으면 없는 것과 같다.** 합성 자료를 표시해 두고 근거에는 안 실으면,
+    #: 읽는 사람 앞에 지어낸 절차가 실제 운영 문서와 같은 얼굴로 온다 — `provenance_tier` 가
+    #: hop 을 하나라도 빠뜨리면 안 되는 것과 같은 이유다(ADR-0010 §4).
+    labels: list[str] = field(default_factory=list)
     #: 이 청크가 **어느 코퍼스에서 왔는가** (SPEC-nexus-design-corpus-cutover §5.3).
     #:
     #: 읽기 범위가 목록이 된 뒤로 한 답변의 근거는 여러 테넌트에서 온다. `search_log.tenant` 는
@@ -523,6 +529,7 @@ async def _enrich_hits(
                d.title as doc_title, d.approved_hash as approved_hash,
                d.doc_type as doc_type, d.updated_at as updated_at,
                d.origin_updated_at as origin_updated_at,
+               coalesce(d.labels, '{{}}') as labels,
                coalesce(d.n_images, 0) as n_images,
                c.provenance_tier as provenance_tier
         FROM chunks c
@@ -559,6 +566,7 @@ async def _enrich_hits(
             doc_type=r["doc_type"] or "",
             updated_at=r["updated_at"],
             origin_updated_at=r["origin_updated_at"],
+            labels=list(r["labels"] or []),
             tenant=r["tenant"] or "",
         ))
 
@@ -622,6 +630,7 @@ async def _fill_sections(
         approved_hash=r["approved_hash"] or "",
         doc_type=r["doc_type"] or "",
         updated_at=r["updated_at"],
+        labels=list(r["labels"] or []),
         tenant=r["tenant"] or "",
     ) for r in rows]
 

@@ -50,6 +50,10 @@ class EvidenceSnippet:
     #: 이 근거가 어떻게 존재하게 됐는가 (ADR-0010). 프롬프트까지 따라간다 — 답을 쓰는 모델이
     #: 저자가 쓴 문장과 기계가 그림에서 읽은 문장을 구별할 수 있어야 한다.
     provenance_tier: str = "authored"
+    #: 문서에 붙은 CRM 표식(`nexus/labels.py`). 등급과 **같은 이유로** 여기까지 따라온다 —
+    #: 합성 자료를 근거로 쓴 답변은 그 사실을 달고 나가야 한다. hop 하나라도 빠지면 표식은
+    #: 없는 것과 같다.
+    labels: list[str] = field(default_factory=list)
     #: 이 문단이 부른 코드 이름들의 **현재 상태**(SPEC-nexus-doc-code-anchors §3.4).
     #: 앵커가 없는 코퍼스에서는 비어 있고, 그때 프롬프트는 오늘과 바이트 단위로 같다.
     code_anchors: list[AnchorStatus] = field(default_factory=list)
@@ -174,6 +178,7 @@ async def assemble_packet(
             doc_type=hit.doc_type,
             updated_at=hit.updated_at,
             provenance_tier=getattr(hit, "provenance_tier", "authored"),
+            labels=list(getattr(hit, "labels", ()) or ()),
             code_anchors=reading.anchors if reading else [],
             code_deleted=reading.deleted if reading else [],
             code_scan=reading.scan if reading else None,
