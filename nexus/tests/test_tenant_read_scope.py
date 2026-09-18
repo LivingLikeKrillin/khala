@@ -14,6 +14,9 @@ from nexus.auth.config import AuthConfig
 from nexus.auth.principal import Principal
 from nexus.auth.scope import effective_read_scope, effective_scope, resolve_read_scope
 from nexus.search.scope_sql import normalize_scope, tenant_predicate
+from tests._auth_env import clear_principal_env, fill_principal_env
+
+pytestmark = pytest.mark.usefixtures("isolate_auth_env")
 
 
 def _p(**kw):
@@ -167,8 +170,6 @@ def test_boot_does_not_ask_the_database_whether_the_tenant_exists():
 
 # ── 배포 배선 (SPEC-nexus-design-corpus-cutover §4.3) ────────────────────────
 
-#: 읽기 범위를 정하는 네 변수. 검사는 **이 넷을 먼저 지우고** 자기가 쓸 것만 넣는다.
-#:
 #: ⛔ **안 지우면 검사가 코드가 아니라 그 기계를 본다** (실측 2026-09-18). `picasso` 를
 #: 범위에 넣은 배포의 컨테이너에서 이 파일을 돌렸더니 5건이 빨갛게 났다 — 코드는 멀쩡했고
 #: 주변 환경에 선언이 있었을 뿐이다. 빨간 쪽은 그나마 눈에 띈다. 반대 방향이 진짜 위험이다:
@@ -177,16 +178,15 @@ def test_boot_does_not_ask_the_database_whether_the_tenant_exists():
 #:
 #: 이 파일 맨 위가 *"단위 검사만 통과하고 실제 배선에서 안 걸리면 그 검사는 아무것도 안 지킨
 #: 것이다"* 라고 적어 뒀는데, 검사들 자신이 그 규율 밖에 있었다.
-_SCOPE_ENV = (
-    "NEXUS_SLACK_READ_TENANTS", "NEXUS_SLACK_CLEARANCE_VERIFIED",
-    "NEXUS_DEV_READ_TENANTS", "NEXUS_DEV_CLEARANCE_VERIFIED",
-)
+#:
+#: ⚠ **여기 네 이름을 적은 목록이 따로 있었다.** `config.py` 가 그보다 많이 읽으므로 그
+#: 목록은 처음부터 모자랐고(접두사 갈래가 통째로 빠져 있었다), 사본이 둘이면 한쪽은 반드시
+#: 낡는다. 정본은 `_auth_env.PRINCIPAL_ENV` 하나다.
 
 
 def _only(monkeypatch, **env):
-    """넷을 지우고 주어진 것만 남긴다."""
-    for k in _SCOPE_ENV:
-        monkeypatch.delenv(k, raising=False)
+    """신원을 만드는 env 를 전부 지우고 주어진 것만 남긴다."""
+    clear_principal_env(monkeypatch)
     for k, v in env.items():
         monkeypatch.setenv(k, v)
 
@@ -315,10 +315,8 @@ def test_the_helpers_clear_the_environment_they_do_not_use(monkeypatch):
     """⛔ **이 파일의 자물쇠 검사들이 기대는 전제.** 주변에 선언이 깔린 기계에서도
     「선언 없음」을 실제로 만들어 내지 못하면, 그 검사들은 통과해도 아무 말을 안 한 것이다.
 
-    그래서 배포된 컨테이너와 같은 모양을 일부러 만들어 놓고 — 넷 다 채워 놓고 — 헬퍼가
-    그것을 지우는지 본다."""
-    for k in _SCOPE_ENV:
-        monkeypatch.setenv(k, "배포에-이미-깔려-있는-값")
+    그래서 배포된 컨테이너와 같은 모양을 일부러 만들어 놓고 헬퍼가 그것을 지우는지 본다."""
+    fill_principal_env(monkeypatch)
 
     cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default,design_docs")
     with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
@@ -331,8 +329,7 @@ def test_the_helpers_clear_the_environment_they_do_not_use(monkeypatch):
 
 def test_the_control_group_is_a_control_group_even_on_a_configured_box(monkeypatch):
     """⛔ 대조군이 대조군이려면 주변 값이 그 자리에 들어오면 안 된다."""
-    for k in _SCOPE_ENV:
-        monkeypatch.setenv(k, "default,design_docs,picasso")
+    fill_principal_env(monkeypatch)
 
     assert "read_tenants" not in next(
         p for p in _dev_cfg(monkeypatch).principals if p["name"] == "local-dev")

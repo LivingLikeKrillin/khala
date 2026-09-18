@@ -44,3 +44,15 @@ def clear_principal_env(monkeypatch) -> None:
         monkeypatch.delenv(name, raising=False)
     for name in [k for k in os.environ if k.startswith(PRINCIPAL_ENV_PREFIXES)]:
         monkeypatch.delenv(name, raising=False)
+
+
+def fill_principal_env(monkeypatch) -> None:
+    """설정된 배포와 같은 환경을 **일부러** 깔아 놓는다 — 정확한 이름 전부와 접두사 하나.
+
+    ⛔ **격리를 확인하려면 격리할 것이 있어야 한다.** 맨 상자에서도 「주변에 선언이 깔린
+    기계」를 만들어 낼 수 있어야 CI 가 이 계열을 볼 수 있다. 이 모양을 파일마다 따로 적으면
+    `PRINCIPAL_ENV` 를 하나로 둔 뜻이 없어지므로 여기 한 번만 적는다.
+    """
+    for name in PRINCIPAL_ENV:
+        monkeypatch.setenv(name, "1" if name.endswith(("ANONYMOUS", "DEV_TOKEN")) else "x" * 40)
+    monkeypatch.setenv(PRINCIPAL_ENV_PREFIXES[0] + "SOMETHING", "tok|some_tenant|INTERNAL")
