@@ -27,6 +27,7 @@ from nexus.ingest.vendor_guard import (
     VendorOriginalRefused,
     refuse_if_vendor_original,
 )
+from nexus.labels import SELF_DECLARABLE, declarable, merge_sql
 from nexus.rid import chunk_rid, doc_rid
 from nexus.utils import context_prefix_for
 
@@ -50,6 +51,10 @@ class IngestResult:
     refused_vendor: int = 0
     #: 문서는 살아 있고 **조각만** 빠진 수. 문서 격리(위)와 다른 사건이다.
     quarantined_chunks: int = 0
+    #: frontmatter 가 선언했지만 **자칭할 수 없어** 안 받은 라벨의 수. 실패가 아니다 —
+    #: 문서는 정상 적재됐고 그 표식만 안 붙었다. 0 이 아니면 대개 오타이거나, 경로가
+    #: 붙여야 할 표식을 문서가 자칭한 것이다.
+    refused_labels: int = 0
     failed: int = 0
     errors: list[dict] = field(default_factory=list)
     bm25_indexed: int = 0
@@ -107,8 +112,8 @@ async def _save_document(
     classification: ClassificationResult,
     tenant: str,
     approved_hash: str = "",
-) -> str:
-    """문서 메타데이터를 DB에 저장. rid 반환.
+) -> tuple[str, list[str]]:
+    """문서 메타데이터를 DB에 저장. ``(rid, 물린 라벨)`` 반환.
 
     ``approved_hash``는 상위 거버넌스 도구(Arbiter)의 accountable-review 스탬프로,
     nexus 자체의 변경 감지 해시(content_hash)와 구분된다. 일반 문서는 ''.
@@ -116,10 +121,17 @@ async def _save_document(
     rid = doc_rid(collected.canonical_uri)
     now = datetime.now(timezone.utc)
 
+    # 문서가 **자기에 대해** 말할 수 있는 것만 받는다 (`labels.SELF_DECLARABLE`).
+    # 모르는 라벨은 조용히 넣지도 버리지도 않는다 — 세어서 요약에 낸다.
+    declared, refused_labels = declarable(collected.frontmatter.get("labels"))
+
     # 재수집 감지: upsert 전 기존 content_hash를 조회해 둔다(상태 무관 — 이미 active인 행).
     prev = await db.fetch_one(
         "SELECT content_hash FROM documents WHERE rid = $1", rid,
     )
+
+    # $17 = 자칭 가능한 라벨 목록. 규칙은 `labels.merge_sql` 이 정본이다.
+    label_merge = merge_sql(17)
 
     await db.execute(
         """
@@ -129,14 +141,14 @@ async def _save_document(
             is_quarantined, quality_flags, status,
             created_at, updated_at,
             title, doc_type, language, approved_hash, n_images,
-            origin_updated_at
+            origin_updated_at, labels
         ) VALUES (
             $1, 'document', $2, $3::classification_level, 'indexer',
             $4, $14::source_kind, $5, $5,
             $6, $7, 'active',
             $8, $8,
             $9, $10, $11, $12, $13,
-            $15
+            $15, $16
         )
         ON CONFLICT (rid) DO UPDATE SET
             hash = EXCLUDED.hash,
@@ -158,7 +170,9 @@ async def _save_document(
             source_kind = EXCLUDED.source_kind,
             -- 원본이 말하는 수정 시각(039). **덮어쓰되 NULL 로는 안 덮는다** — 커넥터가 그
             -- 값을 못 준 재적재가 이미 알던 시각을 지우면, 아는 것이 모르는 것으로 바뀐다.
-            origin_updated_at = coalesce(EXCLUDED.origin_updated_at, documents.origin_updated_at)
+            origin_updated_at = coalesce(EXCLUDED.origin_updated_at, documents.origin_updated_at),
+            -- 라벨 갱신 규칙의 정본은 `labels.merge_sql` 이다 — 여기 베끼지 않는다.
+            labels = """ + label_merge + """
         """,
         rid, tenant, classification.classification,
         collected.canonical_uri, collected.content_hash,
@@ -172,6 +186,8 @@ async def _save_document(
         int(collected.frontmatter.get("image_count") or 0),
         source_kind_for(collected.canonical_uri),
         origin_updated_at(collected.frontmatter),
+        declared,
+        sorted(SELF_DECLARABLE),
     )
 
     # content_hash가 바뀐 재수집(덮어쓰기)이면 이벤트 1건 기록 → v_entropy_signals 신호원.
@@ -182,7 +198,7 @@ async def _save_document(
             rid, tenant, prev["content_hash"], collected.content_hash,
         )
 
-    return rid
+    return rid, refused_labels
 
 
 def _invalidate_derived() -> str:
@@ -562,7 +578,12 @@ async def run_ingest(
             classification.is_quarantined = whole_document
 
             # Save document metadata (approved_hash: governance stamp for this run's docs)
-            parent_rid = await _save_document(collected, classification, tenant, approved_hash)
+            parent_rid, bad_labels = await _save_document(
+                collected, classification, tenant, approved_hash)
+            if bad_labels:
+                result.refused_labels += len(bad_labels)
+                logger.warning("labels_not_self_declarable",
+                               path=collected.relative_path, labels=bad_labels)
 
             if whole_document:
                 result.quarantined += 1

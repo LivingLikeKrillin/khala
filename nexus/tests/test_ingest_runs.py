@@ -28,16 +28,16 @@ def _reingest() -> dict:
     return _compose()["services"]["nexus-reingest"]
 
 
-class _Result:
-    found_files = 36
-    total_files = 0
-    unchanged_files = 36
-    indexed = 0
-    bm25_indexed = 0
-    vector_indexed = 0
-    quarantined = 0
-    refused_vendor = 0
-    failed = 0
+def _Result():
+    """무변경 회차의 `IngestResult`.
+
+    ⚠ **손으로 쓴 대역을 두지 않는다.** 대역이 필드를 흉내 내면 본체가 자라는 순간 조용히
+    갈리고, 그 갈림은 대역 쪽만 고쳐서 초록으로 덮인다 — `refused_labels` 가 생겼을 때
+    실제로 그랬다. 본체를 그대로 쓰면 그 상황이 표현 불가능하다.
+    """
+    from nexus.ingest.pipeline import IngestResult
+
+    return IngestResult(found_files=36, total_files=0, unchanged_files=36)
 
 
 # ── 남는 수 ────────────────────────────────────────────────────────────────
