@@ -15,6 +15,7 @@ import structlog
 
 from nexus import db
 from nexus.ingest.normalize import normalize_for_hash
+from nexus.labels import SELF_DECLARABLE, declarable
 
 logger = structlog.get_logger(__name__)
 
@@ -110,16 +111,34 @@ async def collect_files(
         ).hexdigest()
 
         # hash 변경 감지 (force가 아닐 때만)
+        #
+        # ⛔ **본문 해시만 보면 라벨 수정이 통째로 안 보인다.** `content_hash` 는 스펙 ⑥ 대로
+        # frontmatter 를 뺀 본문만 센다. 그래서 `labels:` 한 줄만 고친 파일은 "안 바뀜" 으로
+        # 건너뛰고, **표식은 영원히 옛 값으로 남는다.** 2026-09-18 에 실제로 그랬다 — 합성
+        # 코퍼스 안내 문서에 `labels: [synthetic]` 을 붙였는데 재적재가 조용히 무시했고,
+        # `--force` 를 알아야만 붙일 수 있었다. 아는 사람만 되는 것은 되는 게 아니다.
+        #
+        # 그렇다고 frontmatter 전체를 해시에 넣지는 않는다 — 그러면 아무 메타데이터나 고쳐도
+        # 전량 재색인이 돌고, 스펙 ⑥ 이 그걸 피하려고 본문만 센 것이다. **DB 에 앉는 표식**
+        # 하나만 비교한다.
         if not force:
             try:
-                existing_hash = await db.fetch_val(
-                    "SELECT content_hash FROM documents WHERE source_uri = $1 AND tenant = $2 AND status = 'active'",
+                row = await db.fetch_one(
+                    "SELECT content_hash, labels FROM documents "
+                    "WHERE source_uri = $1 AND tenant = $2 AND status = 'active'",
                     canonical_uri, tenant,
                 )
-                if existing_hash == content_hash:
-                    logger.debug("file_unchanged", path=relative)
-                    unchanged += 1
-                    continue
+                if row is not None and row["content_hash"] == content_hash:
+                    declared, _refused = declarable(fm.get("labels"))
+                    stored = set(row["labels"] or ())
+                    # 경로가 붙인 표식은 이 비교에 넣지 않는다 — 문서가 선언할 수 없는 것을
+                    # 선언 안 했다고 매번 재적재하면 무한히 "바뀜" 이다.
+                    if set(declared) == (stored & SELF_DECLARABLE):
+                        logger.debug("file_unchanged", path=relative)
+                        unchanged += 1
+                        continue
+                    logger.info("file_labels_changed", path=relative,
+                                declared=sorted(declared), stored=sorted(stored))
             except Exception:
                 pass  # DB 미연결 시 전부 수집
 
