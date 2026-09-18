@@ -110,6 +110,7 @@ def ingest(
     async def _ingest() -> None:
         from nexus.ingest.pipeline import run_ingest
         from nexus.ingest import runs_store
+        from nexus.labels import SELF_DECLARABLE
         from nexus import db
 
         # **돌았다는 사실 자체**를 남긴다 (migration 042). 주기 재적재에서는 "바뀐 게 없다" 가
@@ -151,6 +152,13 @@ def ingest(
         typer.echo(f"스킵: {result.skipped}")
         typer.echo(f"격리: {result.quarantined}")
         typer.echo(f"실패: {result.failed}")
+
+        # ⚠ **경고 로그로만 두지 않는다.** 이 리포는 `search.signal.persist_failed` 가
+        # 찍혀 있는데도 34시간 동안 아무도 안 읽어서 데였다. 0 이 아니면 요약에 낸다.
+        if result.refused_labels:
+            typer.echo(f"\n⚠ 문서가 자칭할 수 없는 라벨 {result.refused_labels}건 — 안 붙였다")
+            typer.echo("  자칭할 수 있는 것: " + ", ".join(sorted(SELF_DECLARABLE)))
+            typer.echo("  경로가 붙여야 하는 표식(예: external_spec)은 문서가 선언할 수 없다")
 
         if result.bm25_indexed or result.vector_indexed:
             typer.echo(f"\nBM25: {result.bm25_indexed}  Vector: {result.vector_indexed}")

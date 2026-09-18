@@ -75,5 +75,6 @@ def summarize(result: Any) -> dict[str, int]:
         "vector": result.vector_indexed,
         "quarantined": result.quarantined,
         "refused_vendor": result.refused_vendor,
+        "refused_labels": result.refused_labels,
         "failed": result.failed,
     }
