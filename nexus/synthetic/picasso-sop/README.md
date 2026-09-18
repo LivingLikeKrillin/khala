@@ -81,9 +81,39 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 | SOP-04 §5 | `NEEDS_INTERVENTION` | `OPERATOR_HOLD` | 같음 |
 | SOP-06 §4 | `UNKNOWN` | `IN_DOUBT` | `UNKNOWN` 은 **능력 선언**의 3값 표기지 단위 상태가 아니다 |
 
-단위 상태의 값은 이 열하나뿐이다 — `REQUESTED` · `ACCEPTED` · `RUNNING` · `PARTIAL` ·
-`IN_DOUBT` · `OPERATOR_HOLD` · `PHYSICALLY_DONE` · `UNVERIFIED` · `FAILED` · `CANCELING` ·
-`ABORTED`.
+⛔ **그리고 이 정정문 자체가 같은 실수를 한 번 더 했다 (AGENT-04 재검토).** 여기 적혀
+있던 「단위 상태 열하나」는 **단위 상태가 아니라 실행 상태**였다. 내가 인용한 표의 머리글이
+`architecture.md:95` 에 **「실행 상태 (`picasso` 미들웨어)」** 라고 적혀 있고, 같은 코퍼스의
+`2026-09-09-middleware-core-design.md:30` 은 그것을 `execution.physical_state` 라고 부른다.
+**코퍼스만으로 잡혔어야 했다 — 내가 인용한 표의 머리글을 안 읽은 것이다.**
+
+### 상태 enum 이 셋이다. 헷갈리는 이유는 **값을 여섯이나 공유**하기 때문이다
+
+| enum | 값 | 어디 |
+|---|---|---|
+| `UnitState` (9) | `PENDING` · `IN_DOUBT` · `RUNNING` · `VERIFYING` · `OPERATOR_HOLD` · `DONE` · `UNVERIFIED` · `FAILED` · `ABORTED` | picasso `Model.kt:73` |
+| `PhysicalState` (11) | `REQUESTED` · `ACCEPTED` · `RUNNING` · `PARTIAL` · `IN_DOUBT` · `OPERATOR_HOLD` · `PHYSICALLY_DONE` · `UNVERIFIED` · `FAILED` · `CANCELING` · `ABORTED` | `Model.kt:24` · 코퍼스 `architecture.md:98` 왼쪽 칸 |
+| `TaskState` (10) | `ACCEPTED` · `RUNNING` · `PAUSED` · `SUCCEEDED` · `FAILED` · `RETRIABLE` · `NEEDS_INTERVENTION` · `CANCELLING` · `CANCELLED` · `CANCELLED_RECOVERY_FAILED` | 계약 · `architecture.md:98` 오른쪽 칸 |
+
+**`UnitState` 와 `PhysicalState` 가 공유하는 값 여섯** — `IN_DOUBT` · `RUNNING` ·
+`OPERATOR_HOLD` · `UNVERIFIED` · `FAILED` · `ABORTED`.
+
+단위에만 있는 것: `PENDING` · `VERIFYING` · `DONE`.
+실행에만 있는 것: `REQUESTED` · `ACCEPTED` · `PARTIAL` · `PHYSICALLY_DONE` · `CANCELING`.
+
+⭐ **위 세 정정은 그대로 유효하다.** `OPERATOR_HOLD` 와 `IN_DOUBT` 는 두 enum 에 다 있어서
+바꾼 값이 어느 쪽으로 읽어도 맞다. 틀렸던 것은 설명용 목록 한 줄이다.
+
+### 다음에 상태 이름을 쓸 때
+
+**어느 enum 소속인지 한 번 대조한다.** `Model.kt` 하나에만 상태처럼 읽히는 enum 이
+여럿 있고(`UnitState` · `PhysicalState` · `UpstreamAck` · `Verification` ·
+`ExecutionLookup` · `OperatorDecision` · `Route`), 계약 쪽 `TaskState` 까지 합치면 더 많다.
+
+⛔ **이건 검사로 못 막는다.** 네 번 다 **실재하는 값**이었고 틀린 것은 계층뿐이었다. 값이
+실재하는지는 기계가 보지만, *이 문장이 어느 계층을 말하는가* 는 문장의 뜻이라 사람이 본다 —
+인용 검증이 「그 문서가 맞는가」를 못 보는 것과 같은 이유다. 그래서 검사 대신 **위 표**를
+여기 둔다.
 
 ⚠ **`DEPTH_LIMIT`(SOP-03 §6)은 실물에서 안 밟힌다.** 파지가 네 값인데 효과가 내는 것은
 둘뿐이라, 너비 우선 탐색이 깊이 상한에 닿기 전에 볼 것이 없어진다. 문서에 남겨 두는 것은
