@@ -6,6 +6,8 @@ import pytest
 
 from nexus.auth import AuthConfig, PLACEHOLDER
 
+pytestmark = pytest.mark.usefixtures("isolate_auth_env")
+
 
 def test_default_mode_is_enforced():
     cfg = AuthConfig.from_dict({})

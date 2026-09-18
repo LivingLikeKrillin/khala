@@ -31,6 +31,24 @@ if importlib.util.find_spec("a2a") is None:
             collect_ignore.append(_f.name)
 
 
+@pytest.fixture
+def isolate_auth_env(monkeypatch):
+    """`AuthConfig.from_dict` 를 부르는 검사가 **자기 입력을 통제하게** 한다.
+
+    쓰는 법 — 그런 파일 맨 위에 한 줄::
+
+        pytestmark = pytest.mark.usefixtures("isolate_auth_env")
+
+    ⛔ **왜 필요한가.** `from_dict` 는 config 만 읽는 것이 아니라 환경변수에서 principal 을
+    **주입**한다. 그래서 그 결과를 통째로 단언하는 검사는 그 기계의 배포 설정을 같이 본다.
+    위험한 쪽은 빨간 쪽이 아니라 반대다 — *"변수가 없으면 이렇게 된다"* 를 확인하려는 검사가
+    변수가 **있는** 기계에서는 그 조건을 한 번도 못 만든 채 통과한다. 목록의 정본과 그 목록이
+    낡지 않았는지 보는 검사는 `_auth_env.py` · `test_auth_env_isolation.py` 에 있다.
+    """
+    from tests._auth_env import clear_principal_env
+    clear_principal_env(monkeypatch)
+
+
 def pytest_sessionstart(session) -> None:
     """스위트가 붙기 전에, 대상 DB 가 버려도 되는 DB 인지 확인한다.
 

@@ -9,8 +9,12 @@ principal 을 만든다. 어긋남이 표현 불가능한 것이 이 설계의 �
 
 from __future__ import annotations
 
+import pytest
+
 from nexus.auth.config import AuthConfig
 from nexus.auth.principal import hash_token
+
+pytestmark = pytest.mark.usefixtures("isolate_auth_env")
 
 CFG = {"auth": {"mode": "enforced", "principals": []}}
 
