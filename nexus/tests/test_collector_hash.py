@@ -36,15 +36,25 @@ def test_the_scan_separates_not_seen_from_not_changed(tmp_path, monkeypatch):
     (tmp_path / "sub").mkdir()
     (tmp_path / "sub" / "b.md").write_text("본문 B", encoding="utf-8")
 
-    async def _hash_of_a(sql, *args):
-        # a.md 만 이미 같은 내용으로 들어가 있다고 답한다.
+    async def _row_for_a(sql, *args):
+        # a.md 만 이미 같은 내용·같은 라벨로 들어가 있다고 답한다.
+        #
+        # ⚠ **대역이 실제 호출을 그대로 받아야 한다.** 이 자리는 원래 `fetch_val` 을 물고
+        # 있었는데, 수집기가 라벨까지 보게 되면서 `fetch_one` 으로 바뀌었다. 대역을 안 따라
+        # 옮기면 조회가 대역을 안 타고 진짜 DB 로 가서 실패하고, 수집기의 `except: pass` 가
+        # 그것을 삼켜 **모든 파일이 「바뀜」으로 나온다.** 검사가 깨져서 알았다 (2026-09-18).
         import hashlib
 
         from nexus.ingest.normalize import normalize_for_hash
-        return (hashlib.sha256(normalize_for_hash("본문 A").encode("utf-8")).hexdigest()
-                if args and str(args[0]).endswith("a.md") else None)
+        if not (args and str(args[0]).endswith("a.md")):
+            return None
+        return {
+            "content_hash": hashlib.sha256(
+                normalize_for_hash("본문 A").encode("utf-8")).hexdigest(),
+            "labels": [],
+        }
 
-    monkeypatch.setattr(collector.db, "fetch_val", _hash_of_a)
+    monkeypatch.setattr(collector.db, "fetch_one", _row_for_a)
     got = asyncio.run(collector.collect_files(str(tmp_path), "**/*.md", False, "t"))
 
     assert got.found == 2, "패턴이 찾은 수는 루트 파일도 센다"
