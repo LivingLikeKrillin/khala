@@ -14,7 +14,9 @@ import re
 import pytest
 
 from nexus.auth.config import AuthConfig
-from tests._auth_env import PRINCIPAL_ENV, PRINCIPAL_ENV_PREFIXES, clear_principal_env
+from tests._auth_env import (
+    PRINCIPAL_ENV, PRINCIPAL_ENV_PREFIXES, clear_principal_env, fill_principal_env,
+)
 
 _CONFIG = pathlib.Path(AuthConfig.__module__.replace(".", "/") + ".py")
 _SRC = (pathlib.Path(__file__).resolve().parents[1] / _CONFIG).read_text(encoding="utf-8")
@@ -54,10 +56,8 @@ def test_the_prefix_sweep_is_not_a_no_op():
 
 @pytest.fixture
 def configured_like_a_deployment(monkeypatch):
-    """배포와 같은 모양을 일부러 만든다 — 정확한 이름 하나와 접두사 하나."""
-    for name in PRINCIPAL_ENV:
-        monkeypatch.setenv(name, "1" if name.endswith(("ANONYMOUS", "DEV_TOKEN")) else "x" * 40)
-    monkeypatch.setenv("NEXUS_SLACK_CORPUS_SOMETHING", "tok|some_tenant|INTERNAL")
+    """배포와 같은 모양을 일부러 만든다 — 모양의 정본은 `_auth_env.fill_principal_env`."""
+    fill_principal_env(monkeypatch)
 
 
 def test_the_isolation_actually_empties_the_config(configured_like_a_deployment, monkeypatch):
@@ -89,9 +89,6 @@ def test_without_the_isolation_the_config_is_not_empty(configured_like_a_deploym
 _NOT_ISOLATED: dict[str, str] = {
     "test_auth_env_isolation.py":
         "이 파일이 격리 자체를 검사한다 — 대조군은 일부러 안 지운 상태여야 한다",
-    "test_tenant_read_scope.py":
-        "#503 이 넣은 자기 목록(`_SCOPE_ENV`)을 쓴다. `_auth_env.py` 보다 먼저 있었고, "
-        "합치는 것은 별건이다",
     "test_access_principal.py":
         "결과를 통째로 단언하지 않고 지정한 principal 만 본다 — 열 변수를 다 채운 환경에서 "
         "초록 확인(2026-09-18)",
