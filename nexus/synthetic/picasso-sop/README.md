@@ -69,6 +69,26 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 *"기체가 넘어졌을 때 자재를 어떻게 회수하는가"*. 어느 편을 얼마나 비울지는 골든셋을
 짜는 쪽에서 정하고, 필요하면 이 표를 그때 다시 맞춘다.
 
+## ⚠ 어휘 대조에서 셋이 걸렸다 (2026-09-18)
+
+설명 계층이 이 문서들을 **근거로 인용한다.** 그래서 틀린 상태 이름은 그대로 운영자에게
+전달되고, **인용 검증은 그것을 못 잡는다** — 검증은 *"그 문서가 그렇게 적혀 있는가"* 를
+보지 *"그 문서가 맞는가"* 를 보지 않는다.
+
+| 어디 | 썼던 것 | 맞는 것 | 왜 |
+|---|---|---|---|
+| SOP-01 §5.1 | `NEEDS_INTERVENTION` | `OPERATOR_HOLD` | 앞엣것은 **태스크 상태**(어댑터→계약)다 |
+| SOP-04 §5 | `NEEDS_INTERVENTION` | `OPERATOR_HOLD` | 같음 |
+| SOP-06 §4 | `UNKNOWN` | `IN_DOUBT` | `UNKNOWN` 은 **능력 선언**의 3값 표기지 단위 상태가 아니다 |
+
+단위 상태의 값은 이 열하나뿐이다 — `REQUESTED` · `ACCEPTED` · `RUNNING` · `PARTIAL` ·
+`IN_DOUBT` · `OPERATOR_HOLD` · `PHYSICALLY_DONE` · `UNVERIFIED` · `FAILED` · `CANCELING` ·
+`ABORTED`.
+
+⚠ **`DEPTH_LIMIT`(SOP-03 §6)은 실물에서 안 밟힌다.** 파지가 네 값인데 효과가 내는 것은
+둘뿐이라, 너비 우선 탐색이 깊이 상한에 닿기 전에 볼 것이 없어진다. 문서에 남겨 두는 것은
+해롭지 않지만 **골든셋의 정답으로 쓰면 영영 안 나오는 사건을 묻는 셈**이다.
+
 ## 내용의 현실성은 검토가 필요하다
 
 구조·용어·상태 이름은 `picasso` 설계 문서에서 가져왔다. **절차 자체는 현장을 모르는
