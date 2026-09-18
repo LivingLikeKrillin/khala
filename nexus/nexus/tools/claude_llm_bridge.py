@@ -102,6 +102,28 @@ def _subprocess_runner(argv: list[str], prompt: str, timeout: float):
     return (p.returncode, p.stdout, p.stderr)
 
 
+def failure_detail(out: str, err: str) -> str:
+    """rc != 0 일 때 **왜** 인지를 고른다.
+
+    ⛔ **stderr 만 보면 안 된다.** `claude` 는 치명적 사유를 **stdout** 으로 낸다. 실측
+    2026-09-18: 호스트 OAuth 세션이 만료돼 `rc=1 · stderr='' ·
+    stdout='Failed to authenticate: OAuth session expired and could not be refreshed'`
+    였는데, 502 본문에는 `"claude non-zero exit"` 만 실렸다. 처방이 적힌 그 한 줄이
+    버려져서, 읽는 쪽은 포트와 컨테이너와 네트워크를 먼저 뒤졌다.
+
+    이 리포의 규율 그대로다 — 백엔드 메시지는 **요약하지 말고 그대로** 남긴다.
+    "왜 안 되는지" 가 곧 처방이다 (`nexus/CLAUDE.md` §에러 처리).
+
+    ⚠ 둘 다 비면 **비었다고 말한다.** "non-zero exit" 만 적으면 *이유를 못 받은 것*과
+    *이유가 이것인 것*이 같은 문장이 된다.
+    """
+    for text in (err, out):
+        s = (text or "").strip()
+        if s:
+            return s[:1000]
+    return "claude 가 0 이 아닌 코드로 끝났고 stdout·stderr 가 둘 다 비어 있다"
+
+
 def handle_generate(
     payload: dict,
     token_header: str | None,
@@ -129,7 +151,7 @@ def handle_generate(
         # claude 미설치/실행 불가 등 — 크래시 대신 502 로 원인을 알린다.
         return 502, {"error": f"claude 실행 실패: {e}"}
     if rc != 0:
-        return 502, {"error": (err or "claude non-zero exit")[:1000]}
+        return 502, {"error": failure_detail(out, err)}
     return 200, {"text": out}
 
 
@@ -160,7 +182,7 @@ def handle_vision(
     except OSError as e:
         return 502, {"error": f"claude 실행 실패: {e}"}
     if rc != 0:
-        return 502, {"error": (err or "claude non-zero exit")[:1000]}
+        return 502, {"error": failure_detail(out, err)}
     return 200, {"text": parse_vision_stdout(out)}
 
 
