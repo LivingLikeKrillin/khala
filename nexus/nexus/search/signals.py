@@ -58,6 +58,16 @@ class SearchSignals:
     route: str
     query_sha256: str
     query_len: int
+    #: **검색이 돌려준 히트 수**(`len(hits)`)다. 응답의 `evidence_snippets` 와 **다른 것을
+    #: 센다** — 뒤엣것은 모델에게 실제로 간 근거 묶음이고, 조각이 히트보다 많을 수 있다.
+    #:
+    #: ⛔ 실측 2026-09-18, 같은 한 번의 호출: `top_k=8` → 기록 `n_snippets=8` · 응답
+    #: `evidence_snippets=13`. 다른 에이전트가 이것을 관측 어긋남으로 읽고 장애를 의심했다.
+    #: 둘은 어긋난 것이 아니라 **다른 집합**이다.
+    #:
+    #: ⚠ `search_span.n_snippets` 는 이름이 같은데 **묶음 쪽**을 센다
+    #: (`evidence_packet.py`: `len(packet.snippets)`). 한쪽을 다른 쪽에 맞추지 마라 —
+    #: 맞추는 순간 기존 1,190행의 뜻이 조용히 바뀐다.
     n_snippets: int
     top_score: float | None
     n_entities: int

@@ -203,6 +203,9 @@ async def assemble_packet(
             Candidate(rank=i + 1, doc_rid=s.doc_rid, chunk_rid=s.chunk_rid, raw_score=s.score)
             for i, s in enumerate(packet.snippets)
         ]
+        # ⚠ 여기의 `n_snippets` 는 **묶음** 크기다. `search_log.n_snippets` 는 같은
+        # 이름으로 **히트** 수를 센다(`signals.py`). 둘을 맞추지 마라 — 다른 질문에
+        # 답하는 수이고, 맞추면 한쪽 표의 과거 행이 전부 뜻을 잃는다.
         spans.add_packet(candidates=packet_cands, n_snippets=len(packet.snippets),
                          n_graph_edges=n_graph_edges)
 
