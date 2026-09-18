@@ -42,6 +42,9 @@ _OUTCOME_BY_REASON = {
     "auth": Outcome.LLM_AUTH,
     "rate_limit": Outcome.LLM_BUSY,
     "unavailable": Outcome.LLM_BUSY,
+    # 타임아웃도 "잠시 후 다시" 가 참이다. 안 적으면 `GENERATION_FAILED` 로 떨어져,
+    # 기다리면 되는 실패에 기다리라는 말을 안 하게 된다.
+    "timeout": Outcome.LLM_BUSY,
 }
 
 

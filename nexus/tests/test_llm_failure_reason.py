@@ -56,7 +56,9 @@ def test_the_bridge_carries_its_status_on_the_response():
 
 
 def test_timeouts_and_connection_failures_have_no_status():
-    assert F.classify(_Timeout("read timed out")) == F.UNAVAILABLE
+    """⛔ **둘을 가른다** (2026-09-19). 전에는 둘 다 `unavailable` 이었는데, 소비자가 할 일이
+    다르다 — 타임아웃은 **질의를 줄이면** 되고 연결 실패는 그렇지 않다."""
+    assert F.classify(_Timeout("read timed out")) == F.TIMEOUT
     assert F.classify(httpx.ConnectError("refused")) == F.UNAVAILABLE
 
 
@@ -74,8 +76,23 @@ def test_the_retry_axis_lives_here_not_in_each_client():
 
 
 def test_reason_codes_are_a_closed_set():
-    """응답에 실려 나가는 값이다 — 늘리는 것은 계약 변경이고, 조용히 하면 안 된다."""
-    assert set(F.REASONS) == {"quota", "auth", "rate_limit", "unavailable", "other"}
+    """응답에 실려 나가는 값이다 — 늘리는 것은 계약 변경이고, 조용히 하면 안 된다.
+
+    ⭐ **이 검사가 제 일을 했다.** `timeout` 을 더하면서 여기서 빨개졌고, 그래서 계약이
+    바뀐다는 사실을 손으로 인정하고 지나가게 됐다. 늘릴 때는 소비자도 같이 본다 —
+    슬랙의 `_OUTCOME_BY_REASON` 에 안 넣으면 모르는 사유가 `GENERATION_FAILED` 로 떨어져,
+    기다리면 되는 실패에 기다리라는 말을 안 하게 된다.
+    """
+    assert set(F.REASONS) == {"quota", "auth", "rate_limit", "unavailable", "timeout", "other"}
+
+
+def test_a_new_reason_reaches_the_slack_surface():
+    """⛔ 사유를 늘리고 표면을 안 늘리면, 그 사유는 조용히 «분류되지 않음» 이 된다."""
+    from nexus.slack.bot import _OUTCOME_BY_REASON
+
+    unmapped = {r for r in F.REASONS if F.is_transient(r)} - set(_OUTCOME_BY_REASON)
+    assert not unmapped, (
+        f"기다리면 되는 사유인데 슬랙이 그렇게 말 못 한다: {sorted(unmapped)}")
 
 
 # ── 생성기가 사유를 남기는가 ───────────────────────────────────────────────────
