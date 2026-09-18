@@ -30,7 +30,19 @@ _DOORS_CLOSED = [
     "--setting-sources", "",
     "--no-session-persistence",
 ]
-_DEFAULT_TIMEOUT = 120.0
+#: `claude` 한 번에 줄 시간(초). `NEXUS_LLM_BRIDGE_TIMEOUT` 로 배포가 정한다.
+#:
+#: ⛔ **상수 하나였고 그 사실이 아무 데도 안 적혀 있었다** (실측 2026-09-19). 설명 층이
+#: 정황을 실으면서 질의가 길어지자 합성이 100~119초를 쓰게 됐고, 이 120 초 벽에 **호출
+#: 셋 중 하나**가 걸렸다. 최대 성공 118.8초 · 최소 실패 121.0초 — 사이가 2.3초다.
+#:
+#: ⚠ **기본값은 그대로 120 이다.** 올려서 조용히 바꾸지 않는다 — 배포가 자기 값을 정하고,
+#: 걸렸을 때 얼마나 기다렸는지를 504 가 말한다(아래). 느린 것을 벽을 올려 덮으면 느리다는
+#: 사실만 안 보이게 된다.
+#:
+#: 참고로 이 배포의 내역(2026-09-19 실측): 검색 2.3초 · 합성 44.6초(답변 1,410자·근거 26).
+#: 벽보다 먼저 볼 값은 **합성이 무엇에 그 시간을 쓰는가**다.
+_DEFAULT_TIMEOUT = float(os.getenv("NEXUS_LLM_BRIDGE_TIMEOUT", "120") or 120)
 
 
 def build_argv(model: str | None) -> list[str]:
@@ -102,6 +114,18 @@ def _subprocess_runner(argv: list[str], prompt: str, timeout: float):
     return (p.returncode, p.stdout, p.stderr)
 
 
+def timeout_detail(limit: float) -> str:
+    """504 본문. **얼마나 기다렸고 그 한계가 어디서 왔는지**를 같이 말한다.
+
+    ⛔ 전에는 `"claude 응답이 시간 초과되었습니다"` 뿐이었다. 읽는 쪽은 자기가 121초에
+    걸렸는지 300초에 걸렸는지 모르고, 그 수를 모르면 **기다릴지 질의를 줄일지** 를 못 정한다.
+    #513 에서 502 가 이유를 버렸던 것과 같은 자리다 — 값은 있었고 전달이 없었다.
+    """
+    return (f"claude 가 {limit:g}초 안에 안 끝났다 "
+            f"(한계는 NEXUS_LLM_BRIDGE_TIMEOUT, 기본 120). "
+            f"질의를 줄이거나 이 값을 올려라 — 다만 합성이 그 시간을 쓰는 것 자체가 먼저 볼 값이다")
+
+
 def failure_detail(out: str, err: str) -> str:
     """rc != 0 일 때 **왜** 인지를 고른다.
 
@@ -146,7 +170,7 @@ def handle_generate(
     try:
         rc, out, err = runner(argv, full, timeout)
     except (subprocess.TimeoutExpired, TimeoutError):
-        return 504, {"error": "claude 응답이 시간 초과되었습니다"}
+        return 504, {"error": timeout_detail(timeout)}
     except OSError as e:
         # claude 미설치/실행 불가 등 — 크래시 대신 502 로 원인을 알린다.
         return 502, {"error": f"claude 실행 실패: {e}"}
@@ -178,7 +202,7 @@ def handle_vision(
     try:
         rc, out, err = runner(argv, stdin, timeout)
     except (subprocess.TimeoutExpired, TimeoutError):
-        return 504, {"error": "claude 응답이 시간 초과되었습니다"}
+        return 504, {"error": timeout_detail(timeout)}
     except OSError as e:
         return 502, {"error": f"claude 실행 실패: {e}"}
     if rc != 0:
