@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import sys
 from pathlib import Path
 
@@ -17,6 +19,8 @@ from check_read_scope_per_surface import (  # noqa: E402
 )
 
 from nexus.auth import AuthConfig  # noqa: E402
+
+pytestmark = pytest.mark.usefixtures("isolate_auth_env")  # noqa: E402
 
 #: 활성 청크가 있는 테넌트들 — 라이브 실측(2026-09-10)과 같은 모양.
 _ACTIVE = {"default": 614, "design_docs": 1582, "ko_eval_packa": 1897}

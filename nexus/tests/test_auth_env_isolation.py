@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import importlib
 import pathlib
 import re
 
@@ -73,3 +74,69 @@ def test_without_the_isolation_the_config_is_not_empty(configured_like_a_deploym
     것을 확인해 두지 않으면, 격리가 아무 일도 안 하는데 통과하는 세상과 구별할 수 없다."""
     cfg = AuthConfig.from_dict({})
     assert cfg.principals, "지우지 않았는데도 비어 있다 — 이 검사가 무엇도 확인하지 못한다"
+
+
+# ── 그 격리를 실제로 부르는 파일이 있는가 ───────────────────────────────────
+#
+# ⛔ **위의 검사들은 `clear_principal_env` 가 도는지만 본다.** 어느 파일이 그것을 *부르는지*
+# 는 안 본다. 그 차이로 이 리포가 한 번 데였다: #508 은 목록과 위 검사들을 넣고 커밋 본문에
+# "each file gets an autouse fixture" 라고 적었는데 **네 파일 중 아무것도 안 받았고**, 스위트는
+# 초록이었다. 설정된 기계에서만 6건이 빨갛고 CI 는 맨 상자라 볼 수 없다.
+#
+# 그래서 여기서는 결과가 아니라 **선언**을 본다 — 파일이 그 표시를 달고 있는가.
+
+#: `from_dict` 를 부르지만 격리를 안 다는 파일. **왜 안 다는지**를 같이 적는다.
+_NOT_ISOLATED: dict[str, str] = {
+    "test_auth_env_isolation.py":
+        "이 파일이 격리 자체를 검사한다 — 대조군은 일부러 안 지운 상태여야 한다",
+    "test_tenant_read_scope.py":
+        "#503 이 넣은 자기 목록(`_SCOPE_ENV`)을 쓴다. `_auth_env.py` 보다 먼저 있었고, "
+        "합치는 것은 별건이다",
+    "test_access_principal.py":
+        "결과를 통째로 단언하지 않고 지정한 principal 만 본다 — 열 변수를 다 채운 환경에서 "
+        "초록 확인(2026-09-18)",
+    "test_auth_dev_token_guard.py": "위와 같음 (같은 실행에서 확인)",
+}
+
+
+def _modules_that_build_a_config() -> set[str]:
+    """`AuthConfig.from_dict` 를 부르는 검사 파일 — 이름이 아니라 **본문**으로 찾는다.
+
+    목록을 손으로 적으면 새 파일이 조용히 빠진다. 그 조용함이 #508 의 병이었다.
+    """
+    here = pathlib.Path(__file__).parent
+    return {f.name for f in here.glob("test_*.py")
+            if "AuthConfig.from_dict" in f.read_text(encoding="utf-8")}
+
+
+def _declares_isolation(name: str) -> bool:
+    """모듈이 그 표시를 달고 있는가.
+
+    ⚠ `pytestmark` 는 하나만 달면 리스트가 아니라 `MarkDecorator` 하나다 — 그대로 순회하면
+    조용히 아무것도 못 찾는다(이 검사를 처음 쓸 때 실제로 그랬고, 네 파일이 다 표시를 달고
+    있는데도 없다고 나왔다). 그래서 둘 다 받아 `Mark` 로 맞춘다.
+    """
+    declared = getattr(importlib.import_module(f"tests.{name[:-3]}"), "pytestmark", [])
+    if not isinstance(declared, (list, tuple)):
+        declared = [declared]
+    return any(getattr(m, "mark", m).name == "usefixtures"
+               and "isolate_auth_env" in getattr(m, "mark", m).args
+               for m in declared)
+
+
+def test_every_file_that_builds_a_config_declares_the_isolation():
+    """⛔ 표시가 사라지면 **맨 상자에서도** 여기서 깨진다 — 설정된 기계를 기다리지 않는다."""
+    building = _modules_that_build_a_config()
+    assert building, "`from_dict` 를 부르는 파일을 하나도 못 찾았다 — 대조가 죽은 것이다"
+
+    missing = sorted(n for n in building - set(_NOT_ISOLATED) if not _declares_isolation(n))
+    assert not missing, (
+        f"`AuthConfig.from_dict` 를 부르는데 격리 선언이 없다: {missing} — 파일 맨 위에 "
+        '`pytestmark = pytest.mark.usefixtures("isolate_auth_env")` 를 달거나, 안 다는 '
+        "이유를 `_NOT_ISOLATED` 에 적어라")
+
+
+def test_the_exemptions_are_still_about_files_that_exist():
+    """⚠ 면제 목록도 낡는다. 사라진 파일 이름이 남아 있으면 무엇을 면제한 것인지 흐려진다."""
+    stale = sorted(set(_NOT_ISOLATED) - _modules_that_build_a_config())
+    assert not stale, f"`from_dict` 를 안 부르는데 면제 목록에 있다: {stale}"

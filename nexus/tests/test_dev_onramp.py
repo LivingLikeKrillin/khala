@@ -6,8 +6,12 @@ prod(override 미사용 → env 없음)는 enforced + principals 그대로 — �
 
 from __future__ import annotations
 
+import pytest
+
 from nexus.auth.config import AuthConfig
 from nexus.auth.principal import resolve_principal
+
+pytestmark = pytest.mark.usefixtures("isolate_auth_env")
 
 
 def test_dev_token_env_injects_local_dev_principal(monkeypatch):
