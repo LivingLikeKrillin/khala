@@ -112,8 +112,13 @@ async def _save_document(
     classification: ClassificationResult,
     tenant: str,
     approved_hash: str = "",
-) -> tuple[str, list[str]]:
-    """문서 메타데이터를 DB에 저장. ``(rid, 물린 라벨)`` 반환.
+    declared_labels: list[str] | None = None,
+) -> str:
+    """문서 메타데이터를 DB에 저장. rid 반환.
+
+    ``declared_labels`` 는 **이미 걸러진** 자칭 라벨이다. 무엇을 물렸는지 세는 것은
+    `result` 를 가진 부르는 쪽 일이라 여기서 하지 않는다 — 반환형을 늘렸다가 rid 를
+    받아 쓰는 자리 열 곳이 조용히 튜플을 받았다 (CI 가 잡았다, 2026-09-18).
 
     ``approved_hash``는 상위 거버넌스 도구(Arbiter)의 accountable-review 스탬프로,
     nexus 자체의 변경 감지 해시(content_hash)와 구분된다. 일반 문서는 ''.
@@ -121,9 +126,7 @@ async def _save_document(
     rid = doc_rid(collected.canonical_uri)
     now = datetime.now(timezone.utc)
 
-    # 문서가 **자기에 대해** 말할 수 있는 것만 받는다 (`labels.SELF_DECLARABLE`).
-    # 모르는 라벨은 조용히 넣지도 버리지도 않는다 — 세어서 요약에 낸다.
-    declared, refused_labels = declarable(collected.frontmatter.get("labels"))
+
 
     # 재수집 감지: upsert 전 기존 content_hash를 조회해 둔다(상태 무관 — 이미 active인 행).
     prev = await db.fetch_one(
@@ -186,7 +189,7 @@ async def _save_document(
         int(collected.frontmatter.get("image_count") or 0),
         source_kind_for(collected.canonical_uri),
         origin_updated_at(collected.frontmatter),
-        declared,
+        list(declared_labels or []),
         sorted(SELF_DECLARABLE),
     )
 
@@ -198,7 +201,7 @@ async def _save_document(
             rid, tenant, prev["content_hash"], collected.content_hash,
         )
 
-    return rid, refused_labels
+    return rid
 
 
 def _invalidate_derived() -> str:
@@ -578,12 +581,17 @@ async def run_ingest(
             classification.is_quarantined = whole_document
 
             # Save document metadata (approved_hash: governance stamp for this run's docs)
-            parent_rid, bad_labels = await _save_document(
-                collected, classification, tenant, approved_hash)
+            # 문서가 **자기에 대해** 말할 수 있는 것만 받는다 (`labels.SELF_DECLARABLE`).
+            # 모르는 라벨은 조용히 넣지도 버리지도 않는다 — 세어서 요약에 낸다.
+            declared, bad_labels = declarable(collected.frontmatter.get("labels"))
             if bad_labels:
                 result.refused_labels += len(bad_labels)
                 logger.warning("labels_not_self_declarable",
                                path=collected.relative_path, labels=bad_labels)
+
+            parent_rid = await _save_document(
+                collected, classification, tenant, approved_hash,
+                declared_labels=declared)
 
             if whole_document:
                 result.quarantined += 1
