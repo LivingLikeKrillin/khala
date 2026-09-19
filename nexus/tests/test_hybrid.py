@@ -237,11 +237,12 @@ def _spy_legs(monkeypatch):
     """경로 호출을 가로채 **어떤 질의가 어느 경로로 갔는지** 본다."""
     calls = {"bm25": [], "vector": []}
 
-    async def bm25(query, tenant, clearance, top_k=20, window=None):
+    async def bm25(query, tenant, clearance, top_k=20, window=None, exclude_doc_types=()):
         calls["bm25"].append(query)
         return [_H.LegHit(rid=f"c-{query}", rank=1, doc_rid="d", score=3.0)], 3.0
 
-    async def vector(query, svc, tenant, clearance, top_k=20, column=None, window=None):
+    async def vector(query, svc, tenant, clearance, top_k=20, column=None, window=None,
+                     exclude_doc_types=()):
         calls["vector"].append(query)
         return [_H.LegHit(rid=f"v-{query}", rank=1, doc_rid="d", score=0.2)], 0.2
 

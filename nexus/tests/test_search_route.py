@@ -20,11 +20,13 @@ def legs(monkeypatch):
     """BM25/벡터 경로를 세는 스파이. DB 도 Ollama 도 필요 없다."""
     calls = {"bm25": 0, "vector": 0}
 
-    async def fake_bm25(query, tenant, clearance, top_k=20, window=None):
+    async def fake_bm25(query, tenant, clearance, top_k=20, window=None,
+                        exclude_doc_types=()):
         calls["bm25"] += 1
         return [hybrid.LegHit(rid="chunk_a", rank=1, doc_rid="doc_a", score=3.0)], 3.0
 
-    async def fake_vector(query, svc, tenant, clearance, top_k=20, column=None, window=None):
+    async def fake_vector(query, svc, tenant, clearance, top_k=20, column=None,
+                          window=None, exclude_doc_types=()):
         calls["vector"] += 1
         calls["vector_column"] = column      # 어느 세대를 읽었는지도 센다 (SPEC-nexus-kure-embedding-swap §4.2)
         return [hybrid.LegHit(rid="chunk_b", rank=1, doc_rid="doc_b", score=0.2)], 0.2

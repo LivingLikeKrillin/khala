@@ -102,7 +102,13 @@ def test_both_legs_bind_the_window_after_their_own_parameters():
     """⛔ 술어가 옳아도 **부르는 쪽이 값을 안 넘기면** 아무 일도 안 일어난다.
 
     키워드 경로는 바인딩 다섯을 먼저 쓰고 벡터 경로는 넷을 쓴다. 두 숫자가 소스에 그대로
-    적혀 있으므로, 앞쪽 바인딩이 늘어나면 여기서 깨져야 한다."""
+    적혀 있으므로, 앞쪽 바인딩이 늘어나면 여기서 깨져야 한다.
+
+    ⚠ **2026-09-20 에 이 검사가 깨졌고, 깨진 것이 옳았다.** 종류 제외(`doc_type_filter`)가
+    시각 범위 **뒤에** 바인딩을 더하면서 인자 줄의 모양이 바뀌었다. 그때 단언을 새 문자열로
+    바꾸는 대신 **성질을 직접 세는 쪽**으로 고쳤다 — 문자열을 따라가면 다음 변경에서 또
+    깨지고, 그 다음에는 아무도 이 검사가 무엇을 지키는지 모른 채 문자열만 맞춘다.
+    """
     import inspect
 
     from nexus.search import hybrid
@@ -110,5 +116,22 @@ def test_both_legs_bind_the_window_after_their_own_parameters():
     src = inspect.getsource(hybrid)
     assert 'origin_window_predicate("d.origin_updated_at", 6, window)' in src
     assert 'origin_window_predicate("d.origin_updated_at", 5, window)' in src
-    assert "BM25_LENGTH_NORMALIZATION, *win_vals," in src
-    assert "top_k, *win_vals," in src
+
+    # 값이 **실제로 SQL 호출에 실려 나가는가.** 다리마다 `*win_vals` 가 한 번씩.
+    for fn in (hybrid._bm25_search, hybrid._vector_search):
+        body = inspect.getsource(fn)
+        assert "*win_vals" in body, f"{fn.__name__} 이 범위 값을 안 넘긴다 — 술어만 있고 값이 없다"
+        # ⛔ 범위 값보다 **먼저** 오는 인자가 있어야 한다. `*win_vals` 가 첫 인자가 되면
+        #    술어의 시작 번호(5·6)와 어긋난 것이다.
+        call = body[body.index("*win_vals") - 200:body.index("*win_vals")]
+        assert "," in call, f"{fn.__name__} 의 범위 값 앞에 고정 인자가 없다"
+
+    # 뒤에 붙는 것이 있으면 **범위 뒤여야 한다.** 앞에 끼면 술어 번호가 통째로 밀린다.
+    for fn in (hybrid._bm25_search, hybrid._vector_search):
+        body = inspect.getsource(fn)
+        if "*type_vals" in body:
+            assert body.index("*win_vals") < body.index("*type_vals"), \
+                f"{fn.__name__} 이 종류 값을 범위 값보다 먼저 바인딩한다"
+            assert f"{6 if fn is hybrid._bm25_search else 5} + len(win_vals)" in body, \
+                (f"{fn.__name__} 이 종류 술어의 시작 번호를 손으로 적었다 — 범위의 바인딩 "
+                 f"수가 0·1·2 로 변하므로 세어서 이어야 한다")
