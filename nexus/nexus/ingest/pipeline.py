@@ -8,7 +8,7 @@ collect → classify → quarantine gate → chunk → DB 저장 → BM25 → Ve
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import structlog
 import yaml
@@ -81,6 +81,14 @@ def _load_config(config_path: str = "config.yaml") -> dict:
         return yaml.safe_load(f) or {}
 
 
+#: 원본 수정 시각을 싣는 frontmatter 키 — **앞의 것이 이긴다.**
+#:
+#: `origin_last_edited` 는 노션 커넥터가 싣는 이름이고 원본 시스템이 말한 값이다.
+#: `updated` 는 **사람이 파일에 손으로 적는 이름**이고, 파일 적재 경로에는 그것밖에 없다.
+#: 둘이 같이 있으면 원본 시스템이 이긴다 — 손으로 적은 값은 갱신을 잊을 수 있다.
+ORIGIN_TIME_KEYS = ("origin_last_edited", "updated")
+
+
 def origin_updated_at(frontmatter: dict) -> datetime | None:
     """원본이 말하는 **문서 자신의** 마지막 수정 시각. 못 읽으면 `None`.
 
@@ -90,17 +98,52 @@ def origin_updated_at(frontmatter: dict) -> datetime | None:
 
     값은 이미 오고 있었다(노션 커넥터가 frontmatter 에 싣는다). **저장되는 자리가 없었을 뿐**이다.
 
+    ⛔ **파일 경로는 이 칸을 한 번도 채운 적이 없었다 (실측 2026-09-20).** 이유가 둘이고 둘 다
+    이 함수 안에 있었다.
+
+    1. **키가 하나뿐이었다.** 이 함수는 `origin_last_edited` 만 봤는데 그 이름은 노션 커넥터가
+       만드는 것이다. 파일을 쓰는 사람은 `updated:` 를 적는다 — 그리고 나는 설명층에
+       *"frontmatter 에 `updated:` 한 줄이면 다음 적재에서 자동으로 채워진다"* 고 답했다.
+       **그 답이 틀렸다.** 이 리포 자신의 합성 SOP 여섯 편이 `updated:` 를 적고 있었고
+       여섯 편 다 `origin_updated_at` 이 NULL 이었다.
+    2. **타입이 `str` 만이었다.** `updated: 2026-09-18` 은 YAML 이 **`datetime.date` 객체**로
+       읽는다. 그래서 키를 고쳐도 `isinstance(raw, str)` 에서 또 떨어진다. 따옴표를 붙인
+       사람만 통과하는 규칙은 규칙이 아니다.
+
+    ⚠ **날짜만 있는 값은 그날 자정(UTC)으로 읽는다.** 시각을 지어내지 않으려면 그 방향밖에
+    없다. 다만 그 선택에 대가가 있다 — 시각 범위 질의(`origin_since`)는 `IS NULL` 을 안
+    떨구고 채워진 값은 떨군다. 즉 이 칸을 채우는 것은 그 문서를 **거를 수 있게** 만드는
+    일이다. 모르던 것이 알려지는 것이므로 의도한 것이지만, 조용히 일어나면 안 된다.
+
     ⚠ **절대 예외를 내지 않는다.** 원본이 준 문자열 하나 때문에 적재가 죽으면, 얻은 것보다
     잃은 것이 크다. 못 읽으면 `None` 이고 그것은 *"모른다"* 이지 *"새것"* 이 아니다.
     """
-    raw = frontmatter.get("origin_last_edited")
+    for key in ORIGIN_TIME_KEYS:
+        if key not in frontmatter:
+            continue
+        if (parsed := _coerce_origin_time(frontmatter[key], key)) is not None:
+            return parsed
+    return None
+
+
+def _coerce_origin_time(raw: object, key: str) -> datetime | None:
+    """frontmatter 한 값 → tz 를 가진 `datetime`. 못 읽으면 `None`, 예외 없음.
+
+    ⛔ `datetime` 검사가 `date` 검사보다 **먼저**다. `datetime` 은 `date` 의 하위 타입이라
+    순서를 바꾸면 시각이 있는 값의 시·분·초가 조용히 자정으로 잘린다.
+    """
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+    if isinstance(raw, date):
+        # 날짜만 적힌 값. 자정으로 읽는 것이 이 값에 대해 말할 수 있는 전부다.
+        return datetime(raw.year, raw.month, raw.day, tzinfo=timezone.utc)
     if not isinstance(raw, str) or not raw.strip():
         return None
     text = raw.strip().replace("Z", "+00:00")
     try:
         parsed = datetime.fromisoformat(text)
     except ValueError:
-        logger.warning("origin_last_edited_unparsed", value=raw[:40])
+        logger.warning("origin_time_unparsed", key=key, value=raw[:40])
         return None
     # 시간대 없는 값은 UTC 로 읽는다. naive 를 TIMESTAMPTZ 에 넣으면 서버 시간대에 따라
     # 조용히 몇 시간 옮겨 앉고, 그 오차는 나이 분포에서 안 보인다.

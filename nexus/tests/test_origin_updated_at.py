@@ -15,11 +15,12 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from pathlib import Path
 
 import pytest
 
-from nexus.ingest.pipeline import origin_updated_at
+from nexus.ingest.pipeline import ORIGIN_TIME_KEYS, origin_updated_at
 
 
 # ── 순수: 무엇을 읽고 무엇을 안 읽는가 ────────────────────────────────────────
@@ -47,8 +48,83 @@ def test_a_value_it_cannot_read_is_none_never_an_exception(raw):
 
 
 def test_a_missing_key_is_none():
-    """파일 적재처럼 원본 수정 시각이라는 개념이 없는 경로 — 그것은 결함이 아니다."""
+    """어느 키도 없으면 모르는 것이다."""
     assert origin_updated_at({}) is None
+
+
+# ── 파일이 적는 이름과 YAML 이 주는 타입 ──────────────────────────────────────
+#
+# ⛔ **이 묶음이 없어서 파일 경로가 이 칸을 한 번도 안 채웠다 (실측 2026-09-20).**
+# 위의 검사들은 전부 `origin_last_edited` 에 **문자열**을 넣어서 통과했다. 그 둘 다
+# 노션 커넥터의 사실이고, 파일을 쓰는 사람의 사실이 아니다.
+
+def test_it_reads_the_key_a_person_writes_in_a_file():
+    """⛔ 내가 설명층에 *"`updated:` 한 줄이면 채워진다"* 고 답했는데 **틀린 답이었다.**
+
+    그 이름은 읽히지 않았고, 이 리포 자신의 합성 SOP 여섯 편이 그 이름을 적은 채
+    여섯 편 다 NULL 이었다. 답이 틀렸다는 증거가 우리 코퍼스 안에 있었다.
+    """
+    assert origin_updated_at({"updated": "2026-09-18T01:02:03Z"}) == datetime(
+        2026, 9, 18, 1, 2, 3, tzinfo=timezone.utc)
+
+
+def test_a_bare_date_is_read_although_yaml_makes_it_a_date_object():
+    """⛔ **키를 고치는 것만으로는 안 됐다.** `updated: 2026-09-18` 은 따옴표가 없으므로
+    YAML 이 `datetime.date` 로 준다. `isinstance(raw, str)` 이 그것을 떨궜다.
+
+    따옴표를 붙인 사람만 통과하는 규칙은 규칙이 아니다 — 문서를 쓰는 사람은 YAML 타입
+    승격을 모른다.
+    """
+    assert origin_updated_at({"updated": date(2026, 9, 18)}) == datetime(
+        2026, 9, 18, tzinfo=timezone.utc)
+
+
+def test_a_datetime_object_keeps_its_time_of_day():
+    """⛔ `datetime` 은 `date` 의 하위 타입이다. 검사 순서를 바꾸면 시·분·초가 조용히
+    자정으로 잘리고, 그 손실은 날짜만 보는 어떤 표에서도 안 보인다."""
+    got = origin_updated_at({"updated": datetime(2026, 9, 18, 13, 45, 7)})
+    assert got == datetime(2026, 9, 18, 13, 45, 7, tzinfo=timezone.utc)
+    assert (got.hour, got.minute) != (0, 0), "시각이 자정으로 잘렸다"
+
+
+def test_the_source_system_wins_over_the_hand_written_line():
+    """둘 다 있으면 원본 시스템이 이긴다 — 손으로 적은 값은 갱신을 잊을 수 있다."""
+    got = origin_updated_at({
+        "origin_last_edited": "2026-03-14T05:33:00.000Z",
+        "updated": date(2020, 1, 1),
+    })
+    assert got == datetime(2026, 3, 14, 5, 33, tzinfo=timezone.utc)
+
+
+def test_an_unreadable_first_key_falls_through_to_the_second():
+    """⛔ 앞 키가 **있지만 못 읽을 때** 거기서 멈추면, 읽을 수 있는 값을 손에 쥐고 버린다."""
+    assert origin_updated_at({"origin_last_edited": "어제", "updated": date(2026, 9, 18)}) == \
+        datetime(2026, 9, 18, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize("raw", ["", "   ", "어제", "2026-13-45", None, 17, [], {"a": 1}])
+def test_the_new_key_is_as_unexceptional_as_the_old_one(raw):
+    """새 키도 적재를 죽이지 않는다 — 옛 키와 같은 성질을 같은 값들로 확인한다."""
+    assert origin_updated_at({"updated": raw}) is None
+
+
+def test_our_own_synthetic_corpus_declares_a_key_this_function_reads():
+    """⭐ **대조군이 리포 안에 있다.** 이 검사가 잡으려는 것은 회귀 하나다 — 합성 SOP 가
+    적는 이름과 이 함수가 읽는 이름이 다시 갈리는 것.
+
+    그 갈림이 조용했던 이유는 적재가 **성공**했기 때문이다. 칸 하나가 비는 것은 실패가
+    아니라서 아무 경보도 안 울렸다.
+    """
+    import frontmatter as fm_lib
+
+    sop_dir = Path(__file__).resolve().parents[1] / "synthetic" / "picasso-sop"
+    files = sorted(sop_dir.glob("SOP-*.md"))
+    assert files, f"합성 SOP 를 못 찾았다: {sop_dir}"
+    for path in files:
+        meta = dict(fm_lib.loads(path.read_text(encoding="utf-8")).metadata)
+        assert origin_updated_at(meta) is not None, (
+            f"{path.name} 의 frontmatter 에 이 함수가 읽는 시각 키가 없다 "
+            f"(읽는 키: {', '.join(ORIGIN_TIME_KEYS)})")
 
 
 def test_none_means_unknown_not_new():
