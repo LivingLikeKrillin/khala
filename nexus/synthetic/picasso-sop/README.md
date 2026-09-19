@@ -31,6 +31,22 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 ⚠ 주기 재적재 잡(`REINGEST_TENANT=picasso`)은 `/ingest-src` 만 본다. 이 디렉터리는
 거기 없으므로 **내용을 고치면 위 명령을 손으로 한 번 돌려야 한다.**
 
+### frontmatter 가 말할 수 있는 것
+
+| 키 | 무엇 | 안 적으면 |
+|---|---|---|
+| `title` | 문서 제목 | 첫 제목 줄에서 뽑는다 |
+| `labels` | 자칭 라벨. **`synthetic` 하나만** 자칭할 수 있다 | 표식 없이 실린다 |
+| `doc_type` | 문서 종류. 여기 여섯 편은 `policy` | 경로에서 추론한다 |
+| `updated` | **원본이 말하는 수정 시각** → `documents.origin_updated_at` | 시각 미상이 되고 시각 범위 질의가 이 문서를 **거를 수 없다** |
+
+⛔ **`updated` 는 2026-09-20 까지 읽히지 않았다.** 적재기가 `origin_last_edited`(노션
+커넥터의 이름)만 봤고, 봤더라도 `updated: 2026-09-18` 은 YAML 이 `date` 객체로 주는데
+문자열만 받고 있었다. 여섯 편이 이 줄을 적은 채 여섯 편 다 NULL 이었다 —
+**적재는 성공했으므로 아무 경보도 울리지 않았다.** 지금은 둘 다 읽는다
+(`ingest/pipeline.py: ORIGIN_TIME_KEYS`), 그리고 그 두 이름이 갈리면
+`tests/test_origin_updated_at.py` 가 이 디렉터리를 직접 읽어 깨진다.
+
 ## 무엇을 덮고 무엇을 비웠나
 
 ⭐ **일부러 다 덮지 않았다.** 근거가 없는 사건이 남아 있어야 *"근거 없을 때 모른다고
