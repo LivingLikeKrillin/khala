@@ -10,6 +10,7 @@
 from __future__ import annotations
 from collections.abc import Sequence
 
+from nexus.search.doc_type_filter import doc_type_exclusion_predicate, normalize_doc_types
 from nexus.search.scope_sql import tenant_predicate
 from nexus.search.time_window import (
     OriginWindow,
@@ -116,6 +117,10 @@ class SearchResult:
     #: 돌려준 근거 중 **원본 시각을 모르는** 건수. 시각 범위를 **안 물었으면 `None`** 이다.
     #: 0 으로 내보내면 "물었고 전부 안다" 와 구별되지 않는다 — `search/time_window.py` 참조.
     n_unknown_origin_time: int | None = None
+    #: 이번 질의에서 후보에서 뺀 문서 종류 — **정규화를 거친 뒤의 것**이다.
+    #: 호출자가 보낸 것이 아니라 **실제로 SQL 에 간 것**을 돌려준다. 오타가 조용히
+    #: 무시되는 것과 목록이 통째로 안 닿는 것을 이 값 하나로 가를 수 있다.
+    excluded_doc_types: list[str] = field(default_factory=list)
 
 
 #: `ts_rank_cd` 의 **길이 정규화 비트마스크**. `1` = 점수를 `1 + log(문서 길이)` 로 나눈다.
@@ -162,6 +167,7 @@ async def _bm25_search(
     clearance: str,
     top_k: int = 20,
     window: OriginWindow = OriginWindow(),
+    exclude_doc_types: Sequence[str] = (),
 ) -> tuple[list[LegHit], float | None]:
     """BM25 검색. `(LegHit 목록, 1위 원점수)`.
 
@@ -193,6 +199,10 @@ async def _bm25_search(
     tenant_pred, tenant_val = tenant_predicate("c.tenant", 2, tenant)
     # 바인딩 여섯째부터가 시각 범위다 — 앞 다섯은 아래 인자 순서로 고정돼 있다.
     win_pred, win_vals = origin_window_predicate("d.origin_updated_at", 6, window)
+    # 그다음이 종류 제외다. 시각 범위의 바인딩 수가 0·1·2 로 변하므로 **세어서** 잇는다 —
+    # 번호를 손으로 적으면 범위를 안 물은 요청에서만 어긋나고, 그 경우가 대부분이라 조용하다.
+    type_pred, type_vals = doc_type_exclusion_predicate(
+        "d.doc_type", 6 + len(win_vals), exclude_doc_types)
     rows = await db.fetch_all(
         f"""
         SELECT c.rid, c.doc_rid,
@@ -206,14 +216,15 @@ async def _bm25_search(
           AND c.status = 'active'
           AND EXISTS (SELECT 1 FROM documents d
                       WHERE d.rid = c.doc_rid AND d.status = 'active'
-                      {win_pred})
+                      {win_pred} {type_pred})
         -- `c.rid` 는 장식이 아니라 **전순서**를 만드는 키다. ts_rank_cd 동점이 빽빽해서
         -- (상위 25행에 13~16종 점수) 동점 안 순서가 물리적 행 순서를 따라가고, 그게 LIMIT
         -- 경계를 흔들어 같은 질의가 적재본마다 다른 답을 냈다 (SPEC-nexus-deterministic-retrieval-order §1).
         ORDER BY rank_score DESC, c.rid ASC
         LIMIT $4
         """,
-        tsquery, tenant_val, clearance, top_k, BM25_LENGTH_NORMALIZATION, *win_vals,
+        tsquery, tenant_val, clearance, top_k, BM25_LENGTH_NORMALIZATION,
+        *win_vals, *type_vals,
     )
 
     # 매칭 0건은 **측정해서 0점**이다(위 참조). 안 측정한 것이 아니다.
@@ -230,6 +241,7 @@ async def _vector_search(
     top_k: int = 20,
     column: str | None = None,
     window: OriginWindow = OriginWindow(),
+    exclude_doc_types: Sequence[str] = (),
 ) -> tuple[list[LegHit], float | None]:
     """Vector 검색. `(LegHit 목록, 1위 코사인 거리)`.
 
@@ -245,6 +257,8 @@ async def _vector_search(
     tenant_pred, tenant_val = tenant_predicate("c.tenant", 2, tenant)
     # 이 경로는 바인딩이 넷이라 다섯째부터가 시각 범위다 — 키워드 경로와 번호가 다르다.
     win_pred, win_vals = origin_window_predicate("d.origin_updated_at", 5, window)
+    type_pred, type_vals = doc_type_exclusion_predicate(
+        "d.doc_type", 5 + len(win_vals), exclude_doc_types)
 
     rows = await db.fetch_all(
         f"""
@@ -257,13 +271,13 @@ async def _vector_search(
           AND c.status = 'active'
           AND EXISTS (SELECT 1 FROM documents d
                       WHERE d.rid = c.doc_rid AND d.status = 'active'
-                      {win_pred})
+                      {win_pred} {type_pred})
         -- 키워드 경로와 같은 이유의 전순서 키. 다만 이 경로는 ivfflat(ANN)이라 **후보 집합
         -- 자체**가 흔들릴 수 있고, 정렬 키는 그걸 고치지 못한다 (같은 SPEC §4.3 — 측정해서 기록한다).
         ORDER BY distance ASC, c.rid ASC
         LIMIT $4
         """,
-        vec_str, tenant_val, clearance, top_k, *win_vals,
+        vec_str, tenant_val, clearance, top_k, *win_vals, *type_vals,
     )
 
     return ([LegHit(rid=r["rid"], rank=i + 1, doc_rid=r["doc_rid"], score=float(r["distance"]))
@@ -305,6 +319,7 @@ async def _vector_leg(
     top_k: int,
     column: str | None,
     window: OriginWindow = OriginWindow(),
+    exclude_doc_types: Sequence[str] = (),
 ) -> tuple[list[LegHit], bool, float | None]:
     """(결과, degraded, 1위 거리). **빈 결과와 죽은 경로를 구분해서 돌려준다.**
 
@@ -315,7 +330,8 @@ async def _vector_leg(
     """
     try:
         hits, dist = await _vector_search(query, embedding_svc, tenant, clearance, top_k, column,
-                                          window=window)
+                                          window=window,
+                                          exclude_doc_types=exclude_doc_types)
         return hits, False, dist
     except Exception as e:                      # noqa: BLE001 — 분류가 이 함수의 일이다
         if isinstance(e, (UnknownVectorColumn,)):
@@ -647,6 +663,7 @@ async def hybrid_search(
     config: dict | None = None,
     channels: list[tuple[str, float]] | None = None,
     window: OriginWindow = OriginWindow(),
+    exclude_doc_types: Sequence[str] = (),
 ) -> SearchResult:
     """3-way Hybrid 검색 실행.
 
@@ -671,6 +688,10 @@ async def hybrid_search(
     bm25_top_k = search_cfg.get("bm25_top_k", 20)
     vector_top_k = search_cfg.get("vector_top_k", 20)
     rrf_k = search_cfg.get("rrf_k", 60)
+    # ⛔ **한 번만 정규화한다.** 두 다리가 각자 정규화하면 목록이 갈릴 수 있고, 그러면 한
+    # 다리만 거른 후보가 융합에 들어온다 — 이 리포가 정규화 사본으로 이미 데인 모양이다.
+    excluded_types = normalize_doc_types(exclude_doc_types)
+    result_excluded = list(excluded_types)
 
     # 단계 span 캡처(SPEC-nexus-stage-spans, Unit 1). **기본 꺼짐** — `spans.enabled` 가
     # true 일 때만 만든다. None 이면 아래 모든 `if spans is not None:` 이 건너뛰어져
@@ -685,6 +706,7 @@ async def hybrid_search(
 
     result = SearchResult(route_used=route)
     result.spans = spans
+    result.excluded_doc_types = result_excluded
 
     # route 가 고르는 것은 그래프 보강만이 아니다 — 어느 **경로**를 돌릴지도 고른다.
     # 예전엔 둘 다 무조건 돌면서 route_used 로 "반영됐다" 고 보고했다.
@@ -704,13 +726,15 @@ async def hybrid_search(
     for i, (text, _w) in enumerate(active):
         if use_bm25:
             tasks[(i, "bm25")] = asyncio.create_task(
-                _bm25_search(text, tenant, clearance, bm25_top_k, window=window))
+                _bm25_search(text, tenant, clearance, bm25_top_k, window=window,
+                             exclude_doc_types=excluded_types))
         # embedding_svc 가 없으면 벡터 경로는 못 돈다. 그렇다고 BM25 로 슬그머니 바꿔치기하고
         # route_used='vector_only' 라 보고하지는 않는다 — 빈 결과가 정직하다.
         if use_vector and embedding_svc:
             tasks[(i, "vector")] = asyncio.create_task(
                 _vector_leg(text, embedding_svc, tenant, clearance, vector_top_k,
-                            column=configured_column(cfg), window=window))
+                            column=configured_column(cfg), window=window,
+                            exclude_doc_types=excluded_types))
 
     done = dict(zip(tasks, await asyncio.gather(*tasks.values()))) if tasks else {}
 

@@ -33,6 +33,8 @@ class _Result:
         self.timing_ms, self.degraded = {}, False
         self.route_used, self.spans = "hybrid_only", None
         self.n_unknown_origin_time = None
+        #: 응답 조립이 읽는 칸. 가짜가 실물의 칸을 안 들면 엔드포인트가 여기서 죽는다.
+        self.excluded_doc_types = []
         from nexus.search.confidence import Confidence
         self.confidence = Confidence()
 

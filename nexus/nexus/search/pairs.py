@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from nexus.search.doc_type_filter import doc_type_exclusion_predicate
 from nexus.search.scope_sql import tenant_predicate
 
 import re
@@ -65,15 +66,23 @@ def mates_from(rows: list[dict]) -> dict[str, list[str]]:
 
 
 async def paired_chunks(hits, tenant: str | Sequence[str], clearance: str, *,
-                        exclude_rids=None) -> list[dict]:
-    """상위 히트 문서들의 **짝 문서** 청크. 실패는 삼키되 조용하지 않게."""
+                        exclude_rids=None, exclude_doc_types=()) -> list[dict]:
+    """상위 히트 문서들의 **짝 문서** 청크. 실패는 삼키되 조용하지 않게.
+
+    ⛔ **짝은 히트 밖의 문서를 데려온다 (실측 2026-09-20).** 이 조회는 `/specs/`·`/plans/`
+    아래 문서를 찾아 히트 문서의 짝으로 붙이므로, 바깥 질의가 그 종류를 후보에서 뺐더라도
+    여기로 되돌아올 수 있다. 그래서 같은 제외를 여기서도 건다 — 안 그러면 제외가
+    *랭킹에서만* 걸리고 **읽는 사람 앞에서는 안 걸린다.**
+    """
     if not hits:
         return []
     _pred, _val = tenant_predicate("tenant", 1, tenant)
+    _type_pred, _type_vals = doc_type_exclusion_predicate("doc_type", 2, exclude_doc_types)
     try:
         rows = await db.fetch_all(
             f"SELECT rid, source_uri FROM documents WHERE {_pred} AND status = 'active' "
-            "AND (source_uri LIKE '%/specs/%' OR source_uri LIKE '%/plans/%')", _val)
+            "AND (source_uri LIKE '%/specs/%' OR source_uri LIKE '%/plans/%') "
+            f"{_type_pred}", _val, *_type_vals)
         if not rows:
             return []
         mates = mates_from([dict(r) for r in rows])

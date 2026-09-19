@@ -313,6 +313,19 @@ class AnswerRequest(BaseModel):
     #: `SearchRequest` 와 같은 뜻 — 설명은 거기 한 번만 둔다.
     origin_since: datetime | None = None
     origin_until: datetime | None = None
+    #: 이번 질의에서 **후보 단계부터** 뺄 문서 종류. 빈 목록은 "안 물었다" 이고 오늘과
+    #: 같은 SQL 을 낸다.
+    #:
+    #: ⛔ **권한이 아니다.** 좁히기만 하고 넓히지 못한다 — 여기 없는 종류가 이 값 때문에
+    #: 더 들어오는 일은 없다. 등급·테넌트와 같은 칸에 두고 읽지 마라(`search/doc_type_filter.py`).
+    #:
+    #: **왜 `top_k` 뒤가 아닌가 (실측 2026-09-20).** `picasso` 에서 사건 분류 질의를 여섯
+    #: 모양으로 돌리니 설계 일지 한 편이 상위 20 중 **5~7 자리**를 매번 차지했다. 뒤에서
+    #: 걸러 내면 그 자리는 빈 채로 남는다 — 예산을 이미 쓴 뒤이기 때문이다.
+    #:
+    #: ⚠ **이것으로 랭킹을 고칠 수 없다.** 자리를 비우는 것과 맞는 문서를 올리는 것은
+    #: 다른 일이다.
+    exclude_doc_types: list[str] = Field(default_factory=list)
 
 
 class IngestRequest(BaseModel):
@@ -694,6 +707,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             entity_rids=entity_rids,
             config=config,
             channels=channels,
+            exclude_doc_types=req.exclude_doc_types,
         )
 
         # 답변용 근거 패킷은 한 함수로만 만든다 (`search/reconcile.py`).
@@ -781,6 +795,9 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # ⚠ 범위 **밖** 요청은 여기 안 싣는다: 그 테넌트의 존재가 새어 나간다(1R I-009).
                 "searched_tenants": packet.searched_tenants,
                 "evidence_tenants": dict(evidence_counts(packet.snippets)),
+                # 요청이 보낸 것이 아니라 **실제로 SQL 에 간 것**이다. 오타가 조용히
+                # 무시된 것과 목록이 통째로 안 닿은 것을 호출자가 이 값으로 가른다.
+                "excluded_doc_types": search_result.excluded_doc_types,
             },
         )
     except UnknownRoute as e:
@@ -1159,6 +1176,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 entity_rids=entity_rids,
                 config=config,
                 channels=channels,
+                exclude_doc_types=req.exclude_doc_types,
             )
 
             # ⛔ **여기서 `assemble_packet` 을 직접 부르고 있었다** (외부 평가 F2).
@@ -1354,6 +1372,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # 외부 평가 F2 가 잡은 모양이고, 웹 채팅이 타는 경로가 바로 여기다.
                 "searched_tenants": packet.searched_tenants,
                 "evidence_tenants": dict(evidence_counts(packet.snippets)),
+                "excluded_doc_types": search_result.excluded_doc_types,
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 
