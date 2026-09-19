@@ -61,6 +61,12 @@ def doc_type_exclusion_predicate(column: str, param: int,
     *빼라고 한 종류*가 아니다. `<> ALL` 만 쓰면 NULL 비교가 `NULL` 이 되어 그 행이
     조용히 사라진다 — 시각 범위가 `IS NULL OR` 를 쓰는 것과 같은 이유이고, 그 자리에서
     이 리포는 이미 한 번 코퍼스를 통째로 잃을 뻔했다.
+
+    ⚠ **다만 `documents.doc_type` 에 대해서는 오늘 이 갈래가 안 밟힌다 — `NOT NULL` 이다.**
+    확인은 검사가 한다(`test_the_schema_is_why_that_branch_is_insurance`). 이 함수는 칸
+    이름을 인자로 받으므로 그 제약이 없는 칸에도 쓰일 수 있고, 그래서 갈래는 남긴다.
+    **관측된 구조가 아니라 보험**이라고 적어 두는 것이 이 문단의 일이다 — 안 적으면 다음
+    사람이 "이걸로 한 번 살았구나" 로 읽는다.
     """
     kinds = normalize_doc_types(excluded)
     if not kinds:

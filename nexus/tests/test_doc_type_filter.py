@@ -70,16 +70,22 @@ def test_the_fragment_starts_with_and_and_binds_one_value():
     assert vals == [["spec", "design_doc"]]
 
 
-def test_a_document_of_unknown_type_survives_the_filter():
-    """⛔ **여기가 이 모듈에서 제일 중요한 줄이다.**
+def test_a_document_of_unknown_type_would_survive_the_filter():
+    """종류를 모르는 문서는 *어느 종류도 아닌 것*이지 *빼라고 한 종류*가 아니다.
 
-    종류를 모르는 문서는 *어느 종류도 아닌 것*이지 *빼라고 한 종류*가 아니다.
     `<> ALL` 만 쓰면 NULL 비교가 `NULL` 이 되어 그 행이 조용히 사라진다 — 시각 범위가
     `IS NULL OR` 를 쓰는 것과 같은 이유이고, 그 자리에서 이 리포는 설계 문서 코퍼스를
     통째로 잃을 뻔했다.
+
+    ⚠ **오늘 이 갈래는 안 밟힌다 — 아래 검사가 그 이유다.** 처음엔 라이브 검사에서
+    `doc_type=NULL` 행을 만들어 확인하려 했고 **CI 가 스키마로 막았다**(`NOT NULL`).
+    막힌 것이 옳다: 없는 상태를 지어내 통과시키면 그 검사는 아무것도 안 지킨다.
+    이 술어는 칸 이름을 인자로 받으므로 그 제약이 없는 칸에도 쓰일 수 있고, 그래서
+    갈래는 남긴다 — **관측된 구조가 아니라 보험**이라고 적어 둔다.
     """
     frag, _ = doc_type_exclusion_predicate("d.doc_type", 3, ["spec"])
     assert "IS NULL" in frag, "종류 미상 문서가 이 필터에 쓸려 나간다"
+
 
 
 def test_the_param_number_is_the_callers_to_choose():
@@ -97,8 +103,25 @@ pytestmark_db = pytest.mark.skipif(
 _TENANT = "doc_type_filter_test"
 
 
+@pytestmark_db
+@pytest.mark.asyncio
+async def test_the_schema_is_why_that_branch_is_insurance(db_pool):
+    """⭐ **위 갈래가 왜 안 밟히는지를 스키마에서 읽는다.**
+
+    `documents.doc_type` 이 `NOT NULL` 인 동안 그 갈래는 보험이다. 누가 그 제약을 풀면
+    이 검사가 먼저 붉어지고, 그때부터 위 갈래는 보험이 아니라 **실제로 막는 것**이 된다.
+    """
+    async with db_pool.acquire() as con:
+        nullable = await con.fetchval(
+            "select is_nullable from information_schema.columns "
+            "where table_name='documents' and column_name='doc_type'")
+    assert nullable == "NO", (
+        "`documents.doc_type` 이 NULL 을 받게 됐다 — 이제 `IS NULL OR` 갈래가 "
+        "실제로 행을 지키고 있다. 위 검사의 「보험」이라는 설명을 고쳐라")
+
+
 async def _seed(pool):
-    """종류가 셋인 문서 셋 + 종류를 **모르는** 문서 하나."""
+    """빼려는 종류 둘 + 안 뺄 종류 둘. 넷 다 종류를 **안다** — 스키마가 NULL 을 안 받는다."""
     from nexus.ingest.classifier import ClassificationResult
     from nexus.ingest.collector import CollectedFile
     from nexus.ingest.pipeline import _save_document
@@ -109,21 +132,14 @@ async def _seed(pool):
 
     rids = {}
     for name, doc_type in (("spec.md", "spec"), ("journal.md", "design_doc"),
-                           ("sop.md", "policy"), ("mystery.md", None)):
+                           ("sop.md", "policy"), ("mystery.md", "markdown")):
         collected = CollectedFile(
             path=None, relative_path=name, content="파지 실패 절차 본문",
             content_hash=f"h-{name}", frontmatter={"title": name},
             canonical_uri=f"{_TENANT}:{name}")
         cls = ClassificationResult(classification="INTERNAL", is_quarantined=False,
-                                   pii_types=[], doc_type=doc_type or "markdown",
-                                   language="ko")
+                                   pii_types=[], doc_type=doc_type, language="ko")
         rids[name] = await _save_document(collected, cls, _TENANT)
-
-    async with pool.acquire() as con:
-        # 종류 미상은 적재기가 만들 수 없다(항상 무언가를 매긴다). 그 상태를 직접 만든다 —
-        # 코퍼스에는 마이그레이션 이전에 들어온 행이 있을 수 있다.
-        await con.execute("UPDATE documents SET doc_type=NULL WHERE rid=$1",
-                          rids["mystery.md"])
     return rids
 
 
@@ -160,8 +176,7 @@ async def test_the_excluded_type_leaves_the_candidate_pool(db_pool):
         assert "spec.md" not in narrowed and "journal.md" not in narrowed, \
             "빼라고 한 종류가 후보에 남았다"
         assert "sop.md" in narrowed, "안 뺀 종류가 같이 사라졌다"
-        assert "mystery.md" in narrowed, \
-            "종류 미상 문서가 쓸려 나갔다 — `IS NULL OR` 가 이 검사의 이유다"
+        assert "mystery.md" in narrowed, "안 뺀 종류가 같이 사라졌다"
 
         assert await titles(["nonexistent_type"]) == everything, \
             "없는 종류를 빼라고 했더니 무언가가 사라졌다"
