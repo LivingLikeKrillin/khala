@@ -131,6 +131,17 @@ def _subprocess_runner(argv: list[str], prompt: str, timeout: float):
 _MAX_CONCURRENT = max(1, int(os.getenv("NEXUS_LLM_BRIDGE_CONCURRENCY", "1") or 1))
 _GATE = threading.BoundedSemaphore(_MAX_CONCURRENT)
 
+#: 문 앞에서 기다려 주는 시간(초).
+#:
+#: ⛔ **요청의 예산을 줄 서는 데 다 쓰면 안 된다** (실측 2026-09-19, 라이브에서 내 첫 판이
+#: 그랬다). 처음엔 요청 자신의 `timeout` 만큼 기다렸는데, 그러면 앞 건이 2분 걸릴 때 뒤
+#: 요청은 **자기 예산을 전부 대기에 쓰고 들어가서 남은 시간이 0** 이거나, 부르는 쪽이 자기
+#: 벽에서 먼저 죽는다. 라이브 확인에서 둘째 요청이 503 대신 클라이언트 타임아웃으로 죽었다.
+#:
+#: 짧게 기다리고 **503 으로 돌려보내는 편이 낫다.** 줄이 길다는 사실은 그 자체로 정보이고,
+#: 다시 시도하는 비용은 왕복 한 번이다. 동시 한도가 1 이고 합성이 2분이면 줄은 늘 길다.
+_GATE_WAIT = max(0.0, float(os.getenv("NEXUS_LLM_BRIDGE_QUEUE_WAIT", "5") or 5))
+
 
 def busy_detail(waited: float) -> str:
     """503 본문. **얼마나 기다렸고 왜 못 들어갔는지**를 말한다.
@@ -138,8 +149,9 @@ def busy_detail(waited: float) -> str:
     ⛔ 조용히 더 기다리게 하면 부르는 쪽은 자기 벽에서 타임아웃으로 죽고, 그것을
     *"합성이 느리다"* 로 읽는다. 줄을 선 것과 느린 것은 다른 사건이고 처방도 다르다.
     """
-    return (f"브리지가 다른 합성 중이라 {waited:.0f}초 기다렸고 못 들어갔다 "
-            f"(동시 실행 한도 {_MAX_CONCURRENT}, NEXUS_LLM_BRIDGE_CONCURRENCY). "
+    return (f"브리지가 다른 합성 중이라 {waited:.1f}초 기다렸고 못 들어갔다 "
+            f"(동시 실행 한도 {_MAX_CONCURRENT}, NEXUS_LLM_BRIDGE_CONCURRENCY · "
+            f"대기 한도 {_GATE_WAIT:g}초, NEXUS_LLM_BRIDGE_QUEUE_WAIT). "
             f"이것은 느린 것이 아니라 줄 선 것이다 — 다시 시도하면 된다")
 
 
@@ -182,8 +194,11 @@ def _acquire_or_busy(timeout: float) -> tuple[int, dict] | None:
 
     ⚠ 반환이 `None` 이면 들어간 것이고, **호출자가 `finally` 로 놓아야 한다.**
     """
+    # ⚠ `timeout`(=`claude` 에 줄 시간)이 아니라 `_GATE_WAIT` 만큼만 기다린다. 위 ⛔ 참고.
+    # 다만 요청이 그보다 짧게 참겠다면 그쪽을 따른다 — 검사가 짧은 값을 주는 자리다.
+    wait = min(_GATE_WAIT, timeout)
     t0 = time.monotonic()
-    if _GATE.acquire(timeout=timeout):
+    if _GATE.acquire(timeout=wait):
         return None
     return 503, {"error": busy_detail(time.monotonic() - t0)}
 

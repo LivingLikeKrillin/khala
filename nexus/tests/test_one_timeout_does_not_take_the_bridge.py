@@ -30,10 +30,17 @@ def _slow_runner(seconds: float):
     return run
 
 
+def monkeypatch_wait(seconds: float) -> None:
+    """대기 한도를 이 검사 동안만 줄인다. `_fresh_gate` 가 뒤에서 되돌린다."""
+    bridge._GATE_WAIT = seconds                                  # noqa: SLF001
+
+
 @pytest.fixture(autouse=True)
 def _fresh_gate():
     """검사끼리 문을 물려주지 않는다 — 한 검사가 안 놓으면 다음 검사가 이유 없이 막힌다."""
+    original_wait = bridge._GATE_WAIT                        # noqa: SLF001
     yield
+    bridge._GATE_WAIT = original_wait                        # noqa: SLF001
     while bridge._GATE._value < bridge._MAX_CONCURRENT:      # noqa: SLF001
         bridge._GATE.release()
 
@@ -118,3 +125,51 @@ def test_refused_before_the_gate_does_not_hold_it():
     status, _ = bridge.handle_generate({"prompt": "q"}, "WRONG", token="secret")
     assert status == 403
     assert bridge._GATE._value == before
+
+def test_queueing_does_not_eat_the_request_budget():
+    """⛔ **라이브가 잡은 내 첫 판의 결함** (2026-09-19). 문 앞에서 요청 자신의 `timeout`
+    만큼 기다리게 했더니, 앞 건이 2분 걸릴 때 뒤 요청은 자기 예산을 전부 대기에 쓰거나
+    부르는 쪽이 자기 벽에서 먼저 죽었다 — 503 을 볼 사람이 아무도 없었다.
+
+    단위 검사는 그걸 못 봤다. 검사가 `timeout=0.2` 를 줘서 대기도 0.2초였기 때문이다.
+    **대기 한도를 따로 두는 것**이 이 검사가 고정하는 것이다."""
+    # 대기 한도를 짧게 줄여 검사를 빠르게 한다 — 고정하려는 것은 **요청 예산과 무관하게
+    # 짧다**는 성질이지 5초라는 수가 아니다. 앞 건은 그보다 확실히 오래 잡는다.
+    monkeypatch_wait(0.5)
+    holder = threading.Thread(
+        target=bridge.handle_generate,
+        args=({"prompt": "q"}, None),
+        kwargs={"runner": _slow_runner(3.0), "token": "", "timeout": 300.0},
+        daemon=True)
+    holder.start()
+    time.sleep(0.3)
+
+    t0 = time.monotonic()
+    status, body = bridge.handle_generate(
+        {"prompt": "q2"}, None, runner=_slow_runner(0), token="", timeout=300.0)
+    waited = time.monotonic() - t0
+    holder.join(timeout=10)
+
+    assert status == 503
+    assert waited < 3.0, f"요청 예산(300초)에 끌려갔다: {waited:.1f}초"
+    assert "NEXUS_LLM_BRIDGE_QUEUE_WAIT" in body["error"], "대기 한도를 어디서 고치는지가 없다"
+
+
+def test_a_caller_with_less_patience_is_not_made_to_wait_longer():
+    """요청이 대기 한도보다 짧게 참겠다면 그쪽을 따른다."""
+    holder = threading.Thread(
+        target=bridge.handle_generate,
+        args=({"prompt": "q"}, None),
+        kwargs={"runner": _slow_runner(2.0), "token": "", "timeout": 300.0},
+        daemon=True)
+    holder.start()
+    time.sleep(0.3)
+
+    t0 = time.monotonic()
+    status, _ = bridge.handle_generate(
+        {"prompt": "q2"}, None, runner=_slow_runner(0), token="", timeout=0.2)
+    waited = time.monotonic() - t0
+    holder.join(timeout=10)
+
+    assert status == 503
+    assert waited < 2.0, f"요청이 0.2초만 참겠다는데 {waited:.1f}초 잡아 뒀다"
