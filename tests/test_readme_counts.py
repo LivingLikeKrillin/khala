@@ -14,7 +14,14 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from check_readme_counts import claimed, counts, problems  # noqa: E402
+import pytest  # noqa: E402
+
+from check_readme_counts import (  # noqa: E402
+    READMES,
+    claimed,
+    counts,
+    problems,
+)
 
 _DOC = ("2,585 test functions and 17 CI jobs, ... Governance artifacts "
         "(10 ADRs, 52 SPECs) are stamped ...")
@@ -42,9 +49,23 @@ def test_a_changed_sentence_is_caught_too():
     assert len(bad) == 4
 
 
-def test_the_real_readme_agrees_with_itself():
-    """정본. 빨간불이면 README 를 **세어서** 고쳐라."""
-    assert problems((ROOT / "README.md").read_text(encoding="utf-8")) == []
+@pytest.mark.parametrize("name", READMES)
+def test_the_real_readme_agrees_with_itself(name):
+    """정본. 빨간불이면 README 를 **세어서** 고쳐라.
+
+    ⛔ **파일이 둘인데 하나만 봤다 (실측 2026-09-20).** `README.en.md` 도 같은 네 수를
+    주장하는데 이 검사와 검사기 둘 다 `README.md` 만 읽었고, 그 사이 영문 쪽은 3,043 에
+    머물러 실제 3,152 와 벌어져 있었다 — 이 검사가 막으려고 만들어진 드리프트가 이 검사가
+    안 보는 파일에서 그대로 일어났다.
+    """
+    assert problems((ROOT / name).read_text(encoding="utf-8")) == []
+
+
+def test_the_list_of_readmes_is_not_empty():
+    """대조군 — 목록이 비면 위 검사가 **한 번도 안 돌면서** 초록이 된다."""
+    assert READMES, "볼 README 가 하나도 없다"
+    for name in READMES:
+        assert (ROOT / name).exists(), f"{name} 이 없다 — 목록이 낡았다"
 
 
 def test_the_counter_actually_counts_something():
