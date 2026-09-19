@@ -22,7 +22,47 @@ from typing import AsyncIterator
 import httpx
 
 _DEFAULT_BRIDGE_URL = "http://host.docker.internal:8900"
-_BRIDGE_TIMEOUT = 180.0
+
+#: 클라이언트 벽이 브리지 벽보다 얼마나 넉넉해야 하는가(초).
+#:
+#: ⛔ **벽이 둘이고 작은 쪽이 이긴다** (실측 2026-09-19). 여기 `180.0` 상수가 박혀 있었고
+#: 브리지 쪽은 `NEXUS_LLM_BRIDGE_TIMEOUT`(기본 120)이다. 배포가 브리지 벽을 300 으로 올려도
+#: **이쪽이 180 에서 먼저 끊어서** 그 300 은 앱 경로에서 도달 불가였다. 설명 층이
+#: *"벽이 두 번 옮겨졌는데 실패 건수는 안 줄었다"* 고 보고한 것이 이 자리다.
+#:
+#: 그리고 여기서 먼저 끊기면 **브리지가 공들여 만든 504 문장**(몇 초에 걸렸는지·어느 변수인지)이
+#: 영영 안 온다. 클라이언트 타임아웃은 그 정보를 안 들고 있다.
+_BRIDGE_HEADROOM = 30.0
+
+
+def _bridge_timeout() -> float:
+    """앱→브리지 벽. **브리지 벽 + 여유**로 파생한다 — 두 수를 따로 적으면 반드시 어긋난다.
+
+    ⚠ 두 프로세스가 같은 `.env` 를 읽지만 **각자 기동할 때** 읽는다. 한쪽만 다시 띄우면
+    값이 갈리고, 그 갈림은 조용하다(작은 쪽이 이길 뿐이다).
+    """
+    inner = float(os.getenv("NEXUS_LLM_BRIDGE_TIMEOUT", "120") or 120)
+    return inner + _BRIDGE_HEADROOM
+
+
+def _raise_with_bridge_body(resp: "httpx.Response") -> None:
+    """브리지의 오류 **본문**을 예외 메시지에 싣는다.
+
+    ⛔ `resp.raise_for_status()` 는 httpx 의 일반 문구로 바꾸고 `resp.text` 를 버린다. 그래서
+    브리지가 만든 *"claude 가 120초 안에 안 끝났다 (한계는 NEXUS_LLM_BRIDGE_TIMEOUT …)"* 가
+    호출자에게 `Server error '504 Gateway Timeout' for url …` 로 도착했다. #513 에서 고친
+    「값은 있었고 전달이 없었다」가 한 층 위에 그대로 있었다.
+
+    ⚠ **`RuntimeError` 로 바꾸지 마라.** 같은 파일의 Gemini 경로는 그렇게 하지만 여기서는
+    틀린다 — `llm/failure.py` 가 `.response` 에서 상태와 본문을 캐서 504→`timeout`,
+    5xx+인증표시→`auth` 로 가른다(#516). 예외 종류를 바꾸면 그 분류가 통째로 `other` 가 된다.
+    """
+    if not resp.is_error:
+        return
+    raise httpx.HTTPStatusError(
+        f"bridge {resp.status_code}: {resp.text[:500]}",
+        request=resp.request, response=resp,
+    )
 
 
 @dataclass(frozen=True)
@@ -185,13 +225,14 @@ class _ClaudeCodeBackend:
     async def generate_full(
         self, system_prompt: str, user_message: str, max_tokens: int
     ) -> LLMResult:
-        async with httpx.AsyncClient(timeout=_BRIDGE_TIMEOUT, transport=_bridge_transport()) as c:
+        async with httpx.AsyncClient(timeout=_bridge_timeout(), transport=_bridge_transport()) as c:
             resp = await c.post(
                 f"{self.bridge_url}/v1/generate",
                 headers={"X-Bridge-Token": self._token},
                 json={"system": system_prompt, "prompt": user_message, "model": self.model},
             )
-        resp.raise_for_status()   # 브리지 502/504 → 예외 → 호출부의 API-error 폴백
+        # 브리지 502/504 → 예외 → 호출부의 API-error 폴백. **본문을 들고 간다.**
+        _raise_with_bridge_body(resp)
         # 브리지는 오늘 text 만 준다 → usage 미상(None). 지어내지 않는다(Unit C 에서 브리지 확장).
         return LLMResult(text=resp.json()["text"], usage=Usage(None, None, None, self.model))
 
@@ -209,14 +250,14 @@ class _ClaudeCodeBackend:
         stop_reason 은 브리지가 오늘 주지 않는다. **지어내지 않고 None 을 돌려준다** — 토큰에서
         잘렸는지 모른다는 사실이 그대로 기록되는 편이, 완결됐다고 단정하는 것보다 낫다.
         """
-        async with httpx.AsyncClient(timeout=_BRIDGE_TIMEOUT, transport=_bridge_transport()) as c:
+        async with httpx.AsyncClient(timeout=_bridge_timeout(), transport=_bridge_transport()) as c:
             resp = await c.post(
                 f"{self.bridge_url}/v1/vision",
                 headers={"X-Bridge-Token": self._token},
                 json={"system": system_prompt, "image_b64": image_b64,
                       "media_type": media_type, "model": self.model},
             )
-        resp.raise_for_status()
+        _raise_with_bridge_body(resp)
         if usage_out is not None:
             # 브리지는 토큰을 안 준다 → 토큰 미상. **호출은 세되 값은 지어내지 않는다.**
             usage_out.append(Usage(None, None, None, self.model))
