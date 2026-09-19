@@ -121,26 +121,41 @@ async def test_the_schema_is_why_that_branch_is_insurance(db_pool):
 
 
 async def _seed(pool):
-    """빼려는 종류 둘 + 안 뺄 종류 둘. 넷 다 종류를 **안다** — 스키마가 NULL 을 안 받는다."""
-    from nexus.ingest.classifier import ClassificationResult
-    from nexus.ingest.collector import CollectedFile
-    from nexus.ingest.pipeline import _save_document
+    """빼려는 종류 둘 + 안 뺄 종류 둘. 넷 다 종류를 **안다** — 스키마가 NULL 을 안 받는다.
+
+    ⛔ **문서 행만 심으면 키워드 다리가 아무것도 못 찾는다 (CI 가 잡았다, 2026-09-20).**
+    `_save_document` 는 이름 그대로 문서만 저장한다. BM25 는 `chunks.tsvector_ko` 를 보고,
+    그것을 채우는 것은 `index_chunk_bm25` 다. 내 첫 판은 문서 넷을 심고 히트 0건을 받았다.
+    """
+    from nexus.index.bm25 import index_chunk_bm25
 
     async with pool.acquire() as con:
         await con.execute("DELETE FROM chunks WHERE tenant=$1", _TENANT)
         await con.execute("DELETE FROM documents WHERE tenant=$1", _TENANT)
 
-    rids = {}
-    for name, doc_type in (("spec.md", "spec"), ("journal.md", "design_doc"),
-                           ("sop.md", "policy"), ("mystery.md", "markdown")):
-        collected = CollectedFile(
-            path=None, relative_path=name, content="파지 실패 절차 본문",
-            content_hash=f"h-{name}", frontmatter={"title": name},
-            canonical_uri=f"{_TENANT}:{name}")
-        cls = ClassificationResult(classification="INTERNAL", is_quarantined=False,
-                                   pii_types=[], doc_type=doc_type, language="ko")
-        rids[name] = await _save_document(collected, cls, _TENANT)
-    return rids
+    class _Chunk:
+        def __init__(self, text, prefix):
+            self.chunk_text, self.section_path, self.context_prefix = text, "root", prefix
+
+    kinds = (("spec.md", "spec"), ("journal.md", "design_doc"),
+             ("sop.md", "policy"), ("mystery.md", "markdown"))
+    for name, doc_type in kinds:
+        rid = f"doc_{_TENANT}_{name.replace('.', '_')}"
+        async with pool.acquire() as con:
+            await con.execute(
+                "INSERT INTO documents (rid, tenant, source_uri, hash, title, doc_type, "
+                "classification, status) VALUES ($1,$2,$3,'h',$4,$5,'INTERNAL','active')",
+                rid, _TENANT, f"{_TENANT}:{name}", name, doc_type)
+        chunk = _Chunk("파지 실패 절차 본문", f"[{name}]")
+        crid = f"chunk_{rid}"
+        async with pool.acquire() as con:
+            await con.execute(
+                "INSERT INTO chunks (rid, tenant, source_uri, doc_rid, section_path, "
+                "chunk_text, context_prefix, classification, status) "
+                "VALUES ($1,$2,$3,$4,'root',$5,$6,'INTERNAL','active')",
+                crid, _TENANT, f"{_TENANT}:{name}", rid, chunk.chunk_text,
+                chunk.context_prefix)
+        await index_chunk_bm25(crid, chunk)
 
 
 @pytestmark_db
@@ -157,7 +172,7 @@ async def test_the_excluded_type_leaves_the_candidate_pool(db_pool):
     previous = db._pool
     db._pool = db_pool
     try:
-        rids = await _seed(db_pool)
+        await _seed(db_pool)
 
         async def titles(exclude):
             hits, _ = await _bm25_search("파지 실패 절차", _TENANT, "INTERNAL", 50,
@@ -184,7 +199,6 @@ async def test_the_excluded_type_leaves_the_candidate_pool(db_pool):
         async with db_pool.acquire() as con:
             await con.execute("DELETE FROM chunks WHERE tenant=$1", _TENANT)
             await con.execute("DELETE FROM documents WHERE tenant=$1", _TENANT)
-        assert rids
     finally:
         db._pool = previous
 
