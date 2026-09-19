@@ -21,7 +21,9 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # 문 닫기 플래그 — §5 의 계약. 순서·값이 test_claude_llm_bridge 로 고정된다.
 _DOORS_CLOSED = [
@@ -114,6 +116,45 @@ def _subprocess_runner(argv: list[str], prompt: str, timeout: float):
     return (p.returncode, p.stdout, p.stderr)
 
 
+#: 동시에 도는 `claude` 프로세스 수. 기본 1 — **오늘 동작 그대로**다.
+#:
+#: ⛔ **왜 벽을 따로 두나 (실측 2026-09-19, 설명 층 보고).** 서버가 `HTTPServer` 였다.
+#: 합성 한 건이 2분 도는 동안 **소켓이 다른 아무것도 받지 않는다** — 밖에서 건 `curl` 이
+#: 그대로 타임아웃했다. 그리고 이 브리지를 부르는 것은 설명 층만이 아니다: 주기 재적재
+#: (`nexus-reingest`)도 같은 문을 친다. 줄을 세우는 곳이 없으니 조용히 겹쳤다.
+#:
+#: `ThreadingHTTPServer` 로 받되 **생성은 이 문으로 줄 세운다.** 둘을 같이 하는 이유:
+#: 스레드만 늘리면 `claude` 프로세스가 동시에 여럿 떠서 호스트를 갈아 넣고, 문만 두면
+#: 소켓이 여전히 막힌다. 소켓은 열고, 비싼 것만 하나씩.
+#:
+#: ⚠ 기본을 1 에서 올리는 것은 **호스트 자원 판단**이다. 배포가 정한다.
+_MAX_CONCURRENT = max(1, int(os.getenv("NEXUS_LLM_BRIDGE_CONCURRENCY", "1") or 1))
+_GATE = threading.BoundedSemaphore(_MAX_CONCURRENT)
+
+#: 문 앞에서 기다려 주는 시간(초).
+#:
+#: ⛔ **요청의 예산을 줄 서는 데 다 쓰면 안 된다** (실측 2026-09-19, 라이브에서 내 첫 판이
+#: 그랬다). 처음엔 요청 자신의 `timeout` 만큼 기다렸는데, 그러면 앞 건이 2분 걸릴 때 뒤
+#: 요청은 **자기 예산을 전부 대기에 쓰고 들어가서 남은 시간이 0** 이거나, 부르는 쪽이 자기
+#: 벽에서 먼저 죽는다. 라이브 확인에서 둘째 요청이 503 대신 클라이언트 타임아웃으로 죽었다.
+#:
+#: 짧게 기다리고 **503 으로 돌려보내는 편이 낫다.** 줄이 길다는 사실은 그 자체로 정보이고,
+#: 다시 시도하는 비용은 왕복 한 번이다. 동시 한도가 1 이고 합성이 2분이면 줄은 늘 길다.
+_GATE_WAIT = max(0.0, float(os.getenv("NEXUS_LLM_BRIDGE_QUEUE_WAIT", "5") or 5))
+
+
+def busy_detail(waited: float) -> str:
+    """503 본문. **얼마나 기다렸고 왜 못 들어갔는지**를 말한다.
+
+    ⛔ 조용히 더 기다리게 하면 부르는 쪽은 자기 벽에서 타임아웃으로 죽고, 그것을
+    *"합성이 느리다"* 로 읽는다. 줄을 선 것과 느린 것은 다른 사건이고 처방도 다르다.
+    """
+    return (f"브리지가 다른 합성 중이라 {waited:.1f}초 기다렸고 못 들어갔다 "
+            f"(동시 실행 한도 {_MAX_CONCURRENT}, NEXUS_LLM_BRIDGE_CONCURRENCY · "
+            f"대기 한도 {_GATE_WAIT:g}초, NEXUS_LLM_BRIDGE_QUEUE_WAIT). "
+            f"이것은 느린 것이 아니라 줄 선 것이다 — 다시 시도하면 된다")
+
+
 def timeout_detail(limit: float) -> str:
     """504 본문. **얼마나 기다렸고 그 한계가 어디서 왔는지**를 같이 말한다.
 
@@ -148,6 +189,20 @@ def failure_detail(out: str, err: str) -> str:
     return "claude 가 0 이 아닌 코드로 끝났고 stdout·stderr 가 둘 다 비어 있다"
 
 
+def _acquire_or_busy(timeout: float) -> tuple[int, dict] | None:
+    """생성 문에 들어간다. 못 들어가면 **503 을 돌려준다** — 조용히 더 기다리지 않는다.
+
+    ⚠ 반환이 `None` 이면 들어간 것이고, **호출자가 `finally` 로 놓아야 한다.**
+    """
+    # ⚠ `timeout`(=`claude` 에 줄 시간)이 아니라 `_GATE_WAIT` 만큼만 기다린다. 위 ⛔ 참고.
+    # 다만 요청이 그보다 짧게 참겠다면 그쪽을 따른다 — 검사가 짧은 값을 주는 자리다.
+    wait = min(_GATE_WAIT, timeout)
+    t0 = time.monotonic()
+    if _GATE.acquire(timeout=wait):
+        return None
+    return 503, {"error": busy_detail(time.monotonic() - t0)}
+
+
 def handle_generate(
     payload: dict,
     token_header: str | None,
@@ -167,6 +222,9 @@ def handle_generate(
     full = f"{system}\n\n---\n\n{prompt}" if system else prompt
 
     argv = build_argv(model)
+    gate = _acquire_or_busy(timeout)
+    if gate is not None:
+        return gate
     try:
         rc, out, err = runner(argv, full, timeout)
     except (subprocess.TimeoutExpired, TimeoutError):
@@ -174,6 +232,8 @@ def handle_generate(
     except OSError as e:
         # claude 미설치/실행 불가 등 — 크래시 대신 502 로 원인을 알린다.
         return 502, {"error": f"claude 실행 실패: {e}"}
+    finally:
+        _GATE.release()
     if rc != 0:
         return 502, {"error": failure_detail(out, err)}
     return 200, {"text": out}
@@ -199,12 +259,17 @@ def handle_vision(
 
     argv = build_vision_argv(payload.get("model"))
     stdin = build_vision_stdin(system, image_b64, media_type)
+    gate = _acquire_or_busy(timeout)
+    if gate is not None:
+        return gate
     try:
         rc, out, err = runner(argv, stdin, timeout)
     except (subprocess.TimeoutExpired, TimeoutError):
         return 504, {"error": timeout_detail(timeout)}
     except OSError as e:
         return 502, {"error": f"claude 실행 실패: {e}"}
+    finally:
+        _GATE.release()
     if rc != 0:
         return 502, {"error": failure_detail(out, err)}
     return 200, {"text": parse_vision_stdout(out)}
@@ -255,7 +320,8 @@ def main() -> None:
     port = int(os.getenv("NEXUS_LLM_BRIDGE_PORT", "8900"))
     _Handler.token = token
     print(f"claude-code LLM 브리지: http://{host}:{port}/v1/generate  (dev 전용, 툴 전면 차단)")
-    HTTPServer((host, port), _Handler).serve_forever()
+    print(f"  동시 실행 한도 {_MAX_CONCURRENT} — 소켓은 열어 두고 생성만 줄 세운다")
+    ThreadingHTTPServer((host, port), _Handler).serve_forever()
 
 
 if __name__ == "__main__":
