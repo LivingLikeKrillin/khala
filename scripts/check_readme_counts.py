@@ -11,6 +11,15 @@
 세는 규칙은 여기 한 곳에만 있다. README 쪽 숫자를 고칠 때 이 파일도 같이 고치면 그 순간
 사본이 둘이 되므로, **README 는 값을 적고 이 파일이 그 값을 검증**한다.
 
+⛔ **README 가 둘인데 하나만 보고 있었다 (실측 2026-09-20).** `README.en.md` 도 같은 문장으로
+같은 네 수를 주장하는데 이 검사기는 `README.md` 만 읽었다. 그 사이 영문 쪽은 **3,043** 에
+머물러 있었고 실제는 3,152 였다 — 이 검사기가 막으려고 만들어진 바로 그 드리프트가,
+검사기가 안 보는 파일에서 그대로 일어났다.
+
+⚠ **공개 페이지가 더 나쁘다**: 사람이 제일 많이 읽는 문서가 제일 늦게 검사에 드는 것이
+이 리포가 이미 적어 둔 모양이다(`doc-anchors.yml` 에 홈페이지가 없어서 히어로 그림이 엿새
+동안 틀린 경로를 그리고 있었다).
+
     python scripts/check_readme_counts.py
 """
 
@@ -93,8 +102,18 @@ def _say(line: str) -> None:
         sys.stdout.buffer.write(line.encode("utf-8", "replace") + b"\n")
 
 
+#: 같은 네 수를 주장하는 파일들. **하나라도 빠지면 그 파일에서 수가 조용히 낡는다.**
+READMES = ("README.md", "README.en.md")
+
+
 def main() -> int:
-    bad = problems((ROOT / "README.md").read_text(encoding="utf-8"))
+    bad: list[str] = []
+    for name in READMES:
+        path = ROOT / name
+        if not path.exists():
+            bad.append(f"{name}: 파일이 없다 — 목록이 낡았거나 파일이 사라졌다")
+            continue
+        bad += [f"{name} — {b}" for b in problems(path.read_text(encoding="utf-8"))]
     if bad:
         _say("⛔ README 의 수가 실제와 다르다 — **세어서 고쳐라**")
         for b in bad:
