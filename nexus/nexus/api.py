@@ -754,6 +754,11 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 "citations": answer_result.citations,
                 "unverified_citations": answer_result.unverified_citations,
                 "unverified_numbers": answer_result.unverified_numbers,
+                # ⛔ **수만 내면 무엇이 걸렸는지 못 본다** (설명 층 보고 2026-09-19). 목록은
+                # `llm/answer.py` 가 이미 만들어 두고 있었고 전달만 없었다 — `timing_ms` 와
+                # 같은 모양이다. 읽는 쪽이 「지어낸 통계」인지 「인용의 절 번호」인지 가를 수
+                # 있어야 그 수가 쓸모가 있다.
+                "numbers": answer_result.numbers,
                 "usage": answer_result.usage,
                 "n_stale": answer_result.n_stale,
                 # 기권은 코드가 내린 판단이다. 답변 문장을 문자열 대조해서 알아내지 않는다.
@@ -1338,6 +1343,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 ],
                 "unverified_citations": report.unverified_count,
                 "unverified_numbers": nreport.unverified_count,
+                # 비스트리밍과 같은 값을 같은 이름으로 — 한 표면만 빠뜨리면 그 표면의
+                # 소비자만 조용히 못 본다.
+                "numbers": [{"value": n.value, "grounded": n.grounded} for n in nreport.numbers],
                 "usage": (lambda u: {"input_tokens": u.input_tokens, "output_tokens": u.output_tokens,
                                      "cost_usd": u.cost_usd, "model": u.model})(usage_out[0])
                          if usage_out else None,

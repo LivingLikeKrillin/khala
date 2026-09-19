@@ -121,18 +121,52 @@ def _unique_prefix(cited: str, known: dict[str, str]) -> str | None:
 _SECTION_SEP = re.compile(r"\s*[,>]\s*")
 
 
-def _classify(inner: str, known: dict[str, str]) -> Citation:
+#: `근거 4` — **우리가 붙여 준 번호**다. `format_for_llm` 이 스니펫마다
+#: `### 근거 {i} [{제목}] ({섹션})` 를 찍는다.
+_ORDINAL = re.compile(r"^근거\s*(\d+)$")
+
+
+def _by_ordinal(cited: str, ordered: list[str]) -> str | None:
+    """`근거 4` → packet 의 넷째 제목. **범위 밖이면 받지 않는다.**
+
+    ⛔ **왜 받나 (실측 2026-09-19).** 프롬프트는 제목을 쓰라고 지시하지만, 근거 블록은
+    `### 근거 4 [제목] (섹션)` 으로 **번호를 먼저 보여준다.** 빠른 모델(Haiku 4.5)은 그 번호로
+    인용했고 57건 중 23건이 미검증으로 찍혔다 — 한 사건은 13/13 이 전부 떨어졌다. 지어낸
+    출처가 아니라 **우리가 준 이름표**를 쓴 것이다. 번호를 붙여 보여주고 그 번호를 거부하는
+    것은 우리 쪽 불일치다.
+
+    ⭐ **이것은 느슨해지는 것이 아니라 엄격해지는 것이다.** 제목 대조는 정규화·접두 휴리스틱을
+    거치지만, 번호는 **범위 안 정수** 하나다. `근거 99` 는 packet 이 13개면 그냥 틀린다.
+
+    ⚠ 정확한 제목 일치를 **먼저** 본다 — 문서 제목이 진짜로 `근거 4` 인 경우 그쪽이 이긴다.
+    """
+    m = _ORDINAL.match(cited.strip())
+    if not m:
+        return None
+    i = int(m.group(1))
+    return ordered[i - 1] if 1 <= i <= len(ordered) else None
+
+
+def _classify(inner: str, known: dict[str, str], ordered: list[str] | None = None) -> Citation:
     """인용 안쪽 텍스트를 (title, section, verified) 로 분류.
 
     제목에 콤마나 `>` 가 있을 수 있으므로(Notion 페이지·파일명) 첫 분리자로 순진하게 자르지
     않는다: 전체를 제목으로 먼저 시도하고, 아니면 분할점을 **뒤에서부터**(긴 제목 우선) 훑어
     앞부분이 알려진 제목과 정확히 일치하면 verified + 뒷부분을 섹션으로.
     """
+    ordered = ordered or []
     innorm = _norm(inner)
     if innorm in known:                       # 전체가 제목(섹션 없음, 제목에 분리자 포함 가능)
         return Citation(title=known[innorm], section="", verified=True)
 
     cuts = list(_SECTION_SEP.finditer(inner))
+    # 우리가 붙여 준 번호(`근거 4`). 정확한 제목 다음, 나머지 휴리스틱보다 먼저 본다 —
+    # 범위 안 정수라 가장 확실한 해소다.
+    if (full := _by_ordinal(inner, ordered)):
+        return Citation(title=full, section="", verified=True)
+    for m in reversed(cuts):
+        if (full := _by_ordinal(inner[:m.start()], ordered)):
+            return Citation(title=full, section=inner[m.end():].strip(), verified=True)
     for m in reversed(cuts):                  # 긴 제목 우선(제목 안 분리자 흡수)
         title_part, section_part = inner[:m.start()].strip(), inner[m.end():].strip()
         tnorm = _norm(title_part)
@@ -198,14 +232,17 @@ def validate_citations(answer_text: str, packet) -> CitationReport:
     보고하고(환각 신호), 없으면 해소된 것만 인용으로 센다(산문의 대괄호를 경보로 만들지 않는다).
     """
     text = answer_text or ""
+    snippets = list(getattr(packet, "snippets", []))
     known = {_norm(s.doc_title): s.doc_title
-             for s in getattr(packet, "snippets", []) if getattr(s, "doc_title", "")}
+             for s in snippets if getattr(s, "doc_title", "")}
+    # 순서가 곧 `근거 N` 의 N 이다 — `format_for_llm` 이 같은 목록을 1부터 번호 매겨 보여준다.
+    ordered = [getattr(s, "doc_title", "") for s in snippets]
     tiers = _tier_by_title(packet)
 
-    citations = [_classify(inner, known) for inner in _inner_citations(text)]
+    citations = [_classify(inner, known, ordered) for inner in _inner_citations(text)]
     seen = {(c.title, c.section) for c in citations}
     for inner in _bare_inner_citations(text):
-        c = _classify(inner, known)
+        c = _classify(inner, known, ordered)
         if c.verified and (c.title, c.section) not in seen:
             seen.add((c.title, c.section))
             citations.append(c)
