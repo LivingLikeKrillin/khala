@@ -139,3 +139,105 @@ async def purge_candidates(retain_days: int) -> int:
     여기 하드코딩하면 창을 넓히는 되돌릴 수 있는 조정이 배포마다 코드 변경이 된다.
     """
     return await db.fetch_val(_PURGE_CANDIDATES, retain_days)
+
+
+#: 한 번의 조회가 돌려줄 후보 행의 상한. 기록은 단계마다 100까지 쌓이고 단계가 여럿이라,
+#: 상한이 없으면 한 질의의 진단이 수천 행이 된다.
+MAX_EXPLAIN_ROWS = 400
+
+
+_EXPLAIN_SQL = """
+WITH target AS (
+    SELECT id, ts, path, route, n_snippets, read_scope
+    FROM search_log
+    WHERE query_sha256 = $1 AND tenant = $2
+    ORDER BY ts DESC
+    LIMIT 1
+)
+SELECT t.id AS log_id, t.ts, t.path, t.route, t.n_snippets, t.read_scope,
+       s.seq, s.stage, s.channel, s.leg, s.n_in, s.n_out, s.fired, s.score_kind,
+       s.candidates_purged_at,
+       c.rank, c.raw_score, c.dropped,
+       d.title AS doc_title, ch.section_path
+FROM target t
+JOIN search_span s ON s.search_log_id = t.id
+LEFT JOIN search_span_candidate c ON c.span_id = s.id
+-- ⛔ 조각과 문서는 **정책 필터를 통과해야만** 이름을 내놓는다. 통과 못 하면 조인이
+--    비고, 순위는 남되 제목이 `null` 로 나간다 — *있었다는 사실*은 진단에 필요하고
+--    *무엇이었는지*는 읽을 권한이 있어야 한다. 외부 평가 F3 이 정확히 그 구분이었다.
+LEFT JOIN chunks ch ON ch.rid = c.chunk_rid
+     AND ch.tenant = ANY($3::text[])
+     AND ch.classification <= $4::classification_level
+     AND ch.is_quarantined = false
+     AND ch.status = 'active'
+LEFT JOIN documents d ON d.rid = ch.doc_rid AND d.status = 'active'
+ORDER BY s.seq, c.rank
+LIMIT $5
+"""
+
+
+async def explain_query(query_sha: str, attribution_tenant: str,
+                        read_scope, clearance: str,
+                        limit: int = MAX_EXPLAIN_ROWS) -> dict | None:
+    """그 질의의 **마지막 실행**이 각 경로에서 무엇을 몇 위로 봤나. 없으면 `None`.
+
+    ⛔ **왜 필요했나 (설명 층 보고 2026-09-20, 두 판 연속).** 소비자가 *"기대한 절차 문서가
+    안 온다"* 를 두 번 보고했는데, 그쪽이 볼 수 있는 것은 **패킷에 든 조각의 제목**뿐이라
+    *"빠진 문서가 21등인지 200등인지 구별할 수 없다"* 고 적었다. 그리고 내 쪽은 그 질의
+    원문이 없어 네 가지 모양으로 재현을 시도했고 **네 번 다 반대 결과**가 나왔다. 양쪽이
+    각자 절반씩 못 보는 상태에서 처방을 고르는 것은 추측이다.
+
+    ⭐ **값은 이미 쌓여 있었다.** `search_span_candidate` 가 경로별 순위와 원점수를 남기고
+    있고(실측 2026-09-20: 55,027행), 그 표를 읽는 코드는 **만료 작업 하나뿐**이었다.
+    이 리포가 반복해서 만나는 모양이다 — 신호는 만들어지는데 읽을 자리가 없다.
+
+    **질의 해시로 찾는다.** 응답에 요청 식별자를 실어 주는 쪽이 더 곧지만, 그러려면 신호
+    쓰기 경로를 건드려야 한다. 그 경로는 이 리포에서 한 번 34시간 죽은 적이 있고, 진단을
+    붙이자고 그것을 흔들지 않는다. 해시는 순수 `sha256(query)` 라 호출자가 같은 문자열만
+    보내면 자기 실행을 짚을 수 있다.
+
+    ⚠ **귀속 테넌트로 남의 실행을 못 본다.** `search_log.tenant` 는 principal 귀속이고,
+    조회자는 자기 귀속의 행만 읽는다. 후보의 제목은 그와 **별도로** 읽기 범위·등급을 통과한
+    것만 채워진다 — 순위는 보이고 이름은 권한이 있어야 보인다.
+
+    ⚠ **후보는 만료된다** (`candidates_purged_at`). 지워진 뒤에는 단계 요약만 남으므로
+    "후보가 없었다" 와 "지웠다" 를 호출자가 가를 수 있게 그 시각을 같이 낸다.
+    """
+    scope = list(read_scope) if not isinstance(read_scope, str) else [read_scope]
+    rows = await db.fetch_all(_EXPLAIN_SQL, query_sha, attribution_tenant,
+                              scope, clearance, limit)
+    if not rows:
+        return None
+
+    head = rows[0]
+    spans: dict[int, dict] = {}
+    for r in rows:
+        span = spans.setdefault(r["seq"], {
+            "seq": r["seq"], "stage": r["stage"], "channel": r["channel"],
+            "leg": r["leg"], "n_in": r["n_in"], "n_out": r["n_out"],
+            "fired": r["fired"], "score_kind": r["score_kind"],
+            "candidates_purged_at": (r["candidates_purged_at"].isoformat()
+                                     if r["candidates_purged_at"] else None),
+            "candidates": [],
+        })
+        if r["rank"] is None:
+            continue
+        span["candidates"].append({
+            "rank": r["rank"],
+            "raw_score": float(r["raw_score"]) if r["raw_score"] is not None else None,
+            "dropped": r["dropped"],
+            # `None` 은 *그 자리에 무언가 있었지만 당신은 못 읽는다* 이다. 순위를 지우면
+            # 빠진 이유가 「못 찾았다」인지 「권한이 없다」인지 호출자가 영영 못 가른다.
+            "doc_title": r["doc_title"],
+            "section_path": r["section_path"],
+        })
+    return {
+        "found": True,
+        "ts": head["ts"].isoformat() if head["ts"] else None,
+        "path": head["path"],
+        "route": head["route"],
+        "n_snippets": head["n_snippets"],
+        "read_scope": head["read_scope"],
+        "truncated": len(rows) >= limit,
+        "spans": [spans[k] for k in sorted(spans)],
+    }

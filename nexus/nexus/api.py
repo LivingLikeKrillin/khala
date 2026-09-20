@@ -1516,6 +1516,64 @@ async def _embed_backend_health(svc) -> tuple[bool, str | None]:
         return False, None
 
 
+class ExplainRequest(BaseModel):
+    """어느 질의의 마지막 실행을 들여다볼 것인가."""
+
+    #: 질의 **원문**. 저장하지 않는다 — `sha256` 만 계산해 기록에서 그 실행을 찾는다.
+    query: str
+    #: 제목에 이 문자열이 든 후보만 남긴다(대소문자 무시). 비우면 전부.
+    #: ⛔ 거르는 것은 **읽을 권한이 있어 제목이 채워진 후보**뿐이다 — 이름을 모르는 후보는
+    #: 이 필터로 지워지지 않는다. 지우면 "권한이 없어 안 보인 것" 이 "없던 것" 이 된다.
+    doc_contains: str = ""
+
+
+@app.post("/search/explain", response_model=NexusResponse)
+async def search_explain(req: ExplainRequest,
+                         principal: Principal = Depends(get_principal)) -> NexusResponse:
+    """**기대한 문서가 몇 위였나.** 패킷에 못 든 문서까지 보인다.
+
+    ⛔ **왜 있나 (설명 층 보고 2026-09-20, 두 판 연속).** 소비자가 *"사건에 맞는 절차 문서만
+    근거에 안 온다"* 를 보고했는데, 그쪽이 볼 수 있는 것은 패킷에 **든** 조각의 제목뿐이라
+    *"빠진 문서가 21등인지 200등인지 구별할 수 없다"* 고 적었다. 우리 쪽은 그 질의 원문이
+    없어 네 가지 모양으로 재현을 시도했고 네 번 다 반대 결과가 나왔다. 양쪽이 각자 절반만
+    보는 상태에서 처방을 고르면 그것은 추측이다.
+
+    ⭐ **값은 이미 쌓이고 있었다** — `search_span_candidate` 가 경로별 순위와 원점수를 남기는데
+    그 표를 읽는 코드가 만료 작업 하나뿐이었다. 이 엔드포인트는 기능이 아니라 **읽을 자리**다.
+
+    ⚠ **이 경로는 검색을 다시 돌리지 않는다.** 기록된 그 실행을 읽는다 — 다시 돌리면 그
+    사이 바뀐 코퍼스·설정 위에서 다른 답이 나오고, 그것은 사고를 재현한 것이 아니다.
+
+    ⚠ **자기 귀속의 실행만 보인다.** 그리고 후보의 제목은 읽기 범위·등급을 통과한 것만
+    채워진다 — **순위는 보이고 이름은 권한이 있어야 보인다**(외부 평가 F3 과 같은 구분).
+
+    ⚠ **바로 뒤이어 부르면 못 찾을 수 있다** (실측 2026-09-20: 내가 그렇게 걸렸다).
+    신호 적재는 응답을 만든 뒤에 일어나므로, 검색 응답을 받자마자 이것을 치면 그 행이
+    아직 없다. `found: false` 를 받으면 잠깐 뒤 다시 친다 — 그 값은 *"그런 실행이 없다"*
+    가 아니라 *"지금 기록에 없다"* 이고, 그래서 404 가 아니라 200 이다.
+    """
+    from nexus.search.signals import query_sha256
+    from nexus.search.span_store import explain_query
+
+    scope, clearance, _out = effective_read_scope(principal, None, None)
+    found = await explain_query(query_sha256(req.query), principal.tenant,
+                                scope, clearance)
+    if found is None:
+        # 404 가 아니다. **질문은 성립했고 기록이 없을 뿐**이고, 그 둘은 다른 사실이다.
+        # 기록이 없는 이유는 셋이다 — 그 질의를 안 돌렸거나, 다른 principal 이 돌렸거나,
+        # 캡처가 꺼져 있었거나. 호출자가 그것을 가를 수 있게 상태를 같이 낸다.
+        return NexusResponse(data={
+            "found": False,
+            "spans_enabled": bool((_load_config().get("spans") or {}).get("enabled")),
+        })
+    if needle := req.doc_contains.strip().lower():
+        for span in found["spans"]:
+            span["candidates"] = [c for c in span["candidates"]
+                                  if c["doc_title"] is None
+                                  or needle in c["doc_title"].lower()]
+    return NexusResponse(data=found)
+
+
 @app.get("/visibility", response_model=NexusResponse)
 async def visibility(principal: Principal = Depends(get_principal)) -> NexusResponse:
     """**당신이** 볼 수 있는 문서가 몇 건인가 — 0건을 받은 클라이언트가 이유를 물으러 오는 자리.
