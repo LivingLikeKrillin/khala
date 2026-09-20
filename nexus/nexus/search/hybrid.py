@@ -117,6 +117,15 @@ class SearchResult:
     #: 돌려준 근거 중 **원본 시각을 모르는** 건수. 시각 범위를 **안 물었으면 `None`** 이다.
     #: 0 으로 내보내면 "물었고 전부 안다" 와 구별되지 않는다 — `search/time_window.py` 참조.
     n_unknown_origin_time: int | None = None
+    #: 식별자 채널이 **무엇으로 발화했나** (`search/identifiers.py`, 사전 등록 T2).
+    #:
+    #: ⛔ **빈 목록은 「안 켰다」와 「켰는데 식별자가 없었다」를 둘 다 뜻한다** — 그래서
+    #: `identifier_channel_asked` 를 따로 둔다. 그 둘을 한 값으로 뭉치면, 처치가 조용히
+    #: 무시된 것과 처치가 발화할 자리가 없던 것이 구별되지 않고, 사전 등록 §5.5 의 음성
+    #: 대조군이 성립하지 않는다.
+    identifier_channel: list[str] = field(default_factory=list)
+    #: 호출자가 그 채널을 **요청했는가**. 발화 여부와 다른 사실이다.
+    identifier_channel_asked: bool = False
     #: 이번 질의에서 후보에서 뺀 문서 종류 — **정규화를 거친 뒤의 것**이다.
     #: 호출자가 보낸 것이 아니라 **실제로 SQL 에 간 것**을 돌려준다. 오타가 조용히
     #: 무시되는 것과 목록이 통째로 안 닿는 것을 이 값 하나로 가를 수 있다.
@@ -141,6 +150,17 @@ class SearchResult:
 #: `SPEC-nexus-ranking-precision` §4.1 은 정규화 없는 `ts_rank_cd` 를 골랐다. 이 값은 그
 #: 결정의 개정이고, 근거는 `SPEC-nexus-bm25-length-normalization` 에 있다.
 BM25_LENGTH_NORMALIZATION = 1
+
+#: 식별자 채널의 가중 (사전 등록 T2). **원문보다 낮다.**
+#:
+#: 이 채널은 정밀도가 높고 재현율이 낮다 — 식별자를 가진 문서만 낸다. 1.0 을 주면 그 몇
+#: 문서가 융합을 지배하고, 분류 이름을 나열한 **목차 성격의 문서**(적용 범위 표·한계 대장)
+#: 까지 같이 올라온다. 0.5 는 한 경로 후보가 모여 있는 띠(`1/(60+rank)` ≈ 0.014)보다는
+#: 위로 올리면서 두 경로가 합의한 문서를 밀어내지는 않는 값으로 골랐다.
+#:
+#: ⚠ **이 값은 측정 대상이다.** 사전 등록 §3 의 T2 가 고르는 것이 이 채널의 존재이고,
+#: 가중은 그 안의 조율값이다. 결과를 보고 고치되, 고친 뒤 다시 재는 것이 순서다.
+IDENTIFIER_CHANNEL_WEIGHT = 0.5
 
 
 @dataclass(frozen=True)
@@ -384,6 +404,50 @@ def _rrf_fusion(
     구현이 둘이면 갈라지고, 갈라진 융합은 비교가 아니다.
     """
     return fuse_channels([ChannelResults(bm25=bm25_results, vector=vector_results, weight=1.0)], k)
+
+
+@dataclass(frozen=True)
+class QueryChannel:
+    """한 **채널의 입력** — 무엇을 물을지, 얼마의 가중으로, 무슨 이름으로.
+
+    ⛔ **이름이 필드인 이유 (실측 2026-09-20).** 예전에는 `hybrid_search` 가 위치로 이름을
+    붙였다 — `["rewritten", "original"] if len(active) > 1 else [""]`. 채널이 정확히 둘일
+    때만 맞는 규칙이고, 셋째가 붙는 순간 `ch2` 가 되며, **재작성이 없는데 다른 채널이
+    하나 붙으면 사용자 질의가 `rewritten` 으로, 새 채널이 `original` 로 잘못 붙는다.**
+    그 이름은 진단(`search_span.channel`)에 그대로 남으므로, 틀린 이름은 기록을 오염시킨다.
+
+    `LegHit` 과 같은 이유로 **넓힌 튜플이 아니라 이름 있는 필드**다 — 이 리포는 위치로 묶은
+    튜플을 넓혔다가 시험 스무 곳을 깨뜨리고 되돌린 적이 있다.
+    """
+
+    text: str
+    weight: float = 1.0
+    name: str = ""
+
+
+#: 튜플 두 개로 오던 옛 계약의 이름. **그 모양일 때만** 이 이름이 붙는다.
+_LEGACY_TWO_CHANNEL_NAMES = ("rewritten", "original")
+
+
+def normalize_channels(channels, query: str) -> list[QueryChannel]:
+    """옛 계약(`(text, weight)` 목록)과 새 계약(`QueryChannel` 목록)을 하나로.
+
+    ⚠ **옛 호출부의 라벨은 글자 그대로 보존한다** — 튜플 둘이 오면 `rewritten`/`original`
+    이다. 그 이름이 이미 `search_span` 에 쌓여 있고, 여기서 바꾸면 지나간 기록과 앞으로의
+    기록이 같은 이름으로 다른 것을 가리킨다.
+    """
+    if not channels:
+        return [QueryChannel(text=query, weight=1.0, name="")]
+    out: list[QueryChannel] = []
+    legacy_pair = len(channels) == 2 and all(not isinstance(c, QueryChannel) for c in channels)
+    for i, ch in enumerate(channels):
+        if isinstance(ch, QueryChannel):
+            out.append(ch)
+            continue
+        text, weight = ch[0], ch[1]
+        name = _LEGACY_TWO_CHANNEL_NAMES[i] if legacy_pair else f"ch{i}"
+        out.append(QueryChannel(text=text, weight=weight, name=name))
+    return out
 
 
 @dataclass
@@ -718,12 +782,20 @@ async def hybrid_search(
     # **후보 풀은 채널마다 그대로다.** 경로가 둘에서 넷으로 늘어도 bm25_top_k/vector_top_k 는
     # 건드리지 않는다. 컷(_diversify/per_doc_cap/top_k)은 융합 **뒤 한 번만** 걸린다 — 채널마다
     # 걸면 다양성 규칙이 두 번 먹는다.
-    active = channels or [(query, 1.0)]
-    #: 채널 이름은 진단용이다. 점수에 영향을 주지 않는다.
-    names = ["rewritten", "original"] if len(active) > 1 else [""]
+    #: 채널 이름은 진단용이고 점수에 영향을 주지 않는다. 다만 **기록에 남으므로**
+    #: 위치가 아니라 채널 자신이 들고 온다 (`QueryChannel` 머리말).
+    active = normalize_channels(channels, query)
+
+    # 발화한 식별자 채널이 **무엇으로** 발화했나. 호출자가 「안 켰다」·「켰는데 없었다」·
+    # 「켜져서 이것으로 돌았다」 셋을 가를 수 있어야 음성 대조군이 성립한다.
+    for _ch in active:
+        if _ch.name == "identifier":
+            result.identifier_channel = _ch.text.split()
+            break
 
     tasks: dict[tuple[int, str], asyncio.Task] = {}
-    for i, (text, _w) in enumerate(active):
+    for i, ch in enumerate(active):
+        text = ch.text
         if use_bm25:
             tasks[(i, "bm25")] = asyncio.create_task(
                 _bm25_search(text, tenant, clearance, bm25_top_k, window=window,
@@ -746,7 +818,8 @@ async def hybrid_search(
     # `doc_rid`/`score` 를 갖고 있으므로(위 `_bm25_search`/`_vector_search` 참조) 여기서
     # `chunks` 를 한 번 더 묻지 않는다 — 예전엔 이 자리에 `_resolve_doc_rids` 추가 조회가 있었다.
     leg_results: dict[tuple[int, str], tuple[list[LegHit], bool]] = {}
-    for i, (_text, weight) in enumerate(active):
+    for i, ch in enumerate(active):
+        weight = ch.weight
         vector_hits, vector_degraded, vector_top = done.get((i, "vector"), ([], False, None))
         if vector_degraded and "vector" not in result.degraded:
             result.degraded.append("vector")
@@ -758,7 +831,7 @@ async def hybrid_search(
             bm25=[(h.rid, h.rank) for h in bm25_hits],
             vector=[(h.rid, h.rank) for h in vector_hits],
             weight=weight,
-            name=names[i] if i < len(names) else f"ch{i}"))
+            name=ch.name))
         if spans is not None:
             if (i, "bm25") in tasks:
                 leg_results[(i, "bm25")] = (bm25_hits, True)
@@ -778,7 +851,7 @@ async def hybrid_search(
         doc_rid_by_chunk = {h.rid: h.doc_rid for hits, _ in leg_results.values() for h in hits}
 
         for (i, leg), (hits, fired) in leg_results.items():
-            channel_label = (names[i] if i < len(names) else f"ch{i}") or "default"
+            channel_label = active[i].name or "default"
             cands = [
                 Candidate(rank=h.rank, doc_rid=h.doc_rid, chunk_rid=h.rid, raw_score=h.score)
                 for h in hits

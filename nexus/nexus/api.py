@@ -326,6 +326,16 @@ class AnswerRequest(BaseModel):
     #: ⚠ **이것으로 랭킹을 고칠 수 없다.** 자리를 비우는 것과 맞는 문서를 올리는 것은
     #: 다른 일이다.
     exclude_doc_types: list[str] = Field(default_factory=list)
+    #: 질의에 섞인 **식별자만** 따로 한 번 더 묻는 둘째 채널을 켠다
+    #: (`search/identifiers.py`, `docs/PROCEDURE_RETRIEVAL_PREREGISTRATION.md` T2).
+    #:
+    #: ⛔ **기본은 꺼짐이고, 꺼져 있으면 오늘과 같은 경로·같은 SQL 이다.** 이것은 처치이고
+    #: 측정 대상이다 — 켜서 T0 와 견주라고 만든 것이지, 켜는 것이 기본이 되면 그 측정이
+    #: 성립하지 않는다.
+    #:
+    #: 켜도 질의에 식별자가 없으면 **발화하지 않는다.** 발화 여부는 응답의
+    #: `identifier_channel` 로 온다(빈 목록 = 발화 안 함).
+    identifier_channel: bool = False
 
 
 class IngestRequest(BaseModel):
@@ -399,7 +409,7 @@ def _validate_route(route: str) -> None:
 
 
 
-async def _search_channels(req, llm_svc):
+async def _search_channels(req, llm_svc, *, identifiers: bool = False):
     """(검색·라우팅에 쓸 질의, 융합 채널). 이력이 없으면 `(req.query, None)` — 오늘 그대로.
 
     **재작성이 원문과 같으면 채널을 늘리지 않는다.** 같은 문자열은 같은 순위 목록을 내고,
@@ -410,13 +420,35 @@ async def _search_channels(req, llm_svc):
     반환하는 첫 값은 **재작성 질의**다: 라우팅과 엔티티 추출이 그것을 쓴다. 생략형 원문에서
     뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 경로는 완성된 문장을 전제한다(§3.3).
     """
+    from nexus.search.hybrid import IDENTIFIER_CHANNEL_WEIGHT, QueryChannel
+    from nexus.search.identifiers import identifier_query
+
+    # 식별자 채널은 **재작성과 독립**이다. 재작성은 *무엇을 물었나*를 고치고, 이것은 그 질의가
+    # 이미 들고 있는 한 낱말을 **묻히지 않게** 한다. 그래서 둘 다 붙을 수 있다.
+    ident = identifier_query(req.query) if identifiers else ""
+
     history = _history(req.history)
     if not history:
-        return req.query, None, None
+        if not ident:
+            return req.query, None, None
+        # ⛔ 채널이 둘이 되면 **둘 다 이름을 들고 가야 한다.** 옛 계약(튜플 둘)은 위치로
+        #    `rewritten`/`original` 이 붙으므로, 여기서 튜플을 쓰면 사용자 질의가
+        #    `rewritten` 으로 잘못 기록된다 (`QueryChannel` 머리말).
+        return req.query, [QueryChannel(req.query, 1.0, "original"),
+                           QueryChannel(ident, IDENTIFIER_CHANNEL_WEIGHT, "identifier")], None
     rw = await rewrite_query(req.query, history, llm_svc)
     if not rw.changed:
-        return req.query, None, rw
-    return rw.query, [(rw.query, W_REWRITTEN), (req.query, W_ORIGINAL)], rw
+        if not ident:
+            return req.query, None, rw
+        return req.query, [QueryChannel(req.query, 1.0, "original"),
+                           QueryChannel(ident, IDENTIFIER_CHANNEL_WEIGHT, "identifier")], rw
+    if not ident:
+        # ⛔ **옛 모양 그대로 튜플을 돌려준다.** 처치가 꺼졌을 때 이 함수가 내는 값이 어제와
+        #    글자 그대로 같아야 한다 — `normalize_channels` 가 튜플 둘에 같은 이름을 붙인다.
+        return rw.query, [(rw.query, W_REWRITTEN), (req.query, W_ORIGINAL)], rw
+    return rw.query, [QueryChannel(rw.query, W_REWRITTEN, "rewritten"),
+                      QueryChannel(req.query, W_ORIGINAL, "original"),
+                      QueryChannel(ident, IDENTIFIER_CHANNEL_WEIGHT, "identifier")], rw
 
 
 @app.post("/search", response_model=NexusResponse)
@@ -681,7 +713,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
 
         # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
         # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 경로는 완성된 문장을 전제한다 (SPEC §3.3).
-        search_query, channels, rw = await _search_channels(req, llm_svc)
+        search_query, channels, rw = await _search_channels(
+            req, llm_svc, identifiers=req.identifier_channel)
 
         # 엔티티 감지
         gazetteer = _load_gazetteer()
@@ -798,6 +831,11 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 요청이 보낸 것이 아니라 **실제로 SQL 에 간 것**이다. 오타가 조용히
                 # 무시된 것과 목록이 통째로 안 닿은 것을 호출자가 이 값으로 가른다.
                 "excluded_doc_types": search_result.excluded_doc_types,
+                # ⛔ 둘을 따로 낸다. 빈 목록 하나로는 「안 켰다」와 「켰는데 식별자가
+                # 없었다」가 구별되지 않고, 그러면 처치가 조용히 무시된 것을 못 본다 —
+                # 사전 등록 §5.5 의 음성 대조군이 요구하는 것이 정확히 그 구분이다.
+                "identifier_channel": search_result.identifier_channel,
+                "identifier_channel_asked": req.identifier_channel,
             },
         )
     except UnknownRoute as e:
@@ -1150,7 +1188,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
 
             # 재작성이 **먼저**다: 라우팅과 엔티티 추출이 그 질의를 써야 한다. 생략형 원문에서
             # 뽑은 엔티티는 앞턴의 주제를 모르고, 그래프 경로는 완성된 문장을 전제한다 (SPEC §3.3).
-            search_query, channels, rw = await _search_channels(req, llm_svc)
+            search_query, channels, rw = await _search_channels(
+            req, llm_svc, identifiers=req.identifier_channel)
 
             # 엔티티 감지
             gazetteer = _load_gazetteer()
@@ -1373,6 +1412,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 "searched_tenants": packet.searched_tenants,
                 "evidence_tenants": dict(evidence_counts(packet.snippets)),
                 "excluded_doc_types": search_result.excluded_doc_types,
+                "identifier_channel": search_result.identifier_channel,
+                "identifier_channel_asked": req.identifier_channel,
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 

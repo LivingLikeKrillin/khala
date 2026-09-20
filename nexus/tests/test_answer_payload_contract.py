@@ -41,6 +41,8 @@ class _Search:
         # 여기 적는다 — 이 목록이 응답에서 사라지면 호출자는 필터가 안 걸린 것과
         # 목록이 비어 있던 것을 구별할 수 없다.
         self.excluded_doc_types = []
+        # 그리고 또 하나(식별자 채널, 2026-09-20). 같은 이유로 여기 적는다.
+        self.identifier_channel = []
 
 
 @pytest.fixture
