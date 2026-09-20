@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import tempfile
 import sys
 import threading
 import time
@@ -105,14 +106,52 @@ def parse_vision_stdout(out: str) -> str:
 
 
 
+#: `claude` 를 돌릴 **빈 디렉터리**. 프로세스의 작업 디렉터리가 곧 프로젝트 맥락이다.
+#:
+#: ⛔ **이 자리가 모든 키리스 측정을 오염시키고 있었다 (실측 2026-09-20).** 이 모듈 머리말은
+#: `--setting-sources ""` 가 *"프로젝트/유저 세팅·훅·스킬·CLAUDE.md 미로드"* 라고 적어 뒀는데,
+#: **CLAUDE.md 는 막히지 않는다.** 같은 argv 로 작업 디렉터리만 바꿔 대조했다:
+#:
+#:     리포 안에서   "이 저장소에서 specledger 의 새 이름은?"  →  "Arbiter"
+#:     중립 디렉터리                     같은 질문            →  "모른다"
+#:
+#:     리포 안에서   "당신은 무엇인가?"  →  "khala/nexus 저장소에서 … 작업 중인 세션"
+#:     중립 디렉터리        같은 질문     →  "터미널에서 작업을 돕는 AI 에이전트"
+#:
+#: ⚠ **왜 이것이 측정을 움직이나.** 이 리포의 `CLAUDE.md` 는 *"grounded answers only · 추측
+#: 금지"* · *"System decides, LLM narrates"* 를 적고 있다. 그 문장을 들고 도는 모델은 우리가
+#: **재려는 바로 그 축**(환각·인용 규율)에서 더 잘한다. 즉 키리스 브리지로 낸 답변 품질
+#: 수치는 그만큼 낙관 쪽으로 기울어 있었고, 유료 키로 도는 배포에는 그 맥락이 없다.
+#:
+#: ⛔ 도구는 원래부터 전부 닫혀 있다(`_DOORS_CLOSED`). 그러므로 이 디렉터리에서 무언가를
+#: 읽을 수는 없다 — 여기서 막는 것은 **읽기가 아니라 맥락 주입**이다.
+_NEUTRAL_CWD = os.path.join(tempfile.gettempdir(), "nexus-bridge-cwd")
+
+
+def neutral_cwd() -> str:
+    """`claude` 를 돌릴 자리. 만들 수 없으면 시스템 임시 디렉터리로 물러선다.
+
+    ⚠ **리포 안으로는 절대 물러서지 않는다** — 물러선 자리가 맥락을 주면 이 함수는 아무
+    일도 안 한 것이 된다.
+    """
+    try:
+        os.makedirs(_NEUTRAL_CWD, exist_ok=True)
+        return _NEUTRAL_CWD
+    except OSError:
+        return tempfile.gettempdir()
+
+
 def _subprocess_runner(argv: list[str], prompt: str, timeout: float):
     """argv 를 실행하고 (returncode, stdout, stderr) 반환. 타임아웃은 예외로.
 
     Windows cp949 는 프롬프트의 em-dash 를 못 쓰므로 파이프를 UTF-8 로 고정한다.
+
+    ⛔ **`cwd` 를 반드시 넘긴다.** 안 넘기면 브리지를 띄운 셸의 위치를 물려받고, 이 배포에서
+    그 자리는 리포 안이다 (위 `_NEUTRAL_CWD` 의 실측).
     """
     p = subprocess.run(
         argv, input=prompt, capture_output=True, text=True,
-        encoding="utf-8", timeout=timeout,
+        encoding="utf-8", timeout=timeout, cwd=neutral_cwd(),
     )
     return (p.returncode, p.stdout, p.stderr)
 
