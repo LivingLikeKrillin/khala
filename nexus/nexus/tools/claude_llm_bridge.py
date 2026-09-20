@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -306,6 +307,27 @@ class _Handler(BaseHTTPRequestHandler):
         return
 
 
+def _say(line: str) -> None:
+    """시작 문구를 **콘솔 코드페이지 때문에 죽지 않게** 낸다.
+
+    ⛔ **이것 때문에 브리지가 시동에서 죽었다 (실측 2026-09-20).** 위 두 줄에 em-dash 가
+    들어 있는데 이 기계의 기본 코드페이지는 `cp949` 라, stdout 이 파이프·리디렉션이면
+    `UnicodeEncodeError` 가 나고 **`serve_forever` 에 닿기 전에** 프로세스가 끝난다.
+    로그 한 줄이 서버를 못 띄우는 모양이다.
+
+    ⚠ 대화형 콘솔에서는 안 나기도 한다 — 그래서 손으로 띄울 때는 멀쩡하고 무인으로
+    띄우면 죽는, 가장 늦게 발견되는 부류가 된다.
+
+    이 리포는 같은 처방을 이미 두 곳에 갖고 있다(`scripts/check_readme_counts.py` ·
+    훅의 stdin 디코딩). 브리지만 빠져 있었다.
+    """
+    try:
+        print(line, flush=True)
+    except UnicodeEncodeError:
+        sys.stdout.buffer.write(line.encode("utf-8", "replace") + b"\n")
+        sys.stdout.buffer.flush()
+
+
 def main() -> None:
     # 토큰은 필수(§5). 무인증 + claude 실행이라 토큰 없이는 시동 거부한다.
     token = os.getenv("NEXUS_LLM_BRIDGE_TOKEN", "")
@@ -319,8 +341,8 @@ def main() -> None:
     host = os.getenv("NEXUS_LLM_BRIDGE_HOST", "127.0.0.1")
     port = int(os.getenv("NEXUS_LLM_BRIDGE_PORT", "8900"))
     _Handler.token = token
-    print(f"claude-code LLM 브리지: http://{host}:{port}/v1/generate  (dev 전용, 툴 전면 차단)")
-    print(f"  동시 실행 한도 {_MAX_CONCURRENT} — 소켓은 열어 두고 생성만 줄 세운다")
+    _say(f"claude-code LLM 브리지: http://{host}:{port}/v1/generate  (dev 전용, 툴 전면 차단)")
+    _say(f"  동시 실행 한도 {_MAX_CONCURRENT} — 소켓은 열어 두고 생성만 줄 세운다")
     ThreadingHTTPServer((host, port), _Handler).serve_forever()
 
 
