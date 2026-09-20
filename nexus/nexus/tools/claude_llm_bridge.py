@@ -10,16 +10,27 @@ Nexus(컨테이너)의 LLMService(provider=claude-code)가 HTTP 로 이 브리�
   --setting-sources ""    프로젝트/유저 세팅·훅·스킬·CLAUDE.md 미로드
   --no-session-persistence  프롬프트(=문서 내용)를 ~/.claude 트랜스크립트에 안 남김
 
+⛔ **`--setting-sources ""` 는 CLAUDE.md 를 막지 못한다** (실측 2026-09-20). 그 줄은 오래
+막는다고 적혀 있었고 아니었다 — 프로젝트 맥락은 **작업 디렉터리**로 들어온다. 그래서
+`claude` 는 빈 디렉터리에서 돈다(`neutral_cwd`). 그 자리의 실측은 거기 주석에 있다.
+
 **dev 전용.** 호스트 `claude`+인증이 필요해 서버 백엔드가 아니다. 팀/프로덕션 compose 에 넣지 않는다.
 
 실행:
-    NEXUS_LLM_BRIDGE_TOKEN=<secret> python -m nexus.tools.claude_llm_bridge
+    python -m nexus.tools.claude_llm_bridge      # `nexus/.env` 를 읽는다 (아래)
+
+⛔ **이 프로세스는 `nexus/.env` 를 스스로 읽는다** (2026-09-20 신설). 앞서는 안 읽었고,
+그 사이 `providers/llm.py` 는 *"두 프로세스가 같은 `.env` 를 읽지만 각자 기동할 때 읽는다"*
+고 적고 있었다 — **한쪽이 아예 안 읽는 것은 그 문장이 그리는 그림이 아니다.** 실제로 벽이
+갈렸다: 앱은 `.env` 의 420 을, 브리지는 기본 120 을 들고 돌았고 작은 쪽이 이긴다.
+이미 환경에 있는 값이 이긴다 — 파일은 **비어 있는 칸만** 채운다.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import pathlib
 import subprocess
 import tempfile
 import sys
@@ -46,7 +57,52 @@ _DOORS_CLOSED = [
 #:
 #: 참고로 이 배포의 내역(2026-09-19 실측): 검색 2.3초 · 합성 44.6초(답변 1,410자·근거 26).
 #: 벽보다 먼저 볼 값은 **합성이 무엇에 그 시간을 쓰는가**다.
+def _load_env_file() -> str | None:
+    """`nexus/.env` 의 값으로 **비어 있는 환경 변수만** 채운다. 채운 파일 경로를 돌려준다.
+
+    ⛔ **이미 있는 값을 덮지 않는다.** 셸이나 compose 가 준 값이 파일보다 세다 — 그 반대로
+    만들면 운영자가 한 번 지정한 것을 파일이 조용히 되돌린다.
+
+    ⚠ **`_DEFAULT_TIMEOUT` 보다 먼저 돌아야 한다.** 그 상수는 import 시점에 한 번 읽히므로,
+    뒤에 두면 파일을 읽고도 옛 기본값으로 굳는다.
+    """
+    path = pathlib.Path(__file__).resolve().parents[2] / ".env"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        os.environ.setdefault(key.strip(), val.strip())
+    return str(path)
+
+
+#: `_load_env_file()` 이 실제로 읽은 경로. `main()` 이 채운다.
+#:
+#: ⛔ **import 시점에 읽지 않는다** (2026-09-20, 내가 그렇게 만들었다가 되돌렸다).
+#: 모듈을 들여오는 것만으로 `os.environ` 이 바뀌면 그 프로세스의 **다른 모든 것**이 같이
+#: 바뀐다 — 실제로 검사 셋이 깨졌다(임베딩 세대가 `.env` 값으로 넘어가 배포 대조군과
+#: span 게이트가 다른 세대를 보게 됐다). 이 리포는 그 모양에 이미 데였다(#503).
+#: `.env` 는 **프로그램으로 돌 때**만 읽는다.
+ENV_FILE: str | None = None
+
+#: 기본 벽. 이 상수는 **문서화된 기본값**이고 `.env` 와 무관하다 — 그 사실을
+#: `test_bridge_timeout_is_configurable` 이 고정한다.
 _DEFAULT_TIMEOUT = float(os.getenv("NEXUS_LLM_BRIDGE_TIMEOUT", "120") or 120)
+
+
+def current_timeout() -> float:
+    """지금 이 순간의 벽. **호출 시점에 읽는다.**
+
+    ⛔ `main()` 이 `.env` 를 읽은 뒤에 요청이 오므로, 모듈 상수로 굳히면 파일을 읽고도
+    옛 값으로 돈다. 그 갈림은 조용하고 504 가 날 때까지 안 보인다 — 실제로 앱 420 ·
+    브리지 120 으로 갈려 돌았다.
+    """
+    raw = os.getenv("NEXUS_LLM_BRIDGE_TIMEOUT")
+    return float(raw) if raw else _DEFAULT_TIMEOUT
 
 
 def build_argv(model: str | None) -> list[str]:
@@ -249,9 +305,10 @@ def handle_generate(
     *,
     runner=_subprocess_runner,
     token: str = "",
-    timeout: float = _DEFAULT_TIMEOUT,
+    timeout: float | None = None,
 ) -> tuple[int, dict]:
     """POST /v1/generate 의 순수 로직. (status, body) 반환. 서버/소켓과 분리해 단위 테스트한다."""
+    timeout = current_timeout() if timeout is None else timeout
     # 인증: 토큰이 설정돼 있으면 헤더가 일치해야 한다. 불일치면 claude 를 절대 부르지 않는다.
     if token and token_header != token:
         return 403, {"error": "forbidden: bad or missing X-Bridge-Token"}
@@ -285,9 +342,10 @@ def handle_vision(
     *,
     runner=_subprocess_runner,
     token: str = "",
-    timeout: float = _DEFAULT_TIMEOUT,
+    timeout: float | None = None,
 ) -> tuple[int, dict]:
     """POST /v1/vision 의 순수 로직. (status, body)."""
+    timeout = current_timeout() if timeout is None else timeout
     if token and token_header != token:
         return 403, {"error": "forbidden: bad or missing X-Bridge-Token"}
 
@@ -368,6 +426,10 @@ def _say(line: str) -> None:
 
 
 def main() -> None:
+    # ⛔ **여기서 읽는다, import 에서가 아니다** (위 `ENV_FILE` 주석). 그리고 토큰 검사보다
+    #    먼저다 — 토큰도 이 파일에 있으므로, 뒤에 두면 파일이 있는데도 시동을 거부한다.
+    global ENV_FILE
+    ENV_FILE = _load_env_file()
     # 토큰은 필수(§5). 무인증 + claude 실행이라 토큰 없이는 시동 거부한다.
     token = os.getenv("NEXUS_LLM_BRIDGE_TOKEN", "")
     if not token:
@@ -382,6 +444,11 @@ def main() -> None:
     _Handler.token = token
     _say(f"claude-code LLM 브리지: http://{host}:{port}/v1/generate  (dev 전용, 툴 전면 차단)")
     _say(f"  동시 실행 한도 {_MAX_CONCURRENT} — 소켓은 열어 두고 생성만 줄 세운다")
+    # ⛔ **벽을 시동에서 말한다.** 안 적혀 있던 동안, 다른 값으로 도는 브리지가 조용히 섰고
+    #    그 사실은 504 가 날 때까지 아무 데도 안 보였다 (실측 2026-09-20: 앱 420 · 브리지 120).
+    _say(f"  생성 벽 {current_timeout():g}초 "
+         f"({'nexus/.env' if ENV_FILE else '환경변수/기본값'}) · "
+         f"작업 디렉터리 {neutral_cwd()}")
     ThreadingHTTPServer((host, port), _Handler).serve_forever()
 
 
