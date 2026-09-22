@@ -87,7 +87,22 @@ async def collect_files(
         found += 1
 
         try:
-            raw_content = file_path.read_text(encoding="utf-8")
+            # ⛔ **`utf-8` 이 아니라 `utf-8-sig` 다** (실측 2026-09-23). BOM(U+FEFF)으로
+            # 시작하는 파일을 `utf-8` 로 읽으면 그 글자가 **본문 맨 앞에 남는다.** 눈에는
+            # 안 보이고 `\s` 에도 안 걸린다(Unicode 분류가 공백이 아니라 Cf 다). 그래서:
+            #
+            #   `<BOM>---\ntitle: …`  → `frontmatter.loads` 가 머리말을 **통째로 못 본다**
+            #                            (`metadata == {}`: 제목·종류·라벨·`updated` 전부 유실)
+            #   `<BOM># ADR 44 — …`   → 첫 헤딩 정규식이 H1 을 건너뛰고 **다음 `##` 을**
+            #                            제목으로 잡는다
+            #
+            # ⭐ 후자가 실물로 나왔다: 마운트된 39개 중 BOM 이 셋이고, 제목이 `1. 맥락 및
+            # 배경` 으로 겹친 문서가 **정확히 그 셋**이었다. 인용은 `title` 로 문서를
+            # 가리키므로, 셋이 인용에서 서로 구별되지 않았다. 설명 층이 근거 목록에서
+            # 그 제목을 보고 알려 줬다 — 이쪽 검사는 아무것도 안 울렸다.
+            #
+            # `utf-8-sig` 는 BOM 이 있으면 떼고 없으면 `utf-8` 과 같다.
+            raw_content = file_path.read_text(encoding="utf-8-sig")
         except Exception as e:
             logger.warning("file_read_failed", path=str(file_path), error=str(e))
             continue
