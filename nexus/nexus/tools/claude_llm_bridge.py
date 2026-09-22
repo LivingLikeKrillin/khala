@@ -77,8 +77,12 @@ ENV_PREFIX = "NEXUS_LLM_BRIDGE_"
 
 #: 자식에게 **절대 물려주지 않는** 것. 접두사 규칙과 별개로 한 겹 더 건다 — 파일이 아니라
 #: **띄운 셸**이 들고 있어도 같은 일이 난다. 이 브리지는 무엇을 물려받았든 키 없이 돈다.
-BLOCKED_CHILD_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
-                     "CLAUDE_CODE_OAUTH_TOKEN", "GEMINI_API_KEY", "OPENAI_API_KEY")
+#: 이 중 하나라도 있으면 `claude` 가 **어느 계정으로 도는지**가 바뀐다. 다른 공급자의 키와
+#: 성질이 다르다 — 저쪽은 자식에게 쓸모없는 값이고, 이것은 **자식의 정체를 바꾼다.**
+STEERS_CLAUDE = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+                 "CLAUDE_CODE_OAUTH_TOKEN")
+
+BLOCKED_CHILD_ENV = (*STEERS_CLAUDE, "GEMINI_API_KEY", "OPENAI_API_KEY")
 
 
 def child_env() -> dict[str, str]:
