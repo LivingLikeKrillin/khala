@@ -817,6 +817,15 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 동안 표면들은 "잘 찾았다" 와 "제일 덜 나쁜 걸 골랐다" 를 구별할 수 없었고,
                 # 서버는 프롬프트만 바꾸고 그 사실을 혼자 알고 있었다.
                 "weak_evidence": answer_result.weak_evidence,
+                # ⛔ **판정만 내보내면 같은 문장이 한 층 아래에서 다시 참이 된다** (실측
+                # 2026-09-22). 소비자는 `weak_evidence` 를 받는데 그것이 문턱에 **겨우 걸린
+                # 것**인지 한참 밖인지 못 가른다 — 두 값은 서버만 갖고 있었다. 그리고 그
+                # 문턱(0.48 / 1.5)은 아직 가설이고, 옮길 트리거는 *중간 구간에서 발동한 질의*
+                # 다. 그것을 볼 수 있는 쪽은 질의를 지은 소비자이지 서버가 아니다.
+                # ⚠ `None` 은 그 경로가 **못 낸 것**이다 — 0 이 아니다(`Confidence.weak` 가
+                # `None` 을 약함의 근거로 안 쓰는 것과 같은 이유).
+                "top_distance": search_result.confidence.top_distance,
+                "top_bm25": search_result.confidence.top_bm25,
                 "degraded": search_result.degraded,
                 "enrichment_failed": search_result.enrichment_failed,
                 # **생성 실패는 답변이 아니다.** 이 플래그가 없는 동안 클라이언트는 둘을 구별할
@@ -1298,6 +1307,16 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             llm_failed = False
             llm_failure_reason = None
             usage_out: list = []
+            # ⛔ **이 경로는 적합도 계약을 아예 안 받고 있었다** (실측 2026-09-22). 아래
+            # `build_prompts` 호출이 `weak_evidence` 를 안 넘겨 **기본 인자가 「약하지 않다」로
+            # 조용히 떨어졌다.** 그래서 `search/confidence.py` 가 막으려던 바로 그 실패 —
+            # 이름을 물었는데 근거를 채워 표를 길게 답하는 것 — 이 **사람이 보는 표면**에서
+            # 그대로 살아 있었다. 비스트림만 계약을 지켰다.
+            # ⚠ `build_prompts` 머리말은 "둘을 따로 조립하면 … 테스트가 초록인 채로 조용히
+            # 틀린다" 고 적어 뒀는데, 이번 구멍은 따로 조립한 것이 아니라 **기본값**이었다.
+            # `EMPTY_OR_FAILED_READBACK_AUDIT.md` §5 가 안 센 방법으로 `기본 인자` 를 이름만
+            # 적어 뒀고, 여기가 그 실물이다.
+            weak_evidence = search_result.confidence.weak
             if not packet.snippets:
                 _payload = json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)
                 yield f"event: answer_delta\ndata: {_payload}\n\n"
@@ -1310,7 +1329,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # 웹이 쓰는 것이 이 경로다 — 비스트림만 고치면 사람이 보는 표면은 그대로
                 # 사용자 문장을 무시한다 (SPEC-nexus-multi-turn-narration §3.1).
                 system_prompt, user_prompt = build_prompts(
-                    search_query, evidence_text, req.query)
+                    search_query, evidence_text, req.query,
+                    weak_evidence=weak_evidence)
 
                 try:
                     async for chunk in llm_svc.stream(system_prompt, user_prompt, usage_out=usage_out):
@@ -1419,6 +1439,13 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 "excluded_doc_types": search_result.excluded_doc_types,
                 "identifier_channel": search_result.identifier_channel,
                 "identifier_channel_asked": req.identifier_channel,
+                # ⛔ **이 표면에는 `weak_evidence` 가 아예 없었다** (실측 2026-09-22). 바로 위
+                # 주석이 "한 표면만 빠뜨리면 그 표면의 소비자만 조용히 못 본다" 라고 적고
+                # 있는 동안, 이 경로의 소비자는 *판정 자체*를 못 봤다 — 서술 계약이 바뀐
+                # 답을 받으면서 왜 짧은지 알 길이 없었다. 웹 채팅이 타는 경로가 여기다.
+                "weak_evidence": weak_evidence,
+                "top_distance": search_result.confidence.top_distance,
+                "top_bm25": search_result.confidence.top_bm25,
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 
