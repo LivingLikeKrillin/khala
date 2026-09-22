@@ -100,6 +100,44 @@ def test_the_note_says_not_to_cite_the_interpreter_instead():
     assert "해석한 다른 문서를 대신 인용하지 마라" in P.note_for(_WROTE)
 
 
+def test_the_note_forbids_laundering_a_citation_out_of_the_document():
+    """⛔⛔ **같은 판에서 나온 둘째 — 인용 세탁 (2026-09-23).**
+
+    그 설명 문서의 카드 줄 안에 `[출처: 인터페이스 계약 명세서 …]` 가 **글자로 적혀 있었고**,
+    답이 그것을 **제 인용으로 옮겨 적었다.** 그 사람 문서는 이번 꾸러미에 없었다. 지난 LLM
+    답의 인용이 새 답의 인용으로 승격된다 — **한 세대에 한 번씩 근거 없이 신뢰가 오른다.**
+
+    ⚠ **오늘 걸린 것은 우연이다.** 그 문서가 없어서 `verified:false` 가 났다. 있었으면
+    **검증을 통과하고 세탁은 안 보였다.** 검증기로는 못 막고 계약이 막아야 한다.
+    """
+    note = P.note_for(_WROTE)
+    assert "이 문서의 내용이지 네 근거가 아니다" in note
+    assert "옮겨 적지 마라" in note
+
+
+def test_an_unmatched_citation_keeps_its_raw_string(monkeypatch):
+    """⭐ **검증기는 제 일을 했다** — 여기서 고칠 것이 없다는 것을 박아 둔다.
+
+    세탁된 인용이 `verified: false` 로 났다. 꾸러미에 그 문서가 없으므로 **맞는 판정**이다.
+    그리고 제목·절을 **임의로 가르지 않고 원문 그대로 남긴다** — 대조할 이름이 없는데
+    쉼표에서 자르면 **없는 절 이름을 만들어 낸다.**
+    """
+    from nexus.llm.citations import validate_citations
+    from nexus.search.evidence_packet import EvidencePacket, EvidenceSnippet
+
+    s = EvidenceSnippet(chunk_rid="c1", doc_rid="d1", doc_title="꾸러미에 있는 문서",
+                        section_path="1절", source_uri="t:x.md", text="본문",
+                        score=0.9, classification="INTERNAL")
+    r = validate_citations("주장[출처: 꾸러미에 없는 문서 — 부제, 3. 어느 절].",
+                           EvidencePacket(snippets=[s]))
+
+    assert r.unverified_count == 1
+    c = r.citations[0]
+    assert c.verified is False
+    assert c.title == "꾸러미에 없는 문서 — 부제, 3. 어느 절", "원문을 안 지켰다"
+    assert c.section == "", "대조할 문서가 없는데 절 이름을 지어냈다"
+
+
 def test_the_note_names_no_producer():
     """⚠ **등급은 어휘이지 어느 층의 것이 아니다.** 다른 기계가 써도 같은 말이어야 한다."""
     for name in ("narrator", "picasso", "khala"):
