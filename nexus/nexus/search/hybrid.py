@@ -105,6 +105,17 @@ class SearchResult:
     #: **"아무것도 못 찾았다" 와 "죽었다" 는 다른 사실**이고, 그 둘이 구별되지 않는 것이
     #: 이 코드베이스가 반복해서 찾아낸 결함이다. 호출자에게도 그대로 나간다.
     degraded: list[str] = field(default_factory=list)
+    #: **터진 보강 패스의 이름** (`section_fill` · `corrections` · `pairs`).
+    #:
+    #: ⛔ **`degraded` 에 넣지 않는다** — 그 칸의 어휘는 `LEGS` 가 정본이고 경로만 담는다.
+    #: 보강은 경로가 아니라 순위 뒤에 붙는 덧붙임이라 죽어도 순위가 그대로다.
+    #:
+    #: ⛔ **왜 있나 (2026-09-22).** 세 보강 패스가 전부 실패를 삼키고 **빈 목록**을 돌려줬다.
+    #: 정책은 맞다(보강이 죽었다고 검색을 버리면 안 된다). 틀린 것은 **그 뒤로 「터졌다」와
+    #: 「채울 것이 없었다」가 같은 값**이었다는 것이다 — 응답에도, 기록에도, 부른 쪽에도.
+    #: 이 리포는 같은 단계의 `fired` 로 「꺼져 있었다」와 「켜졌는데 0」은 이미 갈라 놨고,
+    #: **셋째 경우만 빠져 있었다.**
+    enrichment_failed: list[str] = field(default_factory=list)
     #: 상한을 꽉 채운 문서의 **남은 절**(`search/section_fill.py`). 근거로만 가고 **순위에는
     #: 안 들어간다** — 사람이 보는 목록·Recall·Top-1 은 이 필드가 있든 없든 같다.
     fill: list[SearchHit] = field(default_factory=list)
@@ -655,10 +666,14 @@ async def _enrich_hits(
 
 async def _fill_sections(
     hits: list[SearchHit], tenant: str, clearance: str, per_doc_cap: int,
-) -> list[SearchHit]:
-    """상한을 채운 문서의 남은 절 → `SearchHit`. 실패는 삼키되 **조용하지 않게**.
+) -> tuple[list[SearchHit], bool]:
+    """(채운 절, **터졌는가**). 실패는 삼키되 **조용하지 않게**.
 
     채움은 보강이다. 이게 죽었다고 검색 결과까지 버리면, 있던 답도 못 준다.
+
+    ⛔ **그런데 「조용하지 않게」가 로그까지였다.** 부른 쪽이 받는 값은 두 경우에 똑같은
+    빈 목록이었다 — `_vector_leg` 가 *"빈 결과와 죽은 경로를 구분해서 돌려준다"* 고 적고
+    그렇게 하는 동안, 같은 파일의 이 함수는 안 그랬다. 둘째 값이 그 구분이다.
     """
     from nexus.search.section_fill import (
         fill_for_docs,
@@ -686,11 +701,11 @@ async def _fill_sections(
                 tenant, clearance, sections, exclude | {r["rid"] for r in rows})
     except Exception as e:  # noqa: BLE001 — 보강 실패가 검색을 죽이면 안 된다
         logger.warning("section_fill_failed", error=str(e), docs=len(docs))
-        return []
+        return [], True
     if not rows:
-        return []
+        return [], False
 
-    return [SearchHit(
+    return ([SearchHit(
         rid=r["rid"],
         doc_rid=r["doc_rid"],
         doc_title=r["doc_title"] or "",
@@ -712,7 +727,7 @@ async def _fill_sections(
         updated_at=r["updated_at"],
         labels=list(r["labels"] or []),
         tenant=r["tenant"] or "",
-    ) for r in rows]
+    ) for r in rows], False)
 
 
 async def hybrid_search(
@@ -907,7 +922,10 @@ async def hybrid_search(
     # 향하고 다른 테스트의 이벤트 루프까지 망가뜨린다 — 2026-08-18 CI 에서 실제로 그렇게 됐다.
     # 배포는 config.yaml 로 켠다.
     if search_cfg.get("section_fill", False):
-        result.fill = await _fill_sections(result.hits, tenant, clearance, per_doc_cap)
+        result.fill, _fill_failed = await _fill_sections(
+            result.hits, tenant, clearance, per_doc_cap)
+        if _fill_failed:
+            result.enrichment_failed.append("section_fill")
         if spans is not None:
             # 포화가 이 실행의 **방아쇠**였는가 — `_fill_sections` 내부의 `saturated_docs` 와
             # 같은 순수 함수를 다시 불러 얻는다. 이미 있는 `result.hits` 위에서 도는 목록
@@ -918,10 +936,13 @@ async def hybrid_search(
                 Candidate(rank=i + 1, doc_rid=h.doc_rid, chunk_rid=h.rid, raw_score=h.score)
                 for i, h in enumerate(result.fill)
             ]
-            spans.add_section_fill(candidates=fill_cands, trigger_saturated=trigger_saturated)
+            spans.add_section_fill(candidates=fill_cands, trigger_saturated=trigger_saturated,
+                                   failed=_fill_failed)
     elif spans is not None:
         # 안 돌았다는 사실도 남긴다 — "이 단계는 켜져 있었는데 후보가 0 이었다" 와
         # "이 단계가 아예 꺼져 있었다" 는 다른 사실이고, `fired` 가 그 둘을 가른다.
+        # ⭐ **셋째가 있다**: "켜졌고 터졌다". 그것은 `detail.failed` 가 가른다 — 앞의 둘과
+        #    같은 빈 후보 목록으로 남으므로, 이 칸이 없으면 기록에서 영영 구별되지 않는다.
         spans.add_section_fill(candidates=[], trigger_saturated=False, fired=False)
 
     # Graph 보강 (route에 따라)

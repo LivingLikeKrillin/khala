@@ -106,10 +106,18 @@ class SpanSet:
                          detail={"top_k": top_k, "per_doc_cap": per_doc_cap})
 
     def add_section_fill(self, *, candidates: list[Candidate], trigger_saturated: bool,
-                         fired: bool = True) -> StageSpan:
+                         fired: bool = True, failed: bool = False) -> StageSpan:
+        """⭐ **이 단계의 경우는 셋이다.** `fired` 가 둘을, `failed` 가 셋째를 가른다.
+
+            fired=False              아예 꺼져 있었다
+            fired=True  failed=False 켜졌고 채울 것이 없었다
+            fired=True  failed=True  켜졌고 **터졌다**
+
+        셋 다 후보 목록이 비어 있으므로, `failed` 가 없으면 기록에서 셋째가 둘째로 읽힌다.
+        """
         return self._add("section_fill", candidates, fired=fired,
                          n_in=None, n_out=len(candidates),
-                         detail={"trigger_saturated": trigger_saturated})
+                         detail={"trigger_saturated": trigger_saturated, "failed": failed})
 
     def add_packet(self, *, candidates: list[Candidate], n_snippets: int,
                    n_graph_edges: int) -> StageSpan:

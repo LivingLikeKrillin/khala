@@ -66,7 +66,8 @@ def mates_from(rows: list[dict]) -> dict[str, list[str]]:
 
 
 async def paired_chunks(hits, tenant: str | Sequence[str], clearance: str, *,
-                        exclude_rids=None, exclude_doc_types=()) -> list[dict]:
+                        exclude_rids=None, exclude_doc_types=(),
+                        failed: list | None = None) -> list[dict]:
     """상위 히트 문서들의 **짝 문서** 청크. 실패는 삼키되 조용하지 않게.
 
     ⛔ **짝은 히트 밖의 문서를 데려온다 (실측 2026-09-20).** 이 조회는 `/specs/`·`/plans/`
@@ -99,6 +100,9 @@ async def paired_chunks(hits, tenant: str | Sequence[str], clearance: str, *,
                                   set(exclude_rids or ()) | {h.rid for h in hits})
     except Exception as e:  # noqa: BLE001 — 보강 실패가 검색을 죽이면 안 된다
         logger.warning("pair_expansion_failed", error=str(e))
+        # ⛔ **빈 목록 하나로 「짝이 없다」와 「짝을 못 봤다」를 둘 다 말하지 않는다.**
+        if failed is not None and "pairs" not in failed:
+            failed.append("pairs")
         return []
     if out:
         logger.info("pair_expansion", docs=len(wanted), added=len(out))
