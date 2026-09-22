@@ -262,28 +262,36 @@ auth:
       capabilities: []          # 기본 거부 = 읽기 전용
       read_tenants: ["picasso"]
 
-    # ⏸ **설명 층의 운영자 질의** — `read_tenants: ["picasso", "narrator"]`.
+    # **설명 층의 운영자 질의** — 지난 설명과 사람이 쓴 근거를 **한 꾸러미에** 받는 유일한
+    # 신원이다. 사건 바퀴(위)는 `narrator` 에 닿을 수 없다.
     #
-    # ⛔ **막혀 있다: `clearance_equivalence_verified` 가 없다.** 원소 둘 이상은 그 한 줄을
-    # 요구하고, 그것은 *"두 테넌트의 등급 어휘를 대 봤다"* 는 **사람의 선언**이다. 대신
-    # 적지 않는다.
+    # ── `clearance_equivalence_verified` 에 대하여 ────────────────────────────
     #
-    # ⭐ **대조는 측정해 뒀다 (2026-09-23).** 선언이 싸지라고 남긴다:
-    #     picasso    문서 45 · 조각 465 — 전부 INTERNAL
+    # 이 한 줄은 *"두 테넌트의 등급 어휘를 대 봤다"* 는 선언이고, 원소 둘 이상을 열려면
+    # 있어야 한다(`auth/config.py: MAX_READ_TENANTS_UNVERIFIED`).
+    #
+    # ⛔ **누가 무엇을 했는지 정확히 적는다.** 대조를 **측정한 것은 에이전트**이고, 그것을
+    # 선언으로 올리라고 **지시한 것은 소유자**다(2026-09-23). 에이전트가 혼자 적은 것이
+    # 아니고, 사람이 따로 눈으로 대조한 것도 아니다. 이 줄을 나중에 읽는 사람이 「사람이
+    # 검토했다」로 읽으면 안 된다.
+    #
+    # ⭐ **켜는 날 다시 셌다** (측정이 한 시간 전 것이었고 그 사이 코퍼스가 세 번 움직였다):
+    #     picasso    문서 45 · 조각 331 — 전부 INTERNAL
     #     narrator   문서  5 · 조각  36 — 전부 INTERNAL
+    #     격리된 조각 0
     #   두 테넌트의 등급 **값 집합이 같고**(`{INTERNAL}`) 한쪽에만 있는 등급이 없다.
     #   ⇒ 둘을 함께 여는 것이 노출을 바꾸지 않는다.
-    #   ⚠ 이것은 **그날의 사실**이다 — `picasso` 에 `RESTRICTED` 가 한 건 들어오는 순간
-    #   이 문장은 낡는다. 켤 때 다시 센다.
     #
-    # 소유자가 아래 주석을 풀고 날짜를 적으면 켜진다. 이 신원은 출처 등급 단계에서 쓴다.
-    # - name: "narrator-operator"
-    #   token_sha256: "9776948b7ab6ba834ecba60aeae3dfdc3e8a626569399a9f3c15f0568a93650b"
-    #   tenant: "picasso"
-    #   clearance: "INTERNAL"
-    #   capabilities: []
-    #   read_tenants: ["picasso", "narrator"]
-    #   clearance_equivalence_verified: "2026-09-23"
+    # ⚠ **이것은 그날의 사실이다.** `picasso` 나 `narrator` 에 `INTERNAL` 이 아닌 문서가
+    # 한 건이라도 들어오는 순간 이 줄은 낡고, **낡았다는 것은 아무 데서도 안 울린다.**
+    # 그 코퍼스의 등급을 늘릴 때 이 줄을 같이 본다.
+    - name: "narrator-operator"
+      token_sha256: "9776948b7ab6ba834ecba60aeae3dfdc3e8a626569399a9f3c15f0568a93650b"
+      tenant: "picasso"
+      clearance: "INTERNAL"
+      capabilities: []          # 기본 거부 = 읽기 전용
+      read_tenants: ["picasso", "narrator"]
+      clearance_equivalence_verified: "2026-09-23"
 
   # ── Cloudflare Access (per-person browser identity) — OFF by default ──
   # 설정하면 Nexus 는 자신이 Access 뒤에 있다고 선언한다: Cf-Access-Jwt-Assertion 헤더를
