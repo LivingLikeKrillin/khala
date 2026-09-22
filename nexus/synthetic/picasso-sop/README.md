@@ -73,7 +73,18 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 상태·판정 어휘도 같이 실었다: `residualHold` · `expectedHold`/`observedHold`/
 `effectMismatch` (SOP-01·02), `preconditionSubjects` (SOP-03), `UNVERIFIED` ·
 `VERIFICATION_MISMATCH` (SOP-02), 탐색 대장의 `FOUND`/`NONE`(`NO_CAPABILITY` ·
-`DEPTH_LIMIT`)/`WITHHELD` (SOP-03).
+`DEPTH_LIMIT`)/`WITHHELD`/`SOURCE_MISSING` (SOP-03).
+
+⛔ **`SOURCE_MISSING` 은 2026-09-22 에 뒤늦게 들어왔다.** 미들웨어가 그 갈래를 만들면서
+설계 문서 둘(`orchestration.md` 의 대장 표 · `limits.md` §15.183)에는 적었는데, 이 SOP 의
+결과 갈래 표에는 셋만 있었다. **설명 계층이 그 토큰으로 물었을 때 코퍼스에 낱말이 없어
+답이 안 나왔고**, 그렇게 바깥에서 보고가 와서야 알았다.
+
+⚠ **이 갱신은 측정 경계를 만든다.** 식별자 채널(사전 등록 T2)은 코퍼스에 있는 낱말만
+도울 수 있으므로, 이 줄을 더한 뒤의 실행과 그 전의 실행은 **같은 코퍼스가 아니다.**
+설명 계층이 자기 기록의 환경 칸에 코퍼스 판을 적고 그 경계를 가로질러 비교하지 않기로 했다.
+⛔ 그래서 **고친 시각을 같이 알려야 한다** — 값만 고치고 말하지 않으면 저쪽 대조가
+조용히 섞인다.
 
 ## ⚠ 비운 여섯도 완전한 공백은 아니다
 
