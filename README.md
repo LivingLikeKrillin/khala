@@ -110,7 +110,7 @@ task models    # 또는: docker compose -f nexus/docker-compose.yml exec nexus-o
 | **사전 등록 평가 판정식** | 푸시 · PR | 벤치마크 점수 확인 후 사후 변경된 평가 규칙 | 라벨 서명 및 실행 전에 판정식을 확정하여 평가의 객관성과 재현성 보장. |
 | **지정 평가 코퍼스 검증** | 푸시 · PR | 대상 코퍼스가 불명확하거나 도달할 수 없는 질의 평가 | 잘못된 테넌트를 측정하여 점수가 왜곡되는 벤치마크 오류 원천 차단. |
 
-전체 리포지토리에는 3,226 test functions가 선언되어 있고 17 CI jobs 파이프라인에서 지속 검증되며, 실제 마이그레이션이 적용된 PostgreSQL 환경에서 테스트를 실행합니다. 또한 아키텍처 의사결정 거버넌스 아티팩트(10 ADRs, 54 SPECs) 중 승인·수용 상태의 61건은 SHA-256 무결성 해시로 스탬프되어 CI 파이프라인에서 변조 여부를 지속 검증합니다. 이 네 가지 수치는 매 푸시마다 `scripts/check_readme_counts.py`에 의해 결정론적으로 검증됩니다.
+전체 리포지토리에는 3,227 test functions가 선언되어 있고 17 CI jobs 파이프라인에서 지속 검증되며, 실제 마이그레이션이 적용된 PostgreSQL 환경에서 테스트를 실행합니다. 또한 아키텍처 의사결정 거버넌스 아티팩트(10 ADRs, 54 SPECs) 중 승인·수용 상태의 61건은 SHA-256 무결성 해시로 스탬프되어 CI 파이프라인에서 변조 여부를 지속 검증합니다. 이 네 가지 수치는 매 푸시마다 `scripts/check_readme_counts.py`에 의해 결정론적으로 검증됩니다.
 
 - **[→ 엔지니어링 로그 (Engineering Log)](https://livinglikekrillin.github.io/khala/ko/engineering-log/)**: 시스템이 겪은 결함, 이를 포착한 계층, 그리고 아키텍처 개선 이력을 투명하게 기록한 분석 로그입니다.
 - **[→ 오픈 이슈 원장 (OPEN.md)](./OPEN.md)**: 미해결 과제를 상태머신 원장으로 집계하여 관리합니다.

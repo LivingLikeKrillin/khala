@@ -108,7 +108,7 @@ A system whose promise is calibration must hold itself to the same standard. The
 | **Pre-registered verdict rules** | Push · PR | An evaluation harness edited after seeing the score it produced | Enforces objective evaluation rules before benchmark execution. |
 | **Declared evaluation corpus** | Push · PR | A label run where nobody said which corpus to ask, or where no label can reach the one being asked | Prevents benchmark evaluation against invalid tenants or corpora. |
 
-Across the repository, 3,226 test functions are declared and 17 CI jobs run in CI, including real Postgres integration with schema migrations. Among governance artifacts (10 ADRs, 54 SPECs), 61 approved or accepted artifacts are stamped and cryptographically verified for integrity in CI via `scripts/ledger_integrity.py`.
+Across the repository, 3,227 test functions are declared and 17 CI jobs run in CI, including real Postgres integration with schema migrations. Among governance artifacts (10 ADRs, 54 SPECs), 61 approved or accepted artifacts are stamped and cryptographically verified for integrity in CI via `scripts/ledger_integrity.py`.
 
 - **[→ Engineering log](https://livinglikekrillin.github.io/khala/engineering-log/)** — A dated record of what went wrong, how defects were discovered, and what was remediated.
 - Open items are tracked deterministically in [OPEN.md](./OPEN.md).

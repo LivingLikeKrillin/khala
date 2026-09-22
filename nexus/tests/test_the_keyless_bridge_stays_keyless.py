@@ -97,21 +97,34 @@ def test_the_blocked_list_covers_what_the_cli_named():
     assert "ANTHROPIC_API_KEY" in bridge.BLOCKED_CHILD_ENV
 
 
+def test_the_two_lists_do_not_cancel_each_other():
+    """막는 이름이 브리지 접두사와 겹치면 두 규칙이 서로를 무효로 만든다."""
+    assert set(bridge.STEERS_CLAUDE) <= set(bridge.BLOCKED_CHILD_ENV)
+    assert not any(n.startswith(bridge.ENV_PREFIX) for n in bridge.BLOCKED_CHILD_ENV)
+
+
 @pytest.mark.skipif(not (
     __import__("pathlib").Path(bridge.__file__).resolve().parents[2] / ".env").exists(),
     reason="이 배포에만 있는 파일")
-def test_this_deployment_would_have_leaked(monkeypatch):
-    """⭐ **대조군 — 이 배포의 `.env` 에 실제로 막을 것이 들어 있다.**
+def test_this_deployment_keeps_no_credential_that_steers_claude():
+    """⭐ **없는 키는 샐 수가 없다** (소유자 결정, 2026-09-22).
 
-    없으면 위 검사들이 전부 빈 총이다. 값은 절대 읽지 않고 **키 이름만** 본다.
+    위 필터 둘은 필터다. 이것은 **재료를 안 두는 쪽**이고, 그래서 더 세다.
+
+    ⛔ 2026-09-20 에 `ANTHROPIC_API_KEY` 가 이 파일에 있었고 **실제로 과금됐다.**
+    지금 이 배포는 `NEXUS_LLM_PROVIDER=claude-code` 라 그 키를 아무도 안 쓴다 —
+    쓰는 곳은 `providers/llm.py` 의 anthropic 백엔드뿐이다. 유료 백엔드로 측정할 일이
+    생기면 그때 넣고, **먼저 말하고 허락을 받는다**(`nexus/CLAUDE.md`).
+
+    ⚠ **다른 공급자의 키는 안 본다.** 그것들은 `claude` 의 정체를 안 바꾼다 — 자식
+    환경에서 빼는 것으로 충분하고, 이 파일에 있는 것 자체는 이 검사의 대상이 아니다.
+    값은 절대 읽지 않고 **키 이름만** 본다.
     """
     import pathlib
 
     path = pathlib.Path(bridge.__file__).resolve().parents[2] / ".env"
-    names = {ln.split("=", 1)[0].strip()
-             for ln in path.read_text(encoding="utf-8").splitlines()
-             if "=" in ln and not ln.strip().startswith("#")}
-    assert names & set(bridge.BLOCKED_CHILD_ENV), \
-        "이 배포의 .env 에 막을 것이 없다 — 그러면 위 검사들이 무엇도 안 지킨다"
-    assert not any(n.startswith(bridge.ENV_PREFIX) for n in (names & set(bridge.BLOCKED_CHILD_ENV))), \
-        "막는 이름이 브리지 접두사와 겹친다 — 두 규칙이 서로를 무효로 만든다"
+    live = {ln.split("=", 1)[0].strip()
+            for ln in path.read_text(encoding="utf-8").splitlines()
+            if "=" in ln and not ln.lstrip().startswith("#")}
+    assert not (live & set(bridge.STEERS_CLAUDE)), \
+        f"배포의 .env 에 `claude` 의 계정을 바꾸는 값이 있다: {sorted(live & set(bridge.STEERS_CLAUDE))}"
