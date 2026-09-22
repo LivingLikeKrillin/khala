@@ -22,6 +22,7 @@ from nexus.search.anchor_status import (
     statuses_for_chunks,
 )
 from nexus.search.hybrid import SearchHit
+from nexus.llm.citations import as_quoted_content
 from nexus.search.provenance import mark as prov_mark
 from nexus.search.provenance import note_for
 from nexus.search.spans import Candidate
@@ -263,7 +264,19 @@ def format_for_llm(packet: EvidencePacket) -> str:
         #
         # `getattr` 인 이유: packet 을 손으로 만드는 호출부(테스트 픽스처, 다른 조립 경로)가
         # 이 필드를 모를 수 있다. 없으면 짧은 쪽으로 떨어진다 — 프롬프트가 비는 것보다 낫다.
-        parts.append(f"\n{getattr(s, 'full_text', '') or s.text}")
+        # ⛔ **인용 문법 그대로인 문자열을 모델에게 먹이지 않는다** (실측 2026-09-23).
+        #    기계가 **쓴** 근거의 본문에는 `[출처: …]` 가 글자로 들어 있다 — 그 층의 지난
+        #    답이 남긴 것이다. 답이 그것을 **제 인용으로 옮겨 적었고**(그 문서는 꾸러미에
+        #    없었다), 등급 주석으로 막았는데 **넷 중 하나에서 다시 났다.**
+        #
+        # ⭐ **이 자리는 애초에 우리가 만든 것이다.** 우리 문법 그대로인 문자열을 주고 그
+        #    문법으로 인용을 쓰라고 시킨다. ⇒ 주석이 *"이것은 내용이다"* 라고 **말하는**
+        #    대신, 여기서 **내용으로 보여 준다.** 지우지는 않는다 — 그 설명이 무엇을 근거로
+        #    댔는지는 그 문서의 내용이다.
+        #
+        # ⚠ 실측: 인용 문법이 든 조각은 `machine_written` **12개뿐**이고 사람 글 8,622개와
+        #    기계가 읽은 203개에는 **0건**이다. 그래서 다른 근거의 프롬프트는 안 바뀐다.
+        parts.append(f"\n{as_quoted_content(getattr(s, 'full_text', '') or s.text)}")
 
     # 코드의 현재 값 — **문서가 아니다.** 그 구별이 프롬프트에 보여야 규칙 7(근거가 어긋나면
     # 감추지 마라)이 볼 것을 갖는다. 비면 한 줄도 안 나가므로 오늘 프롬프트와 같다.
