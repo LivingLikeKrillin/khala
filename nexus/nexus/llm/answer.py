@@ -236,7 +236,20 @@ async def generate_answer(
         report = validate_citations(result.answer, packet)
         result.citations = [
             {"title": c.title, "section": c.section, "verified": c.verified,
-             "provenance_tier": getattr(c, "provenance_tier", "authored")}
+             "provenance_tier": getattr(c, "provenance_tier", "authored"),
+             # ⛔ **등급만 주면 소비자가 문자열을 지어낸다** (실측 2026-09-23). 근거 스니펫은
+             #    위에서 `provenance_mark` 를 받는데 인용은 등급 값만 받고 있었다 — 그런데
+             #    **읽는 사람이 보는 것은 인용 목록**이다.
+             #
+             #    `provenance.py` 머리말이 그 자리를 이미 적어 뒀다: *"각자 문자열을 지어내면
+             #    표면마다 다른 말을 하게 되고, 그러면 등급은 표면마다 다른 뜻이 된다."*
+             #
+             # ⚠ **이제 더 문다.** 첫 운영자 질의에서는 모델이 산문에 *"이 설명들은 이전 LLM
+             #    판정이 만든 것"* 이라고 **스스로** 적었는데, 재확인 판에서는 안 적었다.
+             #    산문은 판마다 흔들린다 — 그것이 유일한 신호면 신호가 아니다.
+             #    ⇒ **결정론으로 나가는 쪽을 완성한다** (핵심 원칙 2: 시스템이 정하고 LLM 은
+             #    서술한다). 모델이 말하기를 바라는 대신 시스템이 말한다.
+             "provenance_mark": tier_mark(getattr(c, "provenance_tier", "authored"))}
             for c in report.citations
         ]
         result.unverified_citations = report.unverified_count
