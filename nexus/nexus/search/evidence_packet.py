@@ -22,7 +22,7 @@ from nexus.search.anchor_status import (
     statuses_for_chunks,
 )
 from nexus.search.hybrid import SearchHit
-from nexus.search.provenance import PROMPT_NOTE, needs_note
+from nexus.search.provenance import note_for
 from nexus.search.spans import Candidate
 
 if TYPE_CHECKING:  # 런타임 import 불필요(순환 회피) — 타입 힌트만 쓴다
@@ -227,8 +227,11 @@ def format_for_llm(packet: EvidencePacket) -> str:
             parts.append(f"타입: {s.doc_type}")
         # 등급은 **프롬프트에 보인다**. 여기서 빠지면 답을 쓰는 모델이 기계가 읽은 표와 저자가
         # 쓴 문장을 같은 것으로 다루고, 인용은 그 구별을 약속하지 못한다 (ADR-0010 hop 3).
-        if needs_note(getattr(s, "provenance_tier", "authored")):
-            parts.append(PROMPT_NOTE)
+        # ⛔ **등급마다 다른 문장이다** (2026-09-23). 상수 하나를 붙이던 판은 등급이 둘일
+        #    때 맞았고, 기계가 **쓴** 등급이 생기면서 틀렸다 — 그 근거에 "그림에서 읽었다" 가
+        #    붙는다. `note_for` 가 등급을 보고 고른다.
+        if (_note := note_for(getattr(s, "provenance_tier", "authored"))):
+            parts.append(_note)
         # 문서가 부른 코드 이름이 지금도 있는가. **결정론으로 판정한 사실**이고, 모델은 그것을
         # 서술하기만 한다 — 낡음 여부를 모델에게 추측시키는 순간 그 판정은 근거를 잃는다.
         # 앵커가 없으면 빈 문자열이라 프롬프트는 오늘과 같다 (평가 팩과의 비교가 안 끊긴다).

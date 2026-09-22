@@ -23,6 +23,7 @@ from nexus.ingest.classifier import (
 from nexus.ingest.chunker import ChunkData, chunk_document
 from nexus.ingest.collector import CollectedFile, collect_files
 from nexus.ingest.title import derive_title
+from nexus.search.provenance import MACHINE_WRITTEN
 from nexus.ingest.vendor_guard import (
     VendorOriginalRefused,
     refuse_if_vendor_original,
@@ -68,6 +69,22 @@ class IngestResult:
     #: 커버리지가 크기를 말하고 이것이 처방을 말한다 — 수만 보여 주면 읽는 사람이 할 수 있는 것은
     #: 같은 실패를 다시 부르는 것뿐이다.
     refusals: dict | None = None
+
+
+def machine_written_tenants(config: dict | None = None) -> frozenset[str]:
+    """**내용 전체가 기계가 쓴 것**이라고 사람이 선언한 테넌트들.
+
+    ⛔ **문서가 자칭하지 않는다.** `labels.py` 가 `external_spec` 에 적어 둔 것과 같은 이유다 —
+    이것은 *"나는 그 경로로 들어왔다"* 는 **경로에 대한 주장**이고, 자칭을 허용하면 안 적은
+    문서가 사람 글로 신뢰된다. 선언이 설정에 있으므로 **적재 명령이 무엇이든 같은 값이 앉는다.**
+
+    ⚠ 추론하지 않는다 — `served_corpora` 와 같은 이유다. 「이 테넌트 이름이 기계 같으니」로
+    읽으면 평가 팩과 실험 테넌트가 같이 걸리고, 그러면 사람이 쓴 코퍼스가 LLM 산출로 찍힌다.
+    **모함이 누락보다 나쁘다.**
+    """
+    cfg = _load_config() if config is None else config
+    declared = (cfg.get("index") or {}).get("machine_written_tenants") or []
+    return frozenset(str(t).strip() for t in declared if str(t).strip())
 
 
 def _load_config(config_path: str = "config.yaml") -> dict:
@@ -413,7 +430,14 @@ async def _save_chunks(
             parent_rid, chunk.section_path,
             withheld if pos in bad else chunk.chunk_text,
             chunk.chunk_index, [parent_rid], chunk_status,
-            getattr(chunk, "provenance_tier", "authored"),
+            # ⛔ **테넌트가 이기고, 인자로 안 받는다** (2026-09-23). 선언된 테넌트의 문서는
+            #    **전부** 기계가 쓴 것이므로 청커의 조각별 판정(비전 블록 가르기)이 여기서는
+            #    뜻이 없다. 그리고 이것을 `_save_chunks` 의 기본 인자로 받으면 **안 넘긴
+            #    호출부가 조용히 「사람 글」로 앉힌다** — 오늘 같은 모양에 한 번 데였다
+            #    (`weak_evidence` 가 스트리밍 경로에서 기본값으로 떨어진 것, #537).
+            #    마지막 관문에서 테넌트를 보고 정하면 빠뜨릴 자리가 없다.
+            MACHINE_WRITTEN if tenant in machine_written_tenants()
+            else getattr(chunk, "provenance_tier", "authored"),
             source_kind_for(collected.canonical_uri),
             context_prefix_for(doc_title, chunk.section_path),
             pos in bad,
