@@ -48,22 +48,32 @@ def test_it_looks_for_the_env_file_beside_the_deployment():
     assert ENV_PATH.parent.name == "nexus", f"엉뚱한 자리를 본다: {ENV_PATH}"
 
 
-def test_the_file_only_fills_blanks(monkeypatch, tmp_path):
-    """⛔ **이미 있는 값을 덮지 않는다.**
+def test_the_file_only_fills_the_bridges_own_blanks(monkeypatch, tmp_path):
+    """⛔ **이미 있는 값을 덮지 않고, 제 몫이 아닌 것은 아예 안 가져온다.**
 
-    반대로 만들면 운영자가 한 번 지정한 것을 파일이 조용히 되돌린다 — 그 되돌림은
-    기동 로그에도 안 남는다.
+    덮으면 운영자가 한 번 지정한 것을 파일이 조용히 되돌린다 — 그 되돌림은 기동 로그에도
+    안 남는다. 그리고 ⛔ **제 몫이 아닌 것을 가져오면 유료 키가 이 프로세스에 앉는다**
+    (`ENV_PREFIX` 머리말, 실측 2026-09-22).
     """
     monkeypatch.setenv("NEXUS_LLM_BRIDGE_TIMEOUT", "77")
+    # ⛔ **빈 칸 검사에 토큰 칸을 쓰지 않는다.** 배포 환경에 이미 값이 있으면 단언이 실패하고,
+    #    pytest 가 그 **실제 값을 diff 로 찍는다** — 이 리포는 자격 증명이 기록에 찍힌 사고를
+    #    이미 여러 건 갖고 있다. 비밀이 아닌 칸으로 같은 계약을 확인한다.
+    monkeypatch.delenv("NEXUS_LLM_BRIDGE_QUEUE_WAIT", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     fake = tmp_path / "nexus" / ".env"
     fake.parent.mkdir(parents=True)
-    fake.write_text("NEXUS_LLM_BRIDGE_TIMEOUT=999\nONLY_IN_FILE=abc\n", encoding="utf-8")
+    fake.write_text("NEXUS_LLM_BRIDGE_TIMEOUT=999\n"
+                    "NEXUS_LLM_BRIDGE_QUEUE_WAIT=9\n"
+                    "ANTHROPIC_API_KEY=이-값은-절대-안-가져온다\n", encoding="utf-8")
     monkeypatch.setattr(bridge, "__file__", str(tmp_path / "nexus" / "nexus" / "tools" / "x.py"))
 
     bridge._load_env_file()
 
     assert os.environ["NEXUS_LLM_BRIDGE_TIMEOUT"] == "77", "환경에 있던 값을 파일이 덮었다"
-    assert os.environ.get("ONLY_IN_FILE") == "abc", "빈 칸을 안 채웠다"
+    assert os.environ.get("NEXUS_LLM_BRIDGE_QUEUE_WAIT") == "9", "제 몫의 빈 칸을 안 채웠다"
+    assert "ANTHROPIC_API_KEY" not in os.environ, \
+        "유료 키를 파일에서 가져왔다 — 이 브리지는 키 없이 돈다"
 
 
 def test_a_missing_file_is_not_an_error(monkeypatch, tmp_path):

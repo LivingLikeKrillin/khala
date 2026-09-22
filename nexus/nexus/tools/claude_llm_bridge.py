@@ -57,11 +57,43 @@ _DOORS_CLOSED = [
 #:
 #: 참고로 이 배포의 내역(2026-09-19 실측): 검색 2.3초 · 합성 44.6초(답변 1,410자·근거 26).
 #: 벽보다 먼저 볼 값은 **합성이 무엇에 그 시간을 쓰는가**다.
+#: `.env` 에서 **이것으로 시작하는 것만** 가져온다.
+#:
+#: ⛔ **왜 좁히나 (실측 2026-09-22).** 처음에는 파일 전체를 `os.environ` 에 부었다(#529).
+#: 그 파일에는 `ANTHROPIC_API_KEY` 가 있고, `subprocess.run` 은 기본으로 부모 환경을
+#: 물려주므로 **유료 키가 키리스 백엔드의 자식에게 그대로 넘어갔다.** `claude` 가 그것을
+#: 보고 거부했다:
+#:
+#:     claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth
+#:     source is set and takes precedence over your claude.ai login
+#:
+#: ⛔ **거부가 우리를 구했다.** 받아들였으면 「돈을 쓰지 않는다」가 조용히 깨진 채로 돌았다
+#: (`nexus/CLAUDE.md`). 이 브리지의 정체가 **키 없이 도는 것**이므로, 키가 근처에 오는 길을
+#: 여기서 끊는다.
+#:
+#: ⭐ 브리지가 읽는 환경 변수는 전부 이 접두사다(`TIMEOUT`·`CONCURRENCY`·`QUEUE_WAIT`·
+#: `TOKEN`·`HOST`·`PORT`). 그래서 좁혀도 잃는 것이 없다.
+ENV_PREFIX = "NEXUS_LLM_BRIDGE_"
+
+#: 자식에게 **절대 물려주지 않는** 것. 접두사 규칙과 별개로 한 겹 더 건다 — 파일이 아니라
+#: **띄운 셸**이 들고 있어도 같은 일이 난다. 이 브리지는 무엇을 물려받았든 키 없이 돈다.
+BLOCKED_CHILD_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+                     "CLAUDE_CODE_OAUTH_TOKEN", "GEMINI_API_KEY", "OPENAI_API_KEY")
+
+
+def child_env() -> dict[str, str]:
+    """`claude` 에게 줄 환경. **유료 인증 자료를 뺀다.**"""
+    return {k: v for k, v in os.environ.items() if k not in BLOCKED_CHILD_ENV}
+
+
 def _load_env_file() -> str | None:
-    """`nexus/.env` 의 값으로 **비어 있는 환경 변수만** 채운다. 채운 파일 경로를 돌려준다.
+    """`nexus/.env` 의 **브리지 몫만** 가져와 비어 있는 환경 변수를 채운다. 그 경로를 돌려준다.
 
     ⛔ **이미 있는 값을 덮지 않는다.** 셸이나 compose 가 준 값이 파일보다 세다 — 그 반대로
     만들면 운영자가 한 번 지정한 것을 파일이 조용히 되돌린다.
+
+    ⛔ **파일 전체를 붓지 않는다.** `ENV_PREFIX` 머리말을 보라 — 처음 판이 그렇게 했다가
+    유료 키를 키리스 백엔드에 넘겼다.
 
     ⚠ **`_DEFAULT_TIMEOUT` 보다 먼저 돌아야 한다.** 그 상수는 import 시점에 한 번 읽히므로,
     뒤에 두면 파일을 읽고도 옛 기본값으로 굳는다.
@@ -76,7 +108,9 @@ def _load_env_file() -> str | None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, val = line.partition("=")
-        os.environ.setdefault(key.strip(), val.strip())
+        key = key.strip()
+        if key.startswith(ENV_PREFIX):
+            os.environ.setdefault(key, val.strip())
     return str(path)
 
 
@@ -204,10 +238,13 @@ def _subprocess_runner(argv: list[str], prompt: str, timeout: float):
 
     ⛔ **`cwd` 를 반드시 넘긴다.** 안 넘기면 브리지를 띄운 셸의 위치를 물려받고, 이 배포에서
     그 자리는 리포 안이다 (위 `_NEUTRAL_CWD` 의 실측).
+
+    ⛔ **`env` 도 반드시 넘긴다.** 안 넘기면 부모 환경을 통째로 물려받고, 거기에 유료 키가
+    있으면 **키리스 백엔드가 키로 돈다** (`BLOCKED_CHILD_ENV` 머리말의 실측).
     """
     p = subprocess.run(
         argv, input=prompt, capture_output=True, text=True,
-        encoding="utf-8", timeout=timeout, cwd=neutral_cwd(),
+        encoding="utf-8", timeout=timeout, cwd=neutral_cwd(), env=child_env(),
     )
     return (p.returncode, p.stdout, p.stderr)
 
@@ -449,6 +486,11 @@ def main() -> None:
     _say(f"  생성 벽 {current_timeout():g}초 "
          f"({'nexus/.env' if ENV_FILE else '환경변수/기본값'}) · "
          f"작업 디렉터리 {neutral_cwd()}")
+    # ⛔ **키가 근처에 있었는지도 시동에서 말한다.** 안 적혀 있던 동안, 유료 키가 자식에게
+    #    넘어가 `claude` 가 거부했고 밖에서는 「생성이 즉시 죽는다」로만 보였다(2026-09-22).
+    _stripped = [k for k in BLOCKED_CHILD_ENV if k in os.environ]
+    _say(f"  자식 환경에서 뺀 인증 자료 {len(_stripped)}건"
+         f"{' — ' + ', '.join(_stripped) if _stripped else ' (환경에 없었다)'}")
     ThreadingHTTPServer((host, port), _Handler).serve_forever()
 
 
