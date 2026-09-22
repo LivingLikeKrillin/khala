@@ -22,6 +22,7 @@ from nexus.search.anchor_status import (
     statuses_for_chunks,
 )
 from nexus.search.hybrid import SearchHit
+from nexus.search.provenance import mark as prov_mark
 from nexus.search.provenance import note_for
 from nexus.search.spans import Candidate
 
@@ -218,6 +219,24 @@ def format_for_llm(packet: EvidencePacket) -> str:
 
     # Evidence snippets
     parts.append("## 검색된 근거 (Evidence)")
+
+    # ⛔ **등급 규칙은 꾸러미에 한 번만 적는다** (실측 2026-09-23). 조각마다 붙이던 판은
+    #    등급 문장이 한 줄일 때 값이 쌌다. 기계가 **쓴** 등급의 문장은 여섯 문장 354자이고,
+    #    그것이 조각마다 붙자 **꾸러미의 52% 가 같은 문장 열두 벌**이 됐다.
+    #
+    # ⛔⛔ **그리고 이 비용은 기계 조각이 많을수록 커진다** — 즉 **사람 근거가 가장 주목받아야
+    #    할 때 가장 묻힌다.** 넷째 운영자 질의에서 사람 근거 인용이 0 이 된 판이 그 모양이었다.
+    #
+    # ⭐ 조각마다 남는 것은 **짧은 표시**다(`mark`). 그것이면 어느 조각에 어느 규칙이
+    #    걸리는지 알 수 있고, 규칙 자체는 위에서 한 번 읽으면 된다.
+    seen_tiers: list[str] = []
+    for s in packet.snippets:
+        t = getattr(s, "provenance_tier", "authored")
+        if note_for(t) and t not in seen_tiers:
+            seen_tiers.append(t)
+    for t in seen_tiers:
+        parts.append(f"\n{note_for(t)} — 아래에서 {prov_mark(t).strip()} 로 표시된 근거다.")
+
     for i, s in enumerate(packet.snippets, 1):
         # 인용 핸들 = 읽는 제목(대괄호). source_uri(UUID)는 per-snippet 에 노출하지
         # 않는다 — LLM 이 그걸 인용해 가독성을 해치므로. 추적용 uri 는 아래 출처 목록에만.
@@ -229,9 +248,9 @@ def format_for_llm(packet: EvidencePacket) -> str:
         # 쓴 문장을 같은 것으로 다루고, 인용은 그 구별을 약속하지 못한다 (ADR-0010 hop 3).
         # ⛔ **등급마다 다른 문장이다** (2026-09-23). 상수 하나를 붙이던 판은 등급이 둘일
         #    때 맞았고, 기계가 **쓴** 등급이 생기면서 틀렸다 — 그 근거에 "그림에서 읽었다" 가
-        #    붙는다. `note_for` 가 등급을 보고 고른다.
-        if (_note := note_for(getattr(s, "provenance_tier", "authored"))):
-            parts.append(_note)
+        #    붙는다. 규칙은 위에서 한 번 말했고, 여기 남는 것은 **어느 규칙이 걸리는가**다.
+        if (_m := prov_mark(getattr(s, "provenance_tier", "authored"))):
+            parts.append(f"등급:{_m}")
         # 문서가 부른 코드 이름이 지금도 있는가. **결정론으로 판정한 사실**이고, 모델은 그것을
         # 서술하기만 한다 — 낡음 여부를 모델에게 추측시키는 순간 그 판정은 근거를 잃는다.
         # 앵커가 없으면 빈 문자열이라 프롬프트는 오늘과 같다 (평가 팩과의 비교가 안 끊긴다).
