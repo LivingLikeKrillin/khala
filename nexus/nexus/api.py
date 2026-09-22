@@ -741,6 +741,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             config=config,
             channels=channels,
             exclude_doc_types=req.exclude_doc_types,
+            identifier_channel_asked=req.identifier_channel,
         )
 
         # 답변용 근거 패킷은 한 함수로만 만든다 (`search/reconcile.py`).
@@ -1216,6 +1217,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 config=config,
                 channels=channels,
                 exclude_doc_types=req.exclude_doc_types,
+                identifier_channel_asked=req.identifier_channel,
             )
 
             # ⛔ **여기서 `assemble_packet` 을 직접 부르고 있었다** (외부 평가 F2).

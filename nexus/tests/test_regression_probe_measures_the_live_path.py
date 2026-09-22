@@ -56,3 +56,19 @@ def test_the_negative_control_is_two_separate_facts():
     """
     assert '"fired"' in SOURCE and '"asked"' in SOURCE, \
         "음성 대조군이 한 칸으로 뭉쳤다 — 이 실행은 §5.5 를 못 채운다"
+
+
+def test_it_refuses_to_report_when_the_treatment_was_never_asked_for():
+    """⛔ **적는 것만으로는 안 된다 — 값이 참인지도 봐야 한다.**
+
+    첫 판이 그 칸을 적기는 했고 값은 80건 전부 `False` 였다. 제품이 그 칸을 아무 데서도
+    안 채웠기 때문인데, 검사가 「적는가」만 봐서 통과했다. 이제 실행이 **스스로 멈춘다**.
+    """
+    tree = ast.parse(SOURCE)
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.AsyncFunctionDef) and n.name == "_run")
+    guards = [n for n in ast.walk(fn)
+              if isinstance(n, ast.If) and "asked" in ast.dump(n.test)]
+    assert guards, "요청이 한 번도 안 갔는데 리포트를 낸다 — §5.5 를 못 채운 판이 결과가 된다"
+    assert any(isinstance(s, ast.Return) for g in guards for s in ast.walk(g)), \
+        "걸러 놓고 계속 돈다 — 멈추지 않으면 그 수가 인용된다"
