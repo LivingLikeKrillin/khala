@@ -193,6 +193,18 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
         fill += [_as_hit(r) for r in await paired_chunks(
             result.hits, tenant, clearance, exclude_rids={f.rid for f in fill},
             exclude_doc_types=excluded_types, failed=result.enrichment_failed)]
+    if search_cfg.get("cross_reference_fill"):
+        # ⛔ **가리키기만 하는 절이 가리킨 절을 데리고 온다** (`search/crossrefs.py`).
+        #    조각내기가 `§5` 와 `§4` 를 갈라 놓으면 조각 5 는 혼자 가고, 받는 쪽은 조건 없는
+        #    포인터를 받는다 — 설명 층의 탐색 줄이 두 판 다 0/1 이었던 자리다.
+        #
+        # ⭐ **여기 붙이는 이유**는 이 함수가 생긴 이유 그대로다: 답변 경로 셋이 전부 여기로
+        #    모이므로 **표면 누락이 표현 불가능**해진다. 조각내기에 붙이면 코퍼스가 부풀고,
+        #    검색에 붙이면 top-k 예산을 먹는다.
+        from nexus.search.crossrefs import referenced_chunks
+        fill += [_as_hit(r) for r in await referenced_chunks(
+            result.hits, tenant, clearance, exclude_rids={f.rid for f in fill},
+            failed=result.enrichment_failed)]
     # `result.spans` 는 SPEC-nexus-stage-spans 캡처(기본 꺼짐, None). 여기서 넘기지 않으면
     # 답변 경로의 packet span 은 영원히 못 남는다 — 답변 경로 셋이 전부 이 함수 하나로 모이므로
     # (docstring 참조), 캡처 배선도 여기 한 곳이면 된다.
