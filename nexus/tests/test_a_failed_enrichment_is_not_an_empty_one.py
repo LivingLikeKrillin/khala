@@ -163,15 +163,44 @@ async def test_a_dead_pair_expansion_is_named(monkeypatch):
 
 # ── 배선: 답변 경로가 그 자리를 실제로 넘기는가 ───────────────────────────────
 
+#: 이 이음매가 부르는 보강 함수들. **새것을 더하면 여기 이름을 적는다.**
+#:
+#: ⛔ **앞 판은 `== 2` 라는 상수로 셌다 (고침 2026-09-23).** 보강이 셋이 되자 그 검사가
+#: 빨개졌고, **고치는 방법이 「수를 3 으로 올린다」**였다 — 그러면 검사가 확인이 아니라
+#: **갱신**이 된다. 다음 사람은 보지도 않고 올린다. 이름을 적게 하면 **적으면서 보게 된다.**
+SEAM_ENRICHMENTS = ("corrections_for", "paired_chunks", "referenced_chunks")
+
+
 def test_the_answer_seam_hands_them_the_result_slot():
     """⛔ **함수가 옳은 것과 부르는 쪽이 넘기는 것은 다른 사실이다.**
 
-    `failed=` 를 안 넘기면 두 패스는 오늘과 똑같이 조용하다. 그리고 그 자리는 `result` 여야
+    `failed=` 를 안 넘기면 그 패스는 오늘과 똑같이 조용하다. 그리고 그 자리는 `result` 여야
     한다 — 표면마다 따로 받으면 하나가 잊고, 그 조합은 검사가 초록인 채로 틀린다
     (`packet_for_answer` 가 제외 목록을 인자로 안 받는 것과 같은 이유).
     """
     import inspect
 
     src = inspect.getsource(reconcile.packet_for_answer)
-    assert src.count("failed=result.enrichment_failed") == 2, \
-        "두 보강 패스 중 하나가 터진 것을 못 남긴다"
+
+    for name in SEAM_ENRICHMENTS:
+        assert f"{name}(" in src, f"{name} 이 이 이음매에서 안 불린다 — 목록이 낡았다"
+    assert src.count("failed=result.enrichment_failed") == len(SEAM_ENRICHMENTS), \
+        "보강 패스 중 하나가 터진 것을 못 남긴다"
+
+
+def test_every_enrichment_the_seam_calls_is_on_the_list():
+    """⛔ **목록이 진짜 대조가 되려면 반대쪽도 봐야 한다.**
+
+    이름을 적는 규칙은 **안 적으면 그만**이다. 이 단언이 그 구멍을 막는다 — 이음매가
+    `search.*` 에서 끌어다 쓰는 보강 함수는 전부 위 목록에 있어야 한다.
+    """
+    import inspect
+    import re
+
+    src = inspect.getsource(reconcile.packet_for_answer)
+    imported = set(re.findall(r"from nexus\.search\.\w+ import (\w+)", src))
+    # `assemble_packet` 은 보강이 아니라 조립이고, `code_values_for` 는 이 모듈 것이다.
+    enrichments = imported - {"assemble_packet", "SearchHit", "_truncate_snippet"}
+
+    assert enrichments <= set(SEAM_ENRICHMENTS), \
+        f"목록에 없는 보강이 이음매에 있다: {sorted(enrichments - set(SEAM_ENRICHMENTS))}"
