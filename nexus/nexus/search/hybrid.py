@@ -728,6 +728,7 @@ async def hybrid_search(
     channels: list[tuple[str, float]] | None = None,
     window: OriginWindow = OriginWindow(),
     exclude_doc_types: Sequence[str] = (),
+    identifier_channel_asked: bool = False,
 ) -> SearchResult:
     """3-way Hybrid 검색 실행.
 
@@ -788,6 +789,14 @@ async def hybrid_search(
 
     # 발화한 식별자 채널이 **무엇으로** 발화했나. 호출자가 「안 켰다」·「켰는데 없었다」·
     # 「켜져서 이것으로 돌았다」 셋을 가를 수 있어야 음성 대조군이 성립한다.
+    #
+    # ⛔ **「켰는가」는 여기서만 알 수 있다.** 채널 목록으로는 못 되돌린다 — 켰는데 질의에
+    # 식별자가 없으면 채널이 아예 안 붙기 때문에, 「안 켰다」와 모양이 같아진다. 그래서
+    # 호출자가 말해 줘야 하고, 이 값이 **결과 객체에 실려야** 한다: `SearchResult` 는
+    # `reconcile`·평가 하니스·span 기록으로 흘러가고, 거기서는 요청 객체를 못 본다.
+    # ⚠ 2026-09-20 에 이 칸이 **아무 데서도 안 채워진 채** 회귀 측정에 쓰였다 — 항상
+    # `False` 라, 「켰는데 발화 안 함」이 「안 켰음」으로 기록됐다(사전 등록 §5.5 무력화).
+    result.identifier_channel_asked = identifier_channel_asked
     for _ch in active:
         if _ch.name == "identifier":
             result.identifier_channel = _ch.text.split()

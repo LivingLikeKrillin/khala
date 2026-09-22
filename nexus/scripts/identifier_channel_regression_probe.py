@@ -28,6 +28,7 @@ import argparse
 import asyncio
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -103,12 +104,18 @@ async def _run(args) -> int:
             rows = []
             for q in queries:
                 ns = SimpleNamespace(query=q["query"], history=None)
-                arms = {}
+                arms, elapsed = {}, {}
                 for arm, ident in (("T0", False), ("T2", True)):
                     sq, channels, _ = await _search_channels(ns, None, identifiers=ident)
+                    t0 = time.perf_counter()
                     r = await hybrid.hybrid_search(
                         sq, tenant=scope, clearance="INTERNAL", top_k=args.top_k,
-                        embedding_svc=svc, config=cfg, channels=channels)
+                        embedding_svc=svc, config=cfg, channels=channels,
+                        # ⛔ **결과 객체가 「켰는가」를 들고 다녀야 한다.** 여기서 안 넘기면
+                        # 「켰는데 발화 안 함」이 「안 켰음」으로 기록되고, §5.5 의 두 칸이
+                        # 한 칸으로 뭉친다 — 2026-09-20 첫 판이 실제로 그랬다.
+                        identifier_channel_asked=ident)
+                    elapsed[arm] = (time.perf_counter() - t0) * 1000
                     if r.degraded:
                         print(f"✗ 경로가 죽었다({r.degraded}) — 이 상태의 숫자는 결과가 아니다")
                         return 1
@@ -119,7 +126,8 @@ async def _run(args) -> int:
                 differed_total += (not same)
 
                 row = {"qid": q["id"], "file": path.name, "same_hits": same,
-                       "fired": list(fired), "asked": arms["T2"].identifier_channel_asked}
+                       "fired": list(fired), "asked": arms["T2"].identifier_channel_asked,
+                       "ms_T0": round(elapsed["T0"], 1), "ms_T2": round(elapsed["T2"], 1)}
                 if q.get("gold") and gold_ok:
                     want = {titles[g] for g in q["gold"]}
                     for arm in ("T0", "T2"):
@@ -160,9 +168,23 @@ async def _run(args) -> int:
         await db.close_pool()
 
     total = sum(f["queries"] for f in report["files"])
-    report["totals"] = {"queries": total, "fired": fired_total, "differed": differed_total}
-    print(f"전체 {total}건 · 식별자 채널 발화 {fired_total}건 · 검색 출력이 갈린 질의 "
-          f"{differed_total}건")
+    rows = [r for f in report["files"] for r in f["rows"]]
+    asked = sum(1 for r in rows if r["asked"])
+    med = lambda xs: sorted(xs)[len(xs) // 2] if xs else 0.0  # noqa: E731
+    report["totals"] = {"queries": total, "asked": asked, "fired": fired_total,
+                        "differed": differed_total,
+                        "median_ms_T0": med([r["ms_T0"] for r in rows]),
+                        "median_ms_T2": med([r["ms_T2"] for r in rows])}
+    print(f"전체 {total}건 · 요청 {asked}건 · 식별자 채널 발화 {fired_total}건 · "
+          f"검색 출력이 갈린 질의 {differed_total}건")
+    print(f"  검색 구간 중앙값  T0 {report['totals']['median_ms_T0']:.0f}ms · "
+          f"T2 {report['totals']['median_ms_T2']:.0f}ms")
+    # ⛔ **한 번도 요청이 안 갔으면 이 실행은 음성 대조군이 아니다.** 「발화 0」이 처치가
+    # 발화할 자리가 없어서인지 스위치가 안 닿아서인지 구별되지 않는다.
+    if asked != total:
+        print(f"  ⛔ T2 실험군이 {total - asked}건에서 처치를 **요청하지 않았다** — "
+              "이 판은 §5.5 를 못 채운다")
+        return 1
     if differed_total:
         print("  ⇒ 갈린 라벨은 답변 층까지 돌려야 한다 (머리말 사전 등록 2).")
     REPORT.write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

@@ -202,3 +202,73 @@ def test_the_weight_is_below_the_original_channel():
     from nexus.search.hybrid import IDENTIFIER_CHANNEL_WEIGHT
 
     assert 0 < IDENTIFIER_CHANNEL_WEIGHT < 1.0
+
+
+# ── 두 칸이 **결과 객체 위에서** 셋을 가르는가 ────────────────────────────────
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "asked,channels_for,want_asked,want_fired",
+    [
+        (False, "none", False, []),                       # 안 켰다
+        (True, "none", True, []),                         # 켰는데 식별자가 없었다
+        (True, "identifier", True, ["PAYLOAD_LOST"]),      # 켜져서 이것으로 돌았다
+    ],
+    ids=["not-asked", "asked-nothing-to-fire", "asked-and-fired"],
+)
+async def test_the_result_object_tells_all_three_states(
+        monkeypatch, asked, channels_for, want_asked, want_fired):
+    """⛔ **`identifier_channel_asked` 가 아무 데서도 안 채워진 채 회귀 측정에 쓰였다.**
+
+    실측 2026-09-20: 그 칸은 `SearchResult` 에 **선언만 돼 있었다.** 응답 두 곳이 요청
+    객체를 직접 읽어서 HTTP 표면은 맞았고, 그래서 아무도 못 봤다 — 그 사이 결과 객체를
+    읽는 쪽(평가 하니스)은 **언제나 `False`** 를 받았다. 회귀 80건이 전부 「안 켰음」으로
+    기록됐고, 그 판은 사전 등록 §5.5 의 두 칸을 한 칸으로 뭉친 것과 같았다.
+
+    ⭐ **앞선 음성 대조군은 `hybrid_search` 를 아예 안 불렀다** — 채널 조립 규칙을 검사
+    안에서 다시 적고 그것을 단언했다. 그래서 제품이 그 값을 안 채운다는 사실을 못 봤다.
+    이 검사는 **제품을 돌리고 결과 객체를 읽는다.**
+    """
+    from nexus.search import hybrid
+
+    async def spy_bm25(query, *a, **k):
+        return [], None
+
+    async def no_enrich(fused, tenant, max_snippet_chars=300):
+        return []
+
+    monkeypatch.setattr(hybrid, "_bm25_search", spy_bm25)
+    monkeypatch.setattr(hybrid, "_enrich_hits", no_enrich)
+
+    q = "failureClass=PAYLOAD_LOST 무엇을 하나"
+    channels = None if channels_for == "none" else [
+        hybrid.QueryChannel(q, 1.0, "original"),
+        hybrid.QueryChannel("PAYLOAD_LOST", hybrid.IDENTIFIER_CHANNEL_WEIGHT, "identifier"),
+    ]
+    r = await hybrid.hybrid_search(q, tenant="t", clearance="INTERNAL", route="keyword_only",
+                                   channels=channels, identifier_channel_asked=asked)
+
+    assert r.identifier_channel_asked is want_asked, "「켰는가」가 결과에 안 실린다"
+    assert r.identifier_channel == want_fired, "「발화했는가」가 결과에 안 실린다"
+
+
+def test_the_answer_paths_hand_the_flag_to_the_search():
+    """⛔ **표면이 맞는 것과 결과 객체가 맞는 것은 다른 사실이다.**
+
+    HTTP 응답은 `req.identifier_channel` 을 바로 읽으므로 처음부터 맞았다. 틀린 것은
+    **결과 객체**였고, 그것을 읽는 쪽은 요청을 못 본다(평가 하니스·`reconcile`·span 기록).
+    그래서 답변 경로 둘이 검색에 같은 값을 넘겨야 둘이 갈릴 수 없다.
+
+    ⚠ 응답을 결과 객체로 돌리는 길도 있었지만 안 골랐다 — 그러면 `SearchResult` 를 흉내
+    내는 모든 대역이 이 칸을 갖게 만들어야 하고, 실제로 무관한 검사 넷이 붉어졌다.
+    같은 식(`req.identifier_channel`)을 두 곳이 읽으면 갈릴 자리가 없다.
+    """
+    import pathlib
+
+    from nexus import api
+
+    src = pathlib.Path(api.__file__).read_text(encoding="utf-8")
+    assert src.count("identifier_channel_asked=req.identifier_channel") == 2, \
+        "답변 경로 둘이 검색에 「켰는가」를 안 넘긴다 — 결과 객체가 조용히 `False` 가 된다"
+    assert src.count('"identifier_channel_asked": req.identifier_channel,') == 2, \
+        "응답 둘이 같은 식을 안 읽는다"
