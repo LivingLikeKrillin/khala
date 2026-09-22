@@ -1420,7 +1420,11 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 "llm_failure_reason": llm_failure_reason,
                 "citations": [
                     {"title": c.title, "section": c.section, "verified": c.verified,
-                     "provenance_tier": getattr(c, "provenance_tier", "authored")}
+                     "provenance_tier": getattr(c, "provenance_tier", "authored"),
+                     # 비스트리밍과 **같은 값을 같은 이름으로** — 등급만 주면 소비자가
+                     # 표시 문자열을 지어내고, 그러면 등급이 표면마다 다른 뜻이 된다
+                     # (`search/provenance.py` 머리말). 아래 `numbers` 와 같은 이유다.
+                     "provenance_mark": _tier_mark(getattr(c, "provenance_tier", "authored"))}
                     for c in report.citations
                 ],
                 "unverified_citations": report.unverified_count,
