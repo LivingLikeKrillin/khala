@@ -73,13 +73,69 @@ def test_the_note_forbids_rather_than_asks_for_something_impossible():
     assert "다시 확인하라" not in note, "못 할 일을 시키는 문장이 살아 있다"
 
 
-def test_the_note_carries_all_four_obligations():
-    """넷 중 하나라도 빠지면 이 등급이 하는 일이 준다."""
+def test_the_note_carries_every_obligation_the_source_asked_for():
+    """⛔ **이 검사가 한 번 틀렸다 (2026-09-23).**
+
+    앞 판은 *"의무 넷"* 을 셌는데, 그 넷은 **내가 줄인 문구에서 뽑은 것**이었다. 원본은
+    다섯이었고 첫째가 *"인용하되 LLM 산출이라 밝혀라"* 다. **줄인 글로 쓴 검사는 줄인 글을
+    자기 자신과 대조할 뿐이다** — 초록이었고, 뜻은 빠져 있었다.
+
+    ⇒ 목록을 **원본 기준으로** 다시 적는다. 다음에 문구를 줄이는 사람은 이 다섯을 넘어야 한다.
+    """
     note = P.note_for(_WROTE)
-    assert "사람이 쓴 문장이 아니다" in note          # 무엇인가
-    assert "무엇이 언제 있었나" in note                # 무엇에 쓰는가
-    assert "원인을" in note                            # 무엇에 안 쓰는가
-    assert "어긋나면 사람 쪽을 따르고" in note         # 충돌하면
+    assert "사람이 쓴 문장이 아니다" in note          # ① 무엇인가
+    assert "인용해라" in note                          # ② **귀속하라** — 한 번 잃었던 의무
+    assert "무엇이 언제 있었나" in note                # ③ 무엇에 쓰는가
+    assert "원인을" in note                            # ④ 무엇에 안 쓰는가
+    assert "어긋나면 사람 쪽을 따르고" in note         # ⑤ 충돌하면
+
+
+def test_the_note_says_not_to_cite_the_interpreter_instead():
+    """⛔ **실물이 그렇게 났다 (첫 운영자 질의, 2026-09-23).**
+
+    답이 사건 사실 셋을 이 등급의 조각 하나에서만 가져다 쓰고, 인용은 그 사실을 **해석한
+    사람 문서**로 갔다. 계약은 지켰는데 근거를 근거라고 안 밝혔고, 그래서 표시가 나올 자리가
+    없었다. 「인용해라」만으로는 그 답이 이미 인용을 하고 있었으므로 안 걸린다.
+    """
+    assert "해석한 다른 문서를 대신 인용하지 마라" in P.note_for(_WROTE)
+
+
+def test_the_note_forbids_laundering_a_citation_out_of_the_document():
+    """⛔⛔ **같은 판에서 나온 둘째 — 인용 세탁 (2026-09-23).**
+
+    그 설명 문서의 카드 줄 안에 `[출처: 인터페이스 계약 명세서 …]` 가 **글자로 적혀 있었고**,
+    답이 그것을 **제 인용으로 옮겨 적었다.** 그 사람 문서는 이번 꾸러미에 없었다. 지난 LLM
+    답의 인용이 새 답의 인용으로 승격된다 — **한 세대에 한 번씩 근거 없이 신뢰가 오른다.**
+
+    ⚠ **오늘 걸린 것은 우연이다.** 그 문서가 없어서 `verified:false` 가 났다. 있었으면
+    **검증을 통과하고 세탁은 안 보였다.** 검증기로는 못 막고 계약이 막아야 한다.
+    """
+    note = P.note_for(_WROTE)
+    assert "이 문서의 내용이지 네 근거가 아니다" in note
+    assert "옮겨 적지 마라" in note
+
+
+def test_an_unmatched_citation_keeps_its_raw_string(monkeypatch):
+    """⭐ **검증기는 제 일을 했다** — 여기서 고칠 것이 없다는 것을 박아 둔다.
+
+    세탁된 인용이 `verified: false` 로 났다. 꾸러미에 그 문서가 없으므로 **맞는 판정**이다.
+    그리고 제목·절을 **임의로 가르지 않고 원문 그대로 남긴다** — 대조할 이름이 없는데
+    쉼표에서 자르면 **없는 절 이름을 만들어 낸다.**
+    """
+    from nexus.llm.citations import validate_citations
+    from nexus.search.evidence_packet import EvidencePacket, EvidenceSnippet
+
+    s = EvidenceSnippet(chunk_rid="c1", doc_rid="d1", doc_title="꾸러미에 있는 문서",
+                        section_path="1절", source_uri="t:x.md", text="본문",
+                        score=0.9, classification="INTERNAL")
+    r = validate_citations("주장[출처: 꾸러미에 없는 문서 — 부제, 3. 어느 절].",
+                           EvidencePacket(snippets=[s]))
+
+    assert r.unverified_count == 1
+    c = r.citations[0]
+    assert c.verified is False
+    assert c.title == "꾸러미에 없는 문서 — 부제, 3. 어느 절", "원문을 안 지켰다"
+    assert c.section == "", "대조할 문서가 없는데 절 이름을 지어냈다"
 
 
 def test_the_note_names_no_producer():
