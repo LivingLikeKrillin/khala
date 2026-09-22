@@ -73,13 +73,31 @@ def test_the_note_forbids_rather_than_asks_for_something_impossible():
     assert "다시 확인하라" not in note, "못 할 일을 시키는 문장이 살아 있다"
 
 
-def test_the_note_carries_all_four_obligations():
-    """넷 중 하나라도 빠지면 이 등급이 하는 일이 준다."""
+def test_the_note_carries_every_obligation_the_source_asked_for():
+    """⛔ **이 검사가 한 번 틀렸다 (2026-09-23).**
+
+    앞 판은 *"의무 넷"* 을 셌는데, 그 넷은 **내가 줄인 문구에서 뽑은 것**이었다. 원본은
+    다섯이었고 첫째가 *"인용하되 LLM 산출이라 밝혀라"* 다. **줄인 글로 쓴 검사는 줄인 글을
+    자기 자신과 대조할 뿐이다** — 초록이었고, 뜻은 빠져 있었다.
+
+    ⇒ 목록을 **원본 기준으로** 다시 적는다. 다음에 문구를 줄이는 사람은 이 다섯을 넘어야 한다.
+    """
     note = P.note_for(_WROTE)
-    assert "사람이 쓴 문장이 아니다" in note          # 무엇인가
-    assert "무엇이 언제 있었나" in note                # 무엇에 쓰는가
-    assert "원인을" in note                            # 무엇에 안 쓰는가
-    assert "어긋나면 사람 쪽을 따르고" in note         # 충돌하면
+    assert "사람이 쓴 문장이 아니다" in note          # ① 무엇인가
+    assert "인용해라" in note                          # ② **귀속하라** — 한 번 잃었던 의무
+    assert "무엇이 언제 있었나" in note                # ③ 무엇에 쓰는가
+    assert "원인을" in note                            # ④ 무엇에 안 쓰는가
+    assert "어긋나면 사람 쪽을 따르고" in note         # ⑤ 충돌하면
+
+
+def test_the_note_says_not_to_cite_the_interpreter_instead():
+    """⛔ **실물이 그렇게 났다 (첫 운영자 질의, 2026-09-23).**
+
+    답이 사건 사실 셋을 이 등급의 조각 하나에서만 가져다 쓰고, 인용은 그 사실을 **해석한
+    사람 문서**로 갔다. 계약은 지켰는데 근거를 근거라고 안 밝혔고, 그래서 표시가 나올 자리가
+    없었다. 「인용해라」만으로는 그 답이 이미 인용을 하고 있었으므로 안 걸린다.
+    """
+    assert "해석한 다른 문서를 대신 인용하지 마라" in P.note_for(_WROTE)
 
 
 def test_the_note_names_no_producer():
