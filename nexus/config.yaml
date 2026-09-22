@@ -223,11 +223,51 @@ auth:
   # 이 배포에 없는 이름은 건너뛴다(로컬 상자에 슬랙 토큰이 없는 것은 결함이 아니다). 다만
   # 선언된 것이 하나도 안 떠 있으면 검사는 판정하지 않고 종료 코드 76 으로 끝난다.
   serving_surfaces: [local-dev, slack-bot]
-  principals: []
-    # - name: "analyst"
-    #   token_sha256: "REPLACE_ME"
-    #   tenant: "default"
+  # ⛔ **설명 층(narrator)의 신원은 `serving_surfaces` 에 안 넣는다.** 위 검사는 「선언된
+  # 서빙 코퍼스마다 **모든** 서빙 표면이 닿는가」를 본다. 이 신원들의 좁은 범위는 결함이
+  # 아니라 설계이므로 그 판정의 대상이 아니다 — 바로 위 주석의 "평가·실험 principal" 과
+  # 같은 이유다.
+  principals:
+    # 설명 층의 **사건 바퀴**. 읽기 전용, `picasso` 하나.
+    #
+    # ⛔ **왜 제 신원이 필요한가 (실측 2026-09-23).** 이 층은 지금까지 `local-dev` 를 빌려
+    # 썼는데 그것은 **운영자 신원**이다 — `manage_documents`(문서 숨김·supersede)를 들고
+    # 있고 읽기 범위가 `default`·`design_docs`·`picasso` 셋이다. 측정만 하는 층이 파괴적
+    # 권한을 들 이유가 없고, 지금까지 요청마다 `tenant: picasso` 를 보내 **기억으로**
+    # 좁히고 있었다. 한 번 빠뜨리면 조용히 넓어진다.
+    #
+    # ⭐ **이 신원으로는 `narrator` 테넌트에 닿는 것이 불가능하다.** 요청은 좁힐 수만 있고
+    # 넓힐 수 없으므로(`auth/scope.py`), 설명 층이 제 산출을 제 근거로 쓰는 순환이
+    # **기억이 아니라 천장으로** 막힌다.
+    - name: "narrator-events"
+      token_sha256: "8485e4c1b166180329517152aff2f8b71f90771a95e03fb9e3b7d35de6257d1c"
+      tenant: "picasso"
+      clearance: "INTERNAL"
+      capabilities: []          # 기본 거부 = 읽기 전용
+      read_tenants: ["picasso"]
+
+    # ⏸ **설명 층의 운영자 질의** — `read_tenants: ["picasso", "narrator"]`.
+    #
+    # ⛔ **막혀 있다: `clearance_equivalence_verified` 가 없다.** 원소 둘 이상은 그 한 줄을
+    # 요구하고, 그것은 *"두 테넌트의 등급 어휘를 대 봤다"* 는 **사람의 선언**이다. 대신
+    # 적지 않는다.
+    #
+    # ⭐ **대조는 측정해 뒀다 (2026-09-23).** 선언이 싸지라고 남긴다:
+    #     picasso    문서 45 · 조각 465 — 전부 INTERNAL
+    #     narrator   문서  5 · 조각  36 — 전부 INTERNAL
+    #   두 테넌트의 등급 **값 집합이 같고**(`{INTERNAL}`) 한쪽에만 있는 등급이 없다.
+    #   ⇒ 둘을 함께 여는 것이 노출을 바꾸지 않는다.
+    #   ⚠ 이것은 **그날의 사실**이다 — `picasso` 에 `RESTRICTED` 가 한 건 들어오는 순간
+    #   이 문장은 낡는다. 켤 때 다시 센다.
+    #
+    # 소유자가 아래 주석을 풀고 날짜를 적으면 켜진다. 이 신원은 출처 등급 단계에서 쓴다.
+    # - name: "narrator-operator"
+    #   token_sha256: "9776948b7ab6ba834ecba60aeae3dfdc3e8a626569399a9f3c15f0568a93650b"
+    #   tenant: "picasso"
     #   clearance: "INTERNAL"
+    #   capabilities: []
+    #   read_tenants: ["picasso", "narrator"]
+    #   clearance_equivalence_verified: "2026-09-23"
 
   # ── Cloudflare Access (per-person browser identity) — OFF by default ──
   # 설정하면 Nexus 는 자신이 Access 뒤에 있다고 선언한다: Cf-Access-Jwt-Assertion 헤더를
