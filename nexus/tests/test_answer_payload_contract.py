@@ -43,6 +43,9 @@ class _Search:
         self.excluded_doc_types = []
         # 그리고 또 하나(식별자 채널, 2026-09-20). 같은 이유로 여기 적는다.
         self.identifier_channel = []
+        # 그리고 터진 보강 패스(2026-09-22). ⭐ **같은 이유의 넷째다** — 이 목록이 응답에서
+        # 사라지면 호출자는 「보강이 터졌다」와 「채울 것이 없었다」를 구별할 수 없다.
+        self.enrichment_failed = []
 
 
 @pytest.fixture

@@ -36,6 +36,9 @@ class _Result:
         #: 응답 조립이 읽는 칸. 가짜가 실물의 칸을 안 들면 엔드포인트가 여기서 죽는다.
         self.excluded_doc_types = []
         self.identifier_channel = []
+        #: 터진 보강 패스. ⭐ 이 칸이 빠지면 엔드포인트가 **500 으로 죽는다** — 대역이 실물을
+        #: 안 따라간 것이 조용하지 않게 드러나는 자리라, 여기 손이 가는 것은 결함이 아니다.
+        self.enrichment_failed = []
         from nexus.search.confidence import Confidence
         self.confidence = Confidence()
 

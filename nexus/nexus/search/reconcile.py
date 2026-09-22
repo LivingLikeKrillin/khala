@@ -63,7 +63,7 @@ def names_in(text: str, limit: int = MAX_NAMES) -> list[str]:
 
 async def corrections_for(hits, tenant, clearance, *, search, exclude_rids=None,
                           embedding_svc=None, config=None,
-                          exclude_doc_types=()) -> list:
+                          exclude_doc_types=(), failed: list | None = None) -> list:
     """1차 근거가 부른 이름에 대한 **정정 문서** 청크. 실패는 삼키되 조용하지 않게.
 
     ``search`` 는 `hybrid_search` 를 받는다 — 이 모듈이 검색 구현을 알 필요가 없고,
@@ -86,6 +86,10 @@ async def corrections_for(hits, tenant, clearance, *, search, exclude_rids=None,
                                  exclude_doc_types=exclude_doc_types)
         except Exception as e:  # noqa: BLE001 — 보강 실패가 검색을 죽이면 안 된다
             logger.warning("reconcile_pass_failed", name=name, error=str(e))
+            # ⛔ **로그는 부른 쪽이 아니다.** 이것 없이는 「정정이 없었다」와 「정정을 못
+            # 물어봤다」가 같은 빈 목록으로 나가고, 그 둘은 답변에 정반대 뜻이다.
+            if failed is not None and "corrections" not in failed:
+                failed.append("corrections")
             continue
         # **상한은 여기서 건다.** `top_k` 를 넘겨 두고 상대가 지키리라 믿으면, 그 약속을
         # 안 지키는 구현 하나에 근거가 통째로 부풀어 오른다. 검사가 이 자리를 잡았다.
@@ -177,15 +181,18 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
     # 여기서 그것을 읽으면 **검색과 보강이 어긋나는 것이 표현 불가능**해진다.
     excluded_types = tuple(getattr(result, "excluded_doc_types", ()) or ())
     if search_cfg.get("reconcile_pass"):
+        # ⛔ **터진 것을 담을 자리도 `result` 에서 읽는다** — 제외 목록과 같은 이유다.
+        #    표면마다 받으면 하나가 잊고, 그 조합은 검사가 초록인 채로 틀린다.
         fill += await corrections_for(result.hits, tenant, clearance, search=search,
                                       exclude_rids={f.rid for f in fill},
                                       embedding_svc=embedding_svc, config=config,
-                                      exclude_doc_types=excluded_types)
+                                      exclude_doc_types=excluded_types,
+                                      failed=result.enrichment_failed)
     if search_cfg.get("pair_expansion"):
         from nexus.search.pairs import paired_chunks
         fill += [_as_hit(r) for r in await paired_chunks(
             result.hits, tenant, clearance, exclude_rids={f.rid for f in fill},
-            exclude_doc_types=excluded_types)]
+            exclude_doc_types=excluded_types, failed=result.enrichment_failed)]
     # `result.spans` 는 SPEC-nexus-stage-spans 캡처(기본 꺼짐, None). 여기서 넘기지 않으면
     # 답변 경로의 packet span 은 영원히 못 남는다 — 답변 경로 셋이 전부 이 함수 하나로 모이므로
     # (docstring 참조), 캡처 배선도 여기 한 곳이면 된다.

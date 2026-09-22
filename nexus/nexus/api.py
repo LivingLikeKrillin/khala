@@ -572,6 +572,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 # 죽은 경로는 호출자에게도 보여야 한다 — 로그에만 있으면 "건강해 보이는" 상태가
                 # 그대로다 (SPEC-nexus-embedding-cutover-seam §4.5).
                 "degraded": result.degraded,
+                "enrichment_failed": result.enrichment_failed,
             },
         )
     except UnknownRoute as e:
@@ -817,6 +818,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 서버는 프롬프트만 바꾸고 그 사실을 혼자 알고 있었다.
                 "weak_evidence": answer_result.weak_evidence,
                 "degraded": search_result.degraded,
+                "enrichment_failed": search_result.enrichment_failed,
                 # **생성 실패는 답변이 아니다.** 이 플래그가 없는 동안 클라이언트는 둘을 구별할
                 # 수 없었고, 서버가 실패 자리에 넣는 근거 덤프를 답변으로 렌더했다.
                 "llm_failed": answer_result.llm_failed,
@@ -1271,6 +1273,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # 근거와 같은 이벤트에 실린다 — 근거가 왜 이것뿐인지를 설명하는 사실이라
                 # 답변보다 먼저 도착해야 한다.
                 "degraded": search_result.degraded,
+                "enrichment_failed": search_result.enrichment_failed,
             }
             yield f"event: evidence\ndata: {json.dumps(evidence_data, ensure_ascii=False)}\n\n"
 
