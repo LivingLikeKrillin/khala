@@ -97,7 +97,24 @@ def test_the_note_says_not_to_cite_the_interpreter_instead():
     사람 문서**로 갔다. 계약은 지켰는데 근거를 근거라고 안 밝혔고, 그래서 표시가 나올 자리가
     없었다. 「인용해라」만으로는 그 답이 이미 인용을 하고 있었으므로 안 걸린다.
     """
-    assert "해석한 다른 문서를 대신 인용하지 마라" in P.note_for(_WROTE)
+    note = P.note_for(_WROTE)
+    assert "네가 가져온 곳은 여기다" in note
+
+
+def test_citing_this_is_not_a_ban_on_citing_the_others():
+    """⛔ **그 절이 한 번 너무 멀리 갔다 (실측 2026-09-23).**
+
+    앞 판은 *"해석한 다른 문서를 **대신** 인용하지 마라"* 였고, 넷째 운영자 질의에서 **사람
+    근거 인용이 0** 이 됐다 — 앞 세 판이 2~3건씩 인용하던 사람 문서가 통째로 빠졌다.
+    「대신」이 하는 일을 모델이 흘리면 *"해석한 문서를 인용하지 마라"* 가 된다.
+
+    ⚠ 그 판의 조각 배합은 **앞 판과 같았고**(기계 19 · 사람 12), 이 등급의 문서는 절 이름이
+    번호로 시작하지 않아 `crossrefs` 가 가져올 절이 **0 건**이다 — 재고 나서 D 를 배제했다.
+    """
+    note = P.note_for(_WROTE)
+    assert "그것도 같이 인용해라" in note, "사람 근거를 같이 인용하라는 말이 없다"
+    assert "인용하지 말라는 말이 아니다" in note, "금지로 읽힐 자리를 안 막았다"
+    assert "대신 인용하지 마라" not in note, "너무 멀리 간 절이 살아 있다"
 
 
 def test_the_note_forbids_laundering_a_citation_out_of_the_document():
@@ -164,6 +181,34 @@ def test_the_packet_carries_the_note_that_belongs_to_the_tier(tier, expect):
         assert P.note_for(expect) in text, "그 등급의 주석이 프롬프트에 안 실린다"
         other = _READ if expect is _WROTE else _WROTE
         assert P.note_for(other) not in text, "다른 등급의 주석이 실렸다 — 거짓을 말한다"
+
+
+def test_the_rule_is_stated_once_and_the_mark_rides_on_each_chunk():
+    """⛔⛔ **조각마다 붙이던 판은 꾸러미의 52% 가 같은 문장 열두 벌이었다** (실측 2026-09-23).
+
+    등급 문장이 한 줄일 때는 값이 쌌다. 기계가 **쓴** 등급의 문장은 여섯 문장 354자이고,
+    조각마다 붙자 근거보다 주석이 길어졌다.
+
+    ⛔ **그리고 이 비용은 기계 조각이 많을수록 커진다** — 즉 **사람 근거가 가장 주목받아야
+    할 때 가장 묻힌다.** 넷째 운영자 질의에서 사람 근거 인용이 0 이 된 판이 그 모양이었다.
+
+    ⇒ 규칙은 위에서 **한 번**, 조각마다 남는 것은 **짧은 표시**다.
+    """
+    from nexus.search.evidence_packet import EvidencePacket, EvidenceSnippet, format_for_llm
+
+    def _snip(i, tier):
+        s = EvidenceSnippet(chunk_rid=f"c{i}", doc_rid="d1", doc_title="문서",
+                            section_path=f"{i}절", source_uri="t:x.md",
+                            text="근거 본문", score=0.9, classification="INTERNAL")
+        s.provenance_tier = tier
+        return s
+
+    text = format_for_llm(EvidencePacket(
+        snippets=[_snip(i, _WROTE) for i in range(6)] + [_snip(9, P.AUTHORED)]))
+
+    assert text.count(P.note_for(_WROTE)) == 1, "규칙이 조각마다 반복된다 — 근거가 묻힌다"
+    assert text.count(P.mark(_WROTE)) == 7, "짧은 표시가 조각마다 안 붙는다 (머리말 1 + 조각 6)"
+    assert P.note_for(_WROTE) in text, "규칙이 아예 없다"
 
 
 # ── 선언 — 문서가 자칭하지 않는다 ────────────────────────────────────────────
