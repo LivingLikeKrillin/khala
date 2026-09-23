@@ -335,7 +335,20 @@ def query(
             entity_rids=entity_rids, config=config,
         )
 
-        typer.echo(f"\n검색 경로: {result.route_used}")
+        # **어느 코퍼스를 뒤졌나.** 이 명령은 principal 이 없어서 `--tenant` 가 곧 범위이고,
+        # 기본값이 `default` 다 — 즉 **안 주면 말없이 정책 코퍼스만 본다.**
+        #
+        # ⛔ **하필 이 명령이 그 자리다.** `CLAUDE.md` 가 조직 지식을 물을 때 **가장 먼저
+        # 치라고 적어 둔 명령**이고, 같은 파일이 테넌트가 둘이고 **둘의 내용이 다르다**고
+        # 적는다(`default` 청크 466 · `design_docs` 청크 1519). 설계 질문에 `--tenant` 를
+        # 빠뜨리면 정책 코퍼스만 본 결과가 확신 있게 나오고, 화면에는 그 사실이 없다 —
+        # 답변 경로가 `searched_tenants` 로 고친 것과 **같은 결함이 같은 이유로** 여기 있었다
+        # (실측 2026-09-03 · 비평 3R I-010).
+        #
+        # ⚠ **0건일 때도 낸다.** 그때가 가장 필요하다: "없습니다" 가 *"코퍼스에 없다"* 인지
+        # *"엉뚱한 코퍼스를 봤다"* 인지를 이 줄 하나가 가른다.
+        typer.echo(f"\n코퍼스: {tenant}")
+        typer.echo(f"검색 경로: {result.route_used}")
         typer.echo(f"결과: {len(result.hits)}건 ({result.timing_ms.get('total_ms', 0)}ms)\n")
 
         for i, hit in enumerate(result.hits, 1):
