@@ -45,7 +45,7 @@ from nexus.repositories.graph import PostgresGraphRepository
 from nexus.rid import canonicalize_entity_name, entity_rid
 from nexus.search.anchor_status import summarize as _anchor_summary
 from nexus.search.provenance import mark as _tier_mark
-from nexus.search.evidence_packet import format_for_llm
+from nexus.search.evidence_packet import code_values_payload, format_for_llm
 from nexus.search.evidence_share import counts as evidence_counts
 from nexus.search.reconcile import packet_for_answer
 from nexus.search import history as history_module
@@ -879,6 +879,9 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # ⚠ 범위 **밖** 요청은 여기 안 싣는다: 그 테넌트의 존재가 새어 나간다(1R I-009).
                 "searched_tenants": packet.searched_tenants,
                 "evidence_tenants": dict(evidence_counts(packet.snippets)),
+                # 질문에 걸린 claim 의 코드 현재 값과 **소유자 판정**. 판정은 산문에만 있으면
+                # 에이전트가 못 읽는다 — 「근거 없음」이 값으로 안 나오던 것과 같은 자리.
+                "code_values": code_values_payload(packet),
                 # 요청이 보낸 것이 아니라 **실제로 SQL 에 간 것**이다. 오타가 조용히
                 # 무시된 것과 목록이 통째로 안 닿은 것을 호출자가 이 값으로 가른다.
                 "excluded_doc_types": search_result.excluded_doc_types,
@@ -1479,6 +1482,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # 외부 평가 F2 가 잡은 모양이고, 웹 채팅이 타는 경로가 바로 여기다.
                 "searched_tenants": packet.searched_tenants,
                 "evidence_tenants": dict(evidence_counts(packet.snippets)),
+                "code_values": code_values_payload(packet),
                 "excluded_doc_types": search_result.excluded_doc_types,
                 "identifier_channel": search_result.identifier_channel,
                 "identifier_channel_asked": req.identifier_channel,

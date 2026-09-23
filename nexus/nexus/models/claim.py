@@ -12,6 +12,9 @@ from dataclasses import dataclass, field
 from nexus.models.resource import NexusResource
 from nexus.rid import claim_rid
 
+#: 판정을 이루는 칸. 하나라도 있으면 판정이고, 그러면 `ruled_by`·`ruled_on` 이 필수다.
+RULING_FIELDS = ("ruled_value", "ruled_source", "ruled_by", "ruled_on", "ruling_note")
+
 
 @dataclass
 class Claim(NexusResource):
@@ -35,6 +38,21 @@ class Claim(NexusResource):
     confidence: str = "low"  # high | medium | low
     value_symbol_hash: str | None = None
     last_verified_commit: str | None = None
+
+    # ── 소유자의 판정 (2026-09-23) ──
+    # 문서 값과 코드 값이 갈렸을 때 **소유자가 정한 값**. `ruled_value` 는 없을 수 있다 —
+    # "코드 값 기각, 대체 값 미정" 도 판정이다(`ruling_note` 에 적는다). 판정은 반드시
+    # `ruled_by`·`ruled_on` 을 갖는다(시드가 강제). 시스템은 여전히 어느 쪽이 맞는지 판정하지
+    # 않는다 — 사람이 한 판정을 **기억**해서 두 번 묻지 않게 할 뿐이다.
+    ruled_value: str | None = None
+    ruled_source: str | None = None
+    ruled_by: str | None = None
+    ruled_on: str | None = None
+    ruling_note: str | None = None
+
+    @property
+    def has_ruling(self) -> bool:
+        return any(getattr(self, f) is not None for f in RULING_FIELDS)
 
     def __post_init__(self):
         if not self.rid:

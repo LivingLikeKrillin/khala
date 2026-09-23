@@ -324,7 +324,7 @@ nexus entropy-signals                      # 공존 잔차 신호 — 테넌트�
 nexus entropy-signals --tenant default     # 라이브 코퍼스만 (전역은 평가 테넌트가 삼킨다)
 
 # ── 도메인 값 (Archon) ──
-nexus claim-seed claims.yaml                # 도메인 claim 적재
+nexus claim-seed claims.yaml                # 도메인 claim 적재 (소유자 판정 포함 — ruled_* 칸, migration 044)
 nexus claim-value Basic                     # 개념의 현재 값을 코드에서 조회
 nexus grade-authority                       # 등급 계층 권한 도출
 

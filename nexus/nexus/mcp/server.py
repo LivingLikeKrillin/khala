@@ -19,6 +19,7 @@ import httpx
 from mcp.server import MCPServer
 
 # 등급 어휘는 한 곳에서 온다 — 표면마다 다른 문장을 지어내면 등급이 표면마다 다른 뜻이 된다.
+from nexus.mcp.lines import code_values_lines
 from nexus.search.provenance import mark as _tier_mark
 
 NEXUS_API_URL = os.getenv("NEXUS_API_URL", "http://localhost:8000")
@@ -235,6 +236,8 @@ async def nexus_answer(
         sources = [p["source_uri"] for p in provenance[:3]]
         lines.append(f"\n출처: {', '.join(sources)}")
 
+    # 코드 현재 값과 소유자 판정 — HTTP 응답에는 있는데 이 표면만 빠뜨리면 에이전트가 못 본다.
+    lines.extend(code_values_lines(data))
     lines.extend(_unknown_time_note(data))
     lines.append(f"경로: {data.get('route_used', 'N/A')}")
     return "\n".join(lines)

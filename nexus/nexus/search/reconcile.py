@@ -119,28 +119,56 @@ async def code_values_for(question, tenant, clearance, *, config, pool):
     from nexus.claims.matching import claims_for_question
     from nexus.claims.repository import ClaimRepository
     from nexus.index.code_source import CodeValueResolver
-    from nexus.search.evidence_packet import CodeValue
-
     repo_path = (config or {}).get("code_source", {}).get("repo_path", "")
-    if not repo_path:
-        return []
     matched = claims_for_question(
         question, await ClaimRepository(pool).find_all(tenant, clearance))
     if not matched:
         return []
 
-    resolver = CodeValueResolver(repo_path)
+    # 코드 마운트가 없어도 판정은 붙는다 — 판정은 코드가 아니라 사람에게서 온 값이다.
+    resolver = CodeValueResolver(repo_path) if repo_path else None
     out = []
     for c in matched:
-        if not (c.value_source and c.source_uri):
-            continue
-        r = resolver.resolve_at(c.source_uri, c.value_source)
-        if not r.found:
-            continue
-        out.append(CodeValue(
-            statement=c.statement, value=r.value or "", source=c.source_uri,
-            drifted=bool(c.value_symbol_hash) and c.value_symbol_hash != r.symbol_hash))
+        value, source, drifted = None, "", False
+        if resolver is not None and c.value_source and c.source_uri:
+            r = resolver.resolve_at(c.source_uri, c.value_source)
+            if r.found:
+                value, source = r.value or "", c.source_uri
+                drifted = bool(c.value_symbol_hash) and c.value_symbol_hash != r.symbol_hash
+        cv = code_value_from(c, value=value, source=source, drifted=drifted)
+        if cv is not None:
+            out.append(cv)
     return out
+
+
+def _norm(v: str) -> str:
+    return " ".join(str(v).split()).strip().lower()
+
+
+def code_value_from(claim, *, value, source, drifted):
+    """claim 하나 → 패킷의 `CodeValue`. 코드 값도 판정도 없으면 None.
+
+    판정은 코드 값을 못 읽어도 붙는다 — 정원처럼 해석기가 못 읽는 모양에도 판정은 있고,
+    그 판정이 안 보이면 답변은 문서의 낡은 값을 낸다(A27). 어긋남은 **여기서** 계산한다:
+    판정 값이 있고 코드 값이 읽혔는데 둘이 다르면 참. 값 없는 판정("기각, 대체 미정")은
+    비교할 것이 없으니 거짓이다.
+    """
+    from nexus.search.evidence_packet import CodeValue
+
+    has_ruling = bool(getattr(claim, "has_ruling", False))
+    if value is None and not has_ruling:
+        return None
+    current = value if value is not None else ""
+    conflict = bool(has_ruling and claim.ruled_value is not None and current != ""
+                    and _norm(current) != _norm(claim.ruled_value))
+    return CodeValue(
+        statement=claim.statement, value=current, source=source or "", drifted=drifted,
+        ruled_value=claim.ruled_value if has_ruling else None,
+        ruled_source=claim.ruled_source if has_ruling else None,
+        ruled_by=claim.ruled_by if has_ruling else None,
+        ruled_on=claim.ruled_on if has_ruling else None,
+        ruling_note=claim.ruling_note if has_ruling else None,
+        ruling_conflict=conflict)
 
 
 async def packet_for_answer(result, tenant, clearance, *, config, search,
