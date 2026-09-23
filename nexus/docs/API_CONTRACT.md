@@ -29,6 +29,48 @@
 - 모든 검색/조회에 `tenant` + `classification` 필터 자동 적용
 - timestamp는 ISO 8601 형식 (UTC)
 - rid는 항상 `make_rid()` 함수로 생성된 값
+- **모르는 요청 칸은 `422` 로 거절한다** (아래 §모르는 칸)
+- **요청이 보낸 값이 아니라 서버가 실제로 한 것을 응답에 싣는다** (아래 §서버가 한 것)
+
+### 모르는 칸 — 버리지 않고 거절한다 (2026-09-23)
+
+요청 모델 전부가 `extra="forbid"` 다(`api.py` 의 `RequestModel` 한 곳에 있다). 스키마에 없는
+칸이 오면 **`422` 와 함께 그 칸 이름을 돌려준다.**
+
+전에는 pydantic 기본값(`extra="ignore"`)이라 **`200` 과 함께 조용히 사라졌다.** 오타든, 낡은
+깃발이든, 그 표면에 없는 깃발이든 결과가 같아서 호출자는 *"켰는데 안 걸렸다"* 와 *"여기서는
+켤 수 없다"* 를 구별할 수 없었다. 한 소비자는 그 자리를 자기 소스에 **덫으로 적고 우회**하고
+있었다.
+
+⚠ **이것은 이름만 본다.** 이름이 맞는데 값이 안 먹은 것은 `422` 가 안 난다 — 그건 아래 규칙이
+맡는다. 둘은 같은 이음매의 반대쪽 반이고 서로 대신하지 못한다.
+
+⛔ 정책을 모델마다 적지 않는다. 갈리면 **같은 오타가 한 표면에서는 `422` 이고 다른 표면에서는
+통과한다** — 갈리는 것이 조용한 것보다 나쁘다.
+
+### 서버가 한 것 — 요청을 그대로 돌려주지 않는다
+
+범위·필터·처치는 요청이 정하지 못한다. `tenant` 는 토큰이 정하고 요청은 **좁히기만** 하며,
+범위 밖을 물어도 **오류를 내지 않는다**(그 테넌트가 있는지를 흘리지 않기 위해서다,
+`auth/scope.py::resolve_read_scope`). 그래서 그 대신이 규칙으로 걸려 있다 — **응답에 해소된
+결과를 싣는다.** 없으면 호출자는 코퍼스 X 를 묻고 Y 로 답을 받고도 아무 신호를 못 받는다.
+
+같은 이유로 붙어 있는 칸들:
+
+| 칸 | 무엇을 가르나 | 어디 |
+|---|---|---|
+| `searched_tenants` | 실제로 후보였던 코퍼스 | `/search` · `/search/answer` · `…/stream` |
+| `excluded_doc_types` | 오타로 무시된 것 / 목록이 통째로 안 닿은 것 | `/search/answer` |
+| `identifier_channel` + `_asked` | 안 켰다 / 켰는데 발화 안 했다 | `/search/answer` |
+| `n_unknown_origin_time` | 좁히기가 닿지 못한 건수 (**안 물었으면 `None`**) | 검색·답변 |
+| `degraded` · `enrichment_failed` | 빈 결과 / 죽은 경로 | 검색·답변 |
+
+⚠ **범위 밖이었다는 사실 자체는 안 싣는다** — 그것을 알리면 그 테넌트가 있다는 것이 샌다
+(1R I-009). 그건 운영자 로그로만 간다.
+
+⭐ HTTP 밖의 표면도 같은 사실을 **자기 어법으로** 낸다: A2A 는 아티팩트의
+`policy.tenant`, CLI `query` 는 출력 첫 줄의 `코퍼스:` 다. 표면이 늘면
+`tests/test_the_agent_surfaces_say_which_corpus_they_searched.py` 의 목록에 행을 더한다.
 
 ```python
 class NexusResponse(BaseModel):
@@ -48,13 +90,22 @@ class NexusResponse(BaseModel):
 ```python
 class SearchRequest(BaseModel):
     query: str                          # 검색어 (한국어/영어/혼합)
+    history: list[Turn] = []            # 대화 이력. U2 에서 서버는 상한만 걸고 버린다
     top_k: int = 10                     # 반환 결과 수
     route: str = "auto"                 # auto | hybrid_only | hybrid_then_graph | graph_then_hybrid
-    classification_max: str = "INTERNAL"  # 사용자 clearance
-    tenant: str = "default"
+    classification_max: str = "INTERNAL"  # 사용자 clearance — **요청이 올릴 수는 없다**
+    tenant: str = "default"             # 좁히기만 된다. 안 보내면 토큰의 범위 전체
     include_graph: bool = True          # Graph 확장 포함 여부
     include_evidence: bool = True       # Evidence snippet 포함 여부
+    origin_since: datetime | None       # **문서 자신의** 시각 (`origin_updated_at`, migration 039)
+    origin_until: datetime | None       # ⛔ 적재 시각이 아니다. 시각을 모르는 문서는 안 떨군다
 ```
+
+⛔ **`tenant` 는 안 보내는 것과 보내는 것이 다르다.** 기본값이 채워 넣은 것과 호출자가 고른
+것을 `model_fields_set` 으로 가른다 — 그러지 않으면 *"안 물으면 범위 전체"* 가 영원히 발화하지
+않는다(실측 2026-08-31, 컷오버가 그 자리에서 조용히 무효가 됐다). ⚠ 그래서 **칸 이름을 오타
+내면 범위가 좁아지는 게 아니라 넓어진다** — 「안 물었다」로 읽히기 때문이다. 오타 자체는
+`422` 가 잡는다(§모르는 칸).
 
 ### Response
 ```python
@@ -98,14 +149,22 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
     graph_findings: GraphFinding | None  # include_graph=true일 때
     route_used: str                     # 실제 사용된 route
+    searched_tenants: list[str]         # 실제로 후보였던 코퍼스 — 요청이 보낸 값이 아니라
+                                        # 토큰으로 해소된 범위다. 범위 밖을 물으면 오류 대신
+                                        # 여기에 해소 결과가 온다 (§서버가 한 것, 비평 3R I-010)
+    n_unknown_origin_time: int | None   # 좁히기가 닿지 못한 건수. 안 물었으면 None —
+                                        # 0 으로 내보내면 "물었고 전부 안다" 와 구별되지 않는다
     timing_ms: float                    # 전체 소요 시간
     degraded: list[str]                 # 실패해서 기여하지 못한 경로 ("bm25"|"vector"|"graph")
                                         # 빈 결과와 죽은 경로는 다른 사실이다
                                         # (SPEC-nexus-embedding-cutover-seam §4.4)
+    enrichment_failed: list[str]        # 터진 보강 패스. 같은 이유로 죽은 것과 빈 것을 가른다
 ```
 
 ### 에러 케이스
-- `400`: query가 빈 문자열
+- `400`: query가 빈 문자열, 또는 없는 `route` (무엇을 고를 수 있는지 `detail` 에 나온다)
+- `413` / `400`: `history` 가 상한을 넘거나 모양이 틀렸다 — **조용히 자르지 않는다** (SPEC §3.1)
+- `422`: 스키마에 없는 요청 칸 (§모르는 칸). `detail` 이 그 칸 이름을 말한다
 - `503`: DB 연결 실패 (partial result 반환 금지)
 
 ---
@@ -118,11 +177,24 @@ class SearchResponse(BaseModel):
 ```python
 class AnswerRequest(BaseModel):
     query: str
-    top_k: int = 10
+    history: list[Turn] = []
+    top_k: int = 20                     # ⚠ **검색 전용 경로의 10 과 다르다.** 집합 질문이
+                                        # 10 에서 잘렸다 — 근거가 8,163자에서 19,184자로 는다
+                                        # (실측 2026-08-30). 유료 백엔드에서는 그대로 비용이다
     route: str = "auto"
     classification_max: str = "INTERNAL"
     tenant: str = "default"
+    origin_since: datetime | None       # SearchRequest 와 같은 뜻
+    origin_until: datetime | None
+    exclude_doc_types: list[str] = []   # 후보 단계부터 뺄 문서 종류. **권한이 아니다** —
+                                        # 좁히기만 하고 넓히지 못한다
+    identifier_channel: bool = False    # 질의에 섞인 식별자만 따로 묻는 둘째 채널.
+                                        # ⛔ **기본 꺼짐이 설계다** — 이것은 처치이고 측정
+                                        # 대상이다 (`docs/PROCEDURE_RETRIEVAL_PREREGISTRATION.md` T2)
 ```
+
+⚠ `identifier_channel` 은 **이 요청에만 있다.** `/search` 로 보내면 `422` 다 — 전에는 조용히
+버려져서 *"켰는데 처치가 안 걸렸다"* 를 호출자가 알 방법이 없었다.
 
 ### Response
 ```python
@@ -135,6 +207,30 @@ class AnswerResponse(BaseModel):
     timing_ms: float
     degraded: list[str]                 # 검색 단계에서 죽은 경로 (SearchResponse 와 같은 뜻)
 
+    # ── 표면이 답변 문장에서 **되읽을 수 없는** 사실들 ─────────────────────
+    # 이 칸들이 빠지면 표면은 추측하거나 침묵한다. 전부 그렇게 한 번씩 데여서 생겼다.
+    # 전체 목록의 정본은 `/openapi.json` 이고, 여기 적는 것은 **왜 있는가**다.
+    searched_tenants: list[str]         # 무엇이 애초에 후보였나 (§서버가 한 것)
+    excluded_doc_types: list[str]       # 실제로 SQL 에 간 것 — 오타로 무시된 것과
+                                        # 목록이 통째로 안 닿은 것을 이 값으로 가른다
+    identifier_channel: list[str]       # 식별자 채널이 **무엇으로 발화했나**
+    identifier_channel_asked: bool      # 호출자가 **요청했는가** — 빈 목록 하나로는
+                                        # "안 켰다" 와 "켰는데 식별자가 없었다" 가 안 갈린다
+    abstained: bool                     # 기권은 코드가 내린 판단이다. 답변 문장을
+    abstain_reason: str | None          # 문자열 대조해서 알아내지 않는다
+    llm_failed: bool                    # **생성 실패는 답변이 아니다**
+    llm_failure_reason: str | None      # 기다리면 되는 실패와 사람이 결제해야 하는 실패는
+                                        # 같은 문장으로 나가면 안 된다 (`llm/failure.py`)
+    weak_evidence: bool                 # 근거는 있었지만 **잘 맞지 않았다**
+    top_distance: float | None          # 문턱에 겨우 걸린 것인지 한참 밖인지. None 은
+    top_bm25: float | None              # 그 경로가 **못 낸 것**이고 0 이 아니다
+    citations: list[Citation]           # 코드가 evidence packet 과 대조해 판정한 것
+    unverified_citations: list[str]     # 해소되지 않은 인용 — 출처인 척 통과시키지 않는다
+    unverified_numbers: list[str]       # 숫자도 같은 방식으로 검사한다 (`llm/numbers.py`)
+    numbers: list[dict]                 # 수만 내면 무엇이 걸렸는지 못 본다
+    n_stale: int                        # 낡았다고 판정된 근거 수
+    evidence_tenants: dict[str, int]    # 실제로 기여한 코퍼스별 근거 수
+
 class EvidenceSnippet(BaseModel):
     chunk_rid: str
     doc_title: str
@@ -143,7 +239,9 @@ class EvidenceSnippet(BaseModel):
     text: str                           # 관련 chunk 텍스트
     score: float
     doc_type: str                       # 축-A 타입 (웹 신뢰 배지)
-    provenance_tier: str                # 'authored' | 'machine_read' (ADR-0010)
+    provenance_tier: str                # 'authored' | 'machine_read' | 'machine_written'
+                                        # (ADR-0010). 'machine_written' = LLM 이 만든 지난
+                                        # 설명 — 사람이 쓴 문장이 아니다 (migration 043)
     updated_at: str | None              # ISO. staleness 판정 결과가 같이 붙는다
     code_anchors: dict | None           # 아래 — 앵커가 없는 코퍼스에서는 null
 
@@ -169,9 +267,14 @@ class ProvenanceRef(BaseModel):
 ```
 
 ### 에러 케이스
-- `400`: query 빈 문자열
+- `400`: query 빈 문자열, 또는 없는 `route`
+- `413` / `400`: `history` 상한 초과 / 모양 오류 — **조용히 자르지 않는다** (SPEC §3.1)
+- `422`: 스키마에 없는 요청 칸 (§모르는 칸)
 - `503`: DB 연결 실패
 - `502`: LLM API 호출 실패 → answer="답변을 생성할 수 없습니다" + evidence는 그대로 반환
+
+⚠ **생성 실패는 `502` 로만 오지 않는다.** 근거는 살아 있고 서술만 죽은 실행은 `200` 에
+`llm_failed=true` 로 온다 — 그 경우 답변 자리의 문자열을 답으로 렌더하면 안 된다.
 
 ---
 
