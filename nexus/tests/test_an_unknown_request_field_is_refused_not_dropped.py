@@ -35,7 +35,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from nexus import api
-from nexus.api import AnswerRequest, ExplainRequest, NexusResponse, SearchRequest, Turn
+from nexus.api import AnswerRequest, NexusResponse, SearchRequest, Turn
 
 #: 요청을 받는 모델 전부. **정책이 갈리면 그 자체가 결함이다** — 같은 API 의 두 표면이 모르는
 #: 칸을 다르게 다루면, 호출자는 한쪽에서 통과한 오타를 다른 쪽에서 422 로 만난다.
