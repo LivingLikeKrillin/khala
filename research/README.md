@@ -23,3 +23,4 @@
 | [`2026-09-04-representation-in-ai-assisted-development.md`](2026-09-04-representation-in-ai-assisted-development.md) | AI 를 쓰는 개발에서 담당자의 시스템 모델은 어떻게 되는가 — 문헌·실측치와 그로부터 끌어낸 설계 판단 |
 | [`2026-09-06-getting-org-documents-into-rag.md`](2026-09-06-getting-org-documents-into-rag.md) | 조직 문서를 RAG 에 붙이는 층 — 파싱·변경 동기화·ACL·큐레이션·소유권. **운영 실패가 코어가 아니라 여기서 난다**는 가설의 검증 |
 | [`2026-09-06-rag-communities.md`](2026-09-06-rag-communities.md) | RAG 실무자가 어디서 무엇을 이야기하나 — 커뮤니티 8곳·워크숍 3곳, 그리고 khala 가 무엇을 들고 갈 수 있고 무엇을 말하면 안 되는가 |
+| [`2026-09-23-bug-diagnosis-agents-field-data.md`](2026-09-23-bug-diagnosis-agents-field-data.md) | 버그 제보·장애를 진단하는 AI 에이전트를 현업이 어떤 용도로 어느 수준까지 쓰는가 — 대기업 사내·상용 제품·독립 벤치마크·국내 사례·비용과 실패. 구현 착수 전 견적의 근거 |
