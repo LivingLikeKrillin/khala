@@ -589,6 +589,21 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 "results": [_search_hit_to_dict(h) for h in result.hits],
                 "graph_findings": graph_findings,
                 "route_used": result.route_used,
+                # **이 검색이 어느 코퍼스를 뒤졌나.** 요청이 보낸 것이 아니라 토큰으로
+                # 해소된 범위(`_scope`)다 — 답변 경로가 `packet.searched_tenants` 로 내는 것과
+                # 같은 사실이고, 이 경로에만 없었다.
+                #
+                # ⛔ **없으면 안 되는 이유가 이미 적혀 있었다** (`auth/scope.py`
+                # `resolve_read_scope`). 범위 밖 테넌트를 물어도 **오류를 내지 않는다** — 그
+                # 테넌트가 있는지를 흘리지 않으려고 일부러 그렇게 뒀고, 그 대신 *"응답에는
+                # 해소된 범위가 실린다"* 가 보상 통제다(비평 3R I-010). 답변 경로는 싣고
+                # 있었고 여기는 `_scope` 를 계산해 신호에만 남겼다 — **보상 통제의 절반만
+                # 있었다.** 호출자는 코퍼스 X 를 묻고 Y 로 답을 받고도 아무 신호를 못 받는다.
+                #
+                # ⚠ 그리고 `tenant` 는 **칸 이름을 오타 내면** `model_fields_set` 에 안 들어가
+                # 「안 물었다」가 되고, 그러면 범위가 좁아지는 게 아니라 `read_scope` 전체로
+                # **넓어진다.** *"좁힐 수만 있고 넓힐 수 없다"* 가 오타 하나로 뒤집히는 자리다.
+                "searched_tenants": list(_scope),
                 # **안 물었으면 `None`** 이다 — 0 으로 내보내면 "물었고 전부 안다" 와
                 # 구별되지 않는다. 좁혔는데 안 좁혀진 만큼이 여기 보인다.
                 "n_unknown_origin_time": result.n_unknown_origin_time,
