@@ -395,6 +395,12 @@ CREATE TABLE claims (
     value_symbol_hash    TEXT,
     last_verified_commit TEXT,
     last_verified_at     TIMESTAMPTZ,
+    -- 소유자의 판정 (migration 044). 값이 없을 수 있다("기각, 대체 미정"); 소유자·날짜는 시드가 강제.
+    ruled_value          TEXT,
+    ruled_source         TEXT,
+    ruled_by             TEXT,
+    ruled_on             TEXT,
+    ruling_note          TEXT,
     CONSTRAINT chk_claim_rtype CHECK (rtype = 'claim'),
     CONSTRAINT uq_claim UNIQUE (tenant, claim_id)
 );

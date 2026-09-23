@@ -21,9 +21,11 @@ class ClaimRepository:
                     rid, rtype, tenant, classification, owner, source_kind, source_uri, hash,
                     status, claim_id, kind, concepts, statement, value_source, value_ref_kind,
                     criticality, activity, claim_status, confidence,
-                    value_symbol_hash, last_verified_commit)
+                    value_symbol_hash, last_verified_commit,
+                    ruled_value, ruled_source, ruled_by, ruled_on, ruling_note)
                 VALUES ($1,'claim',$2,$3::classification_level,$4,'code',$5,$6,
-                        'active',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+                        'active',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+                        $19,$20,$21,$22,$23)
                 ON CONFLICT (rid) DO UPDATE SET
                     classification=EXCLUDED.classification, owner=EXCLUDED.owner,
                     statement=EXCLUDED.statement, concepts=EXCLUDED.concepts,
@@ -32,12 +34,16 @@ class ClaimRepository:
                     claim_status=EXCLUDED.claim_status, confidence=EXCLUDED.confidence,
                     value_symbol_hash=EXCLUDED.value_symbol_hash,
                     last_verified_commit=EXCLUDED.last_verified_commit,
+                    ruled_value=EXCLUDED.ruled_value, ruled_source=EXCLUDED.ruled_source,
+                    ruled_by=EXCLUDED.ruled_by, ruled_on=EXCLUDED.ruled_on,
+                    ruling_note=EXCLUDED.ruling_note,
                     hash=EXCLUDED.hash, source_uri=EXCLUDED.source_uri, updated_at=now()
                 """,
                 c.rid, c.tenant, c.classification, c.owner, c.source_uri, c.hash,
                 c.claim_id, c.kind, c.concepts, c.statement, c.value_source,
                 c.value_ref_kind, c.criticality, c.activity, c.claim_status,
                 c.confidence, c.value_symbol_hash, c.last_verified_commit,
+                c.ruled_value, c.ruled_source, c.ruled_by, c.ruled_on, c.ruling_note,
             )
 
     async def find_by_concept(self, concept: str, tenant: str, clearance: str) -> list[Claim]:
@@ -46,7 +52,8 @@ class ClaimRepository:
                 """
                 SELECT rid, tenant, classification, owner, source_uri, hash, claim_id, kind,
                        concepts, statement, value_source, value_ref_kind, criticality, activity,
-                       claim_status, confidence, value_symbol_hash, last_verified_commit
+                       claim_status, confidence, value_symbol_hash, last_verified_commit,
+                       ruled_value, ruled_source, ruled_by, ruled_on, ruling_note
                 FROM claims
                 WHERE $1 = ANY(concepts)
                   AND tenant = $2
@@ -75,7 +82,8 @@ class ClaimRepository:
                 f"""
                 SELECT rid, tenant, classification, owner, source_uri, hash, claim_id, kind,
                        concepts, statement, value_source, value_ref_kind, criticality, activity,
-                       claim_status, confidence, value_symbol_hash, last_verified_commit
+                       claim_status, confidence, value_symbol_hash, last_verified_commit,
+                       ruled_value, ruled_source, ruled_by, ruled_on, ruling_note
                 FROM claims
                 WHERE {pred}
                   AND classification <= $2::classification_level
@@ -97,4 +105,6 @@ def _row_to_claim(r) -> Claim:
         activity=r["activity"], claim_status=r["claim_status"],
         confidence=r["confidence"], value_symbol_hash=r["value_symbol_hash"],
         last_verified_commit=r["last_verified_commit"],
+        ruled_value=r["ruled_value"], ruled_source=r["ruled_source"], ruled_by=r["ruled_by"],
+        ruled_on=r["ruled_on"], ruling_note=r["ruling_note"],
     )

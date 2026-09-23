@@ -219,6 +219,8 @@ def claim_seed(
         pool = await db.get_pool()
         rep = await seed_claims(path, ClaimRepository(pool), CodeValueResolver(repo_path))
         typer.echo(f"{rep.total}건 적재 · 코드에 붙음 {rep.bound}")
+        if rep.rulings:
+            typer.echo(f"  판정 {rep.rulings}건 · 그중 코드 값 없이 판정만 {len(rep.ruling_only)}건")
         # **안 붙은 것을 조용히 넘기지 않는다.** 행은 들어가지만 값이 없다 — 그 상태로
         # 답변에 붙으면 "코드는 …" 자리가 빈 채로 나간다. 이유는 해석기 것을 그대로 옮긴다.
         for claim_id, reason in rep.unbound:

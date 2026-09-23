@@ -97,6 +97,19 @@ class CodeValue:
     source: str = ""
     #: 심을 때의 코드와 지금 코드가 다른가. 값 자체는 지금 것이라 정확하다.
     drifted: bool = False
+    #: 소유자의 판정 (`models/claim.py`). 판정이 있으면 그 값이 **결정된 값**이고,
+    #: `ruling_conflict` 는 코드 현재 값이 판정과 다른지를 **코드가** 계산한 것이다 — 모델은
+    #: 서술만 한다. `value` 가 "" 이고 판정만 있으면 「코드에서 읽지 못한 값의 판정」이다.
+    ruled_value: str | None = None
+    ruled_source: str | None = None
+    ruled_by: str | None = None
+    ruled_on: str | None = None
+    ruling_note: str | None = None
+    ruling_conflict: bool = False
+
+    @property
+    def has_ruling(self) -> bool:
+        return self.ruled_by is not None and self.ruled_on is not None
 
 
 @dataclass
@@ -214,6 +227,14 @@ async def assemble_packet(
     return packet
 
 
+def code_values_payload(packet: EvidencePacket) -> list[dict]:
+    """응답에 실을 코드 값과 판정. 에이전트 소비자에게 판정은 산문이 아니라 값이어야 한다 —
+    산문에만 있으면 「근거 없음」이 값으로 안 나오던 것과 같은 자리다(2026-09-23 프로브)."""
+    from dataclasses import asdict
+
+    return [asdict(cv) for cv in (getattr(packet, "code_values", None) or [])]
+
+
 def format_for_llm(packet: EvidencePacket) -> str:
     """Evidence packet을 LLM 프롬프트용 텍스트로 변환."""
     parts: list[str] = []
@@ -288,10 +309,27 @@ def format_for_llm(packet: EvidencePacket) -> str:
         parts.append("아래는 문서가 아니라 **코드에서 지금 읽은 값**입니다. 문서의 값과 "
                      "다르면 어느 쪽이 맞다고 단정하지 말고, 문서는 무엇이라 하고 코드는 "
                      "무엇이라 하는지 **둘 다** 적으세요.")
+        ruled = [cv for cv in code_values if getattr(cv, "has_ruling", False)]
         for cv in code_values:
             drift = " (심은 뒤 코드가 바뀜 — 값은 현재 것)" if cv.drifted else ""
             where = f" — {cv.source}" if cv.source else ""
-            parts.append(f"- {cv.statement}: {cv.value}{where}{drift}")
+            shown = cv.value if cv.value else "(코드에서 읽지 못함)"
+            parts.append(f"- {cv.statement}: {shown}{where}{drift}")
+            if getattr(cv, "has_ruling", False):
+                decided = cv.ruled_value if cv.ruled_value is not None else "값 미정"
+                src = f" — 정본: {cv.ruled_source}" if cv.ruled_source else ""
+                note = f" — {cv.ruling_note}" if cv.ruling_note else ""
+                parts.append(f"  · 판정: {decided}{src} ({cv.ruled_by}, {cv.ruled_on}){note}")
+                if cv.ruling_conflict:
+                    parts.append(f"  · ⚠ 코드의 현재 값 {cv.value} 은(는) 판정과 어긋납니다 "
+                                 f"(판정 {cv.ruled_value})")
+        # 판정은 사람이 이미 내린 결정이다. 그 값에 대해서는 위의 "단정하지 말고 둘 다" 규칙이
+        # 뒤집힌다 — 다시 판정하면 같은 질문이 매번 돌아온다(2026-09-23 실측, A27).
+        if ruled:
+            parts.append("**판정이 있는 값은** 소유자가 이미 결정한 값입니다. 문서·코드의 현재 "
+                         "값이 판정과 다르면 어느 쪽이 맞는지 다시 판정하지 말고, 판정된 값을 "
+                         "답으로 내고 현재 값은 판정과 다르다고 적으세요. 판정이 없는 값은 "
+                         "위 규칙대로 둘 다 적고 단정하지 마세요.")
 
     # Graph findings
     if packet.graph:
