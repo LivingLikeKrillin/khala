@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from nexus import db
 from nexus.auth import (
@@ -237,7 +237,31 @@ class NexusResponse(BaseModel):
 
 
 # ── Request/Response models ──
-class Turn(BaseModel):
+class RequestModel(BaseModel):
+    """요청 본문의 공통 규약 — **모르는 칸은 거절한다.**
+
+    ⛔ **왜 (실측 2026-09-23).** pydantic 의 기본값은 `extra="ignore"` 다. 모르는 칸은 200 과
+    함께 조용히 없던 일이 된다 — 오타든, 낡은 깃발이든, 이 표면에 없는 깃발이든 결과가 같다.
+    호출자에게는 **켰는데 안 걸린 것**과 **애초에 켤 수 없는 것**이 구별되지 않는다.
+
+    ⭐ **가정이 아니라 소비자가 적어 둔 것이다.** 설명 층 클라이언트 머리말에 우리 표면
+    하나가 **덫으로 적혀** 있고 그쪽은 그것을 우회한다 — *"켜서 보내면 200 이 오는데 처치는
+    안 걸린다 … 응답에 실리지도 않아서 버려졌다는 것을 알 방법이 없다."* 여기서 422 를 내면
+    그 덫이 없어진다. 판을 한 번 돌리고 나서가 아니라 **경계에서** 알게 된다.
+
+    ⚠ **되울림을 대신하지 않는다.** 이것이 잡는 것은 *모르는 이름*뿐이다. 이름이 멀쩡한데
+    값이 안 먹은 것, 범위가 조용히 넓어진 것은 여전히 **응답이 말해야** 잡힌다
+    (`excluded_doc_types` · `identifier_channel_asked` · `searched_tenants` 가 그 자리다).
+    둘은 같은 이음매의 반대쪽 반이다.
+
+    ⭐ **한 곳에 둔다.** 모델마다 적으면 정책이 갈리고, 그러면 같은 오타가 한 표면에서는
+    422 이고 다른 표면에서는 통과한다 — **갈리는 것이 조용한 것보다 나쁘다.**
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class Turn(RequestModel):
     """대화 한 턴. 오래된 것부터 나열되며, **마지막 원소는 이번 `query` 가 아니다.**"""
     role: str
     content: str
@@ -264,7 +288,7 @@ def _history(raw: list["Turn"] | None) -> list[history_module.Turn]:
         raise HTTPException(status_code=400, detail=str(e)) from None
 
 
-class SearchRequest(BaseModel):
+class SearchRequest(RequestModel):
     query: str
     #: 대화 이력 — **U2 에서 서버는 받아서 버린다**(상한 검사만 한다). 검색에 쓰는 것은 U3 다.
     #: 배관과 행동 변경을 한 PR 에 섞으면 회귀가 어느 쪽에서 왔는지 못 가린다.
@@ -287,7 +311,7 @@ class SearchRequest(BaseModel):
 
 
 
-class AnswerRequest(BaseModel):
+class AnswerRequest(RequestModel):
     query: str
     history: list[Turn] = Field(default_factory=list)   # U2: 받아서 버린다 (SearchRequest 와 같다)
     #: **답변 경로의 예산은 20 이다** (검색 전용 경로는 10 그대로).
@@ -338,24 +362,24 @@ class AnswerRequest(BaseModel):
     identifier_channel: bool = False
 
 
-class IngestRequest(BaseModel):
+class IngestRequest(RequestModel):
     path: str
     force: bool = False
     tenant: str = "default"
 
 
-class UploadRequest(BaseModel):
+class UploadRequest(RequestModel):
     path: str = "uploads"
     tenant: str = "default"
 
 
-class OtelAggregateRequest(BaseModel):
+class OtelAggregateRequest(RequestModel):
     window_minutes: int = 5
     lookback_minutes: int = 60
     tenant: str = "default"
 
 
-class SupersedeRequest(BaseModel):
+class SupersedeRequest(RequestModel):
     old_ref: str
     new_ref: str
     tenant: str = "default"
@@ -597,7 +621,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
 # 넣을 수 있으면 분모가 오염된다.
 
 
-class FeedbackOfferRequest(BaseModel):
+class FeedbackOfferRequest(RequestModel):
     answer_key: str
     channel_id: str
     message_ts: str
@@ -606,14 +630,14 @@ class FeedbackOfferRequest(BaseModel):
     answer_text: str = ""
 
 
-class FeedbackVoteRequest(BaseModel):
+class FeedbackVoteRequest(RequestModel):
     answer_key: str
     verdict: str
     channel_id: str
     message_ts: str
 
 
-class FeedbackReasonRequest(BaseModel):
+class FeedbackReasonRequest(RequestModel):
     vote_id: str
     reason: str
 
@@ -1593,7 +1617,7 @@ async def _embed_backend_health(svc) -> tuple[bool, str | None]:
         return False, None
 
 
-class ExplainRequest(BaseModel):
+class ExplainRequest(RequestModel):
     """어느 질의의 마지막 실행을 들여다볼 것인가."""
 
     #: 질의 **원문**. 저장하지 않는다 — `sha256` 만 계산해 기록에서 그 실행을 찾는다.
