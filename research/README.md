@@ -24,3 +24,5 @@
 | [`2026-09-06-getting-org-documents-into-rag.md`](2026-09-06-getting-org-documents-into-rag.md) | 조직 문서를 RAG 에 붙이는 층 — 파싱·변경 동기화·ACL·큐레이션·소유권. **운영 실패가 코어가 아니라 여기서 난다**는 가설의 검증 |
 | [`2026-09-06-rag-communities.md`](2026-09-06-rag-communities.md) | RAG 실무자가 어디서 무엇을 이야기하나 — 커뮤니티 8곳·워크숍 3곳, 그리고 khala 가 무엇을 들고 갈 수 있고 무엇을 말하면 안 되는가 |
 | [`2026-09-23-bug-diagnosis-agents-field-data.md`](2026-09-23-bug-diagnosis-agents-field-data.md) | 버그 제보·장애를 진단하는 AI 에이전트를 현업이 어떤 용도로 어느 수준까지 쓰는가 — 대기업 사내·상용 제품·독립 벤치마크·국내 사례·비용과 실패. 구현 착수 전 견적의 근거 |
+| [`2026-09-25-canonical-link-feature-map-prior-art.md`](2026-09-25-canonical-link-feature-map-prior-art.md) | 「기능 지도에 세부마다 정본을 링크한다(임베딩 위에)」는 방식을 주창·시도한 선행 사례 — 데이터 거버넌스·요구사항 추적성·카탈로그와 검증 제품·RAG 권위 연구·조직 정책·국내. 통째로 한 곳은 없고 조각마다 이름이 있다. 예고된 실패는 링크 부패가 아니라 결정 부패 |
+| [`2026-09-25-central-axis-information-model-prior-art.md`](2026-09-25-central-axis-information-model-prior-art.md) | 흩어진 문서·코드가 매달릴 「중심 축 정보 모델」을 세운 곳 — canonical/reference model·DDD·MDA/MBSE/ASoT·온톨로지·계약/명세·기대 상태와 조정. 완전한 축은 축 자체가 드리프트했고 살아남은 축의 조건 다섯 중 넷은 거버넌스. 설계 단위는 「판정과 그 생애주기」 |
