@@ -252,4 +252,10 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
     # 비스트림 경로의 기록에만 남았고 스트리밍 경로(웹 채팅)는 기록에도 없었다.
     from nexus.llm.prompt_version import prompt_version
     packet.prompt_version = prompt_version()
+    # **어떤 코퍼스를, 어떤 검색 설정으로.** 같은 자리, 같은 이유. 코퍼스 판은 읽을 수 있는
+    # 문서만 세므로 DB 가 있어야 한다 — 없으면(평가 하니스 · 검사) 모른다고 남긴다.
+    from nexus.search.versions import corpus_version, search_fingerprint
+    packet.search_fingerprint = search_fingerprint(config)
+    packet.corpus_version = (await corpus_version(tenant, clearance, pool)
+                             if pool is not None else "")
     return packet

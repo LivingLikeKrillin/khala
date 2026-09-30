@@ -200,7 +200,11 @@ def test_every_enrichment_the_seam_calls_is_on_the_list():
     src = inspect.getsource(reconcile.packet_for_answer)
     imported = set(re.findall(r"from nexus\.search\.\w+ import (\w+)", src))
     # `assemble_packet` 은 보강이 아니라 조립이고, `code_values_for` 는 이 모듈 것이다.
-    enrichments = imported - {"assemble_packet", "SearchHit", "_truncate_snippet"}
+    # 판 둘(`search/versions.py`, 2026-09-30)은 근거를 보태지 않는다 — 꾸러미에 **도장**을 찍을
+    # 뿐이라 `enrichment_failed` 에 들어갈 자리가 아니다(거기 넣으면 「근거가 덜 왔다」로 읽힌다).
+    # 코퍼스 판을 못 세면 빈 문자열(모른다)이고 실패는 경고 로그 `corpus_version_failed` 로 남는다.
+    enrichments = imported - {"assemble_packet", "SearchHit", "_truncate_snippet",
+                              "corpus_version", "search_fingerprint"}
 
     assert enrichments <= set(SEAM_ENRICHMENTS), \
         f"목록에 없는 보강이 이음매에 있다: {sorted(enrichments - set(SEAM_ENRICHMENTS))}"

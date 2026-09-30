@@ -849,6 +849,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             prompt_version=packet.prompt_version,
             # 길이와 해시만 남는다 — 본문은 신호 객체에 안 들어간다.
             answer_context=answer_context,
+            corpus_version=packet.corpus_version,
+            search_fingerprint=packet.search_fingerprint,
         )
         await record_search(sig, judge_input=JudgeInput(   # 답변이 받은 것과 같은 근거
             query=req.query, evidence=format_for_llm(packet),
@@ -923,6 +925,11 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 요청자 자료를 **실제로 쓴 길이**. 모르는 칸의 422 는 이름이 틀린 것만 막는다 —
                 # 빈 문자열이 조용히 「안 준 것」이 된 것은 이 값으로만 보인다. 0 = 안 썼다.
                 "answer_context_len": len(answer_context or ""),
+                # **어떤 코퍼스에서, 어떤 검색 설정으로** (`search/versions.py`). 답이 어제와 다를 때
+                # 프롬프트 · 코퍼스 · 검색 스택 중 무엇이 움직였는지를 호출자가 가를 수 있게 한다.
+                # 코퍼스 판 빈 문자열 = 셀 DB 가 없었다(모른다).
+                "corpus_version": packet.corpus_version,
+                "search_fingerprint": packet.search_fingerprint,
             },
         )
     except UnknownRoute as e:
@@ -1487,6 +1494,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # `AnswerResult` 에서만 읽어서, 웹 채팅이 타는 이 경로의 판이 기록에 한 번도 없었다.
                 prompt_version=packet.prompt_version,
                 answer_context=answer_context,
+                corpus_version=packet.corpus_version,
+                search_fingerprint=packet.search_fingerprint,
             )
             await record_search(sig, judge_input=JudgeInput(
                 query=req.query, evidence=evidence_text,
@@ -1537,6 +1546,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # 비스트리밍과 **같은 값을 같은 이름으로** — 공유 이음매가 찍은 판이다.
                 "prompt_version": packet.prompt_version,
                 "answer_context_len": len(answer_context or ""),
+                "corpus_version": packet.corpus_version,
+                "search_fingerprint": packet.search_fingerprint,
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 
