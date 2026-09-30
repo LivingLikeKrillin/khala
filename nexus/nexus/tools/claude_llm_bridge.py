@@ -144,8 +144,14 @@ def current_timeout() -> float:
 
 
 def build_argv(model: str | None) -> list[str]:
-    """claude headless 호출 argv. 항상 모든 문이 닫힌 순수 텍스트 완성."""
-    argv = ["claude", "-p", "--output-format", "text", *_DOORS_CLOSED]
+    """claude headless 호출 argv. 항상 모든 문이 닫힌 순수 텍스트 완성.
+
+    ⛔ **출력은 JSON 이다, 글이 아니다** (2026-09-30). 글로 받던 동안 `claude` 가 오류를 stdout 에
+    **문장으로** 쓰고 0 으로 끝나면 그 문장이 200 과 함께 답으로 나갔다 — 인용 없는 짧은 답과
+    구별되지 않는다. JSON 은 오류를 **값으로** 준다(`is_error` · `api_error_status` · `result`).
+    읽는 쪽은 `generate_outcome` 이다.
+    """
+    argv = ["claude", "-p", "--output-format", "json", *_DOORS_CLOSED]
     if model:
         argv += ["--model", model]
     return argv
@@ -257,8 +263,12 @@ def _subprocess_runner(argv: list[str], prompt: str, timeout: float):
 #:
 #: ⛔ **왜 벽을 따로 두나 (실측 2026-09-19, 설명 층 보고).** 서버가 `HTTPServer` 였다.
 #: 합성 한 건이 2분 도는 동안 **소켓이 다른 아무것도 받지 않는다** — 밖에서 건 `curl` 이
-#: 그대로 타임아웃했다. 그리고 이 브리지를 부르는 것은 설명 층만이 아니다: 주기 재적재
-#: (`nexus-reingest`)도 같은 문을 친다. 줄을 세우는 곳이 없으니 조용히 겹쳤다.
+#: 그대로 타임아웃했다. 그리고 이 브리지를 부르는 것은 설명 층만이 아니다: 사람이 쓰는 표면
+#: (웹·슬랙·CLI)과 멀티턴 재작성도 같은 문을 친다. 줄을 세우는 곳이 없으니 조용히 겹쳤다.
+#:
+#: ⛔ 이 자리는 한동안 *"주기 재적재(`nexus-reingest`)도 같은 문을 친다"* 고 적고 있었다 —
+#: **틀렸다** (2026-09-27 확인). 폴더 적재는 LLM 을 부르지 않는다. 판독기는 Notion 적재에서만
+#: 불리고 기본 판독기는 이 브리지가 아니다.
 #:
 #: `ThreadingHTTPServer` 로 받되 **생성은 이 문으로 줄 세운다.** 둘을 같이 하는 이유:
 #: 스레드만 늘리면 `claude` 프로세스가 동시에 여럿 떠서 호스트를 갈아 넣고, 문만 두면
@@ -326,6 +336,93 @@ def failure_detail(out: str, err: str) -> str:
     return "claude 가 0 이 아닌 코드로 끝났고 stdout·stderr 가 둘 다 비어 있다"
 
 
+# ── 결과 읽기 — **오류는 답이 아니다** ───────────────────────────────────────────
+#
+# ⛔ **판정은 `is_error` 로 한다 — 종료 코드도 `subtype` 도 아니다.** 실측(2026-09-30, 없는 모델
+#    이름으로 생성 없이 실패시켰다): rc 1 · `is_error: true` · `api_error_status: 404` · 사유는
+#    `result` 에 있고 stderr 는 디버그 한 줄이었다. 그리고 **`subtype` 은 오류에도 `"success"`**
+#    였다. 종료 코드는 그 경우엔 맞았지만, 글로 받던 옛 경로가 막으려던 것은 바로 **0 으로 끝나는
+#    오류**다.
+#
+# ⚠ **분류하지 않는다.** 상류 상태를 그대로 넘기고, 사유 코드는 앱의 `llm/failure.py` 한 곳이
+#    가른다 — 여기서 규칙을 또 두면 두 곳이 갈린다(`test_bridge_failure_detail.py` 가 막는다).
+
+def _result_of(out: str) -> dict | None:
+    """`--output-format json` 의 결과 한 덩어리. JSON 객체가 아니면 None."""
+    try:
+        res = json.loads((out or "").strip())
+    except ValueError:
+        return None
+    return res if isinstance(res, dict) else None
+
+
+def _last_result_event(out: str) -> dict | None:
+    """stream-json 의 **마지막** `result` 이벤트. 없으면 None."""
+    last = None
+    for line in (out or "").splitlines():
+        try:
+            ev = json.loads(line.strip())
+        except ValueError:
+            continue
+        if isinstance(ev, dict) and ev.get("type") == "result":
+            last = ev
+    return last
+
+
+def _error_status(res: dict) -> int:
+    """상류가 준 HTTP 상태를 그대로 넘긴다. 없거나 오류 범위가 아니면 502."""
+    s = res.get("api_error_status")
+    return s if isinstance(s, int) and not isinstance(s, bool) and 400 <= s <= 599 else 502
+
+
+def _error_detail(res: dict, out: str, err: str) -> str:
+    """오류 결과의 **문장**. `result` 가 그 자리다 — 없으면 옛 규칙(`failure_detail`)으로."""
+    text = res.get("result")
+    if isinstance(text, str) and text.strip():
+        return text.strip()[:1000]
+    return failure_detail(out, err)
+
+
+def generate_outcome(rc: int, out: str, err: str) -> tuple[int, dict]:
+    """`claude -p --output-format json` 한 번 → (상태, 본문). **200 은 성공한 결과의 `result` 뿐이다.**
+
+    ⛔ 무엇이 왔는지 모르면(JSON 결과가 아니면) 답으로 내보내지 않는다 — 글로 받던 옛 경로가
+    정확히 그것을 답으로 냈다.
+    """
+    res = _result_of(out)
+    if res is None:
+        if rc != 0:
+            return 502, {"error": failure_detail(out, err)}
+        head = (out or "").strip()[:300] or "(빈 출력)"
+        return 502, {"error": f"claude 출력이 JSON 결과가 아니다 — 답으로 내보내지 않는다: {head}"}
+    if res.get("is_error") or rc != 0:
+        return _error_status(res), {"error": _error_detail(res, out, err)}
+    text = res.get("result")
+    if not isinstance(text, str):
+        return 502, {"error": "claude 결과에 답 문장(result)이 없다 — 답으로 내보내지 않는다"}
+    return 200, {"text": text}
+
+
+def vision_outcome(rc: int, out: str, err: str) -> tuple[int, dict]:
+    """판독 한 번(stream-json) → (상태, 본문). 판정은 **마지막 결과 이벤트**로 한다.
+
+    ⛔ **이 경로도 같은 구멍이다.** API 오류는 assistant 문장으로도 흐르고(`"API Error: …"`),
+    `parse_vision_stdout` 은 assistant 문장을 모은다 — 오류 문장이 **판독한 글**이 된다.
+
+    ⚠ 결과 이벤트가 없으면 끝까지 읽었는지 모른다. 반쪽 표를 완결로 넘기지 않는다.
+    """
+    res = _last_result_event(out)
+    if rc != 0:
+        if res is not None:
+            return _error_status(res), {"error": _error_detail(res, out, err)}
+        return 502, {"error": failure_detail(out, err)}
+    if res is None:
+        return 502, {"error": "판독이 결과 이벤트 없이 끝났다 — 끝까지 읽었는지 몰라 내보내지 않는다"}
+    if res.get("is_error"):
+        return _error_status(res), {"error": _error_detail(res, out, err)}
+    return 200, {"text": parse_vision_stdout(out)}
+
+
 def _acquire_or_busy(timeout: float) -> tuple[int, dict] | None:
     """생성 문에 들어간다. 못 들어가면 **503 을 돌려준다** — 조용히 더 기다리지 않는다.
 
@@ -372,9 +469,7 @@ def handle_generate(
         return 502, {"error": f"claude 실행 실패: {e}"}
     finally:
         _GATE.release()
-    if rc != 0:
-        return 502, {"error": failure_detail(out, err)}
-    return 200, {"text": out}
+    return generate_outcome(rc, out, err)
 
 
 def handle_vision(
@@ -409,9 +504,7 @@ def handle_vision(
         return 502, {"error": f"claude 실행 실패: {e}"}
     finally:
         _GATE.release()
-    if rc != 0:
-        return 502, {"error": failure_detail(out, err)}
-    return 200, {"text": parse_vision_stdout(out)}
+    return vision_outcome(rc, out, err)
 
 
 class _Handler(BaseHTTPRequestHandler):
