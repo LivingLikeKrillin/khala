@@ -106,6 +106,45 @@ def test_the_wall_is_read_at_call_time_not_frozen_at_import(monkeypatch):
     assert bridge.current_timeout() == 300.0, "한 번 읽고 굳었다"
 
 
+def test_the_limits_in_the_file_are_the_ones_the_gate_uses(monkeypatch, tmp_path):
+    """⛔ **한도가 파일에 있어도 문은 1 이었다 (실측 2026-09-30).**
+
+    동시 한도와 대기 한도는 import 할 때 환경에서 읽혔고, `.env` 는 그 뒤 `main()` 에서 읽힌다.
+    그래서 `NEXUS_LLM_BRIDGE_CONCURRENCY=3` 을 파일에 적어도 문은 1 로 섰다 — 소유자가 한도를
+    3 으로 올리기로 한 날, 적기 전에 코드를 읽다가 찾았다. 벽(#529)이 같은 모양이었고 그때 벽만
+    고쳤다. 이 검사는 `main()` 이 하는 두 걸음(파일 읽기 → 문 세우기)을 그대로 밟는다.
+    """
+    for name in ("_MAX_CONCURRENT", "_GATE", "_GATE_WAIT"):
+        monkeypatch.setattr(bridge, name, getattr(bridge, name))   # 끝나면 원래 문으로
+    monkeypatch.delenv("NEXUS_LLM_BRIDGE_CONCURRENCY", raising=False)
+    monkeypatch.delenv("NEXUS_LLM_BRIDGE_QUEUE_WAIT", raising=False)
+    fake = tmp_path / "nexus" / ".env"
+    fake.parent.mkdir(parents=True)
+    fake.write_text("NEXUS_LLM_BRIDGE_CONCURRENCY=3\nNEXUS_LLM_BRIDGE_QUEUE_WAIT=7\n", encoding="utf-8")
+    monkeypatch.setattr(bridge, "__file__", str(tmp_path / "nexus" / "nexus" / "tools" / "x.py"))
+
+    bridge._load_env_file()
+    bridge._configure_gate()
+
+    assert (bridge._MAX_CONCURRENT, bridge._GATE_WAIT) == (3, 7.0), "파일의 한도가 문에 안 닿았다"
+    admitted = [bridge._GATE.acquire(timeout=0) for _ in range(4)]
+    try:
+        assert admitted == [True, True, True, False], f"문이 셋을 들이고 넷째를 막아야 한다: {admitted}"
+    finally:
+        for ok in admitted:
+            if ok:
+                bridge._GATE.release()
+    assert "동시 실행 한도 3" in bridge.busy_detail(7.0), "503 본문이 실효 한도를 안 말한다"
+
+
+def test_main_sets_up_the_gate_after_it_reads_the_file():
+    """파일보다 먼저 세우면 위 검사가 막은 바로 그 판이 된다 — 파일을 읽고도 옛 한도로 선다."""
+    import inspect
+
+    src = inspect.getsource(bridge.main)
+    assert src.index("_load_env_file()") < src.index("_configure_gate()") < src.index("serve_forever")
+
+
 def test_main_loads_the_file_before_it_checks_the_token():
     """토큰도 그 파일에 있다 — 뒤에 두면 파일이 있는데도 시동을 거부한다."""
     import inspect

@@ -275,7 +275,17 @@ def _subprocess_runner(argv: list[str], prompt: str, timeout: float):
 #: 소켓이 여전히 막힌다. 소켓은 열고, 비싼 것만 하나씩.
 #:
 #: ⚠ 기본을 1 에서 올리는 것은 **호스트 자원 판단**이다. 배포가 정한다.
-_MAX_CONCURRENT = max(1, int(os.getenv("NEXUS_LLM_BRIDGE_CONCURRENCY", "1") or 1))
+def _env_concurrency() -> int:
+    return max(1, int(os.getenv("NEXUS_LLM_BRIDGE_CONCURRENCY", "1") or 1))
+
+
+def _env_gate_wait() -> float:
+    return max(0.0, float(os.getenv("NEXUS_LLM_BRIDGE_QUEUE_WAIT", "5") or 5))
+
+
+#: import 할 때의 값이다 — **실제로 쓰는 문은 `main()` 이 `.env` 를 읽은 뒤에 다시 세운다**
+#: (`_configure_gate`). 여기 값은 이 모듈을 들여오기만 하는 쪽(검사 · 다른 도구)을 위한 기본값이다.
+_MAX_CONCURRENT = _env_concurrency()
 _GATE = threading.BoundedSemaphore(_MAX_CONCURRENT)
 
 #: 문 앞에서 기다려 주는 시간(초).
@@ -287,7 +297,23 @@ _GATE = threading.BoundedSemaphore(_MAX_CONCURRENT)
 #:
 #: 짧게 기다리고 **503 으로 돌려보내는 편이 낫다.** 줄이 길다는 사실은 그 자체로 정보이고,
 #: 다시 시도하는 비용은 왕복 한 번이다. 동시 한도가 1 이고 합성이 2분이면 줄은 늘 길다.
-_GATE_WAIT = max(0.0, float(os.getenv("NEXUS_LLM_BRIDGE_QUEUE_WAIT", "5") or 5))
+_GATE_WAIT = _env_gate_wait()
+
+
+def _configure_gate() -> None:
+    """`.env` 를 읽은 **뒤에** 동시 한도와 대기 한도를 다시 읽어 문을 세운다.
+
+    ⛔ **파일의 한도가 문에 안 닿았다 (실측 2026-09-30).** 위 상수들은 import 할 때 환경에서
+    읽히고 `.env` 는 그 뒤 `main()` 에서 읽힌다. 그래서 `NEXUS_LLM_BRIDGE_CONCURRENCY` 를 파일에
+    적어도 문은 1 로 섰고, 시동 문구도 1 을 말했다 — 소유자가 한도를 3 으로 올리기로 한 날, 적기
+    전에 읽다가 찾았다. 벽(#529)이 같은 모양이었고 그때 벽만 고쳤다(`current_timeout` 은 부를 때
+    읽는다). 문은 세마포어라 부를 때마다 새로 만들 수 없으므로 **기동할 때 한 번, 파일을 읽은 뒤에**
+    세운다 — 요청을 받기 전이라 옛 문을 든 요청이 없다.
+    """
+    global _MAX_CONCURRENT, _GATE, _GATE_WAIT
+    _MAX_CONCURRENT = _env_concurrency()
+    _GATE = threading.BoundedSemaphore(_MAX_CONCURRENT)
+    _GATE_WAIT = _env_gate_wait()
 
 
 def busy_detail(waited: float) -> str:
@@ -564,6 +590,8 @@ def main() -> None:
     #    먼저다 — 토큰도 이 파일에 있으므로, 뒤에 두면 파일이 있는데도 시동을 거부한다.
     global ENV_FILE
     ENV_FILE = _load_env_file()
+    # 문은 파일을 읽은 **뒤에** 세운다 — 앞에 두면 파일의 한도가 문에 안 닿는다(`_configure_gate`).
+    _configure_gate()
     # 토큰은 필수(§5). 무인증 + claude 실행이라 토큰 없이는 시동 거부한다.
     token = os.getenv("NEXUS_LLM_BRIDGE_TOKEN", "")
     if not token:
