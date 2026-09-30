@@ -181,14 +181,18 @@ def run_conditions(args) -> dict:
     **모델 이름만으로는 부족하다.** 답을 만드는 것은 (모델 × 프롬프트 × 등급 × 상한)이고, 그중
     셋이 기록되지 않으면 "지난주보다 좋아졌다" 는 문장은 검증 불가능한 말이 된다.
 
-    프롬프트 지문은 텍스트에서 파생되므로(`llm/prompt_version.py`) 사람이 올릴 것이 없다 —
-    올리는 규율은 반드시 한 번 깨지고, 깨진 순간 기록이 조용히 거짓이 된다.
+    프롬프트의 판은 그것을 만드는 코드에서 파생되므로(`llm/prompt_version.py`) 사람이 올릴 것이
+    없다 — 올리는 규율은 반드시 한 번 깨지고, 깨진 순간 기록이 조용히 거짓이 된다.
+
+    ⚠ 2026-09-30 까지의 회차는 이 자리에 `answer_prompt_sha` 를 적었다. 재료가 좁았던 옛 지문이라
+    (근거 꾸러미를 글로 바꾸는 코드를 못 봤다) **이름을 바꿔 적는다** — 두 정의를 한 키로 비교하지
+    않게.
     """
-    from nexus.llm.prompt_version import answer_prompt_sha
+    from nexus.llm.prompt_version import prompt_version
 
     return {
         "clearance": getattr(args, "clearance", None),
-        "answer_prompt_sha": answer_prompt_sha(),
+        "prompt_version": prompt_version(),
         "limit": getattr(args, "limit", None),
     }
 

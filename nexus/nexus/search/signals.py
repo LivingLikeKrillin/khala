@@ -25,14 +25,8 @@ if TYPE_CHECKING:  # 런타임 import 불필요(순환 회피) — 속성 접근
 log = structlog.get_logger("nexus.search.signals")
 
 
-def _answer_prompt_sha() -> str:
-    """지연 import — 프롬프트 모듈을 신호 모듈이 무조건 끌고 오지 않게."""
-    from nexus.llm.prompt_version import answer_prompt_sha
-
-    return answer_prompt_sha()
-
-
 def _rewrite_prompt_sha() -> str:
+    """지연 import — 프롬프트 모듈을 신호 모듈이 무조건 끌고 오지 않게."""
     from nexus.llm.prompt_version import rewrite_prompt_sha
 
     return rewrite_prompt_sha()
@@ -87,9 +81,11 @@ class SearchSignals:
     rewrite_prompt_tokens: int | None = None
     rewrite_completion_tokens: int | None = None
     rewrite_cost_usd: float | None = None
-    #: 어떤 프롬프트가 이 답을 만들었는가. 값은 프롬프트 **텍스트에서 파생**되므로 사람이
-    #: 올릴 것이 없다(nexus/llm/prompt_version.py). 빈 문자열 = 그 프롬프트를 안 썼다.
-    answer_prompt_sha: str = ""
+    #: 어떤 코드가 이 답의 꾸러미와 프롬프트를 만들었는가. 값은 **코드에서 파생**되므로 사람이
+    #: 올릴 것이 없다(nexus/llm/prompt_version.py). 빈 문자열 = 답변 프롬프트를 안 썼다.
+    #: ⛔ **응답이 실은 값을 옮긴다 — 여기서 다시 세지 않는다.** 다시 세면 둘이 갈릴 수 있다.
+    #: 옛 칸 `answer_prompt_sha`(재료가 좁았다)는 더 적지 않는다 — 마이그레이션 045 참조.
+    prompt_version: str = ""
     rewrite_prompt_sha: str = ""
     #: 융합에 쓰인 채널 수 (SPEC §4 I6). 1 = 단일 채널(= U3 이전의 모든 행). 채널이 늘면
     #: RRF 점수의 **절대값이 팽창**한다 — 순서는 그대로지만 `top_score` 의 크기가 달라지므로,
@@ -155,6 +151,7 @@ def extract_signals(
     prompt_tokens: int | None = None,
     completion_tokens: int | None = None,
     cost_usd: float | None = None,
+    prompt_version: str | None = None,
 ) -> SearchSignals:
     """SearchResult(+선택 AnswerResult)와 진입점 스칼라에서 신호를 조립. 순수.
 
@@ -206,7 +203,11 @@ def extract_signals(
         no_answer=len(hits) == 0,
         fusion_channels=fusion_channels,
         # 답변 경로에서만 답변 프롬프트를 쓴다. 검색 전용 경로에 그 지문을 적으면 거짓이다.
-        answer_prompt_sha=_answer_prompt_sha() if answer is not None else "",
+        # 답변 경로에서만 판이 있다. 명시가 우선이고(스트림은 `AnswerResult` 없이 기록한다 — 옛 판은
+        # 그래서 이 경로의 판을 한 번도 안 남겼다), 없으면 답이 실은 값을 옮긴다.
+        prompt_version=(prompt_version if prompt_version is not None
+                        else ((getattr(answer, "prompt_version", "") or "") if answer is not None
+                              else "")),
         rewrite_prompt_sha=_rewrite_prompt_sha() if (rewrite and rewrite.called) else "",
         rewrite_applied=bool(rewrite and rewrite.called),
         rephrased_sha256=rewrite.sha256 if (rewrite and rewrite.changed) else "",
@@ -370,7 +371,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             fusion_channels,
             rewrite_applied, rephrased_sha256, rephrased_len, rewrite_changed,
             rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd,
-            answer_prompt_sha, rewrite_prompt_sha,
+            prompt_version, rewrite_prompt_sha,
             top_distance, top_bm25, evidence_tenants, spans_expected
         ) VALUES ($1,$2,$36,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
                   $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
@@ -386,7 +387,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sufficiency, judge, fingerprint, sig.fusion_channels,
         sig.rewrite_applied, sig.rephrased_sha256, sig.rephrased_len, sig.rewrite_changed,
         sig.rewrite_prompt_tokens, sig.rewrite_completion_tokens, sig.rewrite_cost_usd,
-        sig.answer_prompt_sha, sig.rewrite_prompt_sha,
+        sig.prompt_version, sig.rewrite_prompt_sha,
         sig.top_distance, sig.top_bm25, sig.read_scope, sig.evidence_tenants,
         sig.spans_expected,
     )

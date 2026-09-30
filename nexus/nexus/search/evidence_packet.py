@@ -134,6 +134,12 @@ class EvidencePacket:
     #:
     #: ⚠ **비어 있는 것은 "모른다" 다.** 기본값으로 `default` 를 넣으면 틀린 사실을 답에 싣는다.
     searched_tenants: list[str] = field(default_factory=list)
+    #: 이 꾸러미를 만들고 글로 바꾸는 **코드의 판** (`llm/prompt_version.py`). 프롬프트에는 안
+    #: 들어간다 — 응답과 기록이 같은 값을 싣기 위한 것이다. 찍는 곳은 `searched_tenants` 와 같은
+    #: 이음매이고, 이유도 같다.
+    #:
+    #: ⚠ 빈 문자열은 「안 찍혔다」다(손으로 만든 꾸러미 · 평가 하니스). 모르는 것을 지어 채우지 않는다.
+    prompt_version: str = ""
 
 
 async def assemble_packet(

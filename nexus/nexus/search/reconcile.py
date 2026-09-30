@@ -248,4 +248,8 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
     # 이 답이 **무엇을 뒤졌는지** 패킷에 실어 보낸다. 표면마다 붙이면 하나가 조용히 빠지고,
     # 그 조합은 검사가 초록인 채로 프로덕션에서 틀린다 — 이 파일이 이미 데인 자리다(F2).
     packet.searched_tenants = [tenant] if isinstance(tenant, str) else list(tenant)
+    # 그리고 **어떤 코드가 이 꾸러미와 프롬프트를 만들었는지**. 같은 자리, 같은 이유다 — 옛 판은
+    # 비스트림 경로의 기록에만 남았고 스트리밍 경로(웹 채팅)는 기록에도 없었다.
+    from nexus.llm.prompt_version import prompt_version
+    packet.prompt_version = prompt_version()
     return packet

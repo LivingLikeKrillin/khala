@@ -113,12 +113,28 @@ def test_the_rule_says_a_terse_question_is_not_a_request_for_a_terse_answer():
     assert "짧" in tail, "'질문이 짧다는 것은 요청이 아니다' 를 이름으로 부르지 않았다"
 
 
-def test_the_prompt_fingerprint_covers_the_role_rule(monkeypatch):
-    """지문은 **모델에게 가는 바이트**에서 파생돼야 한다. 규칙을 상수 하나로 빼 놓고 지문이
-    그것을 안 읽으면, 그 문구를 고친 날 기록은 조용히 거짓이 된다."""
-    before = V.answer_prompt_sha()
-    monkeypatch.setattr(P, "USER_REQUEST_RULE", P.USER_REQUEST_RULE + "\n한 줄 더.")
-    assert V.answer_prompt_sha() != before
+def test_the_prompt_version_covers_the_role_rule(monkeypatch):
+    """판은 **모델에게 가는 글을 만드는 코드**에서 파생돼야 한다. 규칙을 상수 하나로 빼 놓고
+    판이 그것을 안 읽으면, 그 문구를 고친 날 기록은 조용히 거짓이 된다.
+
+    판은 소스에서 파생되므로(`llm/prompt_version.py`) 실행 중에 상수를 바꿔서는 안 움직인다 —
+    배포되는 것은 소스다. 그래서 소스의 그 문장을 고쳐 본다."""
+    sentence = "형식을 바꾸는 것은 명시적인 요청이 있을 때뿐입니다."
+    assert sentence in P.USER_REQUEST_RULE, "검사가 겨누는 문장이 규칙에서 사라졌다"
+    V._assembly_sources.cache_clear()
+    before = V.prompt_version()
+    real = V._module_source
+
+    def edited(name):
+        text = real(name)
+        return text.replace(sentence, "형식은 마음대로 바꾸세요.") if name == "nexus.llm.prompts" else text
+
+    monkeypatch.setattr(V, "_module_source", edited)
+    V._assembly_sources.cache_clear()
+    try:
+        assert V.prompt_version() != before
+    finally:
+        V._assembly_sources.cache_clear()
 
 
 # ── I2 — 이력은 여전히 들어가지 않는다 ─────────────────────────────────────────

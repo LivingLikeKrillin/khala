@@ -823,6 +823,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             fusion_channels=len(channels or [1]),
             rewrite=rw,
             latency_ms=int((time.time() - _t0) * 1000),
+            # 응답이 싣는 것과 **같은 값**을 기록한다 — 기록 쪽에서 다시 세면 둘이 갈릴 수 있다.
+            prompt_version=packet.prompt_version,
         )
         await record_search(sig, judge_input=JudgeInput(   # 답변이 받은 것과 같은 근거
             query=req.query, evidence=format_for_llm(packet),
@@ -890,6 +892,10 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 사전 등록 §5.5 의 음성 대조군이 요구하는 것이 정확히 그 구분이다.
                 "identifier_channel": search_result.identifier_channel,
                 "identifier_channel_asked": req.identifier_channel,
+                # **어떤 코드가 이 답의 꾸러미와 프롬프트를 만들었는가** (`llm/prompt_version.py`).
+                # 기록에만 있던 동안 답을 받는 쪽은 *"어제와 같은 프롬프트인가"* 를 물을 방법이
+                # 없었다. 공유 이음매가 찍은 값이라 두 표면과 기록이 같은 값을 싣는다.
+                "prompt_version": packet.prompt_version,
             },
         )
     except UnknownRoute as e:
@@ -1446,6 +1452,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 prompt_tokens=_u.input_tokens if _u else None,
                 completion_tokens=_u.output_tokens if _u else None,
                 cost_usd=_u.cost_usd if _u else None,
+                # ⛔ 이 경로는 `AnswerResult` 없이 기록하므로 판을 **명시로** 넘긴다. 옛 판은 판을
+                # `AnswerResult` 에서만 읽어서, 웹 채팅이 타는 이 경로의 판이 기록에 한 번도 없었다.
+                prompt_version=packet.prompt_version,
             )
             await record_search(sig, judge_input=JudgeInput(
                 query=req.query, evidence=evidence_text,
@@ -1493,6 +1502,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 "weak_evidence": weak_evidence,
                 "top_distance": search_result.confidence.top_distance,
                 "top_bm25": search_result.confidence.top_bm25,
+                # 비스트리밍과 **같은 값을 같은 이름으로** — 공유 이음매가 찍은 판이다.
+                "prompt_version": packet.prompt_version,
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 

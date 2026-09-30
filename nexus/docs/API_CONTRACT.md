@@ -230,6 +230,10 @@ class AnswerResponse(BaseModel):
     numbers: list[dict]                 # 수만 내면 무엇이 걸렸는지 못 본다
     n_stale: int                        # 낡았다고 판정된 근거 수
     evidence_tenants: dict[str, int]    # 실제로 기여한 코퍼스별 근거 수
+    prompt_version: str                 # 이 답의 근거 꾸러미와 프롬프트를 **만든 코드**의 판
+                                        # (12 hex, `llm/prompt_version.py`). 스트림은 `done` 에
+                                        # 싣고, `search_log.prompt_version` 과 같은 값이다.
+                                        # 코드만 본다 — 설정으로 켠 보강의 변화는 못 본다
 
 class EvidenceSnippet(BaseModel):
     chunk_rid: str

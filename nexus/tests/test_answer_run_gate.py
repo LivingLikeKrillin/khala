@@ -255,16 +255,29 @@ def test_the_report_records_the_clearance_it_ran_with(tmp_path, monkeypatch):
     written = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
     assert written["clearance"] == "RESTRICTED"
     assert written["limit"] == 40
-    assert len(written["answer_prompt_sha"]) >= 8      # 프롬프트 텍스트에서 파생된 지문
+    assert len(written["prompt_version"]) >= 8         # 프롬프트를 쓰는 코드에서 파생된 판
 
 
-def test_the_prompt_fingerprint_follows_the_prompt(tmp_path, monkeypatch):
-    """지문이 프롬프트를 실제로 따라가는지 — 상수를 적어 둔 것이면 이 검사가 잡는다."""
-    from nexus.llm import prompts
+def test_the_prompt_version_follows_the_prompt(tmp_path, monkeypatch):
+    """판이 프롬프트를 실제로 따라가는지 — 상수를 적어 둔 것이면 이 검사가 잡는다.
 
-    before = run.run_conditions(_args_full(tmp_path))["answer_prompt_sha"]
-    monkeypatch.setattr(prompts, "SYSTEM_PROMPT", prompts.SYSTEM_PROMPT + "\n8. 새 규칙")
-    assert run.run_conditions(_args_full(tmp_path))["answer_prompt_sha"] != before
+    판은 소스에서 파생되므로(`llm/prompt_version.py`) 소스의 규칙 목록을 고쳐 본다."""
+    from nexus.llm import prompt_version as V
+
+    V._assembly_sources.cache_clear()
+    before = run.run_conditions(_args_full(tmp_path))["prompt_version"]
+    real = V._module_source
+
+    def edited(name):
+        text = real(name)
+        return text + "\n# 8. 새 규칙\n" if name == "nexus.llm.prompts" else text
+
+    monkeypatch.setattr(V, "_module_source", edited)
+    V._assembly_sources.cache_clear()
+    try:
+        assert run.run_conditions(_args_full(tmp_path))["prompt_version"] != before
+    finally:
+        V._assembly_sources.cache_clear()
 
 
 def test_the_accumulated_log_carries_the_same_conditions(tmp_path):
@@ -276,7 +289,7 @@ def test_the_accumulated_log_carries_the_same_conditions(tmp_path):
 
     row = json.loads((tmp_path / "runs.jsonl").read_text(encoding="utf-8").splitlines()[-1])
     assert row["clearance"] == "RESTRICTED"
-    assert row["answer_prompt_sha"]
+    assert row["prompt_version"]
 
 
 # ── 평가가 피측정 대상을 바꾸지 않는가 (2026-09-02, 외부 평가 F5) ─────────────

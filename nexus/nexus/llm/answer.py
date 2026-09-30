@@ -89,6 +89,9 @@ class AnswerResult:
     #: 근거는 있었지만 **잘 맞지 않았다**. 기권이 아니다 — 답은 나가되 짧게 물러난다.
     #: 표면이 사용자에게 알릴 수 있도록 결과에 남긴다(`search/confidence.py`).
     weak_evidence: bool = False
+    #: 이 답의 꾸러미와 프롬프트를 만든 **코드의 판** (`llm/prompt_version.py`). 꾸러미에 찍힌
+    #: 값을 옮긴다 — 여기서 다시 세면 응답과 기록이 갈릴 수 있다. 기권해도 조립은 돌았으므로 실린다.
+    prompt_version: str = ""
 
 
 def _shown_query(query: str, user_query: str | None) -> str:
@@ -134,6 +137,7 @@ async def generate_answer(
     result = AnswerResult(
         route_used=route_used,
         timing_ms=timing_ms or {},
+        prompt_version=getattr(packet, "prompt_version", "") or "",
     )
 
     # Evidence snippets 변환 (updated_at 은 신선도 판정용 datetime 으로 넣었다가 아래서 판정 후 ISO 직렬화)
