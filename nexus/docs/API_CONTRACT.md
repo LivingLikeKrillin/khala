@@ -191,10 +191,25 @@ class AnswerRequest(BaseModel):
     identifier_channel: bool = False    # 질의에 섞인 식별자만 따로 묻는 둘째 채널.
                                         # ⛔ **기본 꺼짐이 설계다** — 이것은 처치이고 측정
                                         # 대상이다 (`docs/PROCEDURE_RETRIEVAL_PREREGISTRATION.md` T2)
+    answer_context: str | None = None   # 요청자의 자료 — **답변 프롬프트에만** 들어간다. 상한
+                                        # 8,000 글자, 넘으면 422(`ctx.max_length`) · 자르지 않는다
 ```
 
-⚠ `identifier_channel` 은 **이 요청에만 있다.** `/search` 로 보내면 `422` 다 — 전에는 조용히
-버려져서 *"켰는데 처치가 안 걸렸다"* 를 호출자가 알 방법이 없었다.
+⚠ `identifier_channel` 과 `answer_context` 는 **이 요청에만 있다.** `/search` 로 보내면 `422` 다 —
+전에는 조용히 버려져서 *"켰는데 처치가 안 걸렸다"* 를 호출자가 알 방법이 없었다.
+
+`answer_context` 는 **검색에 쓰지 않는 글**이다(2026-09-30). 후보 목록처럼 답에만 보여 줄 것을
+`query` 에 실으면 검색이 그 글로 돈다 — BM25 · 벡터 · 식별자 채널 · 재작성기에 다 들어가 측정해
+온 경로가 달라진다. 그래서 칸을 따로 둔다:
+
+- 자리: 사용자 프롬프트 안, 질문 다음 · 근거 앞의 표시된 절(`## 요청자가 준 자료 …`)과 끝의 닫는
+  문장. 절 머리말이 **자료는 근거가 아니다** · 인용하지 마라 · 별칭으로 가리켜라 · 핵심 규칙을 못
+  이긴다고 적는다. 시스템 프롬프트는 안 바뀐다
+- 안 닿는 곳: 검색 · 재작성기 · 충분성 판정자 · 질문 원문 보존. 기록에는 **길이와 해시만** 남는다
+- 비었거나 공백뿐이면 안 준 것이다 — 그때 프롬프트는 오늘과 바이트 단위로 같다
+- 숫자 검증의 `grounded` 는 *모델에게 보여 준 것 어딘가* 이고 이 자료도 그 안이다 — 자료에서 옮겨
+  적은 수는 지어낸 수로 안 센다
+- 응답의 `answer_context_len` 이 실제로 쓴 길이를 돌려준다(0 = 안 썼다)
 
 ### Response
 ```python
@@ -234,6 +249,9 @@ class AnswerResponse(BaseModel):
                                         # (12 hex, `llm/prompt_version.py`). 스트림은 `done` 에
                                         # 싣고, `search_log.prompt_version` 과 같은 값이다.
                                         # 코드만 본다 — 설정으로 켠 보강의 변화는 못 본다
+    answer_context_len: int             # 요청자 자료를 **실제로 쓴** 길이. 0 = 안 썼다
+                                        # (안 줬거나 비었다). 422 는 칸 이름만 막는다 — 빈 값이
+                                        # 조용히 「안 준 것」이 된 것은 이 값으로만 보인다
 
 class EvidenceSnippet(BaseModel):
     chunk_rid: str

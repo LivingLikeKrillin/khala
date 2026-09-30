@@ -17,7 +17,7 @@ from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
 from nexus.labels import SYNTHETIC_LABEL
-from nexus.llm.prompts import build_prompts
+from nexus.llm.prompts import build_prompts, effective_context
 from nexus.search.format_compliance import shape_if_measured
 from nexus.providers.llm import LLMService
 from nexus.search.anchor_status import summarize
@@ -115,6 +115,7 @@ async def generate_answer(
     user_query: str | None = None,
     confidence=None,
     spans: "SpanSet | None" = None,
+    answer_context: str | None = None,
 ) -> AnswerResult:
     """근거 기반 답변 생성.
 
@@ -130,6 +131,8 @@ async def generate_answer(
             먼저. 안 주거나 약하지 않으면 프롬프트는 오늘과 바이트 단위로 같다.
         spans: `SearchResult.spans` (SPEC-nexus-stage-spans). None 이면(기본, 캡처 꺼짐)
             answer span 을 안 남긴다.
+        answer_context: 요청자가 준 자료(`AnswerRequest.answer_context`). **답변 프롬프트에만**
+            들어가고 검색에는 안 닿는다. 없으면 프롬프트는 오늘과 바이트 단위로 같다.
 
     Returns:
         AnswerResult
@@ -225,7 +228,8 @@ async def generate_answer(
     # 적합도는 **막는 판정이 아니라 서술 계약**이다. 근거 0건만 답을 막는다(위).
     result.weak_evidence = bool(confidence is not None and confidence.weak)
     system_prompt, user_prompt = build_prompts(query, evidence_text, user_query,
-                                               weak_evidence=result.weak_evidence)
+                                               weak_evidence=result.weak_evidence,
+                                               answer_context=answer_context)
 
     try:
         import time
@@ -257,8 +261,9 @@ async def generate_answer(
             for c in report.citations
         ]
         result.unverified_citations = report.unverified_count
-        # 숫자 근거검증 — 답변의 유의미 숫자가 LLM 이 본 것(evidence_text + query)에 실재하는가.
-        nreport = validate_numbers(result.answer, evidence_text, _shown_query(query, user_query))
+        # 숫자 근거검증 — 답변의 유의미 숫자가 LLM 이 본 것(evidence_text + query + 자료)에 실재하는가.
+        nreport = validate_numbers(result.answer, evidence_text, _shown_query(query, user_query),
+                                   context=effective_context(answer_context) or "")
         result.numbers = [
             {"value": n.value, "grounded": n.grounded} for n in nreport.numbers
         ]
