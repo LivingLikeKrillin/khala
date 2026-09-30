@@ -15,7 +15,7 @@ import structlog
 from nexus.documents.staleness import annotate_staleness
 from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
-from nexus.llm.numbers import validate_numbers
+from nexus.llm.numbers import number_items, validate_numbers
 from nexus.labels import SYNTHETIC_LABEL
 from nexus.llm.prompts import build_prompts, effective_context
 from nexus.search.format_compliance import shape_if_measured
@@ -264,9 +264,7 @@ async def generate_answer(
         # 숫자 근거검증 — 답변의 유의미 숫자가 LLM 이 본 것(evidence_text + query + 자료)에 실재하는가.
         nreport = validate_numbers(result.answer, evidence_text, _shown_query(query, user_query),
                                    context=effective_context(answer_context) or "")
-        result.numbers = [
-            {"value": n.value, "grounded": n.grounded} for n in nreport.numbers
-        ]
+        result.numbers = number_items(nreport)
         result.unverified_numbers = nreport.unverified_count
     except Exception as e:
         # 예외는 **여기서만** 분류한다. 이 자리를 지나면 남는 것은 문자열뿐이고, 문자열은

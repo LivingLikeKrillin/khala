@@ -240,9 +240,19 @@ class AnswerResponse(BaseModel):
     top_distance: float | None          # 문턱에 겨우 걸린 것인지 한참 밖인지. None 은
     top_bm25: float | None              # 그 경로가 **못 낸 것**이고 0 이 아니다
     citations: list[Citation]           # 코드가 evidence packet 과 대조해 판정한 것
-    unverified_citations: list[str]     # 해소되지 않은 인용 — 출처인 척 통과시키지 않는다
-    unverified_numbers: list[str]       # 숫자도 같은 방식으로 검사한다 (`llm/numbers.py`)
-    numbers: list[dict]                 # 수만 내면 무엇이 걸렸는지 못 본다
+    unverified_citations: int           # 해소되지 않은 인용의 **개수** — 출처인 척 통과시키지
+                                        # 않는다. 어느 것인지는 `citations[].verified`
+    unverified_numbers: int             # 숫자도 같은 방식으로 검사한다 (`llm/numbers.py`) —
+                                        # 어디에서도 안 보인 수(= `found_in` 이 빈 항목)의 개수
+    numbers: list[NumberItem]           # 수만 내면 무엇이 걸렸는지 못 본다
+
+class NumberItem(BaseModel):            # 두 표면이 `numbers.number_items` 한 함수로 만든다
+    value: str                          # 답에 적힌 표기 그대로("30" · "₩1,000" · "47%"). 부호는
+                                        # 안 잡는다. 같은 값은 한 번만(먼저 나온 표기)
+    grounded: bool                      # 모델에게 보여 준 것 어딘가에 있다 = found_in 이 비지 않았다
+    found_in: list[str]                 # 찾은 곳, 이 순서: "evidence" · "query" · "context"
+                                        # (context = 요청자 자료). 여러 곳이면 전부 — 한 값으로
+                                        # 고르면 무언가를 감춘다. 빈 목록 = 어디에도 없다
     n_stale: int                        # 낡았다고 판정된 근거 수
     evidence_tenants: dict[str, int]    # 실제로 기여한 코퍼스별 근거 수
     prompt_version: str                 # 이 답의 근거 꾸러미와 프롬프트를 **만든 코드**의 판
