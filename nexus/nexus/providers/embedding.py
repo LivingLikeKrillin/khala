@@ -124,8 +124,12 @@ class EmbeddingService:
         # **질의와 문서 배치는 다른 예산을 쓴다.** 질의 타임아웃은 검색 지연을 지키는 장치라
         # 짧아야 하고, 문서 배치는 오프라인이라 길어야 한다. 하나로 묶었더니 16건 배치(≈35초)가
         # 질의용 10초에 걸려 전부 ReadTimeout 났다 (2026-08-04 실측).
+        # ⚠ **사이드카 질의 예산은 10초에서 20초가 됐다 (2026-10-01 실측).** 검색 한 번은 켜진 채널마다
+        # 벡터 경로를 동시에 띄워서, 식별자 채널을 켜면 사이드카가 요청 둘을 받는다. 긴 질의에서는
+        # 따뜻해도 9.1초가 걸렸고(서른한 건 가운데값 6.6초), 쉰 뒤 첫 호출은 10초를 넘겨 **벡터 경로가
+        # 죽은 채** 답이 나갔다 — 하루 사이 두 번. 줄이려면 그 측정을 먼저 다시 하라.
         self.timeout = timeout if timeout is not None else float(
-            os.getenv("EMBEDDING_TIMEOUT", "10" if self.backend == "sidecar" else "60"))
+            os.getenv("EMBEDDING_TIMEOUT", "20" if self.backend == "sidecar" else "60"))
         self.batch_timeout = float(os.getenv("EMBEDDING_BATCH_TIMEOUT", "600"))
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:

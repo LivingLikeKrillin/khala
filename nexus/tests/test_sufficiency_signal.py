@@ -131,6 +131,9 @@ def test_the_signal_object_carries_no_text():
         # `(tenant, rid, content_hash)` 의 해시이고 검색 스택 판은 설정의 해시다. 질의도 근거
         # 본문도 담지 않는다.
         "corpus_version", "search_fingerprint",
+        # 2026-10-01, migration 048. **경로 이름의 목록**이다(`hybrid.LEGS` 의 부분집합 — 응답의
+        # `degraded` 와 같은 값). 질의도 근거 본문도 담지 않는다.
+        "degraded",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (
