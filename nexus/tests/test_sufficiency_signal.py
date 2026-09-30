@@ -123,6 +123,10 @@ def test_the_signal_object_carries_no_text():
         # 포함)는 `SearchSignals` 가 아니라 `record_search`/`_persist` 에 별도 인자로 흐른다
         # (judge_input 과 같은 관례).
         "spans_expected",
+        # 2026-09-30, migration 046. 요청자 자료(`answer_context`)의 **길이 · sha256 hex** 뿐이다 —
+        # 재작성문(`rephrased_*`)과 같은 모양이다. 자료 본문은 `extract_signals` 안에서 길이와
+        # 해시가 되고 신호 객체에 안 들어간다(`test_answer_context.py` 가 repr 로 확인한다).
+        "answer_context_len", "answer_context_sha256",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (

@@ -57,11 +57,16 @@ def _numbers(text: str) -> list[str]:
 
 
 def validate_numbers(
-    answer_text: str, evidence_text: str, query: str = ""
+    answer_text: str, evidence_text: str, query: str = "", context: str = ""
 ) -> NumberReport:
-    """답변의 유의미한 숫자를 evidence+query 의 숫자와 값-대조. 순수·무예외."""
+    """답변의 유의미한 숫자를 evidence+query(+요청자 자료)의 숫자와 값-대조. 순수·무예외.
+
+    `context` 는 요청자가 준 자료(`answer_context`)다. 모델에게 **보여 준 것**이므로 대조 범위에
+    든다 — 빼면 자료에서 옮겨 적은 수(대상 번호 · 한도)가 「지어낸 수」로 세어져
+    `unverified_numbers` 가 뜻을 잃는다. 근거에 있었는지를 따로 묻는 것은 다른 질문이다.
+    """
     grounding: set[str] = set()
-    for t in _numbers(evidence_text) + _numbers(query):
+    for t in _numbers(evidence_text) + _numbers(query) + _numbers(context):
         grounding.add(_canonical(t))
 
     seen: set[str] = set()

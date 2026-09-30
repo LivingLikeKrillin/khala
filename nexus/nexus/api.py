@@ -34,7 +34,7 @@ from nexus.documents.staleness import annotate_staleness
 from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
 from nexus.llm.numbers import validate_numbers
-from nexus.llm.prompts import build_prompts
+from nexus.llm.prompts import build_prompts, effective_context
 from nexus.search.format_compliance import shape_if_measured
 from nexus.otel.aggregator import run_otel_aggregation
 from nexus.otel.diff_engine import run_diff
@@ -237,6 +237,12 @@ class NexusResponse(BaseModel):
 
 
 # ── Request/Response models ──
+
+#: `AnswerRequest.answer_context` 의 상한(파이썬 글자 수). 넘으면 422 이고, 상한은 그 본문의
+#: `ctx.max_length` 로 나간다(편지 15 의 계약).
+ANSWER_CONTEXT_MAX = 8000
+
+
 class RequestModel(BaseModel):
     """요청 본문의 공통 규약 — **모르는 칸은 거절한다.**
 
@@ -360,6 +366,17 @@ class AnswerRequest(RequestModel):
     #: 켜도 질의에 식별자가 없으면 **발화하지 않는다.** 발화 여부는 응답의
     #: `identifier_channel` 로 온다(빈 목록 = 발화 안 함).
     identifier_channel: bool = False
+    #: 요청자가 준 자료 — **답변 프롬프트에만** 들어가고 검색(BM25 · 벡터 · 식별자 채널)·재작성기·
+    #: 충분성 판정자·질문 원문 보존에는 안 닿는다(`llm/prompts.py` 의 `ANSWER_CONTEXT_*`).
+    #:
+    #: ⛔ **왜 `query` 가 아닌가 (2026-09-27, 설명 층 자문).** 진단 경로의 후보 목록을 `query` 에
+    #: 실으면 검색이 그 글로 돈다 — 측정해 온 경로가 달라지고 후보 이름이 근거 순위를 끌고 간다.
+    #:
+    #: 상한을 넘으면 **422 로 거절하고 자르지 않는다** — 조용히 자르면 호출자는 무엇이 빠졌는지
+    #: 모른 채 틀린 판단을 받는다. 기록에는 길이와 해시만 남는다(migration 046). 비었거나 공백뿐이면
+    #: 안 준 것과 같고, 그때 프롬프트는 오늘과 바이트 단위로 같다. 응답의 `answer_context_len` 이
+    #: 실제로 쓴 길이를 돌려준다.
+    answer_context: str | None = Field(default=None, max_length=ANSWER_CONTEXT_MAX)
 
 
 class IngestRequest(RequestModel):
@@ -790,6 +807,10 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             config=config, search=hybrid_search, embedding_svc=embedding_svc,
             question=req.query, pool=await db.get_pool())
 
+        # 요청자의 자료. **여기서 처음 쓰인다** — 위의 검색·재작성·꾸러미는 이 값을 본 적이 없다.
+        # 비었거나 공백뿐이면 안 준 것이다(`effective_context`, 프롬프트·응답·기록이 같은 규칙).
+        answer_context = effective_context(req.answer_context)
+
         # LLM 답변 생성
         answer_result = await generate_answer(
             # **재작성된 질의**다 (검색 SPEC §2·§4 I3). 생략형 원문을 그대로 주면 답변자는
@@ -810,6 +831,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             timing_ms=search_result.timing_ms,
             confidence=search_result.confidence,
             spans=getattr(search_result, "spans", None),
+            answer_context=answer_context,
         )
 
         sig = extract_signals(
@@ -825,6 +847,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             latency_ms=int((time.time() - _t0) * 1000),
             # 응답이 싣는 것과 **같은 값**을 기록한다 — 기록 쪽에서 다시 세면 둘이 갈릴 수 있다.
             prompt_version=packet.prompt_version,
+            # 길이와 해시만 남는다 — 본문은 신호 객체에 안 들어간다.
+            answer_context=answer_context,
         )
         await record_search(sig, judge_input=JudgeInput(   # 답변이 받은 것과 같은 근거
             query=req.query, evidence=format_for_llm(packet),
@@ -896,6 +920,9 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 기록에만 있던 동안 답을 받는 쪽은 *"어제와 같은 프롬프트인가"* 를 물을 방법이
                 # 없었다. 공유 이음매가 찍은 값이라 두 표면과 기록이 같은 값을 싣는다.
                 "prompt_version": packet.prompt_version,
+                # 요청자 자료를 **실제로 쓴 길이**. 모르는 칸의 422 는 이름이 틀린 것만 막는다 —
+                # 빈 문자열이 조용히 「안 준 것」이 된 것은 이 값으로만 보인다. 0 = 안 썼다.
+                "answer_context_len": len(answer_context or ""),
             },
         )
     except UnknownRoute as e:
@@ -1365,6 +1392,9 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # `EMPTY_OR_FAILED_READBACK_AUDIT.md` §5 가 안 센 방법으로 `기본 인자` 를 이름만
             # 적어 뒀고, 여기가 그 실물이다.
             weak_evidence = search_result.confidence.weak
+            # 요청자의 자료 — 비스트림과 **같은 규칙**(`effective_context`)으로 정한다. 한 경로만
+            # 받으면 조용히 갈린다(A44). 위의 검색·재작성·꾸러미는 이 값을 본 적이 없다.
+            answer_context = effective_context(req.answer_context)
             if not packet.snippets:
                 _payload = json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)
                 yield f"event: answer_delta\ndata: {_payload}\n\n"
@@ -1378,7 +1408,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # 사용자 문장을 무시한다 (SPEC-nexus-multi-turn-narration §3.1).
                 system_prompt, user_prompt = build_prompts(
                     search_query, evidence_text, req.query,
-                    weak_evidence=weak_evidence)
+                    weak_evidence=weak_evidence, answer_context=answer_context)
 
                 try:
                     async for chunk in llm_svc.stream(system_prompt, user_prompt, usage_out=usage_out):
@@ -1401,7 +1431,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 대조 대상은 **모델이 질의 자리에서 본 것 전부**다. 재작성 질의만 대면 사용자가
             # 직접 쓴 숫자가, 원문만 대면 재작성이 채운 숫자가 무근거로 찍힌다.
             nreport = validate_numbers(full_answer, format_for_llm(packet),
-                                       _shown_query(search_query, req.query))
+                                       _shown_query(search_query, req.query),
+                                       context=answer_context or "")
 
             # 신호 기록은 done yield **전**에 — 클라이언트가 끊기면 제너레이터가 마지막 yield 뒤로
             # 재개 안 될 수 있어 '뒤에서' 기록하면 조용히 누락된다(fire-and-forget 이라 지연 없음).
@@ -1455,6 +1486,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # ⛔ 이 경로는 `AnswerResult` 없이 기록하므로 판을 **명시로** 넘긴다. 옛 판은 판을
                 # `AnswerResult` 에서만 읽어서, 웹 채팅이 타는 이 경로의 판이 기록에 한 번도 없었다.
                 prompt_version=packet.prompt_version,
+                answer_context=answer_context,
             )
             await record_search(sig, judge_input=JudgeInput(
                 query=req.query, evidence=evidence_text,
@@ -1504,6 +1536,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 "top_bm25": search_result.confidence.top_bm25,
                 # 비스트리밍과 **같은 값을 같은 이름으로** — 공유 이음매가 찍은 판이다.
                 "prompt_version": packet.prompt_version,
+                "answer_context_len": len(answer_context or ""),
             }
             yield f"event: done\ndata: {json.dumps(done_data, ensure_ascii=False)}\n\n"
 

@@ -131,6 +131,13 @@ class SearchSignals:
     #: 040 의 컬럼 설명 그대로다. 같은 INSERT 문 안에서 적는다: span 쓰기가 실패해도 이 값은
     #: 남아야 "유실이 보인다" 는 계약이 성립한다.
     spans_expected: int | None = None
+    #: 요청자가 준 자료(`answer_context`)의 **길이와 해시**뿐이다 — 본문은 싣지 않는다(재작성문과
+    #: 같은 방식이고 같은 이유다). `0` · `""` = 안 줬다. 진단 경로의 행과 설명 경로의 행을 이것으로
+    #: 가른다(migration 046).
+    answer_context_len: int = 0
+    answer_context_sha256: str = ""
+
+
 def extract_signals(
     result: SearchResult,
     answer: AnswerResult | None = None,
@@ -152,6 +159,7 @@ def extract_signals(
     completion_tokens: int | None = None,
     cost_usd: float | None = None,
     prompt_version: str | None = None,
+    answer_context: str | None = None,
 ) -> SearchSignals:
     """SearchResult(+선택 AnswerResult)와 진입점 스칼라에서 신호를 조립. 순수.
 
@@ -230,6 +238,9 @@ def extract_signals(
         # 이 시점의 길이가 곧 "이번 요청이 실제로 지은" span 수다.
         spans_expected=(len(result.spans.spans)
                         if getattr(result, "spans", None) is not None else None),
+        # 자료는 **여기서 길이와 해시가 되고 본문은 신호 객체에 안 들어간다.**
+        answer_context_len=len(answer_context or ""),
+        answer_context_sha256=query_sha256(answer_context) if answer_context else "",
     )
 
 
@@ -372,10 +383,11 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             rewrite_applied, rephrased_sha256, rephrased_len, rewrite_changed,
             rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd,
             prompt_version, rewrite_prompt_sha,
-            top_distance, top_bm25, evidence_tenants, spans_expected
+            top_distance, top_bm25, evidence_tenants, spans_expected,
+            answer_context_len, answer_context_sha256
         ) VALUES ($1,$2,$36,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
                   $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                  $34, $35, $37, $38)
+                  $34, $35, $37, $38, $39, $40)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -389,7 +401,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.rewrite_prompt_tokens, sig.rewrite_completion_tokens, sig.rewrite_cost_usd,
         sig.prompt_version, sig.rewrite_prompt_sha,
         sig.top_distance, sig.top_bm25, sig.read_scope, sig.evidence_tenants,
-        sig.spans_expected,
+        sig.spans_expected, sig.answer_context_len, sig.answer_context_sha256,
     )
 
 
