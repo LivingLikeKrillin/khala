@@ -11,13 +11,15 @@ import json
 
 
 def _runner_ok(text="근거 기반 답변입니다"):
+    """성공한 `claude -p --output-format json` 한 번. 답은 결과의 `result` 에 온다."""
     seen = {}
 
     def run(argv, prompt, timeout):
         seen["argv"] = argv
         seen["prompt"] = prompt
         seen["timeout"] = timeout
-        return (0, text, "")
+        return (0, json.dumps({"type": "result", "subtype": "success", "is_error": False,
+                               "result": text}, ensure_ascii=False), "")
 
     return run, seen
 
@@ -47,7 +49,7 @@ def test_argv_omits_model_when_none():
 
 # ── §7 handle_generate ──────────────────────────────────────────────────────
 
-def test_generate_returns_claude_stdout_as_text():
+def test_generate_returns_the_result_as_text():
     run, seen = _runner_ok("결제 서비스는 payment.completed 를 발행합니다")
     status, body = handle_generate(
         {"system": "너는 근거만 말한다", "prompt": "결제 토픽?"},
