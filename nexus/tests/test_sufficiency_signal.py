@@ -108,7 +108,9 @@ def test_the_signal_object_carries_no_text():
         "rewrite_prompt_tokens", "rewrite_completion_tokens", "rewrite_cost_usd",
         # 2026-08-13. **프롬프트의 지문**이지 프롬프트가 아니다 — 12 hex. 질의도 근거도
         # 들어가지 않는다(넣으면 모든 행이 서로 달라 아무것도 구분 못 하고, 텍스트가 샌다).
-        "answer_prompt_sha", "rewrite_prompt_sha",
+        # 2026-09-30: 답변 쪽 지문은 재료가 좁아 `prompt_version` 으로 바뀌었다(migration 045).
+        # 여전히 **코드 소스의 해시 12 hex** 이고, 질의·근거·프롬프트 본문은 안 들어간다.
+        "prompt_version", "rewrite_prompt_sha",
         # 2026-08-18, migration 032. **부동소수 둘**이다 — 근거가 얼마나 잘 맞았는가의 크기
         # (벡터 코사인 거리 · BM25 `ts_rank_cd`). 질의도 근거 본문도 담지 않는다. 이 값이
         # 필요한 이유는 문턱(`search/confidence.py`)이 지어낸 질문 17개에서 나왔고, 다시 측정할
