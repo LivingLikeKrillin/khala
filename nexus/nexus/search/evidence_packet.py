@@ -140,6 +140,10 @@ class EvidencePacket:
     #:
     #: ⚠ 빈 문자열은 「안 찍혔다」다(손으로 만든 꾸러미 · 평가 하니스). 모르는 것을 지어 채우지 않는다.
     prompt_version: str = ""
+    #: 이 꾸러미가 뒤진 **코퍼스의 판**과 **검색 스택의 판** (`search/versions.py`). 같은 이음매가
+    #: 찍는다. 코퍼스 판은 DB 가 있어야 셀 수 있다 — 없이 만든 꾸러미에서는 빈 문자열(모른다)이다.
+    corpus_version: str = ""
+    search_fingerprint: str = ""
 
 
 async def assemble_packet(

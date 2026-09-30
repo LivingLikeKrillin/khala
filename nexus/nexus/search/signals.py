@@ -136,6 +136,11 @@ class SearchSignals:
     #: 가른다(migration 046).
     answer_context_len: int = 0
     answer_context_sha256: str = ""
+    #: 이 답이 뒤진 **코퍼스의 판**과 **검색 스택의 판** — 12 hex 둘(`search/versions.py`,
+    #: migration 047). 응답이 실은 값을 옮긴다. 빈 문자열 = 답변 경로가 아니거나 못 셌다.
+    #: ⚠ `evidence_fingerprint`(판정자 전용, 판정자가 켜진 행에만)와 다른 값이다 — 이것은 **늘** 남는다.
+    corpus_version: str = ""
+    search_fingerprint: str = ""
 
 
 def extract_signals(
@@ -160,6 +165,8 @@ def extract_signals(
     cost_usd: float | None = None,
     prompt_version: str | None = None,
     answer_context: str | None = None,
+    corpus_version: str | None = None,
+    search_fingerprint: str | None = None,
 ) -> SearchSignals:
     """SearchResult(+선택 AnswerResult)와 진입점 스칼라에서 신호를 조립. 순수.
 
@@ -241,7 +248,18 @@ def extract_signals(
         # 자료는 **여기서 길이와 해시가 되고 본문은 신호 객체에 안 들어간다.**
         answer_context_len=len(answer_context or ""),
         answer_context_sha256=query_sha256(answer_context) if answer_context else "",
+        # 판 둘도 `prompt_version` 과 같은 규칙 — 명시가 우선, 없으면 답이 실은 값.
+        corpus_version=_carried(corpus_version, answer, "corpus_version"),
+        search_fingerprint=_carried(search_fingerprint, answer, "search_fingerprint"),
     )
+
+
+def _carried(explicit: str | None, answer, name: str) -> str:
+    """명시한 값, 없으면 답이 실은 값, 그것도 없으면 빈 문자열. 스트림은 `AnswerResult` 없이
+    기록하므로 명시로 넘긴다 — 답에서만 읽으면 그 경로의 값이 기록에 안 남는다."""
+    if explicit is not None:
+        return explicit
+    return (getattr(answer, name, "") or "") if answer is not None else ""
 
 
 #: 좌초(stranded) 문턱 — **고정 상수**다. `2 × NEXUS_SUFFICIENCY_TIMEOUT` 처럼 조정 가능한 값에서
@@ -283,7 +301,12 @@ def _enabled_for(tenant: str | None) -> bool:
 
 
 def evidence_fingerprint(config: dict | None) -> str:
-    """검색 스택 설정의 sha256 앞 8자.
+    """검색 스택 설정의 sha256 앞 8자 — **충분성 판정자 전용**이다.
+
+    ⚠ 답의 검색 스택 판은 이것이 아니라 `search/versions.py::search_fingerprint` 다(응답과
+    `search_log.search_fingerprint`, 답변 행마다). 이 값은 판정자가 켜진 행에만 남고, 고른 일곱 값만
+    본다 — 판정 창을 가르는 제 쓰임새에서는 그대로 두지만, 답을 설명하는 데 쓰면 보강 설정의 변화를
+    못 본다.
 
     판정의 분리 가능성은 **검색 스택의 성질**이다. 임베딩 컷오버나 mecab→nori 교체를 사이에 둔
     창은 서로 다른 두 측정을 한 이름으로 평균낸다. 임베딩 컬럼은 env 오버라이드가 있으므로
@@ -384,10 +407,10 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd,
             prompt_version, rewrite_prompt_sha,
             top_distance, top_bm25, evidence_tenants, spans_expected,
-            answer_context_len, answer_context_sha256
+            answer_context_len, answer_context_sha256, corpus_version, search_fingerprint
         ) VALUES ($1,$2,$36,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
                   $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                  $34, $35, $37, $38, $39, $40)
+                  $34, $35, $37, $38, $39, $40, $41, $42)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -402,6 +425,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.prompt_version, sig.rewrite_prompt_sha,
         sig.top_distance, sig.top_bm25, sig.read_scope, sig.evidence_tenants,
         sig.spans_expected, sig.answer_context_len, sig.answer_context_sha256,
+        sig.corpus_version, sig.search_fingerprint,
     )
 
 

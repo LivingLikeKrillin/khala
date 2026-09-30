@@ -262,6 +262,13 @@ class NumberItem(BaseModel):            # 두 표면이 `numbers.number_items` �
     answer_context_len: int             # 요청자 자료를 **실제로 쓴** 길이. 0 = 안 썼다
                                         # (안 줬거나 비었다). 422 는 칸 이름만 막는다 — 빈 값이
                                         # 조용히 「안 준 것」이 된 것은 이 값으로만 보인다
+    corpus_version: str                 # 이 답이 뒤진 **코퍼스의 판**(12 hex, `search/versions.py`):
+                                        # 읽을 수 있는 문서(정책 필터 넷)의 (tenant, rid, content_hash)
+                                        # 해시. 재적재돼도 내용이 같으면 같다. "" = 셀 DB 가 없었다
+    search_fingerprint: str             # **검색 스택의 판**(12 hex): 임베딩 컬럼 · 모델 · 토크나이저 +
+                                        # `search` 설정 절 전체 — 설정으로 켜는 보강도 여기서 보인다.
+                                        # 답이 어제와 다르면 prompt_version · 이 둘 · 모델 · 표본 중
+                                        # 무엇이 움직였는지로 가른다. 셋 다 `search_log` 에 같은 값
 
 class EvidenceSnippet(BaseModel):
     chunk_rid: str

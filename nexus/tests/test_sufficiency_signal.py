@@ -127,6 +127,10 @@ def test_the_signal_object_carries_no_text():
         # 재작성문(`rephrased_*`)과 같은 모양이다. 자료 본문은 `extract_signals` 안에서 길이와
         # 해시가 되고 신호 객체에 안 들어간다(`test_answer_context.py` 가 repr 로 확인한다).
         "answer_context_len", "answer_context_sha256",
+        # 2026-09-30, migration 047. **코드·설정·문서 해시의 12 hex 둘**이다 — 코퍼스 판은
+        # `(tenant, rid, content_hash)` 의 해시이고 검색 스택 판은 설정의 해시다. 질의도 근거
+        # 본문도 담지 않는다.
+        "corpus_version", "search_fingerprint",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (

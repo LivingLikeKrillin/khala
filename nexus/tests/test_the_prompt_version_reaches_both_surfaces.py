@@ -75,6 +75,21 @@ def test_the_answer_response_carries_the_version(client_and_rows):
     assert data.get("prompt_version") == V.prompt_version(), "응답에 판이 없거나 다르다"
     assert [row.prompt_version for row in rows] == [data["prompt_version"]], \
         "기록된 판이 응답의 판과 다르다"
+    _the_other_versions_ride_along(data, rows)
+
+
+def _the_other_versions_ride_along(payload: dict, rows: list) -> None:
+    """코퍼스 판과 검색 스택 지문도 같은 자리에서 찍히고 같은 값이 기록된다(2026-09-30).
+
+    ⚠ 이 받침은 DB 가 없다(풀 `None`) — 그래서 코퍼스 판은 「모른다」(빈 문자열)가 **맞는 값**이다.
+    DB 가 있을 때의 값은 `test_corpus_and_search_versions.py` 가 이음매에서 확인한다."""
+    from nexus.search.versions import search_fingerprint
+
+    assert payload.get("search_fingerprint") == search_fingerprint({}), "검색 스택 지문이 안 실렸다"
+    assert payload.get("corpus_version") == "", "DB 없이 코퍼스 판을 지어냈다"
+    (row,) = rows
+    assert (row.search_fingerprint, row.corpus_version) == \
+        (payload["search_fingerprint"], payload["corpus_version"]), "기록이 응답과 다르다"
 
 
 def test_the_streaming_response_carries_the_version(client_and_rows):
@@ -95,3 +110,4 @@ def test_the_streaming_response_carries_the_version(client_and_rows):
     assert done.get("prompt_version") == V.prompt_version(), "스트림 done 에 판이 없거나 다르다"
     assert [row.prompt_version for row in rows] == [done["prompt_version"]], \
         "스트림 기록에 판이 안 남았거나 응답과 다르다"
+    _the_other_versions_ride_along(done, rows)
