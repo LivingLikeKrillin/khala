@@ -33,7 +33,7 @@ from nexus.llm.answer import _load_staleness_ttl, _shown_query, generate_answer
 from nexus.documents.staleness import annotate_staleness
 from nexus.llm.failure import classify as classify_failure
 from nexus.llm.citations import validate_citations
-from nexus.llm.numbers import validate_numbers
+from nexus.llm.numbers import number_items, validate_numbers
 from nexus.llm.prompts import build_prompts, effective_context
 from nexus.search.format_compliance import shape_if_measured
 from nexus.otel.aggregator import run_otel_aggregation
@@ -1514,7 +1514,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 "unverified_numbers": nreport.unverified_count,
                 # 비스트리밍과 같은 값을 같은 이름으로 — 한 표면만 빠뜨리면 그 표면의
                 # 소비자만 조용히 못 본다.
-                "numbers": [{"value": n.value, "grounded": n.grounded} for n in nreport.numbers],
+                "numbers": number_items(nreport),
                 "usage": (lambda u: {"input_tokens": u.input_tokens, "output_tokens": u.output_tokens,
                                      "cost_usd": u.cost_usd, "model": u.model})(usage_out[0])
                          if usage_out else None,

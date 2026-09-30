@@ -44,13 +44,32 @@ def test_the_count_still_goes_too():
 
 
 def test_the_list_carries_whether_each_number_was_grounded():
-    """⛔ 값만 있고 판정이 없으면 읽는 쪽이 다시 대조해야 한다 — 그러면 전달한 뜻이 없다."""
-    src = _src()
-    assert '"value": n.value, "grounded": n.grounded' in src
+    """⛔ 값만 있고 판정이 없으면 읽는 쪽이 다시 대조해야 한다 — 그러면 전달한 뜻이 없다.
+
+    항목을 만드는 **식을 소스 문자열로** 찾던 판(`'"value": n.value, "grounded": n.grounded' in
+    src`)은 항목 조립이 한 함수(`number_items`)로 모이면서(2026-09-30) 뜻을 잃었다 — 이제 그 함수를
+    **돌려서** 본다. 두 표면이 실제로 같은 항목을 내는지는 `test_answer_context.py` 가 두 엔드포인트를
+    돌려 확인한다."""
+    from nexus.llm.numbers import number_items, validate_numbers
+
+    (item,) = number_items(validate_numbers("정원은 30 명", "정원 30"))
+    assert item == {"value": "30", "grounded": True, "found_in": ["evidence"]}
 
 
 def test_the_streaming_shape_matches_the_non_streaming_one():
-    """두 표면이 같은 이름·같은 모양이어야 소비자가 분기 없이 읽는다."""
-    from nexus.llm import numbers as N
+    """두 표면이 같은 이름·같은 모양이어야 소비자가 분기 없이 읽는다 — **같은 함수**로 만든다."""
+    from nexus.llm import answer
 
-    assert {"value", "grounded"} <= set(N.NumberCheck.__dataclass_fields__)
+    def calls(fn) -> set[str]:
+        seen, out, stack = set(), set(), [fn.__code__]
+        while stack:
+            code = stack.pop()
+            if id(code) in seen:
+                continue
+            seen.add(id(code))
+            out |= set(code.co_names)
+            stack += [c for c in code.co_consts if hasattr(c, "co_names")]
+        return out
+
+    assert "number_items" in calls(answer.generate_answer), "비스트림이 공용 함수를 안 쓴다"
+    assert "number_items" in calls(api.search_answer_stream), "스트림이 공용 함수를 안 쓴다"

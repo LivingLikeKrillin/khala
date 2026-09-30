@@ -251,7 +251,7 @@ def test_a_number_copied_from_it_is_not_counted_as_made_up(wired, surface):
         data = _answer(client, answer_context=_CONTEXT).json()["data"]
     else:
         data = _stream(client, answer_context=_CONTEXT)
-    assert data["numbers"] == [{"value": "17", "grounded": True}]
+    assert data["numbers"] == [{"value": "17", "grounded": True, "found_in": ["context"]}]
     assert data["unverified_numbers"] == 0
 
 
