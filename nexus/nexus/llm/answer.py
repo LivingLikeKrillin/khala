@@ -119,6 +119,7 @@ async def generate_answer(
     confidence=None,
     spans: "SpanSet | None" = None,
     answer_context: str | None = None,
+    narrate: bool = True,
 ) -> AnswerResult:
     """근거 기반 답변 생성.
 
@@ -136,6 +137,8 @@ async def generate_answer(
             answer span 을 안 남긴다.
         answer_context: 요청자가 준 자료(`AnswerRequest.answer_context`). **답변 프롬프트에만**
             들어가고 검색에는 안 닿는다. 없으면 프롬프트는 오늘과 바이트 단위로 같다.
+        narrate: False 면 **근거까지만** 만들고 모델을 안 부른다(`evidence_only` 요청).
+            근거 칸은 생성하는 판과 같은 코드가 만든다 — 그래서 이 함수 안에서 갈린다.
 
     Returns:
         AnswerResult
@@ -214,6 +217,16 @@ async def generate_answer(
         }
         for p in packet.provenance
     ]
+
+    if not narrate:
+        # ── 여기까지가 근거다. 생성하는 판과 **같은 코드**가 만들었다 ──
+        # 적합도는 검색의 사실이라 그대로 낸다(아래 생성 판과 같은 규칙). 안 돈 생성 단계도
+        # 남긴다 — 「꺼져 있었다」와 「돌았는데 0」은 다른 사실이다(`fired`).
+        result.weak_evidence = bool(packet.snippets and confidence is not None
+                                    and confidence.weak)
+        if spans is not None:
+            spans.add_answer(n_in=len(packet.snippets), fired=False)
+        return result
 
     # LLM 호출
     if not packet.snippets:
