@@ -1,0 +1,11 @@
+-- 이 답이 죽은 경로를 안고 나갔는가 — 응답의 `degraded` 를 행에 남긴다 (nexus/search/signals.py).
+--
+-- 응답은 경로가 죽으면 `degraded: ["vector"]` 처럼 싣는데(`hybrid.LEGS` 의 부분집합) 이 표에는 그 칸이
+-- 없었다. 2026-10-01 소비자 측정에서 첫 호출이 벡터 경로 없이 나갔는데, 소비자 기록기는 그 칸을
+-- 버렸고 이쪽 기록으로는 `top_distance IS NULL` 로만 짐작할 수 있었다 — 그것은 첫 채널만 보고,
+-- 벡터를 안 쓰는 경로(keyword_only)와 섞인다. 앱 로그를 읽고서야 알았다.
+--
+-- ⛔ 값의 어휘는 코드(`hybrid.LEGS`)가 정본이다. 여기 CHECK 로 베끼지 않는다 — 사본은 어긋난다.
+--
+-- NULL = 기록 안 함(이 칸이 생기기 전의 행) ≠ '{}'(기록했고 죽은 경로 없음).
+ALTER TABLE search_log ADD COLUMN IF NOT EXISTS degraded TEXT[];

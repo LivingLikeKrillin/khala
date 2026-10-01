@@ -416,7 +416,7 @@ nexus/
 │   ├── MCP_SERVER.md        #   MCP Server 설정 가이드
 │   └── ...
 ├── config.yaml              # Classification, PII, search params
-├── entities.yaml            # Entity gazetteer
+├── entities.example.yaml    # Entity gazetteer 예시 (읽히지 않음 — 쓰려면 entities.yaml 로 복사)
 ├── init.sql                 # DB schema (6 tables + views)
 ├── docker-compose.yml       # 6-container infrastructure
 ├── docker-compose.test.yml  # 통합 테스트용 (포트 충돌 방지)
@@ -506,7 +506,14 @@ pii_patterns:
   aws_key: 'AKIA[0-9A-Z]{16}'
 ```
 
-`entities.yaml`에서 Entity gazetteer를 관리합니다:
+Entity gazetteer 는 `entities.yaml` 에 둡니다. **리포에는 예시(`entities.example.yaml`)만 있고, 그 파일은
+읽히지 않습니다.** 쓰려면 예시를 `entities.yaml` 로 복사해 배포의 엔티티로 바꾸세요(그 파일은 `.gitignore`
+에 있습니다). `entities.yaml` 이 없으면 엔티티 검출 · 기동 시 등록 · 적재 시 관계 추출이 모두 꺼지고, 기동
+로그에 `gazetteer_absent` 가 한 번 찍힙니다.
+
+⚠ 검출은 이름과 별칭을 대소문자 무시 **부분 문자열**로 찾습니다. 짧은 영어 별칭(`order` 같은)은 다른 낱말
+속에서도 걸립니다 — 예시 목록이 모든 테넌트에 쓰이던 때 로봇 사건 질의 32건이 전부 `order-service` 로
+잡혔습니다(2026-10-01).
 
 ```yaml
 entities:

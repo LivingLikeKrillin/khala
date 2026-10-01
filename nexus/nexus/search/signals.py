@@ -141,6 +141,12 @@ class SearchSignals:
     #: ⚠ `evidence_fingerprint`(판정자 전용, 판정자가 켜진 행에만)와 다른 값이다 — 이것은 **늘** 남는다.
     corpus_version: str = ""
     search_fingerprint: str = ""
+    #: 이 답이 **죽은 경로를 안고** 나갔는가 — 응답의 `degraded`(`hybrid.LEGS` 의 부분집합)를
+    #: 그대로 옮긴다(migration 048). 응답은 이 값을 실었는데 기록에는 칸이 없어서, 벡터 경로가
+    #: 죽은 답을 `top_distance IS NULL` 로만 짐작했다 — 그것은 첫 채널만 보고, 벡터를 안 쓰는
+    #: 경로(`keyword_only`)와 섞인다(2026-10-01).
+    #: None = 기록 안 함(칸이 생기기 전의 행 · 칸 없는 더블) ≠ `()`(기록했고 죽은 경로 없음).
+    degraded: tuple[str, ...] | None = None
 
 
 def extract_signals(
@@ -251,7 +257,15 @@ def extract_signals(
         # 판 둘도 `prompt_version` 과 같은 규칙 — 명시가 우선, 없으면 답이 실은 값.
         corpus_version=_carried(corpus_version, answer, "corpus_version"),
         search_fingerprint=_carried(search_fingerprint, answer, "search_fingerprint"),
+        # 결과가 실은 값을 옮긴다 — 여기서 다시 판정하지 않는다(응답과 같은 값이어야 한다).
+        degraded=_degraded_of(result),
     )
+
+
+def _degraded_of(result) -> tuple[str, ...] | None:
+    """결과의 `degraded` 를 튜플로. 칸이 없는 결과는 None(모름)이지 `()`(죽은 것 없음)가 아니다."""
+    value = getattr(result, "degraded", None)
+    return None if value is None else tuple(value)
 
 
 def _carried(explicit: str | None, answer, name: str) -> str:
@@ -407,10 +421,11 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             rewrite_prompt_tokens, rewrite_completion_tokens, rewrite_cost_usd,
             prompt_version, rewrite_prompt_sha,
             top_distance, top_bm25, evidence_tenants, spans_expected,
-            answer_context_len, answer_context_sha256, corpus_version, search_fingerprint
+            answer_context_len, answer_context_sha256, corpus_version, search_fingerprint,
+            degraded
         ) VALUES ($1,$2,$36,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
                   $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                  $34, $35, $37, $38, $39, $40, $41, $42)
+                  $34, $35, $37, $38, $39, $40, $41, $42, $43)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -426,6 +441,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.top_distance, sig.top_bm25, sig.read_scope, sig.evidence_tenants,
         sig.spans_expected, sig.answer_context_len, sig.answer_context_sha256,
         sig.corpus_version, sig.search_fingerprint,
+        None if sig.degraded is None else list(sig.degraded),
     )
 
 

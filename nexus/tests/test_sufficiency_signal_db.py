@@ -101,6 +101,25 @@ async def test_all_ten_values_round_trip(pool):
     assert judged == 2
 
 
+async def test_the_dead_legs_round_trip_and_null_keeps_its_meaning(pool):
+    """`{vector}` · `{}` · NULL 이 서로 다른 값으로 저장된다 (migration 048).
+
+    NULL 은 「기록 안 함」이다 — 칸이 생기기 전의 행이 전부 그렇다. 그것이 `{}`(기록했고 죽은
+    경로 없음)와 같아지면 옛 행이 전부 건강한 답으로 읽힌다.
+    """
+    import dataclasses
+
+    from nexus.search.signals import _insert
+    db = pool
+    cases = {"suff_deg_dead": ("vector",), "suff_deg_none": (), "suff_deg_unknown": None}
+    for tenant, degraded in cases.items():
+        await _insert(dataclasses.replace(_sig(tenant=tenant), degraded=degraded),
+                      None, None, None)
+    got = {r["tenant"]: r["degraded"] for r in await db.fetch_all(
+        "SELECT tenant, degraded FROM search_log WHERE tenant LIKE 'suff_deg_%'")}
+    assert got == {"suff_deg_dead": ["vector"], "suff_deg_none": [], "suff_deg_unknown": None}
+
+
 async def test_off_by_default_writes_the_row_as_disabled(pool, monkeypatch):
     """기본값이 켜져 있으면 업그레이드한 배포가 조용히 공급자를 부르기 시작한다."""
     from nexus.search.signals import JudgeInput, record_search
