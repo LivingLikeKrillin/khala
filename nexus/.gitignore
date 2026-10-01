@@ -9,6 +9,8 @@ dist/
 # (`.env.bak`, `.env.local`, `.env.2026-08-13`). One such backup sat untracked and
 # **unignored** during this session — a secret one `git add -A` away from the history.
 .env.*
+# 엔티티 목록은 배포의 서비스 이름이다 — 리포에는 예시(`entities.example.yaml`)만 둔다 (2026-10-01).
+/entities.yaml
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
