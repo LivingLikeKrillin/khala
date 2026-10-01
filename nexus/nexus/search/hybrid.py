@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from nexus.search.doc_type_filter import doc_type_exclusion_predicate, normalize_doc_types
-from nexus.search.scope_sql import tenant_predicate
+from nexus.search.scope_sql import normalize_scope, tenant_predicate
 from nexus.search.time_window import (
     OriginWindow,
     count_unknown,
@@ -950,23 +950,37 @@ async def hybrid_search(
         graph_hops = search_cfg.get("graph_hops", 2)
         max_entities = search_cfg.get("graph_max_entities", 5)
         targets = entity_rids[:max_entities]  # 비용 상한
+        # ⛔ **저장소는 테넌트를 하나씩 받는다**(`tenant = $2` · `f_graph_neighbors` 의 text 인자).
+        # 읽기 범위(튜플)를 통째로 넘기면 asyncpg 가 매번 거절한다 — 2026-09-22 부터 10-01 까지 라이브
+        # 로그에 99회 그랬고, 경고 한 줄만 남긴 채 그래프가 비었다(`scope_sql.py` 머리말과 같은 부류).
+        # 그래서 (엔티티, 테넌트) 마다 묻고 합친다. 문자열 범위는 예전처럼 엔티티당 한 번이다.
+        lookups = [(rid, t) for rid in targets for t in normalize_scope(tenant)]
         try:
             # 감지된 모든 엔티티에서 병렬로 이웃 조회 후 병합
             subgraphs = await asyncio.gather(
-                *[graph_repo.get_neighbors(rid, hops=graph_hops, tenant=tenant, clearance=clearance)
-                  for rid in targets],
+                *[graph_repo.get_neighbors(rid, hops=graph_hops, tenant=t, clearance=clearance)
+                  for rid, t in lookups],
                 return_exceptions=True,
             )
             ok: list[SubGraph] = []
-            for rid, sg in zip(targets, subgraphs):
+            for (rid, t), sg in zip(lookups, subgraphs):
                 if isinstance(sg, SubGraph):
                     ok.append(sg)
                 else:
                     logger.warning("graph_search_partial_failed",
-                                   entity_rid=rid, error=str(sg))
+                                   entity_rid=rid, tenant=t, error=str(sg))
+            if len(ok) < len(lookups):
+                # 하나라도 못 물었으면 그래프는 온전하지 않다. 「간선 없음」과 같은 값으로 두지 않고
+                # 계약대로 `degraded` 에 싣는다(`LEGS` 에 `graph` 가 있는데 넣는 코드가 없었다).
+                result.degraded.append("graph")
+            # 병합은 첫 서브그래프를 중심으로 쓴다. 엔티티가 없는 테넌트는 이름 자리에 rid 를 주므로
+            # (범위 밖 seed 의 이름을 새지 않는 규칙, `graph.py`) 이름이 풀린 쪽을 앞에 둔다(안정 정렬).
+            ok.sort(key=lambda sg: sg.center_name == sg.center_rid)
             result.graph = _merge_subgraphs(ok)
         except Exception as e:
             logger.warning("graph_search_failed", error=str(e))
+            if "graph" not in result.degraded:
+                result.degraded.append("graph")
 
     total_ms = int((time.time() - start) * 1000)
     result.timing_ms = {"total_ms": total_ms, "bm25_ms": bm25_ms}
