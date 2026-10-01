@@ -92,10 +92,13 @@ class SpanSet:
                          detail={"pool_size": len(candidates)})
 
     def add_fusion(self, *, candidates: list[Candidate], rrf_k: int,
-                   n_channels: int) -> StageSpan:
+                   n_channels: int, doc_agreement: bool = False) -> StageSpan:
+        # `doc_agreement` = 점수에 문서 합의(사전 등록 F1)가 들어갔는가. 켜면 `raw_score` 가
+        # 순수 RRF 가 아니다 — 기록을 읽는 쪽(`/search/explain`)이 그것을 알아야 한다.
         return self._add("fusion", candidates, n_in=None, n_out=len(candidates),
                          score_kind="rrf",
-                         detail={"rrf_k": rrf_k, "n_channels": n_channels})
+                         detail={"rrf_k": rrf_k, "n_channels": n_channels,
+                                 "doc_agreement": doc_agreement})
 
     def add_diversify(self, *, candidates: list[Candidate], top_k: int, per_doc_cap: int,
                       fired: bool = True) -> StageSpan:

@@ -147,6 +147,11 @@ class SearchSignals:
     #: 경로(`keyword_only`)와 섞인다(2026-10-01).
     #: None = 기록 안 함(칸이 생기기 전의 행 · 칸 없는 더블) ≠ `()`(기록했고 죽은 경로 없음).
     degraded: tuple[str, ...] | None = None
+    #: 융합이 **문서 합의**를 셌는가(사전 등록 F1, 요청 칸 `fusion_doc_agreement`, migration 050).
+    #: 검색 코드 변경은 어느 판 칸에도 안 잡히므로(`search_fingerprint` 는 설정만 본다), 어느
+    #: 요청이 처치를 받았는지는 이 칸이 아니면 기록에 없다. None = 기록 안 함(칸 전의 행 ·
+    #: 칸 없는 더블) ≠ False(기록했고 꺼져 있었다).
+    fusion_doc_agreement: bool | None = None
 
 
 def extract_signals(
@@ -259,6 +264,8 @@ def extract_signals(
         search_fingerprint=_carried(search_fingerprint, answer, "search_fingerprint"),
         # 결과가 실은 값을 옮긴다 — 여기서 다시 판정하지 않는다(응답과 같은 값이어야 한다).
         degraded=_degraded_of(result),
+        # 같은 규칙 — 결과가 한 것. 칸이 없는 결과는 None(모름)이지 False(꺼짐)가 아니다.
+        fusion_doc_agreement=getattr(result, "fusion_doc_agreement", None),
     )
 
 
@@ -422,10 +429,10 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             prompt_version, rewrite_prompt_sha,
             top_distance, top_bm25, evidence_tenants, spans_expected,
             answer_context_len, answer_context_sha256, corpus_version, search_fingerprint,
-            degraded
+            degraded, fusion_doc_agreement
         ) VALUES ($1,$2,$36,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
                   $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                  $34, $35, $37, $38, $39, $40, $41, $42, $43)
+                  $34, $35, $37, $38, $39, $40, $41, $42, $43, $44)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -442,6 +449,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.spans_expected, sig.answer_context_len, sig.answer_context_sha256,
         sig.corpus_version, sig.search_fingerprint,
         None if sig.degraded is None else list(sig.degraded),
+        sig.fusion_doc_agreement,
     )
 
 
