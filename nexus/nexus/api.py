@@ -85,9 +85,15 @@ async def _bootstrap_gazetteer() -> None:
                 description=ent.get("description", ""),
                 aliases=ent.get("aliases", []),
             )
+        import structlog
         if entities:
-            import structlog
             structlog.get_logger(__name__).info("gazetteer_bootstrapped", count=len(entities))
+        else:
+            # 리포는 예시만 싣는다(`entities.example.yaml`, 2026-10-01). 목록이 없으면 엔티티 검출 ·
+            # 기동 등록 · 적재 시 관계 추출이 모두 꺼진다 — 그 사실을 기동 때 한 번 말한다.
+            structlog.get_logger(__name__).info(
+                "gazetteer_absent", path="entities.yaml",
+                note="엔티티 검출·그래프 추출 꺼짐 — 쓰려면 entities.example.yaml 을 복사")
     except Exception:
         pass  # DB 미준비 시 무시
 

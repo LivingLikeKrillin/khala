@@ -47,11 +47,16 @@ class EdgeCandidate:
 
 
 def _load_gazetteer(gazetteer_path: str = "entities.yaml") -> list[dict]:
-    """entities.yaml 로드."""
+    """entities.yaml 로드. **없는 것이 기본이다** — 빈 목록을 조용히 돌려준다.
+
+    ⛔ 리포는 예시(`entities.example.yaml`)만 싣는다(2026-10-01). 예전에는 그 예시가 이 경로에 놓여
+    모든 테넌트에 쓰였다 — 별칭 `order` 가 무관한 질의를 `order-service` 로 잡았다. 질의마다 불리는
+    함수라 여기서 경고를 내면 요청마다 한 줄씩 쌓인다. 꺼져 있다는 사실은 기동 로그 한 줄
+    (`gazetteer_absent`)이 말한다.
+    """
     from pathlib import Path
     p = Path(gazetteer_path)
     if not p.exists():
-        logger.warning("gazetteer_not_found", path=gazetteer_path)
         return []
     with open(p, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
@@ -222,7 +227,13 @@ async def ensure_entity_exists(
     description: str = "",
     aliases: list[str] | None = None,
 ) -> str:
-    """엔티티가 DB에 존재하는지 확인하고, 없으면 생성. rid 반환."""
+    """엔티티가 DB에 존재하는지 확인하고, 없으면 생성. rid 반환.
+
+    ⚠ **내려간(`soft_deleted`) 엔티티는 되살린다.** 목록이 이 엔티티를 다시 적었다는 것은 있다는
+    선언이다. 예전처럼 `DO NOTHING` 이면, 예시 목록이 심은 행을 migration 049 가 내린 뒤 그 예시를
+    복사해 다시 켠 배포에서 행이 내려간 채로 남아 그래프가 **조용히** 빈다. `superseded` 는 건드리지
+    않는다 — 그것은 다른 행이 대신한다는 판정이다.
+    """
     canonical = canonicalize_entity_name(name, entity_type)
     rid = entity_rid(tenant, entity_type, canonical)
     now = datetime.now(timezone.utc)
@@ -238,7 +249,9 @@ async def ensure_entity_exists(
             $3::source_kind, 'active', $4, $4,
             $5, $6, $7, $8
         )
-        ON CONFLICT (tenant, entity_type, name) DO NOTHING
+        ON CONFLICT (tenant, entity_type, name) DO UPDATE
+            SET status = 'active', updated_at = EXCLUDED.updated_at
+            WHERE entities.status = 'soft_deleted'
         """,
         rid, tenant, source_kind, now,
         entity_type, canonical, aliases or [], description,
@@ -343,7 +356,8 @@ async def extract_and_save_graph(
 
     gazetteer = _load_gazetteer(gazetteer_path)
     if not gazetteer:
-        logger.warning("empty_gazetteer")
+        # 목록이 없는 것이 기본이다(2026-10-01) — 적재는 주기적으로 돌므로 경고면 소음이 된다.
+        logger.debug("graph_extraction_skipped", reason="no_gazetteer")
         return 0
 
     # gazetteer의 엔티티를 미리 DB에 등록

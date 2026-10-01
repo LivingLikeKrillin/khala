@@ -1,0 +1,39 @@
+# Nexus Entity Gazetteer — **예시다. 이 파일은 읽히지 않는다.**
+#
+# 쓰려면 이 파일을 `entities.yaml` 로 복사해 배포의 엔티티로 바꿔라(그 파일은 .gitignore 에 있다 —
+# 배포의 서비스 이름이 들어갈 자리라 리포에 올리지 않는다). `entities.yaml` 이 없으면 엔티티 검출 ·
+# 기동 시 등록 · 적재 시 관계 추출이 모두 꺼지고, 그것이 기본이다.
+#
+# ⛔ 왜 예시로 내렸나 (2026-10-01). 이 다섯이 `entities.yaml` 로 놓여 **모든 테넌트**에 쓰였다. 질의
+# 검출은 이름과 별칭을 대소문자 무시 **부분 문자열**로 찾는다 — 별칭 `order` 가 로봇 사건 질의 32건을
+# 전부 `order-service` 로 잡았고, 앱은 기동·적재 때마다 다섯을 테넌트에 심었다(출처 없음). 남은 행은
+# migration 049 가 내렸다. 자기 목록을 만들 때 짧은 영어 별칭은 다른 낱말 속에서도 걸린다는 것을 기억하라.
+#
+# name은 canonical name, aliases에 한국어 변형 포함.
+# 조사 변형(서비스가/서비스를)은 넣지 않아도 됨 - mecab-ko가 분리함.
+
+entities:
+  - name: payment-service
+    type: Service
+    aliases: ["결제 서비스", "결제서비스", "payment"]
+    description: "결제 처리 핵심 서비스"
+
+  - name: notification-service
+    type: Service
+    aliases: ["알림 서비스", "알림서비스", "notification"]
+    description: "이메일/SMS/푸시 알림 전송"
+
+  - name: order-service
+    type: Service
+    aliases: ["주문 서비스", "주문서비스", "order"]
+    description: "주문 생성 및 관리"
+
+  - name: payment.completed
+    type: Topic
+    aliases: ["결제 완료 이벤트", "결제완료"]
+    description: "결제 완료 시 발행되는 이벤트 토픽"
+
+  - name: order.created
+    type: Topic
+    aliases: ["주문 생성 이벤트", "주문생성"]
+    description: "새 주문 생성 시 발행되는 이벤트 토픽"
