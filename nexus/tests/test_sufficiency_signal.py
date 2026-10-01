@@ -134,6 +134,9 @@ def test_the_signal_object_carries_no_text():
         # 2026-10-01, migration 048. **경로 이름의 목록**이다(`hybrid.LEGS` 의 부분집합 — 응답의
         # `degraded` 와 같은 값). 질의도 근거 본문도 담지 않는다.
         "degraded",
+        # 2026-10-01, migration 050. **불리언 하나**다 — 융합이 문서 합의(F1)를 셌는가.
+        # 질의도 근거 본문도 담지 않는다.
+        "fusion_doc_agreement",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (

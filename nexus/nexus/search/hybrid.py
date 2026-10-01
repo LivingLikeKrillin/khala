@@ -8,7 +8,7 @@
 """
 
 from __future__ import annotations
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from nexus.search.doc_type_filter import doc_type_exclusion_predicate, normalize_doc_types
 from nexus.search.scope_sql import normalize_scope, tenant_predicate
@@ -137,6 +137,10 @@ class SearchResult:
     identifier_channel: list[str] = field(default_factory=list)
     #: 호출자가 그 채널을 **요청했는가**. 발화 여부와 다른 사실이다.
     identifier_channel_asked: bool = False
+    #: 융합이 **문서 합의**를 셌는가 (사전 등록 F1, `_add_document_agreement`). 요청 칸
+    #: `fusion_doc_agreement` 가 켜면 참이다. 결과 객체에 실리는 이유는 `identifier_channel_asked`
+    #: 와 같다 — 평가 하니스 · span · 기록은 요청을 못 본다.
+    fusion_doc_agreement: bool = False
     #: 이번 질의에서 후보에서 뺀 문서 종류 — **정규화를 거친 뒤의 것**이다.
     #: 호출자가 보낸 것이 아니라 **실제로 SQL 에 간 것**을 돌려준다. 오타가 조용히
     #: 무시되는 것과 목록이 통째로 안 닿는 것을 이 값 하나로 가를 수 있다.
@@ -477,7 +481,8 @@ class ChannelResults:
     name: str = ""
 
 
-def fuse_channels(channels: list[ChannelResults], k: int = 60) -> list[dict]:
+def fuse_channels(channels: list[ChannelResults], k: int = 60, *,
+                  doc_of: Mapping[str, str] | None = None) -> list[dict]:
     """가중 RRF: `score = Σ_channel w_channel · Σ_leg 1/(k + rank + 1)`.
 
     **채널이 하나이고 가중이 1.0 이면 결과는 예전과 글자 그대로 같다** — 그것이 U2·U3 를 나눠
@@ -486,6 +491,10 @@ def fuse_channels(channels: list[ChannelResults], k: int = 60) -> list[dict]:
     중복 제거의 실제 효과를 오해하지 마라: 두 채널의 질의 문자열이 같으면 두 채널은 같은 순위
     목록을 내고, 가중 합산은 **모든 문서에 같은 배수**를 곱할 뿐 순서를 바꾸지 않는다. 절대
     점수만 팽창한다(§3.3, §4 I6).
+
+    **`doc_of`(조각 → 문서)를 주면 문서 합의를 더한다** — 사전 등록 F1
+    (`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md`, `_add_document_agreement`).
+    안 주면 오늘과 비트까지 같다. 요청 칸 `fusion_doc_agreement` 가 켤 때만 준다.
     """
     scores: dict[str, dict] = {}
 
@@ -510,10 +519,44 @@ def fuse_channels(channels: list[ChannelResults], k: int = 60) -> list[dict]:
                 if ch.name:
                     slot["channel_ranks"].setdefault(ch.name, {})[leg] = rank
 
+    if doc_of is not None:
+        _add_document_agreement(scores, channels, k, doc_of)
+
     # 동점 키를 **명시**한다. 안정 정렬에 기대면 융합 순서가 이 함수의 입력 구성 순서에
     # 좌우되고, 나중에 heapq.nlargest 나 병렬 병합으로 바꾸는 순간 비결정성이 조용히 돌아온다.
     # RRF 점수는 순위에서 나오므로 동점이 특히 빽빽하다.
     return sorted(scores.values(), key=lambda x: (-x["score"], x["rid"]))
+
+
+def _add_document_agreement(scores: dict[str, dict], channels: list[ChannelResults], k: int,
+                            doc_of: Mapping[str, str]) -> None:
+    """조각 점수에 **그 조각의 문서가 받은 경로 합의**를 더한다 (사전 등록 F1).
+
+        문서 점수 = Σ_(채널, 경로) w · 1/(k + 그 경로에서 그 문서의 가장 높은 조각 순위 + 1)
+        조각 최종 점수 = 조각 RRF + 그 조각의 문서 점수
+
+    ⛔ **왜 (2026-10-01, R01).** RRF 는 조각 단위라, 같은 문서를 **다른 절**로 짚은 경로들은
+    합쳐지지 않고 서로 경쟁한다 — SOP-01 을 세 경로가 §5 · §2 · §6 으로 찾았는데 가장 높은
+    §5 가 26위에서 컷 20 에 잘렸다. 이 항은 그 경로들의 표를 문서로 모은다.
+
+    **경로마다 문서의 최고 조각 하나만** 센다. 조각마다 세면 조각이 많은 긴 문서가 조각 수로
+    오른다 — 그 대가는 사전 등록 부 변수 5(한 문서 쏠림)로 따로 측정한다.
+
+    ⛔ 문서를 모르는 조각은 `KeyError` 다. 0 을 더하면 「합의 없음」과 같은 값이 되고, 그러면
+    터진 것이 빈 것처럼 보인다.
+    """
+    best: dict[tuple[int, str, str], int] = {}
+    for i, ch in enumerate(channels):
+        for leg, results in (("bm25", ch.bm25), ("vector", ch.vector)):
+            for rid, rank in results:
+                key = (i, leg, doc_of[rid])
+                if key not in best or rank < best[key]:
+                    best[key] = rank
+    agreement: dict[str, float] = {}
+    for (i, _leg, doc), rank in best.items():
+        agreement[doc] = agreement.get(doc, 0.0) + channels[i].weight * (1.0 / (k + rank + 1))
+    for slot in scores.values():
+        slot["score"] += agreement[doc_of[slot["rid"]]]
 
 
 def _diversify(hits: list, top_k: int, per_doc_cap: int) -> list:
@@ -744,6 +787,7 @@ async def hybrid_search(
     window: OriginWindow = OriginWindow(),
     exclude_doc_types: Sequence[str] = (),
     identifier_channel_asked: bool = False,
+    fusion_doc_agreement: bool = False,
 ) -> SearchResult:
     """3-way Hybrid 검색 실행.
 
@@ -757,6 +801,8 @@ async def hybrid_search(
         route: 검색 경로
         entity_rids: 감지된 엔티티 rid 목록 (graph 검색용)
         config: config.yaml 설정
+        fusion_doc_agreement: 융합에 문서 합의를 더한다(사전 등록 F1). **기본 꺼짐** — 꺼져
+            있으면 융합은 오늘과 비트까지 같다. 처치이고 측정 대상이다.
 
     Returns:
         SearchResult
@@ -812,6 +858,7 @@ async def hybrid_search(
     # ⚠ 2026-09-20 에 이 칸이 **아무 데서도 안 채워진 채** 회귀 측정에 쓰였다 — 항상
     # `False` 라, 「켰는데 발화 안 함」이 「안 켰음」으로 기록됐다(사전 등록 §5.5 무력화).
     result.identifier_channel_asked = identifier_channel_asked
+    result.fusion_doc_agreement = fusion_doc_agreement
     for _ch in active:
         if _ch.name == "identifier":
             result.identifier_channel = _ch.text.split()
@@ -842,12 +889,16 @@ async def hybrid_search(
     # `doc_rid`/`score` 를 갖고 있으므로(위 `_bm25_search`/`_vector_search` 참조) 여기서
     # `chunks` 를 한 번 더 묻지 않는다 — 예전엔 이 자리에 `_resolve_doc_rids` 추가 조회가 있었다.
     leg_results: dict[tuple[int, str], tuple[list[LegHit], bool]] = {}
+    #: 조각 → 문서. 문서 합의(F1)가 쓴다. 경로가 낸 행이 자기 문서를 들고 오므로(`LegHit.doc_rid`)
+    #: `chunks` 를 다시 묻지 않는다 — 융합에 들어가는 조각은 전부 여기 있다.
+    doc_of: dict[str, str] = {}
     for i, ch in enumerate(active):
         weight = ch.weight
         vector_hits, vector_degraded, vector_top = done.get((i, "vector"), ([], False, None))
         if vector_degraded and "vector" not in result.degraded:
             result.degraded.append("vector")
         bm25_hits, bm25_top = done.get((i, "bm25"), ([], None))
+        doc_of.update((h.rid, h.doc_rid) for h in (*bm25_hits, *vector_hits))
         if i == 0:
             top_distance, top_bm25 = vector_top, bm25_top
         # RRF 융합은 순위만 쓴다(모듈 머리말) — `LegHit` 을 `(rid, rank)` 로 좁혀서 넘긴다.
@@ -867,8 +918,9 @@ async def hybrid_search(
 
     bm25_ms = int((time.time() - start) * 1000)
 
-    # RRF Fusion (전체 병합, 컷은 다양성 이후)
-    fused = fuse_channels(ch_results, k=rrf_k)
+    # RRF Fusion (전체 병합, 컷은 다양성 이후). 문서 합의는 요청이 켤 때만 — 꺼지면 오늘 그대로.
+    fused = fuse_channels(ch_results, k=rrf_k,
+                          doc_of=doc_of if fusion_doc_agreement else None)
 
     if spans is not None:
         # leg 후보의 doc_rid 를 rid 로 재사용한다 — `chunks` 를 다시 묻지 않는다(위 참조).
@@ -888,7 +940,8 @@ async def hybrid_search(
                      chunk_rid=f["rid"], raw_score=f["score"])
             for i, f in enumerate(fused)
         ]
-        spans.add_fusion(candidates=fusion_cands, rrf_k=rrf_k, n_channels=len(ch_results))
+        spans.add_fusion(candidates=fusion_cands, rrf_k=rrf_k, n_channels=len(ch_results),
+                         doc_agreement=fusion_doc_agreement)
 
     # 메타데이터 보강 (fused 순서 보존)
     enriched = await _enrich_hits(

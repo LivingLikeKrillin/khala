@@ -372,6 +372,13 @@ class AnswerRequest(RequestModel):
     #: 켜도 질의에 식별자가 없으면 **발화하지 않는다.** 발화 여부는 응답의
     #: `identifier_channel` 로 온다(빈 목록 = 발화 안 함).
     identifier_channel: bool = False
+    #: 융합에 **문서 합의**를 더한다 — 같은 문서를 다른 절로 짚은 경로들의 표를 문서로 모은다
+    #: (`search/hybrid.py::_add_document_agreement`, `docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` F1).
+    #:
+    #: ⛔ **기본은 꺼짐이고, 꺼져 있으면 융합은 오늘과 비트까지 같다.** `identifier_channel` 과
+    #: 같은 이유다 — 처치이고 측정 대상이며, 켜는 것은 판정 뒤에 따로 정한다. 켜면 **모든
+    #: 질의의 순위가 움직인다**(이 처치의 알려진 대가).
+    fusion_doc_agreement: bool = False
     #: 요청자가 준 자료 — **답변 프롬프트에만** 들어가고 검색(BM25 · 벡터 · 식별자 채널)·재작성기·
     #: 충분성 판정자·질문 원문 보존에는 안 닿는다(`llm/prompts.py` 의 `ANSWER_CONTEXT_*`).
     #:
@@ -805,6 +812,7 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             channels=channels,
             exclude_doc_types=req.exclude_doc_types,
             identifier_channel_asked=req.identifier_channel,
+            fusion_doc_agreement=req.fusion_doc_agreement,
         )
 
         # 답변용 근거 패킷은 한 함수로만 만든다 (`search/reconcile.py`).
@@ -924,6 +932,8 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 사전 등록 §5.5 의 음성 대조군이 요구하는 것이 정확히 그 구분이다.
                 "identifier_channel": search_result.identifier_channel,
                 "identifier_channel_asked": req.identifier_channel,
+                # 융합이 문서 합의를 셌는가(F1) — 넘긴 것과 같은 식을 돌려준다.
+                "fusion_doc_agreement": req.fusion_doc_agreement,
                 # **어떤 코드가 이 답의 꾸러미와 프롬프트를 만들었는가** (`llm/prompt_version.py`).
                 # 기록에만 있던 동안 답을 받는 쪽은 *"어제와 같은 프롬프트인가"* 를 물을 방법이
                 # 없었다. 공유 이음매가 찍은 값이라 두 표면과 기록이 같은 값을 싣는다.
@@ -1317,6 +1327,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 channels=channels,
                 exclude_doc_types=req.exclude_doc_types,
                 identifier_channel_asked=req.identifier_channel,
+                fusion_doc_agreement=req.fusion_doc_agreement,
             )
 
             # ⛔ **여기서 `assemble_packet` 을 직접 부르고 있었다** (외부 평가 F2).
@@ -1542,6 +1553,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 "excluded_doc_types": search_result.excluded_doc_types,
                 "identifier_channel": search_result.identifier_channel,
                 "identifier_channel_asked": req.identifier_channel,
+                # 융합이 문서 합의를 셌는가(F1) — 넘긴 것과 같은 식을 돌려준다.
+                "fusion_doc_agreement": req.fusion_doc_agreement,
                 # ⛔ **이 표면에는 `weak_evidence` 가 아예 없었다** (실측 2026-09-22). 바로 위
                 # 주석이 "한 표면만 빠뜨리면 그 표면의 소비자만 조용히 못 본다" 라고 적고
                 # 있는 동안, 이 경로의 소비자는 *판정 자체*를 못 봤다 — 서술 계약이 바뀐

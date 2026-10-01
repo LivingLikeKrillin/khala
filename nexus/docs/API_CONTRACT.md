@@ -62,6 +62,7 @@
 | `searched_tenants` | 실제로 후보였던 코퍼스 | `/search` · `/search/answer` · `…/stream` |
 | `excluded_doc_types` | 오타로 무시된 것 / 목록이 통째로 안 닿은 것 | `/search/answer` |
 | `identifier_channel` + `_asked` | 안 켰다 / 켰는데 발화 안 했다 | `/search/answer` |
+| `fusion_doc_agreement` | 융합이 문서 합의를 셌다 / 오늘의 융합 | `/search/answer` · `…/stream`(`done`) |
 | `n_unknown_origin_time` | 좁히기가 닿지 못한 건수 (**안 물었으면 `None`**) | 검색·답변 |
 | `degraded` · `enrichment_failed` | 빈 결과 / 죽은 경로 | 검색·답변 |
 
@@ -191,6 +192,10 @@ class AnswerRequest(BaseModel):
     identifier_channel: bool = False    # 질의에 섞인 식별자만 따로 묻는 둘째 채널.
                                         # ⛔ **기본 꺼짐이 설계다** — 이것은 처치이고 측정
                                         # 대상이다 (`docs/PROCEDURE_RETRIEVAL_PREREGISTRATION.md` T2)
+    fusion_doc_agreement: bool = False  # 융합에 **문서 합의**를 더한다 — 같은 문서를 다른 절로 짚은
+                                        # 경로들의 표를 문서로 모은다. ⛔ 기본 꺼짐, 꺼지면 융합은
+                                        # 오늘과 비트까지 같다. 켜면 **모든 질의의 순위가 움직인다**
+                                        # (`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` F1)
     answer_context: str | None = None   # 요청자의 자료 — **답변 프롬프트에만** 들어간다. 상한
                                         # 8,000 글자, 넘으면 422(`ctx.max_length`) · 자르지 않는다
 ```
@@ -231,6 +236,9 @@ class AnswerResponse(BaseModel):
     identifier_channel: list[str]       # 식별자 채널이 **무엇으로 발화했나**
     identifier_channel_asked: bool      # 호출자가 **요청했는가** — 빈 목록 하나로는
                                         # "안 켰다" 와 "켰는데 식별자가 없었다" 가 안 갈린다
+    fusion_doc_agreement: bool          # 이 답의 검색이 문서 합의(F1)를 셌는가. 검색 코드의 변화는
+                                        # 판 칸(`search_fingerprint`)에 안 잡히므로 이 칸으로 가른다.
+                                        # `search_log.fusion_doc_agreement` 에 같은 값(migration 050)
     abstained: bool                     # 기권은 코드가 내린 판단이다. 답변 문장을
     abstain_reason: str | None          # 문자열 대조해서 알아내지 않는다
     llm_failed: bool                    # **생성 실패는 답변이 아니다**
