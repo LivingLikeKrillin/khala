@@ -392,6 +392,42 @@ class AnswerRequest(RequestModel):
     answer_context: str | None = Field(default=None, max_length=ANSWER_CONTEXT_MAX)
 
 
+class SearchAnswerRequest(AnswerRequest):
+    """`/search/answer` 의 요청. 스트림과 같고 칸이 **하나 더** 있다."""
+
+    #: **생성을 건너뛰고 근거 묶음만** 돌려준다. 검색 · 묶음 · 판 칸은 생성하는 판과 같은
+    #: 처리기의 같은 코드가 만든다 — 따로 만든 엔드포인트는 언젠가 갈라지고, 갈라진 것은
+    #: 측정이 아니다.
+    #:
+    #: ⛔ **왜 (2026-10-01).** 융합 처치의 주 변수는 검색만으로 정해지는데, 소비자의 길이 생성까지
+    #: 부르는 이 엔드포인트 하나라 두 판에 세 시간 남짓이 들었다. `/search` 는 같은 검색이 아니다
+    #: (식별자 채널 · 제외 종류가 없고, `top_k` 가 10 이고, 채움이 없다).
+    #:
+    #: 생성이 내는 칸은 **None** 으로 나간다(0 · False 면 「인용 0건」으로 읽힌다). 이력이 있으면
+    #: 재작성은 그대로 돈다 — 같은 검색이어야 하므로. 스트림에는 이 칸이 없다(422).
+    evidence_only: bool = False
+
+
+#: 생성이 내는 응답 칸. `evidence_only` 응답에서는 전부 **None**(측정 안 함)이다.
+_NARRATION_KEYS = ("answer", "citations", "unverified_citations", "unverified_numbers",
+                   "numbers", "usage", "abstained", "abstain_reason",
+                   "llm_failed", "llm_failure_reason")
+
+
+def _ranked(snippets: list[dict], hits) -> list[dict]:
+    """근거 조각마다 **검색 순위**를 단다 — 상위 k 안이면 몇 위(1부터), 채움이면 None.
+
+    ⛔ 묶음은 상위 k 에 채움(절 채움 · 가리킨 절 · 짝 문서 · 정정 확인 패스)을 더한 것이고,
+    **`score` 로는 둘을 못 가른다** — 정정 확인 패스는 검색을 한 번 더 돈 결과라 점수가 있다.
+    09-20 뒤 picasso 답변 질의 33개 중 20개에서 묶음에 상위 k 밖의 문서가 있었다(2026-10-01).
+    서버가 아는 것(`SearchResult.hits`)을 싣는다 — 소비자가 다시 계산하면 답이 둘이 된다.
+    """
+    place = {h.rid: i + 1 for i, h in enumerate(hits)}
+    for s in snippets:
+        s["rank"] = place.get(s.get("chunk_rid"))
+    return snippets
+
+
 class IngestRequest(RequestModel):
     path: str
     force: bool = False
@@ -738,8 +774,9 @@ async def feedback_reason(req: FeedbackReasonRequest,
 
 
 @app.post("/search/answer", response_model=NexusResponse)
-async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_principal)) -> NexusResponse:
-    """검색 + LLM 답변 생성."""
+async def search_answer(req: SearchAnswerRequest,
+                        principal: Principal = Depends(get_principal)) -> NexusResponse:
+    """검색 + LLM 답변 생성. `evidence_only` 면 생성 없이 근거 묶음까지."""
     # 읽기 경로는 **범위를 목록으로** 받는다 (SPEC-nexus-tenant-read-scope §3.3). 목록이 없는
     # principal 은 원소 하나라 오늘과 같은 스칼라 술어가 나간다.
     # ⛔ **모델 기본값을 "요청했다" 로 읽으면 안 된다** (실측 2026-08-31). `AnswerRequest.tenant`
@@ -823,10 +860,12 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
 
         # 요청자의 자료. **여기서 처음 쓰인다** — 위의 검색·재작성·꾸러미는 이 값을 본 적이 없다.
         # 비었거나 공백뿐이면 안 준 것이다(`effective_context`, 프롬프트·응답·기록이 같은 규칙).
-        answer_context = effective_context(req.answer_context)
+        # 근거만 받는 요청에는 답변 프롬프트가 없으므로 **안 쓴 것**이다(응답 길이 0).
+        answer_context = None if req.evidence_only else effective_context(req.answer_context)
 
-        # LLM 답변 생성
+        # LLM 답변 생성 — 근거만 받는 요청이면 근거까지 만들고 모델은 안 부른다.
         answer_result = await generate_answer(
+            narrate=not req.evidence_only,
             # **재작성된 질의**다 (검색 SPEC §2·§4 I3). 생략형 원문을 그대로 주면 답변자는
             # 근거를 손에 쥐고도 "무엇을 가리키는지 모르겠다" 고 답한다 — 2026-08-13 라이브에서
             # 실제로 그랬다.
@@ -849,7 +888,10 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
         )
 
         sig = extract_signals(
-            search_result, answer_result, path="search_answer",
+            # ⛔ 근거만 받은 요청은 **다른 `path`** 로 적고 답을 넘기지 않는다. 답변 지표(인용
+            #    0건 비율 등)에 섞이면 생성하지 않은 요청이 「인용 0건 답변」으로 세어진다.
+            search_result, None if req.evidence_only else answer_result,
+            path="search_answer_evidence" if req.evidence_only else "search_answer",
             # 근거 점유율은 **패킷**에서 센다 (SPEC-nexus-design-corpus-cutover §5.3). 히트만
             # 세면 채운 절·짝 문서·정정 확인 패스가 빠져 답변이 기댄 코퍼스를 과소평가한다.
             evidence=packet.snippets,
@@ -866,16 +908,18 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
             corpus_version=packet.corpus_version,
             search_fingerprint=packet.search_fingerprint,
         )
-        await record_search(sig, judge_input=JudgeInput(   # 답변이 받은 것과 같은 근거
+        # 판정자는 LLM 을 부른다 — 생성 없는 요청이 그것을 깨우면 이 칸을 둔 이유가 사라진다.
+        judge_input = None if req.evidence_only else JudgeInput(   # 답변이 받은 것과 같은 근거
             query=req.query, evidence=format_for_llm(packet),
-            config=_load_config(), llm_svc=llm_svc),
+            config=_load_config(), llm_svc=llm_svc)
+        await record_search(sig, judge_input=judge_input,
             query_text=req.query, principal=principal.name,
             rewritten_text=rw.query if (rw and rw.changed) else None,
             spans=getattr(search_result, "spans", None))
-        return NexusResponse(
-            data={
+        data = {
                 "answer": answer_result.answer,
-                "evidence_snippets": answer_result.evidence_snippets,
+                # 조각마다 상위 k 의 몇 위였나(채움은 None) — `_ranked` 머리말.
+                "evidence_snippets": _ranked(answer_result.evidence_snippets, search_result.hits),
                 "graph_findings": answer_result.graph_findings,
                 "provenance": answer_result.provenance,
                 "route_used": answer_result.route_used,
@@ -946,8 +990,15 @@ async def search_answer(req: AnswerRequest, principal: Principal = Depends(get_p
                 # 코퍼스 판 빈 문자열 = 셀 DB 가 없었다(모른다).
                 "corpus_version": packet.corpus_version,
                 "search_fingerprint": packet.search_fingerprint,
-            },
-        )
+                # 근거만 받은 요청인가 — 아래에서 생성 칸이 None 이 되는 이유다.
+                "evidence_only": req.evidence_only,
+        }
+        if req.evidence_only:
+            # 생성을 안 했으므로 생성이 내는 칸은 **측정 안 함(None)** 이다. 0 · False 로 두면
+            # 「인용 0건」·「생성 실패 안 함」으로 읽힌다 — 인용 0건은 이 리포가 세는 지표다.
+            # 칸을 빼지 않고 None 을 싣는다: 키로 읽는 소비자가 모양 때문에 깨지면 안 된다.
+            data.update(dict.fromkeys(_NARRATION_KEYS))
+        return NexusResponse(data=data)
     except UnknownRoute as e:
         # 호출자가 없는 route 를 골랐다. 500 은 "우리 잘못" 이라는 뜻이므로 여기선 틀렸다.
         # 맨 ValueError 를 잡으면 내부 버그까지 400 이 되어 조용히 넘어간다.
@@ -1370,6 +1421,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             for _sn in _snips:
                 _ua = _sn.get("updated_at")
                 _sn["updated_at"] = _ua.isoformat() if _ua else None
+            # 비스트리밍과 같은 칸 — 표면마다 다른 근거를 보이면 안 된다(`_ranked` 머리말).
+            _snips = _ranked(_snips, search_result.hits)
             evidence_data = {
                 "evidence_snippets": _snips,
                 "provenance": [

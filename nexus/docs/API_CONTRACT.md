@@ -62,6 +62,8 @@
 | `searched_tenants` | 실제로 후보였던 코퍼스 | `/search` · `/search/answer` · `…/stream` |
 | `excluded_doc_types` | 오타로 무시된 것 / 목록이 통째로 안 닿은 것 | `/search/answer` |
 | `identifier_channel` + `_asked` | 안 켰다 / 켰는데 발화 안 했다 | `/search/answer` |
+| `evidence_only` | 생성했다 / 근거까지만 만들었다(생성 칸이 `None` 인 이유) | `/search/answer` |
+| `evidence_snippets[].rank` | 상위 k 의 몇 위였나 / 채움(`None`) — **`score` 로는 못 가른다** | `/search/answer` · `…/stream` |
 | `fusion_doc_agreement` | 융합이 문서 합의를 셌다 / 오늘의 융합 | `/search/answer` · `…/stream`(`done`) |
 | `n_unknown_origin_time` | 좁히기가 닿지 못한 건수 (**안 물었으면 `None`**) | 검색·답변 |
 | `degraded` · `enrichment_failed` | 빈 결과 / 죽은 경로 | 검색·답변 |
@@ -200,8 +202,31 @@ class AnswerRequest(BaseModel):
                                         # 8,000 글자, 넘으면 422(`ctx.max_length`) · 자르지 않는다
 ```
 
+`/search/answer` 가 실제로 받는 모델은 그 하위 모델이다 — 스트림(`AnswerRequest`)보다 칸이 하나 많다:
+
+```python
+class SearchAnswerRequest(AnswerRequest):
+    evidence_only: bool = False         # 생성을 건너뛰고 **근거 묶음까지만** 돌려준다(아래)
+```
+
 ⚠ `identifier_channel` 과 `answer_context` 는 **이 요청에만 있다.** `/search` 로 보내면 `422` 다 —
 전에는 조용히 버려져서 *"켰는데 처치가 안 걸렸다"* 를 호출자가 알 방법이 없었다.
+
+`evidence_only` 는 **검색만으로 정해지는 것을 측정할 때** 쓴다(2026-10-01). 융합 처치의 주 변수가
+그렇고(`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` §3), 그것을 생성까지 부르는 이 요청으로
+측정하면 두 판에 세 시간 남짓이 든다. `/search` 는 **같은 검색이 아니다** — 식별자 채널 · 제외 종류
+칸이 없고, `top_k` 가 10 이고, 채움 넷을 안 붙인다.
+
+- **같은 처리기**가 같은 검색 · 같은 묶음 · 같은 판 칸을 만든다. 근거 칸은 생성하는 판과 같은 코드가
+  만든다(`llm/answer.py` 의 `narrate=False`) — 따로 만든 엔드포인트는 언젠가 갈라진다
+- 모델을 **한 번도** 안 부른다. 충분성 판정자도 안 깨운다. 단 `history` 가 있으면 재작성은 그대로
+  돈다 — 같은 검색이어야 하므로
+- 생성이 내는 칸(`answer` · `citations` · `unverified_citations` · `unverified_numbers` · `numbers` ·
+  `usage` · `abstained` · `abstain_reason` · `llm_failed` · `llm_failure_reason`)은 **`None`** 이다.
+  0 · False 로 두면 「인용 0건」·「생성 실패 안 함」으로 읽힌다. 칸은 빼지 않는다
+- `answer_context` 는 답변 프롬프트에만 들어가므로 **안 쓴 것**이다 — `answer_context_len` 이 0
+- 기록(`search_log.path`)은 `search_answer_evidence` 로 답변과 **갈라** 적는다 — 답변 지표에 안 섞인다
+- 스트림에는 이 칸이 없다(`422`). 생성을 건너뛰는 스트림은 뜻이 없다
 
 `answer_context` 는 **검색에 쓰지 않는 글**이다(2026-09-30). 후보 목록처럼 답에만 보여 줄 것을
 `query` 에 실으면 검색이 그 글로 돈다 — BM25 · 벡터 · 식별자 채널 · 재작성기에 다 들어가 측정해
@@ -277,6 +302,7 @@ class NumberItem(BaseModel):            # 두 표면이 `numbers.number_items` �
                                         # `search` 설정 절 전체 — 설정으로 켜는 보강도 여기서 보인다.
                                         # 답이 어제와 다르면 prompt_version · 이 둘 · 모델 · 표본 중
                                         # 무엇이 움직였는지로 가른다. 셋 다 `search_log` 에 같은 값
+    evidence_only: bool                 # 근거까지만 만든 응답인가 — 참이면 생성 칸이 전부 None
 
 class EvidenceSnippet(BaseModel):
     chunk_rid: str
@@ -284,7 +310,11 @@ class EvidenceSnippet(BaseModel):
     section_path: str
     source_uri: str
     text: str                           # 관련 chunk 텍스트
-    score: float
+    score: float                        # ⚠ 순위 출신인지는 이것으로 못 가른다 — 정정 확인 패스는
+                                        # 검색을 한 번 더 돈 결과라 점수가 있다. `rank` 를 읽어라
+    rank: int | None                    # 상위 k(`top_k`, 다양화 컷 뒤)의 **몇 위**였나, 1부터.
+                                        # `None` = 채움(절 채움 · 가리킨 절 · 짝 문서 · 정정 확인
+                                        # 패스) — 순위 경쟁을 안 하고 묶음에 붙은 조각
     doc_type: str                       # 축-A 타입 (웹 신뢰 배지)
     provenance_tier: str                # 'authored' | 'machine_read' | 'machine_written'
                                         # (ADR-0010). 'machine_written' = LLM 이 만든 지난
@@ -537,7 +567,8 @@ class DiffSummary(BaseModel):
 검색 결과를 먼저 전송하고, LLM 답변을 SSE로 스트리밍한다. 2.0 UI 채팅에서 사용.
 
 ### Request
-SearchRequest와 동일한 AnswerRequest 사용.
+`AnswerRequest` 사용 — `/search/answer` 의 `SearchAnswerRequest` 에서 `evidence_only` 만 없다(보내면 `422`).
+`evidence` 이벤트의 조각에도 `rank` 가 같은 뜻으로 실린다.
 
 ### SSE 이벤트
 

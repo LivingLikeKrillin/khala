@@ -22,11 +22,12 @@ from pathlib import Path
 
 import pytest
 
-from nexus.api import AnswerRequest, SearchRequest
+from nexus.api import AnswerRequest, SearchAnswerRequest, SearchRequest
 
 DOC = Path(__file__).resolve().parents[1] / "docs" / "API_CONTRACT.md"
 
 #: 문서가 이름으로 부르는 요청 모델. 늘리려면 문서에 그 클래스 블록이 있어야 한다.
+#: 칸 하나짜리 하위 모델(`SearchAnswerRequest`)은 아래 따로 본다 — 대조군이 블록마다 칸 여덟을 요구한다.
 DOCUMENTED = {"SearchRequest": SearchRequest, "AnswerRequest": AnswerRequest}
 
 #: `    name: type = default   # 주석` 에서 이름과 기본값만 집는다.
@@ -43,7 +44,7 @@ LITERALS = {"True": True, "False": False, "None": None,
 def _documented_fields(class_name: str) -> dict[str, str | None]:
     """문서의 그 클래스 블록에서 `{칸: 기본값 표기}` 를 읽는다."""
     text = DOC.read_text(encoding="utf-8")
-    start = text.index(f"class {class_name}(BaseModel):")
+    start = text.index(f"class {class_name}(")      # 부모가 BaseModel 이 아닌 하위 모델도
     body = text[start:].split("```", 1)[0].splitlines()[1:]
 
     out: dict[str, str | None] = {}
@@ -93,6 +94,18 @@ def test_the_parser_actually_found_the_fields():
         assert len(found) >= 8, f"{name}: 문서에서 칸을 {len(found)}개만 읽었다 — 파서가 빗나갔다"
         assert "top_k" in found, f"{name}: `top_k` 를 못 읽었다"
         assert found["top_k"] == str(model.model_fields["top_k"].default)
+
+
+def test_the_answer_endpoint_s_own_field_is_in_its_own_block():
+    """`/search/answer` 만의 칸은 **하위 모델의 블록**에 있고, 부모의 칸으로 읽히지 않는다.
+
+    ⚠ 블록은 ``` 까지 읽힌다. 처음에 하위 모델을 부모 블록 안에 적었더니 `evidence_only` 가
+    `AnswerRequest` 의 칸으로 대조돼 붉어졌다(2026-10-01) — 스트림은 그 칸을 422 로 거절하므로,
+    그 문서를 읽고 만든 스트림 요청은 실제로 깨진다.
+    """
+    assert _documented_fields("SearchAnswerRequest") == {"evidence_only": "False"}
+    assert SearchAnswerRequest.model_fields["evidence_only"].default is False
+    assert "evidence_only" not in _documented_fields("AnswerRequest")
 
 
 def test_the_two_paths_really_have_different_budgets():
