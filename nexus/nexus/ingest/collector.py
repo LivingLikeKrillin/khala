@@ -136,11 +136,18 @@ async def collect_files(
         # 그렇다고 frontmatter 전체를 해시에 넣지는 않는다 — 그러면 아무 메타데이터나 고쳐도
         # 전량 재색인이 돌고, 스펙 ⑥ 이 그걸 피하려고 본문만 센 것이다. **DB 에 앉는 표식**
         # 하나만 비교한다.
+        #
+        # ⛔ **상태와 무관하게 비교한다 (2026-10-01).** 예전에는 `status = 'active'` 행만 봤다. 그러면
+        # 숨긴 문서(`soft_deleted`·`superseded`)는 비교할 행이 없어 **매 주기 「바뀜」**이 됐다 —
+        # 정시 재적재가 숨긴 설계 명세 하나를 매시 156 조각으로 다시 만들었다. 재적재는 숨긴 문서를
+        # 되살리지 않으므로(`pipeline._save_document` 는 `status` 를 안 건드린다) 다시 읽어도 바뀌는
+        # 것이 없다. 본문이 **실제로** 바뀌었을 때만 한 번 읽어 최신으로 둔다.
         if not force:
             try:
                 row = await db.fetch_one(
                     "SELECT content_hash, labels FROM documents "
-                    "WHERE source_uri = $1 AND tenant = $2 AND status = 'active'",
+                    "WHERE source_uri = $1 AND tenant = $2 "
+                    "ORDER BY (status = 'active') DESC LIMIT 1",
                     canonical_uri, tenant,
                 )
                 if row is not None and row["content_hash"] == content_hash:
