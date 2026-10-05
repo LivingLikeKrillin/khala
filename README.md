@@ -29,17 +29,20 @@ Khala는 이 문제를 주관적인 조언이나 가이드라인이 아닌, **�
 
 ---
 
-## 핵심 아키텍처: 단일 기판과 4대 정보 흐름
+## 핵심 아키텍처: 단일 공유 계층과 4대 정보 흐름
 
-Khala는 서비스를 개발하고 운영하는 모든 주체(사람과 에이전트)가 동일한 정보 맥락을 공유할 수 있도록, 흩어져 있던 네 가지 핵심 정보를 하나의 관리 기판 위에서 결합합니다:
+Khala는 서비스를 개발하고 운영하는 모든 주체(사람과 에이전트)가 동일한 정보 맥락을 공유할 수 있도록, 흩어져 있던 네 가지 핵심 정보를 하나의 관리되는 공유 계층 위에서 결합합니다:
 
 <p align="center">
-  <img src="assets/same-information.svg" alt="조직의 공인 지식, 설계 결정, 런타임 관측 상태, 인지 이해도의 네 흐름이 승인·최신성·인용이 보장된 단일 기판으로 통합되는 아키텍처" width="660" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/same-information.dark.svg" />
+    <img src="assets/same-information.svg" alt="Nexus, Arbiter, Observer, Adept가 정보를 승인, 최신, 인용 상태로 관리하는 단일 공유 계층(khala)에 공급하고 사람은 웹 콘솔, 에이전트는 MCP, A2A로 조회합니다." width="840" />
+  </picture>
 </p>
 
 | 정보 계층 | 단일 진실을 보장하는 메커니즘 | 핵심 도구 |
 |---|---|---|
-| **조직의 공인 지식**<br/>(문서, 사양, 개발 노하우) | **단일 기판, 이중 접근 인터페이스**: 인간(Web UI)과 에이전트(MCP/A2A)가 동일한 통제 코퍼스를 읽으며, 모든 답변에 검증된 출처 인용이 강제됩니다. | [Nexus](./nexus) |
+| **조직의 공인 지식**<br/>(문서, 사양, 개발 노하우) | **단일 공유 계층, 이중 접근 인터페이스**: 인간(Web UI)과 에이전트(MCP/A2A)가 동일한 통제 코퍼스를 읽으며, 모든 답변에 검증된 출처 인용이 강제됩니다. | [Nexus](./nexus) |
 | **설계 의도 및 의사결정**<br/>(아키텍처 결정 이력) | **아키텍처 결정 레코더**: 에이전트가 내리는 대규모 설계 결정을 무비용으로 기록하고, 코드 작성 전 공인된 엔지니어의 명시적 승인을 거치도록 게이트를 둡니다. | [Arbiter](./arbiter) |
 | **시스템 런타임 상태**<br/>(트레이스, 메트릭, 로그) | **판단 맥락 제공**: 단순 대시보드 조회가 아니라, OpenTelemetry 텔레메트리를 승인된 문서와 결합하여 PR 리뷰 및 장애 분석의 신뢰할 수 있는 증거를 제공합니다. | [Observer](./observer)<br/>*(Nexus + OTel)* |
 | **시스템 인지 이해도**<br/>(엔지니어의 보증 현황) | **인지 부채 원장**: 전체 배포 자산이 분모, 엔지니어가 검증 및 보증(Vouch)할 수 있는 영역이 분자가 되어, 보이지 않던 인지 부채를 숫자로 측정하고 해소합니다. | [Adept](./adept) |
@@ -68,6 +71,19 @@ AI가 소프트웨어의 주된 생산자가 되면서 세 가지 부채가 누�
 | **Adept** | 인지 부채 측정기. 시스템 아티팩트에 대한 엔지니어의 명시적 보증(Vouch) 커버리지를 계산하고 고아 자산 식별. | [`./adept`](./adept) |
 | **Adept Web** | 팀 단위 인지 부채 모니터링 웹 콘솔 (파일 및 Postgres 백엔드 지원). | [`./adept-web`](./adept-web) |
 | **docs** | Astro Starlight 기반의 공식 기술 사양 및 생태계 레퍼런스 사이트. | [`./docs`](./docs) |
+
+---
+
+## Nexus 답변 경로
+
+Nexus의 POST /search/answer 요청 처리 과정을 보여줍니다. 코드가 무엇이 근거이고 검증되었는지를 결정하며, LLM은 서술만 수행합니다.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/nexus-answer-path.dark.svg" />
+    <img src="assets/nexus-answer-path.svg" alt="POST /search/answer 요청이 질의 계획, BM25와 벡터 검색, fuse_channels RRF 융합, packet_for_answer, LLM 답변 생성, 인용 및 수치 검증을 거치는 과정을 나타냅니다." width="840" />
+  </picture>
+</p>
 
 ---
 

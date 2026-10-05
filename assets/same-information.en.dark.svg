@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="412" viewBox="0 0 840 412" role="img" aria-label="One governed substrate keeping information approved, current, and cited">
+  <defs>
+    <marker id="data" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L8,5 L1,9" fill="none" stroke="#e6e6e6" stroke-width="1.2"/>
+    </marker>
+    <marker id="cmd" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,1 L9,5 L0,9 Z" fill="#d4654a"/>
+    </marker>
+  </defs>
+  <g font-family="'Helvetica Neue', Helvetica, Arial, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', 'Noto Sans CJK KR', sans-serif" fill="#e6e6e6">
+    <text x="20" y="36" font-size="17" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Khala</text>
+    <text x="20" y="56" font-size="12" fill="#9a9a9a">One governed substrate keeping information approved, current, and cited</text>
+    <text x="820" y="36" font-size="11" fill="#9a9a9a" text-anchor="end">Human and agent read the same substrate</text>
+    <text x="820" y="52" font-size="11" fill="#9a9a9a" text-anchor="end">Both see the same governed view</text>
+    <rect x="32" y="96" width="220" height="52" fill="#232a3a" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="44" y="119" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Nexus</text>
+    <text x="44" y="135" font-size="11" fill="#9a9a9a">Approved knowledge. Citations</text>
+    <rect x="32" y="164" width="220" height="52" fill="#232a3a" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="44" y="187" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Arbiter</text>
+    <text x="44" y="203" font-size="11" fill="#9a9a9a">Design decisions. Spec gate</text>
+    <rect x="32" y="232" width="220" height="52" fill="#232a3a" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="44" y="255" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Observer</text>
+    <text x="44" y="271" font-size="11" fill="#9a9a9a">Runtime state. Review evidence</text>
+    <rect x="32" y="300" width="220" height="52" fill="#232a3a" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="44" y="323" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Adept</text>
+    <text x="44" y="339" font-size="11" fill="#9a9a9a">Artifact vouching. Coverage</text>
+    <rect x="376" y="188" width="160" height="72" fill="#2b3f6b" stroke="#2b3f6b" stroke-width="1.5"/>
+    <rect x="380" y="192" width="152" height="64" fill="none" stroke="#ffffff" stroke-width="0.75" stroke-opacity="0.6"/>
+    <text x="388" y="211" font-size="12.5" fill="#ffffff" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Substrate</text>
+    <text x="388" y="227" font-size="11" fill="#cfd6e6">Approved and current</text>
+    <text x="388" y="243" font-size="11" fill="#cfd6e6">Verified citations</text>
+    <rect x="648" y="140" width="160" height="52" fill="#1a1a1a" stroke="#4a4a4a"/>
+    <text x="660" y="163" font-size="12" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Human</text>
+    <text x="660" y="179" font-size="11" fill="#9a9a9a">Web console. Sources</text>
+    <rect x="648" y="256" width="160" height="52" fill="#1a1a1a" stroke="#4a4a4a"/>
+    <text x="660" y="279" font-size="12" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Agent</text>
+    <text x="660" y="295" font-size="11" fill="#9a9a9a">MCP, A2A</text>
+    <g fill="none" stroke="#e6e6e6" stroke-width="1.2">
+      <path d="M252,122 H284"/>
+      <path d="M252,190 H284"/>
+      <path d="M252,258 H284"/>
+      <path d="M252,326 H284"/>
+      <path d="M284,122 V326"/>
+      <path d="M284,224 H374" marker-end="url(#data)"/>
+      <path d="M536,224 H576 V166 H646" marker-end="url(#data)"/>
+      <path d="M576,224 V282 H646" marker-end="url(#data)"/>
+    </g>
+    <g font-size="10.5" fill="#e6e6e6">
+    <text x="292" y="217" font-size="10.5">feeds</text>
+    <text x="584" y="159" font-size="10.5">reads</text>
+    <text x="584" y="275" font-size="10.5">reads</text>
+    </g>
+  </g>
+  <g font-size="10.5" fill="#9a9a9a">
+    <path d="M20,390 H44" fill="none" stroke="#e6e6e6" stroke-width="1.2"/>
+    <text x="50" y="394">Data flow</text>
+    <rect x="142" y="384" width="14" height="10" fill="#232a3a" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="162" y="394">Project tool</text>
+    <rect x="274" y="384" width="14" height="10" fill="#2b3f6b" stroke="#2b3f6b"/>
+    <text x="294" y="394">Core substrate</text>
+    <rect x="418" y="384" width="14" height="10" fill="none" stroke="#4a4a4a"/>
+    <text x="438" y="394">Human and agent</text>
+  </g>
+</svg>
