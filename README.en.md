@@ -37,7 +37,10 @@ thinks from the **same information**. Documents alone don't cover that. Four kin
 information drift apart in an AI-era org, and each one is a Khala surface:
 
 <p align="center">
-  <img src="assets/same-information.svg" alt="Four kinds of information — documented knowledge, design decisions, operational facts, comprehension — flow into one governed substrate (approved, current, cited), which a human and an agent read through dual access interfaces: the same view." width="660" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/same-information.en.dark.svg" />
+    <img src="assets/same-information.en.svg" alt="Nexus, Arbiter, Observer, and Adept feed a single substrate (khala) that keeps information approved, current, and cited for humans via web console and agents via MCP and A2A." width="840" />
+  </picture>
 </p>
 
 | Information | How it stays *the same* for everyone | Tool |
@@ -74,6 +77,17 @@ The reframe is recorded in [ADR-0002](adr/ADR-0002-reframe-system-command-debt.m
 | **Adept** | Cognitive-debt meter — graded, grounded comprehension vouches; coverage + orphan hotlist. | [`./adept`](./adept) |
 | **Adept web** | Team surface for the same meter — browser UI + server-backed (file or Postgres). | [`./adept-web`](./adept-web) |
 | **docs** | Astro Starlight ecosystem documentation site. | [`./docs`](./docs) |
+
+## Nexus answer path
+
+This diagram shows the processing of a single POST /search/answer request in Nexus. Code decides what is evidence and what is verified; the LLM only narrates.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/nexus-answer-path.en.dark.svg" />
+    <img src="assets/nexus-answer-path.en.svg" alt="The POST /search/answer pipeline runs query planning, BM25 and vector search, fuse_channels RRF fusion, packet_for_answer evidence assembly, LLM answer generation, and code verification of citations and numbers." width="840" />
+  </picture>
+</p>
 
 ## Quickstart (Nexus Local Stack)
 

@@ -34,7 +34,10 @@ Khala는 이 문제를 주관적인 조언이나 가이드라인이 아닌, **�
 Khala는 서비스를 개발하고 운영하는 모든 주체(사람과 에이전트)가 동일한 정보 맥락을 공유할 수 있도록, 흩어져 있던 네 가지 핵심 정보를 하나의 관리 기판 위에서 결합합니다:
 
 <p align="center">
-  <img src="assets/same-information.svg" alt="조직의 공인 지식, 설계 결정, 런타임 관측 상태, 인지 이해도의 네 흐름이 승인·최신성·인용이 보장된 단일 기판으로 통합되는 아키텍처" width="660" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/same-information.dark.svg" />
+    <img src="assets/same-information.svg" alt="Nexus, Arbiter, Observer, Adept가 정보를 승인, 최신, 인용 상태로 단일 기판(khala)에 공급하고 사람은 웹 콘솔, 에이전트는 MCP, A2A로 조회합니다." width="840" />
+  </picture>
 </p>
 
 | 정보 계층 | 단일 진실을 보장하는 메커니즘 | 핵심 도구 |
@@ -68,6 +71,19 @@ AI가 소프트웨어의 주된 생산자가 되면서 세 가지 부채가 누�
 | **Adept** | 인지 부채 측정기. 시스템 아티팩트에 대한 엔지니어의 명시적 보증(Vouch) 커버리지를 계산하고 고아 자산 식별. | [`./adept`](./adept) |
 | **Adept Web** | 팀 단위 인지 부채 모니터링 웹 콘솔 (파일 및 Postgres 백엔드 지원). | [`./adept-web`](./adept-web) |
 | **docs** | Astro Starlight 기반의 공식 기술 사양 및 생태계 레퍼런스 사이트. | [`./docs`](./docs) |
+
+---
+
+## Nexus 답변 경로
+
+Nexus의 POST /search/answer 요청 처리 과정을 보여줍니다. 코드가 무엇이 근거이고 검증되었는지를 결정하며, LLM은 서술만 수행합니다.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/nexus-answer-path.dark.svg" />
+    <img src="assets/nexus-answer-path.svg" alt="POST /search/answer 요청이 질의 계획, BM25와 벡터 검색, fuse_channels RRF 융합, packet_for_answer, LLM 답변 생성, 인용 및 수치 검증을 거치는 과정을 나타냅니다." width="840" />
+  </picture>
+</p>
 
 ---
 

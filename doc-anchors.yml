@@ -135,3 +135,20 @@ docs:
       - scripts/check_terms.py
       - tests/test_check_terms.py
       - scripts/hooks/terms_guard.py
+
+  # README 의 답변 경로 그림은 코드 이름과 상수(RRF k=60 · 상위 20 · 가중치 0.5)를 그대로 싣는다.
+  # 다크 판은 같은 내용이라 밝은 판만 올린다.
+  - doc: assets/nexus-answer-path.svg
+    sources: &answer_path_figure
+      - nexus/nexus/api.py
+      - nexus/nexus/search/rewrite.py
+      - nexus/nexus/search/identifiers.py
+      - nexus/nexus/search/hybrid.py
+      - nexus/nexus/search/reconcile.py
+      - nexus/nexus/llm/answer.py
+      - nexus/nexus/llm/citations.py
+      - nexus/nexus/llm/numbers.py
+      - nexus/nexus/search/signals.py
+
+  - doc: assets/nexus-answer-path.en.svg
+    sources: *answer_path_figure

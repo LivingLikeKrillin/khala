@@ -1,0 +1,230 @@
+{
+ "d1.desc": {
+  "ko": "네 가지 정보를 승인, 최신, 인용 상태로 관리하는 단일 기판",
+  "en": "One governed substrate keeping information approved, current, and cited"
+ },
+ "d1.note1": {
+  "ko": "사람과 에이전트가 같은 기판을 읽는다",
+  "en": "Human and agent read the same substrate"
+ },
+ "d1.note2": {
+  "ko": "양쪽 모두 동일한 시야를 공유한다",
+  "en": "Both see the same governed view"
+ },
+ "d1.nexus.role": {
+  "ko": "승인 지식. 인용 검증",
+  "en": "Approved knowledge. Citations"
+ },
+ "d1.arbiter.role": {
+  "ko": "설계 결정. 사양 승인 게이트",
+  "en": "Design decisions. Spec gate"
+ },
+ "d1.observer.role": {
+  "ko": "런타임 상태. 분석 근거",
+  "en": "Runtime state. Review evidence"
+ },
+ "d1.adept.role": {
+  "ko": "이해도. 보증 커버리지",
+  "en": "Artifact vouching. Coverage"
+ },
+ "d1.core.name": {
+  "ko": "khala",
+  "en": "khala"
+ },
+ "d1.core.role1": {
+  "ko": "승인 및 최신 유지",
+  "en": "Approved and current"
+ },
+ "d1.core.role2": {
+  "ko": "검증된 인용 제공",
+  "en": "Verified citations"
+ },
+ "d1.human.name": {
+  "ko": "사람",
+  "en": "Human"
+ },
+ "d1.human.role": {
+  "ko": "웹 콘솔. 출처 표기",
+  "en": "Web console. Sources"
+ },
+ "d1.agent.name": {
+  "ko": "에이전트",
+  "en": "Agent"
+ },
+ "d1.agent.role": {
+  "ko": "MCP, A2A",
+  "en": "MCP, A2A"
+ },
+ "d1.edge.feed": {
+  "ko": "공급한다",
+  "en": "feeds"
+ },
+ "d1.edge.human": {
+  "ko": "조회",
+  "en": "reads"
+ },
+ "d1.edge.agent": {
+  "ko": "조회",
+  "en": "reads"
+ },
+ "d1.key.data": {
+  "ko": "데이터 흐름",
+  "en": "Data flow"
+ },
+ "d1.key.project": {
+  "ko": "프로젝트 도구",
+  "en": "Project tool"
+ },
+ "d1.key.core": {
+  "ko": "핵심 기판",
+  "en": "Core substrate"
+ },
+ "d1.key.external": {
+  "ko": "외부",
+  "en": "Outside"
+ },
+ "d2.title": {
+  "ko": "Nexus 답변 경로",
+  "en": "Nexus answer path"
+ },
+ "d2.desc": {
+  "ko": "POST /search/answer 단일 요청의 처리 과정",
+  "en": "Execution lifecycle of a single POST /search/answer request"
+ },
+ "d2.note1": {
+  "ko": "코드가 근거와 검증을 결정한다",
+  "en": "Code decides evidence and verification"
+ },
+ "d2.note2": {
+  "ko": "LLM은 서술만 담당한다",
+  "en": "The LLM only narrates"
+ },
+ "d2.zone": {
+  "ko": "Nexus 내부 파이프라인",
+  "en": "Nexus internal pipeline"
+ },
+ "d2.client.role": {
+  "ko": "웹, MCP, CLI, A2A",
+  "en": "Web, MCP, CLI, A2A"
+ },
+ "d2.identifiers.role": {
+  "ko": "식별자만 둘째 질의로. 가중치 0.5",
+  "en": "Identifier query. Weight 0.5"
+ },
+ "d2.rewrite.role": {
+  "ko": "대화 이력 기반 질의 완성",
+  "en": "Completes query from history"
+ },
+ "d2.leg.original": {
+  "ko": "원문 질의",
+  "en": "Original query"
+ },
+ "d2.leg.identifier": {
+  "ko": "식별자 질의",
+  "en": "Identifier query"
+ },
+ "d2.fuse.role": {
+  "ko": "RRF 융합(k=60), 문서별 상한, 상위 20개",
+  "en": "RRF (k=60), per-doc cap, cuts to top 20"
+ },
+ "d2.packet.role1": {
+  "ko": "모든 답변 표면이 지나는 이음매 하나",
+  "en": "Single shared seam building the evidence packet"
+ },
+ "d2.packet.role2": {
+  "ko": "채움 넷과 코드 값을 붙인다",
+  "en": "Adds four fills and attaches code values"
+ },
+ "d2.generate.role": {
+  "ko": "근거 부재 시 답변 기권",
+  "en": "Abstains without evidence"
+ },
+ "d2.validate.role": {
+  "ko": "인용 및 수치 검증",
+  "en": "Verifies citations and numbers"
+ },
+ "d2.pg.role": {
+  "ko": "청크. tsvector, pgvector",
+  "en": "Chunks. tsvector, pgvector"
+ },
+ "d2.llm.role": {
+  "ko": "로컬 브리지, API",
+  "en": "Local bridge or API"
+ },
+ "d2.log.role": {
+  "ko": "비차단 검색 로그",
+  "en": "Non-blocking search log"
+ },
+ "d2.edge.ask": {
+  "ko": "질의를 넘긴다",
+  "en": "sends the query"
+ },
+ "d2.edge.toIdentifierLegs": {
+  "ko": "식별자 질의를 넘긴다",
+  "en": "sends identifier query"
+ },
+ "d2.edge.toOriginalLegs": {
+  "ko": "원문 질의를 넘긴다",
+  "en": "sends original query"
+ },
+ "d2.edge.pgToLegs": {
+  "ko": "청크 조회",
+  "en": "reads chunks"
+ },
+ "d2.edge.toFuse": {
+  "ko": "순위 목록을 넘긴다",
+  "en": "sends ranked lists"
+ },
+ "d2.edge.toPacket": {
+  "ko": "상위 20개를 넘긴다",
+  "en": "sends top 20 chunks"
+ },
+ "d2.edge.pgToPacket": {
+  "ko": "채움 조각 조회",
+  "en": "reads fills"
+ },
+ "d2.edge.toGenerate": {
+  "ko": "근거 패킷을 넘긴다",
+  "en": "sends evidence packet"
+ },
+ "d2.edge.toValidate": {
+  "ko": "초안 전달",
+  "en": "sends draft"
+ },
+ "d2.edge.toLLM": {
+  "ko": "LLM 호출",
+  "en": "calls LLM"
+ },
+ "d2.edge.rewriteToLLM": {
+  "ko": "대화 이력 있을 때만 호출",
+  "en": "calls only with chat history"
+ },
+ "d2.edge.writeLog": {
+  "ko": "검색 로그 쓰기",
+  "en": "writes search log"
+ },
+ "d2.edge.respond": {
+  "ko": "답변, 인용 판정, 근거 패킷 반환",
+  "en": "returns answer, citation verdicts, evidence"
+ },
+ "d2.key.data": {
+  "ko": "데이터 흐름",
+  "en": "Data flow"
+ },
+ "d2.key.write": {
+  "ko": "쓰기 흐름",
+  "en": "Write flow"
+ },
+ "d2.key.project": {
+  "ko": "Nexus 모듈",
+  "en": "Nexus module"
+ },
+ "d2.key.core": {
+  "ko": "공유 이음매",
+  "en": "Shared seam"
+ },
+ "d2.key.external": {
+  "ko": "외부 시스템",
+  "en": "External system"
+ }
+}

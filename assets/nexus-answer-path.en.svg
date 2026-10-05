@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="812" viewBox="0 0 840 812" role="img" aria-label="Execution lifecycle of a single POST /search/answer request">
+  <defs>
+    <marker id="data" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L8,5 L1,9" fill="none" stroke="#262626" stroke-width="1.2"/>
+    </marker>
+    <marker id="cmd" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,1 L9,5 L0,9 Z" fill="#b23a1d"/>
+    </marker>
+  </defs>
+  <g font-family="'Helvetica Neue', Helvetica, Arial, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', 'Noto Sans CJK KR', sans-serif" fill="#262626">
+    <text x="20" y="36" font-size="17" font-weight="700">Nexus answer path</text>
+    <text x="20" y="56" font-size="12" fill="#6f6f6f">Execution lifecycle of a single POST /search/answer request</text>
+    <text x="820" y="36" font-size="11" fill="#6f6f6f" text-anchor="end">Code decides evidence and verification</text>
+    <text x="820" y="52" font-size="11" fill="#6f6f6f" text-anchor="end">The LLM only narrates</text>
+    <rect x="320" y="76" width="200" height="52" fill="#ffffff" stroke="#bdbdbd"/>
+    <text x="332" y="99" font-size="12" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">client</text>
+    <text x="332" y="115" font-size="11" fill="#6f6f6f">Web, MCP, CLI, A2A</text>
+    <rect x="32" y="152" width="572" height="540" fill="none" stroke="#2b3f6b"/>
+    <text x="44" y="170" font-size="11" fill="#2b3f6b" font-weight="700">Nexus internal pipeline</text>
+    <rect x="60" y="196" width="240" height="52" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="72" y="219" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">identifiers</text>
+    <text x="72" y="235" font-size="11" fill="#6f6f6f">Identifier query. Weight 0.5</text>
+    <rect x="336" y="196" width="240" height="52" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="348" y="219" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">rewrite</text>
+    <text x="348" y="235" font-size="11" fill="#6f6f6f">Completes query from history</text>
+    <rect x="52" y="308" width="104" height="44" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="64" y="327" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">bm25</text>
+    <text x="64" y="343" font-size="11" fill="#6f6f6f">Identifier query</text>
+    <rect x="172" y="308" width="104" height="44" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="184" y="327" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">vector</text>
+    <text x="184" y="343" font-size="11" fill="#6f6f6f">Identifier query</text>
+    <rect x="292" y="308" width="104" height="44" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="304" y="327" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">bm25</text>
+    <text x="304" y="343" font-size="11" fill="#6f6f6f">Original query</text>
+    <rect x="412" y="308" width="104" height="44" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="424" y="327" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">vector</text>
+    <text x="424" y="343" font-size="11" fill="#6f6f6f">Original query</text>
+    <rect x="176" y="404" width="280" height="52" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="188" y="427" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">fuse_channels</text>
+    <text x="188" y="443" font-size="11" fill="#6f6f6f">RRF (k=60), per-doc cap, cuts to top 20</text>
+    <rect x="116" y="500" width="400" height="72" fill="#2b3f6b" stroke="#2b3f6b" stroke-width="1.5"/>
+    <rect x="120" y="504" width="392" height="64" fill="none" stroke="#ffffff" stroke-width="0.75" stroke-opacity="0.6"/>
+    <text x="128" y="523" font-size="12.5" fill="#ffffff" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">packet_for_answer</text>
+    <text x="128" y="539" font-size="11" fill="#cfd6e6">Single shared seam building the evidence packet</text>
+    <text x="128" y="555" font-size="11" fill="#cfd6e6">Adds four fills and attaches code values</text>
+    <rect x="52" y="616" width="220" height="52" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="64" y="639" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">citations.py, numbers.py</text>
+    <text x="64" y="655" font-size="11" fill="#6f6f6f">Verifies citations and numbers</text>
+    <rect x="356" y="616" width="180" height="52" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="368" y="639" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">generate_answer</text>
+    <text x="368" y="655" font-size="11" fill="#6f6f6f">Abstains without evidence</text>
+    <rect x="636" y="304" width="172" height="52" fill="#ffffff" stroke="#bdbdbd"/>
+    <text x="648" y="327" font-size="12" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">PostgreSQL</text>
+    <text x="648" y="343" font-size="11" fill="#6f6f6f">Chunks. tsvector, pgvector</text>
+    <rect x="636" y="616" width="172" height="52" fill="#ffffff" stroke="#bdbdbd"/>
+    <text x="648" y="639" font-size="12" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">LLM</text>
+    <text x="648" y="655" font-size="11" fill="#6f6f6f">Local bridge or API</text>
+    <rect x="636" y="708" width="172" height="52" fill="#ffffff" stroke="#bdbdbd"/>
+    <text x="648" y="731" font-size="12" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">search_log</text>
+    <text x="648" y="747" font-size="11" fill="#6f6f6f">Non-blocking search log</text>
+    <g fill="none" stroke="#262626" stroke-width="1.2">
+      <path d="M420,128 V180 H180 V194" marker-end="url(#data)"/>
+      <path d="M420,180 H456 V194" marker-end="url(#data)"/>
+      <path d="M180,248 V280 H104 V306" marker-end="url(#data)"/>
+      <path d="M180,280 H224 V306" marker-end="url(#data)"/>
+      <path d="M456,248 V280 H344 V306" marker-end="url(#data)"/>
+      <path d="M456,280 H464 V306" marker-end="url(#data)"/>
+      <path d="M634,330 H518" marker-end="url(#data)"/>
+      <path d="M104,352 V376 H464 V352"/>
+      <path d="M224,352 V376"/>
+      <path d="M344,352 V376"/>
+      <path d="M316,376 V402" marker-end="url(#data)"/>
+      <path d="M316,456 V498" marker-end="url(#data)"/>
+      <path d="M720,356 V536 H518" marker-end="url(#data)"/>
+      <path d="M446,572 V614" marker-end="url(#data)"/>
+      <path d="M356,642 H274" marker-end="url(#data)"/>
+      <path d="M536,642 H634" marker-end="url(#data)"/>
+      <path d="M576,212 H824 V642 H810" marker-end="url(#data)"/>
+      <path d="M52,642 H16 V102 H318" marker-end="url(#data)"/>
+    </g>
+    <g fill="none" stroke="#b23a1d" stroke-width="2">
+      <path d="M446,668 V734 H634" marker-end="url(#cmd)"/>
+    </g>
+    <g font-size="10.5" fill="#262626">
+    <text x="428" y="144" font-size="10.5">sends the query</text>
+    <text x="188" y="272" font-size="10.5">sends identifier query</text>
+    <text x="464" y="272" font-size="10.5">sends original query</text>
+    <text x="524" y="323" font-size="10.5">reads chunks</text>
+    <text x="324" y="396" font-size="10.5">sends ranked lists</text>
+    <text x="324" y="482" font-size="10.5">sends top 20 chunks</text>
+    <text x="728" y="452" font-size="10.5">reads fills</text>
+    <text x="454" y="596" font-size="10.5">sends evidence packet</text>
+    <text x="280" y="635" font-size="10.5">sends draft</text>
+    <text x="542" y="635" font-size="10.5">calls LLM</text>
+    <text x="612" y="205" font-size="10.5">calls only with chat history</text>
+    <text x="24" y="95" font-size="10.5">returns answer, citation verdicts, evidence</text>
+    </g>
+    <g font-size="10.5" fill="#b23a1d">
+    <text x="454" y="727" font-size="10.5">writes search log</text>
+    </g>
+  </g>
+  <g font-size="10.5" fill="#6f6f6f">
+    <path d="M20,790 H44" fill="none" stroke="#262626" stroke-width="1.2"/>
+    <text x="50" y="794">Data flow</text>
+    <path d="M132,790 H156" fill="none" stroke="#b23a1d" stroke-width="2"/>
+    <text x="162" y="794">Write flow</text>
+    <rect x="262" y="784" width="14" height="10" fill="#e8ebf3" stroke="#2b3f6b" stroke-width="1.5"/>
+    <text x="282" y="794">Nexus module</text>
+    <rect x="394" y="784" width="14" height="10" fill="#2b3f6b" stroke="#2b3f6b"/>
+    <text x="414" y="794">Shared seam</text>
+    <rect x="518" y="784" width="14" height="10" fill="none" stroke="#bdbdbd"/>
+    <text x="538" y="794">External system</text>
+  </g>
+</svg>
