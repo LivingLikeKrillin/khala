@@ -51,7 +51,7 @@
     <text x="368" y="655" font-size="11" fill="#9a9a9a">Abstains without evidence</text>
     <rect x="636" y="304" width="172" height="52" fill="#1a1a1a" stroke="#4a4a4a"/>
     <text x="648" y="327" font-size="12" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">PostgreSQL</text>
-    <text x="648" y="343" font-size="11" fill="#9a9a9a">Chunks. tsvector, pgvector</text>
+    <text x="648" y="343" font-size="11" fill="#9a9a9a">Candidate chunk storage</text>
     <rect x="636" y="616" width="172" height="52" fill="#1a1a1a" stroke="#4a4a4a"/>
     <text x="648" y="639" font-size="12" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">LLM</text>
     <text x="648" y="655" font-size="11" fill="#9a9a9a">Local bridge or API</text>

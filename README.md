@@ -36,7 +36,7 @@ Khala는 서비스를 개발하고 운영하는 모든 주체(사람과 에이�
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/same-information.dark.svg" />
-    <img src="assets/same-information.svg" alt="Nexus, Arbiter, Observer, Adept가 정보를 승인, 최신, 인용 상태로 단일 기판(khala)에 공급하고 사람은 웹 콘솔, 에이전트는 MCP, A2A로 조회합니다." width="840" />
+    <img src="assets/same-information.svg" alt="Nexus, Arbiter, Observer, Adept가 정보를 승인, 최신, 인용 상태로 관리하는 단일 기판(khala)에 공급하고 사람은 웹 콘솔, 에이전트는 MCP, A2A로 조회합니다." width="840" />
   </picture>
 </p>
 

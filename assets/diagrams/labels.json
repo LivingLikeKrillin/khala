@@ -4,7 +4,7 @@
   "en": "One governed substrate keeping information approved, current, and cited"
  },
  "d1.note1": {
-  "ko": "사람과 에이전트가 같은 기판을 읽는다",
+  "ko": "사람과 에이전트가 동일한 기판을 읽는다",
   "en": "Human and agent read the same substrate"
  },
  "d1.note2": {
@@ -16,7 +16,7 @@
   "en": "Approved knowledge. Citations"
  },
  "d1.arbiter.role": {
-  "ko": "설계 결정. 사양 승인 게이트",
+  "ko": "사양 승인. 코드 전 게이트",
   "en": "Design decisions. Spec gate"
  },
  "d1.observer.role": {
@@ -24,12 +24,12 @@
   "en": "Runtime state. Review evidence"
  },
  "d1.adept.role": {
-  "ko": "이해도. 보증 커버리지",
+  "ko": "시스템 이해도. 보증 커버리지",
   "en": "Artifact vouching. Coverage"
  },
  "d1.core.name": {
-  "ko": "khala",
-  "en": "khala"
+  "ko": "기판",
+  "en": "Substrate"
  },
  "d1.core.role1": {
   "ko": "승인 및 최신 유지",
@@ -80,8 +80,8 @@
   "en": "Core substrate"
  },
  "d1.key.external": {
-  "ko": "외부",
-  "en": "Outside"
+  "ko": "사람과 에이전트",
+  "en": "Human and agent"
  },
  "d2.title": {
   "ko": "Nexus 답변 경로",
@@ -104,11 +104,11 @@
   "en": "Nexus internal pipeline"
  },
  "d2.client.role": {
-  "ko": "웹, MCP, CLI, A2A",
+  "ko": "웹 콘솔, MCP, CLI, A2A",
   "en": "Web, MCP, CLI, A2A"
  },
  "d2.identifiers.role": {
-  "ko": "식별자만 둘째 질의로. 가중치 0.5",
+  "ko": "식별자로 두 번째 질의 생성",
   "en": "Identifier query. Weight 0.5"
  },
  "d2.rewrite.role": {
@@ -124,15 +124,15 @@
   "en": "Identifier query"
  },
  "d2.fuse.role": {
-  "ko": "RRF 융합(k=60), 문서별 상한, 상위 20개",
+  "ko": "k=60 RRF 융합, 문서별 상한, 상위 20개",
   "en": "RRF (k=60), per-doc cap, cuts to top 20"
  },
  "d2.packet.role1": {
-  "ko": "모든 답변 표면이 지나는 이음매 하나",
+  "ko": "모든 답변 표면이 거치는 단일 접점",
   "en": "Single shared seam building the evidence packet"
  },
  "d2.packet.role2": {
-  "ko": "채움 넷과 코드 값을 붙인다",
+  "ko": "4가지 청크 채움 및 코드 값 첨부",
   "en": "Adds four fills and attaches code values"
  },
  "d2.generate.role": {
@@ -144,8 +144,8 @@
   "en": "Verifies citations and numbers"
  },
  "d2.pg.role": {
-  "ko": "청크. tsvector, pgvector",
-  "en": "Chunks. tsvector, pgvector"
+  "ko": "후보 청크 저장소",
+  "en": "Candidate chunk storage"
  },
  "d2.llm.role": {
   "ko": "로컬 브리지, API",
@@ -180,7 +180,7 @@
   "en": "sends top 20 chunks"
  },
  "d2.edge.pgToPacket": {
-  "ko": "채움 조각 조회",
+  "ko": "채움 청크 조회",
   "en": "reads fills"
  },
  "d2.edge.toGenerate": {
@@ -220,7 +220,7 @@
   "en": "Nexus module"
  },
  "d2.key.core": {
-  "ko": "공유 이음매",
+  "ko": "단일 접점",
   "en": "Shared seam"
  },
  "d2.key.external": {
