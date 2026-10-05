@@ -152,6 +152,11 @@ class SearchSignals:
     #: 요청이 처치를 받았는지는 이 칸이 아니면 기록에 없다. None = 기록 안 함(칸 전의 행 ·
     #: 칸 없는 더블) ≠ False(기록했고 꺼져 있었다).
     fusion_doc_agreement: bool | None = None
+    #: 요청자가 준 **검색 글**(`search_text`)의 길이와 해시 — 본문은 싣지 않는다(`answer_context` 와
+    #: 같은 방식). `query_sha256` 은 계속 질문의 값이라, 같은 질문을 다른 검색 글로 돌린 행이 이
+    #: 칸으로 갈린다(migration 051). `0` · `""` = 안 줬다.
+    search_text_len: int = 0
+    search_text_sha256: str = ""
 
 
 def extract_signals(
@@ -178,6 +183,7 @@ def extract_signals(
     answer_context: str | None = None,
     corpus_version: str | None = None,
     search_fingerprint: str | None = None,
+    search_text: str | None = None,
 ) -> SearchSignals:
     """SearchResult(+선택 AnswerResult)와 진입점 스칼라에서 신호를 조립. 순수.
 
@@ -266,6 +272,9 @@ def extract_signals(
         degraded=_degraded_of(result),
         # 같은 규칙 — 결과가 한 것. 칸이 없는 결과는 None(모름)이지 False(꺼짐)가 아니다.
         fusion_doc_agreement=getattr(result, "fusion_doc_agreement", None),
+        # 자료와 같은 규칙 — 여기서 길이와 해시가 되고 본문은 신호 객체에 안 들어간다.
+        search_text_len=len(search_text or ""),
+        search_text_sha256=query_sha256(search_text) if search_text else "",
     )
 
 
@@ -429,10 +438,10 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
             prompt_version, rewrite_prompt_sha,
             top_distance, top_bm25, evidence_tenants, spans_expected,
             answer_context_len, answer_context_sha256, corpus_version, search_fingerprint,
-            degraded, fusion_doc_agreement
+            degraded, fusion_doc_agreement, search_text_len, search_text_sha256
         ) VALUES ($1,$2,$36,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
                   $21, now(), $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                  $34, $35, $37, $38, $39, $40, $41, $42, $43, $44)
+                  $34, $35, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46)
         RETURNING id
         """,
         sig.path, sig.tenant, sig.clearance, sig.route, sig.query_sha256, sig.query_len,
@@ -450,6 +459,7 @@ async def _insert(sig: SearchSignals, sufficiency: str | None,
         sig.corpus_version, sig.search_fingerprint,
         None if sig.degraded is None else list(sig.degraded),
         sig.fusion_doc_agreement,
+        sig.search_text_len, sig.search_text_sha256,
     )
 
 

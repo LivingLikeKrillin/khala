@@ -390,6 +390,19 @@ class AnswerRequest(RequestModel):
     #: 안 준 것과 같고, 그때 프롬프트는 오늘과 바이트 단위로 같다. 응답의 `answer_context_len` 이
     #: 실제로 쓴 길이를 돌려준다.
     answer_context: str | None = Field(default=None, max_length=ANSWER_CONTEXT_MAX)
+    #: **검색에만** 쓰는 글 — 주면 검색 쪽(원문 경로 · 식별자 채널 · 엔티티 · 경로 이름 · 묶음의
+    #: 코드 값 맞추기)이 `query` 대신 이것을 읽고, 답 쪽(답변 프롬프트 · 숫자 검증 · 충분성 판정자 ·
+    #: 질문 원문 보존)은 계속 `query` 를 읽는다. `answer_context` 의 거울이다 — 그것은 답에만,
+    #: 이것은 검색에만 닿는다.
+    #:
+    #: ⛔ **왜 (2026-10-05, 소비자 측정 둘).** 물음을 뗀 짧은 글로 검색하면 근거가 좋아졌는데,
+    #: 그 글을 `query` 로 보내려면 물음을 `answer_context` 로 옮겨야 했고 진단 경로에서 그 자리
+    #: 옮김이 답의 형식을 깨뜨렸다. 칸을 나누면 검색은 짧은 글로 돌고 질문 자리는 오늘 그대로다.
+    #:
+    #: 주면 **재작성기가 돌지 않는다** — 검색 글은 호출자가 이미 쓴 것이고, 재작성문은 답변
+    #: 프롬프트의 질문 자리로 들어가므로 돌리면 검색 글이 거기로 샌다. 비었거나 공백뿐이면 안 준
+    #: 것이고 오늘과 같다. 응답의 `search_text_len` 이 실제로 쓴 길이를 돌려준다.
+    search_text: str | None = None
 
 
 class SearchAnswerRequest(AnswerRequest):
@@ -499,8 +512,25 @@ def _validate_route(route: str) -> None:
 
 
 
+def _search_text(req) -> str | None:
+    """실제로 쓰이는 검색 글. **비었거나 공백뿐이면 안 준 것이다** — 검색 · 응답 · 기록이 이 한
+    규칙을 같이 쓴다(`effective_context` 와 같은 이유). `/search` 의 요청에는 칸이 없다."""
+    text = getattr(req, "search_text", None)
+    return text if text and text.strip() else None
+
+
+def _asked_query(req, search_query: str) -> str:
+    """답변 프롬프트의 질문 자리에 갈 글. 검색 글을 받았으면 **질문**(`req.query`)이고, 아니면
+    오늘처럼 검색에 쓴 질의(재작성됐으면 재작성문)다. 검색 글이 질문 자리로 새면 프롬프트가
+    「두 문장」 모양으로 바뀐다 — 그것이 이 칸이 피하려는 바로 그 변화다."""
+    return req.query if _search_text(req) else search_query
+
+
 async def _search_channels(req, llm_svc, *, identifiers: bool = False):
     """(검색·라우팅에 쓸 질의, 융합 채널). 이력이 없으면 `(req.query, None)` — 오늘 그대로.
+
+    검색 글(`search_text`)을 받았으면 아래의 `req.query` 자리가 전부 그 글이고, **이력이 있어도
+    재작성하지 않는다**(`AnswerRequest.search_text` 머리말).
 
     **재작성이 원문과 같으면 채널을 늘리지 않는다.** 같은 문자열은 같은 순위 목록을 내고,
     가중 합산은 모든 문서에 같은 배수를 곱할 뿐 순서를 바꾸지 않는다(SPEC §3.3). 늘려 봐야
@@ -515,17 +545,23 @@ async def _search_channels(req, llm_svc, *, identifiers: bool = False):
 
     # 식별자 채널은 **재작성과 독립**이다. 재작성은 *무엇을 물었나*를 고치고, 이것은 그 질의가
     # 이미 들고 있는 한 낱말을 **묻히지 않게** 한다. 그래서 둘 다 붙을 수 있다.
-    ident = identifier_query(req.query) if identifiers else ""
+    given = _search_text(req)
+    text = given or req.query
+    ident = identifier_query(text) if identifiers else ""
 
+    # 이력은 받은 글이 있어도 **검증은 한다**(상한 초과는 어느 경우나 거절). 재작성만 안 한다.
     history = _history(req.history)
+    if given:
+        history = []
     if not history:
         if not ident:
-            return req.query, None, None
+            return text, None, None
         # ⛔ 채널이 둘이 되면 **둘 다 이름을 들고 가야 한다.** 옛 계약(튜플 둘)은 위치로
         #    `rewritten`/`original` 이 붙으므로, 여기서 튜플을 쓰면 사용자 질의가
         #    `rewritten` 으로 잘못 기록된다 (`QueryChannel` 머리말).
-        return req.query, [QueryChannel(req.query, 1.0, "original"),
-                           QueryChannel(ident, IDENTIFIER_CHANNEL_WEIGHT, "identifier")], None
+        return text, [QueryChannel(text, 1.0, "original"),
+                      QueryChannel(ident, IDENTIFIER_CHANNEL_WEIGHT, "identifier")], None
+    # 여기부터는 받은 글이 없을 때만 온다 — `text` 는 곧 `req.query` 다.
     rw = await rewrite_query(req.query, history, llm_svc)
     if not rw.changed:
         if not ident:
@@ -856,7 +892,7 @@ async def search_answer(req: SearchAnswerRequest,
         packet = await packet_for_answer(
             search_result, _scope, req.classification_max,
             config=config, search=hybrid_search, embedding_svc=embedding_svc,
-            question=req.query, pool=await db.get_pool())
+            question=_search_text(req) or req.query, pool=await db.get_pool())
 
         # 요청자의 자료. **여기서 처음 쓰인다** — 위의 검색·재작성·꾸러미는 이 값을 본 적이 없다.
         # 비었거나 공백뿐이면 안 준 것이다(`effective_context`, 프롬프트·응답·기록이 같은 규칙).
@@ -868,8 +904,8 @@ async def search_answer(req: SearchAnswerRequest,
             narrate=not req.evidence_only,
             # **재작성된 질의**다 (검색 SPEC §2·§4 I3). 생략형 원문을 그대로 주면 답변자는
             # 근거를 손에 쥐고도 "무엇을 가리키는지 모르겠다" 고 답한다 — 2026-08-13 라이브에서
-            # 실제로 그랬다.
-            query=search_query,
+            # 실제로 그랬다. ⛔ 단 **검색 글을 받았으면 질문**이다 — 검색 글은 검색에만 간다.
+            query=_asked_query(req, search_query),
             # 그리고 **사용자가 실제로 친 문장**도 함께 (SPEC-nexus-multi-turn-narration §3.1).
             # 재작성은 "표로 정리해 줘" 같은 조각을 질의에서 뺀다 — 검색 질의로서는 옳지만,
             # 떼어낸 요청이 아무 데도 안 가면 사용자는 자기가 한 말이 무시된 답을 받는다.
@@ -906,6 +942,8 @@ async def search_answer(req: SearchAnswerRequest,
             # 길이와 해시만 남는다 — 본문은 신호 객체에 안 들어간다.
             answer_context=answer_context,
             corpus_version=packet.corpus_version,
+            # 검색 글도 **길이와 해시만** 남는다. `query`(곧 `query_sha256`)는 계속 질문이다.
+            search_text=_search_text(req),
             search_fingerprint=packet.search_fingerprint,
         )
         # 판정자는 LLM 을 부른다 — 생성 없는 요청이 그것을 깨우면 이 칸을 둔 이유가 사라진다.
@@ -985,6 +1023,8 @@ async def search_answer(req: SearchAnswerRequest,
                 # 요청자 자료를 **실제로 쓴 길이**. 모르는 칸의 422 는 이름이 틀린 것만 막는다 —
                 # 빈 문자열이 조용히 「안 준 것」이 된 것은 이 값으로만 보인다. 0 = 안 썼다.
                 "answer_context_len": len(answer_context or ""),
+                # 실제로 검색에 쓴 길이 — 받은 쪽 처치 검사용. 안 썼으면 0.
+                "search_text_len": len(_search_text(req) or ""),
                 # **어떤 코퍼스에서, 어떤 검색 설정으로** (`search/versions.py`). 답이 어제와 다를 때
                 # 프롬프트 · 코퍼스 · 검색 스택 중 무엇이 움직였는지를 호출자가 가를 수 있게 한다.
                 # 코퍼스 판 빈 문자열 = 셀 DB 가 없었다(모른다).
@@ -1389,7 +1429,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             packet = await packet_for_answer(
                 search_result, _scope, req.classification_max,
                 config=config, search=hybrid_search, embedding_svc=embedding_svc,
-                question=req.query, pool=await db.get_pool())
+                question=_search_text(req) or req.query, pool=await db.get_pool())
 
             # 1) evidence 이벤트 전송 — 신선도(staleness) 판정 포함
             from datetime import datetime, timezone
@@ -1484,7 +1524,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # 웹이 쓰는 것이 이 경로다 — 비스트림만 고치면 사람이 보는 표면은 그대로
                 # 사용자 문장을 무시한다 (SPEC-nexus-multi-turn-narration §3.1).
                 system_prompt, user_prompt = build_prompts(
-                    search_query, evidence_text, req.query,
+                    _asked_query(req, search_query), evidence_text, req.query,
                     weak_evidence=weak_evidence, answer_context=answer_context)
 
                 try:
@@ -1508,7 +1548,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 대조 대상은 **모델이 질의 자리에서 본 것 전부**다. 재작성 질의만 대면 사용자가
             # 직접 쓴 숫자가, 원문만 대면 재작성이 채운 숫자가 무근거로 찍힌다.
             nreport = validate_numbers(full_answer, format_for_llm(packet),
-                                       _shown_query(search_query, req.query),
+                                       _shown_query(_asked_query(req, search_query), req.query),
                                        context=answer_context or "")
 
             # 신호 기록은 done yield **전**에 — 클라이언트가 끊기면 제너레이터가 마지막 yield 뒤로
@@ -1565,6 +1605,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 prompt_version=packet.prompt_version,
                 answer_context=answer_context,
                 corpus_version=packet.corpus_version,
+                # 검색 글도 **길이와 해시만** 남는다. `query`(곧 `query_sha256`)는 계속 질문이다.
+                search_text=_search_text(req),
                 search_fingerprint=packet.search_fingerprint,
             )
             await record_search(sig, judge_input=JudgeInput(
@@ -1618,6 +1660,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 # 비스트리밍과 **같은 값을 같은 이름으로** — 공유 이음매가 찍은 판이다.
                 "prompt_version": packet.prompt_version,
                 "answer_context_len": len(answer_context or ""),
+                # 실제로 검색에 쓴 길이 — 받은 쪽 처치 검사용. 안 썼으면 0.
+                "search_text_len": len(_search_text(req) or ""),
                 "corpus_version": packet.corpus_version,
                 "search_fingerprint": packet.search_fingerprint,
             }

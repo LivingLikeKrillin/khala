@@ -137,6 +137,9 @@ def test_the_signal_object_carries_no_text():
         # 2026-10-01, migration 050. **불리언 하나**다 — 융합이 문서 합의(F1)를 셌는가.
         # 질의도 근거 본문도 담지 않는다.
         "fusion_doc_agreement",
+        # 2026-10-05, migration 051. 요청자가 준 **검색 글의 길이와 해시**다 — 본문은 담지 않는다
+        # (`answer_context_*` 와 같은 방식).
+        "search_text_len", "search_text_sha256",
     }
     actual = {f.name for f in fields(S.SearchSignals)}
     assert actual == expected, (
