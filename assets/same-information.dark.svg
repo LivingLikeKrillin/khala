@@ -11,7 +11,7 @@
     <text x="20" y="36" font-size="17" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Khala</text>
     <text x="20" y="56" font-size="12" fill="#9a9a9a">네 가지 정보를 승인, 최신, 인용 상태로 관리하는 단일 기판</text>
     <text x="820" y="36" font-size="11" fill="#9a9a9a" text-anchor="end">사람과 에이전트가 동일한 기판을 읽는다</text>
-    <text x="820" y="52" font-size="11" fill="#9a9a9a" text-anchor="end">양쪽 모두 동일한 시야를 공유한다</text>
+    <text x="820" y="52" font-size="11" fill="#9a9a9a" text-anchor="end">같은 질문에 동일한 출처를 얻는다</text>
     <rect x="32" y="96" width="220" height="52" fill="#232a3a" stroke="#2b3f6b" stroke-width="1.5"/>
     <text x="44" y="119" font-size="12.5" font-weight="700" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace">Nexus</text>
     <text x="44" y="135" font-size="11" fill="#9a9a9a">승인 지식. 인용 검증</text>
@@ -46,7 +46,7 @@
       <path d="M576,224 V282 H646" marker-end="url(#data)"/>
     </g>
     <g font-size="10.5" fill="#e6e6e6">
-    <text x="292" y="217" font-size="10.5">공급한다</text>
+    <text x="292" y="217" font-size="10.5">공급</text>
     <text x="584" y="159" font-size="10.5">조회</text>
     <text x="584" y="275" font-size="10.5">조회</text>
     </g>

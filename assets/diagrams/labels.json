@@ -8,7 +8,7 @@
   "en": "Human and agent read the same substrate"
  },
  "d1.note2": {
-  "ko": "양쪽 모두 동일한 시야를 공유한다",
+  "ko": "같은 질문에 동일한 출처를 얻는다",
   "en": "Both see the same governed view"
  },
  "d1.nexus.role": {
@@ -56,7 +56,7 @@
   "en": "MCP, A2A"
  },
  "d1.edge.feed": {
-  "ko": "공급한다",
+  "ko": "공급",
   "en": "feeds"
  },
  "d1.edge.human": {
@@ -92,7 +92,7 @@
   "en": "Execution lifecycle of a single POST /search/answer request"
  },
  "d2.note1": {
-  "ko": "코드가 근거와 검증을 결정한다",
+  "ko": "코드가 근거를 결정하고 초안을 검증한다",
   "en": "Code decides evidence and verification"
  },
  "d2.note2": {
@@ -156,15 +156,15 @@
   "en": "Non-blocking search log"
  },
  "d2.edge.ask": {
-  "ko": "질의를 넘긴다",
+  "ko": "질의 전달",
   "en": "sends the query"
  },
  "d2.edge.toIdentifierLegs": {
-  "ko": "식별자 질의를 넘긴다",
+  "ko": "식별자 질의 전달",
   "en": "sends identifier query"
  },
  "d2.edge.toOriginalLegs": {
-  "ko": "원문 질의를 넘긴다",
+  "ko": "원문 질의 전달",
   "en": "sends original query"
  },
  "d2.edge.pgToLegs": {
@@ -172,11 +172,11 @@
   "en": "reads chunks"
  },
  "d2.edge.toFuse": {
-  "ko": "순위 목록을 넘긴다",
+  "ko": "순위 목록 전달",
   "en": "sends ranked lists"
  },
  "d2.edge.toPacket": {
-  "ko": "상위 20개를 넘긴다",
+  "ko": "상위 20개 전달",
   "en": "sends top 20 chunks"
  },
  "d2.edge.pgToPacket": {
@@ -184,7 +184,7 @@
   "en": "reads fills"
  },
  "d2.edge.toGenerate": {
-  "ko": "근거 패킷을 넘긴다",
+  "ko": "근거 패킷 전달",
   "en": "sends evidence packet"
  },
  "d2.edge.toValidate": {
