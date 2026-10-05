@@ -139,6 +139,22 @@ async def test_the_fusion_treatment_round_trips_and_null_keeps_its_meaning(pool)
     assert got == cases
 
 
+async def test_the_search_text_leaves_its_length_and_hash_and_not_its_body(pool):
+    """검색 글은 **길이와 해시만** 남는다(migration 051). 질문(`query_sha256`)은 그대로 질문이다."""
+    import dataclasses
+
+    from nexus.search.signals import _insert, query_sha256
+    db = pool
+    text = "PAYLOAD_LOST 재승인 절차"
+    await _insert(dataclasses.replace(_sig(tenant="suff_st_on"), search_text_len=len(text),
+                                      search_text_sha256=query_sha256(text)), None, None, None)
+    await _insert(_sig(tenant="suff_st_off"), None, None, None)
+    rows = {r["tenant"]: (r["search_text_len"], r["search_text_sha256"]) for r in await db.fetch_all(
+        "SELECT tenant, search_text_len, search_text_sha256 FROM search_log "
+        "WHERE tenant LIKE 'suff_st_%'")}
+    assert rows == {"suff_st_on": (len(text), query_sha256(text)), "suff_st_off": (0, "")}
+
+
 async def test_off_by_default_writes_the_row_as_disabled(pool, monkeypatch):
     """기본값이 켜져 있으면 업그레이드한 배포가 조용히 공급자를 부르기 시작한다."""
     from nexus.search.signals import JudgeInput, record_search

@@ -65,6 +65,7 @@
 | `evidence_only` | 생성했다 / 근거까지만 만들었다(생성 칸이 `None` 인 이유) | `/search/answer` |
 | `evidence_snippets[].rank` | 상위 k 의 몇 위였나 / 채움(`None`) — **`score` 로는 못 가른다** | `/search/answer` · `…/stream` |
 | `fusion_doc_agreement` | 융합이 문서 합의를 셌다 / 오늘의 융합 | `/search/answer` · `…/stream`(`done`) |
+| `search_text_len` | 검색 글로 찾았다(그 길이) / 질문으로 찾았다(0) | `/search/answer` · `…/stream`(`done`) |
 | `n_unknown_origin_time` | 좁히기가 닿지 못한 건수 (**안 물었으면 `None`**) | 검색·답변 |
 | `degraded` · `enrichment_failed` | 빈 결과 / 죽은 경로 | 검색·답변 |
 
@@ -200,6 +201,8 @@ class AnswerRequest(BaseModel):
                                         # (`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` F1)
     answer_context: str | None = None   # 요청자의 자료 — **답변 프롬프트에만** 들어간다. 상한
                                         # 8,000 글자, 넘으면 422(`ctx.max_length`) · 자르지 않는다
+    search_text: str | None = None      # **검색에만** 쓰는 글 — `answer_context` 의 거울(아래).
+                                        # 비었거나 공백뿐이면 안 준 것이고 오늘과 같다
 ```
 
 `/search/answer` 가 실제로 받는 모델은 그 하위 모델이다 — 스트림(`AnswerRequest`)보다 칸이 하나 많다:
@@ -209,7 +212,7 @@ class SearchAnswerRequest(AnswerRequest):
     evidence_only: bool = False         # 생성을 건너뛰고 **근거 묶음까지만** 돌려준다(아래)
 ```
 
-⚠ `identifier_channel` 과 `answer_context` 는 **이 요청에만 있다.** `/search` 로 보내면 `422` 다 —
+⚠ `identifier_channel` · `answer_context` · `search_text` 는 **이 요청에만 있다.** `/search` 로 보내면 `422` 다 —
 전에는 조용히 버려져서 *"켰는데 처치가 안 걸렸다"* 를 호출자가 알 방법이 없었다.
 
 `evidence_only` 는 **검색만으로 정해지는 것을 측정할 때** 쓴다(2026-10-01). 융합 처치의 주 변수가
@@ -241,6 +244,23 @@ class SearchAnswerRequest(AnswerRequest):
   적은 수는 지어낸 수로 안 센다
 - 응답의 `answer_context_len` 이 실제로 쓴 길이를 돌려준다(0 = 안 썼다)
 
+`search_text` 는 그 반대쪽이다 — **검색 쪽은 이 글만, 답 쪽은 `query` 만** 본다(2026-10-05). 물음을 뗀
+짧은 글로 검색하면서 답변 프롬프트의 질문 자리는 그대로 두려는 호출자를 위한 칸이다.
+
+| 자리 | 칸을 주면 | 안 주면(오늘) |
+|---|---|---|
+| 원문 경로(BM25 · 벡터) · 식별자 채널의 토큰 · 엔티티 · 경로 이름 | `search_text` | `query`(재작성됐으면 재작성문) |
+| 묶음의 코드 값 맞추기(`packet_for_answer` 의 질문) | `search_text` | `query` |
+| 재작성기 | **안 돈다** | 이력이 있을 때 |
+| 답변 프롬프트의 질문 자리 · 숫자 검증 · 충분성 판정자 · 질문 원문 보존 | `query` | 같음 |
+
+- ⚠ 식별자 채널은 **`search_text` 에서만** 토큰을 뽑는다. `query` 에만 있는 토큰은 검색에 안 쓰인다
+- 재작성기가 안 도는 이유: 재작성문은 답변 프롬프트의 질문 자리로 들어가므로, 돌리면 검색 글이 거기로 샌다
+- 칸을 주면 답변 프롬프트는 **근거 자리를 뺀 나머지**(지시문 · 질문 자리 · 자료 칸)가 `query` 만 보낸 요청과
+  같다. 근거는 검색 글로 찾은 것이다
+- 응답의 `search_text_len` 이 실제로 검색에 쓴 길이를 돌려준다(0 = 안 썼다). 기록에는 길이와 해시만
+  남는다(`search_log.search_text_len` · `search_text_sha256`, migration 051). `query_sha256` 은 계속 질문의 값이다
+
 ### Response
 ```python
 class AnswerResponse(BaseModel):
@@ -264,6 +284,7 @@ class AnswerResponse(BaseModel):
     fusion_doc_agreement: bool          # 이 답의 검색이 문서 합의(F1)를 셌는가. 검색 코드의 변화는
                                         # 판 칸(`search_fingerprint`)에 안 잡히므로 이 칸으로 가른다.
                                         # `search_log.fusion_doc_agreement` 에 같은 값(migration 050)
+    search_text_len: int                # 검색에 쓴 `search_text` 의 길이. 0 = 질문으로 찾았다
     abstained: bool                     # 기권은 코드가 내린 판단이다. 답변 문장을
     abstain_reason: str | None          # 문자열 대조해서 알아내지 않는다
     llm_failed: bool                    # **생성 실패는 답변이 아니다**
