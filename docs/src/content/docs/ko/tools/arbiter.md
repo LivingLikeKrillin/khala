@@ -3,7 +3,7 @@ title: Arbiter
 description: 사양(SPEC) 및 결정(ADR) 승인 이력을 관리하고, 사전 승인 기반 코드 수정을 강제하는 거버넌스 게이트.
 ---
 
-Arbiter는 소프트웨어 아키텍처 의사결정의 책임성과 추적성을 보장하는 거버넌스 프레임워크입니다. Python 기반 MCP(Model Context Protocol) 서버 및 `PreToolUse` 인터셉터를 통해, 자동 생성된 ADR 및 설계 사양을 구조화된 마크다운 및 메타데이터 frontmatter로 영속화하고, 코드 구현 착수 전 단계별 검증 절차(**AI 비평 분석 → 이슈 항목 처분 → 승인권자 서명**)를 강제합니다. 승인 완료된 사양은 Nexus 지식 기판으로 동기화 발행할 수 있습니다.
+Arbiter는 소프트웨어 아키텍처 의사결정의 책임성과 추적성을 보장하는 거버넌스 프레임워크입니다. Python 기반 MCP(Model Context Protocol) 서버 및 `PreToolUse` 인터셉터를 통해, 자동 생성된 ADR 및 설계 사양을 구조화된 마크다운 및 메타데이터 frontmatter로 영속화하고, 코드 구현 착수 전 단계별 검증 절차(**AI 비평 분석 → 이슈 항목 처분 → 승인권자 서명**)를 강제합니다. 승인 완료된 사양은 Nexus 지식 공유 계층으로 동기화 발행할 수 있습니다.
 
 형식적 승인(Rubber-stamping)으로 인한 품질 게이트 무력화를 방지하기 위해, Arbiter는 사양 본문이 검토 및 승인되어 SHA-256 무결성 해시(`content_hash`)로 잠금되기 전까지 비면제 소스 경로에 대한 PreToolUse 등록 파일 수정 도구(`Write`, `Edit`, `MultiEdit`) 호출을 결정론적으로 차단합니다 (단, `Bash` 등 쉘 실행을 통한 파일 쓰기는 검사 대상에서 제외됨). 본 거버넌스 게이트는 구현 수명주기에 연동되어, `begin_implementation` 호출 시 승인 사양을 검증하고 수정을 허용(게이트 개방)하며, 구현 완료 후 `end_implementation` 호출 시 활성 마커를 해제하여 다시 수정을 제한(게이트 폐쇄)합니다.
 
@@ -36,7 +36,7 @@ Arbiter는 소프트웨어 아키텍처 의사결정의 책임성과 추적성�
 - **다단계 검증 워크플로** — `critique`(비평 에이전트의 정적 검토 및 이슈 발행) → 이슈 수정 및 본문 보완 → `approve`(이슈 처분 결과 확인, 본문 무결성 해시 산출 및 스탬프 발행) 순으로 진행됩니다.
 - **무결성 해시 및 변조 감지 (Tamper Detection)** — 승인 시점의 본문 공백 정규화 SHA-256 해시를 frontmatter에 고정하며, `status` 조회 및 CI 파이프라인(`scripts/ledger_integrity.py`)에서 임의 수정 여부를 실시간으로 판정합니다.
 - **파일 기반 상태 영속성** — 별도의 외부 데이터베이스 없이 `ARBITER_DOCS` 경로의 마크다운 파일과 `ARBITER_ROOT` 내 `.arbiter/` 메타데이터 디렉토리를 통해 모든 거버넌스 상태를 관리합니다.
-- **Nexus 지식 기판 연동** — `publish` 명령을 통해 승인 완료된 사양 문서를 Nexus 저장소로 자동 동기화하며, 대상 미설정 시 무영향(no-op)으로 종료됩니다.
+- **Nexus 지식 공유 계층 연동** — `publish` 명령을 통해 승인 완료된 사양 문서를 Nexus 저장소로 자동 동기화하며, 대상 미설정 시 무영향(no-op)으로 종료됩니다.
 - **결정론적 단일 실행 로직** — CLI(`arbiter record`, `status`, `critique`, `approve`, `check-gate`)와 MCP 서버가 동일한 코어 비즈니스 로직을 호출하므로, 실행 주체(개발자 또는 자율 에이전트)에 상관없이 동일한 거버넌스 판정 결과를 보장합니다.
 
 설치 및 상세 API 명세는 영문 참조 페이지([Arbiter](/tools/arbiter/))를 참고하십시오.

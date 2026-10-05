@@ -10,7 +10,7 @@ description: 엔지니어링 목표별 도구 매핑 및 빠른 실행 가이드
 | 엔지니어링 목표 | 권장 도구 | 핵심 메커니즘 |
 |---|---|---|
 | 코드베이스 및 도메인 사양에 대한 근거 기반 정합성 질의 | [Nexus](/ko/tools/nexus/) / [Archon](/ko/tools/archon/) | 하이브리드 검색(BM25+Vector) 및 도메인 불변식 상수 검증 |
-| PR 영향도 분석 및 장애 트러블슈팅을 조직 텔레메트리에 연계 | [Observer](/ko/tools/observer/) | Nexus 지식 기판 및 분산 추적(OTel) 결합 분석 |
+| PR 영향도 분석 및 장애 트러블슈팅을 조직 텔레메트리에 연계 | [Observer](/ko/tools/observer/) | Nexus 지식 공유 계층 및 분산 추적(OTel) 결합 분석 |
 | 아키텍처 의사결정 및 사양 검토의 책임 추적성 확립 | [Arbiter](/ko/tools/arbiter/) | 사양 사전 승인 게이트 및 무결성 해시 원장 관리 |
 | 생성된 단위/통합 테스트의 실질적 결함 검출 능력 측정 | [Probe](/ko/tools/probe/) | AST 구문 변이 테스트(Mutation Testing) 하니스 |
 | 시스템 복잡도 대비 엔지니어링 조직의 인지 부채 계측 | [Adept](/ko/tools/adept/) | 코퍼스 대비 검증된 이해도(Vouch) 커버리지 측정 |

@@ -1,10 +1,10 @@
 {
  "d1.desc": {
-  "ko": "네 가지 정보를 승인, 최신, 인용 상태로 관리하는 단일 기판",
+  "ko": "네 가지 정보를 승인, 최신, 인용 상태로 관리하는 단일 공유 계층",
   "en": "One governed substrate keeping information approved, current, and cited"
  },
  "d1.note1": {
-  "ko": "사람과 에이전트가 동일한 기판을 읽는다",
+  "ko": "사람과 에이전트가 공유 계층을 읽는다",
   "en": "Human and agent read the same substrate"
  },
  "d1.note2": {
@@ -28,7 +28,7 @@
   "en": "Artifact vouching. Coverage"
  },
  "d1.core.name": {
-  "ko": "기판",
+  "ko": "공유 계층",
   "en": "Substrate"
  },
  "d1.core.role1": {
@@ -76,7 +76,7 @@
   "en": "Project tool"
  },
  "d1.key.core": {
-  "ko": "핵심 기판",
+  "ko": "핵심 공유 계층",
   "en": "Core substrate"
  },
  "d1.key.external": {
