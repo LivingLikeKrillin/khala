@@ -37,7 +37,7 @@
 - B16: `khala` 자체 사전에는 해당 개념이 근거 패킷으로 기재되어 있었으나 공유 결정이 근거 묶음이므로 `khala` 자체 항목을 변경한다.
 - B05: `narrator`의 문서는 표면을 사용하며, 인터페이스는 `narrator` 자체 사전의 첫 제안이었을 뿐이다. `picasso`의 자체 사전은 소유자 판단 보류 상태로 표면을 유지했고 `khala`는 서피스를 사용했다. 공통 결정인 API 표면은 세 저장소 모두를 변경한다.
 - 그룹 A 계약 명칭 변경: 4개 저장소의 생산자와 소비자를 함께 이전하는 별도 계획이 먼저 승인되어야 한다는 2026-10-06 소유자 결정에 따라 모두 보류되며, `narrator`는 자체 사전에서 여러 항목을 변경 없이 유지했으나 공유 결정에서 이들이 변경되었고 전체 목록은 표에 기재되어 있다.
-- A18: `WITHHELD`는 `picasso`에 속하며 두 가지 의미를 갖는다. 하나는 `picasso`의 조치 탐색 기록에서 결과 값(사람이 먼저 진단하도록 `picasso`가 탐색을 보류함)이고, 다른 하나는 승인 응답에서 `picasso`의 거절 값 중 하나이다. `narrator`는 두 의미 모두로 이를 읽는다. `WITHHELD_HUMAN_FIRST`는 `picasso`에 존재하지 않으며, 저장소 경계를 넘지 않는 `koshchei` 자체의 에스컬레이션 사유이다. 4차 재질의에서는 두 이름을 모두 유지했으며, `WITHHELD`의 두 의미는 여전히 하나의 이름을 공유한다.
+- A18: `WITHHELD`는 `picasso`에서 정의한 값이며 두 가지 의미를 갖는다. 하나는 `picasso`의 조치 탐색 기록에서 결과 값(탐색 자체는 실행되지만 사람이 먼저 진단하도록 탐색에서 발견한 제안인 조치 단계를 `picasso`가 숨기며 결과가 `WITHHELD`인 조치 탐색 행에는 `steps` 키가 없음)이고, 다른 하나는 승인 응답에서 `picasso`의 거절 값 중 하나이다. `narrator`는 두 의미 모두로 이를 읽는다. `WITHHELD_HUMAN_FIRST`는 `picasso`에 존재하지 않으며, 저장소 경계를 넘지 않는 `koshchei` 자체의 에스컬레이션 사유이다. 4차 재질의에서는 두 이름을 모두 유지했으며, `WITHHELD`의 두 의미는 여전히 하나의 이름을 공유한다.
 - A20: `koshchei`가 `episode_id` 컬럼을 가지고 있지 않음을 확인했으므로 새 이름은 충돌하지 않는다(2026-10-06).
 - B11: `picasso`에서 기체는 등록, 바인딩, 명령의 단위이다. 로봇과 어댑터 및 프로필을 결합하는 바인딩과, 사이트 명칭과 로봇 내부 좌표 간의 의미적 연결인 결속은 `picasso`에서 서로 다른 개념이다. 2026-10-06 소유자 결정에 따라 `picasso`는 등록된 개별 로봇과 일반 로봇의 경계를 유지하기 위해 기체를 유지한다. 동일한 소유자 결정에 의해 `picasso`는 자체 용어 7개(기체, 적재, 관문, 소모, 소모 기록, 결속, 정준)를 그대로 유지한다. 결속은 바인딩과 구별하기 위해 유지하고, 정준은 표준 인터페이스 계약과 같은 표준과 정준 모델 및 정준 실패 분류의 정준을 구분하기 위해 유지한다. 기체에서 로봇으로 변경하는 공통 결정은 `narrator`와 `koshchei`에만 적용된다.
 - 4차 재질의: 다른 세 저장소가 이 문서를 코드와 대조하여 점검한 후, 4차 재질의는 계약 용어 6개의 사실 오류, 신규 계약 용어 2개, 개념 항목 7개의 누락된 저장소 또는 의미 등 15개 항목을 다루었다. 여러 계약 용어가 단일 저장소 내부에서만 사용되는 이름으로 밝혀짐에 따라 4차 재질의에서는 `WITHHELD_HUMAN_FIRST`(A18), `ApprovalRecordResult`와 `REVOKED`(A32), `clean`과 `requireClean`(A33), `grade`(A34)를 유지했다. 신규 항목으로 `PERSON_TASK` -> `OPERATOR_TASK`(A35)와 `contractSemver` -> `contractVersion`(A36)이 추가되었다. 소유자는 2026-10-06에 4차 재질의 결정을 채택했다.
@@ -47,7 +47,7 @@
 
 2026-10-06 소유자 결정에 따라 4개 저장소의 생산자와 소비자가 함께 이동하는 별도 계획이 먼저 승인되어야 하므로 그룹 A의 계약 용어 이름 변경은 보류한다. 문서와 산문에는 그룹 B 및 C의 공유 결정 사항을 적용하며, 섹션 4의 소유자 판단 항목은 Gemini의 결정을 원안대로 채택한다.
 
-재질의 열은 1, 2, 3, 4의 값을 가지며, 각 재질의가 선택할 단어가 아니라 무엇이 잘못되었는지만을 적시하여 사실 관계를 바로잡은 차수를 의미한다. 1차 재질의는 첫 답변 이후 8개 항목을 대상으로 진행되었으며, 그중 5개는 `khala` 자체의 요청에서 사실을 잘못 서술했기 때문이었다. 2차 재질의는 `picasso`가 보고한 5개 항목을 다루었다. 3차 재질의는 `koshchei`와 `picasso`가 보고한 7개 항목을 다루었다. 4차 재질의는 다른 세 저장소 모두가 보고한 15개 항목을 다루었다.
+재질의 열은 1, 2, 3, 4, 5의 값을 가지며, 각 재질의가 선택할 단어가 아니라 무엇이 잘못되었는지만을 적시하여 사실 관계를 바로잡은 차수를 의미한다. 1차 재질의는 첫 답변 이후 8개 항목을 대상으로 진행되었으며, 그중 5개는 `khala` 자체의 요청에서 사실을 잘못 서술했기 때문이었다. 2차 재질의는 `picasso`가 보고한 5개 항목을 다루었다. 3차 재질의는 `koshchei`와 `picasso`가 보고한 7개 항목을 다루었다. 4차 재질의는 다른 세 저장소 모두가 보고한 15개 항목을 다루었다. 5차 재질의는 다른 세 저장소가 다시 확인하여 보고한 3개 항목을 다루었다.
 
 ### 5.1 저장소 간 연계 계약 용어 (명칭 변경 보류)
 
@@ -71,12 +71,12 @@
 | A14 | picasso -> koshchei/narrator (`unitId`), koshchei 내부 (`units`, `approvedUnits`) | `unitId` → `unitId` (유지)<br>`units` → `units` (유지)<br>`approvedUnits` → `approvedUnits` (유지) | unitId는 저장소 경계를 넘는 식별자이며 units와 approvedUnits는 koshchei 내부 메모리 변수로 저장소 경계를 넘지 않습니다. | 2, 4 |
 | A15 | picasso -> koshchei/narrator | `runId` → `exportRunId` | Temporal의 워크플로 runId와의 혼동을 피하기 위해 picasso의 내보내기 실행 ID는 exportRunId로 명시해야 합니다. |  |
 | A16 | picasso -> koshchei/narrator | `bundle` → `bundle` (유지)<br>`export` → `bundle`<br>`LedgerExport` → `bundle`<br>`manifest` → `manifest` (유지) | 내보내기 디렉터리는 bundle로 통일하고 내부의 레코드 수 목록 파일은 manifest로 분리하여 명명합니다. | 1 |
-| A17 | koshchei 내부 | `evidence` → `jobResponse`<br>`Evidence` → `JobResponse`<br>`EvidenceArrived` → `JobResponseArrived` | 세 이름 모두 koshchei 내부 명칭으로 저장소 경계를 넘지 않으며 picasso의 JobResponse 명명 및 Evidence enum과의 혼선을 방지하기 위해 변경합니다. | 4 |
+| A17 | koshchei 내부 (`evidence`, `Evidence`, `EvidenceArrived`), koshchei -> narrator (`history[].evidence`) | `evidence` → `jobResponse`<br>`Evidence` → `JobResponse`<br>`EvidenceArrived` → `JobResponseArrived`<br>`history[].evidence` → `evidence` | 세 이름 모두 koshchei 내부 명칭으로 저장소 경계를 넘지 않으며 picasso의 JobResponse 명명 및 Evidence enum과의 혼선을 방지하기 위해 변경합니다. Temporal 시그널은 비동기 작업 결과를 수신하므로 jobResponse로 지정하고 현장 점검 결과도 포함하는 계약 키 history[].evidence는 evidence를 유지한다. | 4, 5 |
 | A18 | picasso -> koshchei/narrator (`WITHHELD`), koshchei 내부 (`WITHHELD_HUMAN_FIRST`) | `WITHHELD` → `WITHHELD` (유지)<br>`WITHHELD_HUMAN_FIRST` → `WITHHELD_HUMAN_FIRST` (유지) | WITHHELD는 picasso와 narrator가 공유하는 식별자이며 WITHHELD_HUMAN_FIRST는 koshchei 내부 에스컬레이션 사유로 저장소 경계를 넘지 않아 유지합니다. | 3, 4 |
 | A19 | koshchei <-> narrator, koshchei/narrator -> picasso | `sawCandidatesVersion` → `observedCandidatesVersion`<br>`sawSkillTypes` → `observedSkillTypes` | 구어체 saw 대신 분산 제어 시스템에서 관측된 버전을 나타내는 표준 접두사 observed를 사용하는 것이 자연스럽습니다. |  |
 | A20 | koshchei <-> narrator (`episodeId`), koshchei 내부 (`instanceId`, `episode_instance_id`) | `episode_instance_id` → `episode_id`<br>`episodeId` → `episodeId` (유지)<br>`instanceId` → `episodeId` | Postgres 컬럼은 snake_case 규칙에 따라 episode_id로 지정하고 JSON과 코드 필드는 camelCase인 episodeId로 정의했습니다. | 3 |
 | A21 | koshchei <-> narrator | `ref` → `ref` (유지) | 객체 참조를 나타내는 데 소프트웨어 업계 전반에서 통용되는 간결하고 표준적인 ref를 유지하는 것이 최선입니다. |  |
-| A22 | koshchei -> picasso, picasso -> koshchei/narrator (`approverId`), koshchei 내부 (`operatorId`, `X-Koshchei-Operator`) | `approverId` → `approverId` (유지)<br>`operatorId` → `operatorId` (유지)<br>`X-Koshchei-Operator` → `X-Koshchei-Operator` (유지) | 승인 주체는 사람과 에이전트를 모두 포함하므로 approverId를 사용하고 사람으로 한정되는 운영자는 operatorId와 관련 헤더를 유지합니다. | 2 |
+| A22 | koshchei/narrator -> picasso, picasso -> koshchei/narrator (`approverId`), koshchei 내부 (`operatorId`, `X-Koshchei-Operator`) | `approverId` → `approverId` (유지)<br>`operatorId` → `operatorId` (유지)<br>`X-Koshchei-Operator` → `X-Koshchei-Operator` (유지) | 승인 주체는 사람과 에이전트를 모두 포함하므로 approverId를 사용하고 사람으로 한정되는 운영자는 operatorId와 관련 헤더를 유지합니다. | 2 |
 | A23 | narrator -> koshchei | `DiagnosisOutcome` → `DiagnosisOutcome` (유지) | 진단 생성의 분류 결과(outcome)와 후속 판정(verdict) 단계의 책임을 분리하기 위해 DiagnosisOutcome을 유지하는 것이 좋습니다. |  |
 | A24 | koshchei, narrator | `judge` → `classifyDiagnosis`<br>`judgeDiagnosis` → `validateDiagnosis` | 진단을 결과별로 분류하는 narrator 단계는 classifyDiagnosis로, 수신된 진단을 검증하는 koshchei 단계는 validateDiagnosis로 분리합니다. | 1 |
 | A25 | koshchei -> narrator | `CHOOSE_SOURCE` → `CHOOSE_PICKUP_LOCATION` | 추상적인 SOURCE보다 대체 픽업 위치를 선택한다는 비즈니스 의미가 명확한 CHOOSE_PICKUP_LOCATION이 적합합니다. |  |
@@ -102,7 +102,7 @@
 | B04 | 층 | 같은 개념 | picasso: 계층, narrator: 계층, khala: 계층 | 세 저장소 모두 시스템 및 아키텍처의 layer를 가리키므로 표준 소프트웨어 공학 용어인 계층으로 통일한다. |  |
 | B05 | 표면 | 같은 개념 | picasso: API 표면, narrator: API 표면, khala: API 표면 | 세 저장소 모두 외부에 공개되는 인터페이스 및 엔드포인트 집합인 API surface를 가리킨다. |  |
 | B06 | 정본 | 같은 개념 | picasso: 정본, koshchei: 정본, khala: 정본 | 세 저장소 모두 기준이 되는 권위 있는 원본인 canonical source를 가리키므로 정본으로 통일한다. |  |
-| B07 | 대장 | 다른 개념 | khala: 색인, narrator:defect_index: 색인, narrator:approvals: 승인 기록, narrator:remedy_search: 조치 탐색 기록, picasso: 레지스터, koshchei: 조치 탐색 기록 | 대장이라는 표현 대신 문서 색인, 승인 기록, 조치 탐색 기록, 상태 레지스터로 각 역할에 맞게 분리합니다. | 1, 3, 4 |
+| B07 | 대장 | 다른 개념 | khala: 색인, narrator:defect_index: 색인, narrator:approvals: 승인 기록, narrator:remedy_search: 조치 탐색 기록, picasso: 레지스터, koshchei: picasso 기록| 대장이라는 표현 대신 문서 색인, 승인 기록, 조치 탐색 기록, 상태 레지스터로 각 역할에 맞게 분리합니다. koshchei 설계 문서는 조치 탐색뿐만 아니라 인시던트와 승인 등 picasso의 다양한 기록 전반을 대장으로 지칭하기 때문이다. | 1, 3, 4, 5 |
 | B08 | 선언 · 자격 | 다른 개념 | picasso: 선언 및 자격, narrator: 자동 승인 자격, koshchei: 승인자 목록, khala: 명시적 선언 | picasso는 명시적 선언과 자동 승인 권한, narrator는 자동 승인 자격, koshchei는 승인자 ID 목록, khala는 컴포넌트 필수 실행 선언을 의미하여 서로 다르다. |  |
 | B09 | 판정 | 같은 개념 | picasso: 판정, koshchei: 판정, khala: 판정 | 세 저장소 모두 규칙이나 기준에 따라 수락·거절이나 통과 여부를 결정하는 일인 verdict를 가리키므로 판정으로 통일한다. |  |
 | B10 | 승인 창구 / 창구 | 같은 개념 | koshchei: 승인 엔드포인트, picasso: 승인 엔드포인트, narrator: 승인 엔드포인트 | 피카소의 승인 HTTP 엔드포인트를 호출하거나 제공하는 공통 대상을 가리키므로 승인 엔드포인트로 통일합니다. | 1, 3 |
@@ -135,6 +135,6 @@
 | C03 | 판독 | khala: 기계 판독, narrator: 인간 평가 | khala는 이미지를 텍스트로 변환하는 기계 판독을, narrator는 사람이 직접 답변을 읽고 채점하는 수동 평가를 의미한다. |  |
 | C04 | 조각 | narrator:module: 모듈, narrator:chunk: 청크, khala: 청크 | 코드 구성 단위를 뜻하는 모듈과 검색 대상 텍스트 조각을 뜻하는 청크는 서로 다른 개념입니다. | 4 |
 | C05 | 강등 | picasso: 권한 강등, khala: 검색 실패, narrator:approval: 권한 강등, narrator:fallback: 폴백 응답, narrator:search_failure: 검색 실패 | 승인 권한 강등과 응답 폴백은 서로 다른 개념이며 비표준적인 검색 고장은 검색 실패로 대체합니다. | 4 |
-| C06 | 근거 | picasso: 완료 증빙, koshchei: 완료 증빙, khala: 답변 근거 | 로봇 작업 완료를 증명하는 완료 증빙과 답변 생성을 뒷받침하는 문서 근거는 서로 다른 개념입니다. | 4 |
+| C06 | 근거 | picasso:completion: 완료 증빙, picasso:basis: 근거, koshchei: 완료 증빙, khala: 답변 근거 | 로봇 작업 완료를 증명하는 완료 증빙과 답변 생성을 뒷받침하는 문서 근거는 서로 다른 개념입니다. picasso 문서는 작업 완료를 증명하는 완료 증빙과 판단 및 주장의 바탕을 뜻하는 근거의 두 가지 의미로 사용하기 때문입니다. | 4, 5 |
 | C07 | verdict | narrator: 진단 판정 로직, koshchei: 검증 판정 결과 | narrator는 진단을 네 가지 결과로 분류하는 내부 판정 로직을, koshchei는 진단 검증 및 에피소드 진행 판정 결과를 의미한다. |  |
 | C08 | 판 | version: 버전, run: 실행 | 판의 두 가지 의미를 스키마나 규약의 버전과 측정이나 실험의 1회 실행으로 분리하여 정의합니다. | 1 |
