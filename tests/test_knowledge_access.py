@@ -57,7 +57,7 @@ def test_grepping_this_repo_is_not_a_bypass():
 
 
 def test_the_door_wins_when_a_command_mentions_both():
-    """khala 질의를 psql 로 파이프하는 명령은 **문을 지난 것**이다 — 우회로 세면 안 된다."""
+    """khala 질의를 psql 로 파이프하는 명령은 **진입점을 지난 것**이다 — 우회로 세면 안 된다."""
     cmd = ('docker exec nexus-app python -m nexus.cli query "x" --no-answer '
            '| tee /tmp/out; docker exec nexus-db psql -c "select 1"')
     assert classify(cmd) == "khala"
@@ -110,7 +110,7 @@ def test_the_host_tree_comes_from_the_deployment_env_file(tmp_path):
 
 
 def test_no_configured_tree_is_not_an_error(tmp_path):
-    """배포가 코드 트리를 안 붙였을 수 있다. 그때는 **그 축을 안 세는 것**이지 죽는 게 아니다."""
+    """배포가 코드 트리를 안 붙였을 수 있다. 그때는 **그 차원을 안 세는 것**이지 죽는 게 아니다."""
     env = tmp_path / ".env"
     env.write_text("CODE_SRC_PATH=", encoding="utf-8")
     assert host_code_tree(env_file=env) is None
@@ -163,7 +163,7 @@ def test_a_non_bash_tool_reaching_the_team_tree_is_counted(tmp_path, monkeypatch
 
 
 def test_a_search_pattern_is_not_a_door(tmp_path, monkeypatch):
-    """대조군 — 리포 안에서 `nexus.cli query` 라는 **문자열을 찾는 것**은 문을 지난 게 아니다.
+    """대조군 — 리포 안에서 `nexus.cli query` 라는 **문자열을 찾는 것**은 진입점을 지난 게 아니다.
     패턴까지 읽으면 분자가 부풀고, 그 방향의 거짓이 이 테스트에서 제일 달다."""
     monkeypatch.setattr(knowledge_access, "LOG", tmp_path / "ledger.jsonl")
     payload = {"tool_input": {"pattern": "nexus.cli query", "path": "scripts/hooks"}}
@@ -190,7 +190,7 @@ def test_the_matcher_covers_every_tool_the_hook_can_read():
 # 값의 전부였다 — 실측: 부팅·import 90 ms 대 실제 일 0 ms 에 가까움.
 #
 # 그래서 원문을 **디코드하기 전에** 문자열로 한 번 거른다. 이 선별은 일부러 **넉넉해야**
-# 한다(거짓 양성은 느릴 뿐, 거짓 음성은 안 세어진다 = 비율이 거짓이 된다).
+# 한다(오탐은 느릴 뿐, 거짓 음성은 안 세어진다 = 비율이 거짓이 된다).
 
 
 def test_an_ordinary_file_read_is_screened_out_before_any_work():
@@ -237,11 +237,11 @@ def test_the_hook_is_launched_without_site_scanning():
 
 # ── 파이프는 UTF-8 이 아니다 ────────────────────────────────────────────────
 #
-# ⛔ **위의 배선 테스트들은 이것을 볼 수 없다.** 그것들은 `io.StringIO` 를 꽂는데, 그건 이미
+# ⛔ **위의 와이어링 테스트들은 이것을 볼 수 없다.** 그것들은 `io.StringIO` 를 꽂는데, 그건 이미
 # 디코드된 문자열이다 — 라이브에서 잃은 것은 **디코딩 그 자체**다. 실측 2026-08-27: 훅이
 # 받는 stdin 은 콘솔 코드페이지로 열린다(한국어 Windows 에서 `cp949`, `surrogateescape`).
 # 그래서 한글이 든 질의는 서러게이트가 섞인 채로 들어오고, 해시를 뜨는 자리에서 터진다.
-# 분류는 이미 `khala` 로 끝난 뒤였다 — 즉 **문을 지난 것만 골라서 안 세어졌다.**
+# 분류는 이미 `khala` 로 끝난 뒤였다 — 즉 **진입점을 지난 것만 골라서 안 세어졌다.**
 # 우회 쪽 명령은 대개 경로뿐이라 ASCII 로 살아남는다. 비율이 한 방향으로 거짓이 된다.
 #
 # 같은 이가 `terms_guard.py` 에서는 하루 먼저 잡혔다(#329). 이쪽으로 안 옮겨진 것뿐이다.
@@ -250,8 +250,8 @@ def test_the_hook_is_launched_without_site_scanning():
 def _run_the_hook_in_a_real_process(tmp_path, payload: dict, stdin_encoding: str):
     """훅을 **별도 프로세스**로, 진짜 파이프로 돌린다.
 
-    기록 파일 경로는 스크립트 위치에서 나오므로(`_root()`) 정본을 tmp 로 복사해 돌린다 —
-    테스트가 라이브 기록 파일을 더럽히면 그 기록이 곧 지표라 값이 상한다.
+    로그 파일 경로는 스크립트 위치에서 나오므로(`_root()`) 정본을 tmp 로 복사해 돌린다 —
+    테스트가 라이브 로그 파일을 더럽히면 그 기록이 곧 지표라 값이 상한다.
 
     `-E` 는 일부러 뺀다. 프로덕션에서 이 인코딩은 인터프리터 **밖에서**(Windows 콘솔)
     정해지고, 테스트는 그것을 `PYTHONIOENCODING` 으로 흉내 내는 것이기 때문이다.
@@ -296,13 +296,13 @@ def test_an_ascii_command_still_counts_in_the_same_process(tmp_path):
     assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
     assert [r["kind"] for r in rows] == ["bypass"]
 
-# ── A21: 문을 *언급한* 글과 문을 *지난* 행위 ──────────────────────────────────
+# ── A21: 진입점을 *언급한* 글과 진입점을 *지난* 행위 ──────────────────────────────────
 
 _TREE = "C:/labs/team-platform"
 
 
 def test_writing_the_marker_into_a_file_is_not_an_access():
-    """⛔ 실제로 난 사고 (A21, 확인 2026-08-27) — 이 훅 자신의 표식을 파일에 써 넣는
+    """⛔ 실제로 난 사고 (A21, 확인 2026-08-27) — 이 훅 자신의 마커를 파일에 써 넣는
     명령이 우회 1건으로 세어졌다. 검색 패턴은 이미 안 읽는데 heredoc 은 명령 본문에
     그 글이 실려 온다."""
     cmd = "cat > note.md <<'EOF'\n우회는 /code-src 를 직접 뒤지는 것이다\nEOF"
@@ -378,7 +378,7 @@ def test_an_unknown_gitdir_shape_is_left_alone(tmp_path):
 
 def test_stray_logs_are_found_even_when_the_path_has_brackets(tmp_path):
     """⛔ 실제로 난 사고 (2026-09-11) — 이 리포가 사는 디렉터리 이름에 `[...]` 가 있고
-    `glob` 은 그것을 **문자 클래스로 읽는다.** 첫 판이 그래서 흩어진 112줄을 하나도 못
+    `glob` 은 그것을 **문자 클래스로 읽는다.** 첫 버전이 그래서 흩어진 112줄을 하나도 못
     찾고 조용히 빈 목록을 냈다 — 빈 목록은 "없다" 가 아니라 "못 찾았다" 였다."""
     main, wt = _make_worktree(tmp_path)
     log = wt / ".khala" / "knowledge-access.jsonl"

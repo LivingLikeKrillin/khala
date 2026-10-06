@@ -23,7 +23,7 @@ def load_ledger(text: str) -> Ledger:
 
 
 def new_survivors(survivors: list[Survivor], ledger: Ledger) -> list[Survivor]:
-    """원장에 아직 기록되지 않은 survivor만(= Critic 재심의 대상)."""
+    """원장에 아직 기록되지 않은 survivor만(= Critic 재트리아지 대상)."""
     return [s for s in survivors if s.key not in ledger.waivers]
 
 

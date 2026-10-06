@@ -146,7 +146,7 @@ class NexusClient {
   }): Promise<NexusSearchResult>
 
   /**
-   * 검색 + LLM 근거 기반 답변
+   * 검색 + LLM 답변 근거 기반 답변
    */
   async searchAnswer(query: string, options?: {
     topK?: number;

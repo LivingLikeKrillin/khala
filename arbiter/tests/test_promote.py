@@ -102,7 +102,7 @@ def test_promote_rejects_id_with_path_separator(tmp_path):
 
 
 def test_promote_design_axis_a_type_creates_draft(tmp_path):
-    # 신규 축-A 타입 DESIGN → Arbiter spec 어휘 → DRAFT.
+    # 신규 차원-A 타입 DESIGN → Arbiter spec 어휘 → DRAFT.
     out = promote_external(_led(tmp_path), _csf(), "DESIGN")
     assert out["status"] == "DRAFT"
     assert out["provenance_carried"] is True

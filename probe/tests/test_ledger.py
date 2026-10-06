@@ -122,7 +122,7 @@ def test_biting_returns_only_unsilenced_real_gaps():
 
 
 def test_biting_ignores_survivors_absent_from_ledger():
-    # un-triaged survivors have no stored verdict -> not counted as biting yet
+    # un-triaged survivors have no stored verdict -> not counted as unwaived real-gap yet
     survivors = [_surv(10)]
     biters = biting(survivors, load_ledger(""), TODAY)
     assert biters == []

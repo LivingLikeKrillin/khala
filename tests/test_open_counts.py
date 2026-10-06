@@ -1,4 +1,4 @@
-"""열린 항목 수 검사에 이빨이 있는가 — **일부러 어긋나게 해서 확인한다.**
+"""오픈 항목 수 검사에 이빨이 있는가 — **일부러 어긋나게 해서 확인한다.**
 
 ⛔ 검사기를 넣고 초록을 보는 것만으로는 아무것도 증명 못 한다. 이 리포는 *"찾아내고 종료코드
 0"* 인 검사기를 이미 한 번 만들었다. 그래서 여기서는 **틀린 문서를 만들어 빨간불을 확인**한다.
@@ -53,7 +53,7 @@ def test_a_struck_row_is_not_an_open_item():
 
 
 def test_decisions_are_not_counted():
-    """§3 은 *하지 않기로 정한 것*이라 미결이 아니다 — 세면 목록이 실제보다 길어 보인다."""
+    """§3 은 *하지 않기로 정한 것*이라 오픈 항목이 아니다 — 세면 목록이 실제보다 길어 보인다."""
     assert counts(_DOC.format(h=1, a=2))["A"] == 2
 
 
@@ -93,7 +93,7 @@ def test_the_script_exits_nonzero_when_it_finds_something(tmp_path, monkeypatch)
 
 
 def test_a_cell_that_says_it_fired_is_waiting():
-    """⛔ 실제로 난 사고 (2026-09-11) — A21 의 트리거 칸이 2026-08-30 부터
+    """⛔ 실제로 난 사고 (2026-09-11) — A21 의 트리거 필드가 2026-08-30 부터
     *"트리거가 두 번 울렸다"* 라고 적고 있었는데 `조건` 으로 세어졌다. 판정이 트리거
     문자열만 보는 것은 맞지만, **그 문자열이 울렸다고 말하는데 안 읽으면** 대기/조건은
     사실이 아니라 문장의 서식을 세는 것이다."""
@@ -101,7 +101,7 @@ def test_a_cell_that_says_it_fired_is_waiting():
 
 
 def test_a_conditional_cell_is_still_conditional():
-    """대조군 — 그 말을 넣어 모든 칸이 대기가 되면 구분 자체가 없어진다."""
+    """대조군 — 그 말을 넣어 모든 필드가 대기가 되면 구분 자체가 없어진다."""
     assert state_of("다음 저술 라운드") == "조건"
     assert state_of("두 번째 조직") == "조건"
     assert state_of("—") == "조건"
@@ -122,7 +122,7 @@ def _sec2(*lines):
 
 def test_a_fourth_column_is_caught():
     """⛔ 실제로 난 사고 (2026-09-11) — 항목 행 111개 중 넷이 3칸이 아니었다.
-    마크다운은 머리글보다 많은 칸을 **말없이 버리므로** 그 글은 파일에만 있고 화면에는
+    마크다운은 머리글보다 많은 필드를 **말없이 버리므로** 그 글은 파일에만 있고 화면에는
     없었다. A18 의 넷째 칸에는 *트리거가 울렸지만 이 항목은 물지 않는다* 는 판단이
     들어 있었고, 그것을 읽은 사람이 없었다."""
     assert ragged(_sec2(_EXTRA))
@@ -130,13 +130,13 @@ def test_a_fourth_column_is_caught():
 
 
 def test_a_row_that_never_closes_is_caught():
-    """닫는 파이프가 없으면 마지막 칸 뒤의 글이 표 밖으로 흐른다(H4 · A18 이 그랬다)."""
+    """닫는 파이프가 없으면 마지막 필드 뒤의 글이 표 밖으로 흐른다(H4 · A18 이 그랬다)."""
     assert ragged(_sec2(_UNCLOSED))
 
 
 def test_an_unescaped_pipe_in_the_body_is_caught():
-    """H27 의 본문에 `env | grep` 이 그대로 있어 칸이 하나 늘었고, 진짜 트리거
-    `즉시` 가 넷째 칸으로 밀려 화면에서 사라졌다."""
+    """H27 의 본문에 `env | grep` 이 그대로 있어 필드가 하나 늘었고, 진짜 트리거
+    `즉시` 가 넷째 필드로 밀려 화면에서 사라졌다."""
     assert ragged(_sec2(_RAWPIPE))
 
 
@@ -146,8 +146,8 @@ def test_an_escaped_pipe_is_not_a_column_boundary():
 
 
 def test_the_trigger_is_read_from_the_last_real_column():
-    """이스케이프한 파이프가 있어도 트리거 칸을 집어야 한다 — 이 규칙이 **행마다 다른
-    칸을 집던 것**이 이번 결함의 실체다."""
+    """이스케이프한 파이프가 있어도 트리거 필드를 집어야 한다 — 이 규칙이 **행마다 다른
+    필드를 집던 것**이 이번 결함의 실체다."""
     got = [t for _, i, t in rows(_sec2(_ESCAPED)) if i == "A5"]
     assert got and got[0].strip() == "트리거"
 

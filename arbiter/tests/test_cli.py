@@ -4,7 +4,7 @@
 대고 파이썬을 손으로 짜야 했다(2026-07-09, 그리고 이 대화에서 네 번 더). 거버넌스 코어를
 사람이 못 돌리는 것은 거버넌스가 아니다.
 
-CLI 는 MCP 서버와 **같은 함수**를 부른다 — record/critique/approve/status/check-gate. 표면만
+CLI 는 MCP 서버와 **같은 함수**를 부른다 — record/critique/approve/status/check-gate. API 표면만
 얇게 씌운다. critic 은 주입 가능(테스트는 FakeCritic, 프로덕션은 AnthropicCritic).
 """
 
@@ -28,7 +28,7 @@ def app(docs_root):
 
 
 def _touch_body(docs_root):
-    """accepted 처분은 본문 수정을 요구한다(해시 불변 거부). spec 에 한 줄 덧붙인다."""
+    """accepted 조치는 본문 수정을 요구한다(해시 불변 거부). spec 에 한 줄 덧붙인다."""
     spec = next((docs_root / "specs").glob("*.md"))
     spec.write_text(spec.read_text(encoding="utf-8") + "\n수정.\n", encoding="utf-8")
 
