@@ -14,11 +14,11 @@
 
 <p align="center">
   <strong>Grounded Enterprise RAG for Knowledge Retrieval</strong><br/>
-  문서 기반 설계와 OTel 기반 관측을 결합하여, 근거 있는 답변만 제공하는 지식 검색 시스템
+  문서 기반 설계와 OTel 기반 관측을 결합하여, 답변 근거 있는 답변만 제공하는 지식 검색 시스템
 </p>
 
 <p align="center">
-  <img src="docs/img/nexus-demo.gif" alt="Nexus — 근거(evidence)와 함께 스트리밍되는 grounded 답변" width="820" />
+  <img src="docs/img/nexus-demo.gif" alt="Nexus — 답변 근거(evidence)와 함께 스트리밍되는 grounded 답변" width="820" />
 </p>
 
 <p align="center">
@@ -30,7 +30,7 @@
 
 ## What is Nexus?
 
-Nexus는 조직 내부 지식(문서, 정책, 설정)과 운영 사실(OTel trace, metric)을 결합하여 **근거 기반(grounded)으로 검색하고 추론하는 시스템**입니다.
+Nexus는 조직 내부 지식(문서, 정책, 설정)과 운영 사실(OTel trace, metric)을 결합하여 **답변 근거 기반(grounded)으로 검색하고 추론하는 시스템**입니다.
 
 AI Agent(Code Review, Troubleshooting)의 **context provider**로서, 추측이 아닌 실제 문서와 관측 데이터에 기반한 답변을 제공합니다.
 
@@ -38,7 +38,7 @@ AI Agent(Code Review, Troubleshooting)의 **context provider**로서, 추측이 
 "결제 서비스가 발행하는 토픽이 뭐야?"
 
 → 검색: Hybrid(BM25 형태소 + Vector 768d by RRF) + Graph 2-hop context
-→ 근거: API_CONTRACT.md §5.2, 최근 OTel trace 47건
+→ 답변 근거: API_CONTRACT.md §5.2, 최근 OTel trace 47건
 → 답변: "payment-service는 payment.completed 토픽을 발행합니다. (confidence: 0.85)"
          + 출처 링크 + trace 포인터
 ```
@@ -48,7 +48,7 @@ AI Agent(Code Review, Troubleshooting)의 **context provider**로서, 추측이 
 | 기존 RAG | Nexus |
 |:--------:|:-----:|
 | 문서만 검색 | 문서 + 실시간 trace 결합 |
-| 추측 기반 답변 | 근거(evidence) 필수 |
+| 추측 기반 답변 | 답변 근거(evidence) 필수 |
 | 영어 최적화 | 한국어 형태소 분석 (mecab-ko) |
 | Flat retrieval | Graph 관계 + Hybrid search |
 | LLM이 판단 | System decides, LLM narrates |
@@ -188,7 +188,7 @@ git clone https://github.com/LivingLikeKrillin/khala.git
 cd khala/nexus
 
 cp .env.example .env
-# .env에서 ANTHROPIC_API_KEY 설정 (LLM 답변 기능 사용 시 — 없어도 검색·근거는 동작)
+# .env에서 ANTHROPIC_API_KEY 설정 (LLM 답변 기능 사용 시 — 없어도 검색·답변 근거는 동작)
 ```
 
 ### 2. Start Everything
@@ -237,7 +237,7 @@ Notion 문서를 쓴다면 터미널 대신 웹 **소스** 탭에서 페이지 U
 
 ### 4. Search
 
-브라우저에서 **`http://localhost:8000/`** 을 열고 질문하세요 — 답에는 근거가 함께 붙습니다.
+브라우저에서 **`http://localhost:8000/`** 을 열고 질문하세요 — 답에는 답변 근거가 함께 붙습니다.
 
 터미널이 편하면:
 
@@ -298,7 +298,7 @@ Response includes evidence snippets with source URIs and provenance.
 > 안에만 있다. 호스트 셸에서 그냥 `nexus ingest` 를 치면 `config.yaml` 기본값으로 해석돼
 > **배포가 검색하지 않는 컬럼**에 적재된다 — 2026-08-10 에 실제로 그렇게 됐다
 > (`SPEC-nexus-generation-of-record`). 컨테이너 없이 운영한다면 같은 변수를 export 한 셸에서
-> 돌린다. 세대를 DB 에 선언(`nexus generation declare`)해 두면 어긋난 실행은 **거부**된다.
+> 돌린다. 세대를 DB 에 명시적 선언(`nexus generation declare`)해 두면 어긋난 실행은 **거부**된다.
 
 ```bash
 # ── 적재 ──
@@ -324,7 +324,7 @@ nexus entropy-signals                      # 공존 잔차 신호 — 테넌트�
 nexus entropy-signals --tenant default     # 라이브 코퍼스만 (전역은 평가 테넌트가 삼킨다)
 
 # ── 도메인 값 (Archon) ──
-nexus claim-seed claims.yaml                # 도메인 claim 적재 (소유자 판정 포함 — ruled_* 칸, migration 044)
+nexus claim-seed claims.yaml                # 도메인 claim 적재 (소유자 판정 포함 — ruled_* 필드, migration 044)
 nexus claim-value Basic                     # 개념의 현재 값을 코드에서 조회
 nexus grade-authority                       # 등급 계층 권한 도출
 
@@ -333,14 +333,14 @@ nexus otel-aggregate                        # OTel trace 집계 (--profile obser
 nexus auth gen-token                        # bearer 토큰 발급
 nexus auth hash-token                       # 토큰 → sha256 (config.yaml auth.principals 용)
 
-# ── 문서 생애주기 — 모든 파괴적 행위에는 역이 있다 ──
+# ── 문서 생명주기 — 모든 파괴적 행위에는 역이 있다 ──
 nexus doc hide <ref>                        # 검색에서 내린다. 지우지 않는다.
-nexus doc restore <ref>                     # 되돌린다. Notion 동기화도 숨긴 문서를 되살리지 않는다.
+nexus doc restore <ref>                     # 되돌린다. Notion 동기화도 숨김 문서를 되살리지 않는다.
 nexus supersede <old> --by <new>            # ⚠️ 파괴적: old 를 new 로 대체해 검색에서 배제
 nexus unsupersede <ref> --reason "..."      # 그 역. 사유 필수. 체인은 역순으로만 풀린다.
 ```
 
-`<ref>` 는 rid 든 경로든 받는다 (`README.md`, `doc_a1b2c3`). 숨긴 문서도 경로로 부를 수 있다.
+`<ref>` 는 rid 든 경로든 받는다 (`README.md`, `doc_a1b2c3`). 숨김 문서도 경로로 부를 수 있다.
 
 ---
 
@@ -429,7 +429,7 @@ nexus/
 
 ### 1. Grounded Answers Only
 
-모든 답변에는 source chunk 또는 trace 포인터가 근거로 첨부됩니다. 추측은 제공하지 않습니다.
+모든 답변에는 source chunk 또는 trace 포인터가 답변 근거로 첨부됩니다. 추측은 제공하지 않습니다.
 
 ### 2. System Decides, LLM Narrates
 
@@ -512,7 +512,7 @@ Entity gazetteer 는 `entities.yaml` 에 둡니다. **리포에는 예시(`entit
 로그에 `gazetteer_absent` 가 한 번 찍힙니다.
 
 ⚠ 검출은 이름과 별칭을 대소문자 무시 **부분 문자열**로 찾습니다. 짧은 영어 별칭(`order` 같은)은 다른 낱말
-속에서도 걸립니다 — 예시 목록이 모든 테넌트에 쓰이던 때 로봇 사건 질의 32건이 전부 `order-service` 로
+속에서도 걸립니다 — 예시 목록이 모든 테넌트에 쓰이던 때 로봇 사례 질의 32건이 전부 `order-service` 로
 잡혔습니다(2026-10-01).
 
 ```yaml

@@ -15,7 +15,7 @@
 | 계열 | 대략의 경로 | 다루는 문서 |
 |---|---|---|
 | Notion 소스 콘솔 | `/roots` · `/sync` · `/preview` · `/sync/{run_id}` | — (콘솔 UI가 유일한 소비자) |
-| 문서 생애주기 | `/documents/{rid}` · `/hide` · `/restore` · `/supersede` · `/unsupersede` | — |
+| 문서 생명주기 | `/documents/{rid}` · `/hide` · `/restore` · `/supersede` · `/unsupersede` | — |
 | 답변 피드백 | `/feedback/offer` · `/vote` · `/reason` | [SLACK_BOT.md](SLACK_BOT.md) |
 | 클레임·권위 | `/claims/value` · `/claims/grade-authority` | — (Archon 계열, 코드가 정본) |
 | 운영 | `/health` · `/corpus` · `/visibility` · `/auth/dev-token` | [TEAM_DOGFOOD_DEPLOY.md](TEAM_DOGFOOD_DEPLOY.md) |
@@ -29,23 +29,23 @@
 - 모든 검색/조회에 `tenant` + `classification` 필터 자동 적용
 - timestamp는 ISO 8601 형식 (UTC)
 - rid는 항상 `make_rid()` 함수로 생성된 값
-- **모르는 요청 칸은 `422` 로 거절한다** (아래 §모르는 칸)
+- **모르는 요청 필드는 `422` 로 거절한다** (아래 §알 수 없는 필드)
 - **요청이 보낸 값이 아니라 서버가 실제로 한 것을 응답에 싣는다** (아래 §서버가 한 것)
 
-### 모르는 칸 — 버리지 않고 거절한다 (2026-09-23)
+### 알 수 없는 필드 — 버리지 않고 거절한다 (2026-09-23)
 
 요청 모델 전부가 `extra="forbid"` 다(`api.py` 의 `RequestModel` 한 곳에 있다). 스키마에 없는
-칸이 오면 **`422` 와 함께 그 칸 이름을 돌려준다.**
+필드가 오면 **`422` 와 함께 그 필드 이름을 돌려준다.**
 
-전에는 pydantic 기본값(`extra="ignore"`)이라 **`200` 과 함께 조용히 사라졌다.** 오타든, 낡은
-깃발이든, 그 표면에 없는 깃발이든 결과가 같아서 호출자는 *"켰는데 안 걸렸다"* 와 *"여기서는
-켤 수 없다"* 를 구별할 수 없었다. 한 소비자는 그 자리를 자기 소스에 **덫으로 적고 우회**하고
+전에는 pydantic 기본값(`extra="ignore"`)이라 **`200` 과 함께 조용히 사라졌다.** 오타든, 스테일
+깃발이든, 그 API 표면에 없는 깃발이든 결과가 같아서 호출자는 *"켰는데 안 걸렸다"* 와 *"여기서는
+켤 수 없다"* 를 구별할 수 없었다. 한 소비자는 그 자리를 자기 소스에 **함정으로 적고 우회**하고
 있었다.
 
 ⚠ **이것은 이름만 본다.** 이름이 맞는데 값이 안 먹은 것은 `422` 가 안 난다 — 그건 아래 규칙이
-맡는다. 둘은 같은 이음매의 반대쪽 반이고 서로 대신하지 못한다.
+맡는다. 둘은 같은 접합부의 반대쪽 반이고 서로 대신하지 못한다.
 
-⛔ 정책을 모델마다 적지 않는다. 갈리면 **같은 오타가 한 표면에서는 `422` 이고 다른 표면에서는
+⛔ 정책을 모델마다 적지 않는다. 갈리면 **같은 오타가 한 API 표면에서는 `422` 이고 다른 API 표면에서는
 통과한다** — 갈리는 것이 조용한 것보다 나쁘다.
 
 ### 서버가 한 것 — 요청을 그대로 돌려주지 않는다
@@ -57,23 +57,23 @@
 
 같은 이유로 붙어 있는 칸들:
 
-| 칸 | 무엇을 가르나 | 어디 |
+| 필드 | 무엇을 가르나 | 어디 |
 |---|---|---|
 | `searched_tenants` | 실제로 후보였던 코퍼스 | `/search` · `/search/answer` · `…/stream` |
 | `excluded_doc_types` | 오타로 무시된 것 / 목록이 통째로 안 닿은 것 | `/search/answer` |
-| `identifier_channel` + `_asked` | 안 켰다 / 켰는데 발화 안 했다 | `/search/answer` |
-| `evidence_only` | 생성했다 / 근거까지만 만들었다(생성 칸이 `None` 인 이유) | `/search/answer` |
-| `evidence_snippets[].rank` | 상위 k 의 몇 위였나 / 채움(`None`) — **`score` 로는 못 가른다** | `/search/answer` · `…/stream` |
-| `fusion_doc_agreement` | 융합이 문서 합의를 셌다 / 오늘의 융합 | `/search/answer` · `…/stream`(`done`) |
+| `identifier_channel` + `_asked` | 안 켰다 / 켰는데 발동 안 했다 | `/search/answer` |
+| `evidence_only` | 생성했다 / 검색 근거까지만 만들었다(생성 필드가 `None` 인 이유) | `/search/answer` |
+| `evidence_snippets[].rank` | 상위 k 의 몇 위였나 / 필(`None`) — **`score` 로는 못 가른다** | `/search/answer` · `…/stream` |
+| `fusion_doc_agreement` | 융합이 문서 일치를 셌다 / 오늘의 융합 | `/search/answer` · `…/stream`(`done`) |
 | `search_text_len` | 검색 글로 찾았다(그 길이) / 질문으로 찾았다(0) | `/search/answer` · `…/stream`(`done`) |
 | `n_unknown_origin_time` | 좁히기가 닿지 못한 건수 (**안 물었으면 `None`**) | 검색·답변 |
-| `degraded` · `enrichment_failed` | 빈 결과 / 죽은 경로 | 검색·답변 |
+| `degraded` · `enrichment_failed` | 빈 결과 / 실패한 경로 | 검색·답변 |
 
 ⚠ **범위 밖이었다는 사실 자체는 안 싣는다** — 그것을 알리면 그 테넌트가 있다는 것이 샌다
 (1R I-009). 그건 운영자 로그로만 간다.
 
-⭐ HTTP 밖의 표면도 같은 사실을 **자기 어법으로** 낸다: A2A 는 아티팩트의
-`policy.tenant`, CLI `query` 는 출력 첫 줄의 `코퍼스:` 다. 표면이 늘면
+⭐ HTTP 밖의 API 표면도 같은 사실을 **자기 컨벤션으로** 낸다: A2A 는 아티팩트의
+`policy.tenant`, CLI `query` 는 출력 첫 줄의 `코퍼스:` 다. API 표면이 늘면
 `tests/test_the_agent_surfaces_say_which_corpus_they_searched.py` 의 목록에 행을 더한다.
 
 ```python
@@ -107,9 +107,9 @@ class SearchRequest(BaseModel):
 
 ⛔ **`tenant` 는 안 보내는 것과 보내는 것이 다르다.** 기본값이 채워 넣은 것과 호출자가 고른
 것을 `model_fields_set` 으로 가른다 — 그러지 않으면 *"안 물으면 범위 전체"* 가 영원히 발화하지
-않는다(실측 2026-08-31, 컷오버가 그 자리에서 조용히 무효가 됐다). ⚠ 그래서 **칸 이름을 오타
+않는다(실측 2026-08-31, 컷오버가 그 자리에서 조용히 무효가 됐다). ⚠ 그래서 **필드 이름을 오타
 내면 범위가 좁아지는 게 아니라 넓어진다** — 「안 물었다」로 읽히기 때문이다. 오타 자체는
-`422` 가 잡는다(§모르는 칸).
+`422` 가 잡는다(§알 수 없는 필드).
 
 ### Response
 ```python
@@ -155,12 +155,12 @@ class SearchResponse(BaseModel):
     route_used: str                     # 실제 사용된 route
     searched_tenants: list[str]         # 실제로 후보였던 코퍼스 — 요청이 보낸 값이 아니라
                                         # 토큰으로 해소된 범위다. 범위 밖을 물으면 오류 대신
-                                        # 여기에 해소 결과가 온다 (§서버가 한 것, 비평 3R I-010)
+                                        # 여기에 해소 결과가 온다 (§서버가 한 것, 크리틱 3R I-010)
     n_unknown_origin_time: int | None   # 좁히기가 닿지 못한 건수. 안 물었으면 None —
                                         # 0 으로 내보내면 "물었고 전부 안다" 와 구별되지 않는다
     timing_ms: float                    # 전체 소요 시간
     degraded: list[str]                 # 실패해서 기여하지 못한 경로 ("bm25"|"vector"|"graph")
-                                        # 빈 결과와 죽은 경로는 다른 사실이다
+                                        # 빈 결과와 실패한 경로는 다른 사실이다
                                         # (SPEC-nexus-embedding-cutover-seam §4.4)
     enrichment_failed: list[str]        # 터진 보강 패스. 같은 이유로 죽은 것과 빈 것을 가른다
 ```
@@ -168,14 +168,14 @@ class SearchResponse(BaseModel):
 ### 에러 케이스
 - `400`: query가 빈 문자열, 또는 없는 `route` (무엇을 고를 수 있는지 `detail` 에 나온다)
 - `413` / `400`: `history` 가 상한을 넘거나 모양이 틀렸다 — **조용히 자르지 않는다** (SPEC §3.1)
-- `422`: 스키마에 없는 요청 칸 (§모르는 칸). `detail` 이 그 칸 이름을 말한다
+- `422`: 스키마에 없는 요청 필드 (§알 수 없는 필드). `detail` 이 그 필드 이름을 말한다
 - `503`: DB 연결 실패 (partial result 반환 금지)
 
 ---
 
 ## 2. POST /search/answer — 검색 + LLM 답변
 
-/search 결과를 Evidence Packet으로 조립하여 Claude에 전달, 근거 기반 답변 생성.
+/search 결과를 Evidence Packet으로 조립하여 Claude에 전달, 답변 근거 기반 답변 생성.
 
 ### Request
 ```python
@@ -183,7 +183,7 @@ class AnswerRequest(BaseModel):
     query: str
     history: list[Turn] = []
     top_k: int = 20                     # ⚠ **검색 전용 경로의 10 과 다르다.** 집합 질문이
-                                        # 10 에서 잘렸다 — 근거가 8,163자에서 19,184자로 는다
+                                        # 10 에서 잘렸다 — 답변 근거가 8,163자에서 19,184자로 는다
                                         # (실측 2026-08-30). 유료 백엔드에서는 그대로 비용이다
     route: str = "auto"
     classification_max: str = "INTERNAL"
@@ -193,10 +193,10 @@ class AnswerRequest(BaseModel):
     exclude_doc_types: list[str] = []   # 후보 단계부터 뺄 문서 종류. **권한이 아니다** —
                                         # 좁히기만 하고 넓히지 못한다
     identifier_channel: bool = False    # 질의에 섞인 식별자만 따로 묻는 둘째 채널.
-                                        # ⛔ **기본 꺼짐이 설계다** — 이것은 처치이고 측정
+                                        # ⛔ **기본 비활성화가 설계다** — 이것은 처치이고 측정
                                         # 대상이다 (`docs/PROCEDURE_RETRIEVAL_PREREGISTRATION.md` T2)
-    fusion_doc_agreement: bool = False  # 융합에 **문서 합의**를 더한다 — 같은 문서를 다른 절로 짚은
-                                        # 경로들의 표를 문서로 모은다. ⛔ 기본 꺼짐, 꺼지면 융합은
+    fusion_doc_agreement: bool = False  # 융합에 **문서 일치**를 더한다 — 같은 문서를 다른 절로 짚은
+                                        # 경로들의 표를 문서로 모은다. ⛔ 기본 비활성화, 꺼지면 융합은
                                         # 오늘과 비트까지 같다. 켜면 **모든 질의의 순위가 움직인다**
                                         # (`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` F1)
     answer_context: str | None = None   # 요청자의 자료 — **답변 프롬프트에만** 들어간다. 상한
@@ -205,7 +205,7 @@ class AnswerRequest(BaseModel):
                                         # 비었거나 공백뿐이면 안 준 것이고 오늘과 같다
 ```
 
-`/search/answer` 가 실제로 받는 모델은 그 하위 모델이다 — 스트림(`AnswerRequest`)보다 칸이 하나 많다:
+`/search/answer` 가 실제로 받는 모델은 그 하위 모델이다 — 스트림(`AnswerRequest`)보다 필드가 하나 많다:
 
 ```python
 class SearchAnswerRequest(AnswerRequest):
@@ -217,26 +217,26 @@ class SearchAnswerRequest(AnswerRequest):
 
 `evidence_only` 는 **검색만으로 정해지는 것을 측정할 때** 쓴다(2026-10-01). 융합 처치의 주 변수가
 그렇고(`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` §3), 그것을 생성까지 부르는 이 요청으로
-측정하면 두 판에 세 시간 남짓이 든다. `/search` 는 **같은 검색이 아니다** — 식별자 채널 · 제외 종류
-칸이 없고, `top_k` 가 10 이고, 채움 넷을 안 붙인다.
+측정하면 두 버전에 세 시간 남짓이 든다. `/search` 는 **같은 검색이 아니다** — 식별자 채널 · 제외 종류
+필드가 없고, `top_k` 가 10 이고, 필 넷을 안 붙인다.
 
-- **같은 처리기**가 같은 검색 · 같은 묶음 · 같은 판 칸을 만든다. 근거 칸은 생성하는 판과 같은 코드가
+- **같은 처리기**가 같은 검색 · 같은 답변 근거 묶음 · 같은 버전 필드를 만든다. 답변 근거 필드는 생성하는 버전과 같은 코드가
   만든다(`llm/answer.py` 의 `narrate=False`) — 따로 만든 엔드포인트는 언젠가 갈라진다
 - 모델을 **한 번도** 안 부른다. 충분성 판정자도 안 깨운다. 단 `history` 가 있으면 재작성은 그대로
   돈다 — 같은 검색이어야 하므로
-- 생성이 내는 칸(`answer` · `citations` · `unverified_citations` · `unverified_numbers` · `numbers` ·
+- 생성이 내는 필드(`answer` · `citations` · `unverified_citations` · `unverified_numbers` · `numbers` ·
   `usage` · `abstained` · `abstain_reason` · `llm_failed` · `llm_failure_reason`)은 **`None`** 이다.
-  0 · False 로 두면 「인용 0건」·「생성 실패 안 함」으로 읽힌다. 칸은 빼지 않는다
+  0 · False 로 두면 「인용 0건」·「생성 실패 안 함」으로 읽힌다. 필드는 빼지 않는다
 - `answer_context` 는 답변 프롬프트에만 들어가므로 **안 쓴 것**이다 — `answer_context_len` 이 0
 - 기록(`search_log.path`)은 `search_answer_evidence` 로 답변과 **갈라** 적는다 — 답변 지표에 안 섞인다
-- 스트림에는 이 칸이 없다(`422`). 생성을 건너뛰는 스트림은 뜻이 없다
+- 스트림에는 이 필드가 없다(`422`). 생성을 건너뛰는 스트림은 뜻이 없다
 
 `answer_context` 는 **검색에 쓰지 않는 글**이다(2026-09-30). 후보 목록처럼 답에만 보여 줄 것을
 `query` 에 실으면 검색이 그 글로 돈다 — BM25 · 벡터 · 식별자 채널 · 재작성기에 다 들어가 측정해
-온 경로가 달라진다. 그래서 칸을 따로 둔다:
+온 경로가 달라진다. 그래서 필드를 따로 둔다:
 
-- 자리: 사용자 프롬프트 안, 질문 다음 · 근거 앞의 표시된 절(`## 요청자가 준 자료 …`)과 끝의 닫는
-  문장. 절 머리말이 **자료는 근거가 아니다** · 인용하지 마라 · 별칭으로 가리켜라 · 핵심 규칙을 못
+- 자리: 사용자 프롬프트 안, 질문 다음 · 답변 근거 앞의 표시된 절(`## 요청자가 준 자료 …`)과 끝의 닫는
+  문장. 절 머리말이 **자료는 답변 근거가 아니다** · 인용하지 마라 · 별칭으로 가리켜라 · 핵심 규칙을 못
   이긴다고 적는다. 시스템 프롬프트는 안 바뀐다
 - 안 닿는 곳: 검색 · 재작성기 · 충분성 판정자 · 질문 원문 보존. 기록에는 **길이와 해시만** 남는다
 - 비었거나 공백뿐이면 안 준 것이다 — 그때 프롬프트는 오늘과 바이트 단위로 같다
@@ -247,33 +247,33 @@ class SearchAnswerRequest(AnswerRequest):
 `search_text` 는 그 반대쪽이다 — **검색 쪽은 이 글만, 답 쪽은 `query` 만** 본다(2026-10-05). 물음을 뗀
 짧은 글로 검색하면서 답변 프롬프트의 질문 자리는 그대로 두려는 호출자를 위한 칸이다.
 
-| 자리 | 칸을 주면 | 안 주면(오늘) |
+| 자리 | 필드를 주면 | 안 주면(오늘) |
 |---|---|---|
 | 원문 경로(BM25 · 벡터) · 식별자 채널의 토큰 · 엔티티 · 경로 이름 | `search_text` | `query`(재작성됐으면 재작성문) |
-| 묶음의 코드 값 맞추기(`packet_for_answer` 의 질문) | `search_text` | `query` |
+| 근거 묶음의 코드 값 맞추기(`packet_for_answer` 의 질문) | `search_text` | `query` |
 | 재작성기 | **안 돈다** | 이력이 있을 때 |
 | 답변 프롬프트의 질문 자리 · 숫자 검증 · 충분성 판정자 · 질문 원문 보존 | `query` | 같음 |
 
 - ⚠ 식별자 채널은 **`search_text` 에서만** 토큰을 뽑는다. `query` 에만 있는 토큰은 검색에 안 쓰인다
 - 재작성기가 안 도는 이유: 재작성문은 답변 프롬프트의 질문 자리로 들어가므로, 돌리면 검색 글이 거기로 샌다
-- 칸을 주면 답변 프롬프트는 **근거 자리를 뺀 나머지**(지시문 · 질문 자리 · 자료 칸)가 `query` 만 보낸 요청과
-  같다. 근거는 검색 글로 찾은 것이다
+- 필드를 주면 답변 프롬프트는 **답변 근거 자리를 뺀 나머지**(지시문 · 질문 자리 · 자료 필드)가 `query` 만 보낸 요청과
+  같다. 답변 근거는 검색 글로 찾은 것이다
 - 응답의 `search_text_len` 이 실제로 검색에 쓴 길이를 돌려준다(0 = 안 썼다). 기록에는 길이와 해시만
   남는다(`search_log.search_text_len` · `search_text_sha256`, migration 051). `query_sha256` 은 계속 질문의 값이다
 
 ### Response
 ```python
 class AnswerResponse(BaseModel):
-    answer: str                         # LLM 생성 답변 (근거 인용 포함)
+    answer: str                         # LLM 생성 답변 (답변 근거 인용 포함)
     evidence_snippets: list[EvidenceSnippet]
     graph_findings: GraphFinding | None
     provenance: list[ProvenanceRef]     # 사용자가 검증할 수 있는 출처
     route_used: str
     timing_ms: float
-    degraded: list[str]                 # 검색 단계에서 죽은 경로 (SearchResponse 와 같은 뜻)
+    degraded: list[str]                 # 검색 단계에서 실패한 경로 (SearchResponse 와 같은 뜻)
 
-    # ── 표면이 답변 문장에서 **되읽을 수 없는** 사실들 ─────────────────────
-    # 이 칸들이 빠지면 표면은 추측하거나 침묵한다. 전부 그렇게 한 번씩 데여서 생겼다.
+    # ── API 표면이 답변 문장에서 **되읽을 수 없는** 사실들 ─────────────────────
+    # 이 필드들이 빠지면 API 표면은 추측하거나 침묵한다. 전부 그렇게 한 번씩 데여서 생겼다.
     # 전체 목록의 정본은 `/openapi.json` 이고, 여기 적는 것은 **왜 있는가**다.
     searched_tenants: list[str]         # 무엇이 애초에 후보였나 (§서버가 한 것)
     excluded_doc_types: list[str]       # 실제로 SQL 에 간 것 — 오타로 무시된 것과
@@ -281,8 +281,8 @@ class AnswerResponse(BaseModel):
     identifier_channel: list[str]       # 식별자 채널이 **무엇으로 발화했나**
     identifier_channel_asked: bool      # 호출자가 **요청했는가** — 빈 목록 하나로는
                                         # "안 켰다" 와 "켰는데 식별자가 없었다" 가 안 갈린다
-    fusion_doc_agreement: bool          # 이 답의 검색이 문서 합의(F1)를 셌는가. 검색 코드의 변화는
-                                        # 판 칸(`search_fingerprint`)에 안 잡히므로 이 칸으로 가른다.
+    fusion_doc_agreement: bool          # 이 답의 검색이 문서 일치(F1)를 셌는가. 검색 코드의 변화는
+                                        # 버전 필드(`search_fingerprint`)에 안 잡히므로 이 필드로 가른다.
                                         # `search_log.fusion_doc_agreement` 에 같은 값(migration 050)
     search_text_len: int                # 검색에 쓴 `search_text` 의 길이. 0 = 질문으로 찾았다
     abstained: bool                     # 기권은 코드가 내린 판단이다. 답변 문장을
@@ -290,8 +290,8 @@ class AnswerResponse(BaseModel):
     llm_failed: bool                    # **생성 실패는 답변이 아니다**
     llm_failure_reason: str | None      # 기다리면 되는 실패와 사람이 결제해야 하는 실패는
                                         # 같은 문장으로 나가면 안 된다 (`llm/failure.py`)
-    weak_evidence: bool                 # 근거는 있었지만 **잘 맞지 않았다**
-    top_distance: float | None          # 문턱에 겨우 걸린 것인지 한참 밖인지. None 은
+    weak_evidence: bool                 # 답변 근거는 있었지만 **잘 맞지 않았다**
+    top_distance: float | None          # 임계값에 겨우 걸린 것인지 한참 밖인지. None 은
     top_bm25: float | None              # 그 경로가 **못 낸 것**이고 0 이 아니다
     citations: list[Citation]           # 코드가 evidence packet 과 대조해 판정한 것
     unverified_citations: int           # 해소되지 않은 인용의 **개수** — 출처인 척 통과시키지
@@ -300,30 +300,30 @@ class AnswerResponse(BaseModel):
                                         # 어디에서도 안 보인 수(= `found_in` 이 빈 항목)의 개수
     numbers: list[NumberItem]           # 수만 내면 무엇이 걸렸는지 못 본다
 
-class NumberItem(BaseModel):            # 두 표면이 `numbers.number_items` 한 함수로 만든다
+class NumberItem(BaseModel):            # 두 API 표면이 `numbers.number_items` 한 함수로 만든다
     value: str                          # 답에 적힌 표기 그대로("30" · "₩1,000" · "47%"). 부호는
                                         # 안 잡는다. 같은 값은 한 번만(먼저 나온 표기)
     grounded: bool                      # 모델에게 보여 준 것 어딘가에 있다 = found_in 이 비지 않았다
     found_in: list[str]                 # 찾은 곳, 이 순서: "evidence" · "query" · "context"
-                                        # (context = 요청자 자료). 여러 곳이면 전부 — 한 값으로
+                                        # (context = 호출자 컨텍스트). 여러 곳이면 전부 — 한 값으로
                                         # 고르면 무언가를 감춘다. 빈 목록 = 어디에도 없다
-    n_stale: int                        # 낡았다고 판정된 근거 수
-    evidence_tenants: dict[str, int]    # 실제로 기여한 코퍼스별 근거 수
-    prompt_version: str                 # 이 답의 근거 꾸러미와 프롬프트를 **만든 코드**의 판
+    n_stale: int                        # 낡았다고 판정된 답변 근거 수
+    evidence_tenants: dict[str, int]    # 실제로 기여한 코퍼스별 답변 근거 수
+    prompt_version: str                 # 이 답의 답변 근거 묶음과 프롬프트를 **만든 코드**의 버전
                                         # (12 hex, `llm/prompt_version.py`). 스트림은 `done` 에
                                         # 싣고, `search_log.prompt_version` 과 같은 값이다.
                                         # 코드만 본다 — 설정으로 켠 보강의 변화는 못 본다
-    answer_context_len: int             # 요청자 자료를 **실제로 쓴** 길이. 0 = 안 썼다
-                                        # (안 줬거나 비었다). 422 는 칸 이름만 막는다 — 빈 값이
+    answer_context_len: int             # 호출자 컨텍스트를 **실제로 쓴** 길이. 0 = 안 썼다
+                                        # (안 줬거나 비었다). 422 는 필드 이름만 막는다 — 빈 값이
                                         # 조용히 「안 준 것」이 된 것은 이 값으로만 보인다
-    corpus_version: str                 # 이 답이 뒤진 **코퍼스의 판**(12 hex, `search/versions.py`):
+    corpus_version: str                 # 이 답이 뒤진 **코퍼스의 버전**(12 hex, `search/versions.py`):
                                         # 읽을 수 있는 문서(정책 필터 넷)의 (tenant, rid, content_hash)
                                         # 해시. 재적재돼도 내용이 같으면 같다. "" = 셀 DB 가 없었다
-    search_fingerprint: str             # **검색 스택의 판**(12 hex): 임베딩 컬럼 · 모델 · 토크나이저 +
+    search_fingerprint: str             # **검색 핑거프린트**(12 hex): 임베딩 컬럼 · 모델 · 토크나이저 +
                                         # `search` 설정 절 전체 — 설정으로 켜는 보강도 여기서 보인다.
                                         # 답이 어제와 다르면 prompt_version · 이 둘 · 모델 · 표본 중
                                         # 무엇이 움직였는지로 가른다. 셋 다 `search_log` 에 같은 값
-    evidence_only: bool                 # 근거까지만 만든 응답인가 — 참이면 생성 칸이 전부 None
+    evidence_only: bool                 # 검색 근거까지만 만든 응답인가 — 참이면 생성 필드가 전부 None
 
 class EvidenceSnippet(BaseModel):
     chunk_rid: str
@@ -333,10 +333,10 @@ class EvidenceSnippet(BaseModel):
     text: str                           # 관련 chunk 텍스트
     score: float                        # ⚠ 순위 출신인지는 이것으로 못 가른다 — 정정 확인 패스는
                                         # 검색을 한 번 더 돈 결과라 점수가 있다. `rank` 를 읽어라
-    rank: int | None                    # 상위 k(`top_k`, 다양화 컷 뒤)의 **몇 위**였나, 1부터.
-                                        # `None` = 채움(절 채움 · 가리킨 절 · 짝 문서 · 정정 확인
-                                        # 패스) — 순위 경쟁을 안 하고 묶음에 붙은 조각
-    doc_type: str                       # 축-A 타입 (웹 신뢰 배지)
+    rank: int | None                    # 상위 k(`top_k`, 다양화 컷오프 뒤)의 **몇 위**였나, 1부터.
+                                        # `None` = 필(섹션 필 · 참조 필 · 페어 문서 · 정정 확인
+                                        # 패스) — 순위 경쟁을 안 하고 근거 묶음에 붙은 청크
+    doc_type: str                       # 차원-A 타입 (웹 신뢰 배지)
     provenance_tier: str                # 'authored' | 'machine_read' | 'machine_written'
                                         # (ADR-0010). 'machine_written' = LLM 이 만든 지난
                                         # 설명 — 사람이 쓴 문장이 아니다 (migration 043)
@@ -367,11 +367,11 @@ class ProvenanceRef(BaseModel):
 ### 에러 케이스
 - `400`: query 빈 문자열, 또는 없는 `route`
 - `413` / `400`: `history` 상한 초과 / 모양 오류 — **조용히 자르지 않는다** (SPEC §3.1)
-- `422`: 스키마에 없는 요청 칸 (§모르는 칸)
+- `422`: 스키마에 없는 요청 필드 (§알 수 없는 필드)
 - `503`: DB 연결 실패
 - `502`: LLM API 호출 실패 → answer="답변을 생성할 수 없습니다" + evidence는 그대로 반환
 
-⚠ **생성 실패는 `502` 로만 오지 않는다.** 근거는 살아 있고 서술만 죽은 실행은 `200` 에
+⚠ **생성 실패는 `502` 로만 오지 않는다.** 답변 근거는 살아 있고 생성만 죽은 실행은 `200` 에
 `llm_failed=true` 로 온다 — 그 경우 답변 자리의 문자열을 답으로 렌더하면 안 된다.
 
 ---
@@ -520,7 +520,7 @@ class DiffItem(BaseModel):
     designed_edge: EdgeSummary | None
     observed_edge: ObservedEdgeSummary | None
     detail: str                         # "문서: A→B (HTTP sync), 관측: A→B (Kafka async)"
-    designed_evidence: list[EvidenceSnippet]  # 문서 근거
+    designed_evidence: list[EvidenceSnippet]  # 문서 답변 근거
     observed_evidence: list[str]        # trace_query_ref + sample_trace_ids
 ```
 
