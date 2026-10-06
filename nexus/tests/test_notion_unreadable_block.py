@@ -82,7 +82,7 @@ def test_unreadable_table_becomes_a_hole_too():
 
 
 def test_hole_note_carries_no_block_id():
-    """본문 표식에 블록 id 를 넣지 않는다 — 그 텍스트는 코퍼스에 남는다.
+    """본문 마커에 블록 id 를 넣지 않는다 — 그 텍스트는 코퍼스에 남는다.
 
     진단용 id 는 `hole_sink` 와 로그에만 있다. 여기 넣으면 Notion 식별자가 청크로 들어간다.
     """

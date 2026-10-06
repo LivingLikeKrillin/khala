@@ -1,7 +1,7 @@
 """가르는 낱말 하나에 **자기 채널**을 준다 (사전 등록 T2).
 
-⛔ **왜 생겼나 (실측 2026-09-20, 소비자 실행 열 건).** 사건 번들 질의에서 맞는 절차 문서만
-근거에 안 왔다. 기록을 읽으니 기제가 셋이었다 — 융합이 한 경로짜리를 떨어뜨리고, 벡터가
+⛔ **왜 생겼나 (실측 2026-09-20, 소비자 실행 열 건).** 사례 번들 질의에서 맞는 절차 문서만
+답변 근거에 안 왔다. 기록을 읽으니 메커니즘이 셋이었다 — 융합이 한 경로짜리를 떨어뜨리고, 벡터가
 여섯 절차 문서를 안 가르고, 키워드는 **걸었는데 묻힌다**:
 
     'failureClass=LOCALIZATION_LOST' → ['failureclass','localization','lost']  (OR)
@@ -122,7 +122,7 @@ def test_a_third_channel_does_not_steal_the_first_two_names():
     assert [c.name for c in got] == ["rewritten", "original", "identifier"]
 
 
-# ── 배선: 켜야 켜지고, 꺼지면 오늘과 같다 ─────────────────────────────────────
+# ── 와이어링: 켜야 켜지고, 꺼지면 오늘과 같다 ─────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_off_by_default_runs_exactly_one_channel(monkeypatch):
@@ -153,7 +153,7 @@ async def test_asked_but_no_identifier_does_not_fire(monkeypatch):
     """⛔ **음성 대조군** (사전 등록 §5.5).
 
     식별자가 없는 질의에서 이 채널이 발화하면, 그것은 *"식별자를 따로 묻는다"* 가 아니라
-    *"같은 질의를 두 번 묻는다"* 다. 발화 여부를 안 보고 「차이 없음」을 적으면 스위치가
+    *"같은 질의를 두 번 묻는다"* 다. 발동 여부를 안 보고 「차이 없음」을 적으면 스위치가
     조용히 무시된 것과 구별되지 않는다 — 이 리포가 이미 한 번 겪었다.
     """
     from nexus.search.hybrid import IDENTIFIER_CHANNEL_WEIGHT, QueryChannel
@@ -204,7 +204,7 @@ def test_the_weight_is_below_the_original_channel():
     assert 0 < IDENTIFIER_CHANNEL_WEIGHT < 1.0
 
 
-# ── 두 칸이 **결과 객체 위에서** 셋을 가르는가 ────────────────────────────────
+# ── 두 필드가 **결과 객체 위에서** 셋을 가르는가 ────────────────────────────────
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -220,10 +220,10 @@ async def test_the_result_object_tells_all_three_states(
         monkeypatch, asked, channels_for, want_asked, want_fired):
     """⛔ **`identifier_channel_asked` 가 아무 데서도 안 채워진 채 회귀 측정에 쓰였다.**
 
-    실측 2026-09-20: 그 칸은 `SearchResult` 에 **선언만 돼 있었다.** 응답 두 곳이 요청
-    객체를 직접 읽어서 HTTP 표면은 맞았고, 그래서 아무도 못 봤다 — 그 사이 결과 객체를
-    읽는 쪽(평가 하니스)은 **언제나 `False`** 를 받았다. 회귀 80건이 전부 「안 켰음」으로
-    기록됐고, 그 판은 사전 등록 §5.5 의 두 칸을 한 칸으로 뭉친 것과 같았다.
+    실측 2026-09-20: 그 필드는 `SearchResult` 에 **선언만 돼 있었다.** 응답 두 곳이 요청
+    객체를 직접 읽어서 HTTP API 표면은 맞았고, 그래서 아무도 못 봤다 — 그 사이 결과 객체를
+    읽는 쪽(평가 하네스)은 **언제나 `False`** 를 받았다. 회귀 80건이 전부 「안 켰음」으로
+    기록됐고, 그 버전은 사전 등록 §5.5 의 두 필드를 한 필드로 뭉친 것과 같았다.
 
     ⭐ **앞선 음성 대조군은 `hybrid_search` 를 아예 안 불렀다** — 채널 조립 규칙을 검사
     안에서 다시 적고 그것을 단언했다. 그래서 제품이 그 값을 안 채운다는 사실을 못 봤다.
@@ -253,14 +253,14 @@ async def test_the_result_object_tells_all_three_states(
 
 
 def test_the_answer_paths_hand_the_flag_to_the_search():
-    """⛔ **표면이 맞는 것과 결과 객체가 맞는 것은 다른 사실이다.**
+    """⛔ **API 표면이 맞는 것과 결과 객체가 맞는 것은 다른 사실이다.**
 
     HTTP 응답은 `req.identifier_channel` 을 바로 읽으므로 처음부터 맞았다. 틀린 것은
-    **결과 객체**였고, 그것을 읽는 쪽은 요청을 못 본다(평가 하니스·`reconcile`·span 기록).
+    **결과 객체**였고, 그것을 읽는 쪽은 요청을 못 본다(평가 하네스·`reconcile`·span 기록).
     그래서 답변 경로 둘이 검색에 같은 값을 넘겨야 둘이 갈릴 수 없다.
 
     ⚠ 응답을 결과 객체로 돌리는 길도 있었지만 안 골랐다 — 그러면 `SearchResult` 를 흉내
-    내는 모든 대역이 이 칸을 갖게 만들어야 하고, 실제로 무관한 검사 넷이 붉어졌다.
+    내는 모든 대역이 이 필드를 갖게 만들어야 하고, 실제로 무관한 검사 넷이 붉어졌다.
     같은 식(`req.identifier_channel`)을 두 곳이 읽으면 갈릴 자리가 없다.
     """
     import pathlib

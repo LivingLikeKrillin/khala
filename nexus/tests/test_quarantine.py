@@ -119,12 +119,12 @@ class TestLanguageDetection:
 
 
 class TestChunkLevelQuarantine:
-    """**문서가 아니라 조각을 뺀다.**
+    """**문서가 아니라 청크를 뺀다.**
 
     2026-08-28 라이브: 148KB 짜리 설계 plan 이 2026-08-16 부터 코퍼스에서 사라져 있었다.
     자바 테스트의 16자리 사용자 ID 아홉 개 중 **하나가 우연히 Luhn 을 통과**했기 때문이다.
     같은 날 다른 문서는 *JWT 를 가리는 것을 검증하는 테스트 문서*라 예시 토큰에 걸렸다.
-    한 조각의 오검출로 문서 전체가 조용히 사라지면 안 된다.
+    한 청크의 오검출로 문서 전체가 조용히 사라지면 안 된다.
     """
 
     PATTERNS = {"aws_key": r"AKIA[0-9A-Z]{16}"}
@@ -159,7 +159,7 @@ class TestChunkLevelQuarantine:
 
     def test_the_position_is_what_selects_a_chunk_not_chunk_index(self):
         """`chunk_index` 는 절마다 0 부터 다시 센다 — 문서 안에서 고유하지 않다.
-        그것으로 조각을 고르면 엉뚱한 조각이 빠진다."""
+        그것으로 청크를 고르면 엉뚱한 청크가 빠진다."""
         from nexus.ingest.classifier import quarantined_chunk_indexes
         chunks = [self._C("깨끗한 절의 첫 조각", idx=0),
                   self._C("다음 절 첫 조각: AKIAIOSFODNN7EXAMPLE", idx=0)]
@@ -167,7 +167,7 @@ class TestChunkLevelQuarantine:
 
     def test_a_withheld_chunk_keeps_its_seat_but_not_its_text(self, monkeypatch):
         """⛔ 문서 단위 격리는 청크를 아예 안 만들어서 비밀이 DB 에 안 들어갔다.
-        조각 단위로 바꾸면서 그 성질을 잃으면, 오검출을 살리려다 진짜 비밀을 테이블에 앉힌다.
+        청크 단위로 바꾸면서 그 성질을 잃으면, 오검출을 살리려다 진짜 비밀을 테이블에 앉힌다.
 
         **소스 문자열이 아니라 실제로 넘어가는 값을 본다** — 이 리포는 소스 검사로 거짓
         초록을 받은 적이 있다."""

@@ -117,7 +117,7 @@ def test_audit_never_contains_raw_query_text():
     blob = json.dumps(rec, ensure_ascii=False)
     assert secret not in blob
     assert "hunter2" not in blob
-    # 2026-08-14 뒤집힘 (SPEC-nexus-audit-query-hash): 지문도 남지 않는다. 그 값은
+    # 2026-08-14 뒤집힘 (SPEC-nexus-audit-query-hash): 핑거프린트도 남지 않는다. 그 값은
     # `search_query_text` 의 평문에서 재계산돼 `principal` 로 이어지는 경로였다.
     assert "query_sha256" not in rec
     assert hashlib.sha256(secret.encode("utf-8")).hexdigest() not in blob

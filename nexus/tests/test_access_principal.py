@@ -132,7 +132,7 @@ def test_no_access_header_falls_through_to_bearer(edge, monkeypatch):
 # ── §4.5 Access 가 설정되면 dev-token 은 꺼진다 ────────────────────────────────
 
 def test_dev_token_principal_is_off_when_access_is_configured(edge, monkeypatch):
-    """공유 dev-token 과 Access 신원이 동시에 돌지 않는다. Access 가 문이면 공유 열쇠는 끈다."""
+    """공유 dev-token 과 Access 식별 정보가 동시에 돌지 않는다. Access 가 문이면 공유 열쇠는 끈다."""
     monkeypatch.setenv("NEXUS_DEV_TOKEN", "x" * 40)
     raw = {"auth": {"mode": "enforced", "access": {"issuer": _ISS, "aud": _AUD}}}
     cfg = AuthConfig.from_dict(raw)

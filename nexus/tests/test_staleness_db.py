@@ -1,4 +1,4 @@
-"""근거 신선도 — updated_at 스레드 (DB 통합) — SPEC-nexus-answer-staleness-warning §5.
+"""답변 근거 신선도 — updated_at 스레드 (DB 통합) — SPEC-nexus-answer-staleness-warning §5.
 
 _enrich_hits 의 SQL SELECT 가 documents.updated_at 을 SearchHit 로 실어 나르는지(순수 테스트가
 못 덮는 부분). NEXUS_TEST_DB_URL 필요.

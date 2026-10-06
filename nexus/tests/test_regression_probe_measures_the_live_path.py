@@ -1,7 +1,7 @@
-"""회귀 평가 하니스가 **라이브 요청이 지나는 경로**를 측정한다.
+"""회귀 평가 하네스가 **라이브 요청이 지나는 경로**를 측정한다.
 
-⛔ **왜 생겼나.** 이 리포는 평가 하니스가 **아무도 안 지나는 경로**를 측정한 사고를 두 번 겪었다
-(2026-08-29 근거 조립 · 2026-08-31 테넌트 하나). 두 번 다 숫자는 나왔고, 그 숫자는 제품에
+⛔ **왜 생겼나.** 이 리포는 평가 하네스가 **아무도 안 지나는 경로**를 측정한 사고를 두 번 겪었다
+(2026-08-29 답변 근거 조립 · 2026-08-31 테넌트 하나). 두 번 다 숫자는 나왔고, 그 숫자는 제품에
 대한 것이 아니었다.
 
 `identifier_channel_regression_probe` 는 사전 등록 §4 부 변수 1 을 측정한다. 그 판정이 서려면
@@ -40,7 +40,7 @@ def test_the_arms_differ_in_exactly_one_argument():
 def test_it_never_picks_a_corpus_by_default():
     """⛔ **말없이 고른 기본값이 2026-09-05 사고의 재료였다.**
 
-    선언(`corpus.tenant`)이 없는 라벨 파일은 이 실행의 대상이 아니다.
+    명시적 선언(`corpus.tenant`)이 없는 라벨 파일은 이 실행의 대상이 아니다.
     """
     src = inspect.getsource(probe.label_files)
     assert "corpus" in src and "tenant" in src
@@ -61,7 +61,7 @@ def test_the_negative_control_is_two_separate_facts():
 def test_it_refuses_to_report_when_the_treatment_was_never_asked_for():
     """⛔ **적는 것만으로는 안 된다 — 값이 참인지도 봐야 한다.**
 
-    첫 판이 그 칸을 적기는 했고 값은 80건 전부 `False` 였다. 제품이 그 칸을 아무 데서도
+    첫 버전이 그 필드를 적기는 했고 값은 80건 전부 `False` 였다. 제품이 그 필드를 아무 데서도
     안 채웠기 때문인데, 검사가 「적는가」만 봐서 통과했다. 이제 실행이 **스스로 멈춘다**.
     """
     tree = ast.parse(SOURCE)

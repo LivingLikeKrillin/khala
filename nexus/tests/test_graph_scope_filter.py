@@ -85,7 +85,7 @@ async def test_higher_clearance_reveals_restricted(db_pool):
 async def test_evidence_channel_excludes_out_of_scope_chunk_content(db_pool):
     """`GET /graph/{rid}?include_evidence=true` 의 증거 쿼리(§4.3)가 스코프 밖 chunk_text 를 배제한다.
 
-    엔드포인트 배선이 아니라 보안 술어 자체를 증명한다: 같은 edge 에 in-scope/out-of-scope 청크가
+    엔드포인트 와이어링이 아니라 보안 술어 자체를 증명한다: 같은 edge 에 in-scope/out-of-scope 청크가
     각각 증거로 달렸을 때, base_filter 를 건 쿼리는 in-scope 본문만 돌려준다.
     """
     from nexus.rid import chunk_rid, doc_rid, evidence_rid

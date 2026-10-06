@@ -1,8 +1,8 @@
 """GateExtractor — 코드의 권한 게이트를 AST(tree-sitter)로 추출.
 
 CodeQL(유료) 없이 무료 tree-sitter로 "액션 → 요구 등급" 게이트와 등급 enum 레벨을 뽑는다.
-지역 가드(`if (x.isBelowGrade(GradeType.MOD)) throw`)는 단일 메서드 내에 있으므로 AST로 충분.
-추출은 고재현 *후보*까지 결정론 — "액션가드 vs 필터" 의미확정은 상위 도출/캘리브레이션 레이어 몫.
+지역 가드 검사(`if (x.isBelowGrade(GradeType.MOD)) throw`)는 단일 메서드 내에 있으므로 AST로 충분.
+추출은 고재현 *후보*까지 결정론적 — "액션가드 vs 필터" 의미확정은 상위 도출/캘리브레이션 레이어 몫.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ def _subtree_has(node, type_name: str) -> bool:
 
 
 def _classify_guard(n) -> str:
-    """게이트 호출의 구문 맥락으로 분류: if-throw 가드(액션 차단) vs 람다/필터(가시성)."""
+    """게이트 호출의 구문 맥락으로 분류: if-throw 가드 검사(액션 차단) vs 람다/필터(가시성)."""
     ifs = _enclosing(n, {"if_statement"})
     if ifs is not None:
         cond = ifs.child_by_field_name("condition")

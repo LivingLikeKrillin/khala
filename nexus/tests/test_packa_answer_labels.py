@@ -95,7 +95,7 @@ def test_no_query_here_came_from_a_real_user(labels):
 
 # ── 커밋된 두 아티팩트가 서로 맞는가 ──────────────────────────────────────────
 #
-# 라벨과 매니페스트가 **둘 다 리포에 있다**. 그래서 "서명된 본문" 과 "얼린 본문" 이 같은지는
+# 라벨과 매니페스트가 **둘 다 리포에 있다**. 그래서 "사인오프된 본문" 과 "동결된 본문" 이 같은지는
 # DB 없이, CI 에서, 누구나 확인할 수 있다 — Pack B 에서는 원리적으로 불가능했던 검사다.
 
 MANIFEST = ROOT / "tests" / "eval" / "ko" / "answer-manifest.json"
@@ -141,7 +141,7 @@ def test_the_manifest_covers_the_whole_pack_not_just_the_gold(manifest):
 # CI 가 도는 것은 **키워드 경로 회귀**(`test_ko_eval_run_db.py`, mecab 강제)이고, 그것은
 # `labels.yaml` 을 읽는다. 답변 라벨은 별도 파일이다.
 #
-# 그래서 두 파일이 어긋나는 순간 CI 의 바닥값은 답변 세트가 측정하는 것을 더 이상 안 덮는다 —
+# 그래서 두 파일이 어긋나는 순간 CI 의 하한값은 답변 세트가 측정하는 것을 더 이상 안 덮는다 —
 # 그리고 답변 하니스가 CI 에 없으니 **아무도 모른다**. 그 침묵을 이 검사가 깬다.
 
 RETRIEVAL_LABELS = ROOT / "tests" / "eval" / "ko" / "labels.yaml"
@@ -154,7 +154,7 @@ def retrieval_labels():
 
 
 def test_the_answer_set_inherits_the_retrieval_set(labels, retrieval_labels):
-    """질의·gold·층이 검색 라벨과 같아야 CI 의 키워드 바닥값이 이 세트를 덮는다."""
+    """질의·gold·계층이 검색 라벨과 같아야 CI 의 키워드 하한값이 이 세트를 덮는다."""
     a = {q["id"]: q for q in retrieval_labels["queries"]}
     b = {q["id"]: q for q in labels["queries"]}
     assert set(a) == set(b), "질의 id 가 갈라졌다 — 한쪽에만 있는 질의는 CI 가 못 본다"

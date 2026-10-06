@@ -1,7 +1,7 @@
 """도구 호출 실험 — **브리지 경로**(호스트 `claude -p`)로. 유료 키 불필요.
 
 `websearch_probe.py` 는 Messages API 로 같은 것을 재지만 **계정 사용 한도**로 막혔다(2026-09-01).
-이 판은 이미 인증된 호스트 Claude Code 를 쓴다 — `--output-format stream-json` 이 `tool_use`
+이 버전은 이미 인증된 호스트 Claude Code 를 쓴다 — `--output-format stream-json` 이 `tool_use`
 블록을 그대로 흘려주므로 **트리거를 관측할 수 있다**.
 
 세 단계로 나뉜다. 검색·패킷은 컨테이너(DB·임베딩·mecab)가, `claude` 는 호스트가 갖고 있다:
@@ -14,7 +14,7 @@
   · Claude Code 의 **자체 시스템 프롬프트가 살아 있고**, khala 프롬프트는 그 위에 덧붙는다.
     배포의 Messages API 호출과 같은 조건이 아니다.
   · 허용목록을 `WebSearch` 로 줘도 `WebFetch`·`ToolSearch` 가 돈다 — 도구 표면이 배포보다 넓다.
-  · 그래서 이 실험이 답하는 것은 *"khala 프롬프트와 근거를 본 모델이 검색을 집는가"* 이지
+  · 그래서 이 실험이 답하는 것은 *"khala 프롬프트와 답변 근거를 본 모델이 검색을 집는가"* 이지
     *"배포가 정확히 이렇게 행동한다"* 가 아니다.
 
 ⚠ **API 청구는 없지만 소비는 있다.** 하니스가 호출당 비용을 보고한다(관측 1건 $0.24). 상한은
@@ -84,7 +84,7 @@ async def score(limit: int) -> int:
         if not a:
             continue
         searched = a["n_tool_calls"] > 0
-        # 사전등록 규칙 그대로: A군 발동만 차단 사유. C군 발동은 '무해한 오탐'.
+        # 사전 등록 규칙 그대로: A군 발동만 차단 사유. C군 발동은 '무해한 오탐'.
         ok = (searched == (q["expect"] == "search")) if q["expect"] != "internal" else not searched
         rep = validate_citations(a["text"], packet)
         spent += a.get("cost_usd") or 0.0

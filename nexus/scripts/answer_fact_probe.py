@@ -2,16 +2,16 @@
 
 규칙은 측정 전에 `tests/eval/answer-facts/README.md` 에 박혔다.
 
-검색 평가 하니스(`Recall@10`)는 *정답 문서가 왔는가* 만 측정한다. 2026-08-26 에 그 한계가 끝까지 드러났다 —
-Recall 이 **오르는 동안 답변이 나빠졌다**(정답 숫자는 왔는데 낡은 숫자를 무효화하는 문장이 안
-와서, 답변이 낡은 값을 정본으로 읽었다). 여기서는 답변 텍스트에 **그 값이 나오는가**를 본다.
+검색 평가 하네스(`Recall@10`)는 *정답 문서가 왔는가* 만 측정한다. 2026-08-26 에 그 한계가 끝까지 드러났다 —
+Recall 이 **오르는 동안 답변이 나빠졌다**(정답 숫자는 왔는데 스테일 숫자를 무효화하는 문장이 안
+와서, 답변이 스테일 값을 정본으로 읽었다). 여기서는 답변 텍스트에 **그 값이 나오는가**를 본다.
 
 **LLM 심판을 쓰지 않는다.** 판정은 정규화 부분일치이고, 그래서 무르다 — 오탐이 아니라 **누락**을
-잡는 평가 하니스로 쓴다. 기권도 실패로 센다: 코퍼스가 답을 갖고 있는데 못 낸 것이다.
+잡는 평가 하네스로 쓴다. 기권도 실패로 센다: 코퍼스가 답을 갖고 있는데 못 낸 것이다.
 
-**실패는 귀속까지 간다** (감사 B3). "사실이 답에 없다" 하나로는 검색을 고칠지 서술을 고칠지
-모른다. 그래서 못 낸 사실이 **LLM 이 본 근거 문자열에 있었는가**를 같은 정규화로 같이 보고,
-검색 쪽(FP1·FP2·FP3) · FP4(근거에 있었는데 하나도 안 뽑음) · FP7(반만 뽑음) 로 가른다.
+**실패는 귀속까지 간다** (감사 B3). "사실이 답에 없다" 하나로는 검색을 고칠지 생성을 고칠지
+모른다. 그래서 못 낸 사실이 **LLM 이 본 답변 근거 문자열에 있었는가**를 같은 정규화로 같이 보고,
+검색 쪽(FP1·FP2·FP3) · FP4(답변 근거에 있었는데 하나도 안 뽑음) · FP7(반만 뽑음) 로 가른다.
 점수(`언급`·`주장`)는 이것과 **무관하게 예전 그대로**다 — `attribute` 의 `pass` 가 1판과 같은
 규칙이라는 것을 검사가 지킨다.
 
@@ -71,8 +71,8 @@ def _norm(s: str) -> str:
 def _all_groups_present(expect_all, normalized_text: str) -> bool:
     """`expect_all` 의 **모든 묶음**이 답변에 있는가. 묶음 안은 표기 후보라 하나면 된다.
 
-    상수·모순·종합 라벨이 이 판정을 공유한다. 갈래마다 따로 쓰면 한 갈래만 고쳐지고
-    나머지는 조용히 틀린 채 남는다 — 2026-08-31 에 모순 갈래가 정확히 그렇게 빠져 있었다.
+    상수·모순·종합 라벨이 이 판정을 공유한다. 하위 범주마다 따로 쓰면 한 하위 범주만 고쳐지고
+    나머지는 조용히 틀린 채 남는다 — 2026-08-31 에 모순 하위 범주가 정확히 그렇게 빠져 있었다.
     """
     return all(
         any(_norm(x) in normalized_text for x in ([e] if isinstance(e, str) else e))
@@ -99,19 +99,19 @@ def required_groups(q: dict) -> list[list[str]]:
 
 
 def attribute(groups: list[list[str]], evidence_norm: str, answer_norm: str) -> dict:
-    """답이 못 낸 사실이 **근거에 있었는가**로 실패를 가른다 (감사 B3).
+    """답이 못 낸 사실이 **답변 근거에 있었는가**로 실패를 가른다 (감사 B3).
 
     ⛔ **왜 필요한가.** 지금까지 이 채점기는 "사실이 답에 없다" 까지만 말했다. 그 하나의
     신호가 세 가지를 뭉쳐 놓는다 — 검색이 못 물어온 것 · 물어왔는데 안 뽑은 것(FP4) ·
-    반만 뽑은 것(FP7). 실패를 보고도 **검색을 고칠지 서술을 고칠지 모르는** 상태였다.
+    반만 뽑은 것(FP7). 실패를 보고도 **검색을 고칠지 생성을 고칠지 모르는** 상태였다.
 
     가르는 재료는 `format_for_llm(packet)` — **LLM 이 실제로 본 문자열**이다. 스니펫만이
-    아니라 그래프·코드값·부채까지 그 안에 들어간다. 근거 판정도 답변 판정과 **같은
+    아니라 그래프·코드값·부채까지 그 안에 들어간다. 답변 근거 판정도 답변 판정과 **같은
     정규화**(이 파일의 `_norm`)를 쓴다. 조합 규칙 자체는 공용이다
     (`ko_eval_answer_quality.attribute_facts`) — Pack B 러너와 판정이 갈리면 안 된다.
 
-    ⚠ **이 판정이 기우는 방향을 적어 둔다.** 부분일치는 무르다. 사실이 근거에 **다른 말로**
-    적혀 있으면 여기서는 "근거에 없음" 으로 읽히고, 그러면 FP4 가 실제보다 적게 세어지고
+    ⚠ **이 판정이 기우는 방향을 적어 둔다.** 부분일치는 무르다. 사실이 답변 근거에 **다른 말로**
+    적혀 있으면 여기서는 "답변 근거에 없음" 으로 읽히고, 그러면 FP4 가 실제보다 적게 세어지고
     `upstream` 이 많게 세어진다. 반대 방향(없는 것을 있다고 읽는 것)은 훨씬 드물다.
     그러니 **FP4/FP7 은 하한**으로, `upstream` 은 상한으로 읽어라.
 
@@ -175,7 +175,7 @@ def sidecar_path(out: str, explicit: str, disabled: bool) -> str:
 
 
 def summary_lines(rows: list[dict], for_signature: bool) -> list[str]:
-    """요약 줄. **서명 전에는 비율을 만들지 않는다.**
+    """요약 줄. **사인오프 전에는 비율을 만들지 않는다.**
 
     한 번 찍힌 수는 인용된다 — 이 리포는 라벨 문제를 그렇게 물려받았다. 그래서 이 함수는
     `for_signature` 일 때 어떤 분수도 내지 않는다. 조립을 함수로 뺀 이유는 그 성질을
@@ -268,8 +268,8 @@ async def main() -> int:
         from nexus.providers.embedding import embedding_service_from_config
         from nexus.providers.llm import LLMService
         from nexus.search import hybrid
-        # **LLM 이 실제로 본 문자열**을 만드는 그 함수. 실패 귀속(B3)이 근거 쪽 판정을
-        # 여기서 가져온다 — 패킷 필드를 골라 다시 조립하면 프롬프트에 없는 것을 근거로
+        # **LLM 이 실제로 본 문자열**을 만드는 그 함수. 실패 귀속(B3)이 답변 근거 쪽 판정을
+        # 여기서 가져온다 — 패킷 필드를 골라 다시 조립하면 프롬프트에 없는 것을 답변 근거로
         # 세게 된다. 두 번 불러도 같은 값이고 싸다(`api.py:1202` 가 같은 이유로 그렇게 한다).
         from nexus.search.evidence_packet import format_for_llm
         from nexus.search.reconcile import packet_for_answer
@@ -302,7 +302,7 @@ async def main() -> int:
         for q in queries:
             r = await hybrid.hybrid_search(q["query"], tenant=scope, clearance=CLEARANCE,
                                            top_k=args.top_k, embedding_svc=svc, config=cfg)
-            # **프로덕션이 답변용 근거를 만드는 그 함수**를 쓴다. 직접 조립하면
+            # **프로덕션이 답변 근거를 만드는 그 함수**를 쓴다. 직접 조립하면
             # 하니스가 아무도 안 지나는 경로를 측정한다 — 2026-08-29 에 실제로 그랬다.
             packet = await packet_for_answer(r, scope, CLEARANCE, config=cfg,
                                              search=hybrid.hybrid_search, embedding_svc=svc,
@@ -322,7 +322,7 @@ async def main() -> int:
                 # ⛔ **2026-08-31: 여기서 `ok` 를 다시 계산하지 않았다.** 모순 라벨은
                 # `expect` 가 비고 `expect_all` 만 갖는데, `ok` 는 위에서 `expect` 로만
                 # 계산됐다 — 그래서 `any([])` = False 가 되어 **답이 무엇이든 1판 실패**였다.
-                # 첫 서명 회차에서 A-10 이 `언급=실패 · 주장=통과` 로 찍혔고, 2판은 1판의
+                # 첫 사인오프 회차에서 A-10 이 `언급=실패 · 주장=통과` 로 찍혔고, 2버전은 1버전의
                 # 부분집합이어야 하므로 그 모순이 결함을 드러냈다.
                 ok = _all_groups_present(q["expect_all"], nt)
                 said = discloses_conflict(q["expect_all"], text)
@@ -335,7 +335,7 @@ async def main() -> int:
                     print(f"  {q['id']:4} ⛔ 라벨 버림 — {why}", flush=True)
                     continue
                 said = asserts_current_not_stale(expect, q["superseded"], text)
-            # 실패 귀속(감사 B3) — 못 낸 사실이 **근거에 있었는가**.
+            # 실패 귀속(감사 B3) — 못 낸 사실이 **답변 근거에 있었는가**.
             attr = attribute(required_groups(q), _norm(format_for_llm(packet)), nt)
             # 교차 검사: 귀속의 `pass` 는 1판(`ok`)과 **같은 규칙**이어야 한다. 갈리면
             # 둘 중 하나가 옮겨 적히며 어긋난 것이고, 그때는 귀속을 믿으면 안 된다.
@@ -362,8 +362,8 @@ async def main() -> int:
                             "expect": q.get("expect") or [],
                             "abstained": bool(getattr(ans, "abstained", False)),
                             "weak_evidence": bool(getattr(ans, "weak_evidence", False))})
-            # 귀속은 **서명 전에도** 찍는다 — 점수가 아니라 *왜 떨어졌는가*라서, 라벨을
-            # 읽는 사람에게 그것이 필요하다. 총계는 아래에서 서명 뒤에만 낸다.
+            # 귀속은 **사인오프 전에도** 찍는다 — 점수가 아니라 *왜 떨어졌는가*라서, 라벨을
+            # 읽는 사람에게 그것이 필요하다. 총계는 아래에서 사인오프 뒤에만 낸다.
             where = "" if attr["verdict"] in ("pass", "no_groups") else f" 귀속={attr['verdict']}"
             print(f"  {q['id']:4} 언급={'통과' if ok else '실패'} 주장={'통과' if said else '실패'}"
                   f"{where}"

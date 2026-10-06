@@ -56,7 +56,7 @@ def test_the_legal_degraded_values_are_the_legs_themselves():
     assert SearchResult().degraded == []
 
 
-# ── 경로 래퍼: 빈 결과와 죽은 경로를 구분한다 ────────────────────────────────
+# ── 경로 래퍼: 빈 결과와 실패한 경로를 구분한다 ────────────────────────────────
 
 
 class _Svc:
@@ -84,7 +84,7 @@ async def test_an_embedding_backend_failure_degrades_the_leg_instead_of_vanishin
 
     hits, degraded, distance = await _vector_leg("결제", _Svc(error), "default", "INTERNAL", 10, None)
     assert (hits, degraded) == ([], True)
-    # 죽은 경로의 거리는 **없다**. 0.0 이면 "완벽히 맞았다" 로 읽혀 약한 근거 판정이 뒤집힌다.
+    # 실패한 경로의 거리는 **없다**. 0.0 이면 "완벽히 맞았다" 로 읽혀 약한 답변 근거 판정이 뒤집힌다.
     assert distance is None
 
 

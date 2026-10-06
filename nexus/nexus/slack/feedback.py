@@ -1,6 +1,6 @@
 """👍/👎 버튼과 그 클릭 처리 (SPEC-nexus-answer-feedback U2, approved 2026-08-14, 안 B).
 
-**👎 는 지표가 아니라 단서다.** 이 표면이 하는 일은 둘이다: 답변에 버튼 둘을 붙이고, 👎 면
+**👎 는 지표가 아니라 단서다.** 이 API 표면이 하는 일은 둘이다: 답변에 버튼 둘을 붙이고, 👎 면
 사유 넷을 **ephemeral 로** 되묻는다. 투표한 사람에게만 보이는 답으로 끝난다.
 
 ⚠ **이 문장은 한동안 "셋"이라고 적혀 있었다** (정정 2026-09-11). 셋째가 *"운영자에게 한 번
@@ -33,7 +33,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 #: **봇은 DB 에 안 붙는다.** 읽기 전용 principal 토큰 하나만 들고 nexus 에 HTTP 로 말한다 —
-#: 저장 층은 서버 쪽에 있고 테넌트는 그 principal 이 정한다(`effective_scope`). 봇에
+#: 저장 계층은 서버 쪽에 있고 테넌트는 그 principal 이 정한다(`effective_scope`). 봇에
 #: `DATABASE_URL` 을 주는 것이 한 줄 더 싸지만, 그러면 등급·격리를 우회해 모든 문서를 읽을 수
 #: 있게 되고 그 토큰을 읽기 전용으로 묶어 둔 이유가 사라진다.
 NEXUS_API_URL = os.getenv("NEXUS_API_URL", "http://localhost:8000")
@@ -61,7 +61,7 @@ EVIDENCE_CEILING = 5
 ACTION_UP, ACTION_DOWN, ACTION_REASON = "fb_up", "fb_down", "fb_reason"
 
 #: 사유 코드. **서버 스키마의 CHECK 와 같은 목록**이어야 한다 (`nexus/feedback/store.py`).
-#: 여기 두는 이유: 봇은 저장 층을 import 하지 않는다 — import 하면 그 모듈이 `nexus.db` 를
+#: 여기 두는 이유: 봇은 저장 계층을 import 하지 않는다 — import 하면 그 모듈이 `nexus.db` 를
 #: 끌고 오고, 봇 프로세스에 DB 가 있는 것처럼 보이는 코드가 된다(실제로 없다).
 REASONS = ("wrong_evidence", "not_my_question", "ignored_format", "not_found")
 
@@ -189,7 +189,7 @@ async def on_vote(body: dict, client) -> None:
 
 
 async def on_reason(body: dict, client) -> None:
-    """사유 버튼 클릭. 가드에 걸리면 **조용히 무시하지 않고 사용자에게 알린다.**"""
+    """사유 버튼 클릭. 가드 검사에 걸리면 **조용히 무시하지 않고 사용자에게 알린다.**"""
     channel = body["channel"]["id"]
     user = body["user"]["id"]
     try:

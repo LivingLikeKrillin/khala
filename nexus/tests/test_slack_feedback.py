@@ -1,4 +1,4 @@
-"""슬랙 피드백 표면 (SPEC-nexus-answer-feedback U2, approved 2026-08-14, 안 B).
+"""슬랙 피드백 API 표면 (SPEC-nexus-answer-feedback U2, approved 2026-08-14, 안 B).
 
 버튼 둘, 👎 면 사유 넷, 그리고 **운영자에게만** DM. 공개 표시는 하지 않는다 — 봇은
 `thread_ts` 로 채널 스레드에 답하므로 깃발을 꽂으면 5명 팀에서 질문자가 지목되고, 그것은
@@ -70,9 +70,9 @@ def test_the_feedback_blocks_fit_every_named_slack_limit():
 
 
 def test_the_answer_plus_feedback_still_fits_at_the_evidence_ceiling():
-    """근거가 상한(`top_k`)만큼 붙은 답변에 버튼을 얹어도 메시지가 산다.
+    """답변 근거가 상한(`top_k`)만큼 붙은 답변에 버튼을 얹어도 메시지가 산다.
 
-    `formatter` 의 블록 수는 근거 건수에 따라 변하므로 임의 표본으로는 보증이 안 된다.
+    `formatter` 의 블록 수는 답변 근거 건수에 따라 변하므로 임의 표본으로는 보증이 안 된다.
     """
     from nexus.slack.formatter import format_answer
 
@@ -126,7 +126,7 @@ async def test_the_handler_never_logs_the_slack_user_id(monkeypatch):
     blob = repr(logged) + repr(client.dms)
     assert _USER not in blob, "사용자 id 가 로그·운영자 DM 에 실렸다"
 
-    # I13 — **키도 안 남는다.** 재연결에 필요한 것은 신원이나 스키마 하나가 아니라 **동거**다.
+    # I13 — **키도 안 남는다.** 재연결에 필요한 것은 식별 정보나 스키마 하나가 아니라 **동거**다.
     # 봇은 같은 요청에서 질의와 principal 을 다루므로, 키를 찍는 로그 한 줄이 그 둘 옆에
     # 놓이면 투표↔질의 연결이 DB 밖에서 복원된다.
     assert _KEY not in blob, "answer_key 가 로그에 실렸다"
@@ -137,7 +137,7 @@ async def test_the_handler_never_logs_the_slack_user_id(monkeypatch):
 @pytest.mark.asyncio
 async def test_a_down_vote_asks_for_a_reason_in_an_ephemeral(monkeypatch):
     """원 답변 메시지는 고치지 않는다 — 채널의 다른 사람에게 남의 투표가 보이면 그 자체가
-    신원 노출이다 (§3.1.1)."""
+    식별 정보 노출이다 (§3.1.1)."""
     seen: dict = {}
 
     async def fake_post(path, payload):
@@ -245,7 +245,7 @@ async def test_a_rejected_reason_tells_the_user_instead_of_going_quiet(monkeypat
     assert "이미" in repr(client.ephemeral[0]) or "지났" in repr(client.ephemeral[0])
 
 
-# ── 배선 (이 리포가 반복한 '초록인데 동작 안 함') ─────────────────────────────
+# ── 와이어링 (이 리포가 반복한 '초록인데 동작 안 함') ─────────────────────────────
 
 @pytest.mark.asyncio
 async def test_the_bot_attaches_the_buttons_and_records_the_offer(monkeypatch):
@@ -310,7 +310,7 @@ async def test_no_offer_row_without_a_message_handle(monkeypatch):
     monkeypatch.setattr(FB, "_post", fake_post)
 
     async def say(**kw):
-        return None          # 응답을 안 주는 표면
+        return None          # 응답을 안 주는 API 표면
 
     await bot._answer("질문", say, {"ts": "1"}, client=None)
     assert offers == []
@@ -334,10 +334,10 @@ async def test_the_key_is_not_logged_even_when_storage_fails(monkeypatch):
 # ── 배포 맥락 (2026-08-14 라이브 실패) ────────────────────────────────────────
 #
 # U1·U2 를 초록으로 머지했는데 실사용 첫 클릭이 "평가를 저장하지 못했습니다" 로 죽었다.
-# 저장 층은 DB 를 직접 썼고, **봇 컨테이너에는 DATABASE_URL 이 없다** — 봇은 설계상 nexus 의
+# 저장 계층은 DB 를 직접 썼고, **봇 컨테이너에는 DATABASE_URL 이 없다** — 봇은 설계상 nexus 의
 # HTTP 클라이언트이고 읽기 전용 principal 토큰 하나만 든다.
 #
-# 검사가 못 잡은 이유: 저장 층 테스트는 전부 DB 가 있는 컨테이너나 monkeypatch 로 돌았다.
+# 검사가 못 잡은 이유: 저장 계층 테스트는 전부 DB 가 있는 컨테이너나 monkeypatch 로 돌았다.
 # **봇의 맥락에서 돌린 검사가 하나도 없었다.** 아래 둘이 그 자리를 메운다.
 
 def test_the_bot_never_reaches_for_the_database():

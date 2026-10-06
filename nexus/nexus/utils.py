@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def context_prefix_for(title: str, section_path: str) -> str | None:
-    """색인 접두사 — **문서 신원을 색인 텍스트에 넣는다** (A13 컷오버, 2026-08-26).
+    """색인 접두사 — **문서 식별 정보를 색인 텍스트에 넣는다** (A13 컷오버, 2026-08-26).
 
     `search_text` 는 `COALESCE(context_prefix, '[' || section_path || ']') || ' ' || chunk_text`
     다. `context_prefix` 가 NULL 이던 동안 접두사는 늘 섹션 경로였고, **섹션이 `root` 인 청크는

@@ -7,7 +7,7 @@
   2일차 — 504. 합성이 120초 벽에 걸렸다. **기다리거나 질의를 줄이면 된다.** 분류는
           똑같이 `unavailable` 이었다.
 
-설명 층 입장에서 두 사건은 **다음 행동이 다른데** 같은 값으로 왔다. 그쪽이 그것을 지적했다:
+설명 레이어 입장에서 두 사례는 **다음 행동이 다른데** 같은 값으로 왔다. 그쪽이 그것을 지적했다:
 *"내 층에서는 「안 받는다」와 「안 끝난다」가 구별되지 않는다."*
 
 ⛔ 1일차가 특히 나쁘다 — 이 모듈이 만들어진 이유가 **정확히 그 모양**이기 때문이다.
@@ -34,7 +34,7 @@ def _http(status: int, body: str = "") -> httpx.HTTPStatusError:
 # ── 안 끝난다 ──────────────────────────────────────────────────────────────
 
 def test_a_gateway_timeout_is_its_own_reason():
-    """⛔ 이 검사가 이 단위의 절반이다. 504 는 벽에 걸린 것이고 처방이 따로 있다."""
+    """⛔ 이 검사가 이 단위의 절반이다. 504 는 벽에 걸린 것이고 조치 방법이 따로 있다."""
     assert F.classify(_http(504)) == F.TIMEOUT
 
 
@@ -86,7 +86,7 @@ def test_a_missing_body_is_not_an_error():
     assert F.classify(exc) == F.OTHER
 
 
-# ── 표면까지 오는가 ────────────────────────────────────────────────────────
+# ── API 표면까지 오는가 ────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("reason", [F.TIMEOUT, F.UNAVAILABLE, F.RATE_LIMIT])
 def test_every_transient_reason_can_say_wait(reason):

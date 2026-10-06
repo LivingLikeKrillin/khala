@@ -41,7 +41,7 @@ class EvidenceSnippet:
     doc_title: str
     section_path: str
     source_uri: str
-    #: 사람 표면이 읽는 짧은 조각(API 응답의 evidence_snippets[].text 그대로).
+    #: 사람 API 표면이 읽는 짧은 청크(API 응답의 evidence_snippets[].text 그대로).
     text: str
     score: float
     classification: str
@@ -52,7 +52,7 @@ class EvidenceSnippet:
     #: 이 근거가 어떻게 존재하게 됐는가 (ADR-0010). 프롬프트까지 따라간다 — 답을 쓰는 모델이
     #: 저자가 쓴 문장과 기계가 그림에서 읽은 문장을 구별할 수 있어야 한다.
     provenance_tier: str = "authored"
-    #: 문서에 붙은 CRM 표식(`nexus/labels.py`). 등급과 **같은 이유로** 여기까지 따라온다 —
+    #: 문서에 붙은 CRM 마커(`nexus/labels.py`). 등급과 **같은 이유로** 여기까지 따라온다 —
     #: 합성 자료를 근거로 쓴 답변은 그 사실을 달고 나가야 한다. hop 하나라도 빠지면 표식은
     #: 없는 것과 같다.
     labels: list[str] = field(default_factory=list)
@@ -63,11 +63,11 @@ class EvidenceSnippet:
     #: 섞지 않는다 — 하나는 걸린 참조, 하나는 걸 곳이 사라진 참조다.
     code_deleted: list[DeletedMention] = field(default_factory=list)
     #: 위 앵커 판정이 **무엇과 비교한 것인가**(`search/anchor_status.py: ScanBasis`). 이 값이
-    #: 없으면 표면은 "현재 코드" 라고 단정하게 되고, 라이브에서 그 단정은 틀렸다 — 스캔이
+    #: 없으면 API 표면은 "현재 코드" 라고 단정하게 되고, 라이브에서 그 단정은 틀렸다 — 스캔이
     #: 리포당 한 번만 돌아 있었다. `None` 은 모른다는 뜻이고 모른다고 말해야 한다.
     code_scan: "ScanBasis | None" = None
-    #: 이 조각이 **어느 코퍼스에서 왔는가** (`search/evidence_share.py`). 답변이 실제로 무엇에
-    #: 기댔는지는 히트가 아니라 **패킷**에서 세어야 한다 — 채운 절·짝 문서·정정 확인 패스가
+    #: 이 청크가 **어느 코퍼스에서 왔는가** (`search/evidence_share.py`). 답변이 실제로 무엇에
+    #: 기댔는지는 히트가 아니라 **패킷**에서 세어야 한다 — 채운 절·페어 문서·정정 확인 패스가
     #: 랭킹을 거치지 않고 여기 들어오기 때문이다.
     tenant: str = ""
 
@@ -87,7 +87,7 @@ class CodeValue:
     """코드가 **지금** 말하는 값. 문서가 말하는 값과 나란히 놓으려고 있다.
 
     ⛔ **어느 쪽이 맞다고 판정하지 않는다.** 구현이 문서를 어긴 것일 수도 있고 문서가
-    갱신되지 않은 것일 수도 있으며, 층이 달라 둘 다 맞을 수도 있다(제품 규칙 30 · 서버
+    갱신되지 않은 것일 수도 있으며, 계층이 달라 둘 다 맞을 수도 있다(제품 규칙 30 · 서버
     방어선 100 · 저장 한계 255 는 실제로 관측된 모양이다). 시스템이 할 일은 둘을 **같이
     보이는 것**이고, 고르는 것은 읽는 사람 몫이다.
     """
@@ -99,7 +99,7 @@ class CodeValue:
     drifted: bool = False
     #: 소유자의 판정 (`models/claim.py`). 판정이 있으면 그 값이 **결정된 값**이고,
     #: `ruling_conflict` 는 코드 현재 값이 판정과 다른지를 **코드가** 계산한 것이다 — 모델은
-    #: 서술만 한다. `value` 가 "" 이고 판정만 있으면 「코드에서 읽지 못한 값의 판정」이다.
+    #: 생성만 한다. `value` 가 "" 이고 판정만 있으면 「코드에서 읽지 못한 값의 판정」이다.
     ruled_value: str | None = None
     ruled_source: str | None = None
     ruled_by: str | None = None
@@ -129,19 +129,19 @@ class EvidencePacket:
     #: ⛔ **왜 여기인가.** 실측 2026-09-03: 설계 문서 122건이 `design_docs` 에 있는데 웹·CLI 의
     #: principal 은 읽기 범위가 `default` 하나였고, 그래서 설계 질문에 **정책 코퍼스만 본 답**이
     #: 확신 있게 나갔다. 인용은 *어느 문서를 썼나*를 보여 주지만 *어느 코퍼스가 후보였나*는
-    #: 어디에도 없었다. 표면마다 붙이면 하나가 조용히 빠지므로(외부 평가 F2) 표면 넷이 전부
+    #: 어디에도 없었다. API 표면마다 붙이면 하나가 조용히 빠지므로(외부 평가 F2) API 표면 넷이 전부
     #: 지나는 이 자리에 둔다.
     #:
     #: ⚠ **비어 있는 것은 "모른다" 다.** 기본값으로 `default` 를 넣으면 틀린 사실을 답에 싣는다.
     searched_tenants: list[str] = field(default_factory=list)
-    #: 이 꾸러미를 만들고 글로 바꾸는 **코드의 판** (`llm/prompt_version.py`). 프롬프트에는 안
+    #: 이 근거 묶음을 만들고 글로 바꾸는 **코드의 버전** (`llm/prompt_version.py`). 프롬프트에는 안
     #: 들어간다 — 응답과 기록이 같은 값을 싣기 위한 것이다. 찍는 곳은 `searched_tenants` 와 같은
     #: 이음매이고, 이유도 같다.
     #:
-    #: ⚠ 빈 문자열은 「안 찍혔다」다(손으로 만든 꾸러미 · 평가 하니스). 모르는 것을 지어 채우지 않는다.
+    #: ⚠ 빈 문자열은 「안 찍혔다」다(손으로 만든 근거 묶음 · 평가 하네스). 모르는 것을 지어 채우지 않는다.
     prompt_version: str = ""
-    #: 이 꾸러미가 뒤진 **코퍼스의 판**과 **검색 스택의 판** (`search/versions.py`). 같은 이음매가
-    #: 찍는다. 코퍼스 판은 DB 가 있어야 셀 수 있다 — 없이 만든 꾸러미에서는 빈 문자열(모른다)이다.
+    #: 이 근거 묶음이 뒤진 **코퍼스의 버전**과 **검색 핑거프린트** (`search/versions.py`). 같은 접합부가
+    #: 찍는다. 코퍼스 버전은 DB 가 있어야 셀 수 있다 — 없이 만든 근거 묶음에서는 빈 문자열(모른다)이다.
     corpus_version: str = ""
     search_fingerprint: str = ""
 
@@ -157,14 +157,14 @@ async def assemble_packet(
     """검색 결과에서 evidence packet 조립.
 
     **네 표면(web API ×2 · A2A · CLI)이 전부 이 함수를 부른다.** 근거에 따라붙는 것은 여기서
-    붙인다 — 표면마다 사본을 만들면 어느 하나가 조용히 빠지고, 사람과 에이전트가 다른 답을
+    붙인다 — API 표면마다 사본을 만들면 어느 하나가 조용히 빠지고, 사람과 에이전트가 다른 답을
     받는다.
 
     Args:
         hits: Hybrid 검색 결과
         graph: Graph 조회 결과 (optional)
         tenant: 앵커 상태 조회 범위. 비면 조회하지 않는다 — 앵커를 안 쓰는 호출부
-            (테스트 픽스처·평가 하니스)가 DB 없이 패킷을 만들 수 있어야 한다.
+            (테스트 픽스처·평가 하네스)가 DB 없이 패킷을 만들 수 있어야 한다.
         fill: 상한을 채운 문서의 남은 절(`SearchResult.fill`). **순위가 아니라 근거**다 —
             뒤에 문서 순서로 붙는다. 안 주면 오늘과 바이트 단위로 같은 패킷이 나온다.
         spans: `SearchResult.spans` (SPEC-nexus-stage-spans). None 이면(기본, 캡처 꺼짐)
@@ -228,7 +228,7 @@ async def assemble_packet(
             Candidate(rank=i + 1, doc_rid=s.doc_rid, chunk_rid=s.chunk_rid, raw_score=s.score)
             for i, s in enumerate(packet.snippets)
         ]
-        # ⚠ 여기의 `n_snippets` 는 **묶음** 크기다. `search_log.n_snippets` 는 같은
+        # ⚠ 여기의 `n_snippets` 는 **근거 묶음** 크기다. `search_log.n_snippets` 는 같은
         # 이름으로 **히트** 수를 센다(`signals.py`). 둘을 맞추지 마라 — 다른 질문에
         # 답하는 수이고, 맞추면 한쪽 표의 과거 행이 전부 뜻을 잃는다.
         spans.add_packet(candidates=packet_cands, n_snippets=len(packet.snippets),
@@ -252,14 +252,14 @@ def format_for_llm(packet: EvidencePacket) -> str:
     # Evidence snippets
     parts.append("## 검색된 근거 (Evidence)")
 
-    # ⛔ **등급 규칙은 꾸러미에 한 번만 적는다** (실측 2026-09-23). 조각마다 붙이던 판은
+    # ⛔ **등급 규칙은 근거 묶음에 한 번만 적는다** (실측 2026-09-23). 청크마다 붙이던 버전은
     #    등급 문장이 한 줄일 때 값이 쌌다. 기계가 **쓴** 등급의 문장은 여섯 문장 354자이고,
-    #    그것이 조각마다 붙자 **꾸러미의 52% 가 같은 문장 열두 벌**이 됐다.
+    #    그것이 청크마다 붙자 **근거 묶음의 52% 가 같은 문장 열두 벌**이 됐다.
     #
     # ⛔⛔ **그리고 이 비용은 기계 조각이 많을수록 커진다** — 즉 **사람 근거가 가장 주목받아야
     #    할 때 가장 묻힌다.** 넷째 운영자 질의에서 사람 근거 인용이 0 이 된 판이 그 모양이었다.
     #
-    # ⭐ 조각마다 남는 것은 **짧은 표시**다(`mark`). 그것이면 어느 조각에 어느 규칙이
+    # ⭐ 청크마다 남는 것은 **짧은 표시**다(`mark`). 그것이면 어느 청크에 어느 규칙이
     #    걸리는지 알 수 있고, 규칙 자체는 위에서 한 번 읽으면 된다.
     seen_tiers: list[str] = []
     for s in packet.snippets:
@@ -278,12 +278,12 @@ def format_for_llm(packet: EvidencePacket) -> str:
             parts.append(f"타입: {s.doc_type}")
         # 등급은 **프롬프트에 보인다**. 여기서 빠지면 답을 쓰는 모델이 기계가 읽은 표와 저자가
         # 쓴 문장을 같은 것으로 다루고, 인용은 그 구별을 약속하지 못한다 (ADR-0010 hop 3).
-        # ⛔ **등급마다 다른 문장이다** (2026-09-23). 상수 하나를 붙이던 판은 등급이 둘일
+        # ⛔ **등급마다 다른 문장이다** (2026-09-23). 상수 하나를 붙이던 버전은 등급이 둘일
         #    때 맞았고, 기계가 **쓴** 등급이 생기면서 틀렸다 — 그 근거에 "그림에서 읽었다" 가
         #    붙는다. 규칙은 위에서 한 번 말했고, 여기 남는 것은 **어느 규칙이 걸리는가**다.
         if (_m := prov_mark(getattr(s, "provenance_tier", "authored"))):
             parts.append(f"등급:{_m}")
-        # 문서가 부른 코드 이름이 지금도 있는가. **결정론으로 판정한 사실**이고, 모델은 그것을
+        # 문서가 부른 코드 이름이 지금도 있는가. **결정론적으로 판정한 사실**이고, 모델은 그것을
         # 서술하기만 한다 — 낡음 여부를 모델에게 추측시키는 순간 그 판정은 근거를 잃는다.
         # 앵커가 없으면 빈 문자열이라 프롬프트는 오늘과 같다 (평가 팩과의 비교가 안 끊긴다).
         anchor_line = describe(getattr(s, "code_anchors", []),
@@ -297,7 +297,7 @@ def format_for_llm(packet: EvidencePacket) -> str:
         # 이 필드를 모를 수 있다. 없으면 짧은 쪽으로 떨어진다 — 프롬프트가 비는 것보다 낫다.
         # ⛔ **인용 문법 그대로인 문자열을 모델에게 먹이지 않는다** (실측 2026-09-23).
         #    기계가 **쓴** 근거의 본문에는 `[출처: …]` 가 글자로 들어 있다 — 그 층의 지난
-        #    답이 남긴 것이다. 답이 그것을 **제 인용으로 옮겨 적었고**(그 문서는 꾸러미에
+        #    답이 남긴 것이다. 답이 그것을 **제 인용으로 옮겨 적었고**(그 문서는 근거 묶음에
         #    없었다), 등급 주석으로 막았는데 **넷 중 하나에서 다시 났다.**
         #
         # ⭐ **이 자리는 애초에 우리가 만든 것이다.** 우리 문법 그대로인 문자열을 주고 그
@@ -305,7 +305,7 @@ def format_for_llm(packet: EvidencePacket) -> str:
         #    대신, 여기서 **내용으로 보여 준다.** 지우지는 않는다 — 그 설명이 무엇을 근거로
         #    댔는지는 그 문서의 내용이다.
         #
-        # ⚠ 실측: 인용 문법이 든 조각은 `machine_written` **12개뿐**이고 사람 글 8,622개와
+        # ⚠ 실측: 인용 문법이 든 청크는 `machine_written` **12개뿐**이고 사람 글 8,622개와
         #    기계가 읽은 203개에는 **0건**이다. 그래서 다른 근거의 프롬프트는 안 바뀐다.
         parts.append(f"\n{as_quoted_content(getattr(s, 'full_text', '') or s.text)}")
 

@@ -19,7 +19,7 @@ from nexus.ingest.sources.notion_reconcile import notion_doc_rid, notion_doc_uri
 
 log = structlog.get_logger(__name__)
 
-# 제목 첫 토큰 → 축-A 타입(결정론적 휴리스틱; LLM 미사용 — nexus 규율). 미매치 NOTE.
+# 제목 첫 토큰 → 차원-A 타입(결정론적 휴리스틱; LLM 미사용 — nexus 규율). 미매치 NOTE.
 _KEYWORD_TO_TYPE = {
     "adr": "ADR", "rfc": "RFC", "prd": "PRD", "design": "DESIGN",
     "spec": "DESIGN", "runbook": "RUNBOOK", "postmortem": "POSTMORTEM",
@@ -27,7 +27,7 @@ _KEYWORD_TO_TYPE = {
 
 
 def classify_kind(title: str) -> str:
-    """제목 첫 토큰으로 축-A 타입 추론(결정론). 미매치→NOTE(default-memo 정합)."""
+    """제목 첫 토큰으로 차원-A 타입 추론(결정론적). 미매치→NOTE(default-memo 정합)."""
     tokens = re.split(r"[^a-z0-9]+", (title or "").strip().lower(), maxsplit=1)
     return _KEYWORD_TO_TYPE.get(tokens[0] if tokens else "", "NOTE")
 
@@ -63,18 +63,18 @@ def build_csf(
         "provenance": provenance,
         # **이 본문의 비전 마커를 우리가 썼는가.** 청커는 기본적으로 마커를 못 믿는다(저자
         # 문서에도 들어 있을 수 있으므로). 이 플래그가 여기서부터 청커까지 닿지 않으면 추출
-        # 텍스트가 마커만 벗겨진 채 **저자 텍스트로 세탁된다** — ADR-0010 §4 가 "추출 안
+        # 텍스트가 마커만 벗겨진 채 **작성자 텍스트로 세탁된다** — ADR-0010 §4 가 "추출 안
         # 하느니만 못하다" 고 한 상태다.
         "vision_extracted": bool(getattr(conv, "vision_extracted", False)),
         # 그림 수는 신호원이다(migration 011, ADR-0002 게이트 형식). 컨버터가 세어
         # `ConvertedDoc.frontmatter` 에 넣지만 CSF 로는 안 실려서, **재적재할 때마다
         # `documents.n_images` 가 0 으로 덮였다** — 신호가 조용히 죽는다. 2026-08-10 실측.
         "image_count": int(conv.frontmatter.get("image_count") or 0),
-        # 문서 **자신의** 마지막 수정 시각(039). ⛔ 이 칸을 안 실으면 `documents.origin_updated_at`
-        # 이 영원히 NULL 이고, *"문서가 낡았나"* 는 계속 답할 수 없다 — 2026-09-02 에 칸을
+        # 문서 **자신의** 마지막 수정 시각(039). ⛔ 이 필드를 안 실으면 `documents.origin_updated_at`
+        # 이 영원히 NULL 이고, *"문서가 낡았나"* 는 계속 답할 수 없다 — 2026-09-02 에 필드를
         # 만들고 적재를 돌렸는데 126건 전부 `미상` 이었던 것이 이 줄이 없어서다.
         #
-        # **이 이음매에서 값이 사라진 것은 세 번째다.** 같은 함수의 주석 둘이 앞의 둘을 적어
+        # **이 접합부에서 값이 사라진 것은 세 번째다.** 같은 함수의 주석 둘이 앞의 둘을 적어
         # 두었다 — 제목(페이지 `Index` 가 딴 이름으로 들어감)과 그림 수(재적재마다 0 으로 덮임).
         "origin_last_edited": str(conv.frontmatter.get("origin_last_edited") or ""),
     }
@@ -100,13 +100,13 @@ class ImportReport:
     holes: int = 0
     #: `dry_run` 에서 "적재했을" 페이지 수. 실제 적재는 하지 않았다.
     would_ingest: int = 0
-    #: 이 실행이 **공급자로 보낸 그림 판독**과 그 값(`llm/dev_spend.py` 의 `Spend.as_dict()`).
-    #: 2026-08-25 재적재는 39건을 보내고도 이 칸이 없어서 "지출 0" 으로 보고됐다.
+    #: 이 실행이 **공급자로 보낸 그림 기계 판독**과 그 값(`llm/dev_spend.py` 의 `Spend.as_dict()`).
+    #: 2026-08-25 재적재는 39건을 보내고도 이 필드가 없어서 "지출 0" 으로 보고됐다.
     vision_spend: dict = field(default_factory=dict)
 
 
 async def _fill_images(conv, tenant: str, source_uri: str = "", spend=None) -> tuple[str, int]:
-    """그림 자리 표식을 추출 블록으로 바꾼다. 꺼져 있으면 표식만 지운다.
+    """그림 플레이스홀더를 추출 블록으로 바꾼다. 꺼져 있으면 표식만 지운다.
 
     **기본은 꺼짐.** 켜는 것은 원문 질의가 아니라 **문서 이미지**가 공급자로 나가는 것을
     받아들이는 행위이고, 그 판단은 코퍼스를 가진 배포가 한다.
@@ -163,7 +163,7 @@ async def import_notion(
         walked_roots |= roots
 
     report = ImportReport()
-    # 판독 장부. **이 실행 하나짜리**다 — 전역에 두면 두 실행이 서로의 값을 읽는다.
+    # 기계 판독 원장. **이 실행 하나짜리**다 — 전역에 두면 두 실행이 서로의 값을 읽는다.
     from nexus.llm.dev_spend import Spend
     vision_spend = Spend()
     max_seen = since or ""
@@ -183,7 +183,7 @@ async def import_notion(
                 log.warning("notion.partial_body", page_id=page_id, holes=len(conv.holes),
                             kinds=sorted({h.get("type", "") for h in conv.holes}))
             # ── 2패스: 그림 자리를 추출 블록으로 채운다 ────────────────────────
-            # 순회(동기)와 추출(HTTP+LLM, 비동기)을 갈라 둔 이음매다. 꺼져 있으면 자리 표식만
+            # 순회(동기)와 추출(HTTP+LLM, 비동기)을 갈라 둔 접합부다. 꺼져 있으면 플레이스홀더만
             # 지우고 예전 `![]()` 로 돌아간다 — 추출이 안 도는 배포에서 본문이 표식으로
             # 오염되면 청커가 거기서 갈린다.
             # **dry_run 은 여기를 지난다** — 추출은 공급자 호출이자 `vision_extractions` 쓰기다.

@@ -86,6 +86,6 @@ def test_overlays_do_not_redeclare_secrets():
 
 
 def test_the_dev_token_stays_in_the_dev_overlay():
-    """역방향 가드: NEXUS_DEV_TOKEN 을 베이스로 올리면 prod 가 무인증 온램프를 상속한다."""
+    """역방향 가드 검사: NEXUS_DEV_TOKEN 을 베이스로 올리면 prod 가 무인증 온램프를 상속한다."""
     assert "NEXUS_DEV_TOKEN" not in _env_of("docker-compose.yml")
     assert "NEXUS_DEV_TOKEN" in _env_of("docker-compose.override.yml")

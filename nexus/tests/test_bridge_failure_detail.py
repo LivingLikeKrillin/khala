@@ -1,7 +1,7 @@
 """502 가 **왜** 인지를 실어 보내는가.
 
 ⛔ **실측 2026-09-18.** 호스트의 `claude` OAuth 세션이 만료돼 브리지가 즉시 502 를 냈다.
-그런데 본문은 `"claude non-zero exit"` 하나였다 — 처방이 적힌 줄
+그런데 본문은 `"claude non-zero exit"` 하나였다 — 조치 방법이 적힌 줄
 (`Failed to authenticate: OAuth session expired and could not be refreshed`)은
 **stdout 에 있었고 버려졌다.** 코드가 `err` 만 봤기 때문이다.
 
@@ -71,7 +71,7 @@ def test_the_bridge_does_not_keep_its_own_copy_of_the_rule():
     from nexus.tools import claude_llm_bridge
 
     src = pathlib.Path(claude_llm_bridge.__file__).read_text(encoding="utf-8")
-    # 부르는 자리를 **문자열 개수로** 세던 판(`== 2`)은 결과 읽기가 공용 함수로 모이면서(09-30,
+    # 부르는 자리를 **문자열 개수로** 세던 버전(`== 2`)은 결과 읽기가 공용 함수로 모이면서(09-30,
     # JSON 출력) 뜻을 잃었다 — 호출이 셋이 됐고 셋 다 정당하다. 여기서 막으려는 것은 **핸들러가
     # 자기 문장을 조립하는 것**이므로, 부르는 함수가 공용 판독 함수들뿐인지를 본다. 두 경로가
     # 실제로 이유를 싣는지는 위 `test_both_paths_carry_the_reason` 이 **행동으로** 건다.

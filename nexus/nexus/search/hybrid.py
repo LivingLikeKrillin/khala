@@ -54,7 +54,7 @@ class SearchHit:
     section_path: str = ""
     source_uri: str = ""
     source_version: str = ""
-    #: 사람이 보는 미리보기 — 경계에서 자른 짧은 조각. 웹·Slack·API 가 그대로 쓴다.
+    #: 사람이 보는 미리보기 — 경계에서 자른 짧은 청크. 웹·Slack·API 가 그대로 쓴다.
     snippet: str = ""
     #: **LLM 근거용 청크 전문.** 사람 미리보기와 갈라 둔다: 300자는 화면엔 알맞지만 프롬프트엔
     #: 답을 잘라먹는 값이다. 2026-08-08 에 846자짜리 권한 표가 앞 300자만 넘어가, 모델이
@@ -74,14 +74,14 @@ class SearchHit:
     vector_rank: int | None = None
     classification: str = "INTERNAL"
     approved_hash: str = ""  # documents.approved_hash — accountable-review stamp (SPEC §5.4)
-    doc_type: str = ""  # documents.doc_type — 축-A 타입(S3 intake 보존)
+    doc_type: str = ""  # documents.doc_type — 차원-A 타입(S3 intake 보존)
     updated_at: datetime | None = None  # documents.updated_at — 신선도 판정용(SPEC-nexus-answer-staleness-warning)
     #: documents.origin_updated_at — **원본이 말하는 문서 자신의 시각**(migration 039).
     #: `updated_at`(우리 적재 시각)과 섞지 마라. `None` 은 **모른다**이지 새것도 옛것도 아니다.
     origin_updated_at: datetime | None = None
-    #: documents.labels — CRM 표식(`nexus/labels.py`). **등급이 아니다.**
+    #: documents.labels — CRM 마커(`nexus/labels.py`). **등급이 아니다.**
     #:
-    #: ⛔ **문서 행에만 있으면 없는 것과 같다.** 합성 자료를 표시해 두고 근거에는 안 실으면,
+    #: ⛔ **문서 행에만 있으면 없는 것과 같다.** 합성 데이터를 표시해 두고 검색 근거에는 안 실으면,
     #: 읽는 사람 앞에 지어낸 절차가 실제 운영 문서와 같은 얼굴로 온다 — `provenance_tier` 가
     #: hop 을 하나라도 빠뜨리면 안 되는 것과 같은 이유다(ADR-0010 §4).
     labels: list[str] = field(default_factory=list)
@@ -107,7 +107,7 @@ class SearchResult:
     degraded: list[str] = field(default_factory=list)
     #: **터진 보강 패스의 이름** (`section_fill` · `corrections` · `pairs`).
     #:
-    #: ⛔ **`degraded` 에 넣지 않는다** — 그 칸의 어휘는 `LEGS` 가 정본이고 경로만 담는다.
+    #: ⛔ **`degraded` 에 넣지 않는다** — 그 필드의 어휘는 `LEGS` 가 정본이고 경로만 담는다.
     #: 보강은 경로가 아니라 순위 뒤에 붙는 덧붙임이라 죽어도 순위가 그대로다.
     #:
     #: ⛔ **왜 있나 (2026-09-22).** 세 보강 패스가 전부 실패를 삼키고 **빈 목록**을 돌려줬다.
@@ -135,11 +135,11 @@ class SearchResult:
     #: 무시된 것과 처치가 발화할 자리가 없던 것이 구별되지 않고, 사전 등록 §5.5 의 음성
     #: 대조군이 성립하지 않는다.
     identifier_channel: list[str] = field(default_factory=list)
-    #: 호출자가 그 채널을 **요청했는가**. 발화 여부와 다른 사실이다.
+    #: 호출자가 그 채널을 **요청했는가**. 발동 여부와 다른 사실이다.
     identifier_channel_asked: bool = False
-    #: 융합이 **문서 합의**를 셌는가 (사전 등록 F1, `_add_document_agreement`). 요청 칸
+    #: 융합이 **문서 일치**를 셌는가 (사전 등록 F1, `_add_document_agreement`). 요청 필드
     #: `fusion_doc_agreement` 가 켜면 참이다. 결과 객체에 실리는 이유는 `identifier_channel_asked`
-    #: 와 같다 — 평가 하니스 · span · 기록은 요청을 못 본다.
+    #: 와 같다 — 평가 하네스 · span · 기록은 요청을 못 본다.
     fusion_doc_agreement: bool = False
     #: 이번 질의에서 후보에서 뺀 문서 종류 — **정규화를 거친 뒤의 것**이다.
     #: 호출자가 보낸 것이 아니라 **실제로 SQL 에 간 것**을 돌려준다. 오타가 조용히
@@ -159,7 +159,7 @@ class SearchResult:
 #: 떨어질 것" 이었고, `1` 과 `16` 이 통과, `2`(길이로 나눔)는 파편에 제일 좋았지만 **대조군
 #: Recall 을 1.000 → 0.917 로 떨어뜨려 기각**됐다. `1` 과 `16` 은 그 표본에서 구별되지 않았다.
 #:
-#: ⚠ **유의성은 주장하지 않는다**: 5승 0패 28무로 방향은 안 뒤집혔지만 불일치쌍이 문턱(6)에
+#: ⚠ **유의성은 주장하지 않는다**: 5승 0패 28무로 방향은 안 뒤집혔지만 불일치쌍이 임계값(6)에
 #: 하나 모자란다. 그리고 코퍼스 하나에서 측정했다. 되돌리려면 이 값을 `0` 으로 두면 된다.
 #:
 #: `SPEC-nexus-ranking-precision` §4.1 은 정규화 없는 `ts_rank_cd` 를 골랐다. 이 값은 그
@@ -337,7 +337,7 @@ def degrades_the_leg(exc: BaseException) -> bool:
     검색 순서, 상수 벡터를 읽은 ANN 측정).
 
     degrade: `DataError` — 차원 불일치(SQLSTATE 22000)가 이 부류다. **이 질의의 벡터**의 성질이라
-    재시도로 낫지 않는다. 이 부류가 그 결함 하나보다 넓다는 것은 알고 있고(벡터 경로의 질의 조립
+    재시도로 낫지 않는다. 이 유형이 그 결함 하나보다 넓다는 것은 알고 있고(벡터 경로의 질의 조립
     버그도 여기로 온다), 그래서 error 레벨로 SQLSTATE 와 함께 남긴다 — 조립 버그는 테스트와 로그가
     잡고, 살아 있는 500 은 사용자가 잡는다.
     """
@@ -356,11 +356,11 @@ async def _vector_leg(
     window: OriginWindow = OriginWindow(),
     exclude_doc_types: Sequence[str] = (),
 ) -> tuple[list[LegHit], bool, float | None]:
-    """(결과, degraded, 1위 거리). **빈 결과와 죽은 경로를 구분해서 돌려준다.**
+    """(결과, degraded, 1위 거리). **빈 결과와 실패한 경로를 구분해서 돌려준다.**
 
     예전엔 임베딩 실패를 조용히 삼켜 빈 리스트를 냈고 SQL 실패는 500 으로 나갔다 — 둘 다 틀렸다.
 
-    죽은 경로의 거리는 `None` 이다. **0.0 으로 채우지 않는다** — 그러면 "완벽하게 맞았다" 로
+    실패한 경로의 거리는 `None` 이다. **0.0 으로 채우지 않는다** — 그러면 "완벽하게 맞았다" 로
     읽히고, 못 측정한 것과 측정해서 좋은 것이 같은 값이 된다.
     """
     try:
@@ -409,9 +409,9 @@ def _rrf_fusion(
     vector_results: list[tuple[str, int]],
     k: int = 60,
 ) -> list[dict]:
-    """RRF (Reciprocal Rank Fusion) 스코어 병합. 전체 병합 리스트를 RRF 순서로 반환(컷 없음).
+    """RRF (Reciprocal Rank Fusion) 스코어 병합. 전체 병합 리스트를 RRF 순서로 반환(컷오프 없음).
 
-    top_k 컷은 문서 다양성(_diversify) 이후로 미룬다 — 한 문서가 top-k 를 도배하지 않도록.
+    top_k 컷오프는 문서 다양성(_diversify) 이후로 미룬다 — 한 문서가 top-k 를 도배하지 않도록.
     score = Σ 1/(k + rank + 1)
 
     **채널이 하나인 경우다.** 멀티턴은 질의 변형(재작성/원문)을 채널로 얹는데, 그 융합은
@@ -467,7 +467,7 @@ def normalize_channels(channels, query: str) -> list[QueryChannel]:
 
 @dataclass
 class ChannelResults:
-    """한 **채널**(= 질의 변형)이 두 **경로**에서 얻은 순위. 축이 둘이라는 것이 요점이다.
+    """한 **채널**(= 질의 변형)이 두 **경로**에서 얻은 순위. 차원이 둘이라는 것이 요점이다.
 
     채널 = 무엇을 물었나(재작성 질의 / 사용자가 실제로 친 문장).
     경로  = 어떻게 찾았나(BM25 / vector).
@@ -492,9 +492,9 @@ def fuse_channels(channels: list[ChannelResults], k: int = 60, *,
     목록을 내고, 가중 합산은 **모든 문서에 같은 배수**를 곱할 뿐 순서를 바꾸지 않는다. 절대
     점수만 팽창한다(§3.3, §4 I6).
 
-    **`doc_of`(조각 → 문서)를 주면 문서 합의를 더한다** — 사전 등록 F1
+    **`doc_of`(청크 → 문서)를 주면 문서 일치를 더한다** — 사전 등록 F1
     (`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md`, `_add_document_agreement`).
-    안 주면 오늘과 비트까지 같다. 요청 칸 `fusion_doc_agreement` 가 켤 때만 준다.
+    안 주면 오늘과 비트까지 같다. 요청 필드 `fusion_doc_agreement` 가 켤 때만 준다.
     """
     scores: dict[str, dict] = {}
 
@@ -509,7 +509,7 @@ def fuse_channels(channels: list[ChannelResults], k: int = 60, *,
             for rid, rank in results:
                 slot = _slot(rid)
                 slot["score"] += ch.weight * (1.0 / (k + rank + 1))
-                # 경로별 순위는 **채널을 통틀어 가장 좋은 것**을 남긴다. 칸이 둘뿐인데 채널이
+                # 경로별 순위는 **채널을 통틀어 가장 좋은 것**을 남긴다. 필드가 둘뿐인데 채널이
                 # 늘었으므로, 어느 하나를 고르지 않으면 나중 채널이 앞 채널을 덮는다.
                 key = f"{leg}_rank"
                 if slot[key] is None or rank < slot[key]:
@@ -530,19 +530,19 @@ def fuse_channels(channels: list[ChannelResults], k: int = 60, *,
 
 def _add_document_agreement(scores: dict[str, dict], channels: list[ChannelResults], k: int,
                             doc_of: Mapping[str, str]) -> None:
-    """조각 점수에 **그 조각의 문서가 받은 경로 합의**를 더한다 (사전 등록 F1).
+    """청크 점수에 **그 청크의 문서가 받은 경로 합의**를 더한다 (사전 등록 F1).
 
-        문서 점수 = Σ_(채널, 경로) w · 1/(k + 그 경로에서 그 문서의 가장 높은 조각 순위 + 1)
-        조각 최종 점수 = 조각 RRF + 그 조각의 문서 점수
+        문서 점수 = Σ_(채널, 경로) w · 1/(k + 그 경로에서 그 문서의 가장 높은 청크 순위 + 1)
+        청크 최종 점수 = 청크 RRF + 그 청크의 문서 점수
 
-    ⛔ **왜 (2026-10-01, R01).** RRF 는 조각 단위라, 같은 문서를 **다른 절**로 짚은 경로들은
+    ⛔ **왜 (2026-10-01, R01).** RRF 는 청크 단위라, 같은 문서를 **다른 절**로 짚은 경로들은
     합쳐지지 않고 서로 경쟁한다 — SOP-01 을 세 경로가 §5 · §2 · §6 으로 찾았는데 가장 높은
-    §5 가 26위에서 컷 20 에 잘렸다. 이 항은 그 경로들의 표를 문서로 모은다.
+    §5 가 26위에서 컷오프 20 에 잘렸다. 이 항은 그 경로들의 표를 문서로 모은다.
 
-    **경로마다 문서의 최고 조각 하나만** 센다. 조각마다 세면 조각이 많은 긴 문서가 조각 수로
+    **경로마다 문서의 최고 청크 하나만** 센다. 청크마다 세면 청크가 많은 긴 문서가 청크 수로
     오른다 — 그 대가는 사전 등록 부 변수 5(한 문서 쏠림)로 따로 측정한다.
 
-    ⛔ 문서를 모르는 조각은 `KeyError` 다. 0 을 더하면 「합의 없음」과 같은 값이 되고, 그러면
+    ⛔ 문서를 모르는 청크는 `KeyError` 다. 0 을 더하면 「합의 없음」과 같은 값이 되고, 그러면
     터진 것이 빈 것처럼 보인다.
     """
     best: dict[tuple[int, str, str], int] = {}
@@ -627,7 +627,7 @@ _SENT_RE = re.compile(r'[.!?。]["\')\]」』]*(?=\s|$)')
 def _truncate_snippet(text: str, max_chars: int) -> str:
     """근거 스니펫을 경계에서 자른다 — 단어/문장 중간 안 자름(SPEC-nexus-snippet-boundary-truncation).
 
-    이 스니펫은 dual-mode: LLM 프롬프트 + 사람 표면(웹/Slack/API) 양쪽이 본다.
+    이 스니펫은 dual-mode: LLM 프롬프트 + 사람 API 표면(웹/Slack/API) 양쪽이 본다.
     """
     if len(text) <= max_chars:
         return text
@@ -712,10 +712,10 @@ async def _fill_sections(
 ) -> tuple[list[SearchHit], bool]:
     """(채운 절, **터졌는가**). 실패는 삼키되 **조용하지 않게**.
 
-    채움은 보강이다. 이게 죽었다고 검색 결과까지 버리면, 있던 답도 못 준다.
+    필은 보강이다. 이게 죽었다고 검색 결과까지 버리면, 있던 답도 못 준다.
 
     ⛔ **그런데 「조용하지 않게」가 로그까지였다.** 부른 쪽이 받는 값은 두 경우에 똑같은
-    빈 목록이었다 — `_vector_leg` 가 *"빈 결과와 죽은 경로를 구분해서 돌려준다"* 고 적고
+    빈 목록이었다 — `_vector_leg` 가 *"빈 결과와 실패한 경로를 구분해서 돌려준다"* 고 적고
     그렇게 하는 동안, 같은 파일의 이 함수는 안 그랬다. 둘째 값이 그 구분이다.
     """
     from nexus.search.section_fill import (
@@ -737,7 +737,7 @@ async def _fill_sections(
         # 무관하게 완성한다. 절을 고르는 것이 아니라 검색이 이미 고른 절이다.
         #
         # 그날 이것이 없어서 생긴 일: 어떤 표가 낡았다고 알리는 문단이 그 표와 같은 절에
-        # 있었는데(chunk 2·6) 문서가 32청크라 빠졌고, 답변이 낡은 숫자를 정본으로 읽었다.
+        # 있었는데(chunk 2·6) 문서가 32청크라 빠졌고, 답변이 스테일 숫자를 정본으로 읽었다.
         sections = hit_sections(hits)
         if sections:
             rows += await fill_for_sections(
@@ -801,7 +801,7 @@ async def hybrid_search(
         route: 검색 경로
         entity_rids: 감지된 엔티티 rid 목록 (graph 검색용)
         config: config.yaml 설정
-        fusion_doc_agreement: 융합에 문서 합의를 더한다(사전 등록 F1). **기본 꺼짐** — 꺼져
+        fusion_doc_agreement: 융합에 문서 일치를 더한다(사전 등록 F1). **기본 비활성화** — 꺼져
             있으면 융합은 오늘과 비트까지 같다. 처치이고 측정 대상이다.
 
     Returns:
@@ -819,7 +819,7 @@ async def hybrid_search(
     excluded_types = normalize_doc_types(exclude_doc_types)
     result_excluded = list(excluded_types)
 
-    # 단계 span 캡처(SPEC-nexus-stage-spans, Unit 1). **기본 꺼짐** — `spans.enabled` 가
+    # 단계 span 캡처(SPEC-nexus-stage-spans, Unit 1). **기본 비활성화** — `spans.enabled` 가
     # true 일 때만 만든다. None 이면 아래 모든 `if spans is not None:` 이 건너뛰어져
     # 오늘과 바이트 단위로 같은 경로를 탄다.
     spans_cfg = cfg.get("spans", {})
@@ -842,7 +842,7 @@ async def hybrid_search(
     # 멀티턴은 (재작성, 1.3) + (원문, 0.5) 두 채널로 온다 (SPEC §3.3).
     #
     # **후보 풀은 채널마다 그대로다.** 경로가 둘에서 넷으로 늘어도 bm25_top_k/vector_top_k 는
-    # 건드리지 않는다. 컷(_diversify/per_doc_cap/top_k)은 융합 **뒤 한 번만** 걸린다 — 채널마다
+    # 건드리지 않는다. 컷오프(_diversify/per_doc_cap/top_k)는 융합 **뒤 한 번만** 걸린다 — 채널마다
     # 걸면 다양성 규칙이 두 번 먹는다.
     #: 채널 이름은 진단용이고 점수에 영향을 주지 않는다. 다만 **기록에 남으므로**
     #: 위치가 아니라 채널 자신이 들고 온다 (`QueryChannel` 머리말).
@@ -854,8 +854,8 @@ async def hybrid_search(
     # ⛔ **「켰는가」는 여기서만 알 수 있다.** 채널 목록으로는 못 되돌린다 — 켰는데 질의에
     # 식별자가 없으면 채널이 아예 안 붙기 때문에, 「안 켰다」와 모양이 같아진다. 그래서
     # 호출자가 말해 줘야 하고, 이 값이 **결과 객체에 실려야** 한다: `SearchResult` 는
-    # `reconcile`·평가 하니스·span 기록으로 흘러가고, 거기서는 요청 객체를 못 본다.
-    # ⚠ 2026-09-20 에 이 칸이 **아무 데서도 안 채워진 채** 회귀 측정에 쓰였다 — 항상
+    # `reconcile`·평가 하네스·span 기록으로 흘러가고, 거기서는 요청 객체를 못 본다.
+    # ⚠ 2026-09-20 에 이 필드가 **아무 데서도 안 채워진 채** 회귀 측정에 쓰였다 — 항상
     # `False` 라, 「켰는데 발화 안 함」이 「안 켰음」으로 기록됐다(사전 등록 §5.5 무력화).
     result.identifier_channel_asked = identifier_channel_asked
     result.fusion_doc_agreement = fusion_doc_agreement
@@ -889,8 +889,8 @@ async def hybrid_search(
     # `doc_rid`/`score` 를 갖고 있으므로(위 `_bm25_search`/`_vector_search` 참조) 여기서
     # `chunks` 를 한 번 더 묻지 않는다 — 예전엔 이 자리에 `_resolve_doc_rids` 추가 조회가 있었다.
     leg_results: dict[tuple[int, str], tuple[list[LegHit], bool]] = {}
-    #: 조각 → 문서. 문서 합의(F1)가 쓴다. 경로가 낸 행이 자기 문서를 들고 오므로(`LegHit.doc_rid`)
-    #: `chunks` 를 다시 묻지 않는다 — 융합에 들어가는 조각은 전부 여기 있다.
+    #: 청크 → 문서. 문서 일치(F1)가 쓴다. 경로가 낸 행이 자기 문서를 들고 오므로(`LegHit.doc_rid`)
+    #: `chunks` 를 다시 묻지 않는다 — 융합에 들어가는 청크는 전부 여기 있다.
     doc_of: dict[str, str] = {}
     for i, ch in enumerate(active):
         weight = ch.weight
@@ -918,7 +918,7 @@ async def hybrid_search(
 
     bm25_ms = int((time.time() - start) * 1000)
 
-    # RRF Fusion (전체 병합, 컷은 다양성 이후). 문서 합의는 요청이 켤 때만 — 꺼지면 오늘 그대로.
+    # RRF Fusion (전체 병합, 컷오프는 다양성 이후). 문서 일치는 요청이 켤 때만 — 꺼지면 오늘 그대로.
     fused = fuse_channels(ch_results, k=rrf_k,
                           doc_of=doc_of if fusion_doc_agreement else None)
 
@@ -934,7 +934,7 @@ async def hybrid_search(
             ]
             spans.add_leg(channel=channel_label, leg=leg, candidates=cands, fired=fired)
 
-        # `fused` 는 컷 전 **전체 병합 리스트**다.
+        # `fused` 는 컷오프 전 **전체 병합 리스트**다.
         fusion_cands = [
             Candidate(rank=i + 1, doc_rid=doc_rid_by_chunk.get(f["rid"], ""),
                      chunk_rid=f["rid"], raw_score=f["score"])
@@ -947,7 +947,7 @@ async def hybrid_search(
     enriched = await _enrich_hits(
         fused, tenant, max_snippet_chars=search_cfg.get("snippet_max_chars", 300))
 
-    # 문서 다양성 + top_k 컷 — 한 문서가 결과를 도배하지 않게.
+    # 문서 다양성 + top_k 컷오프 — 한 문서가 결과를 도배하지 않게.
     per_doc_cap = search_cfg.get("diversity_per_doc_cap", 3)
     result.hits = _diversify(enriched, top_k, per_doc_cap)
     # **좁혔는데 안 좁혀진 만큼**을 호출자가 봐야 한다. 세는 대상은 사람이 실제로 받는 목록이다.
@@ -995,7 +995,7 @@ async def hybrid_search(
         # 안 돌았다는 사실도 남긴다 — "이 단계는 켜져 있었는데 후보가 0 이었다" 와
         # "이 단계가 아예 꺼져 있었다" 는 다른 사실이고, `fired` 가 그 둘을 가른다.
         # ⭐ **셋째가 있다**: "켜졌고 터졌다". 그것은 `detail.failed` 가 가른다 — 앞의 둘과
-        #    같은 빈 후보 목록으로 남으므로, 이 칸이 없으면 기록에서 영영 구별되지 않는다.
+        #    같은 빈 후보 목록으로 남으므로, 이 필드가 없으면 기록에서 영영 구별되지 않는다.
         spans.add_section_fill(candidates=[], trigger_saturated=False, fired=False)
 
     # Graph 보강 (route에 따라)
@@ -1005,7 +1005,7 @@ async def hybrid_search(
         targets = entity_rids[:max_entities]  # 비용 상한
         # ⛔ **저장소는 테넌트를 하나씩 받는다**(`tenant = $2` · `f_graph_neighbors` 의 text 인자).
         # 읽기 범위(튜플)를 통째로 넘기면 asyncpg 가 매번 거절한다 — 2026-09-22 부터 10-01 까지 라이브
-        # 로그에 99회 그랬고, 경고 한 줄만 남긴 채 그래프가 비었다(`scope_sql.py` 머리말과 같은 부류).
+        # 로그에 99회 그랬고, 경고 한 줄만 남긴 채 그래프가 비었다(`scope_sql.py` 머리말과 같은 유형).
         # 그래서 (엔티티, 테넌트) 마다 묻고 합친다. 문자열 범위는 예전처럼 엔티티당 한 번이다.
         lookups = [(rid, t) for rid in targets for t in normalize_scope(tenant)]
         try:

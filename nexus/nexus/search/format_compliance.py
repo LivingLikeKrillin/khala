@@ -63,7 +63,7 @@ def list_items(text: str) -> list[str]:
 
 
 def shorter_than(text: str, reference: str) -> bool:
-    """"짧게" 는 **상대적**이다. 절대 길이 문턱은 질문마다 뜻이 달라진다."""
+    """"짧게" 는 **상대적**이다. 절대 길이 임계값은 질문마다 뜻이 달라진다."""
     return len(text or "") < len(reference or "")
 
 
@@ -119,8 +119,8 @@ def shape_unmeasured() -> dict:
 def shape_if_measured(answer: str | None, *, measured: bool) -> dict:
     """모양을 재거나, 같은 키를 비워 둔다. **호출부는 이것만 쓴다.**
 
-    분기를 호출부마다 따로 쓰면 한 표면만 고쳐지고 나머지가 조용히 다른 규칙을 쓴다 —
-    이 리포에서 답변 표면 셋이 정확히 그렇게 갈렸던 적이 있다(`packet_for_answer` 머리말).
-    조건 자체는 표면마다 다르므로 호출부에 남고, **갈래는 여기 하나**다.
+    분기를 호출부마다 따로 쓰면 한 API 표면만 고쳐지고 나머지가 조용히 다른 규칙을 쓴다 —
+    이 리포에서 답변 API 표면 셋이 정확히 그렇게 갈렸던 적이 있다(`packet_for_answer` 머리말).
+    조건 자체는 API 표면마다 다르므로 호출부에 남고, **하위 범주는 여기 하나**다.
     """
     return shape(answer) if measured else shape_unmeasured()

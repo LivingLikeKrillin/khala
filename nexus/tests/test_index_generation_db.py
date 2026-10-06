@@ -1,6 +1,6 @@
-"""세대 선언 — REAL Postgres. SPEC-nexus-generation-of-record §6-1·2·5.
+"""세대 명시적 선언 — REAL Postgres. SPEC-nexus-generation-of-record §6-1·2·5.
 
-선언은 **코퍼스의 사실**이고 프로세스의 설정이 아니다. 그래서 DB 에 있고, append-only 이고,
+명시적 선언은 **코퍼스의 사실**이고 프로세스의 설정이 아니다. 그래서 DB 에 있고, append-only 이고,
 쓰기 전에 검증된다.
 """
 
@@ -44,7 +44,7 @@ async def test_declaring_appends_and_current_is_the_latest(clean):
 
 
 async def test_an_undeclared_tenant_is_none_not_a_default(clean):
-    """선언 없음은 기본값이 아니다 — 아무도 결정하지 않은 상태다."""
+    """명시적 선언 없음은 기본값이 아니다 — 아무도 결정하지 않은 상태다."""
     from nexus.index import generation as gen
 
     assert await gen.current("gen_never_declared") is None

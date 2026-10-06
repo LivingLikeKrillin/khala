@@ -1,8 +1,8 @@
-"""ANN 측면 측정 — 비교가 갚지 못한 빚 (SPEC-nexus-kure-embedding-swap §4.6).
+"""ANN 측면 측정 — 비교가 갚지 못한 부채 (SPEC-nexus-kure-embedding-swap §4.6).
 
-임베딩 비교의 벡터 경로는 **정확 스캔**이었고, 그 SPEC 이 문서로 "프로덕션(ivfflat)을 예측하지
+임베딩 비교의 벡터 경로는 **전수 스캔**이었고, 그 SPEC 이 문서로 "프로덕션(ivfflat)을 예측하지
 못한다" 고 적었다. 여기서 그 문장을 숫자로 바꾼다: 같은 팩·같은 라벨을 **프로덕션 경로**
-(`hybrid_search`, ivfflat 포함)로 다시 측정하고, 각 실험군이 정확 스캔 대비 얼마를 잃는지 본다.
+(`hybrid_search`, ivfflat 포함)로 다시 측정하고, 각 실험군이 전수 스캔 대비 얼마를 잃는지 본다.
 
 **1차 판독은 실험군 대 실험군이 아니라 실험군 대 자기 자신이다** (§4.6). 검색 경로를 바꾸면 판정된 적 없는
 문서가 새로 올라오고 그건 두 실험군에 비대칭으로 불리하다 — 그래서 교차 비교는 기술용으로만 적고,
@@ -36,7 +36,7 @@ QUERY_VECTORS = Path(__file__).resolve().parents[1] / "tests" / "eval" / "query-
 #: (모델, 청크 컬럼). 옛 세대는 평가 저장소에만 있으므로 측정 전에 chunks 로 옮겨 심는다.
 ARMS = [("nomic-embed-text", "embedding"), ("KURE-v1", "embedding_1024")]
 
-#: 앞선 정확 스캔 결과 (2026-08-04 리포트). 자기 델타의 기준선이다.
+#: 앞선 전수 스캔 결과 (2026-08-04 리포트). 자기 델타의 베이스라인이다.
 EXACT_BASELINE = {"nomic-embed-text": {"vector": 0.402, "fused": 0.777},
                   "KURE-v1": {"vector": 0.975, "fused": 0.988}}
 

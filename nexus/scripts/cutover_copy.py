@@ -48,9 +48,9 @@ async def _candidates(status: str) -> list[dict]:
 
 
 def _refuse_unless_every_copy_has_its_source(rows: list[dict]) -> None:
-    """⛔ 정본 없는 문서를 내리면 **설계 문서가 영구 소실**된다 (비평 I-003).
+    """⛔ 정본 없는 문서를 내리면 **설계 문서가 영구 소실**된다 (크리틱 I-003).
 
-    셋 중 하나라도 어긋나면 멈춘다. 셋을 다 보는 이유는 어느 하나도 신원이 아니기 때문이다 —
+    셋 중 하나라도 어긋나면 멈춘다. 셋을 다 보는 이유는 어느 하나도 식별 정보가 아니기 때문이다 —
     제목은 우연히 같을 수 있고, 해시는 적재 경로가 다르면 갈리고, 경로는 이름이 바뀌면 끊긴다.
     """
     bad = [r for r in rows if not (r["by_hash"] and r["by_title"] and r["by_path"])]

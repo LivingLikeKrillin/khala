@@ -20,7 +20,7 @@ class AccessConfig:
     aud: str
     #: email → {capabilities, clearance}
     identities: dict[str, dict] = field(default_factory=dict)
-    #: 매핑에 없는(하지만 Access 는 통과한) email 의 기본 신원. capabilities 는 항상 비운다.
+    #: 매핑에 없는(하지만 Access 는 통과한) email 의 기본 식별 정보. capabilities 는 항상 비운다.
     default_clearance: str = "PUBLIC"
     jwks_ttl_seconds: int = 3600
     min_refresh_seconds: int = 60

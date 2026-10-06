@@ -1,8 +1,8 @@
-"""그림 → 본문 → chunk 배선 (SPEC-nexus-screenshot-text-extraction §4.1, §4.4).
+"""그림 → 본문 → chunk 와이어링 (SPEC-nexus-screenshot-text-extraction §4.1, §4.4).
 
-순회는 동기, 추출은 비동기라 2패스로 갈라 뒀다. 여기서 측정하는 것은 그 이음매가 새지 않는가다:
+순회는 동기, 추출은 비동기라 2패스로 갈라 뒀다. 여기서 측정하는 것은 그 접합부가 새지 않는가다:
 
-    URL 을 순회 중에 잡는가 · 자리 표식이 본문에 남지 않는가 · 꺼져 있으면 예전 그대로인가 ·
+    URL 을 순회 중에 잡는가 · 플레이스홀더가 본문에 남지 않는가 · 꺼져 있으면 예전 그대로인가 ·
     같은 바이트를 두 번 안 읽는가 · 격리될 텍스트가 durable 저장에 안 들어가는가
 
 **추출 품질은 여기서 안 측정한다.** 판독기는 스텁이다.
@@ -63,7 +63,7 @@ def test_the_caption_still_survives_into_the_sink():
     assert sink[0]["caption"] == "그림 3"
 
 
-# ── 2패스: 자리 표식이 반드시 사라지는가 ──────────────────────────────────────
+# ── 2패스: 플레이스홀더가 반드시 사라지는가 ──────────────────────────────────────
 
 class _Reader:
     model = "test-vision"
@@ -77,7 +77,7 @@ class _Reader:
 
 
 def test_no_slot_marker_survives_into_the_body(monkeypatch):
-    """표식이 남으면 청커가 거기서 갈리고, 남의 마커를 흉내 낸 것과 구별되지 않는다."""
+    """마커가 남으면 청커가 거기서 갈리고, 남의 마커를 흉내 낸 것과 구별되지 않는다."""
     async def _fetch(url):
         return b"\x89PNG bytes", "image/png"
 
@@ -131,7 +131,7 @@ def test_the_ceiling_clears_the_slots_it_skipped(monkeypatch):
 
 def test_a_stored_extraction_is_not_read_again(monkeypatch):
     """[[ADR-0010]] §5 — 재적재는 저장된 결과를 읽는다. 다시 읽으면 비결정적 판독기가
-    바뀌지 않은 신원 아래로 드리프트한 텍스트를 넣는다."""
+    바뀌지 않은 식별 정보 아래로 드리프트한 텍스트를 넣는다."""
     async def _fetch(url):
         return b"same bytes", "image/png"
 
@@ -177,7 +177,7 @@ def test_quarantined_text_never_reaches_the_durable_store(monkeypatch):
 # ── 끝에서 끝: 그림이 machine_read chunk 가 되는가 ───────────────────────────
 
 def test_an_image_becomes_a_machine_read_chunk(monkeypatch):
-    """이 배선의 전부 — 그림 한 장이 본문을 거쳐 등급이 붙은 chunk 로 나오는가."""
+    """이 와이어링의 전부 — 그림 한 장이 본문을 거쳐 등급이 붙은 chunk 로 나오는가."""
     async def _fetch(url):
         return b"png", "image/png"
 
@@ -265,9 +265,9 @@ def test_a_refused_url_is_recorded_as_a_failure_not_silently_skipped(monkeypatch
 # ── 플래그가 청커까지 닿는가 (라이브에서 실제로 끊겼던 곳) ────────────────────
 
 def test_the_trust_flag_survives_csf_and_frontmatter():
-    """**라이브에서 실제로 끊겼던 이음매.** 2026-08-10 첫 실적재에서 11장이 전부 추출돼
+    """**라이브에서 실제로 끊겼던 접합부.** 2026-08-10 첫 실적재에서 11장이 전부 추출돼
     본문에 들어갔는데 `machine_read` chunk 는 0개였다 — 청커가 마커를 못 믿고 벗겨서 추출
-    텍스트가 **저자 텍스트로 세탁**됐다. ADR-0010 §4 가 "추출 안 하느니만 못하다" 고 한 상태다.
+    텍스트가 **작성자 텍스트로 세탁**됐다. ADR-0010 §4 가 "추출 안 하느니만 못하다" 고 한 상태다.
 
     통로는 하나뿐이다: ConvertedDoc → CSF → 임시 파일 frontmatter → CollectedFile → 청커.
     한 칸이라도 빠지면 같은 일이 조용히 다시 일어난다.

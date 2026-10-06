@@ -1,4 +1,4 @@
-"""연결 진단 HTTP 표면 + 자격증명 불변식 — SPEC-nexus-notion-connection-health §4.4~§4.6, §6.
+"""연결 진단 HTTP API 표면 + 자격증명 불변식 — SPEC-nexus-notion-connection-health §4.4~§4.6, §6.
 
 여기서 고정하는 것:
   · `GET /sources/notion/health` 는 `manage_sources` 뒤에 있다. 토큰만 비밀이 아니다 —

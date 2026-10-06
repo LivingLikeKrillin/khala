@@ -10,7 +10,7 @@
 *"이 단계가 아예 꺼져 있었다"* 와 *"켜져 있었는데 후보가 0 이었다"* 를 가른다.
 **셋째 경우(켜졌고 터졌다)만 빠져 있었다.**
 
-⚠ **이 부류는 조용하다.** 값이 안 나오는 것이 아니라 **그럴듯한 값**이 나온다. 그래서 검사는
+⚠ **이 유형은 조용하다.** 값이 안 나오는 것이 아니라 **그럴듯한 값**이 나온다. 그래서 검사는
 「실패했을 때 무엇이 나오는가」를 직접 단언해야 하고, 그 단언은 **실패를 일부러 만들어서만**
 쓸 수 있다.
 """
@@ -118,7 +118,7 @@ async def test_the_stage_record_tells_all_three_cases(monkeypatch):
     assert off.fired is False
     assert nothing.fired is True and nothing.detail["failed"] is False
     assert boom.fired is True and boom.detail["failed"] is True
-    # 세 경우가 **후보 수로는 전부 같다** — 그것이 이 칸이 필요한 이유다.
+    # 세 경우가 **후보 수로는 전부 같다** — 그것이 이 필드가 필요한 이유다.
     assert off.n_out == nothing.n_out == boom.n_out == 0
 
 
@@ -161,11 +161,11 @@ async def test_a_dead_pair_expansion_is_named(monkeypatch):
     assert failed == ["pairs"], "터진 짝 확장이 이름을 안 남긴다"
 
 
-# ── 배선: 답변 경로가 그 자리를 실제로 넘기는가 ───────────────────────────────
+# ── 와이어링: 답변 경로가 그 자리를 실제로 넘기는가 ───────────────────────────────
 
-#: 이 이음매가 부르는 보강 함수들. **새것을 더하면 여기 이름을 적는다.**
+#: 이 접합부가 부르는 보강 함수들. **새것을 더하면 여기 이름을 적는다.**
 #:
-#: ⛔ **앞 판은 `== 2` 라는 상수로 셌다 (고침 2026-09-23).** 보강이 셋이 되자 그 검사가
+#: ⛔ **앞 버전은 `== 2` 라는 상수로 셌다 (고침 2026-09-23).** 보강이 셋이 되자 그 검사가
 #: 빨개졌고, **고치는 방법이 「수를 3 으로 올린다」**였다 — 그러면 검사가 확인이 아니라
 #: **갱신**이 된다. 다음 사람은 보지도 않고 올린다. 이름을 적게 하면 **적으면서 보게 된다.**
 SEAM_ENRICHMENTS = ("corrections_for", "paired_chunks", "referenced_chunks")
@@ -175,7 +175,7 @@ def test_the_answer_seam_hands_them_the_result_slot():
     """⛔ **함수가 옳은 것과 부르는 쪽이 넘기는 것은 다른 사실이다.**
 
     `failed=` 를 안 넘기면 그 패스는 오늘과 똑같이 조용하다. 그리고 그 자리는 `result` 여야
-    한다 — 표면마다 따로 받으면 하나가 잊고, 그 조합은 검사가 초록인 채로 틀린다
+    한다 — API 표면마다 따로 받으면 하나가 잊고, 그 조합은 검사가 초록인 채로 틀린다
     (`packet_for_answer` 가 제외 목록을 인자로 안 받는 것과 같은 이유).
     """
     import inspect
@@ -191,7 +191,7 @@ def test_the_answer_seam_hands_them_the_result_slot():
 def test_every_enrichment_the_seam_calls_is_on_the_list():
     """⛔ **목록이 진짜 대조가 되려면 반대쪽도 봐야 한다.**
 
-    이름을 적는 규칙은 **안 적으면 그만**이다. 이 단언이 그 구멍을 막는다 — 이음매가
+    이름을 적는 규칙은 **안 적으면 그만**이다. 이 단언이 그 구멍을 막는다 — 접합부가
     `search.*` 에서 끌어다 쓰는 보강 함수는 전부 위 목록에 있어야 한다.
     """
     import inspect
@@ -200,9 +200,9 @@ def test_every_enrichment_the_seam_calls_is_on_the_list():
     src = inspect.getsource(reconcile.packet_for_answer)
     imported = set(re.findall(r"from nexus\.search\.\w+ import (\w+)", src))
     # `assemble_packet` 은 보강이 아니라 조립이고, `code_values_for` 는 이 모듈 것이다.
-    # 판 둘(`search/versions.py`, 2026-09-30)은 근거를 보태지 않는다 — 꾸러미에 **도장**을 찍을
+    # 버전 둘(`search/versions.py`, 2026-09-30)은 답변 근거를 보태지 않는다 — 근거 묶음에 **스탬프**를 찍을
     # 뿐이라 `enrichment_failed` 에 들어갈 자리가 아니다(거기 넣으면 「근거가 덜 왔다」로 읽힌다).
-    # 코퍼스 판을 못 세면 빈 문자열(모른다)이고 실패는 경고 로그 `corpus_version_failed` 로 남는다.
+    # 코퍼스 버전을 못 세면 빈 문자열(모른다)이고 실패는 경고 로그 `corpus_version_failed` 로 남는다.
     enrichments = imported - {"assemble_packet", "SearchHit", "_truncate_snippet",
                               "corpus_version", "search_fingerprint"}
 

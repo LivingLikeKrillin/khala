@@ -2,7 +2,7 @@
 
 여기서 지키는 것 둘:
 
-* **신원과 호출이 갈라지지 않는다.** 적재 경로가 `LLMService()` 를 인자 없이 만들고 있었고,
+* **식별 정보와 호출이 갈라지지 않는다.** 적재 경로가 `LLMService()` 를 인자 없이 만들고 있었고,
   그러면 `extractor_identity()` 는 그림 모델을 보고하는데 호출은 답변 모델로 나간다. 두 상수가
   같은 값이던 동안에는 안 보이고, 답변 모델을 바꾸는 무관한 변경이 추출기를 조용히 옮긴다.
 * **ADR-0010 §6 은 판독기를 바꿔도 유지된다.** 판독기 교체가 그 문(툴·파일시스템)을 다시 여는
@@ -30,14 +30,14 @@ def test_the_identity_moved_from_the_stored_one():
 
 
 def test_the_service_uses_the_vision_model_not_the_answer_model(monkeypatch):
-    """신원이 말하는 모델과 실제로 부르는 모델이 같아야 한다."""
+    """식별 정보가 말하는 모델과 실제로 부르는 모델이 같아야 한다."""
     monkeypatch.setenv("NEXUS_LLM_MODEL", "some-other-answer-model")
     svc = vision_service()
     assert svc.model == vision_model() == DEFAULT_VISION_MODEL
 
 
 def test_an_unknown_vision_model_refuses_rather_than_defaulting(monkeypatch):
-    """조용히 기본 백엔드로 돌아가면 신원이 가리키는 모델과 호출이 갈린다."""
+    """조용히 기본 백엔드로 돌아가면 식별 정보가 가리키는 모델과 호출이 갈린다."""
     monkeypatch.setenv("NEXUS_VISION_MODEL", "nobody-serves-this")
     with pytest.raises(ValueError, match="백엔드를 모른다"):
         vision_service()
@@ -103,7 +103,7 @@ def json_dumps(o) -> str:
 
 
 def test_gemini_backend_refuses_answer_generation():
-    """답변과 판독의 수명주기를 한 백엔드에 묶지 않는다."""
+    """답변과 기계 판독의 수명주기를 한 백엔드에 묶지 않는다."""
     import asyncio
 
     from nexus.providers.llm import _GeminiBackend

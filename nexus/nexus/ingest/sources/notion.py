@@ -66,7 +66,7 @@ class NotionSource:
     def fetch_markdown(self, ref: PageRef) -> ConvertedDoc:
         # 자식 블록을 한 겹 더 펼칠 수 있게 넘긴다 — 표·토글·동기화 블록의 내용은 자식에 있다.
         # 그림 참조를 순회 중에 챙긴다 — 서명 링크는 한 시간이면 죽으므로 여기서만 잡을 수
-        # 있다. 본문에는 자리 표식만 남고, 추출은 2패스가 동시에 한다.
+        # 있다. 본문에는 플레이스홀더만 남고, 추출은 2패스가 동시에 한다.
         images: list[dict] = []
         holes: list[dict] = []
         md, image_count = blocks_to_markdown(
@@ -130,7 +130,7 @@ class NotionSource:
         )
 
     def _data_source_ids(self, database_id: str) -> list[str]:
-        """DB 하나가 갖는 data source 들. 2025-09 개편 전에는 이 층이 없었다."""
+        """DB 하나가 갖는 data source 들. 2025-09 개편 전에는 이 계층이 없었다."""
         db = self.client.databases.retrieve(database_id=database_id)
         return [d["id"] for d in db.get("data_sources", []) if d.get("id")]
 

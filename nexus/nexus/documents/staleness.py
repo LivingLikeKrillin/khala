@@ -1,6 +1,6 @@
-"""근거 신선도(staleness) 판정 — SPEC-nexus-answer-staleness-warning.
+"""답변 근거 신선도(staleness) 판정 — SPEC-nexus-answer-staleness-warning.
 
-updated_at(적재시각) 나이를 doc_type 별 TTL 과 대조한다. 결정론·순수·무예외.
+updated_at(적재시각) 나이를 doc_type 별 TTL 과 대조한다. 결정론적·순수·무예외.
 "System decides": 코드가 시간으로 판정하고 LLM 은 개입 안 한다. supersession(옛 버전 배제)과
 직교 — 여기선 '현행이지만 오래됨'을 경고만 한다(랭킹·배제 안 함).
 

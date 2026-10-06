@@ -18,16 +18,16 @@ _MIN_DEV_TOKEN_LEN = 24
 
 #: 등급 대조를 선언하지 않은 principal 이 읽을 수 있는 테넌트 수.
 #:
-#: ⛔ **자물쇠를 없애지 않고 선언에 건다** (SPEC-nexus-design-corpus-cutover §4.3). 상한을
+#: ⛔ **잠금을 없애지 않고 명시적 선언에 건다** (SPEC-nexus-design-corpus-cutover §4.3). 상한을
 #: 그냥 올리면 **앞으로 어느 쌍에든** 검사가 사라진다. 이번 쌍(`default`·`design_docs`)이
 #: 안전한 것은 **측정했기 때문**이지 일반 사실이 아니다 — 두 테넌트의 등급 값 집합이 같고
 #: `RESTRICTED` 네 건이 서로 사본이라 노출이 안 바뀐다는 것을 대조로 확인했다.
 #:
 #: 그래서 원소 둘 이상을 열려면 `clearance_equivalence_verified` 를 적어야 한다. 그 한 줄이
-#: *"두 테넌트의 등급 어휘를 대 봤다"* 는 사람의 선언이다.
+#: *"두 테넌트의 등급 체계를 대 봤다"* 는 사람의 명시적 선언이다.
 MAX_READ_TENANTS_UNVERIFIED = 1
 
-#: 등급 대조를 했다는 선언. 값은 대조한 날짜다.
+#: 등급 대조를 했다는 명시적 선언. 값은 대조한 날짜다.
 CLEARANCE_VERIFIED_KEY = "clearance_equivalence_verified"
 
 
@@ -35,7 +35,7 @@ def _validate_read_tenants(p: dict) -> None:
     """``read_tenants`` 세 가지를 본다. 어기면 기동 거부.
 
     ⚠ **실재하는 테넌트인지는 안 본다.** 기동을 DB 내용에 의존시키면 비어 있는 신규 테넌트나
-    재적재 중 재시작이 서비스를 죽인다 (비평 3R I-003). 오타는 범위 밖 요청 기록으로 잡는다.
+    재적재 중 재시작이 서비스를 죽인다 (크리틱 3R I-003). 오타는 범위 밖 요청 기록으로 잡는다.
     """
     raw = p.get("read_tenants")
     if not raw:
@@ -89,13 +89,13 @@ class AuthConfig:
         # 들어오고 리포에 커밋되지 않는다. override 를 prod 에 쓰지 말 것.
         dev_token = os.getenv("NEXUS_DEV_TOKEN")
         dev_token_weak = False
-        # Access 가 설정되면 공유 dev-token 경로는 꺼진다 — 두 신원 경로가 동시에 돌지 않는다.
+        # Access 가 설정되면 공유 dev-token 경로는 꺼진다 — 두 식별 정보 경로가 동시에 돌지 않는다.
         # Access 가 문이면 공유 열쇠는 끈다 (SPEC §4.5).
         if dev_token and access is not None:
             dev_token = None
         if dev_token:
             from .principal import hash_token
-            # local-dev 는 **운영자 신원**이지 독자 신원이 아니다. 웹 콘솔(소스 관리)이
+            # local-dev 는 **운영자 식별 정보**이지 독자 식별 정보가 아니다. 웹 콘솔(소스 관리)이
             # 자기 화면에서 403 으로 막히지 않도록 manage_sources 를 기본 부여한다.
             #
             # ⚠️ GET /auth/dev-token 은 이 토큰을 도달한 누구에게나 내준다. 터널 뒤에서는
@@ -115,32 +115,32 @@ class AuthConfig:
                 "clearance": "INTERNAL",
                 "capabilities": list(dev_caps),
             }
-            # 읽기 범위 — 슬랙과 **같은 자물쇠**를 쓴다(`_validate_read_tenants`).
+            # 읽기 범위 — 슬랙과 **같은 잠금**을 쓴다(`_validate_read_tenants`).
             #
             # ⛔ **왜 이것이 없어서 문제였나 (실측 2026-09-03).** 컷오버는 `slack-bot` 하나에만
             # 정본을 읽을 권한을 줬고, 웹·CLI 는 이 principal 을 탄다. 그래서 `design_docs` 의
-            # 활성 문서 122건이 사람이 쓰는 표면에서 근거로 나올 수 **없었다**. 컷오버가
+            # 활성 문서 122건이 사람이 쓰는 API 표면에서 답변 근거로 나올 수 **없었다**. 컷오버가
             # `default` 에서 사본을 내렸으므로 그 표면들은 **잃기만 했다** — 슬랙에는 개선이고
             # 나머지에는 회귀였다.
             #
             # ⛔ **여기 적혀 있던 수를 정정한다 (2026-09-10 라이브 재측정).** 원래 문장은
             # *"질의 1,116건 중 범위에 든 것 1건 · 근거로 온 것 0건"* 이었는데 그 분모가
-            # 성립하지 않는다. `search_log` 는 1,123행인데 `read_scope` 칸이 채워진 행은
+            # 성립하지 않는다. `search_log` 는 1,123행인데 `read_scope` 필드가 채워진 행은
             # **35** 뿐이다(마이그레이션 037 이 2026-09-02 02:16 부터 남긴다). 나머지
             # 1,088행에 대해 계측기는 **아무 값도 안 낸다** — 그것을 0 으로 읽은 것이다.
-            # 지금 말할 수 있는 것: 범위가 기록된 35행 중 `design_docs` 가 든 것 3, 근거로
-            # 온 것 2(둘 다 2026-09-06, 배선 뒤). 배선 전 「근거로 온 적 없음」은 참이지만
+            # 지금 말할 수 있는 것: 범위가 기록된 35행 중 `design_docs` 가 든 것 3, 답변 근거로
+            # 온 것 2(둘 다 2026-09-06, 와이어링 뒤). 와이어링 전 「근거로 온 적 없음」은 참이지만
             # 근거는 계측된 하루치다. 구조적 사실(범위 밖이라 나올 수 없었다)이 이 자리의
             # 근거이고, 그 사실은 `scripts/check_read_scope_per_surface.py` 가 이제 센다.
             #
-            # ⚠ 이 신원은 `manage_documents` 를 갖고 `GET /auth/dev-token` 이 토큰을 도달한
-            # 누구에게나 내준다. 읽기 범위를 넓히는 것은 **그 문을 통과한 사람이 읽는 코퍼스**를
-            # 넓히는 일이다. 그래서 자물쇠를 그대로 물린다 — 선언 없이는 기동하지 않는다.
+            # ⚠ 이 식별 정보는 `manage_documents` 를 갖고 `GET /auth/dev-token` 이 토큰을 도달한
+            # 누구에게나 내준다. 읽기 범위를 넓히는 것은 **그 진입점을 통과한 사람이 읽는 코퍼스**를
+            # 넓히는 일이다. 그래서 잠금을 그대로 물린다 — 명시적 선언 없이는 기동하지 않는다.
             raw_scope = os.getenv("NEXUS_DEV_READ_TENANTS", "")
             if raw_scope.strip():
                 entry["read_tenants"] = [t.strip() for t in raw_scope.split(",") if t.strip()]
-                # ⛔ 선언은 **이 principal 의 것**이다. 슬랙의 확인을 빌려 쓰면 그 선언이 무엇을
-                # 확인한 것인지 말할 수 없게 되고, 자물쇠가 이름만 남는다.
+                # ⛔ 명시적 선언은 **이 principal 의 것**이다. 슬랙의 확인을 빌려 쓰면 그 명시적 선언이 무엇을
+                # 확인한 것인지 말할 수 없게 되고, 잠금이 이름만 남는다.
                 verified = os.getenv("NEXUS_DEV_CLEARANCE_VERIFIED", "").strip()
                 if verified:
                     entry["clearance_equivalence_verified"] = verified
@@ -148,17 +148,17 @@ class AuthConfig:
             dev_token_weak = (
                 dev_token == _WEAK_DEV_TOKEN_DEFAULT or len(dev_token) < _MIN_DEV_TOKEN_LEN
             )
-        # 슬랙 봇 신원: **봇이 보내는 그 토큰**으로 서버 쪽 principal 을 만든다.
+        # 슬랙 봇 식별 정보: **봇이 보내는 그 토큰**으로 서버 쪽 principal 을 만든다.
         #
         # 봇은 `NEXUS_SLACK_TOKEN` 을 bearer 로 보내는데, 지금까지 서버에는 그 토큰에 대응하는
         # principal 이 없었다 — compose 주석은 "gen-token 으로 발급한 읽기 전용 principal" 이라
         # 적어 두었지만 그것을 만드는 코드도, config 항목도 없었다. 봇을 띄우면 401 이다.
         #
         # 같은 env 변수를 양쪽이 읽게 두는 것이 요점이다. 서버가 config 의 해시를, 봇이 env 의
-        # 토큰을 각각 들고 있으면 둘은 조용히 어긋날 수 있고, 그 어긋남은 401 루프로만 보인다.
-        # 하나의 변수에서 둘 다 파생되면 어긋남 자체가 표현 불가능하다.
+        # 토큰을 각각 들고 있으면 둘은 조용히 어긋날 수 있고, 그 불일치는 401 루프로만 보인다.
+        # 하나의 변수에서 둘 다 파생되면 불일치 자체가 표현 불가능하다.
         #
-        # 능력은 비운다: 봇은 **읽기 전용**이고, 워크스페이스 전원에게 열리는 표면이 문서를
+        # 능력은 비운다: 봇은 **읽기 전용**이고, 워크스페이스 전원에게 열리는 API 표면이 문서를
         # 내리거나 소스를 고칠 수 있으면 안 된다. clearance 기본이 PUBLIC 인 것도 같은 이유다
         # (`NEXUS_SLACK_CLEARANCE` — 봇 쪽 기본값과 같은 변수).
         slack_token = os.getenv("NEXUS_SLACK_TOKEN")

@@ -88,7 +88,7 @@ def test_a_fetch_failure_may_be_stored_without_a_reference():
 # ── §5.7 쪼개진 블록도 식별자를 잃지 않는가 ─────────────────────────────────
 
 def test_two_chunks_split_from_one_block_carry_the_same_handle():
-    """§4 — 긴 추출은 청커가 쪼갠다. 두 번째 조각에 마커가 없으면 그 조각의 인용은 등급만 있고
+    """§4 — 긴 추출은 청커가 쪼갠다. 두 번째 청크에 마커가 없으면 그 청크의 인용은 등급만 있고
     돌아갈 길이 없다. 마커는 블록 첫 줄에 **한 번만** 있으므로 쪼갤 때 다시 실어야 한다.
     """
     long_text = "\n".join(f"| 항목{i} | 값{i} | 설명이 제법 긴 줄이다 {i} |" for i in range(400))

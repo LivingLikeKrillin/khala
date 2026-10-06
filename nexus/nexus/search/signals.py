@@ -56,10 +56,10 @@ class SearchSignals:
     #: 센다** — 뒤엣것은 모델에게 실제로 간 근거 묶음이고, 조각이 히트보다 많을 수 있다.
     #:
     #: ⛔ 실측 2026-09-18, 같은 한 번의 호출: `top_k=8` → 기록 `n_snippets=8` · 응답
-    #: `evidence_snippets=13`. 다른 에이전트가 이것을 관측 어긋남으로 읽고 장애를 의심했다.
+    #: `evidence_snippets=13`. 다른 에이전트가 이것을 관측 불일치로 읽고 장애를 의심했다.
     #: 둘은 어긋난 것이 아니라 **다른 집합**이다.
     #:
-    #: ⚠ `search_span.n_snippets` 는 이름이 같은데 **묶음 쪽**을 센다
+    #: ⚠ `search_span.n_snippets` 는 이름이 같은데 **근거 묶음 쪽**을 센다
     #: (`evidence_packet.py`: `len(packet.snippets)`). 한쪽을 다른 쪽에 맞추지 마라 —
     #: 맞추는 순간 기존 1,190행의 뜻이 조용히 바뀐다.
     n_snippets: int
@@ -76,15 +76,15 @@ class SearchSignals:
     rephrased_sha256: str = ""
     rephrased_len: int = 0
     rewrite_changed: bool = False
-    #: 재작성 호출의 비용 — **답변 비용과 다른 칸**이다. 같은 칸에 접으면
+    #: 재작성 호출의 비용 — **답변 비용과 다른 필드**이다. 같은 필드에 접으면
     #: `budget.py::measured_averages` 의 "답변 1회 비용" 이 조용히 편향된다. None = 미측정.
     rewrite_prompt_tokens: int | None = None
     rewrite_completion_tokens: int | None = None
     rewrite_cost_usd: float | None = None
-    #: 어떤 코드가 이 답의 꾸러미와 프롬프트를 만들었는가. 값은 **코드에서 파생**되므로 사람이
+    #: 어떤 코드가 이 답의 근거 묶음과 프롬프트를 만들었는가. 값은 **코드에서 파생**되므로 사람이
     #: 올릴 것이 없다(nexus/llm/prompt_version.py). 빈 문자열 = 답변 프롬프트를 안 썼다.
     #: ⛔ **응답이 실은 값을 옮긴다 — 여기서 다시 세지 않는다.** 다시 세면 둘이 갈릴 수 있다.
-    #: 옛 칸 `answer_prompt_sha`(재료가 좁았다)는 더 적지 않는다 — 마이그레이션 045 참조.
+    #: 옛 필드 `answer_prompt_sha`(재료가 좁았다)는 더 적지 않는다 — 마이그레이션 045 참조.
     prompt_version: str = ""
     rewrite_prompt_sha: str = ""
     #: 융합에 쓰인 채널 수 (SPEC §4 I6). 1 = 단일 채널(= U3 이전의 모든 행). 채널이 늘면
@@ -100,8 +100,8 @@ class SearchSignals:
     cost_usd: float | None = None
     #: 근거가 **얼마나 잘 맞았는가**의 크기 (`search/confidence.py`). RRF 가 지워 버리는 값이라
     #: 경로에서 되살려 여기까지 들고 온다. **불리언(`weak`)을 남기지 않는다** — 그 값은 오늘의
-    #: 문턱으로 계산된 것이고, 문턱을 옮기면 지나간 행의 뜻이 조용히 바뀐다. 거리와 점수는
-    #: 문턱과 무관한 사실이다. 지금 문턱은 지어낸 질문 17개에서 나왔고, 다시 측정할 재료는
+    #: 임계값으로 계산된 것이고, 임계값을 옮기면 지나간 행의 뜻이 조용히 바뀐다. 거리와 점수는
+    #: 임계값과 무관한 사실이다. 지금 임계값은 지어낸 질문 17개에서 나왔고, 다시 측정할 재료는
     #: **실사용 질문**뿐인데 그것이 매 요청마다 버려지고 있었다.
     #: None = 그 경로가 안 돌았다(못 잼) ≠ 0(측정해서 낮음).
     top_distance: float | None = None
@@ -124,7 +124,7 @@ class SearchSignals:
     #: `read_scope` 는 **읽을 수 있었던** 범위이고 이것은 **읽은 것**이다. 둘이 갈리는 것이
     #: 관측하려던 바로 그 상태다 — 범위를 넓혀 놓고 근거가 한쪽에서만 오는 경우.
     #:
-    #: ⚠ 테넌트 **이름과 개수**뿐이다. 조각 본문도, rid 도, 질의도 담지 않는다.
+    #: ⚠ 테넌트 **이름과 개수**뿐이다. 청크 본문도, rid 도, 질의도 담지 않는다.
     evidence_tenants: str | None = None
     #: 이번 요청에서 **쌓였어야 할** span 행 수(SPEC-nexus-stage-spans). `None` = 캡처 꺼짐.
     #: 값이 있는데 `search_span` 에 그만큼이 없으면 배치가 통째로 유실된 것이다 — migration
@@ -136,25 +136,25 @@ class SearchSignals:
     #: 가른다(migration 046).
     answer_context_len: int = 0
     answer_context_sha256: str = ""
-    #: 이 답이 뒤진 **코퍼스의 판**과 **검색 스택의 판** — 12 hex 둘(`search/versions.py`,
+    #: 이 답이 뒤진 **코퍼스의 버전**과 **검색 핑거프린트** — 12 hex 둘(`search/versions.py`,
     #: migration 047). 응답이 실은 값을 옮긴다. 빈 문자열 = 답변 경로가 아니거나 못 셌다.
     #: ⚠ `evidence_fingerprint`(판정자 전용, 판정자가 켜진 행에만)와 다른 값이다 — 이것은 **늘** 남는다.
     corpus_version: str = ""
     search_fingerprint: str = ""
-    #: 이 답이 **죽은 경로를 안고** 나갔는가 — 응답의 `degraded`(`hybrid.LEGS` 의 부분집합)를
-    #: 그대로 옮긴다(migration 048). 응답은 이 값을 실었는데 기록에는 칸이 없어서, 벡터 경로가
+    #: 이 답이 **실패한 경로를 안고** 나갔는가 — 응답의 `degraded`(`hybrid.LEGS` 의 부분집합)를
+    #: 그대로 옮긴다(migration 048). 응답은 이 값을 실었는데 기록에는 필드가 없어서, 벡터 경로가
     #: 죽은 답을 `top_distance IS NULL` 로만 짐작했다 — 그것은 첫 채널만 보고, 벡터를 안 쓰는
     #: 경로(`keyword_only`)와 섞인다(2026-10-01).
-    #: None = 기록 안 함(칸이 생기기 전의 행 · 칸 없는 더블) ≠ `()`(기록했고 죽은 경로 없음).
+    #: None = 기록 안 함(필드가 생기기 전의 행 · 필드 없는 더블) ≠ `()`(기록했고 실패한 경로 없음).
     degraded: tuple[str, ...] | None = None
-    #: 융합이 **문서 합의**를 셌는가(사전 등록 F1, 요청 칸 `fusion_doc_agreement`, migration 050).
-    #: 검색 코드 변경은 어느 판 칸에도 안 잡히므로(`search_fingerprint` 는 설정만 본다), 어느
-    #: 요청이 처치를 받았는지는 이 칸이 아니면 기록에 없다. None = 기록 안 함(칸 전의 행 ·
-    #: 칸 없는 더블) ≠ False(기록했고 꺼져 있었다).
+    #: 융합이 **문서 일치**를 셌는가(사전 등록 F1, 요청 필드 `fusion_doc_agreement`, migration 050).
+    #: 검색 코드 변경은 어느 버전 필드에도 안 잡히므로(`search_fingerprint` 는 설정만 본다), 어느
+    #: 요청이 처치를 받았는지는 이 필드가 아니면 기록에 없다. None = 기록 안 함(필드 전의 행 ·
+    #: 필드 없는 더블) ≠ False(기록했고 꺼져 있었다).
     fusion_doc_agreement: bool | None = None
     #: 요청자가 준 **검색 글**(`search_text`)의 길이와 해시 — 본문은 싣지 않는다(`answer_context` 와
     #: 같은 방식). `query_sha256` 은 계속 질문의 값이라, 같은 질문을 다른 검색 글로 돌린 행이 이
-    #: 칸으로 갈린다(migration 051). `0` · `""` = 안 줬다.
+    #: 필드로 갈린다(migration 051). `0` · `""` = 안 줬다.
     search_text_len: int = 0
     search_text_sha256: str = ""
 
@@ -192,7 +192,7 @@ def extract_signals(
 
     `evidence` 는 **소비자가 실제로 받은 조각들**이다(답변 경로 = 패킷의 스니펫). 안 주면
     `result.hits` 로 떨어진다 — 그래야 새 호출부가 아무것도 안 해도 이 신호가 빈칸이 되지
-    않는다. 답변 경로는 반드시 패킷을 넘긴다: 채운 절·짝 문서·정정 확인 패스는 랭킹을 거치지
+    않는다. 답변 경로는 반드시 패킷을 넘긴다: 채운 절·페어 문서·정정 확인 패스는 랭킹을 거치지
     않으므로 히트만 세면 **답변이 기댄 코퍼스를 과소평가한다.**
     """
     hits = result.hits
@@ -234,9 +234,9 @@ def extract_signals(
         n_graph_edges=n_graph_edges,
         no_answer=len(hits) == 0,
         fusion_channels=fusion_channels,
-        # 답변 경로에서만 답변 프롬프트를 쓴다. 검색 전용 경로에 그 지문을 적으면 거짓이다.
-        # 답변 경로에서만 판이 있다. 명시가 우선이고(스트림은 `AnswerResult` 없이 기록한다 — 옛 판은
-        # 그래서 이 경로의 판을 한 번도 안 남겼다), 없으면 답이 실은 값을 옮긴다.
+        # 답변 경로에서만 답변 프롬프트를 쓴다. 검색 전용 경로에 그 핑거프린트를 적으면 거짓이다.
+        # 답변 경로에서만 버전이 있다. 명시가 우선이고(스트림은 `AnswerResult` 없이 기록한다 — 옛 버전은
+        # 그래서 이 경로의 버전을 한 번도 안 남겼다), 없으면 답이 실은 값을 옮긴다.
         prompt_version=(prompt_version if prompt_version is not None
                         else ((getattr(answer, "prompt_version", "") or "") if answer is not None
                               else "")),
@@ -265,12 +265,12 @@ def extract_signals(
         # 자료는 **여기서 길이와 해시가 되고 본문은 신호 객체에 안 들어간다.**
         answer_context_len=len(answer_context or ""),
         answer_context_sha256=query_sha256(answer_context) if answer_context else "",
-        # 판 둘도 `prompt_version` 과 같은 규칙 — 명시가 우선, 없으면 답이 실은 값.
+        # 버전 둘도 `prompt_version` 과 같은 규칙 — 명시가 우선, 없으면 답이 실은 값.
         corpus_version=_carried(corpus_version, answer, "corpus_version"),
         search_fingerprint=_carried(search_fingerprint, answer, "search_fingerprint"),
         # 결과가 실은 값을 옮긴다 — 여기서 다시 판정하지 않는다(응답과 같은 값이어야 한다).
         degraded=_degraded_of(result),
-        # 같은 규칙 — 결과가 한 것. 칸이 없는 결과는 None(모름)이지 False(꺼짐)가 아니다.
+        # 같은 규칙 — 결과가 한 것. 필드가 없는 결과는 None(모름)이지 False(꺼짐)가 아니다.
         fusion_doc_agreement=getattr(result, "fusion_doc_agreement", None),
         # 자료와 같은 규칙 — 여기서 길이와 해시가 되고 본문은 신호 객체에 안 들어간다.
         search_text_len=len(search_text or ""),
@@ -279,7 +279,7 @@ def extract_signals(
 
 
 def _degraded_of(result) -> tuple[str, ...] | None:
-    """결과의 `degraded` 를 튜플로. 칸이 없는 결과는 None(모름)이지 `()`(죽은 것 없음)가 아니다."""
+    """결과의 `degraded` 를 튜플로. 필드가 없는 결과는 None(모름)이지 `()`(죽은 것 없음)가 아니다."""
     value = getattr(result, "degraded", None)
     return None if value is None else tuple(value)
 
@@ -292,8 +292,8 @@ def _carried(explicit: str | None, answer, name: str) -> str:
     return (getattr(answer, name, "") or "") if answer is not None else ""
 
 
-#: 좌초(stranded) 문턱 — **고정 상수**다. `2 × NEXUS_SUFFICIENCY_TIMEOUT` 처럼 조정 가능한 값에서
-#: 유도하면 운영자가 timeout 을 바꾸는 순간 **과거 행이 전부 재분류된다**. UPDATE 의 가드도 같은
+#: 좌초(stranded) 임계값 — **고정 상수**다. `2 × NEXUS_SUFFICIENCY_TIMEOUT` 처럼 조정 가능한 값에서
+#: 유도하면 운영자가 timeout 을 바꾸는 순간 **과거 행이 전부 재분류된다**. UPDATE 의 가드 검사도 같은
 #: 상수를 쓴다: 좌초로 선언된 행을 뒤늦게 도착한 판정이 되살리면 "재시도 없음" 은 문장일 뿐이다.
 STRANDED_SECONDS = 300
 
@@ -333,7 +333,7 @@ def _enabled_for(tenant: str | None) -> bool:
 def evidence_fingerprint(config: dict | None) -> str:
     """검색 스택 설정의 sha256 앞 8자 — **충분성 판정자 전용**이다.
 
-    ⚠ 답의 검색 스택 판은 이것이 아니라 `search/versions.py::search_fingerprint` 다(응답과
+    ⚠ 답의 검색 스택 버전은 이것이 아니라 `search/versions.py::search_fingerprint` 다(응답과
     `search_log.search_fingerprint`, 답변 행마다). 이 값은 판정자가 켜진 행에만 남고, 고른 일곱 값만
     본다 — 판정 창을 가르는 제 쓰임새에서는 그대로 두지만, 답을 설명하는 데 쓰면 보강 설정의 변화를
     못 본다.
@@ -402,7 +402,7 @@ async def _judge_with_timeout(ji: JudgeInput) -> str:
 
     timeout = float(os.getenv("NEXUS_SUFFICIENCY_TIMEOUT") or 30)
     if timeout > _MAX_TIMEOUT_SECONDS:
-        # 판정이 좌초 문턱보다 오래 살면 정상 완료가 좌초로 읽히고 UPDATE 가드에 걸려 버려진다.
+        # 판정이 좌초 임계값보다 오래 살면 정상 완료가 좌초로 읽히고 UPDATE 가드 검사에 걸려 버려진다.
         raise ValueError(
             f"NEXUS_SUFFICIENCY_TIMEOUT={timeout}s 는 상한 {_MAX_TIMEOUT_SECONDS}s 를 넘는다 "
             f"(좌초 문턱 {STRANDED_SECONDS}s 의 절반).")
@@ -472,7 +472,7 @@ async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
 
     두 개의 지역 try/except 가 있고 **둘 다 필요하다**:
 
-    * **프롤로그** (적격성·지문 계산·슬롯) — 여기서 터지면 바깥 핸들러가 `_persist` 를 통째로
+    * **프롤로그** (적격성·핑거프린트 계산·슬롯) — 여기서 터지면 바깥 핸들러가 `_persist` 를 통째로
       중단시켜 **search_log 행 자체가 사라진다**. v_search_health·v_image_gap_signal 이 같이
       망가진다. 그래서 프롤로그 실패는 `uninstrumented` 로 적고 나머지 신호는 그대로 넣는다:
       계측기가 고장 나면 아무것도 기록 안 할 뿐, 신호를 같이 끌고 내려가지 않는다.
@@ -493,7 +493,7 @@ async def _persist(sig: SearchSignals, judge_input: JudgeInput | None = None,
     sufficiency, judge_id, fingerprint, took_slot = "uninstrumented", "off", None, False
     try:
         terminal, judge_id, fingerprint = _eligibility(sig, judge_input)
-        # 슬롯 획득은 **프롤로그의 마지막 문장**이다. 앞에 두면 지문 계산이 터졌을 때 슬롯이
+        # 슬롯 획득은 **프롤로그의 마지막 문장**이다. 앞에 두면 핑거프린트 계산이 터졌을 때 슬롯이
         # 샌다 — 기본 상한 2 에서 두 번 새면 이후 모든 검색이 조용히 `shed` 로 굳는다.
         if terminal is not None:
             sufficiency = terminal

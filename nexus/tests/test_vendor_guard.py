@@ -87,7 +87,7 @@ def test_a_fenced_block_is_not_a_claim_either():
     assert rights_assertions(text) == []
 
 
-# ── 관문이 실제로 그 자리에 있는가 ─────────────────────────────────────────
+# ── 게이트가 실제로 그 자리에 있는가 ─────────────────────────────────────────
 
 def _pipeline_src() -> str:
     from nexus.ingest import pipeline
@@ -95,7 +95,7 @@ def _pipeline_src() -> str:
 
 
 def test_the_guard_runs_before_the_document_is_classified():
-    """⛔ 순서가 이 관문의 전부다. 분류·청킹 뒤에 두면 거절한 문서가 이미 청크가 돼 있다 —
+    """⛔ 순서가 이 게이트의 전부다. 분류·청킹 뒤에 두면 거절한 문서가 이미 청크가 돼 있다 —
     격리와 거절의 차이가 사라진다."""
     src = _pipeline_src()
     guard = src.index("refuse_if_vendor_original(collected")

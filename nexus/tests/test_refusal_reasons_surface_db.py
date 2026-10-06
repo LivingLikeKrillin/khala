@@ -1,7 +1,7 @@
 """거부의 **이유**가 사람에게 닿는가 — REAL Postgres. OPEN.md A7.
 
 `embed_refusals` 는 2026-08-07 부터 이유를 그대로 적어 왔다(`413 max_seq_length(8192)` 같은,
-곧 처방이 되는 문장). 그런데 **읽는 곳이 코퍼스 뷰 하나뿐이었다.** 적재는 "벡터 경로가 못 보는
+곧 조치 방법이 되는 문장). 그런데 **읽는 곳이 코퍼스 뷰 하나뿐이었다.** 적재는 "벡터 경로가 못 보는
 청크 N건" 과 "`nexus reembed run` 으로 복구하라" 를 찍는데, 그 재시도는 같은 이유로 다시
 실패한다 — 이유를 안 보여줬기 때문에.
 
@@ -9,7 +9,7 @@
 
 * 적재가 남긴 거부의 **이유가 결과에 실린다**(수만이 아니라).
 * 다른 테넌트의 거부가 이 수에 섞이지 않는다.
-* 재시도가 성공하면 **수가 0으로 돌아온다** — 낡은 거부가 남으면 멀쩡한 코퍼스가 병들어 보인다.
+* 재시도가 성공하면 **수가 0으로 돌아온다** — 스테일 거부가 남으면 멀쩡한 코퍼스가 병들어 보인다.
 """
 
 from __future__ import annotations
@@ -91,7 +91,7 @@ async def test_the_ingest_carries_the_reason_not_only_the_count(clean, tmp_path,
 
 
 async def test_another_tenants_refusals_do_not_leak_in(clean, tmp_path, monkeypatch):
-    """섞이면 이 수로는 아무 처방도 못 내린다."""
+    """섞이면 이 수로는 아무 조치 방법도 못 내린다."""
     from nexus import db
     from nexus.index.embed_health import fetch_refusals
     from nexus.ingest.pipeline import run_ingest
@@ -123,7 +123,7 @@ async def test_another_tenants_refusals_do_not_leak_in(clean, tmp_path, monkeypa
 
 
 def test_the_ingest_command_actually_prints_the_reason(tmp_path, monkeypatch):
-    """**배선 검사.** 결과 객체가 이유를 들고 있는 것과 사람이 그것을 보는 것은 다르다 —
+    """**와이어링 검사.** 결과 객체가 이유를 들고 있는 것과 사람이 그것을 보는 것은 다르다 —
     이 리포는 "신호는 있는데 전달이 없다" 로 이미 한 번 하루를 잃었다.
 
     동기 테스트인 이유: CLI 는 자기 이벤트 루프를 연다(`asyncio.run`). 비동기 테스트 안에서
@@ -170,7 +170,7 @@ def test_the_ingest_command_actually_prints_the_reason(tmp_path, monkeypatch):
 
 
 async def test_a_successful_retry_takes_the_number_back_to_zero(clean, tmp_path, monkeypatch):
-    """낡은 거부가 남으면 고쳐진 코퍼스가 계속 병들어 보인다 (migration 010 의 계약)."""
+    """스테일 거부가 남으면 고쳐진 코퍼스가 계속 병들어 보인다 (migration 010 의 계약)."""
     from nexus.index.embed_health import fetch_refusals
     from nexus.ingest.pipeline import run_ingest
 

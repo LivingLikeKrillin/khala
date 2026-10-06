@@ -11,7 +11,7 @@ ADR-0008 §2.6 의 nori 탐색이 아무것도 증명하지 못한 첫째 이유
 **같은 allow-list 를 우리 코드에서** 적용한다(`nori_part_of_speech` stoptags 로 근사하지 않는다).
 nori 와 mecab-ko 는 같은 mecab-ko-dic 태그셋을 쓰므로 이 비교가 성립한다.
 
-띄우는 법 (탐색 실행 전용, CI 아님):
+띄우는 법 (탐색적 실행 전용, CI 아님):
 
     docker run -d --name nori-eval -p 19200:9200 \
         -e discovery.type=single-node -e DISABLE_SECURITY_PLUGIN=true \

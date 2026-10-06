@@ -1,10 +1,10 @@
-"""못 낸 사실이 **근거에 있었는가** — 검색 결함과 서술 결함을 가른다 (감사 B3).
+"""못 낸 사실이 **답변 근거에 있었는가** — 검색 결함과 생성 결함을 가른다 (감사 B3).
 
 `must_contain` 라벨을 도는 러너(`ko_eval_answer_run.py`)에는 이 판정이 없었다. "사실이 답에
-없다" 하나로는 **검색을 고칠지 서술을 고칠지 모른다.**
+없다" 하나로는 **검색을 고칠지 생성을 고칠지 모른다.**
 
 ⛔ **왜 어제 이 자리를 못 봤나 (2026-09-05 정정).** `OPEN.md` A78 에 *"FP7 을 탈 수 있는 라벨이
-하나도 없다"* 고 적었다. 근거는 `answer-facts.yaml` 15건이 전부 요구 사실 하나짜리라는 실측이고
+하나도 없다"* 고 적었다. 근거는 `answer-facts.yaml` 15건이 전부 필수 사실 하나짜리라는 실측이고
 그 실측은 맞다 — **그 집합 하나만 본 것이 틀렸다.** 실제로는 `must_contain` 이 둘 이상인 라벨이
 Pack B 26 · 정책 8 · 멀티홉 4 · synthesis 3 으로 **41건** 있었다. 라벨이 없던 것이 아니라
 귀속이 그 라벨을 안 보는 러너에 있었다.
@@ -43,7 +43,7 @@ def test_pass_needs_every_group_in_the_answer():
 
 
 def test_upstream_when_what_was_missed_was_never_in_the_evidence():
-    """검색이 못 물어온 것을 서술 실패로 세면 고칠 곳을 잘못 짚는다."""
+    """검색이 못 물어온 것을 생성 실패로 세면 고칠 곳을 잘못 짚는다."""
     a = attribute_facts([True, False], [True, False])
     assert a["verdict"] == "upstream"
     assert (a["n_in_evidence"], a["n_in_answer"]) == (1, 1)
@@ -78,10 +78,10 @@ def test_every_verdict_name_is_declared():
         assert attribute_facts(*pair)["verdict"] in VERDICTS
 
 
-# ── 채점기 배선 ──────────────────────────────────────────────────────────────
+# ── 채점기 와이어링 ──────────────────────────────────────────────────────────────
 
 def test_without_evidence_nothing_is_attributed():
-    """⭐ 기존 호출부는 한 줄도 안 바뀐다 — 근거를 안 주면 **판정 안 함**이다."""
+    """⭐ 기존 호출부는 한 줄도 안 바뀐다 — 답변 근거를 안 주면 **판정 안 함**이다."""
     s = score_answer("q", "버전 필드가 필요합니다", [], set(), TWO)
     assert s.verdict == ""
     assert s.facts_in_evidence == []
@@ -102,7 +102,7 @@ def test_the_scorer_sends_a_missing_fact_upstream_when_the_evidence_lacked_it():
 
 
 def test_a_failed_generation_is_never_attributed():
-    """⛔ LLM 이 실패하면 답변 자리에 **근거 원문 덤프**가 들어간다.
+    """⛔ LLM 이 실패하면 답변 자리에 **답변 근거 원문 덤프**가 들어간다.
 
     두 쪽이 같은 문자열이 되므로 그 비교는 아무 뜻이 없다 — `has_facts` 가 같은 이유로
     무조건 거짓인 그 자리다. 2026-08-08 에 3건 중 2건이 그렇게 '통과' 했다.
@@ -117,7 +117,7 @@ def test_the_evidence_side_uses_this_runner_s_normaliser_not_the_other_one():
     """⭐ **A22 를 재생산하지 않는다.**
 
     `최대1` 은 이 러너의 규칙에서 `최대 1` 과 **다른 문자열**이다(공백을 줄일 뿐 지우지 않는다).
-    다른 러너의 정규화를 들고 왔다면 여기서 `fp4` 가 나온다 — 지운 공백 덕에 근거에 있다고
+    다른 러너의 정규화를 들고 왔다면 여기서 `fp4` 가 나온다 — 지운 공백 덕에 답변 근거에 있다고
     읽히기 때문이다. 나와야 하는 것은 `upstream` 이다.
     """
     s = score_answer("q", "모르겠습니다", [], set(), [["최대1"]],
@@ -127,13 +127,13 @@ def test_the_evidence_side_uses_this_runner_s_normaliser_not_the_other_one():
 
 
 def test_a_refusal_shaped_sentence_in_the_evidence_still_counts_as_evidence():
-    """⛔ `delivered_text` 는 근거에 걸지 않는다.
+    """⛔ `delivered_text` 는 답변 근거에 걸지 않는다.
 
-    그 규칙은 *답변자가 무엇을 배달했는가* 를 보는 것이고, 근거는 배달된 것이 아니라
+    그 규칙은 *답변자가 무엇을 배달했는가* 를 보는 것이고, 답변 근거는 배달된 것이 아니라
     **주어진 것**이다. 게다가 `format_for_llm` 의 머리글이 "## 검색된 근거" 라서, 근거에
-    그 규칙을 걸면 근거 첫 덩어리가 통째로 사라질 수 있다.
+    그 규칙을 걸면 답변 근거 첫 덩어리가 통째로 사라질 수 있다.
 
-    ⚠ **첫 판의 이 검사는 아무것도 안 지켰다.** 고의로 `delivered_text` 를 근거에 걸어 보니
+    ⚠ **첫 버전의 이 검사는 아무것도 안 지켰다.** 고의로 `delivered_text` 를 답변 근거에 걸어 보니
     그대로 통과했다 — 요구한 사실 둘이 **거절 세그먼트 밖**에 있어서 걷어내도 판정이 안 바뀌는
     문자열을 골랐기 때문이다. 지금 것은 못 낸 쪽 사실(`버전`)이 거절 세그먼트 **안에만** 있다.
     """
@@ -142,7 +142,7 @@ def test_a_refusal_shaped_sentence_in_the_evidence_still_counts_as_evidence():
     s = score_answer("q", "충돌을 잡습니다", [], set(), TWO, evidence_text=evidence)
     assert s.facts == [False, True]
     assert s.facts_in_evidence == [True, True]
-    assert s.verdict == "fp7"      # 근거에 걸었다면 `upstream` 이 나온다
+    assert s.verdict == "fp7"      # 답변 근거에 걸었다면 `upstream` 이 나온다
 
 
 # ── 집계 ─────────────────────────────────────────────────────────────────────

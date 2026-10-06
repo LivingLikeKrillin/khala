@@ -2,7 +2,7 @@
 
 ⚠ **이 파일의 존재 이유는 하나의 케이스다.** 2026-09-03 의 실제 배포 모양을 그대로 넣고
 검사가 **붉어지는지** 본다. 처음 설계(코퍼스 단위)는 그 모양에서 초록이었다 — 검사를 만들 때
-자기가 잡으려는 사건을 넣어 보지 않으면 안 잡는 검사가 통과한다.
+자기가 잡으려는 사례를 넣어 보지 않으면 안 잡는 검사가 통과한다.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def _reach(scopes, active=_ACTIVE):
             for t in set(sc) | set(active)}
 
 
-# ── 선언 읽기 ────────────────────────────────────────────────────────────────
+# ── 명시적 선언 읽기 ────────────────────────────────────────────────────────────────
 
 def test_served_corpora_는_선언만_읽는다():
     assert served_corpora({"index": {"served_corpora": ["default", "design_docs"]}}) == {
@@ -136,7 +136,7 @@ def test_2026_09_03_의_실제_모양에서_붉어진다():
 
     컷오버 뒤의 실제 배포: 슬랙은 두 코퍼스를 읽고 웹·CLI 는 `default` 하나만 읽는다.
     `design_docs` 는 **고아가 아니다** — 슬랙이 닿는다. 그래서 코퍼스 단위로 세면 초록이고,
-    그 초록이 설계 문서 122건을 사람 표면에서 한 달 넘게 안 보이게 두었다.
+    그 초록이 설계 문서 122건을 사람 API 표면에서 한 달 넘게 안 보이게 두었다.
     """
     scopes = {"local-dev": ("default",),
               "slack-bot": ("default", "design_docs")}
@@ -148,7 +148,7 @@ def test_2026_09_03_의_실제_모양에서_붉어진다():
 
 
 def test_배선_뒤의_모양에서_초록이다():
-    """#424 가 `NEXUS_DEV_READ_TENANTS` 를 준 뒤의 상태 — 두 표면이 두 코퍼스에 다 닿는다."""
+    """#424 가 `NEXUS_DEV_READ_TENANTS` 를 준 뒤의 상태 — 두 API 표면이 두 코퍼스에 다 닿는다."""
     scopes = {"local-dev": ("default", "design_docs"),
               "slack-bot": ("default", "design_docs")}
     v = verdict(scopes=scopes, serving={"local-dev", "slack-bot"},
@@ -170,7 +170,7 @@ def test_범위가_빈_코퍼스를_가리키면_붉어진다():
 
 
 def test_평가_principal_의_좁은_범위는_결함이_아니다():
-    """서빙으로 선언되지 않은 표면은 세지 않는다 — 안 그러면 검사가 매번 붉고 곧 꺼진다."""
+    """서빙으로 선언되지 않은 API 표면은 세지 않는다 — 안 그러면 검사가 매번 붉고 곧 꺼진다."""
     scopes = {"local-dev": ("default", "design_docs"),
               "ko-eval": ("ko_eval_packa",)}
     v = verdict(scopes=scopes, serving={"local-dev"},

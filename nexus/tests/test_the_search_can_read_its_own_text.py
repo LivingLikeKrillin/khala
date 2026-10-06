@@ -1,19 +1,19 @@
 """답변 경로가 **검색 글과 질문을 따로** 받을 수 있다 (`search_text`).
 
-⛔ **왜 생겼나 (2026-10-05).** 소비자(진단 · 설명 층)가 호출자 쪽 처치를 두 경로에서 측정했다.
-물음을 뗀 짧은 글로 검색하면 근거가 좋아졌다(설명 경로 G3 통과 · 진단 경로 R01 이 SOP-01 을
+⛔ **왜 생겼나 (2026-10-05).** 소비자(진단 · 설명 레이어)가 호출자 쪽 처치를 두 경로에서 측정했다.
+물음을 뗀 짧은 글로 검색하면 답변 근거가 좋아졌다(설명 경로 G3 통과 · 진단 경로 R01 이 SOP-01 을
 받음). 그런데 그 글을 `query` 로 보내려면 물음을 `answer_context` 로 옮겨야 했고, 진단 경로에서
-그 자리 옮김이 **답의 형식**(머리 줄 · 카드)을 깨뜨렸다 — D3 기각. 처치가 묶음이라 둘을 가를 수
+그 자리 옮김이 **답의 형식**(머리 줄 · 코드 카드)을 깨뜨렸다 — D3 기각. 처치가 묶음이라 둘을 가를 수
 없었다.
 
-⭐ 그래서 칸을 나눈다 — **검색 쪽은 `search_text` 만, 답 쪽은 `query` 만** 본다. 그러면 검색은
+⭐ 그래서 필드를 나눈다 — **검색 쪽은 `search_text` 만, 답 쪽은 `query` 만** 본다. 그러면 검색은
 짧은 글로 돌고, 프롬프트의 질문 자리는 오늘 그대로다.
 
 이 파일이 지키는 것:
 
-- 칸을 주면 원문 경로 · 식별자 채널 · 엔티티 · 경로 이름 · 묶음의 코드 값 맞추기가 그 글을 쓴다
-- 칸을 주면 재작성기가 **돌지 않는다** — 재작성문이 답변 프롬프트의 질문 자리로 새기 때문이다
-- 칸을 주면 답변 프롬프트 · 숫자 검증 · 충분성 판정자는 `query` 를 본다
+- 필드를 주면 원문 경로 · 식별자 채널 · 엔티티 · 경로 이름 · 근거 묶음의 코드 값 맞추기가 그 글을 쓴다
+- 필드를 주면 재작성기가 **돌지 않는다** — 재작성문이 답변 프롬프트의 질문 자리로 새기 때문이다
+- 필드를 주면 답변 프롬프트 · 숫자 검증 · 충분성 판정자는 `query` 를 본다
 - 안 주거나 비었거나 공백뿐이면 오늘과 같다
 - 응답과 기록은 쓴 길이를 말한다(본문은 안 남긴다)
 """
@@ -97,7 +97,7 @@ async def test_without_a_search_text_the_question_is_searched_as_today(blank):
     assert (query, channels, rw) == (QUESTION, None, None)
 
 
-# ── 엔드포인트 층 ───────────────────────────────────────────────────────────────
+# ── 엔드포인트 계층 ───────────────────────────────────────────────────────────────
 
 def _hit(rid: str, doc: str, title: str, score: float) -> SearchHit:
     return SearchHit(rid=rid, doc_rid=doc, doc_title=title, section_path="§1",
@@ -230,8 +230,8 @@ def test_the_stream_splits_the_same_way(client):
 
     assert _SEEN["search_query"] == SEARCH
     assert _SEEN["packet_question"] == SEARCH
-    # 「오늘과 같다」는 **근거 자리를 뺀 나머지**다 — 근거는 검색 글로 찾은 것이라 같은 근거를
-    # 넣고 견준다(지시문 · 질문 자리 · 자료 칸이 같은가).
+    # 「오늘과 같다」는 **답변 근거 자리를 뺀 나머지**다 — 답변 근거는 검색 글로 찾은 것이라 같은 답변 근거를
+    # 넣고 견준다(지시문 · 질문 자리 · 자료 필드가 같은가).
     expected = build_prompts(QUESTION, _stream_evidence(), QUESTION,
                              weak_evidence=_result().confidence.weak)
     assert _SEEN["stream_prompts"] == expected, "스트림의 프롬프트가 질문만 보낸 오늘의 요청과 다르다"
@@ -243,7 +243,7 @@ def test_the_stream_splits_the_same_way(client):
 
 
 def _stream_evidence() -> str:
-    """스트림이 프롬프트에 실은 근거 — 같은 패킷을 같은 함수로 다시 만든다."""
+    """스트림이 프롬프트에 실은 답변 근거 — 같은 패킷을 같은 함수로 다시 만든다."""
     import asyncio
 
     from nexus.search.evidence_packet import assemble_packet, format_for_llm

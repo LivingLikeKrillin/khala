@@ -63,7 +63,7 @@ def test_search_never_runs_the_visibility_query(client, monkeypatch):
     """검색 응답 조립은 DB 진단을 하지 않는다.
 
     이 검사가 지키는 것은 성능이 아니라 **스위트가 도는 것**이다. 같은 진단을 검색 경로에 얹은
-    두 판이 전부 CI 를 매달았다: 죽은 이벤트 루프에 묶인 풀에서 커넥션이 열린 트랜잭션째 남아
+    두 버전이 전부 CI 를 매달았다: 죽은 이벤트 루프에 묶인 풀에서 커넥션이 열린 트랜잭션째 남아
     `documents` 락을 쥐었고, 뒤따르는 TRUNCATE 가 전부 그 뒤에 섰다.
     """
     from nexus.search.hybrid import SearchResult

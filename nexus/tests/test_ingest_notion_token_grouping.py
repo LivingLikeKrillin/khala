@@ -5,7 +5,7 @@ migration 009 가 이 실패를 이름까지 붙여 예고했다:
 > 위험한 것은 기능 부족이 아니라 **조용한 오독**이다: 토큰을 바꿔치면 이전 워크스페이스의 루트가
 > 빈 걸음으로 보이고, `--reconcile` 이 그 문서들을 사라진 것으로 판정한다.
 
-컬럼은 그걸 막으려고 만들어졌고 HTTP 표면은 `roots_store.group_by_token()` 으로 쓰고 있었는데
+컬럼은 그걸 막으려고 만들어졌고 HTTP API 표면은 `roots_store.group_by_token()` 으로 쓰고 있었는데
 (`sources/api.py:126,294`), CLI 만 `--token-env` 하나를 모든 루트에 적용했다. 2026-08-11 에
 그 경로로 정책 트리 전체가 `ObjectNotFound` 로 돌아왔고, 나는 그것을 "원본이 사라졌다" 로 읽었다.
 """
@@ -37,7 +37,7 @@ def test_a_root_without_a_token_env_falls_back_to_the_default():
 
 
 async def _no_extracted_text(_tenant: str) -> int:
-    """이 시험들의 코퍼스에는 그림에서 읽은 청크가 없다 — 가드가 물 것이 없다."""
+    """이 시험들의 코퍼스에는 그림에서 읽은 청크가 없다 — 가드 검사가 물 것이 없다."""
     return 0
 
 
@@ -67,8 +67,8 @@ def test_cli_walks_once_per_token_env(monkeypatch):
         walked.append(built[-1][1])
         return _Report()
 
-    # 적재 앞에 그림-텍스트 삭제 가드가 선다(사고 2026-09-02). 이 시험의 주제는 **루프·그룹핑**이지
-    # 가드가 아니고, 여기엔 DB 가 없다 — 조회만 갈아 끼운다. 가드 자체는
+    # 적재 앞에 그림-텍스트 삭제 가드 검사가 선다(사고 2026-09-02). 이 시험의 주제는 **루프·그룹핑**이지
+    # 가드 검사가 아니고, 여기엔 DB 가 없다 — 조회만 갈아 끼운다. 가드 검사 자체는
     # `test_vision_drop_guard.py` 가 본다.
     monkeypatch.setattr("nexus.ingest.vision_guard.count_machine_read", _no_extracted_text)
     monkeypatch.setattr("nexus.ingest.sources.notion_importer.import_notion", _import)
@@ -109,8 +109,8 @@ def test_the_whole_command_runs_in_one_event_loop(monkeypatch):
         loops.append(asyncio.get_running_loop())
         return _Report()
 
-    # 적재 앞에 그림-텍스트 삭제 가드가 선다(사고 2026-09-02). 이 시험의 주제는 **루프·그룹핑**이지
-    # 가드가 아니고, 여기엔 DB 가 없다 — 조회만 갈아 끼운다. 가드 자체는
+    # 적재 앞에 그림-텍스트 삭제 가드 검사가 선다(사고 2026-09-02). 이 시험의 주제는 **루프·그룹핑**이지
+    # 가드 검사가 아니고, 여기엔 DB 가 없다 — 조회만 갈아 끼운다. 가드 검사 자체는
     # `test_vision_drop_guard.py` 가 본다.
     monkeypatch.setattr("nexus.ingest.vision_guard.count_machine_read", _no_extracted_text)
     monkeypatch.setattr("nexus.ingest.sources.notion_importer.import_notion", _import)
@@ -144,8 +144,8 @@ def test_explicit_roots_also_stay_in_that_one_loop(monkeypatch):
         loops.append(asyncio.get_running_loop())
         return _Report()
 
-    # 적재 앞에 그림-텍스트 삭제 가드가 선다(사고 2026-09-02). 이 시험의 주제는 **루프·그룹핑**이지
-    # 가드가 아니고, 여기엔 DB 가 없다 — 조회만 갈아 끼운다. 가드 자체는
+    # 적재 앞에 그림-텍스트 삭제 가드 검사가 선다(사고 2026-09-02). 이 시험의 주제는 **루프·그룹핑**이지
+    # 가드 검사가 아니고, 여기엔 DB 가 없다 — 조회만 갈아 끼운다. 가드 검사 자체는
     # `test_vision_drop_guard.py` 가 본다.
     monkeypatch.setattr("nexus.ingest.vision_guard.count_machine_read", _no_extracted_text)
     monkeypatch.setattr("nexus.ingest.sources.notion_importer.import_notion", _import)

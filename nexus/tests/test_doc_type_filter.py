@@ -1,13 +1,13 @@
 """호출자가 **이번 질의에서는 안 보고 싶다**고 말한 문서 종류를 후보에서 뺀다.
 
-⛔ **왜 생겼나 (설명 층 보고 2026-09-19 · 우리 실측 2026-09-20).** 설명 층이 사건 아홉에
+⛔ **왜 생겼나 (설명 레이어 보고 2026-09-19 · 우리 실측 2026-09-20).** 설명 레이어가 사례 아홉에
 대해 본문 인용 72건을 세어 보니 3,506줄짜리 설계 일지 한 편이 **29%** 를 차지했고, 그
 문서는 답의 청중을 운영자가 아니라 개발자로 만든다. 우리 쪽 실측도 같은 방향이었다 —
-같은 코퍼스에 사건 분류 질의를 여섯 모양으로 돌리니 그 한 편이 **상위 20 중 5~7 자리**를
+같은 코퍼스에 사례 분류 질의를 여섯 모양으로 돌리니 그 한 편이 **상위 20 중 5~7 자리**를
 매번 차지했다.
 
 ⚠ **이 필터는 랭킹을 고치지 않는다.** 자리를 비우는 것과 맞는 문서를 올리는 것은 다른
-일이고, 설명 층이 그 구분을 먼저 적었다. 여기서 지키는 것은 **자리를 비우는 쪽**뿐이다.
+일이고, 설명 레이어가 그 구분을 먼저 적었다. 여기서 지키는 것은 **자리를 비우는 쪽**뿐이다.
 """
 
 from __future__ import annotations
@@ -77,11 +77,11 @@ def test_a_document_of_unknown_type_would_survive_the_filter():
     `IS NULL OR` 를 쓰는 것과 같은 이유이고, 그 자리에서 이 리포는 설계 문서 코퍼스를
     통째로 잃을 뻔했다.
 
-    ⚠ **오늘 이 갈래는 안 밟힌다 — 아래 검사가 그 이유다.** 처음엔 라이브 검사에서
+    ⚠ **오늘 이 하위 범주는 안 밟힌다 — 아래 검사가 그 이유다.** 처음엔 라이브 검사에서
     `doc_type=NULL` 행을 만들어 확인하려 했고 **CI 가 스키마로 막았다**(`NOT NULL`).
     막힌 것이 옳다: 없는 상태를 지어내 통과시키면 그 검사는 아무것도 안 지킨다.
-    이 술어는 칸 이름을 인자로 받으므로 그 제약이 없는 칸에도 쓰일 수 있고, 그래서
-    갈래는 남긴다 — **관측된 구조가 아니라 보험**이라고 적어 둔다.
+    이 술어는 필드 이름을 인자로 받으므로 그 제약이 없는 필드에도 쓰일 수 있고, 그래서
+    하위 범주는 남긴다 — **관측된 구조가 아니라 보험**이라고 적어 둔다.
     """
     frag, _ = doc_type_exclusion_predicate("d.doc_type", 3, ["spec"])
     assert "IS NULL" in frag, "종류 미상 문서가 이 필터에 쓸려 나간다"
@@ -95,7 +95,7 @@ def test_the_param_number_is_the_callers_to_choose():
         assert f"${n}" in frag
 
 
-# ── 배선: 라이브 코퍼스에서 실제로 빠지는가 ───────────────────────────────────
+# ── 와이어링: 라이브 코퍼스에서 실제로 빠지는가 ───────────────────────────────────
 
 pytestmark_db = pytest.mark.skipif(
     not os.getenv("NEXUS_TEST_DB_URL"), reason="NEXUS_TEST_DB_URL 필요")
@@ -106,10 +106,10 @@ _TENANT = "doc_type_filter_test"
 @pytestmark_db
 @pytest.mark.asyncio
 async def test_the_schema_is_why_that_branch_is_insurance(db_pool):
-    """⭐ **위 갈래가 왜 안 밟히는지를 스키마에서 읽는다.**
+    """⭐ **위 하위 범주가 왜 안 밟히는지를 스키마에서 읽는다.**
 
-    `documents.doc_type` 이 `NOT NULL` 인 동안 그 갈래는 보험이다. 누가 그 제약을 풀면
-    이 검사가 먼저 붉어지고, 그때부터 위 갈래는 보험이 아니라 **실제로 막는 것**이 된다.
+    `documents.doc_type` 이 `NOT NULL` 인 동안 그 하위 범주는 보험이다. 누가 그 제약을 풀면
+    이 검사가 먼저 붉어지고, 그때부터 위 하위 범주는 보험이 아니라 **실제로 막는 것**이 된다.
     """
     async with db_pool.acquire() as con:
         nullable = await con.fetchval(
@@ -125,7 +125,7 @@ async def _seed(pool):
 
     ⛔ **문서 행만 심으면 키워드 다리가 아무것도 못 찾는다 (CI 가 잡았다, 2026-09-20).**
     `_save_document` 는 이름 그대로 문서만 저장한다. BM25 는 `chunks.tsvector_ko` 를 보고,
-    그것을 채우는 것은 `index_chunk_bm25` 다. 내 첫 판은 문서 넷을 심고 히트 0건을 받았다.
+    그것을 채우는 것은 `index_chunk_bm25` 다. 내 첫 버전은 문서 넷을 심고 히트 0건을 받았다.
     """
     from nexus.index.bm25 import index_chunk_bm25
 
@@ -210,7 +210,7 @@ async def test_both_legs_actually_receive_the_exclusion(monkeypatch):
     RRF 는 두 다리의 합의를 올리므로, 한쪽에만 남은 문서도 순위를 받는다. 즉 반만 건
     필터는 "덜 걸린다" 가 아니라 **안 걸린 것과 구별이 안 된다.**
 
-    ⛔ **첫 판은 서명만 봤고, 그래서 변이를 놓쳤다 (2026-09-20).** `inspect.signature` 로
+    ⛔ **첫 버전은 서명만 봤고, 그래서 변이를 놓쳤다 (2026-09-20).** `inspect.signature` 로
     두 함수가 인자를 *받는지*만 확인했는데, 호출부에서 벡터 다리의 인자를 지우는 변이가
     그 검사를 그대로 통과했다. 함수가 받을 수 있는 것과 부르는 쪽이 주는 것은 다른 사실이고,
     이 리포는 그 구분에서 이미 이틀짜리 침묵을 겪었다(`section_fill`).
@@ -255,11 +255,11 @@ async def test_both_legs_actually_receive_the_exclusion(monkeypatch):
 async def test_the_nested_search_of_the_correction_pass_inherits_the_exclusion(monkeypatch):
     """⛔ **랭킹에서만 걸리고 읽는 사람 앞에서는 안 걸리던 것 (실측 2026-09-20).**
 
-    라이브에서 `spec`·`design_doc` 을 뺐는데 근거에 설계 일지 조각 둘이 앉았다. 히트에는
+    라이브에서 `spec`·`design_doc` 을 뺐는데 답변 근거에 설계 일지 청크 둘이 앉았다. 히트에는
     0건이었다 — 정정 패스가 **새 질의로 검색을 다시 부르면서** 제외를 안 들고 갔기 때문이다.
 
     ⭐ 그래서 `packet_for_answer` 는 제외를 **인자로 받지 않는다.** `SearchResult` 에 이미
-    실려 있는 것을 읽는다 — 답변 표면이 셋인데 표면마다 넘기게 두면 하나가 잊고, 그 조합은
+    실려 있는 것을 읽는다 — 답변 API 표면이 셋인데 API 표면마다 넘기게 두면 하나가 잊고, 그 조합은
     검사가 초록인 채로 틀린다.
     """
     from nexus.search import reconcile
@@ -289,7 +289,7 @@ async def test_the_nested_search_of_the_correction_pass_inherits_the_exclusion(m
 def test_the_packet_seam_reads_the_exclusion_off_the_result():
     """제외가 **인자로 전달되지 않는다**는 성질 자체를 박아 둔다.
 
-    인자가 되는 순간 표면 셋이 각자 넘겨야 하고, 하나가 잊으면 그 표면만 조용히 샌다.
+    인자가 되는 순간 API 표면 셋이 각자 넘겨야 하고, 하나가 잊으면 그 API 표면만 조용히 샌다.
     """
     import inspect
 

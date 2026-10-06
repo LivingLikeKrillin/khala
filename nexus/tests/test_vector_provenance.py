@@ -1,7 +1,7 @@
 """벡터 출처는 **컬럼별로** 적힌다 (SPEC-nexus-embedding-provenance-grain U1, approved).
 
 `chunks.embed_model` 은 행당 한 칸인데 벡터는 컬럼 둘에 산다. 쓰기 경로가 `{col}` 은 바꾸면서
-라벨은 같은 칸에 쓰므로, 라벨은 **마지막에 쓴 컬럼의 것**이고 다른 컬럼에 대해서는 거짓이다.
+라벨은 같은 필드에 쓰므로, 라벨은 **마지막에 쓴 컬럼의 것**이고 다른 컬럼에 대해서는 거짓이다.
 실측(2026-08-14, 정책 필터): `default` 309행 중 **111행이 768 모델 라벨을 단 채 1024 벡터를
 갖고 있다** — nomic 은 1024 를 만들 수 없다.
 
@@ -107,7 +107,7 @@ def test_both_write_paths_record_provenance():
 
     소스 검사인 이유: 두 경로를 실제로 태우려면 임베딩 백엔드가 필요하고, 그러면 이 검사가
     백엔드 가용성에 묶인다. 대신 **호출이 UPDATE 와 같은 함수 안에 있는지**를 본다 —
-    아래 배선 검사가 단건 경로를 실제로 태워 그 짝을 맞춘다.
+    아래 와이어링 검사가 단건 경로를 실제로 태워 그 짝을 맞춘다.
     """
     import inspect
 
@@ -121,7 +121,7 @@ def test_both_write_paths_record_provenance():
 
 @pytest.mark.asyncio
 async def test_the_embed_path_actually_writes_a_row(db, monkeypatch):
-    """**배선 검사.** 소스에 이름이 있는 것과 그 줄이 도는 것은 다르다."""
+    """**와이어링 검사.** 소스에 이름이 있는 것과 그 줄이 도는 것은 다르다."""
     from nexus.index import embed
 
     await db.execute(
@@ -203,7 +203,7 @@ def test_the_report_keeps_the_shape_its_callers_read():
 async def test_mismatch_counts_vectors_that_are_not_the_declared_generation(db):
     """**이것이 실제로 위험한 신호다** — 선언된 세대가 아닌 벡터가 검색에 섞여 있다.
 
-    혼합(같은 컬럼에 모델 둘)과 다르다: 컬럼이 균일해도 그 하나가 선언과 다르면 위험하다.
+    혼합(같은 컬럼에 모델 둘)과 다르다: 컬럼이 균일해도 그 하나가 명시적 선언과 다르면 위험하다.
     """
     await db.execute(
         "INSERT INTO documents (rid, source_uri, title, tenant, classification, hash) "
@@ -232,7 +232,7 @@ async def test_mismatch_counts_vectors_that_are_not_the_declared_generation(db):
 
 @pytest.mark.asyncio
 async def test_unknown_provenance_is_not_a_mismatch(db):
-    """미상은 "선언과 다르다" 가 아니라 "모른다" 다. 섞으면 옛 거짓 경보가 이름만 바꿔 돌아온다."""
+    """미상은 "명시적 선언과 다르다" 가 아니라 "모른다" 다. 섞으면 옛 거짓 경보가 이름만 바꿔 돌아온다."""
     await db.execute(
         "INSERT INTO index_generation_events (tenant, column_name, model, declared_by) "
         "VALUES ('fbnone', 'embedding_1024', 'KURE-v1', 'test')")
@@ -245,7 +245,7 @@ async def test_unknown_provenance_is_not_a_mismatch(db):
 
 @pytest.mark.asyncio
 async def test_the_row_label_is_declared_dead_in_the_schema(db):
-    """§8 의 처분(027): 행 라벨은 **쓰지도 읽지도 않는다.** 스키마가 그렇게 말해야 한다.
+    """§8 의 조치(027): 행 라벨은 **쓰지도 읽지도 않는다.** 스키마가 그렇게 말해야 한다.
 
     소스에서 이름을 찾는 검사로는 부족하다 — 그 검사는 함수가 지워지면 통과하지만 DEFAULT 가
     살아 있으면 새 행이 계속 거짓 라벨을 달고 들어온다(INSERT 는 이 컬럼을 안 적는다).

@@ -69,7 +69,7 @@ def test_an_unknown_failure_is_not_called_transient():
 
 
 def test_the_retry_axis_lives_here_not_in_each_client():
-    """표면마다 이 축을 다시 유도하면 답이 갈린다."""
+    """API 표면마다 이 차원을 다시 유도하면 답이 갈린다."""
     assert F.is_transient(F.RATE_LIMIT) and F.is_transient(F.UNAVAILABLE)
     assert not F.is_transient(F.QUOTA) and not F.is_transient(F.AUTH)
     assert not F.is_transient(None)
@@ -87,7 +87,7 @@ def test_reason_codes_are_a_closed_set():
 
 
 def test_a_new_reason_reaches_the_slack_surface():
-    """⛔ 사유를 늘리고 표면을 안 늘리면, 그 사유는 조용히 «분류되지 않음» 이 된다."""
+    """⛔ 사유를 늘리고 API 표면을 안 늘리면, 그 사유는 조용히 «분류되지 않음» 이 된다."""
     from nexus.slack.bot import _OUTCOME_BY_REASON
 
     unmapped = {r for r in F.REASONS if F.is_transient(r)} - set(_OUTCOME_BY_REASON)
@@ -130,7 +130,7 @@ async def test_a_successful_answer_has_no_failure_reason(monkeypatch):
 
 
 async def _packet():
-    """근거가 **있는** 패킷. 비어 있으면 생성기는 LLM 을 부르기 전에 기권하고(abstained),
+    """답변 근거가 **있는** 패킷. 비어 있으면 생성기는 LLM 을 부르기 전에 기권하고(abstained),
     그러면 이 시험은 실패 분류가 아니라 기권 경로를 측정하게 된다."""
     from nexus.search.evidence_packet import assemble_packet
     from nexus.search.hybrid import SearchHit

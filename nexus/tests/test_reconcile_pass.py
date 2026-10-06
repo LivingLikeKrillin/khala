@@ -1,7 +1,7 @@
 """정정 확인 패스 — 정정당한 문서가 정정한 문서를 이기는 것을 막는 장치.
 
-⛔ 이 검사가 지켜야 할 성질은 둘이다: **정정을 데려온다**, 그리고 **근거를 부풀리지 않는다**.
-둘째가 없으면 2026-08-28 의 실험을 반복한다 — 근거를 네 배로 불리고 점수를 하나도 못 샀다.
+⛔ 이 검사가 지켜야 할 성질은 둘이다: **정정을 데려온다**, 그리고 **답변 근거를 부풀리지 않는다**.
+둘째가 없으면 2026-08-28 의 실험을 반복한다 — 답변 근거를 네 배로 불리고 점수를 하나도 못 샀다.
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ def test_chunks_already_in_the_evidence_are_not_added_twice():
 
 
 def test_the_expansion_is_bounded():
-    """⛔ 상한이 없으면 근거가 답이 아니라 문서 더미가 된다."""
+    """⛔ 상한이 없으면 답변 근거가 답이 아니라 문서 더미가 된다."""
     text = " ".join(f"nameOne{i}" for i in range(20))
     found = {f"nameOne{i}": [_Hit(f"x{i}{j}") for j in range(10)] for i in range(20)}
     got = _run([_Hit("c1", text)], found)

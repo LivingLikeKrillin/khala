@@ -60,7 +60,7 @@ class DeletedMention:
     섞지 않는다: 그 분모는 "이 문단이 코드에 걸어 둔 참조" 를 세고, 이쪽은 "걸 곳이 사라진
     참조" 다. 둘을 한 수로 합치면 어느 쪽도 못 읽는다.
 
-    `subject` 가 실린 이유는 **왜 지웠는지가 곧 처방**이기 때문이다.
+    `subject` 가 실린 이유는 **왜 지웠는지가 곧 조치 방법**이기 때문이다.
     """
     name: str
     date: str
@@ -73,7 +73,7 @@ class ScanBasis:
     """이 판정이 **무엇과 비교한 것인가**.
 
     ⛔ **왜 있나 (실측 2026-09-11).** 이 경로는 `code_symbols` 와 대조해 fresh·changed 를
-    가르는데, 그 표가 마지막으로 채워진 시점을 아무 데도 안 실었다. 그래서 표면은 언제나
+    가르는데, 그 표가 마지막으로 채워진 시점을 아무 데도 안 실었다. 그래서 API 표면은 언제나
     *"현재 코드에 그대로 있습니다"* 라고 적었다. 그런데 라이브에서 스캔은 리포당 **한 번**만
     돌아 있었다(`code-src` 2026-08-18 · khala 2026-08-16, `scan_commit` 각 1개). 앵커 5,440건이
     전부 fresh 로 나온 것은 코드가 안 바뀌어서가 아니라 **비교 대상이 안 움직여서**였다.
@@ -92,7 +92,7 @@ class ChunkAnchors:
     """한 청크가 부른 코드 이름들의 읽기 — 앵커 상태와 지워진 이름.
 
     `scan` 은 앵커 판정이 무엇과 비교한 것인지다. 앵커가 없거나 스캔 기록이 없으면 `None`
-    이고, 그때 표면은 기준을 **모른다고** 말해야 한다.
+    이고, 그때 API 표면은 기준을 **모른다고** 말해야 한다.
     """
     anchors: list[AnchorStatus]
     deleted: list[DeletedMention]
@@ -105,7 +105,7 @@ async def statuses_for_chunks(
     """이 청크들이 부른 이름의 현재 상태. **쿼리 한 번.**
 
     두 사실을 한 번에 받는다 — 바인딩된 앵커의 상태, 그리고 바인딩되지 못한 이름 중
-    **git 이 지워졌다고 아는 것**. `UNION ALL` 로 묶는 이유는 하나다: 표면마다 쿼리를 더하면
+    **git 이 지워졌다고 아는 것**. `UNION ALL` 로 묶는 이유는 하나다: API 표면마다 쿼리를 더하면
     앵커가 몇 개든 한 개라던 약속이 조용히 두 개, 세 개가 된다.
 
     앵커가 없는 테넌트(평가 팩·`default`)에서는 빈 결과가 돌아오고 호출부는 아무것도 안 한다.
@@ -182,7 +182,7 @@ async def statuses_for_chunks(
             anchors.setdefault(rid, []).append(
                 AnchorStatus(r["name"], status_from_counts(r["n_match"], r["n_same"])))
             # 한 청크의 앵커가 리포 둘에 걸치면 기준도 둘이다. **오래된 쪽을 택한다** —
-            # 표면이 말하는 기준은 이 판정 전체가 서 있는 바닥이어야 하고, 바닥은 가장
+            # API 표면이 말하는 기준은 이 판정 전체가 서 있는 바닥이어야 하고, 바닥은 가장
             # 낡은 쪽이다. 새 쪽을 적으면 실제보다 최근에 확인한 것처럼 읽힌다.
             if r["scan_at"]:
                 prev = scans.get(rid)
@@ -205,7 +205,7 @@ def summarize(anchors: Sequence[AnchorStatus],
     바인딩된 적이 없다. 합치면 "7개 중 5개" 가 무엇의 5개인지 아무도 모르게 된다.
 
     `scan` 은 수가 **무엇과 비교해서 나온 것인지**다(`ScanBasis`). `None` 이면 모른다는
-    뜻이고, 표면은 모른다고 말해야 한다. ⚠ 이 키는 `describe` 가 읽지 않는다 — 프롬프트는
+    뜻이고, API 표면은 모른다고 말해야 한다. ⚠ 이 키는 `describe` 가 읽지 않는다 — 프롬프트는
     바이트 단위로 같아야 하고 평가 팩이 거기서 돈다(`test_anchor_status_surface.py` 가
     그것을 고정한다).
     """
@@ -254,7 +254,7 @@ def describe(anchors: Sequence[AnchorStatus],
             f"같은 이름이 여럿이 됨 {len(summary['ambiguous_now'])}개"
             f"({_names(summary['ambiguous_now'])})")
     if summary["deleted"]:
-        # 날짜까지 말한다. "없다" 는 확인 대상이지만 "2026-02-19 에 지워졌다" 는 처분 대상이다.
+        # 날짜까지 말한다. "없다" 는 확인 대상이지만 "2026-02-19 에 지워졌다" 는 조치 대상이다.
         shown = summary["deleted"][:_MAX_NAMES]
         listed = " · ".join(f"`{d['name']}`({d['date']} 삭제)" for d in shown)
         rest = len(summary["deleted"]) - len(shown)

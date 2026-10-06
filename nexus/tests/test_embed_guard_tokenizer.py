@@ -35,7 +35,7 @@ class _RaisingTokenizer:
     것이다. 적재가 끝난 뒤 픽스처가 무장한다.
 
     `__deepcopy__` 가 순한 쌍둥이를 돌려주는 것이 이 가짜의 나머지 절반이다: 그게 없으면 사본도
-    똑같이 터져서 "사본을 쓴다" 를 증명할 수 없다(비평이 이전 초안에서 잡은 자기모순).
+    똑같이 터져서 "사본을 쓴다" 를 증명할 수 없다(크리틱이 이전 초안에서 잡은 자기모순).
     """
 
     def __init__(self, twin: "_CountingTokenizer"):
@@ -111,7 +111,7 @@ def test_no_event_loop_path_calls_the_models_tokenizer():
     """소스에서 `model.tokenizer(...)` **호출 노드**를 찾는다.
 
     이 검사가 못 보는 것: 별칭(`tok = model.tokenizer`), 헬퍼·다른 모듈 경유, `getattr`.
-    발생했던 **모양**을 잡는 그물이지 부류 전체를 잡는 회귀 검사이 아니다 — SPEC §5 가 그렇게 적었고,
+    발생했던 **모양**을 잡는 그물이지 유형 전체를 잡는 회귀 검사이 아니다 — SPEC §5 가 그렇게 적었고,
     수용 기준도 딱 거기까지다.
     """
     tree = ast.parse(APP_SRC.read_text(encoding="utf-8"))

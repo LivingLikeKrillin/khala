@@ -1,6 +1,6 @@
-"""근거 신선도 판정 — SPEC-nexus-answer-staleness-warning §5 (순수).
+"""답변 근거 신선도 판정 — SPEC-nexus-answer-staleness-warning §5 (순수).
 
-staleness: updated_at(적재시각) 나이를 doc_type 별 TTL 과 대조. 결정론·무예외.
+staleness: updated_at(적재시각) 나이를 doc_type 별 TTL 과 대조. 결정론적·무예외.
 미상 나이·null/음수 TTL 은 절대 stale 아님(무고 금지). supersession 과 직교.
 """
 

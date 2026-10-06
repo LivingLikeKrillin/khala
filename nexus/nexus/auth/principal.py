@@ -28,7 +28,7 @@ class Principal:
     #: ⛔ **쓰기는 이 목록을 절대 쓰지 않는다.** 쓰기 테넌트는 ``tenant`` 하나다. 목록이
     #: 생기면 호출부를 ``read_tenants[0]`` 로 고치는 것이 자연스러운데, 그것은 목록이
     #: ``["design_docs", "default"]`` 인 principal 을 **엉뚱한 테넌트에 적재**시킨다
-    #: (SPEC §4 I-5, 비평 3R I-001).
+    #: (SPEC §4 I-5, 크리틱 3R I-001).
     read_tenants: tuple[str, ...] = ()
 
     @property

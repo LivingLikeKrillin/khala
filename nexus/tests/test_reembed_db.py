@@ -1,7 +1,7 @@
 """구동식 재임베딩 · waiver · 컷오버 전제 조건
 (SPEC-nexus-kure-embedding-swap §4.4, §4.5, §6).
 
-**이 유닛이 존재하는 이유는 창발적 재임베딩이 마이그레이션에 못 쓰이기 때문이다.** 프로덕션은
+**이 태스크가 존재하는 이유는 창발적 재임베딩이 마이그레이션에 못 쓰이기 때문이다.** 프로덕션은
 텍스트가 바뀌면 벡터를 NULL 로 만들고 다음 적재가 채운다 — 언제 끝나는지도, 무엇이 실패했는지도
 아무도 모른다. 실제로 이 작업이 찾아낸 결함 하나가 그것이었다(실패가 NULL 로 남고 미집계).
 
@@ -10,7 +10,7 @@
 - 실패는 **요약에 남는다** — 조용한 NULL 은 없다
 - 중단해도 이어서 돈다 — 큐가 NULL 컬럼이라 재개 상태를 따로 안 든다
 - 컷오버는 네 조건이 **모두** 서야 하고, 안 서면 무엇이 막는지 말한다
-- waiver 는 **사람이 서명**해야 생긴다 — 자동으로 만들어지면 그건 조용히 사라지는 것과 같다
+- waiver 는 **사람이 사인오프**해야 생긴다 — 자동으로 만들어지면 그건 조용히 사라지는 것과 같다
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ _DIM = 1024
 
 
 def _vec_for(text: str, dim: int = _DIM) -> list[float]:
-    """텍스트마다 **다른** 벡터. 상수 벡터를 돌려주는 가짜는 정렬 어긋남을 원리적으로 못 잡는다 —
+    """텍스트마다 **다른** 벡터. 상수 벡터를 돌려주는 가짜는 정렬 불일치를 원리적으로 못 잡는다 —
     실제로 못 잡아서 뒤섞인 벡터가 프로덕션 컬럼에 들어갔다(2026-08-04)."""
     import hashlib
     import math
@@ -68,7 +68,7 @@ class _Svc:
 
     def __init__(self, fail_on: set[str] | None = None, dim: int = _DIM, shuffle: bool = False):
         self.fail_on, self.dim, self.calls = fail_on or set(), dim, 0
-        self.shuffle = shuffle          # 정렬 어긋남을 일부러 만들어 테스트가 잡는지 본다
+        self.shuffle = shuffle          # 정렬 불일치를 일부러 만들어 테스트가 잡는지 본다
 
     def get_model_name(self) -> str:
         return "KURE-v1"

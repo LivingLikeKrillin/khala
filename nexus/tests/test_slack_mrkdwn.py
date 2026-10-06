@@ -2,7 +2,7 @@
 
 ⛔ **이 검사가 없어서 생긴 일 (2026-08-30).** 답변 마크다운이 `mrkdwn` 블록에 그대로 들어갔고,
 파일럿 첫 질문에서 사용자가 `|------|------|` 가 화면에 그대로 보인다고 알려 줬다. 슬랙은
-표도 헤딩도 모른다. **사람이 보는 표면을 실행하지 않으면 초록은 아무 뜻이 없다.**
+표도 헤딩도 모른다. **사람이 보는 API 표면을 실행하지 않으면 초록은 아무 뜻이 없다.**
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ def test_a_plain_answer_is_unchanged():
 
 
 def test_the_formatter_actually_calls_the_converter():
-    """⛔ **배선 검사.** 변환기가 있어도 포매터가 안 부르면 화면은 그대로다 —
+    """⛔ **와이어링 검사.** 변환기가 있어도 포매터가 안 부르면 화면은 그대로다 —
     이 리포가 반복해서 데인 모양이다."""
     blocks = format_answer({"answer": TABLE, "evidence_snippets": []})
     body = blocks[0]["text"]["text"]

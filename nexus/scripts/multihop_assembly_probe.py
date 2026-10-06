@@ -43,7 +43,7 @@ ARMS: list[tuple[str, dict]] = [
     ("cap-10", {"per_doc_cap": 10}),
 ]
 
-#: 사전 등록 §5.5. 근거 문자수 중앙값이 `base` 의 이 배를 넘으면 커버리지와 무관하게 탈락.
+#: 사전 등록 §5.5. 답변 근거 문자수 중앙값이 `base` 의 이 배를 넘으면 커버리지와 무관하게 탈락.
 #: 근거는 `section_fill.FILL_TOP_HITS` 의 주석이다 — 그 저자가 +102% 를 "그 거래의 값이 아니다"
 #: 라고 이미 적었고, 여기 박는 값은 그 절반이다.
 COST_CEILING = 1.50
@@ -54,7 +54,7 @@ async def assemble(q: dict, tenant: list[str], cfg, svc, search, packet_for_answ
     """한 질의의 근거 묶음 텍스트와 요구 성립 여부.
 
     ⚠ **범위는 목록으로 넘긴다.** 2026-09-02 에 범위가 튜플이 된 뒤 문자열을 넘긴 호출부에서
-    절 채움과 짝 확장이 조용히 죽었고, 검사 열셋이 전부 문자열만 넘겨 이틀 동안 초록이었다.
+    섹션 필과 페어 확장이 조용히 죽었고, 검사 열셋이 전부 문자열만 넘겨 이틀 동안 초록이었다.
     """
     result = await search(q["query"], tenant=tenant, clearance=CLEARANCE, top_k=10,
                           embedding_svc=svc, config=cfg)
@@ -98,7 +98,7 @@ async def run_arm(name: str, overrides: dict, groups: dict[str, list[dict]],
                 rows.append({
                     "group": group, "qid": q["id"], "covered": ok,
                     "requirements": present, "chars": len(text),
-                    # 원문은 안 남긴다 — 다른 조직의 정책 본문이다. 결정론 대조군에는 해시면 된다.
+                    # 원문은 안 남긴다 — 다른 조직의 정책 본문이다. 결정성 대조군에는 해시면 된다.
                     "text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
                 })
                 print(f"  {name:9s} {q['id']:6s} {'✓' if ok else '✗'} "
@@ -123,7 +123,7 @@ def one_leg_only(holder: dict) -> bool:
 
     융합(RRF)은 순위만 쓰므로 두 경로가 합의한 청크가 유리하다. 한 경로에서 8위인 청크가 융합
     뒤 15위로 내려가는 것이 그래서다 — 조립 실패를 '랭킹이 나쁘다' 로 뭉뚱그리면 이 구별이
-    사라진다. `SPEC-nexus-bm25-length-normalization` §2 가 같은 기제를 이미 이름 붙여 두었다.
+    사라진다. `SPEC-nexus-bm25-length-normalization` §2 가 같은 메커니즘을 이미 이름 붙여 두었다.
     """
     return (holder.get("bm25_rank") is None) != (holder.get("vector_rank") is None)
 
@@ -133,7 +133,7 @@ async def leg_ranks(query: str, rid: str, tenant: list[str], cfg, svc) -> dict:
 
     한 경로에만 있는 청크는 두 경로가 합의한 청크에 밀린다 — 그래서 "경로 하나에서 8위" 가
     "융합 뒤 15위" 가 된다. 이 값이 없으면 조립 실패가 *어느 경로의 문제인지* 못 가른다.
-    `SPEC-nexus-bm25-length-normalization` §2 가 같은 기제를 이미 이름 붙여 두었다.
+    `SPEC-nexus-bm25-length-normalization` §2 가 같은 메커니즘을 이미 이름 붙여 두었다.
     """
     from nexus.index.vector_index import configured_column
     from nexus.search import hybrid
@@ -149,12 +149,12 @@ async def leg_ranks(query: str, rid: str, tenant: list[str], cfg, svc) -> dict:
 
 
 async def explain(q: dict, present: list[bool], tenant: list[str], cfg, svc, search, con) -> dict:
-    """이 질의의 요구가 왜 안 왔는가 — **관측만** 한다. 판정도 처방도 없다.
+    """이 질의의 요구가 왜 안 왔는가 — **관측만** 한다. 판정도 조치 방법도 없다.
 
-    조립 실패를 "채움 설정값이 낮다" 로 뭉뚱그리면 서로 다른 실패가 한 이름으로 묶인다.
+    조립 실패를 "필 설정값이 낮다" 로 뭉뚱그리면 서로 다른 실패가 한 이름으로 묶인다.
     실측 2026-09-02: 같은 문자열이 빠진 두 질의가 **다른 이유**로 빠졌다 — 하나는 문서가 포화에
     하나 모자랐고(상한을 내리면 들어온다), 다른 하나는 그 문서가 상위 10 에 **둘밖에** 못 올려
-    어떤 상한으로도 포화하지 않는다. 처방이 갈리므로 이름도 갈려야 한다.
+    어떤 상한으로도 포화하지 않는다. 조치 방법이 갈리므로 이름도 갈려야 한다.
     """
     missing = [g for g, ok in zip(q.get("must_contain") or [], present) if not ok]
     out: dict = {"qid": q["id"], "missing_groups": len(missing), "holders": []}
@@ -199,10 +199,10 @@ async def explain(q: dict, present: list[bool], tenant: list[str], cfg, svc, sea
 
 
 def cost_delta(arm_chars: float, base_chars: float) -> str:
-    """근거 분량의 **변화율**. `base` 는 `+0%`, 3할 줄면 `-29%`.
+    """답변 근거 분량의 **변화율**. `base` 는 `+0%`, 3할 줄면 `-29%`.
 
-    첫 판은 비율을 그대로 백분율로 찍었다 — 0.706 이 `+71%` 로, 1.00 이 `+100%` 로 나왔고
-    거기에 문자열 치환을 덧대 `+00%` 를 만들고 있었다. 근거가 **3할 줄어든 실험군이 7할
+    첫 버전은 비율을 그대로 백분율로 찍었다 — 0.706 이 `+71%` 로, 1.00 이 `+100%` 로 나왔고
+    거기에 문자열 치환을 덧대 `+00%` 를 만들고 있었다. 답변 근거가 **3할 줄어든 실험군이 7할
     늘어난 것처럼** 읽혔다. 판정은 원래 값으로 계산하므로 결과는 안 틀렸지만, 사람이 읽는
     표가 반대를 말하면 그 표를 근거로 다음 결정이 난다.
     """

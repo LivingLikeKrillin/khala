@@ -33,7 +33,7 @@ import yaml
 
 QUERIES_PATH = Path(__file__).resolve().parents[1] / "tests" / "eval" / "latency_queries.yaml"
 
-#: 사전등록 규칙 (§4.7). 이 배포의 flip 판정에만 쓰이고, 다른 코퍼스는 자기 규칙을 다시 등록한다.
+#: 사전 등록 규칙 (§4.7). 이 배포의 flip 판정에만 쓰이고, 다른 코퍼스는 자기 규칙을 다시 등록한다.
 P95_RATIO_MAX = 1.5
 P95_ABSOLUTE_MAX_MS = 1500.0
 
@@ -246,7 +246,7 @@ async def measure_embed_concurrent(label: str, concurrency: int, total: int, war
 
 
 def concurrency_verdict(sweep: list[Measurement]) -> tuple[bool, str]:
-    """사전등록: 동시 검색자 `CONCURRENCY_TARGET` 에서 p95 가 절대 예산 안에 있는가.
+    """사전 등록: 동시 검색자 `CONCURRENCY_TARGET` 에서 p95 가 절대 예산 안에 있는가.
 
     지연만 보지 않는다 — **처리량이 꺾이는지**도 함께 읽는다. 스레드 오버섭스크립션은 지연을
     늘리면서 처리량을 *떨어뜨리는* 모양으로 나타나고, 그건 "느리다" 와 다른 병이다.
@@ -262,7 +262,7 @@ def concurrency_verdict(sweep: list[Measurement]) -> tuple[bool, str]:
 
 
 def verdict(before: Measurement, after: Measurement) -> tuple[bool, str]:
-    """사전등록 규칙을 적용한다. **숫자를 보고 규칙을 고르지 않는다.**"""
+    """사전 등록 규칙을 적용한다. **숫자를 보고 규칙을 고르지 않는다.**"""
     ratio = after.latency.p95_ms / before.latency.p95_ms if before.latency.p95_ms else float("inf")
     within_ratio = ratio <= P95_RATIO_MAX
     within_absolute = after.latency.p95_ms <= P95_ABSOLUTE_MAX_MS

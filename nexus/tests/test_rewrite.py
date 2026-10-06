@@ -18,7 +18,7 @@ _HISTORY = [{"role": "user", "content": "수평 파드 오토스케일링을 켜
 
 
 class _LLM:
-    """입력에 반응하는 가짜. 상수를 돌려주는 가짜는 정렬 어긋남을 원리적으로 통과시킨다."""
+    """입력에 반응하는 가짜. 상수를 돌려주는 가짜는 정렬 불일치를 원리적으로 통과시킨다."""
 
     def __init__(self, reply=None, error: Exception | None = None, delay: float = 0.0):
         self._reply = reply
@@ -123,7 +123,7 @@ from nexus.search import signals as S  # noqa: E402
 
 
 async def test_a_discarded_rewrite_still_reports_its_cost():
-    """결과를 버려도 **비용은 났다.** 버린 호출이 공짜인 척하면 장부에서 사라진다."""
+    """결과를 버려도 **비용은 났다.** 버린 호출이 공짜인 척하면 원장에서 사라진다."""
     out = await R.rewrite("그건?", _HISTORY, _LLM(reply="설명을 시작합니다. " * 30))
     assert out.query == "그건?" and out.changed is False
     assert out.called is True
@@ -155,7 +155,7 @@ def test_the_signal_carries_the_hash_never_the_text():
 def test_rewrite_cost_never_lands_in_the_answer_cost_columns():
     """`budget.py::measured_averages` 는 `prompt_tokens` 전체 평균을 "답변 1회 비용" 으로 쓴다.
 
-    재작성 호출을 그 칸에 접으면 그 추정기가 조용히 편향된다 — 그래서 칸을 나눴다.
+    재작성 호출을 그 필드에 접으면 그 추정기가 조용히 편향된다 — 그래서 필드를 나눴다.
     """
     from nexus.providers.llm import Usage
     from nexus.search.hybrid import SearchResult
@@ -165,7 +165,7 @@ def test_rewrite_cost_never_lands_in_the_answer_cost_columns():
                             clearance="INTERNAL", query="q", latency_ms=1, rewrite=rw)
     assert (sig.rewrite_prompt_tokens, sig.rewrite_completion_tokens) == (11, 5)
     assert sig.rewrite_cost_usd == 0.002
-    # 답변 칸은 재작성이 건드리지 않는다.
+    # 답변 필드는 재작성이 건드리지 않는다.
     assert sig.prompt_tokens is None and sig.completion_tokens is None and sig.cost_usd is None
 
 

@@ -1,4 +1,4 @@
-"""카드 생성 — 얇은 LLM 호출과 **경계 있는 순회** (SPEC §3.2).
+"""코드 카드 생성 — 얇은 LLM 호출과 **경계 있는 순회** (SPEC §3.2).
 
 이 파일이 이 방향에서 유일하게 비결정적인 곳이다. 그래서 작다. 나머지(후보 선택·파싱·규칙
 재검사·낡음)는 `cards.py` 에 있고 전부 결정론이다.
@@ -19,7 +19,7 @@ from nexus.index.cards import Card, CardSpan, parse_card
 
 logger = structlog.get_logger(__name__)
 
-#: 프롬프트가 바뀌면 카드의 의미가 바뀐다. 버전을 카드에 실어 세대가 섞이지 않게 한다.
+#: 프롬프트가 바뀌면 코드 카드의 의미가 바뀐다. 버전을 코드 카드에 실어 세대가 섞이지 않게 한다.
 PROMPT_VERSION = "cards-v1"
 
 #: 순회 상한. 전부 실행마다 기록된다 (§3.2).
@@ -44,7 +44,7 @@ JSON 만 출력하십시오:
 
 @dataclass(frozen=True)
 class GenerationInput:
-    """카드 하나를 만드는 데 필요한 것. 소스는 여기까지만 오고 저장되지 않는다."""
+    """코드 카드 하나를 만드는 데 필요한 것. 소스는 여기까지만 오고 저장되지 않는다."""
     spans: list[CardSpan]
     sources: dict[str, str]      # span key -> 소스 (검사·프롬프트용, 저장 안 함)
     commit_sha: str
@@ -55,11 +55,11 @@ def span_key(span: CardSpan) -> str:
 
 
 def generator_id(model: str) -> str:
-    """카드에 실릴 생성자 신원. 선언과 다른 카드는 읽지 않는다 (§3.2).
+    """코드 카드에 실릴 생성자 식별 정보. 명시적 선언과 다른 코드 카드는 읽지 않는다 (§3.2).
 
     **문자열이 아니면 죽는다.** `LLMService` 의 첫 위치 인자는 설정이 아니라 모델 이름인데,
     호출자가 설정 dict 를 넘기면 `self.model` 이 그 dict 가 되고 그대로 여기까지 온다.
-    그러면 `auth.principals` 를 포함한 설정 전체가 **모든 카드의 generator 필드에 저장된다** —
+    그러면 `auth.principals` 를 포함한 설정 전체가 **모든 코드 카드의 generator 필드에 저장된다** —
     한 번 실제로 그 직전까지 갔다. 저장되는 값이므로 여기서 막는 것이 마지막 기회다.
     """
     if not isinstance(model, str) or not model.strip():
@@ -72,10 +72,10 @@ _CALL = re.compile(r"\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(")
 
 def collect_sources(root: Path, spans: list[CardSpan],
                     *, max_bytes: int = MAX_SOURCE_BYTES) -> dict[str, str]:
-    """span 들의 소스를 읽는다. **바이트 상한에서 끊는다** — 한 카드가 저장소를 다 읽지 않게.
+    """span 들의 소스를 읽는다. **바이트 상한에서 끊는다** — 한 코드 카드가 저장소를 다 읽지 않게.
 
     단, **대상 span 은 상한보다 커도 반드시 싣는다**(넘치면 잘라서). 소스가 하나도 실리지 않은
-    프롬프트를 받은 모델은 서술하지 않고 지어낸다 — 비용을 아끼려다 카드를 환각으로 채우는 것이
+    프롬프트를 받은 모델은 서술하지 않고 지어낸다 — 비용을 아끼려다 코드 카드를 환각으로 채우는 것이
     이 함수가 막아야 할 실패다. 상한은 *추가* 홉을 제한하는 장치다.
     """
     out: dict[str, str] = {}
@@ -110,9 +110,9 @@ def build_prompt(subject_symbol: str, sources: dict[str, str]) -> str:
 
 async def generate_card(llm, subject_symbol: str, gi: GenerationInput,
                         *, model: str, max_tokens: int = 800) -> tuple[Card, object]:
-    """카드 하나. 반환은 (카드, usage) — 비용은 호출자가 합산해 §6.4 로 보고한다.
+    """코드 카드 하나. 반환은 (코드 카드, usage) — 비용은 호출자가 합산해 §6.4 로 보고한다.
 
-    파싱 실패는 예외로 올린다. 반쯤 읽은 카드를 저장하는 것보다 낫다.
+    파싱 실패는 예외로 올린다. 반쯤 읽은 코드 카드를 저장하는 것보다 낫다.
     """
     result = await llm.generate_full(
         _SYSTEM, build_prompt(subject_symbol, gi.sources), max_tokens)

@@ -1,8 +1,8 @@
-"""`/search/answer` 응답에 **표면이 필요한 사실이 실려 있는가** — 엔드포인트를 실제로 돌려서.
+"""`/search/answer` 응답에 **API 표면이 필요한 사실이 실려 있는가** — 엔드포인트를 실제로 돌려서.
 
 `weak_evidence` 는 2026-08-18 부터 계산되고 있었지만(`search/confidence.py`) 응답에 실리지
 않아서, 표면들은 *"잘 찾았다"* 와 *"제일 덜 나쁜 걸 골랐다"* 를 구별할 수 없었다. 서버 혼자
-알고 프롬프트만 바꾼 것이다. 그 부류의 결함은 **payload 를 만드는 코드를 실행해야** 잡힌다 —
+알고 프롬프트만 바꾼 것이다. 그 유형의 결함은 **payload 를 만드는 코드를 실행해야** 잡힌다 —
 `AnswerResult` 에 필드가 있는지 묻는 검사는 이 구멍을 통과시킨다(실제로 통과시켰다).
 
 그래서 여기서는 필드 하나가 아니라 **계약 전체**를 건다: 답변·기권·생성실패·적합도. 이 중
@@ -35,7 +35,7 @@ class _Search:
         self.hits, self.graph, self.fill = [], None, None
         self.timing_ms, self.degraded, self.confidence = {}, False, confidence
         # 엔드포인트가 응답에 싣는 값이 하나 늘었다(시각 범위 미상 건수).
-        # `getattr` 로 덮지 않는다 — 덮으면 이 칸이 진짜로 사라진 날에도 초록이다.
+        # `getattr` 로 덮지 않는다 — 덮으면 이 필드가 진짜로 사라진 날에도 초록이다.
         self.n_unknown_origin_time = None
         # 그리고 또 하나 늘었다(이번 질의에서 뺀 문서 종류, 2026-09-20). 같은 이유로
         # 여기 적는다 — 이 목록이 응답에서 사라지면 호출자는 필터가 안 걸린 것과
@@ -72,7 +72,7 @@ def client(monkeypatch):
     monkeypatch.setattr(api, "find_entities_in_text", lambda *a, **k: [])
     # ⚠ 여기 `assemble_packet` 스텁이 있었는데 **죽은 줄이었다** — 이 시험이 치는
     # `/search/answer` 는 그 함수를 부른 적이 없다(`packet_for_answer` 를 부른다).
-    # 우회로 그것을 부르던 곳은 스트리밍 경로였고, 그쪽은 2026-09-02 에 이음매로
+    # 우회로 그것을 부르던 곳은 스트리밍 경로였고, 그쪽은 2026-09-02 에 접합부로
     # 돌아왔다(외부 평가 F2). 스텁을 되살리지 말 것 — 실물 패킷이 돌아야 이 시험이
     # 재는 `weak_evidence`·`abstained` 가 진짜 경로에서 나온다.
     monkeypatch.setattr(api, "format_for_llm", lambda *a, **k: "")
@@ -104,7 +104,7 @@ def _post(client, query="정책 알려줘"):
 
 
 def test_a_weak_fit_reaches_the_client(client, monkeypatch):
-    """서버만 아는 사실은 없는 사실이다 — 표면이 배지를 달려면 이 값이 나가야 한다."""
+    """서버만 아는 사실은 없는 사실이다 — API 표면이 배지를 달려면 이 값이 나가야 한다."""
     _answer_with(monkeypatch, AnswerResult(answer="답", weak_evidence=True),
                  Confidence(top_distance=0.9, top_bm25=0.1))
     assert _post(client)["weak_evidence"] is True
@@ -118,7 +118,7 @@ def test_a_good_fit_is_reported_as_such(client, monkeypatch):
 
 
 def test_the_payload_keeps_the_facts_a_surface_cannot_infer(client, monkeypatch):
-    """이 넷은 답변 문장에서 되읽을 수 없다. 빠지면 표면은 추측하거나 침묵한다."""
+    """이 넷은 답변 문장에서 되읽을 수 없다. 빠지면 API 표면은 추측하거나 침묵한다."""
     _answer_with(monkeypatch, AnswerResult(answer="답", abstained=True,
                                            abstain_reason="no_evidence"),
                  Confidence())

@@ -27,7 +27,7 @@ _DEFAULT_BRIDGE_URL = "http://host.docker.internal:8900"
 #:
 #: ⛔ **벽이 둘이고 작은 쪽이 이긴다** (실측 2026-09-19). 여기 `180.0` 상수가 박혀 있었고
 #: 브리지 쪽은 `NEXUS_LLM_BRIDGE_TIMEOUT`(기본 120)이다. 배포가 브리지 벽을 300 으로 올려도
-#: **이쪽이 180 에서 먼저 끊어서** 그 300 은 앱 경로에서 도달 불가였다. 설명 층이
+#: **이쪽이 180 에서 먼저 끊어서** 그 300 은 앱 경로에서 도달 불가였다. 설명 레이어가
 #: *"벽이 두 번 옮겨졌는데 실패 건수는 안 줄었다"* 고 보고한 것이 이 자리다.
 #:
 #: 그리고 여기서 먼저 끊기면 **브리지가 공들여 만든 504 문장**(몇 초에 걸렸는지·어느 변수인지)이
@@ -51,7 +51,7 @@ def _raise_with_bridge_body(resp: "httpx.Response") -> None:
     ⛔ `resp.raise_for_status()` 는 httpx 의 일반 문구로 바꾸고 `resp.text` 를 버린다. 그래서
     브리지가 만든 *"claude 가 120초 안에 안 끝났다 (한계는 NEXUS_LLM_BRIDGE_TIMEOUT …)"* 가
     호출자에게 `Server error '504 Gateway Timeout' for url …` 로 도착했다. #513 에서 고친
-    「값은 있었고 전달이 없었다」가 한 층 위에 그대로 있었다.
+    「값은 있었고 전달이 없었다」가 한 계층 위에 그대로 있었다.
 
     ⚠ **`RuntimeError` 로 바꾸지 마라.** 같은 파일의 Gemini 경로는 그렇게 하지만 여기서는
     틀린다 — `llm/failure.py` 가 `.response` 에서 상태와 본문을 캐서 504→`timeout`,
@@ -83,7 +83,7 @@ class LLMResult:
 def answer_text(content) -> str:
     """응답 블록에서 **본문 텍스트만** 모은다.
 
-    첫 판은 `content[0].text` 였다. 오늘의 요청은 tool 도 thinking 도 선언하지 않으므로 첫 블록이
+    첫 버전은 `content[0].text` 였다. 오늘의 요청은 tool 도 thinking 도 선언하지 않으므로 첫 블록이
     늘 텍스트였고, 그래서 몇 달간 아무 일도 없었다. 그런데 그 가정은 **우리가 열려는 바로 그 문**
     에서 깨진다 — 도구를 선언하면 첫 블록이 `server_tool_use` 이고, `.text` 는 거기 없다.
     2026-08-25 웹 검색 실험을 쓰다 발견했다(실행은 계정 한도로 막혔지만 결함은 실물이다).
@@ -92,7 +92,7 @@ def answer_text(content) -> str:
     이미 다룬다 — 여기서 지어내는 것보다 낫다.
 
     **`type` 이 없는 블록은 텍스트로 본다.** 실제 SDK 는 늘 `type` 을 채우지만 테스트 더블은 자주
-    생략한다 — 없는 것을 "텍스트가 아니다" 로 읽으면 진짜 응답은 멀쩡한데 평가 하니스가 빨간불이 되고,
+    생략한다 — 없는 것을 "텍스트가 아니다" 로 읽으면 진짜 응답은 멀쩡한데 평가 하네스가 빨간불이 되고,
     그 상태의 초록/빨강은 아무것도 보증하지 못한다.
     """
     return "".join(getattr(b, "text", "") for b in (content or [])
@@ -275,11 +275,11 @@ class _ClaudeCodeBackend:
 
 
 class _GeminiBackend:
-    """Gemini REST — **그림 판독 전용**이다 (SPEC-nexus-vision-reader-of-record).
+    """Gemini REST — **그림 기계 판독 전용**이다 (SPEC-nexus-vision-reader-of-record).
 
     답변 생성 경로는 여기로 오지 않는다: 이 백엔드는 `vision_extract` 만 구현하고, 답변용
     `generate*` 를 부르면 명시적으로 실패한다. 두 수명주기를 한 백엔드에 묶으면 답변 모델을
-    바꾸는 변경이 추출기 신원을 조용히 움직인다 — `vision.py` 가 상수를 따로 두는 이유와 같다.
+    바꾸는 변경이 추출기 식별 정보를 조용히 움직인다 — `vision.py` 가 상수를 따로 두는 이유와 같다.
 
     ADR-0010 §6: 요청은 **이미지 한 장**을 싣고, `tools` 를 선언하지 않으며, 파일시스템 경로를
     담지 않는다. 그 셋이 이 경로의 통제다.
@@ -303,7 +303,7 @@ class _GeminiBackend:
         """이미지 1장 → (텍스트, 절단 사유).
 
         `thinkingLevel: minimal` 은 비용이 아니라 **통제**다: 사고 예산이 붙은 실험군과 안 붙은 실험군을
-        비교하면 차이를 판독 능력으로 못 돌린다. Gemini 3.x 는 `thinkingBudget: 0` 을 400 으로
+        비교하면 차이를 기계 판독 능력으로 못 돌린다. Gemini 3.x 는 `thinkingBudget: 0` 을 400 으로
         거부하므로 끌 수는 없고 낮출 수만 있다 (실측).
         """
         if not self._key:
@@ -352,7 +352,7 @@ class LLMService:
         self.model = model or os.getenv("NEXUS_LLM_MODEL") or self.DEFAULT_MODEL
         self._pricing = pricing if pricing is not None else _load_pricing()
         # 그림 판독기는 **답변 백엔드와 수명주기가 다르다** (ADR-0010; vision.VISION_BACKENDS).
-        # 호출자가 명시하면 그것이 이긴다 — 그래야 답변 provider 를 바꾸는 변경이 추출기 신원을
+        # 호출자가 명시하면 그것이 이긴다 — 그래야 답변 provider 를 바꾸는 변경이 추출기 식별 정보를
         # 조용히 움직이지 않는다.
         if vision_backend == "gemini":
             self._backend = _GeminiBackend(self.model)
@@ -403,7 +403,7 @@ class LLMService:
         if usage_out is None:
             return await fn(system_prompt, image_b64, media_type, max_tokens)
         # 답변 경로(`stream`)와 **같은 모양**으로 값을 채운다: 백엔드는 토큰만 주고 값은 여기서
-        # 매긴다. 판독 모델이 단가표에 없으면 `cost_usd` 는 None 이다 — 그 None 이 "공짜였다" 가
+        # 매긴다. 기계 판독 모델이 단가표에 없으면 `cost_usd` 는 None 이다 — 그 None 이 "공짜였다" 가
         # 아니라 **"값을 모른다"** 를 뜻하고, 그 구분을 `Spend.priced` 가 들고 간다.
         sink: list = []
         try:

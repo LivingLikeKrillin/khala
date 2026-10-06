@@ -37,7 +37,7 @@ MANIFEST = LOCAL_DIR / "packb-manifest.json"
 SNAPSHOT_TENANT = "ko_eval_packb"
 
 
-#: 탐침 결과 파일 — 라벨 없이 측정한 "두 실험군이 다른 순위를 내는가".
+#: 프로브 결과 파일 — 라벨 없이 측정한 "두 실험군이 다른 순위를 내는가".
 PROBE = LOCAL_DIR / "packb-disagreement.json"
 
 #: 상위 3위 안에서 갈리는 질의의 최소 건수. 판정 규칙의 `MIN_DISCORDANT = 6` 과 같은 수를 쓴다 —
@@ -104,7 +104,7 @@ async def _collect(con, tenant: str) -> dict[str, dict]:
 async def tenant_bodies(con, tenant: str) -> dict[str, dict]:
     """`{문서키: {sha, chunks, chars, machine_read}}` — **지금** 그 테넌트에 있는 본문.
 
-    해시는 매니페스트와 **같은 함수**다. 갈라지면 라벨 서명과 팩 서명이 다른 것을 측정하게 된다.
+    해시는 매니페스트와 **같은 함수**다. 갈라지면 라벨 승인과 팩 승인이 다른 것을 측정하게 된다.
     `machine_read` 를 같이 내는 이유는 재서명하는 사람이 자기가 무엇에 서명하는지 봐야 하기
     때문이다 — ADR-0010 §2 는 기계가 읽은 텍스트를 저술 텍스트와 같이 취급하지 말라고 한다.
     """
@@ -182,7 +182,7 @@ async def cmd_freeze(args) -> int:
                             encoding="utf-8", newline="\n")
         print(f"✓ 얼렸다: 문서 {len(manifest_docs)} · 청크 {n_chunks} → 테넌트 {SNAPSHOT_TENANT}")
         print(f"  매니페스트: {MANIFEST}")
-        # 얼린 직후에 두 조건을 알려준다 — "얼렸다" 를 "측정할 수 있다" 로 읽는 것을 막는다.
+        # 동결된 직후에 두 조건을 알려준다 — "얼렸다" 를 "측정할 수 있다" 로 읽는 것을 막는다.
         from nexus.sources.corpus import PACK_B_MIN_SUBSTANTIVE, PACK_B_SUBSTANTIVE_CHARS
         n_sub = sum(1 for d in manifest_docs if d["body_chars"] >= PACK_B_SUBSTANTIVE_CHARS)
         print(f"  실질 문서(본문 {PACK_B_SUBSTANTIVE_CHARS}자 이상) {n_sub} / 최소 "
@@ -194,12 +194,12 @@ async def cmd_freeze(args) -> int:
 
 
 def extension_problems(keys: list[str], live: dict, frozen: dict) -> list[str]:
-    """더할 수 있는 문서인가. **이미 얼린 것을 조용히 갈아치우지 않는다.**
+    """더할 수 있는 문서인가. **이미 동결된 것을 조용히 갈아치우지 않는다.**
 
     ⛔ 왜 거부하는가 (2026-09-03). `freeze` 는 스냅샷 테넌트를 **지우고 다시 만든다** — 두 시점이
-    한 테넌트에 섞이는 것을 막는 옳은 설계지만, 그래서 gold 문서 하나를 더하려고 부르면 이미 얼린
-    문서 전부의 본문이 함께 지금 것으로 바뀐다. 그 본문은 재서명 워크시트가 *"무엇이 달라졌나"* 를
-    보여 주는 유일한 재료다(`OPEN.md` A55). 하나를 더하려다 남의 서명 근거를 지우게 된다.
+    한 테넌트에 섞이는 것을 막는 옳은 설계지만, 그래서 gold 문서 하나를 더하려고 부르면 이미 동결된
+    문서 전부의 본문이 함께 지금 것으로 바뀐다. 그 본문은 재사인오프 워크시트가 *"무엇이 달라졌나"* 를
+    보여 주는 유일한 재료다(`OPEN.md` A55). 하나를 더하려다 남의 사인오프 근거를 지우게 된다.
 
     그래서 이 명령은 **더하기만** 한다. 이미 있는 키는 갱신이 아니라 거부다.
     """
@@ -210,7 +210,7 @@ def extension_problems(keys: list[str], live: dict, frozen: dict) -> list[str]:
 
 
 def extended_manifest(old: dict, added: list[dict], at: str) -> dict:
-    """매니페스트에 문서를 더한다. `frozen_at` 은 **안 건드린다** — 그날 얼린 것은 그날 얼린 것이다."""
+    """매니페스트에 문서를 더한다. `frozen_at` 은 **안 건드린다** — 그날 동결된 것은 그날 동결된 것이다."""
     docs = old["docs"] + added
     return {**old, "documents": len(docs),
             "chunks": sum(d["chunks"] for d in docs),
@@ -218,7 +218,7 @@ def extended_manifest(old: dict, added: list[dict], at: str) -> dict:
 
 
 async def cmd_extend(args) -> int:
-    """얼린 팩에 문서를 **더한다**. 나머지는 얼린 그대로 둔다."""
+    """동결된 팩에 문서를 **더한다**. 나머지는 동결된 그대로 둔다."""
     from nexus import db
     from nexus.index.bm25 import index_chunk_bm25
     from nexus.rid import chunk_rid, doc_rid
@@ -275,20 +275,20 @@ async def cmd_extend(args) -> int:
 
 def alignment_plan(signed: dict[str, str], live: dict[str, str],
                    frozen: dict[str, str]) -> tuple[list[str], list[str]]:
-    """스냅샷을 서명에 맞출 문서 · 그냥 두는 문서(사유 포함).
+    """스냅샷을 사인오프에 맞출 문서 · 그냥 두는 문서(사유 포함).
 
-    ⛔ **왜 필요한가 (`OPEN.md` A55, 실측 2026-09-03).** 재서명 워크시트는 스냅샷 테넌트와 지금
-    본문을 대조해 *"무엇이 달라졌나"* 를 보여 준다. 그런데 스냅샷이 서명 시점과 묶여 있지 않아
-    스스로 흘러갔고, 본문이 달라진 문서 13장 중 **5장은 서명된 본문이 어디에도 없었다**. 결속은
+    ⛔ **왜 필요한가 (`OPEN.md` A55, 실측 2026-09-03).** 재사인오프 워크시트는 스냅샷 테넌트와 지금
+    본문을 대조해 *"무엇이 달라졌나"* 를 보여 준다. 그런데 스냅샷이 사인오프 시점과 묶여 있지 않아
+    스스로 흘러갔고, 본문이 달라진 문서 13장 중 **5장은 사인오프된 본문이 어디에도 없었다**. 결속은
     해시만 저장하므로 옛 본문은 복원되지 않는다. 볼 것이 없는 사람이 하는 일은 계산된 블록을
     붙여넣는 것이고, 그것이 이 워크시트가 존재하는 이유(§4)의 정반대다.
 
     **안전 조건은 하나다: 지금 본문이 곧 서명된 본문인 문서만 맞춘다.**
 
-      서명 == 라이브 != 스냅샷  → 맞춘다. 서명이 이미 이 본문을 가리키므로 잃을 대조 근거가 없다.
-      서명 != 라이브            → **손대지 않는다.** 그 라벨은 만료 상태이고, 스냅샷이 들고 있는
+      사인오프 == 라이브 != 스냅샷  → 맞춘다. 사인오프가 이미 이 본문을 가리키므로 잃을 대조 근거가 없다.
+      사인오프 != 라이브            → **손대지 않는다.** 그 라벨은 만료 상태이고, 스냅샷이 들고 있는
                                  옛 본문이 다음 재서명자가 볼 유일한 대조 기준이다.
-      서명 == 라이브 == 스냅샷  → 할 일 없음.
+      사인오프 == 라이브 == 스냅샷  → 할 일 없음.
       스냅샷에 없음             → 여기서 안 만든다. 그건 `extend` 의 일이다.
     """
     refresh, left = [], []
@@ -307,7 +307,7 @@ def alignment_plan(signed: dict[str, str], live: dict[str, str],
 
 
 async def cmd_align(args) -> int:
-    """스냅샷을 **서명된 본문**에 맞춘다. 그 서명이 다음 대조의 기준점이 된다."""
+    """스냅샷을 **사인오프된 본문**에 맞춘다. 그 사인오프가 다음 대조의 기준점이 된다."""
     from nexus import db
     from nexus.index.bm25 import index_chunk_bm25
     from nexus.rid import chunk_rid, doc_rid
@@ -417,10 +417,10 @@ async def cmd_verify(_args) -> int:
 
 
 async def cmd_status(_args) -> int:
-    """얼린 코퍼스가 자로서 작동할 수 있는지 — **두 조건**을 측정한다.
+    """동결된 코퍼스가 자로서 작동할 수 있는지 — **두 조건**을 측정한다.
 
     문서 수만 세다 걸린 적이 있다(2026-08-07): 116문서를 채웠는데 본문 800자 이상이 19건이었고,
-    나머지는 개정 이력 행이었다. 바닥값은 통과인데 gold 로 쓸 문서가 없어서 못 측정한다.
+    나머지는 개정 이력 행이었다. 하한값은 통과인데 gold 로 쓸 문서가 없어서 못 측정한다.
     """
     from nexus import db
     from nexus.sources.corpus import PACK_B_SUBSTANTIVE_CHARS
@@ -452,7 +452,7 @@ async def cmd_status(_args) -> int:
           f"  → {'통과' if ok_floor else '검정력 부족이 예상된다'}")
     print("      Pack A 는 0.038. 0.10 을 넘으면 두 실험군이 바닥 위에 붙어 무승부만 쌓인다.")
 
-    # [2] 는 **측정한 문턱**이다. 한때 여기 "실질 문서 ≥ 60" 이 있었는데 그 60 은 측정해 보지 않고
+    # [2] 는 **측정한 임계값**이다. 한때 여기 "실질 문서 ≥ 60" 이 있었는데 그 60 은 측정해 보지 않고
     # 만든 어림수였고, 같은 날 라벨 없이 재보니 그 근거가 반증됐다(§6.3). 검정력을 예고하는 양은
     # 문서 수가 아니라 **두 실험군의 순위가 갈리는 자리**다.
     probe = _load_probe()

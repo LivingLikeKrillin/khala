@@ -1,6 +1,6 @@
 """걸린 숫자가 **무엇인지** 응답에 오는가.
 
-⛔ **실측 2026-09-19, 설명 층 보고.** `llm/answer.py` 는 `result.numbers` 를 이미 만들고
+⛔ **실측 2026-09-19, 설명 레이어 보고.** `llm/answer.py` 는 `result.numbers` 를 이미 만들고
 있었는데 응답에는 `unverified_numbers`(개수)만 나갔다. 그래서 읽는 쪽은 그 수를 한동안
 **「지어낸 통계」로 읽었다.** 뒤늦게 답의 숫자를 직접 뽑아 보니 거의 전부 인용의 절 번호였다
 (`§15.148` · `§4.4`). 아홉 답에서 단위 붙은 수(%·초·개·kg)는 하나도 없었다.
@@ -32,7 +32,7 @@ def test_the_answer_result_already_carried_it():
 
 
 def test_both_answer_surfaces_send_the_list():
-    """⛔ 한 표면만 내보내면 그 표면의 소비자만 조용히 못 본다 — 이 리포가 반복해서 데인 모양이다
+    """⛔ 한 API 표면만 내보내면 그 API 표면의 소비자만 조용히 못 본다 — 이 리포가 반복해서 데인 모양이다
     (`packet_for_answer` 주석의 2026-09-02 사고가 같은 계열이다)."""
     src = _src()
     assert src.count('"numbers":') == 2, "답변 표면 둘 다에서 나가야 한다"
@@ -46,9 +46,9 @@ def test_the_count_still_goes_too():
 def test_the_list_carries_whether_each_number_was_grounded():
     """⛔ 값만 있고 판정이 없으면 읽는 쪽이 다시 대조해야 한다 — 그러면 전달한 뜻이 없다.
 
-    항목을 만드는 **식을 소스 문자열로** 찾던 판(`'"value": n.value, "grounded": n.grounded' in
+    항목을 만드는 **식을 소스 문자열로** 찾던 버전(`'"value": n.value, "grounded": n.grounded' in
     src`)은 항목 조립이 한 함수(`number_items`)로 모이면서(2026-09-30) 뜻을 잃었다 — 이제 그 함수를
-    **돌려서** 본다. 두 표면이 실제로 같은 항목을 내는지는 `test_answer_context.py` 가 두 엔드포인트를
+    **돌려서** 본다. 두 API 표면이 실제로 같은 항목을 내는지는 `test_answer_context.py` 가 두 엔드포인트를
     돌려 확인한다."""
     from nexus.llm.numbers import number_items, validate_numbers
 
@@ -57,7 +57,7 @@ def test_the_list_carries_whether_each_number_was_grounded():
 
 
 def test_the_streaming_shape_matches_the_non_streaming_one():
-    """두 표면이 같은 이름·같은 모양이어야 소비자가 분기 없이 읽는다 — **같은 함수**로 만든다."""
+    """두 API 표면이 같은 이름·같은 모양이어야 소비자가 분기 없이 읽는다 — **같은 함수**로 만든다."""
     from nexus.llm import answer
 
     def calls(fn) -> set[str]:

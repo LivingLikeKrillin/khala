@@ -67,7 +67,7 @@ def test_every_shape_value_is_a_scalar_the_span_will_accept():
     assert len(spans.spans) == 2
 
 
-# ── 배선 ─────────────────────────────────────────────────────────────────────
+# ── 와이어링 ─────────────────────────────────────────────────────────────────────
 
 @dataclass
 class _Snip:
@@ -133,7 +133,7 @@ async def test_abstention_leaves_the_keys_but_measures_nothing():
 
 @pytest.mark.asyncio
 async def test_a_failed_generation_measures_nothing_either():
-    """생성 실패 시 답변 자리에는 안내문 + 근거 원문이 들어간다 — 그 모양은 답변의 모양이 아니다."""
+    """생성 실패 시 답변 자리에는 안내문 + 답변 근거 원문이 들어간다 — 그 모양은 답변의 모양이 아니다."""
     spans = SpanSet(max_candidates=100)
     await generate_answer("질의", _Packet([_Snip()]), _BrokenLLM(),  # type: ignore[arg-type]
                           spans=spans)
@@ -150,17 +150,17 @@ async def test_capture_off_still_records_nothing_at_all():
     assert res.answer == "문장."
 
 
-# ── 갈래는 하나여야 한다 ─────────────────────────────────────────────────────
+# ── 하위 범주는 하나여야 한다 ─────────────────────────────────────────────────────
 
 def test_one_branch_serves_every_surface():
-    """⛔ 표면마다 분기를 따로 쓰면 한 곳만 고쳐지고 나머지가 조용히 다른 규칙을 쓴다."""
+    """⛔ API 표면마다 분기를 따로 쓰면 한 곳만 고쳐지고 나머지가 조용히 다른 규칙을 쓴다."""
     assert shape_if_measured("문장 하나.", measured=True) == shape("문장 하나.")
     assert shape_if_measured("문장 하나.", measured=False) == shape_unmeasured()
 
 
 def test_the_streaming_surface_goes_through_that_branch():
     """⚠ **구조 검사다.** `/search/answer/stream` 은 `generate_answer` 를 안 거치고
-    `llm_svc.stream` 을 직접 부르므로, 위의 배선 검사들이 그 표면을 하나도 안 지난다 —
+    `llm_svc.stream` 을 직접 부르므로, 위의 와이어링 검사들이 그 API 표면을 하나도 안 지난다 —
     답변 span 자체가 그래서 한 번 빠져 있었다(#440).
 
     이 검사가 다는 것은 *호출이 있는가* 까지다. 그 호출이 실제로 무엇을 남기는지는 DB 를

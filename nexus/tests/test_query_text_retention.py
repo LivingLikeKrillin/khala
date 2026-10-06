@@ -70,7 +70,7 @@ async def db(db_url):
         await dbmod.close_pool()
 
 
-#: 이 테스트들이 흉내내는 표면(슬랙 봇 같은 것). 고지를 받은 집단이 쓰는 신원이다.
+#: 이 테스트들이 흉내내는 API 표면(슬랙 봇 같은 것). 고지를 받은 집단이 쓰는 식별 정보이다.
 SURFACE = "test-surface"
 
 
@@ -295,7 +295,7 @@ async def test_export_writes_the_questions_a_labeller_needs(db, tmp_path):
 
     out = tmp_path / "questions.json"
     # CLI 는 `asyncio.run` 을 쓴다 — 실행 중인 루프 안에서는 못 돈다. 스레드로 돌려서
-    # **CLI 경로 그대로** 측정한다(우회해서 내부 함수를 직접 부르면 U2 의 배선 사고를 못 잡는다).
+    # **CLI 경로 그대로** 측정한다(우회해서 내부 함수를 직접 부르면 U2 의 와이어링 사고를 못 잡는다).
     # 전역 풀을 먼저 닫는다: 안 닫으면 CLI 가 이 루프에 묶인 풀을 다른 스레드에서 집어
     # `another operation is in progress` 로 죽는다. CLI 는 자기 풀을 연다.
     await db.close_pool()
@@ -350,7 +350,7 @@ def test_the_label_gate_knows_where_a_query_came_from():
     assert any("provenance" in p for p in problems), "오타가 조용히 통과하면 구별이 무너진다"
 
 
-# ── 표면 범위 (§3.2 amendment) ────────────────────────────────────────────────
+# ── API 표면 범위 (§3.2 amendment) ────────────────────────────────────────────────
 #
 # 고지는 **사람 집단**에게 가고, 테넌트에는 그 집단만 도달하지 않는다 — 웹·슬랙 봇·CLI·A2A 가
 # 같은 테넌트로 들어온다. 경로로는 못 가른다(봇도 HTTP API 를 부른다). 가를 수 있는 것은
@@ -373,21 +373,21 @@ async def test_only_the_notified_surface_is_retained(db):
 
 
 async def test_an_empty_allowlist_retains_nothing(db):
-    """옵트인 행이 있어도 표면이 없으면 저장하지 않는다 — 새 표면이 조용히 포함되지 않게."""
+    """옵트인 행이 있어도 API 표면이 없으면 저장하지 않는다 — 새 API 표면이 조용히 포함되지 않게."""
     await _enable_for(db, [])
     assert await retain(TENANT, "아무 질문", BOT) == "out_of_scope"
     assert await _count(db) == 0
 
 
 async def test_a_caller_without_a_principal_is_out_of_scope(db):
-    """CLI·A2A 처럼 신원이 안 오는 경로 — 도구 트래픽이 실사용 질문 집합을 오염시키면 안 된다."""
+    """CLI·A2A 처럼 식별 정보가 안 오는 경로 — 도구 트래픽이 실사용 질문 집합을 오염시키면 안 된다."""
     await _enable_for(db, [BOT])
     assert await retain(TENANT, "도구가 던진 질문", None) == "out_of_scope"
     assert await _count(db) == 0
 
 
 async def test_the_principal_is_used_for_the_decision_and_never_stored(db):
-    """신원이 텍스트 옆에 앉으면 소금 친 키로 막아 둔 사람-로그가 같은 행에서 부활한다."""
+    """식별 정보가 텍스트 옆에 앉으면 소금 친 키로 막아 둔 사람-로그가 같은 행에서 부활한다."""
     await _enable_for(db, [BOT])
     await retain(TENANT, "저장되는 질문", BOT)
     row = await db.fetch_one(
@@ -396,7 +396,7 @@ async def test_the_principal_is_used_for_the_decision_and_never_stored(db):
 
 
 def test_the_search_paths_actually_pass_the_question_along():
-    """배선이 빠지면 보존은 **아무것도 저장하지 않는다** — U1 이 정확히 그 상태로 머지됐다.
+    """와이어링이 빠지면 보존은 **아무것도 저장하지 않는다** — U1 이 정확히 그 상태로 머지됐다.
 
     소스 문자열이 아니라 컴파일된 참조를 본다: 호출부가 `query_text` 를 키워드로 넘기는지.
     """

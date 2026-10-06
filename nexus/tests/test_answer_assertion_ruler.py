@@ -1,6 +1,6 @@
 """답변이 값을 **주장했는가**, 그냥 **언급했는가**.
 
-2026-08-26 에 부분일치 채점기가 천장(15/15)에 붙었고, 절 채움을 껐다 켜도 그 숫자가 안 움직였다.
+2026-08-26 에 부분일치 채점기가 천장(15/15)에 붙었고, 섹션 필을 껐다 켜도 그 숫자가 안 움직였다.
 이유는 하나였다 — 값을 표에 적어 놓고 결론에서 물러선 답변을 통과시켰기 때문이다.
 
 여기 고정하는 것은 그 **쌍**이다: 같은 값을 담은 두 답변이 서로 다른 판정을 받아야 한다.
@@ -63,7 +63,7 @@ def test_the_pair_is_split():
 
 
 def test_a_verdict_at_the_end_counts_even_when_the_lead_defers():
-    """선두만 보는 판은 이것을 떨어뜨렸다(실측 A4) — 접속 부사가 여는 결론도 주장이다."""
+    """선두만 보는 버전은 이것을 떨어뜨렸다(실측 A4) — 접속 부사가 여는 결론도 주장이다."""
     text = """**근거들 사이에 충돌이 있습니다.**
 
 ## 정리
@@ -98,7 +98,7 @@ def test_a_value_quoted_as_the_previous_policy_is_not_an_assertion():
 
 
 def test_a_table_row_alone_is_not_an_assertion():
-    """표는 근거를 **늘어놓는** 자리다. 늘어놓기는 주장이 아니다."""
+    """표는 답변 근거를 **늘어놓는** 자리다. 늘어놓기는 주장이 아니다."""
     text = """근거를 정리하면 다음과 같습니다.
 
 | 출처 | 값 |
@@ -118,7 +118,7 @@ def test_a_lead_heading_does_not_end_the_lead():
 
 def test_the_hole_this_ruler_admits_to():
     """**이 채점기는 자리를 측정하지 확신을 측정하지 않는다.** 뚫리는 문구를 실물로 박아 둔다 —
-    다음 판이 이것을 고치면 이 테스트가 먼저 빨간불이 되어 알려 준다."""
+    다음 버전이 이것을 고치면 이 테스트가 먼저 빨간불이 되어 알려 준다."""
     text = "여러 근거가 있습니다.\n\n따라서 **14일**일 가능성이 있습니다.\n"
     assert verdict_segments(text)
     assert (asserts_value(SURFACES, text)) is True     # ⚠ 통과한다. 알고 있다.

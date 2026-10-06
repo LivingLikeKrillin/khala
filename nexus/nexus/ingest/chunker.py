@@ -87,12 +87,12 @@ def _split_into_sections(content: str) -> list[tuple[str, str]]:
 def _split_oversize(para: str, target_tokens: int, language: str) -> list[str]:
     """`target_tokens` 를 넘는 **단일 문단**을 쪼갠다 — 새 상수를 만들지 않는다.
 
-    상한은 이미 설정에 있는 `target_tokens` 다. 결함은 문턱이 없어서가 아니라 이 경로가 문턱을
+    상한은 이미 설정에 있는 `target_tokens` 다. 결함은 임계값이 없어서가 아니라 이 경로가 임계값을
     **건너뛰었기** 때문이다.
 
     세 가지를 순서대로 한다.
 
-    1. **마크다운 표면 헤더와 구분행을 조각마다 되붙인다.** 표를 그냥 자르면 두 번째 조각부터
+    1. **마크다운 표면 헤더와 구분행을 청크마다 되붙인다.** 표를 그냥 자르면 두 번째 청크부터
        열의 뜻이 사라진다. 실제로 터진 것이 정책 표였다.
     2. 줄 단위로 모은다 — 줄 중간을 자르면 표 행이나 코드 문장이 깨진다.
     3. **한 줄이 그 자체로 target 을 넘으면 문자로 자른다.** 단어를 깨는 것이 맞다 — 안 자르면
@@ -117,7 +117,7 @@ def _split_oversize(para: str, target_tokens: int, language: str) -> list[str]:
 
     # **내보낼 텍스트를 측정한다.** 줄별 추정을 더하면 실제와 어긋난다 — `_estimate_tokens` 가 매번
     # 내림하므로 합이 이어붙인 텍스트보다 작게 나오고(3줄에 18 vs 20), 그 차이만큼 상한을 넘긴
-    # 조각이 통과한다. 실제로 통과했고 테스트가 잡았다.
+    # 청크가 통과한다. 실제로 통과했고 테스트가 잡았다.
     out: list[str] = []
     cur: list[str] = list(header)
     for raw in lines:
@@ -226,7 +226,7 @@ def _split_vision_blocks(text: str) -> list[tuple[str, str]]:
 
     컨버터가 쓴 마커만 여기 도달한다: 저자 본문의 마커는 변환 시점에 이미 제거됐다
     (`vision.strip_markers`, SPEC §4.3 의 4단계 순서). 그래도 짝이 안 맞는 마커를 만나면
-    **보수적으로 authored 로 남긴다** — 잘린 문서 하나가 저자 산문을 기계 텍스트로 찍는 것보다,
+    **보수적으로 authored 로 남긴다** — 잘린 문서 하나가 저자 산문을 기계 판독 텍스트로 찍는 것보다,
     추출 텍스트가 한 번 저자로 잘못 표시되는 편이 낫다고 판단할 수는 없으므로, 짝이 없으면
     비전 블록으로 취급하지 않고 마커만 지운다.
     """
@@ -315,7 +315,7 @@ def chunk_document(
     for section_path, section_text in sections:
         # 비전 블록은 **크기와 무관하게** 먼저 갈린다 (ADR-0010 §3). 크기 기반 분할에 맡기면
         # 그림 옆의 제목·불릿과 한 chunk 에 들어가고, 그 chunk 는 정직한 등급을 가질 수 없다:
-        # authored 로 달면 기계 텍스트를 위로 세탁하고, machine_read 로 달면 저자를 모함한다.
+        # authored 로 달면 기계 판독 텍스트를 위로 세탁하고, machine_read 로 달면 저자를 모함한다.
         for part_text, tier in _split_vision_blocks(section_text):
             part_tokens = _estimate_tokens(part_text, language)
             if part_tokens <= target_tokens:
@@ -331,7 +331,7 @@ def chunk_document(
                 # 큰 비전 블록은 여러 chunk 로 갈리되 **전부 machine_read** 로 남는다.
                 sub_chunks = _split_text_with_overlap(
                     part_text, target_tokens, overlap_tokens, language)
-                # **조각마다 마커를 다시 싣는다.** 마커는 블록 첫 줄에 한 번만 있으므로, 쪼개면
+                # **청크마다 마커를 다시 싣는다.** 마커는 블록 첫 줄에 한 번만 있으므로, 쪼개면
                 # 두 번째 조각부터는 그림으로 돌아갈 식별자가 없다 — 등급은 machine_read 인데
                 # 인용을 든 독자는 원본에 닿지 못하는 상태이고, ADR-0010 §2 가 이 등급을
                 # 받아들인 근거가 바로 그 닿음이다 (SPEC-nexus-vision-source-ref §4).

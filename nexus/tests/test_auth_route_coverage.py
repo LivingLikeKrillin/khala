@@ -89,7 +89,7 @@ def test_every_privileged_route_requires_principal():
 
 
 def test_an_unwired_placeholder_would_be_caught():
-    """가드가 실제로 무는지 확인한다 — override 를 떼면 그 라우트는 실패해야 한다."""
+    """가드 검사가 실제로 무는지 확인한다 — override 를 떼면 그 라우트는 실패해야 한다."""
     from nexus.documents.api import dep as documents_dep
 
     saved = app.dependency_overrides.pop(documents_dep)

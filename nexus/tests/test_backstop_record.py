@@ -1,4 +1,4 @@
-"""ADR-0008 을 링크한 SPEC 은 backstop 기록을 갖는다 (ADR-0009 미결 항목 승계).
+"""ADR-0008 을 링크한 SPEC 은 backstop 기록을 갖는다 (ADR-0009 오픈 항목 승계).
 
 **ADR-0009 는 이 의무를 "감지 가능한 사건" 에 걸어 뒀다**:
 
@@ -70,11 +70,11 @@ def test_the_detectable_event_is_actually_detected():
 
 
 def test_every_such_spec_carries_a_backstop_record_or_is_declared_debt():
-    """기록이 있거나, **빚 목록에 이름이 있거나** 둘 중 하나여야 한다.
+    """기록이 있거나, **부채 목록에 이름이 있거나** 둘 중 하나여야 한다.
 
-    빚 목록을 둔 이유: 여섯 건이 이미 기록 없이 승인됐고, 그 판정은 디렉터만 내릴 수 있다.
+    부채 목록을 둔 이유: 여섯 건이 이미 기록 없이 승인됐고, 그 판정은 디렉터만 내릴 수 있다.
     검사를 그냥 빨간불로 두면 **상시 거짓 경보가 진짜 경보를 죽인다** — 인덱스 커버리지에서
-    이미 그렇게 됐다(진짜 한 줄이 739줄에 묻혔다). 빚은 세어서 보이게 두고, **새로 늘지
+    이미 그렇게 됐다(진짜 한 줄이 739줄에 묻혔다). 부채는 세어서 보이게 두고, **새로 늘지
     못하게** 막는 것이 이 검사의 일이다.
     """
     debt = set((yaml.safe_load(DEBT.read_text(encoding="utf-8")) or {}).get("undeclared", []))
@@ -97,7 +97,7 @@ def test_the_debt_list_only_names_specs_that_really_lack_a_record():
 
 
 def test_the_debt_list_is_closed_to_new_entries():
-    """**빚은 줄기만 한다.** 새 SPEC 이 목록에 이름을 올려 검사를 피할 수 있으면 검사가 아니다."""
+    """**부채는 줄기만 한다.** 새 SPEC 이 목록에 이름을 올려 검사를 피할 수 있으면 검사가 아니다."""
     doc = yaml.safe_load(DEBT.read_text(encoding="utf-8")) or {}
     assert doc.get("closed_at"), "빚 목록에 마감일이 없다"
     for name in doc.get("undeclared", []):

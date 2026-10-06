@@ -7,7 +7,7 @@ SPEC-nexus-query-text-retention §3.1~§3.2 (approved 2026-08-12).
 946행을 쌓고도 한 문장을 못 준다. 여기서 그 텍스트를 남기되, 남기는 방식에 조건을 건다.
 
 **키는 조인 불가능해야 한다.** `a2a_audit` 이 `principal` 과 `query_sha256` 을 같은 행에 갖는다
-(실측). 보존 키가 그 해시와 같으면 텍스트↔신원이 조인 한 번으로 이어져, "principal 컬럼을 두지
+(실측). 보존 키가 그 해시와 같으면 텍스트↔식별 정보가 조인 한 번으로 이어져, "principal 컬럼을 두지
 않았다" 는 보호가 무의미해진다. 그래서 키는 `sha256(tenant‖\\0‖text)` — 어디에도 없는 값이다.
 """
 
@@ -51,7 +51,7 @@ async def _policy(tenant: str) -> tuple[bool, str, list[str]]:
 
 async def retain(tenant: str | None, query_text: str | None,
                  principal: str | None = None, *, kind: str = "user") -> str:
-    """질문을 보존한다 — 켜져 있고, 고지가 있고, **그 표면이 허용목록에 있을 때만.**
+    """질문을 보존한다 — 켜져 있고, 고지가 있고, **그 API 표면이 허용목록에 있을 때만.**
 
     `off`         옵트인 행이 없다. **아무것도 하지 않는다** — 기존 행의 `seen_count` 도 안 건드린다.
     `no_notice`   행은 있는데 `notice_shown` 이 비었다. 거부하고 센다.
@@ -63,7 +63,7 @@ async def retain(tenant: str | None, query_text: str | None,
     유일한 재료"), 재작성문을 구분 없이 섞으면 그 코퍼스로 만든 평가셋이 **자기 재작성기를
     채점하게** 된다. 동의 범위·만료는 원문과 같다 — 같은 대화에서 나온 같은 사람의 말이다.
 
-    **principal 은 판단에만 쓰이고 저장되지 않는다.** 저장하면 텍스트 옆에 신원이 앉아, 소금 친
+    **principal 은 판단에만 쓰이고 저장되지 않는다.** 저장하면 텍스트 옆에 식별 정보가 앉아, 소금 친
     키로 막아 둔 사람-로그가 같은 행에서 부활한다.
 
     이 함수는 raise 하지 않는다. 동의 범위의 곁가지 기록이 답변을 못 내리게 하면 안 된다
@@ -74,7 +74,7 @@ async def retain(tenant: str | None, query_text: str | None,
     try:
         on, _notice, allowed = await _policy(tenant)
         if on and principal not in allowed:
-            # 새 표면이 조용히 포함되는 일을 막는다 — 고지는 사람 집단에게 갔고,
+            # 새 API 표면이 조용히 포함되는 일을 막는다 — 고지는 사람 집단에게 갔고,
             # 테넌트에는 그 집단만 도달하지 않는다.
             counters["out_of_scope"] += 1
             return "out_of_scope"

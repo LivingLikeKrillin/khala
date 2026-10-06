@@ -81,7 +81,7 @@ def test_find_respects_classification_clearance():
 
 
 def test_ruling_fields_round_trip():
-    """소유자의 판정 다섯 칸(migration 044)이 저장·조회를 왕복하는가 — 값 없는 판정도."""
+    """소유자의 판정 다섯 필드(migration 044)가 저장·조회를 왕복하는가 — 값 없는 판정도."""
     async def inner(pool):
         repo = ClaimRepository(pool)
         await repo.upsert(Claim(

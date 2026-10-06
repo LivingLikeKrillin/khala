@@ -1,13 +1,13 @@
 """CodeValueResolver — 코드 상수의 *현재값*을 읽고 (상대경로+심볼) hash를 낸다.
 
-MVP: Java `static final` 상수. 'System decides, LLM narrates' — 파싱은 결정론, LLM 미개입.
+MVP: Java `static final` 상수. 'System decides, LLM narrates' — 파싱은 결정성, LLM 미개입.
 값을 복사 저장하지 않고 코드를 가리켜 조회 시점에 재읽기(anti-shelfware).
 
 **모호하면 답하지 않는다.** 이 모듈의 값은 `claims/answer.py` 를 거쳐
 *"현재 200 (확실: 코드 상수 …)"* 로 나간다 — 그 문장은 확신을 약속하므로, 확신할 수 없을 때
 아무 값이나 돌려주는 것은 이 모듈이 할 수 있는 가장 나쁜 일이다.
 
-⚠ 2026-08-25 실측이 그 나쁜 일을 하고 있음을 보여줬다. 첫 판은 `source` 의 한정자를 버리고
+⚠ 2026-08-25 실측이 그 나쁜 일을 하고 있음을 보여줬다. 첫 버전은 `source` 의 한정자를 버리고
 (`rpartition(".")` 로 심볼만 취함) `*.java` 전체에서 **첫 매치**를 돌려줬다. 그래서:
 
   · 존재하지 않는 클래스명으로도 값이 나왔다 (`SomeClass.MAX_PAGE_SIZE` → `200`).
@@ -48,7 +48,7 @@ class ResolvedValue:
     symbol: str | None = None
     symbol_hash: str | None = None
     #: 못 찾았거나 **거절한** 이유. 호출부(`ValueQueryService`)가 그대로 사람에게 전한다 —
-    #: "심볼이 없다" 와 "모호해서 답하지 않았다" 는 처방이 다르다(전자는 claim 수정, 후자는
+    #: "심볼이 없다" 와 "모호해서 답하지 않았다" 는 조치 방법이 다르다(전자는 claim 수정, 후자는
     #: 한정자 추가). 뭉뚱그리면 어느 쪽인지 알 수 없다.
     reason: str = ""
 
@@ -62,7 +62,7 @@ _DECL = re.compile(r"\b(?:class|interface|enum|record)\s+(\w+)")
 #: · 테스트 소스 — 테스트 상수는 **제품의 현재값이 아니다**. 섞으면 `"test@example.com"` 이
 #:   운영 값으로 나간다(실측된 모양이다).
 #: · 빌드 산출물 — 파생물이다. 여기서 읽으면 "현재값" 이 **마지막 빌드 시점의 값**이 되고,
-#:   소스를 고치고 빌드하지 않은 상태에서 조용히 낡은 답을 낸다.
+#:   소스를 고치고 빌드하지 않은 상태에서 조용히 스테일 답을 낸다.
 _SKIP_PARTS = ("/src/test/", "/build/", "/target/", "/out/", "/generated/")
 
 
@@ -193,7 +193,7 @@ def _attached_annotations(text, anns, decl_start):
 def _field_declarations(text: str, field: str) -> list[int]:
     """`field` 를 선언하는 자리들.
 
-    ⛔ **접근 제어자를 요구하지 않는다 (2026-08-31).** 첫 판은 `private|protected|public` 으로
+    ⛔ **접근 제어자를 요구하지 않는다 (2026-08-31).** 첫 버전은 `private|protected|public` 으로
     시작해야만 필드로 봤다. 그래서 Lombok 을 쓰는 실물 클래스를 통째로 놓쳤다 —
 
         @Getter
@@ -380,7 +380,7 @@ class CodeValueResolver:
             hits = _constant_hits(path, text, symbol)
 
         if not hits:
-            # **낡은 claim 과 사라진 값을 가르지 않는다** — 둘 다 "다시 심어라" 다.
+            # **스테일 claim 과 사라진 값을 가르지 않는다** — 둘 다 "다시 심어라" 다.
             return ResolvedValue(
                 found=False, symbol=symbol,
                 reason=f"`{symbol}` 이 {rel_path} 에 더는 없다 (다시 심어야 한다)")
@@ -406,7 +406,7 @@ class CodeValueResolver:
             return ResolvedValue(found=False, symbol=symbol, reason=missing_reason)
 
         if qualifier:
-            # **한정자를 실제로 쓴다.** 옛 판은 이것을 버려서 없는 클래스명으로도 값이 나왔다.
+            # **한정자를 실제로 쓴다.** 옛 버전은 이것을 버려서 없는 클래스명으로도 값이 나왔다.
             named = [h for h in hits if self._declares(h[0], qualifier)]
             if not named:
                 return ResolvedValue(

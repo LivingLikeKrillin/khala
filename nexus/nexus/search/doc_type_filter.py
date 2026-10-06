@@ -2,7 +2,7 @@
 
 ⛔ **이것은 보안 경계가 아니다.** `auth/scope.py`·`clearance` 와 같은 칸에 두고 읽으면
 안 된다. 그 둘은 *읽을 수 있는가*를 정하고 **요청이 넓힐 수 없다**. 이것은 *이번 질의에
-쓸모가 있는가*이고 **요청이 정한다.** 둘을 같은 기제로 만들면 언젠가 이 목록을 비우는 것이
+쓸모가 있는가*이고 **요청이 정한다.** 둘을 같은 메커니즘으로 만들면 언젠가 이 목록을 비우는 것이
 권한을 넓히는 일이 된다.
 
 그래서 성질이 하나뿐이다 — **좁히기만 한다.** 빈 목록은 "안 물었다" 이고 오늘과 글자 그대로
@@ -53,7 +53,7 @@ def doc_type_exclusion_predicate(column: str, param: int,
                                  excluded: Sequence[str]) -> tuple[str, list[object]]:
     """`(SQL 조각, 바인딩할 값들)`. 조각은 `AND` 로 시작하고, 안 물었으면 빈 문자열이다.
 
-    `column` 은 `documents` 별칭을 포함한 칸 이름(예: `d.doc_type`)이고, `param` 은 이
+    `column` 은 `documents` 별칭을 포함한 필드 이름(예: `d.doc_type`)이고, `param` 은 이
     조각이 쓸 **첫** 바인딩 번호다 — `tenant_predicate`·`origin_window_predicate` 와
     같은 모양이다. 번호를 호출부가 세게 두면 다리 하나를 고칠 때 다른 하나가 조용히 어긋난다.
 
@@ -62,9 +62,9 @@ def doc_type_exclusion_predicate(column: str, param: int,
     조용히 사라진다 — 시각 범위가 `IS NULL OR` 를 쓰는 것과 같은 이유이고, 그 자리에서
     이 리포는 이미 한 번 코퍼스를 통째로 잃을 뻔했다.
 
-    ⚠ **다만 `documents.doc_type` 에 대해서는 오늘 이 갈래가 안 밟힌다 — `NOT NULL` 이다.**
-    확인은 검사가 한다(`test_the_schema_is_why_that_branch_is_insurance`). 이 함수는 칸
-    이름을 인자로 받으므로 그 제약이 없는 칸에도 쓰일 수 있고, 그래서 갈래는 남긴다.
+    ⚠ **다만 `documents.doc_type` 에 대해서는 오늘 이 하위 범주가 안 밟힌다 — `NOT NULL` 이다.**
+    확인은 검사가 한다(`test_the_schema_is_why_that_branch_is_insurance`). 이 함수는 필드
+    이름을 인자로 받으므로 그 제약이 없는 필드에도 쓰일 수 있고, 그래서 하위 범주는 남긴다.
     **관측된 구조가 아니라 보험**이라고 적어 두는 것이 이 문단의 일이다 — 안 적으면 다음
     사람이 "이걸로 한 번 살았구나" 로 읽는다.
     """

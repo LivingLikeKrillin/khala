@@ -1,8 +1,8 @@
 """봇에게 봇 자신을 물었을 때 — 검색이 아니라 시스템 상태로 답하는가.
 
 2026-08-13 에 팀원이 물었다: *"너가 근거로 사용 중인 corpus 범위는 어떻게 돼?"* 봇은 그것을
-평범한 질문으로 받아 검색했고, 코퍼스를 논하는 설계 문서 다섯 건을 근거로 "이번 검색에서
-Evidence 로 제공된 문서는 5개" 라고 답했다. 그건 코퍼스 범위가 아니라 그 턴의 근거 패킷이다.
+평범한 질문으로 받아 검색했고, 코퍼스를 논하는 설계 문서 다섯 건을 답변 근거로 "이번 검색에서
+Evidence 로 제공된 문서는 5개" 라고 답했다. 그건 코퍼스 범위가 아니라 그 턴의 답변 근거 패킷이다.
 
 **분류는 하지 않는다.** "메타 질문인가?" 를 모델이 판정하는 설계는
 SPEC-nexus-multi-turn-narration §3.2 에서 기각됐다(오분류가 양방향으로 안전하지 않다).
@@ -59,7 +59,7 @@ def test_the_card_leads_with_where_the_documents_came_from():
 def test_the_card_does_not_lead_with_internal_vocabulary():
     """`default`·`INTERNAL` 은 시스템의 어휘다 — 묻는 사람에게 아무 뜻이 없다.
 
-    첫 판이 그 둘을 앞세웠고, 그건 운영자의 질문에 답한 것이었다.
+    첫 버전이 그 둘을 앞세웠고, 그건 운영자의 질문에 답한 것이었다.
     """
     first_line = scope_blocks(_VIS)[0]["text"]["text"].splitlines()[0]
     assert "default" not in first_line and "INTERNAL" not in first_line
@@ -91,7 +91,7 @@ def test_a_failed_probe_still_produces_a_card():
     assert scope_blocks({})[0]["text"]["type"] == "mrkdwn"
 
 
-# ── 배선: 봇이 실제로 그 카드를 보내는가 ───────────────────────────────────────
+# ── 와이어링: 봇이 실제로 그 카드를 보내는가 ───────────────────────────────────────
 
 async def test_the_bot_answers_the_command_without_searching(monkeypatch):
     """검색을 타면 안 된다 — 그게 이 기능이 존재하는 이유다."""

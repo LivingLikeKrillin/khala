@@ -1,4 +1,4 @@
-"""한국어 검색 평가 하니스 — 적재·채점·판정 (SPEC-nexus-korean-retrieval-eval §4.3~§4.5).
+"""한국어 검색 평가 하네스 — 적재·채점·판정 (SPEC-nexus-korean-retrieval-eval §4.3~§4.5).
 
 **판정은 "정답 문서를 찾았나" 다.** 경로는 청크를 돌려주므로 문서로 접은 뒤(같은 문서는 최선
 순위만) **문서 10개** 안에서 측정한다 — 청크 10개 창이 아니다. 한 문서가 청크를 여러 개 올리면 두
@@ -73,7 +73,7 @@ class AbstentionResult:
 def score_abstention(results: dict[str, bool], unanswerable: list[dict]) -> AbstentionResult:
     """`{질의id: abstained}` → 집계.
 
-    **답을 지어내는 것이 기권 실패다.** 근거가 하나도 없을 때만 기권하는 현재 구현에서는 이 값이
+    **답을 지어내는 것이 기권 실패다.** 답변 근거가 하나도 없을 때만 기권하는 현재 구현에서는 이 값이
     0 에 가깝게 나올 것이다 — BM25 는 거의 언제나 무언가를 돌려주니까. 그것은 이 채점기의 실패가
     아니라 **측정된 사실**이고, 0 이라는 숫자가 있어야 고칠지 말지를 정할 수 있다.
     """
@@ -192,7 +192,7 @@ class LegResult:
         return sum(1 for s in self.scores if s.miss)
 
     def by_stratum(self, strata: dict[str, str]) -> dict[str, dict]:
-        """층별 수치 — **서술용이다.** 8건짜리 층은 아무것도 결정하지 못한다 (§4.3)."""
+        """계층별 수치 — **서술용이다.** 8건짜리 계층은 아무것도 결정하지 못한다 (§4.3)."""
         out: dict[str, dict] = {}
         for s in self.scores:
             b = out.setdefault(strata.get(s.qid, "?"), {"n": 0, "recall": 0.0, "mrr": 0.0, "misses": 0})

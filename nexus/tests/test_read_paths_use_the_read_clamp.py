@@ -1,4 +1,4 @@
-"""읽기 엔드포인트가 **읽기용 클램프**로 범위를 정하는가 — 두 표면을 나란히 친다.
+"""읽기 엔드포인트가 **읽기용 클램프**로 범위를 정하는가 — 두 API 표면을 나란히 친다.
 
 ⛔ **이 파일이 생긴 이유.** `auth/scope.py` 에는 클램프가 둘이고 머리말이 용도를 갈라 적어
 뒀다 — `effective_scope` 는 쓰기·관리용이라 **요청 tenant 를 아예 안 보고** `principal.tenant`
@@ -10,7 +10,7 @@
 **그리고 그것을 잡는 검사가 하나도 없었다.** 범위가 넓어지는 쪽이 아니라 좁아지는 쪽이라
 오류도 안 나고 응답도 정상이다 — 안 보이는 코퍼스와 없는 코퍼스가 화면에서 같아 보인다.
 
-그래서 여기서는 **표면마다 같은 세 경우**를 친다. 한쪽만 고치면 다른 쪽에서 붉어진다.
+그래서 여기서는 **API 표면마다 같은 세 경우**를 친다. 한쪽만 고치면 다른 쪽에서 붉어진다.
 """
 
 from __future__ import annotations
@@ -33,10 +33,10 @@ class _Result:
         self.timing_ms, self.degraded = {}, False
         self.route_used, self.spans = "hybrid_only", None
         self.n_unknown_origin_time = None
-        #: 응답 조립이 읽는 칸. 가짜가 실물의 칸을 안 들면 엔드포인트가 여기서 죽는다.
+        #: 응답 조립이 읽는 필드. 가짜가 실물의 필드를 안 들면 엔드포인트가 여기서 죽는다.
         self.excluded_doc_types = []
         self.identifier_channel = []
-        #: 터진 보강 패스. ⭐ 이 칸이 빠지면 엔드포인트가 **500 으로 죽는다** — 대역이 실물을
+        #: 터진 보강 패스. ⭐ 이 필드가 빠지면 엔드포인트가 **500 으로 죽는다** — 대역이 실물을
         #: 안 따라간 것이 조용하지 않게 드러나는 자리라, 여기 손이 가는 것은 결함이 아니다.
         self.enrichment_failed = []
         from nexus.search.confidence import Confidence

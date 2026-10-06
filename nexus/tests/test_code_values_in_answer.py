@@ -52,7 +52,7 @@ def test_a_claim_without_concepts_never_attaches():
 # ── 프롬프트에 어떻게 나가는가 ────────────────────────────────────────────────
 
 def test_the_code_value_is_marked_as_code_not_as_a_document():
-    """그 구별이 없으면 모델은 코드 값을 근거 문서처럼 인용한다."""
+    """그 구별이 없으면 모델은 코드 값을 답변 근거 문서처럼 인용한다."""
     packet = EvidencePacket(code_values=[
         CodeValue(statement="파티 이름 길이 상한 (서버 요청 검증)", value="100",
                   source="party/.../CreatePartyroomRequest.java")])
@@ -84,10 +84,10 @@ def test_no_code_values_leaves_the_prompt_byte_identical():
     assert "코드의 현재 값" not in format_for_llm(EvidencePacket())
 
 
-# ── 배선 ─────────────────────────────────────────────────────────────────────
+# ── 와이어링 ─────────────────────────────────────────────────────────────────────
 
 def test_every_call_site_passes_the_question_and_the_pool():
-    """⛔ **배선 검사.** 답변 경로가 다섯이다. 한 곳만 배선하면 사람과 에이전트가 다른 답을
+    """⛔ **와이어링 검사.** 답변 경로가 다섯이다. 한 곳만 와이어링하면 사람과 에이전트가 다른 답을
     받고, **그 조합은 검사가 초록인 채로 프로덕션에서 조용히 틀린다** — 이 리포가 2026-08-29
     에 정확히 그렇게 데였고(`api.py` 한 곳만), 그래서 `packet_for_answer` 가 생겼다.
 

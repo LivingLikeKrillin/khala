@@ -22,7 +22,7 @@ Pack A·B 의 토크나이저·임베딩 비교는 검색이었고 검색은 결
 4. **불일치쌍 6 미만이면 p 값을 내지 않고 "검정력 부족"** — Pack A·B 와 같은 `MIN_DISCORDANT`.
 5. 결론 못 내면 **현직 유지.** 측정 안 된 이득에 비용을 내지 않는다.
 
-층별 수치는 **서술용**이다. 8건짜리 층은 아무것도 결정하지 못한다.
+계층별 수치는 **서술용**이다. 8건짜리 계층은 아무것도 결정하지 못한다.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ class ArmSummary:
         return {q: sum(v) * 2 > len(v) for q, v in self.per_query.items()}
 
     def totals(self) -> list[int]:
-        """회차별 `all_three` 합계 — 잡음 폭은 여기서 나온다."""
+        """회차별 `all_three` 합계 — 노이즈 밴드는 여기서 나온다."""
         n = self.runs
         return [sum(1 for v in self.per_query.values() if i < len(v) and v[i]) for i in range(n)]
 

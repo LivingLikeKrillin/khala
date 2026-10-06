@@ -26,8 +26,8 @@ _UNSAFE_ID_CHARS = ("/", "\\", "\x00")
 
 # 정본은 nexus.ingest.external_metadata 에 있다(그 모듈은 a2a SDK 에 묶이지 않아 ingest 쪽에서
 # 쓸 수 있다). 여기서는 기존 임포트 경로 호환을 위해 재수출한다.
-#   · normalize_csf_kind — 레거시 CSF kind → 축-A 정본 타입
-#   · EXTERNAL_LABEL     — 외부 출처 표식(classification 레벨 아님, CRM label)
+#   · normalize_csf_kind — 레거시 CSF kind → 차원-A 정본 타입
+#   · EXTERNAL_LABEL     — 외부 출처 마커(classification 레벨 아님, CRM label)
 from nexus.ingest.external_metadata import (  # noqa: E402,F401  (호환용 재수출)
     EXTERNAL_LABEL,
     normalize_csf_kind,

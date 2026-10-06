@@ -33,7 +33,7 @@ def test_a_complete_candidate_has_no_shape_problem():
 
 
 def test_every_needed_field_is_actually_checked():
-    """칸 하나를 빼면 반드시 걸려야 한다 — 안 걸리는 칸이 있으면 목록이 장식이다."""
+    """필드 하나를 빼면 반드시 걸려야 한다 — 안 걸리는 필드가 있으면 목록이 장식이다."""
     for f in NEEDED:
         assert shape_problems(_q(**{f: None})), f"{f} 가 없는데 안 걸린다"
 
@@ -81,10 +81,10 @@ def test_no_requirement_at_all_is_not_silently_a_pass():
     assert not holds_in(None, GOLD)
 
 
-# ── 층 균형 ──────────────────────────────────────────────────────────────────
+# ── 계층 균형 ──────────────────────────────────────────────────────────────────
 
 def test_replacing_keeps_the_count_when_the_strata_match():
-    """40건은 다섯 층에 8건씩으로 지어졌다 — 빼고 넣는 층이 같아야 그 모양이 산다."""
+    """40건은 다섯 계층에 8건씩으로 지어졌다 — 빼고 넣는 계층이 같아야 그 모양이 산다."""
     existing = [{"id": f"q{i}", "answerable": True, "stratum": "mixed"} for i in range(8)]
     after = balance_after(existing, {"q0", "q1"},
                           [{"stratum": "mixed"}, {"stratum": "mixed"}])

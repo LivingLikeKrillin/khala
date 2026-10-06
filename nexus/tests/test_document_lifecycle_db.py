@@ -1,9 +1,9 @@
-"""문서 생애주기 프리미티브 — REAL Postgres.
+"""문서 생명주기 프리미티브 — REAL Postgres.
 
-SPEC-nexus-document-lifecycle §4.1(hold) · §4.2(unsupersede, 체인 가드, 원장).
+SPEC-nexus-document-lifecycle §4.1(hold) · §4.2(unsupersede, 체인 가드 검사, 원장).
 
 여기서 고정하는 불변식:
-  1. 사람이 숨긴 문서(hold)는 다음 동기화가 되살리지 않는다.
+  1. 사람이 숨김 문서(hold)는 다음 동기화가 되살리지 않는다.
   2. 재조정이 내린 문서(hold=false)는 페이지가 돌아오면 여전히 되살아난다.
   3. supersession 체인은 역순으로만 풀린다 — v1 을 되살려 v3 와 공존시키지 않는다.
   4. supersede/unsupersede 는 상태 변경과 **같은 트랜잭션**에서 원장 행 하나를 남긴다.
@@ -50,7 +50,7 @@ async def _seed(conn) -> None:
         )
 
     await chunk(_C_V1_CUR, _V1, "active", "h1")       # 현재 세대
-    await chunk(_C_V1_OLD, _V1, "superseded", "h0")   # 낡은 세대 — 되살아나면 안 된다
+    await chunk(_C_V1_OLD, _V1, "superseded", "h0")   # 스테일 세대 — 되살아나면 안 된다
 
 
 @pytest.fixture
@@ -109,7 +109,7 @@ async def test_unsupersede_refuses_a_broken_chain_and_names_the_blocker(seeded):
     with pytest.raises(ChainBroken) as e:
         await unsupersede(_V1, _TENANT, reason="되돌리고 싶다")
     assert _V2 in str(e.value)           # 에이전트가 쓸 rid
-    # 사람이 읽는 표면(웹 토스트)에도 이 문장이 그대로 뜬다. rid 만 있으면 아무 말도 안 한 것과 같다.
+    # 사람이 읽는 API 표면(웹 토스트)에도 이 문장이 그대로 뜬다. rid 만 있으면 아무 말도 안 한 것과 같다.
     assert "v2.md" in str(e.value)       # 막고 있는 문서의 제목
     assert e.value.blocker_title == f"{_TENANT}:v2.md"
 
@@ -237,7 +237,7 @@ async def test_reingesting_a_hidden_document_does_not_revive_it(seeded):
 
     사본 122문서를 `hide` 로 내린 뒤 누가 같은 경로를 다시 적재하면 되살아나는가? 되살아나면
     순서를 짜서 피하려던 **정본·사본 겹침이 배포 뒤에 조용히 재생성**되고, 어떤 완료 조건도
-    그것을 안 본다(비평 I-004).
+    그것을 안 본다(크리틱 I-004).
 
     코드를 읽어 보니 이미 막혀 있었다 — 문서 upsert 의 `SET` 목록에 `status` 가 없다. 하지만
     **읽어서 그렇다고 믿는 것과 검사로 박는 것은 다르다.** 이 리포가 반복해서 데인 자리다.

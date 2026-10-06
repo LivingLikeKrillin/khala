@@ -3,7 +3,7 @@
 ⛔ **왜 생겼나 (실측 2026-09-03).** 설계 문서 122건이 `design_docs` 테넌트에 있는데, 웹·CLI 가
 쓰는 principal(`local-dev`)의 읽기 범위는 `default` 하나였다. 그래서 설계 질문을 던지면
 **정책 코퍼스만 본 답**이 확신 있게 나왔고, 사용자는 그것이 설계 문서를 본 답인 줄 읽었다.
-근거 인용은 *어느 문서를 썼나*를 보여 주지만 *어느 코퍼스가 애초에 후보였나*는 어디에도 없었다.
+답변 근거 인용은 *어느 문서를 썼나*를 보여 주지만 *어느 코퍼스가 애초에 후보였나*는 어디에도 없었다.
 
 그 사실을 알아내는 데 코드를 읽어야 했다 — 로그의 `read_scope` 는 1,083행이 비어 있었고 응답에는
 아예 없었다. **답이 스스로 말하지 않으면, 답이 무엇 위에 섰는지는 매번 조사거리가 된다.**
@@ -21,7 +21,7 @@ from nexus.search.evidence_packet import EvidencePacket
 
 
 def test_a_packet_carries_the_scope_it_was_built_for():
-    """공유 이음매가 범위를 받는다 — 표면마다 붙이면 하나가 조용히 빠진다(외부 평가 F2)."""
+    """공유 접합부가 범위를 받는다 — API 표면마다 붙이면 하나가 조용히 빠진다(외부 평가 F2)."""
     p = EvidencePacket(searched_tenants=["default", "design_docs"])
     assert p.searched_tenants == ["default", "design_docs"]
 
@@ -32,7 +32,7 @@ def test_a_packet_without_a_scope_says_nothing_rather_than_guessing():
 
 
 def test_the_contributing_corpora_are_counted_from_the_packet_not_the_hits():
-    """근거 점유율은 패킷에서 센다 — 히트만 세면 채운 절·짝 문서·정정 패스가 빠진다.
+    """답변 근거 점유율은 패킷에서 센다 — 히트만 세면 채운 절·페어 문서·정정 패스가 빠진다.
 
     (SPEC-nexus-design-corpus-cutover §5.3 이 같은 이유로 같은 자리를 고른다.)
     """
@@ -47,10 +47,10 @@ def test_the_contributing_corpora_are_counted_from_the_packet_not_the_hits():
 
 
 def test_every_answer_surface_reports_the_scope():
-    """표면 하나만 고치면 F2 가 그대로 재현된다 — **셋 다** 범위를 응답에 실어야 한다.
+    """API 표면 하나만 고치면 F2 가 그대로 재현된다 — **셋 다** 범위를 응답에 실어야 한다.
 
     소스 문자열이 아니라 **컴파일된 참조**를 본다. 서식이 바뀌어도 안 깨지고, 이름을 지운
-    판에서는 깨진다.
+    버전에서는 깨진다.
     """
     from nexus import api
 
@@ -78,8 +78,8 @@ def _names(func) -> set[str]:
     `co_names`(속성·전역 이름)만 봤고, 응답 **키**는 한 번도 안 봤다.
 
     ⇒ 그 판정은 *"`packet.searched_tenants` 를 읽는가"* 였지 *"응답에 싣는가"* 가 아니다.
-    읽어 놓고 안 싣는 표면은 통과한다 — 이 파일이 바로 아래에서 경고하는 그 구멍이고,
-    가드가 **자기 경고에 걸려 있었다.** 응답 키는 딕셔너리 리터럴이라 `co_consts` 에만 있다.
+    읽어 놓고 안 싣는 API 표면은 통과한다 — 이 파일이 바로 아래에서 경고하는 그 구멍이고,
+    가드 검사가 **자기 경고에 걸려 있었다.** 응답 키는 딕셔너리 리터럴이라 `co_consts` 에만 있다.
 
     ⚠ **그리고 키는 낱개 상수가 아니다.** 상수 키만 있는 딕셔너리는 `BUILD_CONST_KEY_MAP`
     으로 컴파일되어 키 전부가 **튜플 상수 하나** 안에 들어간다. `isinstance(c, str)` 만
@@ -106,12 +106,12 @@ def _names(func) -> set[str]:
 
 # ── 이름이 아니라 **행동**을 건다 ────────────────────────────────────────────
 #
-# ⛔ 위의 표면 검사는 이름만 본다. 처음 판에서 이음매의 대입을 통째로 지워도 **한 검사도 안
-# 깨졌다** — 표면은 여전히 `packet.searched_tenants` 를 읽고 있었고 그 값이 비었을 뿐이다.
+# ⛔ 위의 API 표면 검사는 이름만 본다. 처음 버전에서 접합부의 대입을 통째로 지워도 **한 검사도 안
+# 깨졌다** — API 표면은 여전히 `packet.searched_tenants` 를 읽고 있었고 그 값이 비었을 뿐이다.
 # 이 리포가 이미 적어 둔 실패다: *"문자열은 그 코드가 돌았다는 것을 증명하지 않는다."*
 
 async def test_the_seam_actually_fills_the_scope(monkeypatch):
-    """공유 이음매가 범위를 **채우는지** 본다. 지우면 이 검사가 깨진다."""
+    """공유 접합부가 범위를 **채우는지** 본다. 지우면 이 검사가 깨진다."""
     from nexus.search import reconcile
 
     class _R:
@@ -146,7 +146,7 @@ async def test_a_single_tenant_string_still_becomes_a_list():
 # `resolve_read_scope` 는 범위 밖 요청에 **오류를 내지 않는** 이유를 자기 docstring 에 적어
 # 뒀다 — 그 테넌트가 있는지를 흘리지 않으려고 일부러다. 그리고 그 대신을 같은 자리에 적었다:
 # *"응답에는 해소된 범위가 실린다. 그게 없으면 호출자는 코퍼스 X 를 묻고 Y 로 답을 받고도
-# 아무 신호를 못 받는다"*(비평 3R I-010).
+# 아무 신호를 못 받는다"*(크리틱 3R I-010).
 #
 # `/search` 는 `_scope` 를 계산해 **신호에만** 남기고 응답에는 안 실었다. 보상 통제가 없는
 # 쪽에서 *"오류를 안 낸다"* 는 보안 결정이 아니라 그냥 침묵이다.
@@ -207,11 +207,11 @@ def test_the_read_surface_says_which_corpora_it_searched(read_client):
 
 
 def test_it_reports_the_resolved_scope_not_what_the_request_asked_for(read_client, monkeypatch):
-    """⛔ **요청을 되울리면 이 칸은 거짓말을 한다.**
+    """⛔ **요청을 되울리면 이 필드는 거짓말을 한다.**
 
     범위는 토큰이 정하고 요청은 좁히기만 한다(`auth/scope.py`). 그 둘이 **갈리는** 순간이
-    이 칸이 필요한 유일한 순간이므로, 단언은 *"보낸 것과 같다"* 가 아니라 *"해소된 것과
-    같다"* 여야 한다. 하나를 물었는데 둘이 해소되는 판을 일부러 만든다.
+    이 필드가 필요한 유일한 순간이므로, 단언은 *"보낸 것과 같다"* 가 아니라 *"해소된 것과
+    같다"* 여야 한다. 하나를 물었는데 둘이 해소되는 버전을 일부러 만든다.
     """
     from nexus import api
 
@@ -228,11 +228,11 @@ def test_it_reports_the_resolved_scope_not_what_the_request_asked_for(read_clien
 
 
 def test_the_surface_list_now_covers_the_read_path_too():
-    """⚠ **표면 목록에서 빠지는 것이 이 파일이 막으려던 결함이다**(F2).
+    """⚠ **API 표면 목록에서 빠지는 것이 이 파일이 막으려던 결함이다**(F2).
 
-    위 `test_every_answer_surface_reports_the_scope` 는 **답변** 표면 둘만 본다. 검색 전용
-    경로는 그 목록 밖이라 초록인 채로 비어 있었다 — 가드가 있는데 지킬 대상에서 빠지는 것이
-    이 부류의 전형이다. 목록을 늘린다.
+    위 `test_every_answer_surface_reports_the_scope` 는 **답변** API 표면 둘만 본다. 검색 전용
+    경로는 그 목록 밖이라 초록인 채로 비어 있었다 — 가드 검사가 있는데 지킬 대상에서 빠지는 것이
+    이 유형의 전형이다. 목록을 늘린다.
     """
     from nexus import api
 

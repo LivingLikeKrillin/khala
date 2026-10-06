@@ -7,7 +7,7 @@
     python -m scripts.ko_eval_compare --dump-pool pool.json       # 풀 후보 덤프(판정 전)
     python -m scripts.ko_eval_compare --report                    # 리포트 작성
 
-풀 판정(§4.2)은 이 스크립트가 대신해 주지 않는다. 후보를 덤프하면 사람이 읽고 gold 에 추가한다.
+풀링 판정(§4.2)은 이 스크립트가 대신해 주지 않는다. 후보를 덤프하면 사람이 읽고 gold 에 추가한다.
 """
 
 from __future__ import annotations

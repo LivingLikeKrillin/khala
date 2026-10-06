@@ -92,7 +92,7 @@ async def _walk_and_apply(*, run_id: str, tenant: str, roots: list[str], reconci
     expected_hash = None
     if confirm_run is not None:
         prior = await runs_store.get_run(confirm_run)
-        expected_hash = prior["plan_hash"]      # 확정: 미리보기 당시의 지문과 대조한다
+        expected_hash = prior["plan_hash"]      # 확정: 미리보기 당시의 핑거프린트와 대조한다
         dry_run = False
 
     planner = make_planner(

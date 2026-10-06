@@ -1,7 +1,7 @@
-"""답변 품질 — **LLM 심판 없이** 결정론으로 채점한다.
+"""답변 품질 — **LLM 심판 없이** 결정론적으로 채점한다.
 
-이 리포는 검색을 엄격하게 측정해 왔고 **답변은 한 번도 안 측정했다.** 있는 것은 결정론적 가드 셋뿐이다
-(인용 사후검증·숫자 근거검증·근거 신선도). 셋 다 답변이 근거를 **벗어났는지**를 보지, 답이
+이 리포는 검색을 엄격하게 측정해 왔고 **답변은 한 번도 안 측정했다.** 있는 것은 결정론적 가드 검사 셋뿐이다
+(인용 사후검증·숫자 근거검증·답변 근거 신선도). 셋 다 답변이 근거를 **벗어났는지**를 보지, 답이
 **맞는지**를 보지 않는다.
 
 여기서 측정하는 세 가지. 전부 코드가 판단한다 — 답이 좋은지를 LLM 에게 물으면 그 LLM 의 취향을 측정하게
@@ -9,7 +9,7 @@
 
 | 측정하는 것 | 방법 | 실패가 뜻하는 것 |
 |---|---|---|
-| `grounded` | 인용이 하나 이상 있고 전부 근거 packet 안의 문서다 | 출처를 지어냈다 |
+| `grounded` | 인용이 하나 이상 있고 전부 답변 근거 packet 안의 문서다 | 출처를 지어냈다 |
 | `cites_gold` | 인용 중 하나가 **정답 문서**를 가리킨다 | 엉뚱한 문서로 답했다 |
 | `has_facts` | 답변에 `must_contain` 의 사실이 들어 있다 | 검색은 맞았는데 답이 틀렸다 |
 
@@ -31,12 +31,12 @@ from dataclasses import dataclass, field
 _WS = re.compile(r"\s+")
 
 #: 답변자가 **질문 전체에 대해** 답을 거절했는가. 문구 목록이 아니라 **구조**로 잡는다:
-#: 거절은 *근거를 지목하며* 부정한다.
+#: 거절은 *답변 근거를 지목하며* 부정한다.
 #:
-#: 앞선 판은 관찰한 문구 3개를 나열했고, **바로 다음 실행에서 4번째 표현에 뚫렸다** —
+#: 앞선 버전은 관찰한 문구 3개를 나열했고, **바로 다음 실행에서 4번째 표현에 뚫렸다** —
 #: "제공된 근거로는 해당 질문에 답변하기 어렵습니다". 목록을 늘리는 것은 다음 표현에서 또
 #: 뚫린다. 반면 "근거"를 언급하며 부정하는 모양은 네 표현 전부에 공통이고, 내용이 부정인
-#: **답변**("차감되지 않습니다", "401로 실패합니다")은 근거를 지목하지 않으므로 안 걸린다.
+#: **답변**("차감되지 않습니다", "401로 실패합니다")은 답변 근거를 지목하지 않으므로 안 걸린다.
 #:
 #: 그래도 어휘 규칙이라는 사실은 변하지 않는다 — LLM 심판을 안 쓰는 이 채점기의 방침을 따르되,
 #: 뚫릴 수 있다는 것을 테스트가 실제 문구로 고정한다.
@@ -49,13 +49,13 @@ _REFUSAL = re.compile(_EVIDENCE + r".{0,80}?" + _NEGATION)
 
 #: 거절은 **문장(세그먼트) 범위**를 갖는다 — SPEC-nexus-answer-quality-ruler §3.1.
 #:
-#: 앞선 두 판은 위치만 봤다("앞 110자" → "첫 문장"). 둘 다 같은 자리에서 틀렸다: 답을 다 하면서
+#: 앞선 두 버전은 위치만 봤다("앞 110자" → "첫 문장"). 둘 다 같은 자리에서 틀렸다: 답을 다 하면서
 #: 하위 항목 하나를 "확인되지 않는다" 고 좁히는 답변을 **전체 기권**으로 셌다(2026-08-11 실행에서
 #: `pb-space-01`·`pb-mix-08` 2건). 반대편에는 거절 문장이 질문 어휘를 되풀이해 `must_contain` 을
 #: 거저 통과시킨 결함이 있었다(`pb-part-07`). 두 오탐이 반대 방향인 것이 **단위가 틀렸다**는 신호다.
 #:
 #: 그래서 두 조건을 함께 본다. ① 사실은 거절 세그먼트 **밖**에서 배달돼야 세고, ② 기권은 거절이
-#: **선두**에 설 때만이다. ②가 없던 첫 판은 새 45건 표본에서 새 오탐을 만들었다 — 답을 다 하고
+#: **선두**에 설 때만이다. ②가 없던 첫 버전은 새 45건 표본에서 새 오탐을 만들었다 — 답을 다 하고
 #: 근거 등급을 밝히는 **후행 단서**("실제 구현 관측 데이터는 제공된 근거에 없습니다")가 기권으로
 #: 세어졌다. 규칙이 표본에 맞춰졌다는 뜻이므로, 다음 반증도 여기 기록될 자리를 비워 둔다.
 _SEGMENT = re.compile(r"(?<=다\.)|(?<=습니다\.)|(?<=\?)|(?<=!)|\n")
@@ -70,12 +70,12 @@ def segments(answer_text: str) -> list[str]:
 
 
 def refusal_segments(answer_text: str) -> list[str]:
-    """근거를 지목하며 부정하는 세그먼트. **어휘 규칙이고, 한계는 SPEC §4 에 적혀 있다.**"""
+    """답변 근거를 지목하며 부정하는 세그먼트. **어휘 규칙이고, 한계는 SPEC §4 에 적혀 있다.**"""
     return [s for s in segments(answer_text) if _REFUSAL.search(_norm(s))]
 
 
 def refuses(answer_text: str) -> bool:
-    """답변 어딘가에서 근거를 지목하며 부정했는가. 대조군(답변불가 5건)이 측정하는 값이다."""
+    """답변 어딘가에서 답변 근거를 지목하며 부정했는가. 대조군(답변불가 5건)이 측정하는 값이다."""
     return bool(refusal_segments(answer_text))
 
 
@@ -116,7 +116,7 @@ def _norm(text: str) -> str:
 def facts_present(must_contain: list[list[str]] | None, text: str) -> list[bool]:
     """`must_contain` 각 항목이 이 텍스트에 있는가 — **항목은 AND, 항목 안의 후보는 OR.**
 
-    채점기와 재서명 워크시트가 **같은 함수**를 써야 한다. 워크시트가 '이 요구는 지금 본문에서
+    채점기와 재사인오프 워크시트가 **같은 함수**를 써야 한다. 워크시트가 '이 요구는 지금 본문에서
     여전히 성립한다' 고 사람에게 말할 때, 그 '성립' 이 채점기가 답변에 적용하는 규칙과 다르면
     워크시트는 재서명하는 사람에게 거짓말을 한다. 공백을 *지우는* 관대한 사본을 따로 두면
     '본문에는 있다' 면서 채점기는 떨어뜨리는 조합이 나온다 — 그래서 사본을 두지 않는다.
@@ -126,12 +126,12 @@ def facts_present(must_contain: list[list[str]] | None, text: str) -> list[bool]
 
 
 #: 실패 귀속의 판정 이름 (감사 B3). FP4·FP7 은 Barnett et al., CAIN 2024 의 분류를 따른다 —
-#: FP4 = 근거에 있었는데 안 뽑음, FP7 = 반만 뽑음.
+#: FP4 = 답변 근거에 있었는데 안 뽑음, FP7 = 반만 뽑음.
 VERDICTS = ("pass", "upstream", "fp4", "fp7", "mixed", "no_groups")
 
 
 def attribute_facts(in_evidence: list[bool], in_answer: list[bool]) -> dict:
-    """못 낸 사실이 **근거에 있었는가**로 실패를 가른다. 인자는 **불리언 목록 둘**이다.
+    """못 낸 사실이 **답변 근거에 있었는가**로 실패를 가른다. 인자는 **불리언 목록 둘**이다.
 
     ⛔ **왜 문자열이 아니라 불리언을 받나.** 이 리포에는 정규화가 둘 있고 갈린 적이 있다
     (`OPEN.md` A22: 같은 라벨에서 1판과 2판이 반대로 나왔다). 귀속이 자기 정규화를 들고 다니면
@@ -157,7 +157,7 @@ def attribute_facts(in_evidence: list[bool], in_answer: list[bool]) -> dict:
     else:
         missing_had_evidence = [ev for ev, ans in zip(in_evidence, in_answer) if not ans]
         if not any(missing_had_evidence):
-            # 못 낸 것이 전부 근거에도 없었다 — 서술 이전에 검색이 못 물어온 것이다.
+            # 못 낸 것이 전부 답변 근거에도 없었다 — 생성 이전에 검색이 못 물어온 것이다.
             verdict = "upstream"
         elif all(missing_had_evidence):
             # 못 낸 것이 전부 근거에는 있었다. 하나도 못 냈으면 FP4, 일부만 냈으면 FP7.
@@ -174,17 +174,17 @@ def attribute_facts(in_evidence: list[bool], in_answer: list[bool]) -> dict:
 
 #: **언급과 주장은 다르다.** 2026-08-26 에 이 구분이 없어서 채점기가 천장에 붙었다.
 #:
-#: 같은 질문에 두 답변이 나왔다. 하나는 *"…4,000점입니다"* 로 열고 낡은 값을 기각했고, 다른
+#: 같은 질문에 두 답변이 나왔다. 하나는 *"…4,000점입니다"* 로 열고 스테일 값을 기각했고, 다른
 #: 하나는 표에 `개별 문서 | 4,000점` 이라고 **적어 놓고** *"확인 전까지는 어느 수치도 단정할 수
 #: 없습니다"* 로 닫았다. 부분일치 채점기는 **둘 다 통과시킨다** — 값이 텍스트에 있기 때문이다.
-#: 그래서 절 채움(#318)을 껐다 켜도 15/15 가 그대로였다: 채점기가 처치를 못 봤다.
+#: 그래서 섹션 필(#318)을 껐다 켜도 15/15 가 그대로였다: 채점기가 처치를 못 봤다.
 #:
 #: 여기서 측정하는 것은 **답변이 그 값을 자기 답으로 내세웠는가**다. 두 자리만 본다:
 #:
 #:   선두   시스템 프롬프트가 요구하는 자리 — "핵심 답변을 먼저 제시하세요"
 #:   결론   접속 부사가 여는 마무리 — "따라서 …", "요약: …"
 #:
-#: **왜 두 자리인가.** 선두만 보는 판을 30건에 걸었더니 결론에서 값을 확정하는 답변
+#: **왜 두 자리인가.** 선두만 보는 버전을 30건에 걸었더니 결론에서 값을 확정하는 답변
 #: (선두는 *"근거들 사이에 충돌이 있으며"* 로 열고 끝에서 *"따라서 …10점이 정본"*)을 떨어뜨렸다.
 #: 반대로 결론만 보면 선두에서 답하고 끝에 참고를 붙이는 답변을 놓친다. 둘의 합집합이 30건
 #: 손라벨과 일치했다 — 그 실측은 `tests/eval/answer-facts/README.md` 에 있다.
@@ -195,7 +195,7 @@ _VERDICT_OPENER = re.compile(r"(따라서|그러므로|결론적으로|정리하
 
 
 def _is_break(seg: str) -> bool:
-    """표·인용·구분선·헤딩 — **산문이 끊기는 자리**. 근거를 늘어놓는 부분이 여기서 시작한다."""
+    """표·인용·구분선·헤딩 — **산문이 끊기는 자리**. 답변 근거를 늘어놓는 부분이 여기서 시작한다."""
     t = seg.strip()
     return bool(t) and (t.startswith("|") or t.startswith(">") or t.startswith("#")
                         or bool(re.fullmatch(r"[-*_=\s]{3,}", t)))
@@ -205,7 +205,7 @@ def lead_segments(answer_text: str) -> list[str]:
     """**선두** — 앞머리 헤딩을 건너뛴 뒤, 첫 구조 전환(표·인용·구분선·헤딩)까지의 산문.
 
     답변 형식 계약이 이 자리를 정한다(`llm/prompts.py`: "핵심 답변을 먼저 제시하세요").
-    구조 전환 뒤부터는 근거를 **늘어놓는** 자리이고, 늘어놓기는 주장이 아니다.
+    구조 전환 뒤부터는 답변 근거를 **늘어놓는** 자리이고, 늘어놓기는 주장이 아니다.
     """
     out: list[str] = []
     for seg in segments(answer_text):
@@ -219,7 +219,7 @@ def lead_segments(answer_text: str) -> list[str]:
     return out
 
 
-#: 목록 항목. 표 행과 같은 부류로 다룬다 — 늘어놓기이지 주장이 아니다.
+#: 목록 항목. 표 행과 같은 유형으로 다룬다 — 늘어놓기이지 주장이 아니다.
 _LIST_ITEM = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s")
 
 
@@ -228,7 +228,7 @@ def section_lead_segments(answer_text: str) -> list[str]:
 
     ⛔ **왜 생겼나 (사전 등록 2026-08-31, `tests/eval/answer-facts/README.md`).**
     `lead_segments` 는 산문이 시작된 뒤 첫 구조 전환에서 끊긴다. 답변이 문서 값과 코드 값을
-    **함께** 내게 된 뒤로 확정 문장이 구분선 뒤 절로 밀렸고, 기준선 5회에서 라벨 다섯이
+    **함께** 내게 된 뒤로 확정 문장이 구분선 뒤 절로 밀렸고, 베이스라인 5회에서 라벨 다섯이
     2판만 회차마다 갈렸다(1판은 매번 통과). **답이 좋아진 것이 계측기를 흔들었다.**
 
     ⚠ **표 행·인용문은 여전히 아니다.** *"늘어놓기는 주장이 아니다"* 는 그대로다. 바뀐 것은
@@ -298,7 +298,7 @@ class AnswerScore:
     cites_gold: bool = False
     facts: list[bool] = field(default_factory=list)
     abstained: bool = False
-    #: 답변 어딘가에서 근거를 지목하며 부정했는가. 기권과 **다르다** — 답을 다 하면서 한 항목을
+    #: 답변 어딘가에서 답변 근거를 지목하며 부정했는가. 기권과 **다르다** — 답을 다 하면서 한 항목을
     #: 좁힌 답변도 참이다. 대조군(답변불가)이 측정하는 값이 이것이다.
     refused: bool = False
     llm_failed: bool = False
@@ -307,9 +307,9 @@ class AnswerScore:
     #: 인용된 문서 중 **라벨이 한 번도 판정한 적 없는** 것(테넌트에는 실재한다). gold 도 아니고
     #: not_gold 도 아니다 — 사람이 읽고 둘 중 하나로 보내야 닫힌다.
     unjudged: list[str] = field(default_factory=list)
-    #: 요구한 사실이 **LLM 이 본 근거에** 있었는가 (묶음별). `facts` 와 짝이다.
+    #: 요구한 사실이 **LLM 이 본 답변 근거에** 있었는가 (묶음별). `facts` 와 짝이다.
     facts_in_evidence: list[bool] = field(default_factory=list)
-    #: 실패 귀속 (`VERDICTS`). **빈 문자열은 판정 안 함**이다 — 근거 문자열을 안 받았거나
+    #: 실패 귀속 (`VERDICTS`). **빈 문자열은 판정 안 함**이다 — 답변 근거 문자열을 안 받았거나
     #: LLM 이 실패한 회차. 실패로 세지 마라, 이 리포는 그 구분을 이미 한 번 잃었다.
     verdict: str = ""
 
@@ -317,7 +317,7 @@ class AnswerScore:
     def has_facts(self) -> bool:
         """`must_contain` 이 비어 있으면 참이 아니라 **측정할 것이 없다** — 그 구분은 집계가 한다.
 
-        **LLM 이 실패했으면 무조건 거짓이다.** 실패 시 답변 자리에 들어가는 것은 근거 원문 덤프라,
+        **LLM 이 실패했으면 무조건 거짓이다.** 실패 시 답변 자리에 들어가는 것은 답변 근거 원문 덤프라,
         요구한 사실이 거기 **당연히** 있다 — 그 문서에서 뽑은 사실이니까. 2026-08-08 에 실제로
         3건 중 2건이 그렇게 '통과' 했고, 원인은 API 크레딧 부족이었다. 답을 못 낸 것이 사실을
         맞힌 것으로 세어지면 이 채점기는 거꾸로 읽힌다.
@@ -346,7 +346,7 @@ class AnswerScore:
         바로 아래 `unadjudicated` 는 `grounded` 를 요구했다 — 그 비대칭 때문에 **인용이 검증되지
         않은 답변이 헤드라인 '정답' 에 들어갔다.** 2026-08-12 `rev6-r1` 이 그것이다: 콘솔은
         `정답 40 오답 0`, 같은 실행의 누적 로그는 `all_three 39`(미검증 인용 2건). 한 리포트가
-        두 개의 '정답' 을 담고 있었고 사람 눈에 먼저 닿는 쪽이 후한 값이었다. 근거가 확인되지
+        두 개의 '정답' 을 담고 있었고 사람 눈에 먼저 닿는 쪽이 후한 값이었다. 답변 근거가 확인되지
         않은 답을 맞았다고 세는 것은 [[ADR-0002]] 가 금지하는 그 형태다.
         """
         if self.llm_failed:
@@ -381,7 +381,7 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
     """한 질의의 답변을 채점한다. 순수 함수 — DB 도 네트워크도 안 탄다.
 
     `known_titles` 는 **측정하고 있는 테넌트**의 문서 제목이다. 팩이 아니라 테넌트인 이유: 팩은
-    2026-08-07 에 얼린 116건이고 테넌트는 적재마다 자란다. 지난주에 들어온 문서를 인용했다고
+    2026-08-07 에 동결된 116건이고 테넌트는 적재마다 자란다. 지난주에 들어온 문서를 인용했다고
     정답을 오답으로 세면 SPEC §1.2 의 결함이 새 문서에 대해 그대로 되살아난다.
     안 주면 해소할 방법이 없다는 뜻이므로 미판정 판정도 하지 않는다(옛 동작 그대로).
     """
@@ -394,7 +394,7 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
     not_gold_norm = {_norm(t) for t in (not_gold_titles or set())}
     known_norm = {_norm(t) for t in known_titles} if known_titles is not None else None
 
-    # `abstained` 인자는 코드가 세운 플래그(`AnswerResult.abstained`, 조건 = 근거 0건)다.
+    # `abstained` 인자는 코드가 세운 플래그(`AnswerResult.abstained`, 조건 = 답변 근거 0건)다.
     # 그 조건은 BM25 가 늘 무언가를 돌려주므로 **한 번도 안 터진다**(abstention-never-fires).
     # 그래서 답변 텍스트에서 직접 본다 — 답변자가 질문을 거절했는가.
     s = AnswerScore(qid=qid,
@@ -422,13 +422,13 @@ def score_answer(qid: str, answer_text: str, citations: list[dict] | list,
     s.facts = facts_present(must_contain, delivered_text(answer_text))
 
     # ── 실패 귀속 (감사 B3) ──────────────────────────────────────────────
-    # 근거 쪽도 **같은 `facts_present`** 로 본다. 관대한 사본을 따로 두면 '근거에는 있다' 면서
+    # 답변 근거 쪽도 **같은 `facts_present`** 로 본다. 관대한 사본을 따로 두면 '답변 근거에는 있다' 면서
     # 답변 쪽은 떨어뜨리는 조합이 나오고, 그 갈림이 곧 오귀속이다.
     #
-    # ⛔ **거절 세그먼트는 근거에서 걷어내지 않는다.** `delivered_text` 는 *답변자가 무엇을
-    # 배달했는가* 를 보는 규칙이고, 근거는 배달된 것이 아니라 **주어진 것**이다.
+    # ⛔ **거절 세그먼트는 답변 근거에서 걷어내지 않는다.** `delivered_text` 는 *답변자가 무엇을
+    # 배달했는가* 를 보는 규칙이고, 답변 근거는 배달된 것이 아니라 **주어진 것**이다.
     #
-    # LLM 이 실패했으면 판정하지 않는다 — 그때 답변 자리에 있는 것은 근거 원문 덤프라
+    # LLM 이 실패했으면 판정하지 않는다 — 그때 답변 자리에 있는 것은 답변 근거 원문 덤프라
     # 두 쪽이 같은 문자열이 되고, 그 비교는 무엇도 뜻하지 않는다(`has_facts` 와 같은 이유).
     if evidence_text and not llm_failed:
         s.facts_in_evidence = facts_present(must_contain, evidence_text)
@@ -443,7 +443,7 @@ def aggregate(scores: list[AnswerScore]) -> dict:
     failed_llm = [s for s in scores if s.llm_failed]
     return {
         "queries": n,
-        # **LLM 이 실패한 실행은 결과가 아니다.** 실패 시 답변 자리에 근거 덤프가 들어가므로
+        # **LLM 이 실패한 실행은 결과가 아니다.** 실패 시 답변 자리에 답변 근거 덤프가 들어가므로
         # 사실 검사가 거저 통과한다 — 그 상태의 집계를 '답변 품질' 로 읽으면 거꾸로 읽힌다.
         "llm_failed": len(failed_llm),
         "grounded": sum(1 for s in scores if s.grounded),
@@ -458,14 +458,14 @@ def aggregate(scores: list[AnswerScore]) -> dict:
         "facts_present": sum(1 for s in measurable if s.has_facts),
         "all_three": sum(1 for s in scores if s.ok),
         "failed": [s.qid for s in scores if not s.ok],
-        # **오답과 기권을 한 칸에 뭉치지 않는다.** 정직한 기권(검색 결함)과 오답(생성 결함)은
+        # **오답과 기권을 한 필드에 뭉치지 않는다.** 정직한 기권(검색 결함)과 오답(생성 결함)은
         # 정반대 사건인데, `all_three` 는 둘을 같은 0점으로 센다. 2026-08-10 에 그 뭉침 때문에
         # "답변 품질이 내려갔다" 를 잘못 읽었다.
         "outcomes": {k: sum(1 for s in scores if s.outcome == k)
                      for k in ("correct", "incorrect", "abstained", "unadjudicated",
                                "unmeasurable")},
         # 실패 귀속 (감사 B3). **판정 안 한 회차(`verdict == ""`)는 어느 칸에도 안 들어간다** —
-        # 근거 문자열을 안 받았거나 LLM 이 실패한 것이라 실패로 세면 안 된다.
+        # 답변 근거 문자열을 안 받았거나 LLM 이 실패한 것이라 실패로 세면 안 된다.
         "attribution": {v: sum(1 for s in scores if s.verdict == v) for v in VERDICTS},
         "attribution_unjudged": sum(1 for s in scores if not s.verdict),
         "fp4_qids": [s.qid for s in scores if s.verdict == "fp4"],
@@ -481,7 +481,7 @@ def aggregate(scores: list[AnswerScore]) -> dict:
 
 
 def grid(scores: list[AnswerScore], sufficiency: dict[str, str]) -> dict:
-    """근거 충분성 × 결과. `sufficiency` 는 qid → 'sufficient'|'insufficient'.
+    """답변 근거 충분성 × 결과. `sufficiency` 는 qid → 'sufficient'|'insufficient'.
 
     충분성을 안 주면 격자를 만들지 않는다 — 절반만 아는 격자는 칸의 뜻을 잃는다.
     """
@@ -500,7 +500,7 @@ def grid(scores: list[AnswerScore], sufficiency: dict[str, str]) -> dict:
 
 
 def label_is_usable(expect: list[str], superseded: list[str]) -> tuple[bool, str]:
-    """⛔ **라벨 자체 검사.** `expect` 가 `superseded` 의 부분열이면 부분일치가 낡은 값
+    """⛔ **라벨 자체 검사.** `expect` 가 `superseded` 의 부분열이면 부분일치가 스테일 값
     안에서 지금 값을 찾아내 **언제나 통과**시킨다. 실제로 후보 하나가 여기 걸려 버려졌다.
     """
     for e in expect or []:
@@ -532,7 +532,7 @@ def asserts_part(surfaces: list[str], answer_text: str) -> bool:
 def asserts_all(expect_all: list[str], answer: str) -> bool:
     """종합 — 값이 **전부** 산문으로 말해졌는가.
 
-    ⚠ **첫 판은 `asserts_value` 를 값마다 돌렸고 그건 오용이었다.** 그 함수 주석이
+    ⚠ **첫 버전은 `asserts_value` 를 값마다 돌렸고 그건 오용이었다.** 그 함수 주석이
     *"여러 항목을 AND 로 요구하는 라벨에는 뜻이 없다"* 고 미리 적어 뒀는데 그대로 어겼다.
     실물로 드러났다(2026-08-28): 값 둘이 근거에도 답변에도 다 있는 답이 실패로 찍혔다 —
     둘째 값이 소제목 밑 산문에 있었기 때문이다.
@@ -552,11 +552,11 @@ def asserts_all(expect_all: list[str], answer: str) -> bool:
 
 
 def asserts_current_not_stale(expect: list[str], superseded: list[str], answer: str) -> bool:
-    """최신성 — 지금 값이 **낡은 값보다 앞에서** 주장되는가.
+    """최신성 — 지금 값이 **스테일 값보다 앞에서** 주장되는가.
 
-    ⚠ **첫 규칙은 틀렸고, 측정 전에 검사가 잡았다.** 처음에는 *"낡은 값을 주장하지 않는다"*
+    ⚠ **첫 규칙은 틀렸고, 측정 전에 검사가 잡았다.** 처음에는 *"스테일 값을 주장하지 않는다"*
     로 적었는데, 그러면 **좋은 답이 떨어진다**: *"지금은 A 다. 예전 B 는 대체됐다"* 에서 뒤
-    문장도 결론 자리에 서기 때문이다. 낡은 값을 들면서 기각하는 것은 좋은 답의 모양이고,
+    문장도 결론 자리에 서기 때문이다. 스테일 값을 들면서 기각하는 것은 좋은 답의 모양이고,
     2판이 언급과 주장을 가른 이유가 여기서 값을 한다.
 
     그래서 판정은 **순서**다 — 부정 어휘 목록(대체·폐기·아니다…)을 만들지 않는다. 그런 목록은

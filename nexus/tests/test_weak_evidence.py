@@ -1,8 +1,8 @@
-"""근거 적합도 — **자로는 안 보이고 사람만 알던 결함**의 회귀 검사.
+"""답변 근거 적합도 — **자로는 안 보이고 사람만 알던 결함**의 회귀 검사.
 
 사용자 신고(2026-08-18): "답변 품질이 영 석연치 않아서" 팀이 안 쓴다. 재현해 보니 코퍼스 밖
-질문에도 근거 10개가 채워지고 모델이 그걸로 길게 답했다(이름을 물었는데 기술 스택 표). 이건
-환각이 아니라서 `grounded`·인용 검증·사실 검사를 **전부 통과한다** — 그래서 평가 하니스가 못 봤다.
+질문에도 답변 근거 10개가 채워지고 모델이 그걸로 길게 답했다(이름을 물었는데 기술 스택 표). 이건
+환각이 아니라서 `grounded`·인용 검증·사실 검사를 **전부 통과한다** — 그래서 평가 하네스가 못 봤다.
 
 여기서 단언하는 것은 점수가 아니라 **계약**이다: 약하면 프롬프트가 바뀌고, 약하지 않으면
 프롬프트가 **바이트 단위로 예전과 같다**.
@@ -35,7 +35,7 @@ def test_a_dead_leg_is_not_evidence_of_weakness():
 
 
 def test_the_measured_boundary_still_separates():
-    """2026-08-18 라이브 실측의 양 끝. 문턱을 옮기면 여기가 빨간불이 된다 —
+    """2026-08-18 라이브 실측의 양 끝. 임계값을 옮기면 여기가 빨간불이 된다 —
     옮기는 것 자체는 자유지만 **모르고** 옮히는 것은 막는다."""
     answerable = Confidence(top_distance=0.4552, top_bm25=2.0)      # 답 가능 쪽 최악
     out_of_scope = Confidence(top_distance=0.5071, top_bm25=1.0)    # 밖 질문 쪽 최선
@@ -61,8 +61,8 @@ def test_the_prompt_changes_only_the_system_half_when_weak():
 
 @pytest.mark.asyncio
 async def test_weak_evidence_never_blocks_the_answer():
-    """**막는 판정은 근거 0건뿐이다.** 적합도는 서술 계약이지 게이트가 아니다 —
-    문턱이 틀렸을 때의 피해를 '나쁜 침묵' 이 아니라 '짧은 답' 으로 묶어 둔다."""
+    """**막는 판정은 답변 근거 0건뿐이다.** 적합도는 생성 계약이지 게이트가 아니다 —
+    임계값이 틀렸을 때의 피해를 '나쁜 침묵' 이 아니라 '짧은 답' 으로 묶어 둔다."""
     from nexus.llm.answer import generate_answer
     from nexus.search.evidence_packet import EvidencePacket, EvidenceSnippet
 

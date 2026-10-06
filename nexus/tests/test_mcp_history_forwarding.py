@@ -1,8 +1,8 @@
 """MCP 가 대화 이력을 나르는가 — **그리고 규칙을 베껴 오지 않았는가.**
 
-⛔ 이 표면만 이력을 못 받고 있었다. HTTP 와 A2A 는 `_search_channels` 를 거쳐 이미 쓰는데
+⛔ 이 API 표면만 이력을 못 받고 있었다. HTTP 와 A2A 는 `_search_channels` 를 거쳐 이미 쓰는데
 MCP 도구 18개 중 `history` 인자를 받는 것이 0개였다. 그래서 에이전트가 가장 자연스럽게 잡는
-표면에서 **여러 턴에 걸친 질문이 이어지지 않았다** — "그때 그 조치는" 이 무엇을 가리키는지
+API 표면에서 **여러 턴에 걸친 질문이 이어지지 않았다** — "그때 그 조치는" 이 무엇을 가리키는지
 알 길이 없으니, 시스템은 거절하는 대신 엉뚱한 것을 찾아 답했다. 막히는 것보다 나쁘다.
 
 여기서 보는 것은 셋이다:
@@ -92,7 +92,7 @@ def test_the_query_itself_is_not_appended(sent):
 # ── 3. 사본 금지 ───────────────────────────────────────────────────────────
 
 def test_the_limits_are_not_copied_into_this_surface():
-    """⛔ 상한을 여기 적으면 정본이 둘이 된다. 표면은 나르기만 하고 판정은 API 가 한다."""
+    """⛔ 상한을 여기 적으면 정본이 둘이 된다. API 표면은 나르기만 하고 판정은 API 가 한다."""
     src = pathlib.Path(server.__file__).read_text(encoding="utf-8")
     for copied in ("MAX_TURNS", "MAX_BYTES", "HistoryTooLarge", "MalformedHistory"):
         assert copied not in src, f"{copied} 가 MCP 표면에 복사됐다 — 정본은 search/history.py"
@@ -108,7 +108,7 @@ def test_the_canonical_rule_still_lives_in_one_place():
 
 # ── 4. 시각 범위도 같은 길로 간다 ──────────────────────────────────────────
 #
-# 이력과 같은 파일에 두는 이유: 둘 다 *"표면이 받은 것을 그대로 넘기는가"* 하나를 묻는다.
+# 이력과 같은 파일에 두는 이유: 둘 다 *"API 표면이 받은 것을 그대로 넘기는가"* 하나를 묻는다.
 # 넘기는 규칙도 같다 — 안 물었으면 키를 안 보낸다.
 
 @pytest.mark.parametrize("tool", ["nexus_search", "nexus_answer"])

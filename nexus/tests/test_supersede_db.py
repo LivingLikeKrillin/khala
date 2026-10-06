@@ -135,7 +135,7 @@ def test_supersede_decision_rules():
 
 
 def test_soft_deleted_old_is_noop_no_chunk_corruption():
-    """Issue 1 회귀 가드: soft_deleted old → 'noop', 청크 카스케이드 없음, 상태 불변."""
+    """Issue 1 회귀 가드 검사: soft_deleted old → 'noop', 청크 카스케이드 없음, 상태 불변."""
     from nexus import db
     from nexus.supersede import supersede
 

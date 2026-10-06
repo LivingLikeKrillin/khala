@@ -1,9 +1,9 @@
-"""읽기 범위가 **목록**일 때 근거 보강 셋이 그대로 도는가 — 진짜 Postgres 에 대고.
+"""읽기 범위가 **목록**일 때 답변 근거 보강 셋이 그대로 도는가 — 진짜 Postgres 에 대고.
 
 ⛔ **왜 이 검사가 있나 (실측 2026-09-02).** `effective_read_scope` 가 2026-08-31 부터 범위를
 **튜플**로 돌려준다. `section_fill.fill_for_docs` 는 그 값을 `c.tenant = $n` 에 그대로 묶고
 있었고, asyncpg 는 튜플을 TEXT 인자로 받지 않는다. 부르는 쪽은 그 예외를 **삼키도록** 만들어져
-있어서(보강 실패가 검색을 죽이면 안 된다) 절 채움과 짝 확장이 **모든 HTTP 답변 요청에서**
+있어서(보강 실패가 검색을 죽이면 안 된다) 섹션 필과 페어 확장이 **모든 HTTP 답변 요청에서**
 조용히 꺼졌다 — 원소가 하나여도 튜플이므로 단일 테넌트 배포까지 같이 꺼졌고, 라이브 로그에
 이틀치 `section_fill_failed` 가 쌓이는 동안 검사는 전부 초록이었다.
 
@@ -45,9 +45,9 @@ _TENANT = "scope_enrichment_test"
 #: 단언이 하나로 서고, 달라지면 그것은 범위 확장이 아니라 코퍼스 차이다.
 _ABSENT = "scope_enrichment_test_absent"
 _QUERY = "정책 문서"
-#: 질의와 어휘를 하나도 공유하지 않는 절 — 어떤 랭킹으로도 못 온다. 채움이 실어야 온다.
+#: 질의와 어휘를 하나도 공유하지 않는 절 — 어떤 랭킹으로도 못 온다. 필이 실어야 온다.
 _FILLED = "보관 한도는 열두 상자다"
-#: 짝 문서(계획)에만 있는 값. 짝 확장이 죽으면 근거에 없다.
+#: 페어 문서(계획)에만 있는 값. 페어 확장이 죽으면 답변 근거에 없다.
 _MATE = "이 값은 계획 문서에만 있다"
 
 _SCOPES = [
@@ -104,7 +104,7 @@ async def _clear(con) -> None:
 
 @pytest.fixture
 async def corpus(db_pool):
-    """설계 하나 + 그 짝 계획 하나 + 간선 하나. 설계는 다양성 상한을 채워 절 채움도 같이 건다."""
+    """설계 하나 + 그 짝 계획 하나 + 간선 하나. 설계는 다양성 상한을 채워 섹션 필도 같이 건다."""
     from nexus import db
 
     previous_pool = db._pool
@@ -171,7 +171,7 @@ async def test_the_filled_section_reaches_the_prompt_on_this_scope_shape(corpus,
 
 @pytest.mark.parametrize("scope", _SCOPES)
 async def test_the_mate_document_reaches_the_prompt_on_this_scope_shape(corpus, scope):
-    """짝 확장도 같은 함수를 지난다 — 그래서 같은 자리에서 같이 죽었다."""
+    """페어 확장도 같은 함수를 지난다 — 그래서 같은 자리에서 같이 죽었다."""
     _, packet, _ = await _packet_and_logs(scope, corpus)
     assert _MATE in format_for_llm(packet), "짝 문서가 프롬프트에 없다"
 

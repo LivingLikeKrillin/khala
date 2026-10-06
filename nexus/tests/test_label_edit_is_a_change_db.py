@@ -1,7 +1,7 @@
 """`labels:` 한 줄만 고친 파일을 변경 감지가 보는가.
 
 ⛔ **왜 필요했나 (실측 2026-09-18).** `content_hash` 는 스펙 ⑥ 대로 frontmatter 를 뺀 본문만
-센다. 그래서 라벨만 고친 파일은 "안 바뀜" 으로 건너뛰고 **표식이 옛 값으로 남는다.** 합성
+센다. 그래서 라벨만 고친 파일은 "안 바뀜" 으로 건너뛰고 **마커가 옛 값으로 남는다.** 합성
 코퍼스 안내 문서에 `labels: [synthetic]` 을 붙였는데 재적재가 조용히 무시했고, `--force` 를
 아는 사람만 붙일 수 있었다. 라벨은 frontmatter 에만 사는 값이라 이 구멍이 라벨 기능 전체를
 「아는 사람만 되는 것」으로 만든다.
@@ -87,7 +87,7 @@ async def test_the_same_labels_are_not_a_change(tmp_path, wired):
 
 
 async def test_removing_a_label_is_also_a_change(tmp_path, wired):
-    """못 끄면 표식이 아니다 — 붙이는 쪽만 보면 반쪽이다."""
+    """못 끄면 마커가 아니다 — 붙이는 쪽만 보면 반쪽이다."""
     _write(tmp_path, "a.md", None)
     h = await _hash_of(tmp_path)
     async with wired.acquire() as con:
@@ -99,7 +99,7 @@ async def test_removing_a_label_is_also_a_change(tmp_path, wired):
 
 async def test_a_label_the_path_set_does_not_cause_churn(tmp_path, wired):
     """⛔ **가장 조용한 실패 모드.** 문서는 `external_spec` 을 선언할 수 없는데, 그것을
-    "선언 안 했다" 로 읽고 매번 재색인하면 게이트웨이로 들어온 문서 전부가 영원히 돈다."""
+    "명시적 선언 안 했다" 로 읽고 매번 재색인하면 게이트웨이로 들어온 문서 전부가 영원히 돈다."""
     _write(tmp_path, "a.md", None)
     h = await _hash_of(tmp_path)
     async with wired.acquire() as con:

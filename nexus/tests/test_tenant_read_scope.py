@@ -1,7 +1,7 @@
-"""읽기 범위 목록 — 기제만 (SPEC-nexus-tenant-read-scope, U1).
+"""읽기 범위 목록 — 메커니즘만 (SPEC-nexus-tenant-read-scope, U1).
 
-⛔ **이 SPEC 은 비평 3라운드에서 43건을 받았고 범위를 두 번 잘랐다.** 여기 있는 검사들은
-그 라운드들이 잡은 자리에 하나씩 대응한다. 특히 **원소 둘 이상은 기동에서 막힌다** — 기제는
+⛔ **이 SPEC 은 크리틱 3라운드에서 43건을 받았고 범위를 두 번 잘랐다.** 여기 있는 검사들은
+그 라운드들이 잡은 자리에 하나씩 대응한다. 특히 **원소 둘 이상은 기동에서 막힌다** — 메커니즘은
 목록을 해소할 수 있게 만들어지지만, 조각별 clearance 판정이 없는 상태로 두 코퍼스를 열면
 한 테넌트 어휘의 등급이 다른 테넌트 기준으로 해석된다 (3R I-002).
 """
@@ -134,20 +134,20 @@ def test_boot_refuses_duplicates_and_blanks():
 
 
 def test_boot_refuses_more_than_one_tenant_without_a_clearance_declaration():
-    """⛔ **자물쇠** (3R I-002). 선언 없이는 설정 한 줄로 등급 경계를 넘는다."""
+    """⛔ **잠금** (3R I-002). 명시적 선언 없이는 설정 한 줄로 등급 경계를 넘는다."""
     with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
         _boot(["default", "design_docs"])
 
 
 def test_a_recorded_clearance_comparison_opens_it():
-    """선언이 있으면 열린다 — **자물쇠를 없앤 게 아니라 사람의 확인에 걸었다**
+    """명시적 선언이 있으면 열린다 — **잠금을 없앤 게 아니라 사람의 확인에 걸었다**
     (SPEC-nexus-design-corpus-cutover §4.3). 상한을 그냥 올리면 앞으로 어느 쌍에든
     검사가 사라진다."""
     _boot(["default", "design_docs"], verified="2026-08-31")
 
 
 def test_a_blank_declaration_does_not_count():
-    """⛔ 대조군. 빈 문자열로 검사를 통과하면 선언이 장식이 된다."""
+    """⛔ 대조군. 빈 문자열로 검사를 통과하면 명시적 선언이 장식이 된다."""
     with pytest.raises(RuntimeError):
         _boot(["default", "design_docs"], verified="   ")
 
@@ -168,24 +168,24 @@ def test_boot_does_not_ask_the_database_whether_the_tenant_exists():
     _boot(["default"], tenant="default")          # DB 없이 통과해야 한다
 
 
-# ── 배포 배선 (SPEC-nexus-design-corpus-cutover §4.3) ────────────────────────
+# ── 배포 와이어링 (SPEC-nexus-design-corpus-cutover §4.3) ────────────────────────
 
 #: ⛔ **안 지우면 검사가 코드가 아니라 그 기계를 본다** (실측 2026-09-18). `picasso` 를
 #: 범위에 넣은 배포의 컨테이너에서 이 파일을 돌렸더니 5건이 빨갛게 났다 — 코드는 멀쩡했고
-#: 주변 환경에 선언이 있었을 뿐이다. 빨간 쪽은 그나마 눈에 띈다. 반대 방향이 진짜 위험이다:
-#: 「선언이 없으면 기동을 막는다」를 확인하려는 검사가, 주변에 선언이 **있는** 기계에서는
-#: 자물쇠를 한 번도 시험하지 않고 통과할 수 있었다.
+#: 주변 환경에 명시적 선언이 있었을 뿐이다. 빨간 쪽은 그나마 눈에 띈다. 반대 방향이 진짜 위험이다:
+#: 「선언이 없으면 기동을 막는다」를 확인하려는 검사가, 주변에 명시적 선언이 **있는** 기계에서는
+#: 잠금을 한 번도 시험하지 않고 통과할 수 있었다.
 #:
-#: 이 파일 맨 위가 *"단위 검사만 통과하고 실제 배선에서 안 걸리면 그 검사는 아무것도 안 지킨
+#: 이 파일 맨 위가 *"단위 검사만 통과하고 실제 와이어링에서 안 걸리면 그 검사는 아무것도 안 지킨
 #: 것이다"* 라고 적어 뒀는데, 검사들 자신이 그 규율 밖에 있었다.
 #:
 #: ⚠ **여기 네 이름을 적은 목록이 따로 있었다.** `config.py` 가 그보다 많이 읽으므로 그
-#: 목록은 처음부터 모자랐고(접두사 갈래가 통째로 빠져 있었다), 사본이 둘이면 한쪽은 반드시
+#: 목록은 처음부터 모자랐고(접두사 하위 범주가 통째로 빠져 있었다), 사본이 둘이면 한쪽은 반드시
 #: 낡는다. 정본은 `_auth_env.PRINCIPAL_ENV` 하나다.
 
 
 def _only(monkeypatch, **env):
-    """신원을 만드는 env 를 전부 지우고 주어진 것만 남긴다."""
+    """식별 정보를 만드는 env 를 전부 지우고 주어진 것만 남긴다."""
     clear_principal_env(monkeypatch)
     for k, v in env.items():
         monkeypatch.setenv(k, v)
@@ -210,11 +210,11 @@ def test_a_declared_scope_reaches_the_principal(monkeypatch):
                      NEXUS_SLACK_CLEARANCE_VERIFIED="2026-08-31")
     bot = next(p for p in cfg.principals if p["name"] == "slack-bot")
     assert bot["read_tenants"] == ["default", "design_docs"]
-    cfg.validate_startup()          # 선언이 있으므로 기동한다
+    cfg.validate_startup()          # 명시적 선언이 있으므로 기동한다
 
 
 def test_two_tenants_without_the_declaration_refuse_to_boot(monkeypatch):
-    """⛔ **자물쇠가 배포 경로에서도 물린다.** 단위 검사만 통과하고 실제 배선에서 안 걸리면
+    """⛔ **잠금이 배포 경로에서도 물린다.** 단위 검사만 통과하고 실제 와이어링에서 안 걸리면
     그 검사는 아무것도 안 지킨 것이다 — 이 리포가 반복해서 데인 모양이다."""
     cfg = _slack_cfg(monkeypatch, NEXUS_SLACK_READ_TENANTS="default,design_docs")
     with pytest.raises(RuntimeError, match="clearance_equivalence_verified"):
@@ -228,7 +228,7 @@ def test_an_omitted_tenant_is_not_the_same_as_a_requested_one():
 
     `AnswerRequest.tenant` 의 기본값이 `"default"` 라, 봇이 **보내지 않아도** 모델이 채워
     넣는다. 그것을 "요청했다" 로 읽으면 §3.2 의 *"안 주면 범위 전체"* 가 영원히 발화하지
-    않고, 범위 목록을 붙여도 언제나 하나로 좁혀진다 — 자물쇠를 열고 설정을 넣고 재기동까지
+    않고, 범위 목록을 붙여도 언제나 하나로 좁혀진다 — 잠금을 열고 설정을 넣고 재기동까지
     했는데 답변이 안 바뀌어서야 드러났다.
     """
     from nexus.api import AnswerRequest
@@ -248,16 +248,16 @@ def test_the_scope_opens_only_when_the_tenant_was_omitted():
     assert resolve_read_scope(p, "default")[0] == ("default",)
 
 
-# ── 개발 토큰 신원의 읽기 범위 (2026-09-03) ─────────────────────────────────
+# ── 개발 토큰 식별 정보의 읽기 범위 (2026-09-03) ─────────────────────────────────
 #
 # ⛔ **왜 필요한가 (실측 2026-09-03).** 컷오버는 `slack-bot` **하나에만** 정본을 읽을 권한을
-# 줬다(승인 SPEC 의 결정 문장 그대로, 범위 밖 선언 없음). 그런데 웹·CLI 는 `local-dev` 를 타고
+# 줬다(승인 SPEC 의 결정 문장 그대로, 범위 밖 명시적 선언 없음). 그런데 웹·CLI 는 `local-dev` 를 타고
 # 그 principal 의 읽기 범위는 `default` 하나다 — 그래서 설계 문서 **122건**이 사람이 쓰는
-# 표면에서 한 번도 근거로 안 나왔다(전체 질의 1,116건 중 `design_docs` 가 범위에 든 것 1건,
-# 근거로 온 것 **0건**). 컷오버가 `default` 에서 사본을 내렸으므로, 그 표면들은 **잃기만 했다**.
+# API 표면에서 한 번도 답변 근거로 안 나왔다(전체 질의 1,116건 중 `design_docs` 가 범위에 든 것 1건,
+# 답변 근거로 온 것 **0건**). 컷오버가 `default` 에서 사본을 내렸으므로, 그 API 표면들은 **잃기만 했다**.
 #
-# 슬랙 쪽과 **같은 자물쇠**를 쓴다. 상한을 올리는 것이 아니라 사람의 선언에 거는 것이고,
-# 그 선언은 principal 마다 따로다 — 한 principal 의 확인이 다른 principal 을 열면 그 선언은
+# 슬랙 쪽과 **같은 잠금**을 쓴다. 상한을 올리는 것이 아니라 사람의 명시적 선언에 거는 것이고,
+# 그 명시적 선언은 principal 마다 따로다 — 한 principal 의 확인이 다른 principal 을 열면 그 명시적 선언은
 # 무엇을 확인한 것인지 말할 수 없게 된다.
 
 
@@ -284,7 +284,7 @@ def test_a_declared_scope_reaches_the_dev_principal(monkeypatch):
 
 
 def test_two_tenants_without_the_declaration_refuse_to_boot_here_too(monkeypatch):
-    """⛔ **자물쇠는 principal 마다 물린다.** 슬랙에만 걸리면 다음 신원이 그것을 우회한다."""
+    """⛔ **잠금은 principal 마다 물린다.** 슬랙에만 걸리면 다음 식별 정보가 그것을 우회한다."""
     import pytest
 
     cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default,design_docs")
@@ -293,8 +293,8 @@ def test_two_tenants_without_the_declaration_refuse_to_boot_here_too(monkeypatch
 
 
 def test_the_slack_declaration_does_not_open_the_dev_principal(monkeypatch):
-    """⛔ 선언은 **그 principal 의 것**이다. 다른 신원의 확인을 빌려 쓰면, 그 선언이 무엇을
-    확인한 것인지 말할 수 없게 된다 — 자물쇠가 이름만 남는다."""
+    """⛔ 명시적 선언은 **그 principal 의 것**이다. 다른 식별 정보의 확인을 빌려 쓰면, 그 명시적 선언이 무엇을
+    확인한 것인지 말할 수 없게 된다 — 잠금이 이름만 남는다."""
     import pytest
 
     cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default,design_docs",
@@ -304,7 +304,7 @@ def test_the_slack_declaration_does_not_open_the_dev_principal(monkeypatch):
 
 
 def test_a_single_tenant_needs_no_declaration(monkeypatch):
-    """좁히는 쪽은 막지 않는다 — 자물쇠가 잠그는 것은 **넓히는** 것뿐이다."""
+    """좁히는 쪽은 막지 않는다 — 잠금이 잠그는 것은 **넓히는** 것뿐이다."""
     cfg = _dev_cfg(monkeypatch, NEXUS_DEV_READ_TENANTS="default")
     cfg.validate_startup()
 
@@ -312,7 +312,7 @@ def test_a_single_tenant_needs_no_declaration(monkeypatch):
 # ── 이 검사들이 자기 입력을 통제하는가 ──────────────────────────────────────
 
 def test_the_helpers_clear_the_environment_they_do_not_use(monkeypatch):
-    """⛔ **이 파일의 자물쇠 검사들이 기대는 전제.** 주변에 선언이 깔린 기계에서도
+    """⛔ **이 파일의 잠금 검사들이 기대는 전제.** 주변에 명시적 선언이 깔린 기계에서도
     「선언 없음」을 실제로 만들어 내지 못하면, 그 검사들은 통과해도 아무 말을 안 한 것이다.
 
     그래서 배포된 컨테이너와 같은 모양을 일부러 만들어 놓고 헬퍼가 그것을 지우는지 본다."""

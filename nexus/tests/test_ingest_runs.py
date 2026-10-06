@@ -51,7 +51,7 @@ def test_a_run_that_changed_nothing_still_says_what_it_saw():
 def test_found_and_changed_and_unchanged_are_three_numbers():
     """⛔ 하나로 덮으면 *"못 봤다"* 와 *"안 바뀌었다"* 가 같은 수가 된다 — 2026-08-28 에
     그 줄 하나 때문에 없는 결함을 보고했다. `unchanged` 가 갑자기 0 이면 원본이 안 보이는
-    것이고, `found` 가 0 이면 마운트가 빈 것이다. 처방이 다르다."""
+    것이고, `found` 가 0 이면 마운트가 빈 것이다. 조치 방법이 다르다."""
     assert {"found", "changed", "unchanged"} <= set(runs_store.summarize(_Result()))
 
 
@@ -125,7 +125,7 @@ def test_the_job_does_not_depend_on_the_profiled_sidecar():
 
 
 def test_the_job_asks_the_sidecar_before_it_ingests():
-    """⛔ 없는 사이드카에 대고 적재하면 조각이 전부 거부되고 코퍼스는 키워드로만 찾힌다
+    """⛔ 없는 사이드카에 대고 적재하면 청크가 전부 거부되고 코퍼스는 키워드로만 찾힌다
     (2026-09-18 실측 366/366). 그때 `nexus status` 는 말해 줬지만, 애초에 안 돌리는 게 낫다."""
     entry = "\n".join(_reingest()["entrypoint"])
     assert "NEXUS_EMBEDDING_BACKEND" in entry and "EMBED_URL" in entry

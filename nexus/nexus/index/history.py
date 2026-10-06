@@ -1,6 +1,6 @@
 """미해소 후보를 **왜** 미해소인지로 가른다 — git 이력 한 번으로.
 
-문서가 코드에 없는 이름을 부르는 데는 서로 다른 이유가 있고, 처분도 다르다:
+문서가 코드에 없는 이름을 부르는 데는 서로 다른 이유가 있고, 조치도 다르다:
 
   external      저장소가 import 만 하는 이름(프레임워크 클래스). **문서 잘못이 아니다.**
   deleted       한때 있었고 지워졌다. 커밋이 있으므로 *언제·왜* 까지 말할 수 있다 — 드리프트.
@@ -82,7 +82,7 @@ def deletion_map(repo: Path, *, suffixes: tuple[str, ...] = (".java", ".py")) ->
 
 def classify(names: list[str], *, imported: frozenset[str],
              deletions: dict[str, Deletion]) -> list[Verdict]:
-    """미해소 후보를 처분 가능한 세 종류로.
+    """미해소 후보를 조치 가능한 세 종류로.
 
     순서가 의미를 가진다: **외부 판정이 먼저**다. 저장소가 import 하는 이름이 우연히 예전에
     같은 이름으로 존재했다 해도, 문서가 부른 것은 외부 타입 쪽일 가능성이 높다.

@@ -188,7 +188,7 @@ def mount_a2a(
             return _rpc_error(req_id, _RATE_LIMITED, "rate limit exceeded", status=429)
 
         # 이력 상한 — HTTP 와 **같은 정본**(nexus.search.history). 인증·레이트리밋 뒤에 두는
-        # 이유는 거절 사유의 순서가 곧 방어의 순서이기 때문이다: 신원 없는 요청에 상한 이야기를
+        # 이유는 거절 사유의 순서가 곧 방어의 순서이기 때문이다: 식별 정보 없는 요청에 상한 이야기를
         # 해 줄 필요가 없다. U2 에서 여기 통과한 값은 **쓰이지 않고 버려진다**.
         try:
             _requested_history(params)
@@ -355,7 +355,7 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
     from nexus.search.signals import JudgeInput, extract_signals, record_search
     sig = extract_signals(
         search_result, answer_result, path="a2a",
-        # 근거 점유율은 패킷에서 센다 (§5.3) — 히트만 세면 채움·짝·정정이 빠진다.
+        # 답변 근거 점유율은 패킷에서 센다 (§5.3) — 히트만 세면 필·짝·정정이 빠진다.
         evidence=packet.snippets,
         tenant=tenant, clearance=clearance, query=query,
         n_entities=len(entity_rids),
@@ -365,8 +365,8 @@ async def _default_answer_fn(query: str, tenant: str, clearance: str) -> AnswerR
     await record_search(sig, judge_input=JudgeInput(   # a2a_audit(인가)와 별개로 품질 기록
         query=query, evidence=format_for_llm(packet), config=config, llm_svc=llm_svc),
         # principal 을 넘기지 않는다 — `AnswerFn` 은 주입되는 계약 `(query, tenant, clearance)`
-        # 이고 여기엔 신원이 오지 않는다. 허용목록에 오를 수 없으므로 A2A 질문은 보존되지
-        # 않는다. **에이전트 질문이 필요 없다는 판단이 아니라, 이 표면이 아직 자기를 식별하지
+        # 이고 여기엔 식별 정보가 오지 않는다. 허용목록에 오를 수 없으므로 A2A 질문은 보존되지
+        # 않는다. **에이전트 질문이 필요 없다는 판단이 아니라, 이 API 표면이 아직 자기를 식별하지
         # 못한다는 한계다** — 필요해지면 계약을 넓히는 것이 먼저다.
         query_text=query, spans=getattr(search_result, "spans", None))
     return answer_result
@@ -501,7 +501,7 @@ async def _default_external_ingest_fn(doc: dict, tenant: str, *, force: bool = F
         rid, tenant,
     )
     quarantined = bool(row["is_quarantined"]) if row else (result.quarantined > 0)
-    # label(external_spec) · 축-A doc_type · prov_inputs(source_roots) 기록.
+    # label(external_spec) · 차원-A doc_type · prov_inputs(source_roots) 기록.
     # 규칙은 nexus.ingest.external_metadata 가 갖는다(테스트 가능하도록 sink 밖으로 뺐다):
     # quarantined 엔 아무것도 쓰지 않고, prov_inputs 는 멱등 히트에도 쓴다(재조정 백필).
     from nexus.ingest.external_metadata import apply_external_metadata

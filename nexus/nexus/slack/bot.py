@@ -149,7 +149,7 @@ def _fit_note(payload: dict, token: str | None) -> list[dict]:
     여기서 카드를 펼치지 않는 이유: 이 경우엔 근거 문서 제목이 이미 답변 아래 그려져 있다
     (`formatter.format_answer`). 빠진 것은 *이 코퍼스가 무엇을 담고 있나* 하나뿐이다.
 
-    **막지 않는다.** 문턱은 표본 13개짜리 가설이므로(`FAR_DISTANCE`), 오탐의 대가가 잘못된
+    **막지 않는다.** 임계값은 표본 13개짜리 가설이므로(`FAR_DISTANCE`), 오탐의 비용이 잘못된
     침묵이 아니라 군더더기 한 줄이어야 한다. 왕복도 발동했을 때만 낸다.
     """
     if not payload.get("weak_evidence"):
@@ -164,7 +164,7 @@ async def _record_offer(answer_key: str, posted, event: dict,
                         answer_text: str = "") -> None:
     """제안 행(분모) 한 줄. **best-effort** — 여기서 예외가 나가면 피드백이 답변을 죽인다.
 
-    `say()` 가 응답을 안 돌려주는 표면도 있다(테스트 더블 등). 그때는 결속할 (채널, ts) 가
+    `say()` 가 응답을 안 돌려주는 API 표면도 있다(테스트 더블 등). 그때는 결속할 (채널, ts) 가
     없으므로 **제안 행을 만들지 않는다** — 결속 없는 행은 I10 이 막으려는 무기명 자격증명을
     되살린다. 투표가 오면 `record_vote` 가 orphan 으로 받아 표시한다.
     """

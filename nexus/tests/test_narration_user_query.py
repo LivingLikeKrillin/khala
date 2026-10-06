@@ -13,7 +13,7 @@
   I1  원문 == 재작성이면 프롬프트가 **바이트 단위로** 오늘과 같다
   I2  이력은 답변 프롬프트에 들어가지 않는다
   I3  프롬프트에 들어가는 사용자 텍스트는 `req.query` **그대로**다 (LLM 산물이 아니다)
-  I4  근거는 패킷에서만 온다 — 원문이 있다고 인용/숫자 규칙이 느슨해지지 않는다
+  I4  답변 근거는 패킷에서만 온다 — 원문이 있다고 인용/숫자 규칙이 느슨해지지 않는다
   I5  검색은 안 바뀐다 — `hybrid_search` 가 받는 **인자 값**이 같다
 """
 
@@ -86,7 +86,7 @@ def test_the_users_own_sentence_reaches_the_answerer_verbatim():
 def test_the_system_prompt_says_which_sentence_governs_what():
     """§3.1: 재작성 질의는 **무엇을 찾았는지**, 원문은 **사용자가 무엇을 요청했는지**.
 
-    그리고 §4 I4·I6 — 원문이 프롬프트에 있다고 근거 규칙이 바뀌지 않는다. 규칙을 **이름으로
+    그리고 §4 I4·I6 — 원문이 프롬프트에 있다고 답변 근거 규칙이 바뀌지 않는다. 규칙을 **이름으로
     부르지 않으면** 모델이 피해 간다(인용 SPEC 에서 같은 실수를 한 적이 있다)."""
     system, _ = P.build_prompts("찾은 질의", _EVIDENCE, user_query="원래 질문")
 
@@ -99,9 +99,9 @@ def test_the_system_prompt_says_which_sentence_governs_what():
 def test_the_rule_says_a_terse_question_is_not_a_request_for_a_terse_answer():
     """**측정으로 잡은 회귀다** (2026-08-14, 대조군 c002).
 
-    첫 판의 문구는 "사용자가 형식·분량을 요청했다면 지키세요" 였다. 그랬더니 형식 요청이
+    첫 버전의 문구는 "사용자가 형식·분량을 요청했다면 지키세요" 였다. 그랬더니 형식 요청이
     **없는** 생략형 후속(「복원은 어떻게 해?」)에서 모델이 **질문이 짧다는 것 자체를 분량
-    요청으로 읽었다**: 같은 근거 패킷을 쥐고 1468자·인용 6 → 321자·인용 2 로 줄었고,
+    요청으로 읽었다**: 같은 답변 근거 패킷을 쥐고 1468자·인용 6 → 321자·인용 2 로 줄었고,
     빠진 것은 군더더기가 아니라 DeletionPolicy·CSI driver 주의 같은 질문 안의 내용이었다.
 
     U2 가 전달하려는 것은 **명시적** 요청이지 생략의 짧음이 아니다. 그 구분을 프롬프트가
@@ -114,10 +114,10 @@ def test_the_rule_says_a_terse_question_is_not_a_request_for_a_terse_answer():
 
 
 def test_the_prompt_version_covers_the_role_rule(monkeypatch):
-    """판은 **모델에게 가는 글을 만드는 코드**에서 파생돼야 한다. 규칙을 상수 하나로 빼 놓고
-    판이 그것을 안 읽으면, 그 문구를 고친 날 기록은 조용히 거짓이 된다.
+    """버전은 **모델에게 가는 글을 만드는 코드**에서 파생돼야 한다. 규칙을 상수 하나로 빼 놓고
+    버전이 그것을 안 읽으면, 그 문구를 고친 날 기록은 조용히 거짓이 된다.
 
-    판은 소스에서 파생되므로(`llm/prompt_version.py`) 실행 중에 상수를 바꿔서는 안 움직인다 —
+    버전은 소스에서 파생되므로(`llm/prompt_version.py`) 실행 중에 상수를 바꿔서는 안 움직인다 —
     배포되는 것은 소스다. 그래서 소스의 그 문장을 고쳐 본다."""
     sentence = "형식을 바꾸는 것은 명시적인 요청이 있을 때뿐입니다."
     assert sentence in P.USER_REQUEST_RULE, "검사가 겨누는 문장이 규칙에서 사라졌다"
@@ -199,7 +199,7 @@ async def test_a_number_from_nowhere_is_still_reported():
 
 @pytest.mark.asyncio
 async def test_the_answerer_actually_sends_both_sentences_to_the_model():
-    """`generate_answer` 가 조립 함수를 부르기만 하고 결과를 안 쓰는 배선 누락을 막는다 —
+    """`generate_answer` 가 조립 함수를 부르기만 하고 결과를 안 쓰는 와이어링 누락을 막는다 —
     이 리포에서 '테스트 초록인데 동작 안 함' 의 흔한 모양이다."""
     from nexus.llm.answer import generate_answer
 
@@ -211,7 +211,7 @@ async def test_the_answerer_actually_sends_both_sentences_to_the_model():
     assert system != P.SYSTEM_PROMPT
 
 
-# ── I3·I5 — 배선 (HTTP 표면) ───────────────────────────────────────────────────
+# ── I3·I5 — 와이어링 (HTTP API 표면) ───────────────────────────────────────────────────
 
 @pytest.fixture
 def client(monkeypatch):
@@ -294,7 +294,7 @@ def test_search_receives_exactly_what_it_received_before(client, monkeypatch):
 @pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"),
                     reason="NEXUS_TEST_DB_URL 필요")
 def test_without_history_the_answerer_sees_no_second_sentence(client, monkeypatch):
-    """§4 I1 을 표면에서. 이력이 없으면 재작성도 없고, 따로 줄 원문도 없다."""
+    """§4 I1 을 API 표면에서. 이력이 없으면 재작성도 없고, 따로 줄 원문도 없다."""
     seen: dict = {}
     _wire(monkeypatch, seen, rewritten="쓰이지 않는다")
 
@@ -308,7 +308,7 @@ def test_without_history_the_answerer_sees_no_second_sentence(client, monkeypatc
 @pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"),
                     reason="NEXUS_TEST_DB_URL 필요")
 def test_the_streaming_surface_is_wired_the_same_way(client, monkeypatch):
-    """웹이 쓰는 것은 이 경로다. 비스트림만 고치면 사람이 보는 표면은 그대로 무시한다 —
+    """웹이 쓰는 것은 이 경로다. 비스트림만 고치면 사람이 보는 API 표면은 그대로 무시한다 —
     이 리포가 반복한 '사본이 정본 회귀 검사 밖' 이다."""
     seen: dict = {}
     _wire(monkeypatch, seen, rewritten="다시 쓴 질의")

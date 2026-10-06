@@ -2,7 +2,7 @@
 
 ⛔ **왜 생겼나 (실측 2026-09-02).** *"성능이 별로인 이유가 문서가 낡아서인가"* 를 물어
 `documents.updated_at` 으로 쟀더니 **126건 전부 "3개월 이내"** 가 나왔다. 하마터면
-*"문서는 안 낡았다"* 고 보고할 뻔했다 — 그 칸은 **우리 적재 시각**이고, 그 수가 말한 것은
+*"문서는 안 낡았다"* 고 보고할 뻔했다 — 그 필드는 **우리 적재 시각**이고, 그 수가 말한 것은
 우리가 8월에 적재했다는 사실뿐이다. 내용이 그대로여도 재적재하면 모든 문서가 새것이 된다.
 
 값은 이미 오고 있었다: 노션 커넥터가 `origin_last_edited` 로 frontmatter 에 싣는다.
@@ -54,7 +54,7 @@ def test_a_missing_key_is_none():
 
 # ── 파일이 적는 이름과 YAML 이 주는 타입 ──────────────────────────────────────
 #
-# ⛔ **이 묶음이 없어서 파일 경로가 이 칸을 한 번도 안 채웠다 (실측 2026-09-20).**
+# ⛔ **이 묶음이 없어서 파일 경로가 이 필드를 한 번도 안 채웠다 (실측 2026-09-20).**
 # 위의 검사들은 전부 `origin_last_edited` 에 **문자열**을 넣어서 통과했다. 그 둘 다
 # 노션 커넥터의 사실이고, 파일을 쓰는 사람의 사실이 아니다.
 
@@ -112,7 +112,7 @@ def test_our_own_synthetic_corpus_declares_a_key_this_function_reads():
     """⭐ **대조군이 리포 안에 있다.** 이 검사가 잡으려는 것은 회귀 하나다 — 합성 SOP 가
     적는 이름과 이 함수가 읽는 이름이 다시 갈리는 것.
 
-    그 갈림이 조용했던 이유는 적재가 **성공**했기 때문이다. 칸 하나가 비는 것은 실패가
+    그 갈림이 조용했던 이유는 적재가 **성공**했기 때문이다. 필드 하나가 비는 것은 실패가
     아니라서 아무 경보도 안 울렸다.
     """
     import frontmatter as fm_lib
@@ -130,13 +130,13 @@ def test_our_own_synthetic_corpus_declares_a_key_this_function_reads():
 def test_none_means_unknown_not_new():
     """이 파일이 지키는 성질을 문장으로 박아 둔다.
 
-    `None` 을 "새것" 으로 읽으면 이 칸은 `updated_at` 과 똑같은 거짓말을 하게 된다.
+    `None` 을 "새것" 으로 읽으면 이 필드는 `updated_at` 과 똑같은 거짓말을 하게 된다.
     읽는 쪽(`nexus doc-age`)이 `미상` 을 따로 세는 이유다.
     """
     assert origin_updated_at({"origin_last_edited": ""}) is None
 
 
-# ── 배선: 값이 실제로 행에 앉는가 ────────────────────────────────────────────
+# ── 와이어링: 값이 실제로 행에 앉는가 ────────────────────────────────────────────
 
 pytestmark_db = pytest.mark.skipif(
     not os.getenv("NEXUS_TEST_DB_URL"), reason="NEXUS_TEST_DB_URL 필요")
@@ -190,7 +190,7 @@ async def test_the_column_actually_holds_the_origin_time(db_pool):
         db._pool = previous
 
 
-# ── 이음매: 값이 **커넥터에서 파이프라인까지** 살아 오는가 ────────────────────
+# ── 접합부: 값이 **커넥터에서 파이프라인까지** 살아 오는가 ────────────────────
 
 def test_the_value_survives_the_seam_that_dropped_it():
     """⛔ **이 검사가 없어서 프로덕션이 조용히 틀렸다.**
@@ -203,7 +203,7 @@ def test_the_value_survives_the_seam_that_dropped_it():
     이 리포가 이미 적어 둔 실패다 — *"생산자의 dict 를 검사했다."* 그래서 여기서는 사슬을
     **통과시켜서** 확인한다.
 
-    ⭐ 같은 이음매에서 값이 사라진 것이 **세 번째**다: 제목 · 그림 수 · 그리고 이것.
+    ⭐ 같은 접합부에서 값이 사라진 것이 **세 번째**다: 제목 · 그림 수 · 그리고 이것.
     """
     import frontmatter as fm_lib
 

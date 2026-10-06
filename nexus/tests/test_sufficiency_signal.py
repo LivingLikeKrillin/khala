@@ -1,7 +1,7 @@
-"""근거 충분성을 **기록**하는 경로 — SPEC-nexus-sufficiency-signal.
+"""답변 근거 충분성을 **기록**하는 경로 — SPEC-nexus-sufficiency-signal.
 
-여기서 측정하는 것은 판정의 품질이 아니다(그건 평가 하니스의 일이고 통계적 결과라 테스트가 아니다).
-여기서 측정하는 것은 **기록 기제가 관측 대상을 망가뜨리지 않는가**이다:
+여기서 측정하는 것은 판정의 품질이 아니다(그건 평가 하네스의 일이고 통계적 결과라 테스트가 아니다).
+여기서 측정하는 것은 **기록 메커니즘이 관측 대상을 망가뜨리지 않는가**이다:
 
     답변 경로가 판정을 기다리지 않는가 · 판정이 터져도 행이 남는가 · 계측기가 고장 나도
     search_log 가 살아남는가 · 슬롯이 새지 않는가 · 원문 텍스트가 기록에 들어가지 않는가
@@ -77,15 +77,15 @@ def test_the_signal_object_carries_no_text():
     """`SearchSignals` 에 텍스트 필드가 하나라도 생기면 원문 질의 불변식은 관례로 격하된다.
 
     질의는 sha256+len 으로만 들어간다(init.sql, 원칙 #3). 판정자가 원문을 필요로 한다고 해서
-    신호 객체에 실으면, 다음 사람이 그 자리에 근거 본문을 넣는 것을 막을 근거가 사라진다.
+    신호 객체에 실으면, 다음 사람이 그 자리에 답변 근거 본문을 넣는 것을 막을 근거가 사라진다.
     """
     expected = {
         "path", "tenant",
         # 범위는 **테넌트 이름들**이지 질의 원문이 아니다 — 이 검사가 막는 것은
-        # 원문·근거 텍스트가 신호 객체에 실리는 것이고, 그 성질은 그대로다.
+        # 원문·답변 근거 텍스트가 신호 객체에 실리는 것이고, 그 성질은 그대로다.
         "read_scope", "clearance", "route",          # 식별자·라벨
-        # 근거가 실제로 어디서 왔는가 — **테넌트 이름과 개수**뿐이다(`design_docs:6,default:4`).
-        # 조각 본문도 rid 도 담지 않으므로 이 검사가 막으려는 성질은 그대로다.
+        # 답변 근거가 실제로 어디서 왔는가 — **테넌트 이름과 개수**뿐이다(`design_docs:6,default:4`).
+        # 청크 본문도 rid 도 담지 않으므로 이 검사가 막으려는 성질은 그대로다.
         # `read_scope` 가 *읽을 수 있었던* 범위라면 이것은 *읽은 것*이다 (migration 038).
         "evidence_tenants",
         "query_sha256", "query_len",                     # 질의가 들어갈 수 있는 **유일한** 형태
@@ -104,38 +104,38 @@ def test_the_signal_object_carries_no_text():
         # 채워 넣는다), 같은 행의 `query_sha256` 이 `a2a_audit.principal` 과 붙으면 보존
         # 아키텍처가 소금키로 막아 둔 결합이 되살아난다. 본문이 필요하면 옵트인 경로로만 간다.
         "rewrite_applied", "rephrased_sha256", "rephrased_len", "rewrite_changed",
-        # 비용은 답변 칸과 **다른 칸**이다 — 섞으면 measured_averages 가 편향된다.
+        # 비용은 답변 필드와 **다른 필드**이다 — 섞으면 measured_averages 가 편향된다.
         "rewrite_prompt_tokens", "rewrite_completion_tokens", "rewrite_cost_usd",
-        # 2026-08-13. **프롬프트의 지문**이지 프롬프트가 아니다 — 12 hex. 질의도 근거도
+        # 2026-08-13. **프롬프트의 핑거프린트**이지 프롬프트가 아니다 — 12 hex. 질의도 답변 근거도
         # 들어가지 않는다(넣으면 모든 행이 서로 달라 아무것도 구분 못 하고, 텍스트가 샌다).
-        # 2026-09-30: 답변 쪽 지문은 재료가 좁아 `prompt_version` 으로 바뀌었다(migration 045).
-        # 여전히 **코드 소스의 해시 12 hex** 이고, 질의·근거·프롬프트 본문은 안 들어간다.
+        # 2026-09-30: 답변 쪽 핑거프린트는 재료가 좁아 `prompt_version` 으로 바뀌었다(migration 045).
+        # 여전히 **코드 소스의 해시 12 hex** 이고, 질의·답변 근거·프롬프트 본문은 안 들어간다.
         "prompt_version", "rewrite_prompt_sha",
-        # 2026-08-18, migration 032. **부동소수 둘**이다 — 근거가 얼마나 잘 맞았는가의 크기
-        # (벡터 코사인 거리 · BM25 `ts_rank_cd`). 질의도 근거 본문도 담지 않는다. 이 값이
-        # 필요한 이유는 문턱(`search/confidence.py`)이 지어낸 질문 17개에서 나왔고, 다시 측정할
+        # 2026-08-18, migration 032. **부동소수 둘**이다 — 답변 근거가 얼마나 잘 맞았는가의 크기
+        # (벡터 코사인 거리 · BM25 `ts_rank_cd`). 질의도 답변 근거 본문도 담지 않는다. 이 값이
+        # 필요한 이유는 임계값(`search/confidence.py`)이 지어낸 질문 17개에서 나왔고, 다시 측정할
         # 재료가 **실사용 질문의 크기**뿐인데 그것이 매 요청 버려지고 있었기 때문이다.
-        # 불리언(`weak`)이 아니라 크기인 것도 의도다 — 불리언은 문턱이 옮겨가면 지나간 행의
+        # 불리언(`weak`)이 아니라 크기인 것도 의도다 — 불리언은 임계값이 옮겨가면 지나간 행의
         # 뜻을 조용히 바꾼다.
         "top_distance", "top_bm25",
         # 2026-09-04, SPEC-nexus-stage-spans (Unit 1). **정수 하나**다 — 이번 요청에서 쌓였어야
-        # 할 span 행 수. `None` = 캡처 꺼짐. 질의도 근거 본문도 담지 않는다; span 자체(후보 목록
+        # 할 span 행 수. `None` = 캡처 꺼짐. 질의도 답변 근거 본문도 담지 않는다; span 자체(후보 목록
         # 포함)는 `SearchSignals` 가 아니라 `record_search`/`_persist` 에 별도 인자로 흐른다
         # (judge_input 과 같은 관례).
         "spans_expected",
-        # 2026-09-30, migration 046. 요청자 자료(`answer_context`)의 **길이 · sha256 hex** 뿐이다 —
+        # 2026-09-30, migration 046. 호출자 컨텍스트(`answer_context`)의 **길이 · sha256 hex** 뿐이다 —
         # 재작성문(`rephrased_*`)과 같은 모양이다. 자료 본문은 `extract_signals` 안에서 길이와
         # 해시가 되고 신호 객체에 안 들어간다(`test_answer_context.py` 가 repr 로 확인한다).
         "answer_context_len", "answer_context_sha256",
-        # 2026-09-30, migration 047. **코드·설정·문서 해시의 12 hex 둘**이다 — 코퍼스 판은
-        # `(tenant, rid, content_hash)` 의 해시이고 검색 스택 판은 설정의 해시다. 질의도 근거
+        # 2026-09-30, migration 047. **코드·설정·문서 해시의 12 hex 둘**이다 — 코퍼스 버전은
+        # `(tenant, rid, content_hash)` 의 해시이고 검색 스택 버전은 설정의 해시다. 질의도 답변 근거
         # 본문도 담지 않는다.
         "corpus_version", "search_fingerprint",
         # 2026-10-01, migration 048. **경로 이름의 목록**이다(`hybrid.LEGS` 의 부분집합 — 응답의
-        # `degraded` 와 같은 값). 질의도 근거 본문도 담지 않는다.
+        # `degraded` 와 같은 값). 질의도 답변 근거 본문도 담지 않는다.
         "degraded",
-        # 2026-10-01, migration 050. **불리언 하나**다 — 융합이 문서 합의(F1)를 셌는가.
-        # 질의도 근거 본문도 담지 않는다.
+        # 2026-10-01, migration 050. **불리언 하나**다 — 융합이 문서 일치(F1)를 셌는가.
+        # 질의도 답변 근거 본문도 담지 않는다.
         "fusion_doc_agreement",
         # 2026-10-05, migration 051. 요청자가 준 **검색 글의 길이와 해시**다 — 본문은 담지 않는다
         # (`answer_context_*` 와 같은 방식).
@@ -199,7 +199,7 @@ def test_verdicts_map_to_stored_values(monkeypatch):
 
 def test_a_raising_judge_records_error_not_unparseable(monkeypatch):
     """'이상한 답을 냈다' 와 '부르지도 못했다' 는 다른 사실이다. 합치면 공급자 장애가
-    근거 부족으로 읽힌다."""
+    답변 근거 부족으로 읽힌다."""
     _on(monkeypatch)
     v = asyncio.run(S._judge_with_timeout(
         S.JudgeInput("q", "e", {}, _Judge(boom=RuntimeError("backend down")))))
@@ -225,7 +225,7 @@ def test_the_judge_never_receives_the_answer(monkeypatch):
 # ── 슬롯: 상한·shed·누수 ───────────────────────────────────────────────────────
 
 def test_saturation_sheds_without_queueing(monkeypatch):
-    """상한 1 로 고정한다 — 기본값 2 에서는 기제가 고장 나도 두 번째 호출이 성공한다."""
+    """상한 1 로 고정한다 — 기본값 2 에서는 메커니즘이 고장 나도 두 번째 호출이 성공한다."""
     _on(monkeypatch, NEXUS_SUFFICIENCY_CONCURRENCY=1)
     assert S._try_take_slot() is True
     assert S._try_take_slot() is False       # 대기하지 않는다
@@ -243,7 +243,7 @@ def test_the_slot_is_released_even_when_the_judge_raises(monkeypatch):
 
 
 def test_a_timeout_above_half_the_stranded_bound_is_refused(monkeypatch):
-    """판정이 좌초 문턱보다 오래 살면 정상 완료가 UPDATE 가드에 걸려 버려진다.
+    """판정이 좌초 임계값보다 오래 살면 정상 완료가 UPDATE 가드 검사에 걸려 버려진다.
     prose 로만 결합해 두면 드리프트한다."""
     _on(monkeypatch, NEXUS_SUFFICIENCY_TIMEOUT=S.STRANDED_SECONDS)
     with pytest.raises(ValueError, match="상한"):
@@ -258,7 +258,7 @@ def test_the_stranded_bound_is_a_fixed_constant_not_derived_from_the_timeout(mon
     assert S.STRANDED_SECONDS == 300
 
 
-# ── 지문 ───────────────────────────────────────────────────────────────────────
+# ── 핑거프린트 ───────────────────────────────────────────────────────────────────────
 
 def test_the_fingerprint_moves_with_the_embedding_column(monkeypatch):
     """컷오버를 사이에 둔 창이 서로 다른 두 측정을 한 이름으로 평균내면 안 된다."""
@@ -269,7 +269,7 @@ def test_the_fingerprint_moves_with_the_embedding_column(monkeypatch):
 
 
 def test_the_fingerprint_moves_with_the_tokenizer():
-    """mecab→nori 교체는 판정자가 보는 근거를 바꾼다. 지문이 그대로면 그 창은 거짓이 된다."""
+    """mecab→nori 교체는 판정자가 보는 답변 근거를 바꾼다. 핑거프린트가 그대로면 그 창은 거짓이 된다."""
     from nexus.index import bm25
 
     base = S.evidence_fingerprint({})

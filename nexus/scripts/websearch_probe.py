@@ -40,7 +40,7 @@ def _blocks(resp):
     """응답 블록을 (검색 호출 수, 검색 결과 수, 본문 텍스트) 로 접는다.
 
     ⚠ `content[0].text` 로 읽지 않는다 — 도구가 붙으면 첫 블록이 `server_tool_use` 라
-    프로덕션의 그 접근은 여기서 죽는다(그 자체가 실행 층이 손볼 자리라는 신호다).
+    프로덕션의 그 접근은 여기서 죽는다(그 자체가 실행 계층이 손볼 자리라는 신호다).
     """
     calls = results = 0
     text = []
@@ -110,7 +110,7 @@ async def main(limit: int, budget: float) -> int:
 
         rep = validate_citations(text, packet)
         searched = calls > 0
-        # 사전등록 규칙: A군 발동만 차단 사유. C군 발동은 '무해한 오탐'으로 따로 센다.
+        # 사전 등록 규칙: A군 발동만 차단 사유. C군 발동은 '무해한 오탐'으로 따로 센다.
         ok = (searched == (q["expect"] == "search")) if q["expect"] != "internal" else not searched
         misfire = q["expect"] == "no_search" and searched
         rows.append({"id": q["id"], "expect": q["expect"], "searched": searched,

@@ -1,13 +1,13 @@
 """`answer_context` — **답변 프롬프트에만** 들어가는 요청자의 자료. 검색에는 안 닿는다.
 
-⛔ **왜 생겼나 (2026-09-27, 설명 층 자문).** 진단 경로는 후보 목록(별칭 · 식별자 · 대상)을 답에
+⛔ **왜 생겼나 (2026-09-27, 설명 레이어 자문).** 진단 경로는 후보 목록(별칭 · 식별자 · 대상)을 답에
 넘겨야 한다. 그런데 요청에는 `query` 하나뿐이라, 후보를 거기 실으면 그 글이 **BM25 · 벡터 ·
-식별자 채널 · 재작성기에 다 들어간다** — 검색이 측정해 온 경로가 달라지고, 후보 이름이 근거
+식별자 채널 · 재작성기에 다 들어간다** — 검색이 측정해 온 경로가 달라지고, 후보 이름이 답변 근거
 순위를 끌고 간다. 검색에 쓰는 글과 답에 보여 줄 글은 다른 것이다.
 
 계약(편지 15, 소유자 승인 2026-09-30):
 - 문자열 하나, 상한 8,000 글자 — 넘으면 **422** 이고 조용히 자르지 않는다
-- 사용자 프롬프트 안, 질문 다음 · 근거 앞의 **표시된 절**
+- 사용자 프롬프트 안, 질문 다음 · 답변 근거 앞의 **표시된 절**
 - 닿지 않는 곳: 검색(BM25 · 벡터 · 식별자 채널) · 재작성기 · 충분성 판정자 · 질문 원문 보존
 - 기록은 길이와 해시만. `/search` 는 받지 않는다(422)
 - 없으면 프롬프트 바이트가 오늘과 같다
@@ -55,7 +55,7 @@ def test_the_context_sits_between_the_question_and_the_evidence():
 
 
 def test_the_section_says_what_it_is_and_what_it_cannot_do():
-    """자료이지 근거가 아니다 — 인용하지 말 것, 별칭으로 가리킬 것, 핵심 규칙을 못 이긴다는 것."""
+    """자료이지 답변 근거가 아니다 — 인용하지 말 것, 별칭으로 가리킬 것, 핵심 규칙을 못 이긴다는 것."""
     out = P.build_user_prompt("질문", _EVIDENCE, answer_context=_CONTEXT)
     assert P.ANSWER_CONTEXT_RULE in out
     for must in ("인용하지 마세요", "별칭", "핵심 규칙"):
@@ -91,7 +91,7 @@ def test_a_number_the_model_was_shown_in_the_context_is_grounded():
 # ── 요청 경계 ─────────────────────────────────────────────────────────────────
 
 class _LLM:
-    """두 표면이 **다른 메서드**를 부른다 — 받은 프롬프트를 적어 둔다."""
+    """두 API 표면이 **다른 메서드**를 부른다 — 받은 프롬프트를 적어 둔다."""
 
     configured = True
 
@@ -115,7 +115,7 @@ class _LLM:
 
 @pytest.fixture
 def wired(monkeypatch):
-    """DB·임베딩 없이 두 엔드포인트의 본문을 돌린다. 근거 한 조각짜리 꾸러미를 이음매 자리에 둔다.
+    """DB·임베딩 없이 두 엔드포인트의 본문을 돌린다. 답변 근거 한 조각짜리 근거 묶음을 접합부 자리에 둔다.
 
     받아 적는 것: 검색이 받은 인자 · 모델이 받은 사용자 프롬프트 · 기록될 신호와 판정자 입력."""
     from nexus import db
@@ -197,7 +197,7 @@ def test_both_answer_surfaces_put_it_in_front_of_the_model(wired, surface):
 
 @pytest.mark.parametrize("surface", ["answer", "stream"])
 def test_it_never_reaches_search_rewrite_judge_or_retention(wired, surface):
-    """자료가 검색에 들어가면 이 칸을 만든 이유가 통째로 사라진다."""
+    """자료가 검색에 들어가면 이 필드를 만든 이유가 통째로 사라진다."""
     client, seen, _ = wired
     if surface == "answer":
         _answer(client, answer_context=_CONTEXT)
@@ -234,7 +234,7 @@ def test_a_request_without_it_records_nothing_and_sends_todays_prompt(wired):
 
 @pytest.mark.parametrize("surface", ["answer", "stream"])
 def test_the_response_says_how_much_of_it_was_used(wired, surface):
-    """⭐ **받았다는 것을 응답이 말한다.** 모르는 칸의 422 는 「이름이 틀렸다」만 막는다 — 칸이
+    """⭐ **받았다는 것을 응답이 말한다.** 알 수 없는 필드의 422 는 「이름이 틀렸다」만 막는다 — 필드가
     선 뒤에 빈 문자열이 오면 그것은 조용히 「안 준 것」이 되고, 호출자는 그 차이를 못 본다."""
     client, _, _ = wired
     if surface == "answer":

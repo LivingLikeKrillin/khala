@@ -24,7 +24,7 @@ _ROOT_TIMEOUT = 5.0
 _MAX_CONCURRENCY = 8          # SPEC §4.1 (I-007)
 
 # remedy 는 **할 일**만 담는다. 무엇이 잘못됐는지(진단)는 상태 이름이 말한다 — 둘을 한 문자열에
-# 넣으면 표면마다 "볼 수 없음 — 이 페이지를 볼 수 없습니다 —…" 처럼 겹쳐 읽힌다.
+# 넣으면 API 표면마다 "볼 수 없음 — 이 페이지를 볼 수 없습니다 —…" 처럼 겹쳐 읽힌다.
 REMEDY_UNREACHABLE = (
     "존재하지 않거나 integration 이 초대되지 않았습니다. "
     "Notion 에서 이 페이지의 연결(Connections)에 integration 을 추가하세요."

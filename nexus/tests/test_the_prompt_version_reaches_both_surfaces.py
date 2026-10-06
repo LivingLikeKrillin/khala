@@ -1,11 +1,11 @@
-"""프롬프트 판이 **두 답변 표면의 응답**에 실리고, **기록과 같은 값**인가 — 엔드포인트를 실제로 돌려서.
+"""프롬프트 버전이 **두 답변 API 표면의 응답**에 실리고, **기록과 같은 값**인가 — 엔드포인트를 실제로 돌려서.
 
-⛔ **왜 생겼나 (2026-09-27, 설명 층 자문).** 판은 `search_log` 에만 있었고 응답에는 없었다. 답을
+⛔ **왜 생겼나 (2026-09-27, 설명 레이어 자문).** 버전은 `search_log` 에만 있었고 응답에는 없었다. 답을
 받는 쪽은 *"이 답을 만든 프롬프트가 어제와 같은가"* 를 물을 방법이 없었다. 그리고 스트리밍 경로는
-기록에조차 판을 안 남겼다 — 그 경로는 `AnswerResult` 없이 기록하는데, 판을 거기서만 읽었다.
+기록에조차 버전을 안 남겼다 — 그 경로는 `AnswerResult` 없이 기록하는데, 버전을 거기서만 읽었다.
 
-⚠ 근거가 0건인 질의로 돈다. 그래야 DB 없이 **실물 이음매**(`packet_for_answer`)와 실물 답변
-경로(기권 분기)를 끝까지 태울 수 있다 — 판은 LLM 을 불렀는가와 무관하게 실린다.
+⚠ 답변 근거가 0건인 질의로 돈다. 그래야 DB 없이 **실물 접합부**(`packet_for_answer`)와 실물 답변
+경로(기권 분기)를 끝까지 태울 수 있다 — 버전은 LLM 을 불렀는가와 무관하게 실린다.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ def client_and_rows(monkeypatch):
         rows.append(sig)
 
     class _LLM:
-        configured = True     # 근거 0건이면 부르지 않는다 — 불리면 검사가 틀린 경로를 탄 것이다
+        configured = True     # 답변 근거 0건이면 부르지 않는다 — 불리면 검사가 틀린 경로를 탄 것이다
 
     monkeypatch.setattr(api, "_load_config", lambda *a, **k: {})
     monkeypatch.setattr(api, "embedding_service_from_config", lambda *a, **k: None)
@@ -79,10 +79,10 @@ def test_the_answer_response_carries_the_version(client_and_rows):
 
 
 def _the_other_versions_ride_along(payload: dict, rows: list) -> None:
-    """코퍼스 판과 검색 스택 지문도 같은 자리에서 찍히고 같은 값이 기록된다(2026-09-30).
+    """코퍼스 버전과 검색 스택 핑거프린트도 같은 자리에서 찍히고 같은 값이 기록된다(2026-09-30).
 
-    ⚠ 이 받침은 DB 가 없다(풀 `None`) — 그래서 코퍼스 판은 「모른다」(빈 문자열)가 **맞는 값**이다.
-    DB 가 있을 때의 값은 `test_corpus_and_search_versions.py` 가 이음매에서 확인한다."""
+    ⚠ 이 받침은 DB 가 없다(풀 `None`) — 그래서 코퍼스 버전은 「모른다」(빈 문자열)가 **맞는 값**이다.
+    DB 가 있을 때의 값은 `test_corpus_and_search_versions.py` 가 접합부에서 확인한다."""
     from nexus.search.versions import search_fingerprint
 
     assert payload.get("search_fingerprint") == search_fingerprint({}), "검색 스택 지문이 안 실렸다"
@@ -93,7 +93,7 @@ def _the_other_versions_ride_along(payload: dict, rows: list) -> None:
 
 
 def test_the_streaming_response_carries_the_version(client_and_rows):
-    """웹 채팅이 타는 경로다. 옛 판은 이 경로의 판을 **기록에도** 안 남겼다."""
+    """웹 채팅이 타는 경로다. 옛 버전은 이 경로의 버전을 **기록에도** 안 남겼다."""
     client, rows = client_and_rows
     done: dict = {}
     with client.stream("POST", "/search/answer/stream",

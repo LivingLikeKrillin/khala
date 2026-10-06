@@ -1,4 +1,4 @@
-"""풀 판정의 값을 **뽑기 전에** 계산한다 (SPEC-nexus-ko-eval-pool-sensitivity §4.5).
+"""풀링 판정의 값을 **뽑기 전에** 계산한다 (SPEC-nexus-ko-eval-pool-sensitivity §4.5).
 
 그 SPEC 은 자기 오류를 하나 적어 두었다:
 

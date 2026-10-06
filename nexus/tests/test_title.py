@@ -2,7 +2,7 @@
 
 라이브 실증: notion deposit 문서들이 frontmatter title·선두 H1 없이 적재돼 제목이
 `ext-notion-<uuid>.md`(파일명)로 떨어졌다 — 검색답변 인용·근거패널 가독성 저하.
-본문 첫 헤딩은 UUID보다 훨씬 읽을 만한 제목 프록시다. System decides: 결정론 파싱.
+본문 첫 헤딩은 UUID보다 훨씬 읽을 만한 제목 프록시다. System decides: 결정론적 파싱.
 """
 
 from __future__ import annotations

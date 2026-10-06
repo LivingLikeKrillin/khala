@@ -1,6 +1,6 @@
-"""도구 선택 층 드라이런 — *"어느 도구가 필요한가"* 를 검색으로 풀 수 있는가.
+"""도구 선택 계층 드라이런 — *"어느 도구가 필요한가"* 를 검색으로 풀 수 있는가.
 
-**도구를 부르지 않는다.** 실행 층(MCP 클라이언트·인용·등급)은 0줄이고, 이 실험은 그 앞
+**도구를 부르지 않는다.** 실행 계층(MCP 클라이언트·인용·등급)은 0줄이고, 이 실험은 그 앞
 단계만 측정한다. 전문은 `tests/eval/toolmap/README.md` — 판정 규칙은 **측정 전에** 거기 박혔다.
 
     docker exec nexus-app python scripts/toolmap_probe.py --build
@@ -41,10 +41,10 @@ def _load_set(path: Path) -> dict:
 def _tool_of(hit) -> str:
     """지도 문서 → 도구 **이름**.
 
-    ⚠ 첫 판은 `doc_title` 을 그대로 돌려줬다. 제목은 *사람 말*(「지금 무엇이 떠 있나 — 배포
+    ⚠ 첫 버전은 `doc_title` 을 그대로 돌려줬다. 제목은 *사람 말*(「지금 무엇이 떠 있나 — 배포
     상태 조회」)이고 기대값은 *도구 이름*(`deploy-status`)이라, **기대값과 산출값이 같아질 수
-    없는 비교**였다 — 맞게 고른 질문도 전부 불일치로 찍혔다(2026-08-24 1회차). 신원은 파일명
-    에서 온다. **문턱도 기대값도 건드리지 않았다.**
+    없는 비교**였다 — 맞게 고른 질문도 전부 불일치로 찍혔다(2026-08-24 1회차). 식별 정보는 파일명
+    에서 온다. **임계값도 기대값도 건드리지 않았다.**
     """
     return (hit.source_uri or "").split(":")[-1].removesuffix(".md")
 
@@ -106,7 +106,7 @@ async def run(qpath: Path, top_k: int = 10) -> int:
         tools_weak = arms["tools"].confidence.weak
         top_hit = arms["tools"].hits[0] if arms["tools"].hits else None
 
-        # 사전등록된 규칙 그대로. 여기서 새 문턱을 만들지 않는다.
+        # 사전 등록된 규칙 그대로. 여기서 새 임계값을 만들지 않는다.
         d_docs = arms["docs"].confidence.top_distance
         d_tools = arms["tools"].confidence.top_distance
         if rule == "comparison":

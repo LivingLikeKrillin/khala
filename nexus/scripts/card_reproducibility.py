@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""§6.1 재현성 하니스 — 같은 코드에 같은 카드를 쓰는가.
+"""§6.1 재현성 하니스 — 같은 코드에 같은 코드 카드를 쓰는가.
 
 SPEC-nexus-code-semantic-cards §3.3/§6.1. **이 게이트가 나머지 전부를 막는다.**
 
-왜 먼저인가: 카드 생성기는 바이트를 읽는 비결정적 판독기다. 이 프로젝트는 배포 스크린샷
+왜 먼저인가: 코드 카드 생성기는 바이트를 읽는 비결정적 판독기다. 이 프로젝트는 배포 스크린샷
 판독기가 같은 그림에 84.7% 다른 글을 내는 것을 **네 개의 SPEC 을 쓴 뒤에** 발견했고, 그때까지
 쌓은 근거 32건이 전부 잡음이었다. 그래서 아래 숫자가 나오기 전에는 매칭도 임베딩도 설계하지
 않는다.
@@ -43,7 +43,7 @@ from nexus.index.snapshot import head_commit  # noqa: E402
 from nexus.index.symbols import scan_repo  # noqa: E402
 
 
-#: 테스트 코드 경로. 카드는 **업무 행동**을 서술해 정책·설계 문서와 맞추기 위한 것이고,
+#: 테스트 코드 경로. 코드 카드는 **업무 행동**을 서술해 정책·설계 문서와 맞추기 위한 것이고,
 #: `setUp` 이나 `…_returns403` 은 업무 용어로 서술할 것이 없다. 모집단에 남겨 두면 생성기가
 #: 아니라 모집단을 측정하게 된다.
 _TEST_PATH = re.compile(r"(^|/)(test|tests)/|Test[s]?\.java$|IT\.java$|_test\.py$|/conftest\.py$")
@@ -55,7 +55,7 @@ def is_test_path(path: str) -> bool:
 
 def pick_symbols(repo: Path, n: int, *, strategy: str = "first-per-file", seed: int = 0,
                  exclude_tests: bool = False, min_body: int = 0):
-    """카드 후보 중에서 고르되, **파일이 겹치지 않게** 흩는다.
+    """코드 카드 후보 중에서 고르되, **파일이 겹치지 않게** 흩는다.
 
     한 파일에서 연속으로 뽑으면 서로 닮은 심볼만 측정하게 되고, 그러면 생성기가 실제보다
     안정적으로 보인다 — 측정하려는 것이 흔들림인데.
@@ -66,7 +66,7 @@ def pick_symbols(repo: Path, n: int, *, strategy: str = "first-per-file", seed: 
     그것이 생성기의 성질인지 그 한 묶음의 성질인지 **그 표본으로는 구별할 수 없다.**
 
     `random` 은 같은 후보 모집단에서 씨앗 고정 무작위로 뽑는다 — 재현 가능하고, 코퍼스 전체에
-    흩어진다. 문턱 판정은 사전등록대로 첫 전략의 수로 하고, 이쪽은 **표본 타당성 검사**다.
+    흩어진다. 임계값 판정은 사전 등록대로 첫 전략의 수로 하고, 이쪽은 **표본 타당성 검사**다.
     """
     result = scan_repo(repo)
     candidates = [s for s in sorted(result.symbols, key=lambda x: (x.file_path, x.start_line))
@@ -141,7 +141,7 @@ async def main() -> int:
     from nexus.providers.llm import LLMService
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     # 첫 인자는 **모델 이름**이지 설정이 아니다. 설정을 넘기면 self.model 이 dict 가 되고,
-    # 그 dict 가 카드의 generator 필드와 브리지 명령줄로 흘러간다 — 2026-08-16 에 실제로 그랬다.
+    # 그 dict 가 코드 카드의 generator 필드와 브리지 명령줄로 흘러간다 — 2026-08-16 에 실제로 그랬다.
     llm = LLMService(pricing=(cfg.get("llm") or {}).get("pricing"))
     model = llm.model
 

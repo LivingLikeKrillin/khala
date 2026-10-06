@@ -113,7 +113,7 @@ async def test_a_waived_chunk_is_still_a_gap(db_pool, db_url):
 
 
 async def test_both_vector_columns_are_reported(db_pool, db_url):
-    """§3.2 — 옛 컬럼의 구멍이 곧 롤백이 잃을 것이다 (ADR-0009 미결 항목)."""
+    """§3.2 — 옛 컬럼의 구멍이 곧 롤백이 잃을 것이다 (ADR-0009 오픈 항목)."""
     await _seed(db_pool, [
         {"rid": "cov_new_only", "v768": None, "v1024": _V1024, "ts": "'a'"},
         {"rid": "cov_both", "v768": _V768, "v1024": _V1024, "ts": "'a'"},

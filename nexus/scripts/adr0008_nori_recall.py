@@ -1,6 +1,6 @@
-"""ADR-0008 §2.6 재현 아티팩트 — nori 를 khala 의 한국어 리콜 fixture 에 걸어본 탐색 실행.
+"""ADR-0008 §2.6 재현 아티팩트 — nori 를 khala 의 한국어 리콜 fixture 에 걸어본 탐색적 실행.
 
-이 파일은 **테스트가 아니고, 측정도 아니다.** ADR-0008 §2.6 이 기록한 탐색 실행을 나중에
+이 파일은 **테스트가 아니고, 측정도 아니다.** ADR-0008 §2.6 이 기록한 탐색적 실행을 나중에
 누가 그대로 재현할 수 있게 두는 일회성 스크립트다. 그 실행은 mecab 과의 비교로 쓸 수 없다 —
 교란 변수가 최소 네 개다:
 
@@ -33,7 +33,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-# 코퍼스와 질의는 리콜 스위트에서 **가져온다**. 복붙하면 조용히 갈라지고, 그러면 두 평가 하니스로 측정한
+# 코퍼스와 질의는 리콜 스위트에서 **가져온다**. 복붙하면 조용히 갈라지고, 그러면 두 평가 하네스로 측정한
 # 숫자가 되어 재현이라는 말이 성립하지 않는다.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests.test_search_recall import (  # noqa: E402

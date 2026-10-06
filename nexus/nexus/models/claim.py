@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from nexus.models.resource import NexusResource
 from nexus.rid import claim_rid
 
-#: 판정을 이루는 칸. 하나라도 있으면 판정이고, 그러면 `ruled_by`·`ruled_on` 이 필수다.
+#: 판정을 이루는 필드. 하나라도 있으면 판정이고, 그러면 `ruled_by`·`ruled_on` 이 필수다.
 RULING_FIELDS = ("ruled_value", "ruled_source", "ruled_by", "ruled_on", "ruling_note")
 
 

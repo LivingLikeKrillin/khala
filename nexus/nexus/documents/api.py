@@ -1,4 +1,4 @@
-"""문서 생애주기 HTTP 표면 (SPEC-nexus-document-lifecycle §4.4).
+"""문서 생명주기 HTTP API 표면 (SPEC-nexus-document-lifecycle §4.4).
 
 엔드포인트가 정본이다. 웹 뷰·MCP 툴·CLI 는 전부 이 위의 얇은 클라이언트다.
 

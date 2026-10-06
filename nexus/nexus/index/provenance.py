@@ -1,7 +1,7 @@
 """벡터 출처를 **컬럼별로** 적는다 (SPEC-nexus-embedding-provenance-grain U1, approved).
 
 `chunks.embed_model` 은 행당 한 칸인데 벡터는 컬럼 둘에 산다. 쓰기 경로가 `{col}` 은 바꾸면서
-라벨은 같은 칸에 쓰므로 **라벨은 마지막에 쓴 컬럼의 것**이고 다른 컬럼에 대해서는 거짓이다.
+라벨은 같은 필드에 쓰므로 **라벨은 마지막에 쓴 컬럼의 것**이고 다른 컬럼에 대해서는 거짓이다.
 2026-08-14 실측(정책 필터): `default` 309행 중 111행이 768 모델 라벨을 단 채 1024 벡터를 갖고
 있었다 — nomic 은 1024 를 만들 수 없다.
 
@@ -23,7 +23,7 @@ async def record(*, chunk_rid: str, column_name: str, model: str) -> None:
     """이 (청크, 컬럼) 의 벡터를 이 모델이 썼다. **다른 컬럼의 출처는 건드리지 않는다.**
 
     쓰기 경로에서 불린다. **실패해도 예외를 올리지 않는다** — 출처 기록이 적재를 죽이면
-    안 되고, 실패한 자리는 미상으로 남아 §3.3 의 그 칸에 합류한다. 다만 조용히 넘기지 않고
+    안 되고, 실패한 자리는 미상으로 남아 §3.3 의 그 필드에 합류한다. 다만 조용히 넘기지 않고
     센다: 미상이 **왜** 미상인지(옛 행 vs 쓰기 실패) 구별할 수 있어야 한다.
     """
     try:
@@ -68,7 +68,7 @@ async def fetch_distribution(column_name: str) -> list[tuple[str | None, int]]:
 
 
 def summarize(distribution: list[tuple[str | None, int]]) -> dict:
-    """분포 → 세대 리포트. 순수·결정론.
+    """분포 → 세대 리포트. 순수·결정성.
 
     **`mixed` 는 아는 모델이 둘 이상일 때다.** 미상은 세지 않는다 — 옛 설계는 행 라벨로
     group by 해서 균일한 컬럼을 혼합이라 불렀고(111행이 거짓 라벨), 그 거짓 경보를 그대로
@@ -87,7 +87,7 @@ def summarize(distribution: list[tuple[str | None, int]]) -> dict:
         "distinct": len(known),
         "dominant": known[0][0] if known else None,
         "unknown": unknown,
-        # 선언 대조는 테넌트가 있어야 세므로 여기선 자리만 둔다 (`fetch_mismatch`).
+        # 명시적 선언 대조는 테넌트가 있어야 세므로 여기선 자리만 둔다 (`fetch_mismatch`).
         "mismatch": None,
     }
 
@@ -95,7 +95,7 @@ def summarize(distribution: list[tuple[str | None, int]]) -> dict:
 async def fetch_mismatch(column_name: str, *, tenant: str) -> int:
     """선언된 세대와 **다른 모델**로 쓰인 벡터 수 (SPEC §3.2).
 
-    혼합(같은 컬럼에 아는 모델 둘)과 다른 신호다 — 컬럼이 균일해도 그 하나가 선언과 다르면
+    혼합(같은 컬럼에 아는 모델 둘)과 다른 신호다 — 컬럼이 균일해도 그 하나가 명시적 선언과 다르면
     검색은 선언되지 않은 공간에서 돌고 있다. 그쪽이 실제로 위험하다.
 
     **미상은 안 센다.** 모르는 것은 "다르다" 가 아니고, 섞으면 옛 거짓 경보가 이름만 바꿔
@@ -121,7 +121,7 @@ async def fetch_mismatch(column_name: str, *, tenant: str) -> int:
     return int(row["n"]) if row else 0
 
 
-# ── 시간 축 — 벡터가 그 행보다 나중에 쓰였는가 ────────────────────────────────
+# ── 시간 차원 — 벡터가 그 행보다 나중에 쓰였는가 ────────────────────────────────
 
 
 async def fetch_freshness(column_name: str, *, tenant: str | None = None) -> dict:
@@ -141,7 +141,7 @@ async def fetch_freshness(column_name: str, *, tenant: str | None = None) -> dic
     쓰였으므로 **낡을 수 없다.** 그래서 이 함수의 산출물은 *"낡았다"* 가 아니라
     **"낡을 수 있는 것은 이만큼뿐이다"** 이고, 재계산 범위가 그만큼 줄어든다.
 
-    ⛔ **`candidates` 를 낡은 벡터 수로 읽지 마라.** 이 수를 부풀리는 원인이 **둘** 있고 둘 다
+    ⛔ **`candidates` 를 스테일 벡터 수로 읽지 마라.** 이 수를 부풀리는 원인이 **둘** 있고 둘 다
     무효화와 무관하다: ①내용이 안 바뀐 재적재도 `updated_at` 을 민다, ②**BM25 색인이 그 행을
     UPDATE 하면서 `updated_at = now()` 를 같이 쓴다**(`index/bm25.py`). 즉 이 수는 **상한**이지
     개수가 아니다. 개수를 원하면 그 상한만 재계산하면 된다 — 그것이 이 함수의 용도다.
@@ -180,14 +180,14 @@ async def fetch_freshness(column_name: str, *, tenant: str | None = None) -> dic
 
 
 def summarize_freshness(counts: dict) -> dict:
-    """분포 → 재계산 범위. 순수·결정론.
+    """분포 → 재계산 범위. 순수·결정성.
 
     ⛔ **판정하지 않는다.** 여기서 나오는 것은 *무엇이 낡았나* 가 아니라 *무엇을 확인해야
-    하는가* 다. 문턱도 비율도 없다 — 이 리포는 비율을 신호가 쌓이기 전에 내지 않는다.
+    하는가* 다. 임계값도 비율도 없다 — 이 리포는 비율을 신호가 쌓이기 전에 내지 않는다.
     """
     return {
         **counts,
-        # 재계산해야 하는 집합. 후보(시간이 어긋남) + 미상(시간을 모름).
+        # 재계산해야 하는 집합. 후보(시간이 불일치) + 미상(시간을 모름).
         "must_recheck": counts["candidates"] + counts["unstamped"],
         # 재계산이 **필요 없다고 증명된** 집합. 감지기의 실제 산출물이다.
         "ruled_out": counts["provably_fresh"],

@@ -1,6 +1,6 @@
 """감사 행에서 질의를 역산할 수 없다 (SPEC-nexus-audit-query-hash, approved 2026-08-14).
 
-**무엇이 관측됐나.** `search_query_text` 는 질문을 평문으로 담고, `a2a_audit.query_sha256` 은
+**관측 결과.** `search_query_text` 는 질문을 평문으로 담고, `a2a_audit.query_sha256` 은
 소금 없는 `sha256(query)` 였다. 그래서 평문 → 해시 재계산 → `principal` 로 이어지는 **결정적
 경로**가 있었다. 마지막 홉은 통계가 아니라 정확 일치다.
 
@@ -57,7 +57,7 @@ def test_the_structlog_record_carries_no_value_derived_from_the_query(monkeypatc
 
 
 def test_the_length_still_goes_in_because_that_is_the_decision():
-    """§3.2 결정 A 는 **지문**을 뺀 것이지 감사 기록을 줄인 것이 아니다.
+    """§3.2 결정 A 는 **핑거프린트**를 뺀 것이지 감사 기록을 줄인 것이 아니다.
 
     `query_len` 도 질의의 결정적 함수다 — SPEC §1.4 가 "결정적 함수 금지" 라는 이지선다를
     스스로 반증하며 그렇게 적었다. 기준은 **엔트로피**이고, 길이 하나로는 질의를 못 되찾는다.
@@ -98,7 +98,7 @@ async def test_the_persisted_row_carries_no_derived_value(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_the_audit_still_records_everything_else(monkeypatch):
-    """§4 I3 — 지문을 빼도 감사 기록이 줄지 않는다."""
+    """§4 I3 — 핑거프린트를 빼도 감사 기록이 줄지 않는다."""
     sent: list = []
 
     async def spy_execute(sql, *args):
@@ -135,7 +135,7 @@ async def test_the_net_goes_red_when_the_defect_is_put_back(monkeypatch):
     real_emit = A.emit_audit
 
     def leaky_emit(*, skill, query, **kw):
-        # 결함 재도입: 지문을 다시 계산해 기록에 흘린다.
+        # 결함 재도입: 핑거프린트를 다시 계산해 기록에 흘린다.
         return real_emit(skill=skill + "|" + hashlib.sha256(query.encode()).hexdigest(),
                          query=query, **kw)
 

@@ -1,8 +1,8 @@
-"""`docs/API_CONTRACT.md` 가 적은 요청 칸이 **코드에 그 값으로 있는가.**
+"""`docs/API_CONTRACT.md` 가 적은 요청 필드가 **코드에 그 값으로 있는가.**
 
 ⛔ **왜 생겼나 (실측 2026-09-23).** 그 문서가 `AnswerRequest.top_k` 를 **10** 이라고 적고
 있었다. 실제 값은 **20** 이고, 그 20 에는 측정 근거가 코드 주석에 붙어 있다(집합 질문이
-10 에서 잘려 근거가 8,163자 → 19,184자로 늘었다). 문서만 읽고 만든 클라이언트는 **예산이
+10 에서 잘려 답변 근거가 8,163자 → 19,184자로 늘었다). 문서만 읽고 만든 클라이언트는 **예산이
 절반인 채로** 돌고, 답이 부실한 이유를 검색 품질에서 찾게 된다.
 
 같은 문단에서 `identifier_channel` · `exclude_doc_types` · `history` · `origin_*` 넷이 통째로
@@ -12,7 +12,7 @@
 라고 선언하므로 **빠진 것은 결함이 아니다.** 결함은 **적어 놓고 다른 값인 것**이다 — 읽는
 사람이 확인할 방법이 없고, 확인할 생각도 안 한다.
 
-⚠ 그래서 단언이 한 방향이다: **문서 → 코드.** 코드에만 있는 칸은 여기서 안 운다.
+⚠ 그래서 단언이 한 방향이다: **문서 → 코드.** 코드에만 있는 필드는 여기서 안 운다.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from nexus.api import AnswerRequest, SearchAnswerRequest, SearchRequest
 DOC = Path(__file__).resolve().parents[1] / "docs" / "API_CONTRACT.md"
 
 #: 문서가 이름으로 부르는 요청 모델. 늘리려면 문서에 그 클래스 블록이 있어야 한다.
-#: 칸 하나짜리 하위 모델(`SearchAnswerRequest`)은 아래 따로 본다 — 대조군이 블록마다 칸 여덟을 요구한다.
+#: 필드 하나짜리 하위 모델(`SearchAnswerRequest`)은 아래 따로 본다 — 대조군이 블록마다 필드 여덟을 요구한다.
 DOCUMENTED = {"SearchRequest": SearchRequest, "AnswerRequest": AnswerRequest}
 
 #: `    name: type = default   # 주석` 에서 이름과 기본값만 집는다.
@@ -59,7 +59,7 @@ def _documented_fields(class_name: str) -> dict[str, str | None]:
 
 @pytest.mark.parametrize("name", sorted(DOCUMENTED), ids=str)
 def test_every_documented_field_exists_in_the_model(name):
-    """⛔ 문서가 부르는 칸이 코드에 없으면, 그 문서를 읽고 만든 요청은 이제 **422** 다."""
+    """⛔ 문서가 부르는 필드가 코드에 없으면, 그 문서를 읽고 만든 요청은 이제 **422** 다."""
     documented = _documented_fields(name)
     missing = sorted(set(documented) - set(DOCUMENTED[name].model_fields))
 
@@ -97,10 +97,10 @@ def test_the_parser_actually_found_the_fields():
 
 
 def test_the_answer_endpoint_s_own_field_is_in_its_own_block():
-    """`/search/answer` 만의 칸은 **하위 모델의 블록**에 있고, 부모의 칸으로 읽히지 않는다.
+    """`/search/answer` 만의 필드는 **하위 모델의 블록**에 있고, 부모의 필드로 읽히지 않는다.
 
     ⚠ 블록은 ``` 까지 읽힌다. 처음에 하위 모델을 부모 블록 안에 적었더니 `evidence_only` 가
-    `AnswerRequest` 의 칸으로 대조돼 붉어졌다(2026-10-01) — 스트림은 그 칸을 422 로 거절하므로,
+    `AnswerRequest` 의 필드로 대조돼 붉어졌다(2026-10-01) — 스트림은 그 필드를 422 로 거절하므로,
     그 문서를 읽고 만든 스트림 요청은 실제로 깨진다.
     """
     assert _documented_fields("SearchAnswerRequest") == {"evidence_only": "False"}
@@ -115,15 +115,15 @@ def test_the_two_paths_really_have_different_budgets():
 
 
 def test_the_treatment_flag_is_documented_only_where_it_exists():
-    """⚠ 이 깃발이 `/search` 요청에 적히면, 읽은 사람은 **422 를 받는다.**"""
+    """⚠ 이 플래그가 `/search` 요청에 적히면, 읽은 사람은 **422 를 받는다.**"""
     assert "identifier_channel" in _documented_fields("AnswerRequest")
     assert "identifier_channel" not in _documented_fields("SearchRequest")
 
 
 def test_the_provenance_vocabulary_in_the_doc_is_complete():
-    """등급 어휘는 프롬프트·응답·MCP·웹이 **같은 것**을 써야 한다 (`search/provenance.py` 정본).
+    """등급 체계는 프롬프트·응답·MCP·웹이 **같은 것**을 써야 한다 (`search/provenance.py` 정본).
 
-    ⛔ **첫 판은 문서 전체에서 글자를 찾았고, 그래서 안 물었다** — 타입 줄에서 등급 하나를
+    ⛔ **첫 버전은 문서 전체에서 글자를 찾았고, 그래서 안 물었다** — 타입 줄에서 등급 하나를
     지워도 **바로 아래 설명 주석에 남은 같은 글자**에 걸려 초록이었다. 읽는 사람이 보고
     구현하는 것은 그 union 이지 주석이 아니다. 그래서 **그 줄만** 본다.
     """

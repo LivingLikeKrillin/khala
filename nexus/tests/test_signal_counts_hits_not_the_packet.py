@@ -6,10 +6,10 @@
 아니라 다른 집합이다** — 앞엣것은 검색 히트, 뒤엣것은 모델에게 실제로 간 묶음이다.
 
 ⛔ **그래서 이 검사는 「같아야 한다」가 아니라 「달라도 된다」를 고정한다.** 다음 사람이
-어긋남으로 읽고 한쪽을 다른 쪽에 맞추면, `search_log` 1,190행의 뜻이 조용히 바뀐다.
+불일치로 읽고 한쪽을 다른 쪽에 맞추면, `search_log` 1,190행의 뜻이 조용히 바뀐다.
 
-⚠ 그리고 **어느 코퍼스를 봤는가**는 `tenant` 가 아니다. 그 칸은 principal 귀속이고
-(2026-09-02 에 목록을 TEXT 칸에 넣었다가 신호가 34시간 죽은 뒤 그렇게 정해졌다),
+⚠ 그리고 **어느 코퍼스를 봤는가**는 `tenant` 가 아니다. 그 필드는 principal 귀속이고
+(2026-09-02 에 목록을 TEXT 필드에 넣었다가 신호가 34시간 죽은 뒤 그렇게 정해졌다),
 답은 `read_scope` 와 `evidence_tenants` 에 있다.
 """
 
@@ -36,7 +36,7 @@ def test_the_packet_side_counts_the_packet():
 
 
 def test_both_sites_say_they_are_not_the_same_number():
-    """⚠ 주석이 없으면 다음 사람이 어긋남으로 읽는다 — 실제로 그렇게 읽혔다."""
+    """⚠ 주석이 없으면 다음 사람이 불일치로 읽는다 — 실제로 그렇게 읽혔다."""
     from nexus.search import evidence_packet
 
     for mod in (signals, evidence_packet):
@@ -46,7 +46,7 @@ def test_both_sites_say_they_are_not_the_same_number():
 
 
 def test_the_corpus_question_is_answered_by_another_field():
-    """⛔ `tenant` 로 「picasso 가 얼마나 쓰이나」를 세면 **0 으로 보인다** — 그 칸은
+    """⛔ `tenant` 로 「picasso 가 얼마나 쓰이나」를 세면 **0 으로 보인다** — 그 필드는
     principal 귀속이다. 답은 `read_scope`·`evidence_tenants` 에 있고, 둘 다 신호에 있다."""
     fields = set(signals.SearchSignals.__dataclass_fields__)
     assert {"read_scope", "evidence_tenants"} <= fields, (
@@ -56,7 +56,7 @@ def test_the_corpus_question_is_answered_by_another_field():
 
 def test_the_attribution_decision_is_written_down_where_it_is_made():
     """⚠ 이유가 코드 옆에 없으면 다음 사람이 '버그' 로 보고 고친다 — 고치면 34시간 사고가
-    다시 난다(목록을 TEXT 칸에 넣는 그 경로다)."""
+    다시 난다(목록을 TEXT 필드에 넣는 그 경로다)."""
     api = pathlib.Path(signals.__file__).parents[1] / "api.py"
     src = api.read_text(encoding="utf-8")
     # 셋이다 — `/search` · `/search/answer` · **스트리밍**. 셋째가 빠져 있어서 웹 채팅이
