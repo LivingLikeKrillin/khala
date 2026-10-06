@@ -125,7 +125,7 @@ The abstention detector is the instructive one. It had been a list of known refu
 
 Both evaluation packs reached their ceiling. The scores had gone up over the preceding week — and every point of that gain traced back to fixing the instrument. Retrieval and generation had not been touched.
 
-The two packs were reclassified as **regression nets**, not quality evidence, and the repository stopped citing their totals as a measure of how good the system is. A measure that cannot separate two systems is not measuring them.
+The two packs were reclassified as **regression suite**, not quality evidence, and the repository stopped citing their totals as a measure of how good the system is. A measure that cannot separate two systems is not measuring them.
 
 ### The grader passed a defect it was structurally unable to see
 **2026-08-18** · `feat(nexus): tell the user when the evidence does not fit the question`
@@ -171,7 +171,7 @@ Both facts had one cause. A substring test cannot distinguish a value that is cl
 
 The replacement asks where the value stands. Either in the lead, meaning the prose before the first table, quote or heading, which is the place the system's own prompt reserves for the answer. Or in a verdict segment, one opened by a conclusive connective. Everything else is laying evidence out.
 
-Three rounds per arm, majority per question, noise band read before any test:
+Three rounds per arm, majority per question, noise floor read before any test:
 
 | | with the change | without it | band | gap |
 |---|---|---|---|---|

@@ -1,5 +1,5 @@
 ---
-title: 기여 가이드 (Contributing)
+title: 기여 가이드
 description: Khala 오픈소스 생태계 기여 절차 및 컨벤션 안내.
 ---
 

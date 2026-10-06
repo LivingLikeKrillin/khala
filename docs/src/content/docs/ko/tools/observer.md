@@ -33,7 +33,7 @@ Observer는 결함이나 불일치가 검출되지 않은 정상 상태에서는
 <text class="kh-fig-s" x="352" y="186">merge order preserved</text>
 </svg>
 
-## 핵심 기능 명세
+## 핵심 개념
 
 - **플랫폼 프로파일 (Platform Profiles)** — 프레임워크별 파일 경로 패턴을 아키텍처 역할에 매핑하고 논리적 응집 그룹을 정의합니다.
 - **범위 및 관심사 분리 분석 (Scope & Cohesion Analysis)** — 수정 파일의 역할을 식별하고, 이기종 관심사가 혼재된 경우 심각도(Severity) 판정과 함께 순서 보존 분할 방안을 제시합니다.
