@@ -76,7 +76,7 @@ In short: **enterprise retrieval for grounded answers.** It's the context layer 
 - **Code anchors — the names a document calls, checked against the code as it is now.** Ingestion binds back-ticked symbols in each chunk to the code index. At answer time the packet reports how many of the names a cited paragraph uses still exist, and which do not, resolved in a single set query rather than one lookup per anchor. A document that says `FooService` after `FooService` was deleted stops being quietly authoritative.
 - **Follow-up questions are rewritten conservatively, or not at all.** "So when does that start?" has no content words. With conversation history present, the query is rewritten — but only four edits are permitted (fill in a pronoun, drop a formatting request, carry a fact the user supplied, drop a source restriction), and the original query is always kept as its own retrieval channel so a bad rewrite has a floor under it. With no history the model is not called at all.
 - **Staleness is shown, not enforced.** Answers carry a per-snippet age warning against a per-type TTL. It is a label for the reader; it deliberately does not re-rank or exclude anything.
-- **Honest absence.** If nothing can be cited, Nexus does not call the model at all — it returns a fixed statement that it has no evidence, and says so in the response payload.
+- **Deterministic abstention.** If nothing can be cited, Nexus does not call the model at all — it returns a fixed statement that it has no evidence, and says so in the response payload.
 - **Index, not storage.** Originals stay in Git and in Tempo. Nexus stores only derived data — chunks, embeddings, graph edges.
 
 ### What happens between the ranked list and the answer you read

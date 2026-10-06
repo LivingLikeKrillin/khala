@@ -7,7 +7,7 @@ Adept is the ledger half of Khala's answer to cognitive debt. The rest of the ec
 
 The framing is a ledger. Registered critical artifacts are the **denominator** — what must be known. Current vouches are the **numerator** — what someone can still explain. The gap is cognitive debt, and because it is measured, it can be repaid deliberately instead of discovered during an incident.
 
-<svg class="kh-fig" viewBox="0 0 560 230" role="img" aria-label="Adept reads the warehouse as the denominator: of 12 registered critical artifacts, 9 carry a current vouch and 3 do not. Coverage is 9 of 12; the artifact with no voucher tops the repayment hotlist.">
+<svg class="kh-fig" viewBox="0 0 560 230" role="img" aria-label="Adept reads the substrate as the denominator: of 12 registered critical artifacts, 9 carry a current vouch and 3 do not. Coverage is 9 of 12; the artifact with no voucher tops the repayment hotlist.">
 <defs><marker id="ad-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="kh-fig-ah" d="M0 0 L10 5 L0 10 z"/></marker></defs>
 <rect class="kh-fig-panel" x="24" y="28" width="250" height="180" rx="8"/>
 <text class="kh-fig-h" x="42" y="52">CRITICAL ARTIFACTS · 12</text>
@@ -57,7 +57,7 @@ Run `adept` from anywhere in your project — the root is the nearest `adept.man
 adept register PATH                    # register a critical artifact; prints its artifact_id
 adept due --as PERSON                  # due questions / artifacts needing questions
 adept coverage --as PERSON             # coverage, orphan hotlist, weakness map
-adept review ARTIFACT_ID --as PERSON   # headless self-drive (needs ANTHROPIC_API_KEY)
+adept review ARTIFACT_ID --as PERSON   # headless mode (needs ANTHROPIC_API_KEY)
 ```
 
 The agent-driven loop (`due` → `save-questions` → `record-attempt` → `coverage`) needs no API key — a Claude Code session supplies the cognition (question generation, grading, remediation). Only `adept review` calls the model directly.

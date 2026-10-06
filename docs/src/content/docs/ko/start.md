@@ -1,5 +1,5 @@
 ---
-title: 시작 가이드
+title: 시작하기
 description: 엔지니어링 목표별 도구 매핑 및 빠른 실행 가이드.
 ---
 
@@ -13,7 +13,7 @@ description: 엔지니어링 목표별 도구 매핑 및 빠른 실행 가이드
 | PR 영향도 분석 및 장애 트러블슈팅을 조직 텔레메트리에 연계 | [Observer](/ko/tools/observer/) | Nexus 지식 공유 계층 및 분산 추적(OTel) 결합 분석 |
 | 아키텍처 의사결정 및 사양 검토의 책임 추적성 확립 | [Arbiter](/ko/tools/arbiter/) | 사양 사전 승인 게이트 및 무결성 해시 원장 관리 |
 | 생성된 단위/통합 테스트의 실질적 결함 검출 능력 측정 | [Probe](/ko/tools/probe/) | AST 구문 변이 테스트(Mutation Testing) 하니스 |
-| 시스템 복잡도 대비 엔지니어링 조직의 인지 부채 계측 | [Adept](/ko/tools/adept/) | 코퍼스 대비 검증된 이해도(Vouch) 커버리지 측정 |
+| 시스템 복잡도 대비 엔지니어링 조직의 인지 부채 계측 | [Adept](/ko/tools/adept/) | 코퍼스 대비 검증된 Vouch 커버리지 측정 |
 
 ## 5분 빠른 시작: Nexus 로컬 기동
 
@@ -44,7 +44,7 @@ docker compose exec -T nexus-app python -m scripts.migrate   # 데이터베이�
 docker compose exec nexus-app nexus ingest ./docs
 ```
 
-브라우저에서 `http://localhost:8000/` 접속 후 질의를 수행하면 인용된 청크 식별자 및 근거 패킷과 함께 응답이 제공됩니다.
+브라우저에서 `http://localhost:8000/` 접속 후 질의를 수행하면 인용된 청크 식별자 및 답변 근거 패킷과 함께 응답이 제공됩니다.
 
 - 서비스 중지: `task down` (또는 `docker compose down`)
 - 서비스 갱신: `git pull` 후 `task update` (재빌드 및 DB 마이그레이션 적용)
