@@ -7,7 +7,7 @@ updated: 2026-09-18
 # 합성 SOP 6종 — picasso 코퍼스 평가용
 
 > ⚠ **여기 있는 것은 전부 지어낸 문서다.** 현장 절차가 아니고, 운영에 쓰면 안 된다.
-> 여섯 편 모두 `labels: [synthetic]` 을 선언하고, 그 표식은 검색 결과의 히트마다
+> 여섯 편 모두 `labels: [synthetic]` 을 선언하고, 그 마커는 검색 결과의 히트마다
 > `synthetic: true` 로 실려 나간다.
 
 ## 왜 있나
@@ -17,7 +17,7 @@ updated: 2026-09-18
 필요한데, 현장 SOP 는 없다.
 
 그래서 지어냈다. 지어낸 것을 지어냈다고 표시하는 것이 이 디렉터리의 절반이다 —
-표식이 없으면 이 여섯 편이 실제 운영 문서와 같은 얼굴로 근거에 실린다. **검색이 잘 될수록
+마커가 없으면 이 여섯 편이 실제 운영 문서와 같은 얼굴로 답변 근거에 실린다. **검색이 잘 될수록
 나쁜 종류의 결함이다**: 지어낸 절차를 정확히 인용해 온다.
 
 ## 적재
@@ -36,7 +36,7 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 | 키 | 무엇 | 안 적으면 |
 |---|---|---|
 | `title` | 문서 제목 | 첫 제목 줄에서 뽑는다 |
-| `labels` | 자칭 라벨. **`synthetic` 하나만** 자칭할 수 있다 | 표식 없이 실린다 |
+| `labels` | 자칭 라벨. **`synthetic` 하나만** 자칭할 수 있다 | 마커 없이 실린다 |
 | `doc_type` | 문서 종류. 여기 여섯 편은 `policy` | 경로에서 추론한다 |
 | `updated` | **원본이 말하는 수정 시각** → `documents.origin_updated_at` | 시각 미상이 되고 시각 범위 질의가 이 문서를 **거를 수 없다** |
 
@@ -49,7 +49,7 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 
 ## 무엇을 덮고 무엇을 비웠나
 
-⭐ **일부러 다 덮지 않았다.** 근거가 없는 사건이 남아 있어야 *"근거 없을 때 모른다고
+⭐ **일부러 다 덮지 않았다.** 답변 근거가 없는 사례가 남아 있어야 *"답변 근거 없을 때 모른다고
 답하는가"* 를 측정할 수 있다. 여섯 편이 15종 분류를 다 덮으면 그 측정이 불가능해진다.
 
 | `FailureClass` | 절차 | 어디 |
@@ -75,14 +75,14 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 `VERIFICATION_MISMATCH` (SOP-02), 탐색 대장의 `FOUND`/`NONE`(`NO_CAPABILITY` ·
 `DEPTH_LIMIT`)/`WITHHELD`/`SOURCE_MISSING` (SOP-03).
 
-⛔ **`SOURCE_MISSING` 은 2026-09-22 에 뒤늦게 들어왔다.** 미들웨어가 그 갈래를 만들면서
+⛔ **`SOURCE_MISSING` 은 2026-09-22 에 뒤늦게 들어왔다.** 미들웨어가 그 하위 범주를 만들면서
 설계 문서 둘(`orchestration.md` 의 대장 표 · `limits.md` §15.183)에는 적었는데, 이 SOP 의
-결과 갈래 표에는 셋만 있었다. **설명 계층이 그 토큰으로 물었을 때 코퍼스에 낱말이 없어
+결과 하위 범주 표에는 셋만 있었다. **설명 계층이 그 토큰으로 물었을 때 코퍼스에 낱말이 없어
 답이 안 나왔고**, 그렇게 바깥에서 보고가 와서야 알았다.
 
 ⚠ **이 갱신은 측정 경계를 만든다.** 식별자 채널(사전 등록 T2)은 코퍼스에 있는 낱말만
 도울 수 있으므로, 이 줄을 더한 뒤의 실행과 그 전의 실행은 **같은 코퍼스가 아니다.**
-설명 계층이 자기 기록의 환경 칸에 코퍼스 판을 적고 그 경계를 가로질러 비교하지 않기로 했다.
+설명 계층이 자기 기록의 환경 필드에 코퍼스 버전을 적고 그 경계를 가로질러 비교하지 않기로 했다.
 ⛔ 그래서 **고친 시각을 같이 알려야 한다** — 값만 고치고 말하지 않으면 저쪽 대조가
 조용히 섞인다.
 
@@ -92,13 +92,13 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 그래서 *"`ROBOT_FELL` 이 뭔가"* 라고 물으면 정의는 나온다. 비어 있는 것은 **절차**이지
 용어가 아니다.
 
-근거 없는 사건을 만들려면 질문을 **절차 쪽으로** 세워야 한다 — 예를 들어
+답변 근거 없는 사례를 만들려면 질문을 **절차 쪽으로** 세워야 한다 — 예를 들어
 *"기체가 넘어졌을 때 자재를 어떻게 회수하는가"*. 어느 편을 얼마나 비울지는 골든셋을
 짜는 쪽에서 정하고, 필요하면 이 표를 그때 다시 맞춘다.
 
 ## ⚠ 어휘 대조에서 셋이 걸렸다 (2026-09-18)
 
-설명 계층이 이 문서들을 **근거로 인용한다.** 그래서 틀린 상태 이름은 그대로 운영자에게
+설명 계층이 이 문서들을 **답변 근거로 인용한다.** 그래서 틀린 상태 이름은 그대로 운영자에게
 전달되고, **인용 검증은 그것을 못 잡는다** — 검증은 *"그 문서가 그렇게 적혀 있는가"* 를
 보지 *"그 문서가 맞는가"* 를 보지 않는다.
 
@@ -119,8 +119,8 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 | enum | 값 | 어디 |
 |---|---|---|
 | `UnitState` (9) | `PENDING` · `IN_DOUBT` · `RUNNING` · `VERIFYING` · `OPERATOR_HOLD` · `DONE` · `UNVERIFIED` · `FAILED` · `ABORTED` | picasso `Model.kt:73` |
-| `PhysicalState` (11) | `REQUESTED` · `ACCEPTED` · `RUNNING` · `PARTIAL` · `IN_DOUBT` · `OPERATOR_HOLD` · `PHYSICALLY_DONE` · `UNVERIFIED` · `FAILED` · `CANCELING` · `ABORTED` | `Model.kt:24` · 코퍼스 `architecture.md:98` 왼쪽 칸 |
-| `TaskState` (10) | `ACCEPTED` · `RUNNING` · `PAUSED` · `SUCCEEDED` · `FAILED` · `RETRIABLE` · `NEEDS_INTERVENTION` · `CANCELLING` · `CANCELLED` · `CANCELLED_RECOVERY_FAILED` | 계약 · `architecture.md:98` 오른쪽 칸 |
+| `PhysicalState` (11) | `REQUESTED` · `ACCEPTED` · `RUNNING` · `PARTIAL` · `IN_DOUBT` · `OPERATOR_HOLD` · `PHYSICALLY_DONE` · `UNVERIFIED` · `FAILED` · `CANCELING` · `ABORTED` | `Model.kt:24` · 코퍼스 `architecture.md:98` 왼쪽 필드 |
+| `TaskState` (10) | `ACCEPTED` · `RUNNING` · `PAUSED` · `SUCCEEDED` · `FAILED` · `RETRIABLE` · `NEEDS_INTERVENTION` · `CANCELLING` · `CANCELLED` · `CANCELLED_RECOVERY_FAILED` | 계약 · `architecture.md:98` 오른쪽 필드 |
 
 **`UnitState` 와 `PhysicalState` 가 공유하는 값 여섯** — `IN_DOUBT` · `RUNNING` ·
 `OPERATOR_HOLD` · `UNVERIFIED` · `FAILED` · `ABORTED`.
@@ -144,7 +144,7 @@ docker exec nexus-app python -m nexus.cli ingest /app/synthetic/picasso-sop --te
 
 ⚠ **`DEPTH_LIMIT`(SOP-03 §6)은 실물에서 안 밟힌다.** 파지가 네 값인데 효과가 내는 것은
 둘뿐이라, 너비 우선 탐색이 깊이 상한에 닿기 전에 볼 것이 없어진다. 문서에 남겨 두는 것은
-해롭지 않지만 **골든셋의 정답으로 쓰면 영영 안 나오는 사건을 묻는 셈**이다.
+해롭지 않지만 **골든셋의 정답으로 쓰면 영영 안 나오는 사례를 묻는 셈**이다.
 
 ## 내용의 현실성은 검토가 필요하다
 

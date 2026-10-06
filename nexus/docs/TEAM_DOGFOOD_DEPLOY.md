@@ -12,7 +12,7 @@ Nexus는 로컬 무마찰 온램프를 위해 `NEXUS_DEV_TOKEN`을 켜면:
 
 로컬(localhost)에선 안전하지만, 터널로 그냥 열면 **URL을 아는 누구/무엇(자동 스캐너 포함)이든 INTERNAL 코퍼스 전체를 무인증으로 읽는다.** 안정 서브도메인은 TLS 인증서가 **Certificate Transparency 로그에 공개**되어 며칠이면 발견된다 — "URL 아무도 모름"은 성립하지 않는다.
 
-→ **Cloudflare Access를 터널 호스트네임 앞에 걸어** 엣지에서 신원을 막으면, `/auth/dev-token`에 **도달하기 전에** 차단된다. 그러면 이 온램프가 오히려 기능이 된다: Access = "누가 들어오나", Nexus 공유 토큰 = "무엇을 보나". 코드 0줄.
+→ **Cloudflare Access를 터널 호스트네임 앞에 걸어** 엣지에서 식별 정보를 막으면, `/auth/dev-token`에 **도달하기 전에** 차단된다. 그러면 이 온램프가 오히려 기능이 된다: Access = "누가 들어오나", Nexus 공유 토큰 = "무엇을 보나". 코드 0줄.
 
 ## 1. 강한 dev 토큰 발급 (약한 기본값 금지)
 
@@ -137,7 +137,7 @@ task ingest:self
 - 콘텐츠 해시 멱등 — 반복 실행해도 변경분만 다시 인덱싱된다.
 - 정본이 바뀌면 **다시 돌려야 반영된다**(자동 추적 없음).
 - 적재 전후로 정책 8질의 평가를 2런씩 돌려 **7/8 유지 · 정책 답변 8건 어디에도 이 문서들이
-  근거로 섞이지 않음**을 확인했다(2026-08-24). 다른 테넌트는 `TENANT=<이름>`.
+  답변 근거로 섞이지 않음**을 확인했다(2026-08-24). 다른 테넌트는 `TENANT=<이름>`.
 
 ### 5.1 삭제 반영 (재조정)
 
@@ -162,7 +162,7 @@ task ingest:notion ROOTS="<pageId1>,<pageId2>" FLAGS="--reconcile"
   판정 대상이다. rootA·rootB 양쪽에 걸린 페이지를 rootA만 걷고 지우는 일은 일어나지 않는다.
 - prune 대상이 활성 문서의 **50%를 넘으면 거부**하고 아무것도 적용하지 않는다(`--roots` 오타 방어).
   의도한 대량 정리라면 `--force`.
-- 되살릴 때 **현재 세대의 청크만** 복구된다. 낡은 본문이 검색에 돌아오지 않는다.
+- 되살릴 때 **현재 세대의 청크만** 복구된다. 스테일 본문이 검색에 돌아오지 않는다.
 - 명시적으로 `supersede`한 문서는 재조정이 건드리지 않는다(양방향 모두).
 
 ### 알려진 한계 (적재 전에 알고 들어갈 것)
@@ -181,7 +181,7 @@ task ingest:notion ROOTS="<pageId1>,<pageId2>" FLAGS="--reconcile"
 - [ ] `NEXUS_DEV_TOKEN`이 강값(≈43자), `NEXUS_REQUIRE_STRONG_DEV_TOKEN=1` — 약한 값이면 부트 거부됨을 확인
 - [ ] `cloudflared tunnel run` 동작, `https://nexus.<도메인>` 응답
 - [ ] **Access 정책이 실제로 막는지**: 비인가 이메일/시크릿창으로 접속 → OTP 화면에서 막힘
-- [ ] 인가된 팀원: OTP 통과 → 검색되고 인용 근거/신뢰 배지 보임
+- [ ] 인가된 팀원: OTP 통과 → 검색되고 인용 답변 근거/신뢰 배지 보임
 - [ ] Notion 코퍼스가 검색에 반영됨
 - [ ] 첫 `--reconcile`을 `--since` 없이 1회 실행(=`prov_inputs` 백필) → 이후 cron 에 `--reconcile` 상시 부착 가능
 - [ ] Notion 에서 시험용 페이지 1개를 지우고 `--reconcile --dry-run` → `pruned=1` 로 잡히는지 확인
@@ -231,7 +231,7 @@ curl -s localhost:8000/status | jq '{embedding_model, embedding_column, embeddin
 
 ## 7. 이 배포를 위한 코드 하드닝 (구현됨)
 
-`nexus/nexus/auth/config.py` — **약한 dev 토큰 가드**:
+`nexus/nexus/auth/config.py` — **약한 dev 토큰 가드 검사**:
 - `NEXUS_DEV_TOKEN`이 약함(기본값 `nexus-local-dev` 또는 24자 미만)이면 부트 시 **경고**.
 - `NEXUS_REQUIRE_STRONG_DEV_TOKEN=1`이면 약한 토큰에 **부트 거부**(RuntimeError).
 - 로컬 무마찰(경고만)은 그대로, 터널 배포(강제)만 하드락 — 두 목적 양립.

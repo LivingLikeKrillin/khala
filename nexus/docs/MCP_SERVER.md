@@ -71,12 +71,12 @@ python -m nexus.mcp --transport http --port 8001
 | 도구 | 설명 | 주요 파라미터 |
 |------|------|---------------|
 | `nexus_search` | 하이브리드 검색 (BM25 + Vector + Graph) | `query`, `top_k`, `route`, `tenant` |
-| `nexus_answer` | 검색 + LLM 근거 기반 답변 | `query`, `top_k`, `tenant` |
+| `nexus_answer` | 검색 + LLM 답변 근거 기반 답변 | `query`, `top_k`, `tenant` |
 | `nexus_graph` | 엔티티 관계 그래프 조회 | `entity`, `hops`, `tenant` |
 | `nexus_suggest` | 엔티티 자동완성/검색 | `query`, `tenant`, `limit` |
 | `nexus_diff` | 설계-관측 불일치 보고서 | `flag_filter`, `entity_filter`, `tenant` |
 | `nexus_status` | 시스템 상태 확인 | (없음) |
-| `nexus_supersede` | 문서 supersession 선언 — **파괴적**(대상 문서가 검색에서 사라짐) | `old_ref`, `new_ref`, `tenant` |
+| `nexus_supersede` | 문서 supersession 명시적 선언 — **파괴적**(대상 문서가 검색에서 사라짐) | `old_ref`, `new_ref`, `tenant` |
 | `archon_claim_value` | 개념의 현재 값을 코드 상수에서 조회 | `concept`, `tenant`, `classification_max` |
 | `archon_grade_authority` | 등급/열거형 권한 질의 | `grade`, `enum_name`, `subpath` |
 
@@ -89,7 +89,7 @@ Agent가 MCP를 통해 Nexus에 질의하는 흐름:
 ```
 Agent: "결제 서비스가 발행하는 Kafka 토픽이 뭐야?"
   → nexus_answer(query="결제 서비스가 발행하는 Kafka 토픽")
-  → 근거 기반 답변 + 출처 chunk 반환
+  → 답변 근거 기반 답변 + 출처 chunk 반환
 
 Agent: "payment-service의 관계를 보여줘"
   → nexus_graph(entity="payment-service", hops=1)

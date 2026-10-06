@@ -42,7 +42,7 @@ Nexus는 단독 검색 도구가 아니라, 다음 AI Agent들의 초석이다:
 |-----------|---------------|-------------------|
 | 맥락 기반 Code Review | PR이 변경하는 서비스 간 호출이 실제 프로덕션과 일치하는가? | 설계 edge (CALLS) + 관측 edge (CALLS_OBSERVED) + diff flag |
 | 맥락 기반 Troubleshooting | 장애 경로가 문서 경로와 다른가? 어디서 갈라졌나? | CALLS_OBSERVED 경로 + 문서 경로 + semantic mismatch |
-| 문서 검색 (Q&A) | 이 개념/정책/구조가 문서에서 어떻게 정의되어 있는가? | Hybrid Search + 근거 chunk + 출처 |
+| 문서 검색 (Q&A) | 이 개념/정책/구조가 문서에서 어떻게 정의되어 있는가? | Hybrid Search + 답변 근거 chunk + 출처 |
 
 ### 1.2 로드맵 체계
 
@@ -70,7 +70,7 @@ Nexus는 단독 검색 도구가 아니라, 다음 AI Agent들의 초석이다:
 | OTel Collector | Docker container | OTLP trace 수신 |
 | Tempo | Docker container | Trace 저장 + 쿼리 backend |
 | FastAPI | 앱 container | Indexer, Search, OTel Aggregator, API |
-| Claude Sonnet | External API | 근거 기반 답변 생성 |
+| Claude Sonnet | External API | 답변 근거 기반 답변 생성 |
 
 ### 2.2 경계 설계
 
@@ -454,7 +454,7 @@ class LLMService:
     """LLM 답변 생성. Claude API 직접 호출을 격리."""
 
     async def generate(self, messages: list, evidence: EvidencePacket) -> str:
-        """근거 기반 답변 생성. 2.0에서 Multi-LLM으로 교체 가능."""
+        """답변 근거 기반 답변 생성. 2.0에서 Multi-LLM으로 교체 가능."""
         # Claude API 호출
         ...
 
@@ -557,7 +557,7 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 | RRF Fusion (BM25 top-20 + Vector top-20, k=60) | search.py |
 | Pre-filter (classification + quarantine) | search.py 내 |
 | Evidence Packet 조립 | evidence.py |
-| `LLMService` 연동 + 근거 기반 답변 | answer.py |
+| `LLMService` 연동 + 답변 근거 기반 답변 | answer.py |
 | CLI: `nexus query '질문'` → 답변 + 출처 | cli.py |
 
 > **Day 4 완료 (★ 첫 번째 마일스톤)**:
@@ -576,7 +576,7 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 | `GraphRepository`로 1-hop 쿼리 | graph_query.py |
 | 검색 통합: Hybrid → entity 추출 → graph 확장 | search.py 확장 |
 
-> **Day 5 완료**: '결제 서비스 의존성' → CALLS/PUBLISHES edge + 근거 chunk.
+> **Day 5 완료**: '결제 서비스 의존성' → CALLS/PUBLISHES edge + 답변 근거 chunk.
 
 #### Day 6: OTel 수집 + Aggregation
 
@@ -676,7 +676,7 @@ Claude Code 적극 활용 전제. 3개 구간으로 구분된다.
 | 7 | Classification | RESTRICTED 문서 | 일반 검색에서 미반환 |
 | 8 | Evidence link | edge evidence 확인 | chunk이 relation 언급 |
 | 9 | Graph 1-hop | entity 이웃 조회 | 연결된 entity + edge |
-| 10 | LLM 근거 | LLM 답변 | doc_uri 인용 포함 |
+| 10 | LLM 답변 근거 | LLM 답변 | doc_uri 인용 포함 |
 | 11 | OTel 집계 | A→B trace 전송 | CALLS_OBSERVED edge 생성 |
 | 12 | Dead Doc | 문서: A→B, trace: 없음 | doc_only flag |
 | 13 | Shadow Dep | trace: A→C, 문서: 없음 | observed_only flag |
