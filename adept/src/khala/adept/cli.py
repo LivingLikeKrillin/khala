@@ -4,7 +4,7 @@ Agent-driven loop (no API key): `due` -> `save-questions` -> `record-attempt` ->
 `coverage`. The Claude Code agent supplies cognition (questions, grading,
 remediation); adept owns the question store, attempt ledger, and pure derivations.
 
-Headless self-drive: `review` uses the v0 LLM seam (AnthropicLLM via `_make_llm`),
+Headless mode: `review` uses the v0 LLM seam (AnthropicLLM via `_make_llm`),
 generating questions and grading itself. Tests monkeypatch `khala.adept.cli._make_llm`.
 """
 
@@ -236,7 +236,7 @@ def review(
     ledger: str = typer.Option(None, "--ledger", help="Attempt ledger (default: beside manifest)."),
     n: int = typer.Option(DEFAULT_N_QUESTIONS, "--n", help="Number of questions to generate."),
 ) -> None:
-    """Headless self-drive: generate questions (if needed), grade answers, record attempts.
+    """Headless mode: generate questions (if needed), grade answers, record attempts.
 
     This is the only LLM-calling path (keyed AnthropicLLM via `_make_llm`). The
     agent-driven loop uses the primitives above instead (keyless).

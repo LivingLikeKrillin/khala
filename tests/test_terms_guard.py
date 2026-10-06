@@ -9,7 +9,7 @@
 갖고 있고, 그것을 복제하면 두 판정이 갈라진다. 이 파일이 더하는 것은 **대화에만 있는 것**
 셋뿐이다: 펜스 코드 블록 · 인용 줄 · 재귀 방지.
 
-⚠ **거짓 양성 하나면 매 턴이 막힌다.** 그래서 이 스위트의 절반은 "막지 말아야 할 것" 이다.
+⚠ **오탐 하나면 매 턴이 막힌다.** 그래서 이 스위트의 절반은 "막지 말아야 할 것" 이다.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ def test_a_coined_word_in_my_report_is_blocked():
 def test_the_real_slip_that_prompted_this_hook():
     """실물(2026-08-27). 뜻은 「8월 25일자」의 날짜 접미사였지 금지어가 아니었다 — 그런데
     **읽는 사람이 못 가른다.** 숫자 경계는 붙었을 때(`25자`)만 단위로 봐주므로 띄우면 걸리고,
-    그게 맞다. 처방은 예외를 다는 게 아니라 풀어 쓰는 것이다."""
+    그게 맞다. 조치 방법은 예외를 다는 게 아니라 풀어 쓰는 것이다."""
     hits = terms_guard.offenders("미추적 2건은 8/25 자 로컬 잔여물이다", BANNED)
     assert [h[0] for h in hits] == ["자"]
 
@@ -159,7 +159,7 @@ def test_it_survives_a_cp949_console():
 
 
 def test_the_settings_file_wires_this_hook():
-    """훅은 등록돼야 돈다. 파일만 있고 배선이 없으면 **없는 검사**다."""
+    """훅은 등록돼야 돈다. 파일만 있고 와이어링이 없으면 **없는 검사**다."""
     settings = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))
     commands = [h["command"]
                 for entry in settings.get("hooks", {}).get("Stop", [])

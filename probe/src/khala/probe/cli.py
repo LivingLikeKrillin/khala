@@ -1,14 +1,14 @@
-"""Probe CLI — 결정론 척추를 두 명령으로, 판단은 있어야 할 곳(CLI 밖)에 남긴다.
+"""Probe CLI — 결정론적 척추를 두 명령으로, 판단은 있어야 할 곳(CLI 밖)에 남긴다.
 
 SPEC-probe-cli. 여태 Probe 를 쓰려면 SKILL.md 의 파이썬 블록 6개를 손으로 붙여넣어야 했다 —
-"도구가 아니다"(감사). 이 CLI 가 결정론 부분(변이 실행·survivor·원장·리포트)을 명령으로 감싼다.
+"도구가 아니다"(감사). 이 CLI 가 결정론적 부분(변이 실행·survivor·원장·리포트)을 명령으로 감싼다.
 
     probe survey [--base HEAD~1] [--module PATH ...]
-        # 변이 척추 → survivor + fresh Critic 프롬프트
+        # 변이 파이프라인 → survivor + fresh Critic 프롬프트
     (에이전트/사람이 프롬프트로 Test Quality Critic 을 dispatch → verdicts.json)   ← CLI 밖, 설계상
     probe absorb --verdicts verdicts.json --survey probe-survey.json   # 판정 흡수 → 원장 + 리포트
 
-핵심(SPEC §2): 러너(결정론, LLM 없음)와 Critic(판단)을 섞지 않는다. CLI 는 LLM 을 부르지 않는다 —
+핵심(SPEC §2): 러너(결정론적, LLM 없음)와 Critic(판단)을 섞지 않는다. CLI 는 LLM 을 부르지 않는다 —
 판정은 파일 경계 너머 에이전트가 한다. mutate/list_modules/collect 는 주입 가능(테스트용).
 """
 
@@ -98,7 +98,7 @@ def build_cli(
     prompt_template: str | None = None,
     today_fn=datetime.date.today,
 ) -> typer.Typer:
-    """결정론 함수들을 명령으로 노출한다. 주입점은 테스트용(프로덕션은 기본값=실제 러너)."""
+    """결정론적 함수들을 명령으로 노출한다. 주입점은 테스트용(프로덕션은 기본값=실제 러너)."""
     app = typer.Typer(help="Probe — 변이 구동 테스트 품질 하네스 CLI", no_args_is_help=True)
 
     def _prompt() -> str:

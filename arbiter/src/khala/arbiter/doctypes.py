@@ -71,13 +71,13 @@ def lifecycle_of(type_name: str) -> str:
 
 
 def normalize_kind(csf_kind: str) -> str:
-    """레거시 CSF kind → 축-A 정본 타입. alias 없으면 그대로(상류 1회 정규화)."""
+    """레거시 CSF kind → 차원-A 정본 타입. alias 없으면 그대로(상류 1회 정규화)."""
     _, _, aliases = _load()
     return aliases.get(csf_kind, csf_kind)
 
 
 def arbiter_type_of(type_name: str) -> str | None:
-    """축-A 타입 → Arbiter 어휘(spec/adr). 비-T1 이면 None."""
+    """차원-A 타입 → Arbiter 어휘(spec/adr). 비-T1 이면 None."""
     return _load()[0].get(type_name, DocType(type_name, "T3", False, False)).arbiter_type
 
 

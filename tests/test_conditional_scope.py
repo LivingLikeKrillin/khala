@@ -38,7 +38,7 @@ def test_it_reads_the_table_and_the_declaration():
 
 
 def test_it_stops_at_the_next_section():
-    """§5 로 넘어간 뒤의 목록을 §4 의 선언으로 읽으면, 다른 절에 적힌 SPEC 이름이
+    """§5 로 넘어간 뒤의 목록을 §4 의 명시적 선언으로 읽으면, 다른 절에 적힌 SPEC 이름이
     조용히 처분으로 세어진다."""
     spill = _SEC4 + "\n- `SPEC-nexus-gamma` — 여기는 §5 다\n"
     assert "SPEC-nexus-gamma.md" not in accounted(spill)
@@ -52,7 +52,7 @@ def test_an_unaccounted_spec_is_caught():
 
 
 def test_a_declaration_for_a_spec_that_does_not_exist_is_caught_too():
-    """지운 SPEC 을 선언에 남겨 두면 목록이 실제보다 커 보이고, 그 방향으로는
+    """지운 SPEC 을 명시적 선언에 남겨 두면 목록이 실제보다 커 보이고, 그 방향으로는
     영원히 붉어지지 않는다."""
     bad = problems(_SEC4, {"SPEC-nexus-alpha.md"})
     assert len(bad) == 1 and "beta" in bad[0]
@@ -73,7 +73,7 @@ def test_all_three_heading_forms_are_found():
 
 
 def test_the_real_file_agrees_with_itself():
-    """정본. 빨간불이면 §4 표에 줄을 넣거나 선언 목록에 어디서 세는지 적어라."""
+    """정본. 빨간불이면 §4 표에 줄을 넣거나 명시적 선언 목록에 어디서 세는지 적어라."""
     assert problems(OPEN_MD_TEXT, specs_with_open_sections()) == []
 
 

@@ -18,16 +18,16 @@
 
 ---
 
-Khala answers the **two failure modes of the AI era — the machine lies, and the
+Khala answers the **two failure modes of the AI era — confident hallucination, and the
 human stops judging** — with deterministic grounding, not advice. Khala is not a
 tool you run; it is the link the tools share. The ecosystem is **Khala**; one of
 its components is **Nexus**.
 
-- **The machine lies** — stale or wrong, asserted with confidence. Defended by
+- **confident hallucination** — stale or wrong, asserted with confidence. Defended by
   grounding answers in verifiable sources — and by mechanical checks, not trust:
   every citation is verified against the retrieved evidence, answer numbers must
   appear in that evidence, and answers built on stale sources are flagged.
-- **The human stops judging** — AI output rubber-stamped without reading.
+- **rubber-stamping** — AI output rubber-stamped without reading.
   Defended by making accountable review a gate before code is written.
 
 ## One substrate, four kinds of information

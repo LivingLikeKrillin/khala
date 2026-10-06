@@ -56,7 +56,7 @@ def test_a_document_that_no_longer_exists_fails(tmp_path, monkeypatch, capsys):
 
 def test_a_source_that_moved_out_from_under_a_live_document_fails(tmp_path, monkeypatch, capsys):
     """⛔ 문서가 제자리에 있다고 앵커가 성한 것이 아니다. 옮겨간 것은 **코드** 쪽이 더 흔하고,
-    그 경우 문서는 멀쩡히 남아 낡은 것을 서술한다."""
+    그 경우 문서는 멀쩡히 남아 스테일한 것을 서술한다."""
     m = _manifest(tmp_path, [{"doc": "README.md", "sources": ["nexus/nexus/gone.py"]}])
     assert _run(monkeypatch, m) == 1
     out = capsys.readouterr().out

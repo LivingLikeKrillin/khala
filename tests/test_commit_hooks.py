@@ -1,9 +1,9 @@
-"""커밋 훅 두 층 — 메시지와 파일 내용.
+"""커밋 훅 두 계층 — 메시지와 파일 내용.
 
 ⛔ **왜 있나 (2026-09-03).** `commit-msg` 훅은 커밋 **메시지**의 지문을 막는다. 그 머리말이 이유를
 적어 두었다: *"CI 가 머지 전에 잡아 주지만 그때는 이미 원격 브랜치에 올라가 있고, GitHub 은 PR 이
 고정한 커밋을 그 뒤에도 SHA 로 계속 열어준다."* 같은 논리가 **파일 내용**에도 그대로 걸리는데
-그 층은 없었고, 그 구멍으로 실제 Notion 페이지 ID 가 테스트 상수에 실려 공개 브랜치에 올라갔다.
+그 계층은 없었고, 그 구멍으로 실제 Notion 페이지 ID 가 테스트 상수에 실려 공개 브랜치에 올라갔다.
 
 ⭐ 그날 로컬 검사는 **돌았고 실패했다.** 그런데도 커밋이 지나간 이유는 호출 형태다 —
 `fingerprint_scan.py | tail -2` 로 부르면 파이프라인의 종료 코드는 `tail` 의 것이라 **항상 0**
@@ -64,6 +64,6 @@ def test_each_hook_says_why_it_stopped():
 
 
 def test_the_hooks_record_that_bypass_is_allowed():
-    """훅은 실수를 막는 층이지 사람을 막는 층이 아니다 — 강제하는 곳은 CI 다."""
+    """훅은 실수를 막는 계층이지 사람을 막는 계층이 아니다 — 강제하는 곳은 CI 다."""
     for name in ("commit-msg", "pre-commit"):
         assert "--no-verify" in (HOOKS / name).read_text(encoding="utf-8")

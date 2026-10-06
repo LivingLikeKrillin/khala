@@ -2,7 +2,7 @@
 
 두 명령을 cosmic-ray 없이·라이브 Critic 없이 단위 테스트한다: 변이 실행 단계(mutate)와 변경 모듈
 나열(list_modules)과 suite 수집(collect)을 주입하고, Critic 판정은 테스트가 쓰는 파일로 대체한다.
-CliRunner 로 실제 명령 표면을 두드린다.
+CliRunner 로 실제 명령 API 표면을 두드린다.
 
 여기서 고정하는 불변식:
   · survey 는 fresh survivor마다 슬롯이 채워진 Critic 프롬프트를

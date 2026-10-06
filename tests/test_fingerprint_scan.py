@@ -1,11 +1,11 @@
 """지문 검사에 이가 있는가.
 
-첫 판의 이 검사는 32자 16진을 **맥락 없이** 잡아 123건을 냈다 — k8s 평가 코퍼스의 UID 와
+첫 버전의 이 검사는 32자 16진을 **맥락 없이** 잡아 123건을 냈다 — k8s 평가 코퍼스의 UID 와
 probe 픽스처의 콘텐츠 해시까지. 그 소음에 음성 대조군이 파묻혀서, 검사가 도는지조차 안 보였다.
 많이 잡는 검사는 아무것도 안 잡는 검사와 같다.
 
 그래서 여기서 네 가지를 다 측정한다. 셋은 **발화해야** 하고 하나는 **발화하면 안 된다.**
-발화만 확인하는 검사는 이 리포가 반복해서 잡아낸 무효 대조군이다.
+발동만 확인하는 검사는 이 리포가 반복해서 잡아낸 무효 대조군이다.
 """
 
 from __future__ import annotations
@@ -19,9 +19,9 @@ sys.path.insert(0, str(ROOT / "scripts"))       # 리포 관례 — tests/test_l
 from fingerprint_scan import scan, tracked_files  # noqa: E402
 
 
-# 탐침 문자열은 **런타임에 조립한다.** 이 파일도 추적되므로, 지문을 문자 그대로 담으면 검사가
+# 프로브 문자열은 **런타임에 조립한다.** 이 파일도 추적되므로, 지문을 문자 그대로 담으면 검사가
 # 자기 대조군을 잡아 영원히 붉다(실제로 그렇게 됐고 CI 가 잡았다). SKIP 에 이 파일을 넣는 쪽이
-# 쉬웠지만 그러면 진짜 지문이 숨을 자리가 하나 생긴다 — 검사를 무디게 하는 대신 탐침을 접는다.
+# 쉬웠지만 그러면 진짜 지문이 숨을 자리가 하나 생긴다 — 검사를 무디게 하는 대신 프로브를 접는다.
 _ORG = "PF" + "Play"
 _UID = "9f8e7d6c-5b4a-4392-8170-6d5c4b3a2918"      # 합성. 어느 워크스페이스도 안 가리킨다
 
@@ -129,7 +129,7 @@ def test_the_text_mode_does_not_silently_scan_nothing(tmp_path):
     f = tmp_path / "commit-messages.txt"
     f.write_text("", encoding="utf-8")
     assert fs.scan_streams([str(f)]) == []          # 빈 것은 빈 것이다
-    # 그래서 CI 는 fetch-depth: 0 을 쓴다. 그 배선이 사라지면 이 주석이 근거다.
+    # 그래서 CI 는 fetch-depth: 0 을 쓴다. 그 와이어링이 사라지면 이 주석이 근거다.
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "fetch-depth: 0" in ci, "얕은 클론이면 커밋 범위가 비고, 검사는 조용히 통과한다"
 

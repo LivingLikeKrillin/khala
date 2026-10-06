@@ -1,6 +1,6 @@
 """타입별 운용 가이드라인 (S2). 딥리서치(2026-06-25) 근거.
 
-각 축-A 타입을 어떻게 저작·관리·운용할지 요지+근거. promote 반환과 MCP guide 도구가
+각 차원-A 타입을 어떻게 저작·관리·운용할지 요지+답변 근거. promote 반환과 MCP guide 도구가
 소비한다(inert 문서 아님). 타입 정규화는 doctypes.normalize_kind 재사용(레거시 SPEC→DESIGN).
 """
 
@@ -11,7 +11,7 @@ from . import doctypes
 # 모든 타입 공통 — doc-rot 최강 치료제(SWE at Google ch10).
 _CROSS_CUTTING = "공통: owner 명시 · 소스컨트롤 · 이슈 추적 · 정기 staleness 점검(docs-as-code)."
 
-# 축-A 타입 → 운용 요지(근거). 간결(읽히게).
+# 차원-A 타입 → 운용 요지(답변 근거). 간결(읽히게).
 GUIDANCE = {
     "ADR": (
         "불변+supersede: accepted 후 수정 금지 — 변경은 새 ADR로 대체(old→superseded). "
@@ -43,6 +43,6 @@ GUIDANCE = {
 
 
 def guidance_for(type_name: str) -> str | None:
-    """축-A 타입(또는 레거시 토큰) → 운용 가이드 + 공통 푸터. 미등록 None."""
+    """차원-A 타입(또는 레거시 토큰) → 운용 가이드 + 공통 푸터. 미등록 None."""
     g = GUIDANCE.get(doctypes.normalize_kind(type_name))
     return f"{g}\n{_CROSS_CUTTING}" if g else None

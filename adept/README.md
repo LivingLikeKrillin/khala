@@ -31,7 +31,7 @@ adept due --as PERSON                            # list due questions / artifact
 adept save-questions ARTIFACT_ID --hash HASH     # store questions (one per stdin line)
 adept record-attempt --as PERSON --question QID --artifact AID --passed|--failed
 adept coverage --as PERSON                       # covered/total, orphan hotlist, weakness map
-adept review ARTIFACT_ID --as PERSON             # headless self-drive (needs ANTHROPIC_API_KEY)
+adept review ARTIFACT_ID --as PERSON             # headless mode (needs ANTHROPIC_API_KEY)
 ```
 
 The agent-driven loop (`due` → `save-questions` → `record-attempt` → `coverage`) needs no

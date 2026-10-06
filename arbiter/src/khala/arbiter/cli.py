@@ -1,11 +1,11 @@
 """Arbiter CLI — 사람(그리고 에이전트)이 손으로 게이트를 돌린다.
 
-MCP 서버(`server.py`)와 **같은 함수**를 부른다. 표면만 얇게 씌운다. 지금까지 12개 도구가
+MCP 서버(`server.py`)와 **같은 함수**를 부른다. API 표면만 얇게 씌운다. 지금까지 12개 도구가
 MCP 전용이라, 승인 게이트를 돌리려면 `khala.arbiter.ledger` 에 대고 파이썬을 손으로 짜야
 했다 — 거버넌스 코어를 사람이 못 돌리는 것은 거버넌스가 아니다.
 
     arbiter record spec "제목"          # 초안 등록 → id 출력
-    arbiter critique <id>               # 비평 실행 → 이슈 출력
+    arbiter critique <id>               # 크리틱 실행 → 이슈 출력
     arbiter approve <id> --dispositions disp.json --approver 이름
     arbiter status [<id>]               # 상태 조회
     arbiter begin-implementation <id>   # 구현 게이트 열기
@@ -92,7 +92,7 @@ def build_cli(root: Path, docs: Path, critic) -> typer.Typer:
 
     @app.command(name="critique")
     def critique_cmd(artifact_id: str = typer.Argument(...)) -> None:
-        """비평을 실행하고 이슈를 출력한다."""
+        """크리틱을 실행하고 이슈를 출력한다."""
         _resolve_or_die(artifact_id)
         issues = critique(ledger, artifact_id, critic, now=_utc_now)
         if not issues:
@@ -110,7 +110,7 @@ def build_cli(root: Path, docs: Path, critic) -> typer.Typer:
             help="처분 JSON 파일 (리스트: {issue_id, disposition, reason?})"),
         approver: str = typer.Option(..., "--approver", help="승인자 (사람의 서명)"),
     ) -> None:
-        """비평 이슈에 처분을 적용하고 승인한다. rejected/deferred 는 사유 필수."""
+        """크리틱 이슈에 조치를 적용하고 승인한다. rejected/deferred 는 사유 필수."""
         _resolve_or_die(artifact_id)
         try:
             disp = json.loads(dispositions.read_text(encoding="utf-8"))

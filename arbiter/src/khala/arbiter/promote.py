@@ -31,13 +31,13 @@ def promote_external(ledger: Ledger, csf: dict, type: str) -> dict:
     Args:
         ledger: 대상 Ledger.
         csf: canonical spec format 문서(frontmatter dict + body).
-        type: 축-A 거버넌스 타입(ADR/DESIGN/RFC) 또는 레거시 CSF 토큰(SPEC). doctypes
+        type: 차원-A 거버넌스 타입(ADR/DESIGN/RFC) 또는 레거시 CSF 토큰(SPEC). doctypes
             레지스트리로 정규화·매핑하며, T1(거버넌스)이 아닌 타입은 승격 거부.
 
     Returns:
         {artifact_id, status, provenance_carried}
     """
-    # type 은 축-A 타입(또는 레거시 CSF 토큰) — 상류 정규화와 동일 규칙으로 정본화한 뒤
+    # type 은 차원-A 타입(또는 레거시 CSF 토큰) — 상류 정규화와 동일 규칙으로 정본화한 뒤
     # 레지스트리로 승격가능성(=T1)과 Arbiter 어휘를 결정한다(하드코딩 제거).
     axis_a = doctypes.normalize_kind(type)
     sl_type = doctypes.arbiter_type_of(axis_a)
