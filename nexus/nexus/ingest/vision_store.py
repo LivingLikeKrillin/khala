@@ -3,7 +3,7 @@
 **캐시가 아니다.** [[ADR-0010]] §5 의 불변식은 저장된 텍스트에 걸려 있다: 같은
 `(tenant, bytes, extractor_identity)` 에 대해 한 번 저장된 결과는 다시 읽어서 교체되지 않는다.
 캐시라고 부르고 불변식을 그 위에 세우면 척추가 보존 정책에 걸린다 — 미스 한 번이 비결정적
-판독기를 다시 돌리고, 드리프트한 텍스트가 **바뀌지 않은 신원** 아래로 들어간다. 신원이 안
+판독기를 다시 돌리고, 드리프트한 텍스트가 **바뀌지 않은 식별 정보** 아래로 들어간다. 식별 정보가 안
 움직였기 때문에 정확히 안 보인다.
 
 순서도 여기서 지킨다: **추출 → 스캔/격리 → 저장 → 본문 조립 → content_hash.** 스캐너가 먼저
@@ -41,7 +41,7 @@ async def fill_reference(tenant: str, e: vision.Extraction) -> None:
     ADR-0010 §5 는 "바뀌지 않은 바이트는 재추출하지 않는다" 이므로 캐시 적중에서는 저장 경로가
     통째로 건너뛰어진다 — 그래서 재적재만으로는 옛 행 44개의 참조가 영원히 안 채워진다.
 
-    **이것은 재추출이 아니다.** `text` 를 건드리지 않는다: 판독을 대체하는 것과, 그 판독이 어디서
+    **이것은 재추출이 아니다.** `text` 를 건드리지 않는다: 기계 판독을 대체하는 것과, 그 기계 판독이 어디서
     왔는지 적는 것은 다르다. §5 가 지키는 것은 앞의 것이다. 이미 참조가 있는 행은 덮지 않는다.
     """
     if not (e.block_id or "").strip():
@@ -162,7 +162,7 @@ async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict,
     stored = await load(tenant, sha, identity)
     if stored is not None:
         # 캐시 적중에서도 **참조는 채운다** (SPEC-nexus-vision-source-ref §2.4).
-        # 재추출이 아니라 '이 판독이 어디서 왔는지' 를 적는 것이다.
+        # 재추출이 아니라 '이 기계 판독이 어디서 왔는지' 를 적는 것이다.
         await fill_reference(tenant, vision.Extraction(
             "", identity, sha, block_id=block_id, source_uri=source_uri))
         if stored.get("error"):
@@ -171,7 +171,7 @@ async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict,
             stored["text"] or "", identity, sha, truncated=bool(stored.get("truncated"))))
 
     # **캐시 적중은 여기 안 온다** — 위에서 이미 돌아갔다. 그러니 이 줄에 닿은 것은 전부
-    # 공급자로 나간 호출이고, 장부에 오르는 것도 그것뿐이다.
+    # 공급자로 나간 호출이고, 원장에 오르는 것도 그것뿐이다.
     usage: list | None = [] if spend is not None else None
     e = await vision.read_image(data, media_type, llm_svc, usage_out=usage)
     for u in (usage or []):
@@ -202,12 +202,12 @@ async def _one(image: dict, tenant: str, llm_svc, pii_patterns: dict,
 async def apply(markdown: str, images: list[dict], *, tenant: str, llm_svc,
                 pii_patterns: dict | None = None,
                 source_uri: str = "", spend=None) -> tuple[str, int]:
-    """2패스의 두 번째. 자리 표식을 추출 블록으로 바꾼다. → (markdown, 추출된 장수)
+    """2패스의 두 번째. 플레이스홀더를 추출 블록으로 바꾼다. → (markdown, 추출된 장수)
 
     한 번에 몇 장씩 읽는지는 제한한다 — 44장을 동시에 던지면 공급자 rate limit 에 걸리고,
     직렬로 읽으면 첫 실행이 길어진다.
 
-    `spend`(`llm.dev_spend.Spend`)를 주면 **공급자로 나간 판독마다** 한 건씩 오른다. 캐시 적중과
+    `spend`(`llm.dev_spend.Spend`)를 주면 **공급자로 나간 기계 판독마다** 한 건씩 오른다. 캐시 적중과
     가져오기 실패는 오르지 않는다 — 그 둘은 호출이 아니다.
     """
     if not images:
@@ -235,12 +235,12 @@ async def apply(markdown: str, images: list[dict], *, tenant: str, llm_svc,
             markdown = markdown.replace(slot, "![]()")
             continue
         _, block = r
-        # 성공 판정은 **블록 경계**로 한다. 앞선 판은 `![]()` 마커로 셌는데, 그 마커가
+        # 성공 판정은 **블록 경계**로 한다. 앞선 버전은 `![]()` 마커로 셌는데, 그 마커가
         # 블록 안으로 들어가자(빈 chunk 를 없애려고) 판정이 조용히 0 이 됐다.
         extracted += vision.VISION_BEGIN in block
         markdown = markdown.replace(slot, block)
 
-    # 상한에 걸려 못 읽은 자리도 본문에서는 지워야 한다 — 표식이 남으면 청킹이 거기서 갈린다.
+    # 상한에 걸려 못 읽은 자리도 본문에서는 지워야 한다 — 마커가 남으면 청킹이 거기서 갈린다.
     for im in images[len(todo):]:
         markdown = markdown.replace(f"<!-- khala:vision:slot:{im['block_id']} -->", "![]()")
 

@@ -1,4 +1,4 @@
-"""답변을 내는 표면은 **전부** `packet_for_answer` 를 지나는가.
+"""답변을 내는 API 표면은 **전부** `packet_for_answer` 를 지나는가.
 
 ⛔ **왜 생겼나 (외부 평가 F2, 2026-09-02).** `reconcile.py` 의 `packet_for_answer` docstring 이
 이렇게 적어 두었다 — *"답변용 근거 패킷은 이 함수 하나로만 만든다. 답변 경로가 셋이다 …
@@ -6,8 +6,8 @@
 초록인 채로 프로덕션에서 조용히 틀린다**."* `nexus/CLAUDE.md` 이음매 지도도 같은 말을 한다.
 
 **그 문장을 지키는 검사가 없었다.** `/search/answer/stream` 이 `assemble_packet` 을 직접
-불렀고, 그래서 정정 확인 패스·짝 확장·코드 값이 그 경로에서만 빠졌다. 웹 채팅이 타는 경로가
-바로 그것이다(`web/js/api.js`). 외부 평가 실측: 정책 8질의 중 4건에서 근거가 적게 갔고
+불렀고, 그래서 정정 확인 패스·페어 확장·코드 값이 그 경로에서만 빠졌다. 웹 채팅이 타는 경로가
+바로 그것이다(`web/js/api.js`). 외부 평가 실측: 정책 8질의 중 4건에서 답변 근거가 적게 갔고
 가장 큰 것이 19 → 13(−32%).
 
 ⚠ **이 검사는 "호출이 존재하는가" 까지만 본다.** 그 호출이 실제로 돌아 보강이 붙는지는
@@ -55,7 +55,7 @@ def _surfaces():
 
 @pytest.mark.parametrize("label", list(_surfaces()))
 def test_every_answer_surface_goes_through_the_shared_seam(label):
-    """⛔ 표면 하나가 빠지면 그 표면의 사용자만 보강 없는 답을 받는다 — 화면에 안 보인다."""
+    """⛔ API 표면 하나가 빠지면 그 API 표면의 사용자만 보강 없는 답을 받는다 — 화면에 안 보인다."""
     names = _names(_surfaces()[label])
     assert "packet_for_answer" in names, (
         f"{label} 이 `packet_for_answer` 를 안 지난다 — 정정·짝·코드 값이 이 표면에서만 빠진다")

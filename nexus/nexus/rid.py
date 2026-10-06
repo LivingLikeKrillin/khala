@@ -46,7 +46,7 @@ def evidence_rid(subject_rid: str, evidence_source_rid: str) -> str:
 
 
 def claim_rid(tenant: str, claim_id: str) -> str:
-    """Claim rid. (tenant, claim_id) 조합으로 안정·결정론. prefix 콜론 없음."""
+    """Claim rid. (tenant, claim_id) 조합으로 안정·결정성. prefix 콜론 없음."""
     return make_rid("claim", tenant, claim_id)
 
 

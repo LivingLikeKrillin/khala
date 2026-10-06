@@ -1,9 +1,9 @@
-"""숨긴 문서는 **내용이 같으면** 주기마다 다시 읽히지 않는다.
+"""숨김 문서는 **내용이 같으면** 주기마다 다시 읽히지 않는다.
 
 ⛔ **왜 생겼나 (실측 2026-10-01).** 정시 재적재가 숨긴 설계 명세(`soft_deleted`) 하나를 **매시**
-「바뀜」으로 잡아 156 조각을 다시 만들었다 — 파일은 그 사이 한 번도 안 바뀌었다. 수집기의 「안 바뀜」
-비교가 `status = 'active'` 행만 봐서, 숨긴 문서는 비교할 행이 없어 늘 바뀐 것이 됐다. 그런데 재적재는
-숨긴 문서를 되살리지 않는다(문서 갱신이 `status` 를 건드리지 않는다) — 그러니 다시 읽어도 바뀌는 것이
+「바뀜」으로 잡아 156 청크를 다시 만들었다 — 파일은 그 사이 한 번도 안 바뀌었다. 수집기의 「안 바뀜」
+비교가 `status = 'active'` 행만 봐서, 숨김 문서는 비교할 행이 없어 늘 바뀐 것이 됐다. 그런데 재적재는
+숨김 문서를 되살리지 않는다(문서 갱신이 `status` 를 건드리지 않는다) — 그러니 다시 읽어도 바뀌는 것이
 없고, 남는 것은 매시의 헛일과 「바뀜 1」이라는 거짓 신호와 움직이는 `updated_at` 뿐이었다. 소비자가
 곁에서 보고 알려 왔다.
 
@@ -64,7 +64,7 @@ async def _collect(tmp_path):
 
 @pytest.mark.parametrize("status", ["soft_deleted", "superseded"])
 async def test_a_hidden_document_with_the_same_content_is_unchanged(tmp_path, wired, status):
-    """⛔ 이 검사가 이 단위의 이유다 — 라이브에서 매시 156 조각을 다시 만들던 모양."""
+    """⛔ 이 검사가 이 단위의 이유다 — 라이브에서 매시 156 청크를 다시 만들던 모양."""
     _write(tmp_path, "spec.md")
     await _seed(wired, "spec.md", await _hash_of(tmp_path), status)
 

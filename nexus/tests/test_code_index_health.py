@@ -1,11 +1,11 @@
-"""코드 인덱스의 **신원과 구멍**이 사람·에이전트에게 닿는가.
+"""코드 인덱스의 **식별 정보와 구멍**이 사람·에이전트에게 닿는가.
 
 심볼 10,659개·앵커 2,674개가 라이브에 앉아 있는데 `nexus status` 는 코드에 대해 한 마디도
 하지 않았다. 문서↔코드 판정("이 문단이 부른 이름이 지금도 있다")이 **어느 커밋 기준인지**,
 그 인덱스에 **구멍이 있는지** 를 아무도 볼 수 없다는 뜻이다. 이 리포가 올해만 세 번 데인 모양
 그대로다 — 감지기는 있고 전달이 없다.
 
-그리고 세는 칸 하나가 두 사실을 뭉치고 있었다: `unparsed_files` 는 **읽지 못한 파일**과
+그리고 세는 필드 하나가 두 사실을 뭉치고 있었다: `unparsed_files` 는 **읽지 못한 파일**과
 **선언이 하나도 없는 정상 파일**(`__init__.py` 같은)을 같이 센다. 앞은 인덱스의 구멍이고
 (그 파일의 심볼이 통째로 없으니 문서가 그 이름을 부르면 *코드에 없는 이름*으로 읽힌다)
 뒤는 그냥 평범한 파일이다. 뭉쳐 두면 경보를 걸 수 없다 — 걸면 영원히 울린다.
@@ -25,7 +25,7 @@ _REPO = "sample-repo"
 
 
 def test_a_file_with_no_declarations_is_not_a_hole(tmp_path):
-    """대조군 — 선언이 없는 파일은 **정상**이다. 구멍으로 세면 경보가 영원히 울린다."""
+    """대조군 — 선언이 없는 파일은 **정상**이다. 구멍으로 세면 경보가 영원히 발동한다."""
     from nexus.index.symbols import scan_repo
 
     (tmp_path / "pkg").mkdir()
@@ -165,7 +165,7 @@ def test_nexus_status_names_the_commit_the_code_verdicts_rest_on(monkeypatch):
         _run(purge)
 
 
-# ---------------------------------------------------------------- 스냅샷 가드
+# ---------------------------------------------------------------- 스냅샷 가드 검사
 
 def _git(repo, *args):
     import subprocess
@@ -207,7 +207,7 @@ def test_a_line_ending_only_difference_is_not_a_dirty_tree(tmp_path):
 
 
 def test_a_real_edit_is_still_refused(tmp_path):
-    """대조군 — 진짜 내용 변경은 그대로 거부한다. 가드를 무르게 만들면 안 된다."""
+    """대조군 — 진짜 내용 변경은 그대로 거부한다. 가드 검사를 무르게 만들면 안 된다."""
     from nexus.index import snapshot
 
     repo = _repo_with_crlf_worktree(tmp_path)

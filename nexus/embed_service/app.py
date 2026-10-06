@@ -115,7 +115,7 @@ async def health() -> dict:
         "max_seq_length": _state["max_seq"],
         # 길이검사 사본이 서 있는가. 없으면 이 서비스는 "조용히 자르지 않는다" 를 지킬 수 없다.
         "guard_tokenizer": _state["guard_tokenizer"] is not None,
-        # 기동 이후 임베딩 단계에서 예기치 못하게 실패한 요청 수. 413(가드가 제 일을 한 것)과
+        # 기동 이후 임베딩 단계에서 예기치 못하게 실패한 요청 수. 413(가드 검사가 제 일을 한 것)과
         # 503(준비 전)은 세지 않는다 — 이 숫자가 답하는 질문은 "이 서비스가 실패한 적이 있는가" 다
         # (SPEC-nexus-embed-tokenizer-race §3). 재기동하면 0 이다.
         "embed_errors": _state["embed_errors"],

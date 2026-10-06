@@ -7,14 +7,14 @@ SPEC-nexus-code-semantic-cards §3.1~§3.4.
 
 이 파일의 대부분은 LLM 이 없다. 생성 호출은 얇고, 나머지는 전부 결정론적 검사다:
 
-  - 후보 선택 (§3.1)      — 어떤 심볼에 카드를 만들 값어치가 있는가
-  - 파싱 (§3.2)          — 모델 출력을 카드로
+  - 후보 선택 (§3.1)      — 어떤 심볼에 코드 카드를 만들 값어치가 있는가
+  - 파싱 (§3.2)          — 모델 출력을 코드 카드로
   - 규칙 재검사 (§3.2)    — **소스가 산문으로 새지 않았는가**를 포함
   - 낡음 판정 (§3.4)      — span_hash 비교. 조회이지 판단이 아니다
 
-⚠ **카드는 권위가 아니다.** 어떤 시점 커밋에서 모델이 쓴 것이고 코드는 그 뒤로 움직였다.
+⚠ **코드 카드는 권위가 아니다.** 어떤 시점 커밋에서 모델이 쓴 것이고 코드는 그 뒤로 움직였다.
    설명에 기대는 쪽은 반드시 span 을 다시 읽는다. 여기서는 그것이 가능하도록 span_hash 를 싣고,
-   움직인 카드를 `stale` 로 드러내는 데까지 한다.
+   움직인 코드 카드를 `stale` 로 드러내는 데까지 한다.
 """
 
 from __future__ import annotations
@@ -23,9 +23,9 @@ import json
 import re
 from dataclasses import dataclass, field
 
-# ---------------------------------------------------------------- 카드
+# ---------------------------------------------------------------- 코드 카드
 
-#: `code_terms` 상한. 식별자 목록이지 코드 조각이 아니라는 것을 개수로도 못박는다.
+#: `code_terms` 상한. 식별자 목록이지 코드 청크가 아니라는 것을 개수로도 못박는다.
 MAX_CODE_TERMS = 12
 #: 산문에서 소스 줄과 대조할 때 무시할 짧은 줄. `}` `);` 같은 것까지 검사하면 전부 걸린다.
 _MIN_SOURCE_LINE = 12
@@ -54,13 +54,13 @@ class Card:
     code_terms: tuple[str, ...]
     spans: tuple[CardSpan, ...]
     commit_sha: str
-    generator: str          # model · prompt_version · traversal — 선언과 다르면 읽지 않는다
+    generator: str          # model · prompt_version · traversal — 명시적 선언과 다르면 읽지 않는다
     notes: tuple[str, ...] = field(default=())
 
 
 # ---------------------------------------------------------------- §3.1 후보
 
-#: 본문 줄 수 문턱 기본값. 실행마다 기록한다 — 비용과 커버리지를 동시에 움직인다.
+#: 본문 줄 수 임계값 기본값. 실행마다 기록한다 — 비용과 커버리지를 동시에 움직인다.
 DEFAULT_BODY_LINES = 8
 
 _ALWAYS_CARD = {"class", "interface", "record", "enum"}
@@ -69,10 +69,10 @@ _ALWAYS_CARD = {"class", "interface", "record", "enum"}
 def is_card_candidate(symbol_kind: str, start_line: int, end_line: int,
                       *, anchored: bool = False,
                       body_lines: int = DEFAULT_BODY_LINES) -> bool:
-    """이 심볼에 카드를 만들 값어치가 있는가 (§3.1).
+    """이 심볼에 코드 카드를 만들 값어치가 있는가 (§3.1).
 
     게터·생성자·한 줄 위임자는 모델 호출을 쓰고 아무것도 서술하지 않으며, 거의 같은 텍스트로
-    카드 모집단을 희석한다.
+    코드 카드 모집단을 희석한다.
 
     `anchored` — 어휘 앵커가 이미 걸린 심볼은 길이와 무관하게 후보다. 문서가 이미 그 이름을
     불렀으므로 서술할 값어치가 증명돼 있다.
@@ -87,15 +87,15 @@ def is_card_candidate(symbol_kind: str, start_line: int, end_line: int,
 # ---------------------------------------------------------------- §3.2 파싱
 
 class CardParseError(ValueError):
-    """모델 출력이 카드가 아니다. 예외로 올린다 — 반쯤 읽은 카드를 저장하는 것보다 낫다."""
+    """모델 출력이 코드 카드가 아니다. 예외로 올린다 — 반쯤 읽은 코드 카드를 저장하는 것보다 낫다."""
 
 
 def parse_card(raw: str, *, spans: list[CardSpan], commit_sha: str,
                generator: str) -> Card:
-    """모델 출력(JSON)을 카드로. span·commit·generator 는 **모델이 아니라 호출자가** 채운다.
+    """모델 출력(JSON)을 코드 카드로. span·commit·generator 는 **모델이 아니라 호출자가** 채운다.
 
     모델에게 파일 경로나 줄 번호를 말하게 하면 그 값이 틀릴 수 있고, 틀린 포인터는 재검증을
-    통과하지 못해 카드가 통째로 버려진다. 아는 쪽이 채우는 게 맞다.
+    통과하지 못해 코드 카드가 통째로 버려진다. 아는 쪽이 채우는 게 맞다.
     """
     text = raw.strip()
     if text.startswith("```"):
@@ -137,7 +137,7 @@ def check_card(card: Card, span_sources: dict[str, str],
     **저장되지 않는다.**
 
     소스 경계(§3.2)가 이 함수의 존재 이유다. 앞 단위는 이름·경로·줄·해시만 저장했으므로
-    "소스 미저장" 이 자명했지만, 카드는 **소스를 막 읽은 모델이 쓴 산문**이라 자명하지 않다.
+    "소스 미저장" 이 자명했지만, 코드 카드는 **소스를 막 읽은 모델이 쓴 산문**이라 자명하지 않다.
     """
     problems: list[str] = []
     prose = f"{card.subject}\n{card.behavior}"
@@ -168,7 +168,7 @@ def check_card(card: Card, span_sources: dict[str, str],
                 break
 
     # 4) 문자열 리터럴이 산문에 옮겨지지 않았는가.
-    #    숫자는 검사하지 않는다 — "3회 재시도" 는 서술로서 정당하고, 막으면 카드의 값이 사라진다.
+    #    숫자는 검사하지 않는다 — "3회 재시도" 는 서술로서 정당하고, 막으면 코드 카드의 값이 사라진다.
     #    막는 것은 `MAX_ATTEMPTS = 2` 같은 **소스 줄**(3번)과 문자열 리터럴이다.
     for src in span_sources.values():
         for lit in _STRING_LITERAL.findall(src):
@@ -180,7 +180,7 @@ def check_card(card: Card, span_sources: dict[str, str],
 
 
 def is_near_duplicate(a: Card, b: Card, *, threshold: float = 0.9) -> bool:
-    """같은 파일에 거의 같은 카드가 반복되는가 (§3.2 밀도 상한).
+    """같은 파일에 거의 같은 코드 카드가 반복되는가 (§3.2 밀도 상한).
 
     자카드로 본다 — 임베딩을 쓰면 이 검사 자체가 비결정적이 되고, 그러면 무엇을 버렸는지
     설명할 수 없다.
@@ -200,13 +200,13 @@ ORPHANED = "orphaned"
 
 
 def card_state(card: Card, current: dict[tuple[str, str], str]) -> str:
-    """카드가 아직 현재 코드를 설명하는가. **모델을 부르지 않는다** — 해시 비교다.
+    """코드 카드가 아직 현재 코드를 설명하는가. **모델을 부르지 않는다** — 해시 비교다.
 
     `current` — (file_path, symbol) → 현재 span_hash.
 
     span 이 하나라도 사라졌으면 `orphaned`, 하나라도 해시가 달라졌으면 `stale`.
     stale 은 틀렸다는 뜻이 아니라 *설명이 참이었던 코드가 움직였다* 는 뜻이고, 그것이 이
-    방향이 드러내려는 신호다. 다만 카드에 관한 사실이지 코드에 관한 사실이 아니다.
+    방향이 드러내려는 신호다. 다만 코드 카드에 관한 사실이지 코드에 관한 사실이 아니다.
     """
     if not card.spans:
         return ORPHANED
@@ -225,7 +225,7 @@ def card_state(card: Card, current: dict[tuple[str, str], str]) -> str:
 class Agreement:
     """여러 실행 사이의 일치도. **점추정이 아니라 분포로 보고한다** (§6.1).
 
-    2회는 구간 없는 한 숫자를 준다. 스크린샷 판독기 때 잡음 폭을 측정하지 않고 SPEC 을 네 개
+    2회는 구간 없는 한 숫자를 준다. 스크린샷 판독기 때 노이즈 플로어를 측정하지 않고 SPEC 을 네 개
     썼다가 근거 32건이 전부 잡음이었던 일이 있다 — 그래서 여기서는 쌍을 전부 본다.
     """
     mean: float
@@ -248,7 +248,7 @@ def _jaccard(a: set[str], b: set[str]) -> float:
 def term_agreement(runs: list[tuple[str, ...]]) -> Agreement:
     """같은 심볼에 대한 여러 실행의 `domain_terms` 일치도.
 
-    비교 전에 소문자·공백 정규화만 한다. 그 이상(동의어 병합 등)을 하면 생성기의 흔들림을
+    비교 전에 소문자·공백 정규화만 한다. 그 이상(동의어 병합 등)을 하면 생성기의 변동성을
     측정 코드가 가려버린다 — 측정하려는 것이 바로 그 흔들림이다.
     """
     norm = [{t.strip().lower() for t in r if t.strip()} for r in runs]

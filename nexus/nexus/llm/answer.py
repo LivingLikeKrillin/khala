@@ -1,6 +1,6 @@
-"""LLMService 호출 + 근거 기반 답변 생성.
+"""LLMService 호출 + 답변 근거 기반 답변 생성.
 
-Evidence packet을 LLM에 전달하여 근거 기반 답변을 생성한다.
+Evidence packet을 LLM에 전달하여 답변 근거 기반 답변을 생성한다.
 LLM 실패 시에도 evidence snippet은 그대로 제공한다.
 """
 
@@ -53,7 +53,7 @@ class AnswerResult:
     """답변 결과."""
     answer: str = ""
     evidence_snippets: list[dict] = field(default_factory=list)
-    #: 근거 문서에 붙은 결정론적 부채(supersede·제목 중복). 없으면 None.
+    #: 답변 근거 문서에 붙은 결정론적 부채(supersede·제목 중복). 없으면 None.
     doc_debts: list[dict] | None = None
     graph_findings: dict | None = None
     provenance: list[dict] = field(default_factory=list)
@@ -64,10 +64,10 @@ class AnswerResult:
     #: 불리언 하나만으로는 "기다리면 되는 실패" 와 "사람이 결제해야 하는 실패" 가 구별되지
     #: 않고, 2026-08-13 슬랙 파일럿에서 크레딧 소진에 대고 "잠시 후 다시 시도" 라고 답했다.
     llm_failure_reason: str | None = None
-    # 인용 사후검증(SPEC-nexus-citation-validation): 각 [출처: …] 가 근거 packet 에 실재하는가.
+    # 인용 사후검증(SPEC-nexus-citation-validation): 각 [출처: …] 가 답변 근거 packet 에 실재하는가.
     citations: list[dict] = field(default_factory=list)
     unverified_citations: int = 0
-    # 숫자 근거검증(SPEC-nexus-answer-number-verification): 답변의 유의미 숫자가 근거+질의에 실재하는가.
+    # 숫자 근거검증(SPEC-nexus-answer-number-verification): 답변의 유의미 숫자가 답변 근거+질의에 실재하는가.
     numbers: list[dict] = field(default_factory=list)
     unverified_numbers: int = 0
     # LLM 토큰/비용(SPEC-nexus-llm-usage-capture): {input_tokens, output_tokens, cost_usd, model} | None.
@@ -81,18 +81,18 @@ class AnswerResult:
     # 평가 라벨의 '답변불가' 5건이 어느 집계에도 안 들어갔다(KOREAN_SEARCH_QUALITY.md §2.3:
     # "Nexus 에 기권 기제가 없어 측정할 것이 없다").
     #
-    # **여기서 새 문턱을 만들지 않는다.** "점수가 낮으면 기권" 같은 규칙은 측정해 보지 않은 숫자를
+    # **여기서 새 임계값을 만들지 않는다.** "점수가 낮으면 기권" 같은 규칙은 측정해 보지 않은 숫자를
     # 게이트로 굳히는 짓이고, 이 리포는 그 실수를 오늘 세 번 했다. 드러내는 것은 이미 코드가
     # 내리고 있던 판단 하나뿐이다.
     abstained: bool = False
     abstain_reason: str = ""        # "" | "no_evidence"
     #: 근거는 있었지만 **잘 맞지 않았다**. 기권이 아니다 — 답은 나가되 짧게 물러난다.
-    #: 표면이 사용자에게 알릴 수 있도록 결과에 남긴다(`search/confidence.py`).
+    #: API 표면이 사용자에게 알릴 수 있도록 결과에 남긴다(`search/confidence.py`).
     weak_evidence: bool = False
-    #: 이 답의 꾸러미와 프롬프트를 만든 **코드의 판** (`llm/prompt_version.py`). 꾸러미에 찍힌
+    #: 이 답의 근거 묶음과 프롬프트를 만든 **코드의 버전** (`llm/prompt_version.py`). 근거 묶음에 찍힌
     #: 값을 옮긴다 — 여기서 다시 세면 응답과 기록이 갈릴 수 있다. 기권해도 조립은 돌았으므로 실린다.
     prompt_version: str = ""
-    #: 코퍼스의 판과 검색 스택의 판 (`search/versions.py`). 같은 이유로 꾸러미에서 옮긴다.
+    #: 코퍼스의 버전과 검색 핑거프린트 (`search/versions.py`). 같은 이유로 근거 묶음에서 옮긴다.
     corpus_version: str = ""
     search_fingerprint: str = ""
 
@@ -131,7 +131,7 @@ async def generate_answer(
         timing_ms: 검색 타이밍 정보
         user_query: 사용자가 **실제로 친 문장**(`req.query` 그대로). `query` 와 같거나 None 이면
             프롬프트는 오늘과 바이트 단위로 같다 (SPEC-nexus-multi-turn-narration §4 I1·I3).
-        confidence: `SearchResult.confidence`. 약하면 **서술 계약**이 바뀐다 — 짧게, 범위 밖임을
+        confidence: `SearchResult.confidence`. 약하면 **응답 계약**이 바뀐다 — 짧게, 범위 밖임을
             먼저. 안 주거나 약하지 않으면 프롬프트는 오늘과 바이트 단위로 같다.
         spans: `SearchResult.spans` (SPEC-nexus-stage-spans). None 이면(기본, 캡처 꺼짐)
             answer span 을 안 남긴다.
@@ -160,17 +160,17 @@ async def generate_answer(
             "source_uri": s.source_uri,
             "text": s.text,
             "score": s.score,
-            "doc_type": s.doc_type,  # 축-A 타입(S3) — 웹 클라이언트 타입 배지용
+            "doc_type": s.doc_type,  # 차원-A 타입(S3) — 웹 클라이언트 타입 배지용
             # 등급은 응답까지 간다 (ADR-0010 hop 5) — 배지를 달 수 있어야 한다.
             "provenance_tier": getattr(s, "provenance_tier", "authored"),
-            # 표면 둘이 같은 사실을 낸다 (api.py 의 같은 자리 주석 참조).
+            # API 표면 둘이 같은 사실을 낸다 (api.py 의 같은 자리 주석 참조).
             "provenance_mark": tier_mark(getattr(s, "provenance_tier", "authored")),
             # 이 문단이 부른 코드 이름의 현재 상태. 앵커가 없으면 `None` 이고, 그때 응답은
             # 오늘과 같은 모양이다. 표현계층이 셈을 다시 하지 않도록 **여기서 요약해** 보낸다.
             "code_anchors": summarize(getattr(s, "code_anchors", []),
                                       getattr(s, "code_deleted", []),
                                       getattr(s, "code_scan", None)),
-            # CRM 표식(`nexus/labels.py`) — 등급과 같은 자리, 같은 이유로 응답까지 간다.
+            # CRM 마커(`nexus/labels.py`) — 등급과 같은 자리, 같은 이유로 응답까지 간다.
             # 합성 자료임을 근거 옆에 못 달면, 지어낸 절차가 실제 운영 문서와 같은 얼굴로
             # 인용된다. 검색이 잘될수록 나쁜 종류의 결함이다.
             "labels": list(getattr(s, "labels", ()) or ()),
@@ -219,8 +219,8 @@ async def generate_answer(
     ]
 
     if not narrate:
-        # ── 여기까지가 근거다. 생성하는 판과 **같은 코드**가 만들었다 ──
-        # 적합도는 검색의 사실이라 그대로 낸다(아래 생성 판과 같은 규칙). 안 돈 생성 단계도
+        # ── 여기까지가 검색 근거다. 생성하는 버전과 **같은 코드**가 만들었다 ──
+        # 적합도는 검색의 사실이라 그대로 낸다(아래 생성 버전과 같은 규칙). 안 돈 생성 단계도
         # 남긴다 — 「꺼져 있었다」와 「돌았는데 0」은 다른 사실이다(`fired`).
         result.weak_evidence = bool(packet.snippets and confidence is not None
                                     and confidence.weak)
@@ -268,12 +268,12 @@ async def generate_answer(
              #    **읽는 사람이 보는 것은 인용 목록**이다.
              #
              #    `provenance.py` 머리말이 그 자리를 이미 적어 뒀다: *"각자 문자열을 지어내면
-             #    표면마다 다른 말을 하게 되고, 그러면 등급은 표면마다 다른 뜻이 된다."*
+             #    API 표면마다 다른 말을 하게 되고, 그러면 등급은 API 표면마다 다른 뜻이 된다."*
              #
              # ⚠ **이제 더 문다.** 첫 운영자 질의에서는 모델이 산문에 *"이 설명들은 이전 LLM
-             #    판정이 만든 것"* 이라고 **스스로** 적었는데, 재확인 판에서는 안 적었다.
-             #    산문은 판마다 흔들린다 — 그것이 유일한 신호면 신호가 아니다.
-             #    ⇒ **결정론으로 나가는 쪽을 완성한다** (핵심 원칙 2: 시스템이 정하고 LLM 은
+             #    판정이 만든 것"* 이라고 **스스로** 적었는데, 재확인 버전에서는 안 적었다.
+             #    산문은 버전마다 흔들린다 — 그것이 유일한 신호면 신호가 아니다.
+             #    ⇒ **결정성으로 나가는 쪽을 완성한다** (핵심 원칙 2: 시스템이 정하고 LLM 은
              #    서술한다). 모델이 말하기를 바라는 대신 시스템이 말한다.
              "provenance_mark": tier_mark(getattr(c, "provenance_tier", "authored"))}
             for c in report.citations

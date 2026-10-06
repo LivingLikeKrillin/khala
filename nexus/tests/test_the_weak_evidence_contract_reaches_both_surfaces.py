@@ -1,11 +1,11 @@
-"""적합도 계약은 **두 표면에 다 붙는다**, 그리고 판정과 **함께 근거를 낸다**.
+"""적합도 계약은 **두 API 표면에 다 붙는다**, 그리고 판정과 **함께 답변 근거를 낸다**.
 
-⛔ **왜 생겼나 (실측 2026-09-22).** 설명 층이 물었다 — 인용이 붙은 답에서도 `weak_evidence`
+⛔ **왜 생겼나 (실측 2026-09-22).** 설명 레이어가 물었다 — 인용이 붙은 답에서도 `weak_evidence`
 가 유효한 판정인가. 계약을 읽으러 갔다가 둘을 찾았다.
 
 **하나.** 스트리밍 경로의 `build_prompts` 호출이 `weak_evidence` 를 안 넘겼다. 인자에 기본값이
 있으므로 **조용히 「약하지 않다」로 떨어졌다.** 그래서 `search/confidence.py` 가 막으려던 바로
-그 실패 — 이름을 물었는데 근거를 채워 표를 길게 답하는 것 — 이 **사람이 보는 표면**에서
+그 실패 — 이름을 물었는데 답변 근거를 채워 표를 길게 답하는 것 — 이 **사람이 보는 API 표면**에서
 그대로 살아 있었다. 계약을 지킨 것은 비스트림뿐이었다.
 
 ⚠ `build_prompts` 머리말이 이미 적어 뒀다: *"둘을 따로 조립하면 … 테스트가 초록인 채로
@@ -14,13 +14,13 @@
 뒀다 — 여기가 그 실물이다.
 
 **둘.** 그 표면에는 `weak_evidence` 자체도 안 실렸고, 비스트림은 판정만 싣고 **근거인 두 수**
-(`top_distance`·`top_bm25`)를 안 실었다. 소비자는 문턱에 **겨우 걸린 것**과 한참 밖인 것을
-못 가른다. 그리고 그 문턱(0.48 / 1.5)은 아직 가설이라, 옮길 트리거는 *중간 구간에서 발동한
+(`top_distance`·`top_bm25`)를 안 실었다. 소비자는 임계값에 **겨우 걸린 것**과 한참 밖인 것을
+못 가른다. 그리고 그 임계값(0.48 / 1.5)은 아직 가설이라, 옮길 트리거는 *중간 구간에서 발동한
 질의*다 — 그것을 볼 수 있는 쪽은 질의를 지은 소비자이고 서버가 아니다.
 
-⭐ 비스트림 응답의 주석이 이미 한 층 위에서 같은 문장을 적고 있었다: *"이 값이 응답에 없는
+⭐ 비스트림 응답의 주석이 이미 한 계층 위에서 같은 문장을 적고 있었다: *"이 값이 응답에 없는
 동안 표면들은 「잘 찾았다」와 「제일 덜 나쁜 걸 골랐다」를 구별할 수 없었고, 서버는 프롬프트만
-바꾸고 그 사실을 혼자 알고 있었다."* 한 층 아래에서 같은 일이 나고 있었다.
+바꾸고 그 사실을 혼자 알고 있었다."* 한 계층 아래에서 같은 일이 나고 있었다.
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ def _wire(monkeypatch, confidence: Confidence) -> dict:
     monkeypatch.setattr("nexus.api.record_search", no_signal)
 
     class _LLM:
-        """두 표면이 **다른 메서드**를 부른다 — 하나만 세우면 그 표면만 검사한다."""
+        """두 API 표면이 **다른 메서드**를 부른다 — 하나만 세우면 그 API 표면만 검사한다."""
 
         configured = True
 
@@ -144,7 +144,7 @@ def test_a_search_that_matched_well_gets_no_such_rule(client, monkeypatch):
         "잘 맞은 검색에까지 적합도 규칙이 붙었다"
 
 
-# ── 둘 — 판정과 근거가 **같이** 나간다 ────────────────────────────────────────
+# ── 둘 — 판정과 답변 근거가 **같이** 나간다 ────────────────────────────────────────
 
 @pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"),
                     reason="NEXUS_TEST_DB_URL 필요")
@@ -161,9 +161,9 @@ def test_the_streaming_done_event_carries_the_verdict_and_its_basis(client, monk
 @pytest.mark.skipif(not os.getenv("NEXUS_TEST_DB_URL"),
                     reason="NEXUS_TEST_DB_URL 필요")
 def test_the_non_streaming_surface_ships_the_basis_too(client, monkeypatch):
-    """⛔ **한 표면만 고치면 그 표면의 소비자만 조용히 못 본다** — 이 파일의 주제다."""
+    """⛔ **한 API 표면만 고치면 그 API 표면의 소비자만 조용히 못 본다** — 이 파일의 주제다."""
     _wire(monkeypatch, _WEAK)
-    # ⚠ 이 표면은 `NexusResponse` 로 감싸므로 값은 `data` 아래에 있다. 스트림은 안 감싼다.
+    # ⚠ 이 API 표면은 `NexusResponse` 로 감싸므로 값은 `data` 아래에 있다. 스트림은 안 감싼다.
     body = client.post("/search/answer",
                        json={"query": "이 시스템에 없는 것을 묻는다", "route": "keyword_only"},
                        headers=_AUTH).json()["data"]
@@ -176,7 +176,7 @@ def test_the_non_streaming_surface_ships_the_basis_too(client, monkeypatch):
 # ── 계약 자체 — 판정은 인용과 무관하다 ───────────────────────────────────────
 
 def test_the_verdict_is_computed_from_search_scores_not_from_citations():
-    """⭐ **설명 층이 막혀 있던 자리다.** 분류기가 `weak_evidence` 를 「인용 0건일 때만」
+    """⭐ **설명 레이어가 막혀 있던 자리다.** 분류기가 `weak_evidence` 를 「인용 0건일 때만」
     봤고, 그래서 **뒤에 나온 것으로 앞의 것을 가리고** 있었다.
 
     `Confidence` 는 인용을 입력으로 받지 않는다 — 받을 수가 없다. 이 값은 생성 **전에**

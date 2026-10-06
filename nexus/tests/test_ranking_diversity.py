@@ -20,7 +20,7 @@ def _rids(hits):
 def test_single_document_returns_first_top_k_in_order():
     hits = [_h(f"c{i}", "docA") for i in range(5)]
     out = _diversify(hits, top_k=3, per_doc_cap=3)
-    assert _rids(out) == ["c0", "c1", "c2"]           # 순서 보존, top_k 컷
+    assert _rids(out) == ["c0", "c1", "c2"]           # 순서 보존, top_k 컷오프
 
 
 def test_one_document_does_not_flood_when_others_exist():

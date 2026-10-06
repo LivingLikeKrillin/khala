@@ -95,14 +95,14 @@ async def test_the_reference_is_written_on_the_save_path(clean, monkeypatch):
     assert vision.source_ref(row["source_uri"], row["block_id"], sha).startswith(_URI + "#blk-1#")
 
 
-# ── §5.3 캐시 적중이 참조를 채우되 판독을 안 건드리는가 ──────────────────────
+# ── §5.3 캐시 적중이 참조를 채우되 기계 판독을 안 건드리는가 ──────────────────────
 
 async def test_a_cache_hit_fills_the_reference_without_touching_the_text(clean, monkeypatch,
                                                                         db_pool):
     """ADR-0010 §5 는 "바뀌지 않은 바이트는 재추출하지 않는다" 이므로 저장 경로가 통째로
     건너뛰어진다 — 재적재만으로는 옛 행의 참조가 영원히 안 채워진다.
 
-    **판독을 대체하는 것과 그 판독이 어디서 왔는지 적는 것은 다르다.** §5 가 지키는 것은 앞의
+    **기계 판독을 대체하는 것과 그 기계 판독이 어디서 왔는지 적는 것은 다르다.** §5 가 지키는 것은 앞의
     것이다. 그래서 `text` 를 앞뒤로 비교한다.
     """
     from nexus.ingest import vision
@@ -241,10 +241,10 @@ async def test_the_index_refuses_a_second_row_sharing_the_first_sixteen(clean, d
                 "  block_id) VALUES ($1,$2,$3,'표','b2')", _T, prefix + "b" * 48, identity)
 
 
-# ── §5.9 표면: 해석 불가가 몇 건인가 ────────────────────────────────────────
+# ── §5.9 API 표면: 해석 불가가 몇 건인가 ────────────────────────────────────────
 
 async def test_unresolvable_is_counted_over_extraction_rows(clean, db_pool):
-    """청크 쪽 술어로 억제하면 **청크가 없는 추출**(빈 판독)의 미해석 상태가 0 으로 보고된다.
+    """청크 쪽 술어로 억제하면 **청크가 없는 추출**(빈 기계 판독)의 미해석 상태가 0 으로 보고된다.
     그 4건이 이 SPEC 이 조정한 숫자의 전부였다."""
     from nexus.ingest import vision
     from nexus.ingest.vision_source import unresolvable_count
@@ -257,7 +257,7 @@ async def test_unresolvable_is_counted_over_extraction_rows(clean, db_pool):
         await con.execute(                                   # 참조 없음
             "INSERT INTO vision_extractions (tenant, image_sha256, extractor_identity, text) "
             "VALUES ($1,$2,$3,'표')", _T, "2" * 64, identity)
-        await con.execute(                                   # 빈 판독 + 참조 없음
+        await con.execute(                                   # 빈 기계 판독 + 참조 없음
             "INSERT INTO vision_extractions (tenant, image_sha256, extractor_identity, text) "
             "VALUES ($1,$2,$3,'')", _T, "3" * 64, identity)
 
@@ -268,9 +268,9 @@ async def test_unresolvable_is_counted_over_extraction_rows(clean, db_pool):
 
 
 async def test_a_retired_readers_rows_are_counted_apart(clean, db_pool):
-    """은퇴한 신원의 행은 **어떤 걷기도 다시 닿지 않는다** — ADR-0010 §5 가 저장을 신원으로
+    """은퇴한 식별 정보의 행은 **어떤 걷기도 다시 닿지 않는다** — ADR-0010 §5 가 저장을 식별 정보로
     키잉하기 때문이다. 합쳐 세면 영원히 안 꺼지는 ⚠ 가 되고, 게다가 부정확하다: 활성 인용은
-    전부 현 신원의 마커를 이고 있으므로 그 행을 가리키는 인용이 없다.
+    전부 현 식별 정보의 마커를 이고 있으므로 그 행을 가리키는 인용이 없다.
 
     라이브 적재가 이걸 드러냈다 — 현 판독기 44행은 전부 채워졌는데 카운터는 44건 미해석이라고
     찍었고, 그 44건은 전부 은퇴한 판독기의 것이었다.

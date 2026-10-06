@@ -1,7 +1,7 @@
 """Slack 봇 — SPEC-nexus-slack-bot §4.2·§4.3·§6.
 
 핸들러와 API 클라이언트는 라이브 Slack 없이(event dict + say 콜러블) 그리고 라이브 Nexus
-없이(httpx transport 주입) 단위 테스트한다. Socket Mode 배선은 프레임워크 몫 — go-live 게이트에서.
+없이(httpx transport 주입) 단위 테스트한다. Socket Mode 와이어링은 프레임워크 몫 — go-live 게이트에서.
 
 여기서 고정하는 불변식:
   · _call_nexus_api 는 Authorization: Bearer 를 보낸다 (봇 존재 내내 실패해온 단언).
@@ -35,7 +35,7 @@ def test_each_outcome_maps_to_its_own_message():
 
 
 def test_empty_grounding_and_empty_corpus_are_distinct():
-    """근거 없음(코퍼스는 있음)과 코퍼스 없음은 다른 사실, 다른 문장."""
+    """답변 근거 없음(코퍼스는 있음)과 코퍼스 없음은 다른 사실, 다른 문장."""
     assert message_for(Outcome.EMPTY_GROUNDING) != message_for(Outcome.EMPTY_CORPUS)
 
 
@@ -145,7 +145,7 @@ def test_mention_is_stripped():
 # 없었고(의존성 누락으로 기동조차 못 했다), 뜨자마자 셋이 연달아 나왔다.
 
 async def test_generation_failure_is_not_presented_as_an_answer(monkeypatch):
-    """LLM 이 죽으면 `answer` 자리에는 근거 원문 덤프가 들어온다(llm/answer.py).
+    """LLM 이 죽으면 `answer` 자리에는 답변 근거 원문 덤프가 들어온다(llm/answer.py).
 
     그것을 그대로 올리면 사용자는 **실패를 답변으로 읽는다.** 2026-08-13 크레딧이 소진됐을 때
     실제로 그 덤프가 슬랙으로 나갔다(그리고 길이 상한에 걸려 터졌다).

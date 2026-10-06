@@ -34,7 +34,7 @@ def extract_bearer(authorization: str | None) -> str | None:
 def _principal_from_access(assertion: str, cfg: AuthConfig) -> Principal:
     """Cf-Access-Jwt-Assertion → Principal, 또는 401. SPEC-nexus-access-jwt-auth §4.1·§4.4.
 
-    검증 실패는 401 이고, 절대 익명으로 강등하지 않는다 — Access 헤더를 내민 요청은 그 신원으로
+    검증 실패는 401 이고, 절대 익명으로 강등하지 않는다 — Access 헤더를 내민 요청은 그 식별 정보로
     판정해 달라는 것이고, 깨진 assertion 은 거부된 신원이지 익명이 아니다.
     """
     from .access_jwt import AccessJwtError, verify_access_jwt
@@ -60,7 +60,7 @@ def _principal_from_access(assertion: str, cfg: AuthConfig) -> Principal:
             name=ident.email, tenant="default",
             clearance=str(spec.get("clearance", "INTERNAL")),
             capabilities=tuple(spec.get("capabilities") or ()))
-    # 매핑에 없지만 Access 는 통과 — 기본 신원: capabilities 는 항상 비운다(파괴적 행위 불가).
+    # 매핑에 없지만 Access 는 통과 — 기본 식별 정보: capabilities 는 항상 비운다(파괴적 행위 불가).
     return Principal(
         name=ident.email, tenant="default",
         clearance=access.default_clearance, capabilities=())

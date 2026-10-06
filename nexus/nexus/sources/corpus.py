@@ -16,7 +16,7 @@ from __future__ import annotations
 
 # Pack B 트리거는 **두 조건**이다. 하나만 세면 통과하고도 못 측정한다.
 #
-#  · 문서 수 — 창(상위 10문서) 대비 무작위 랭커 바닥값을 0.10 이하로. 116문서면 0.086.
+#  · 문서 수 — 창(상위 10문서) 대비 무작위 랭커 하한값을 0.10 이하로. 116문서면 0.086.
 #    이것은 **창 경쟁**의 조건이다: 짧은 문서도 top-10 자리를 두고 겨루므로 다 센다.
 #  · 실질 문서 수 — gold 가 될 수 있는 문서. 이것은 **라벨 가능성**의 조건이고, 위와 다르다.
 #
@@ -61,7 +61,7 @@ async def _unembedded(con, tenant: str) -> dict:
     from nexus.index.vector_index import configured_column
 
     column = configured_column()
-    # 거부 사유를 함께 낸다 — 개수만으로는 처방을 못 고른다. `413 max_seq_length` 는 청킹을
+    # 거부 사유를 함께 낸다 — 개수만으로는 조치 방법을 못 고른다. `413 max_seq_length` 는 청킹을
     # 고치라는 말이고, 인코딩 오류나 백엔드 다운은 각각 다른 처방이다. 기록이 없으면(옛 청크,
     # 또는 표가 생기기 전에 실패한 것) 사유는 빈 채로 나온다 — 없는 것을 지어내지 않는다.
     rows = await con.fetch(

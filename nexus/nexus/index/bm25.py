@@ -165,7 +165,7 @@ def tokenize_with_surface(text: str, protect: set[str] | None = None) -> list[st
         feats = parts[1].split(",")
         stream.append((parts[0], feats[0] if feats else ""))
 
-    # **표면을 원문 위치로 되짚어 낱말에 배정한다.** 앞판은 스트림을 앞에서부터 먹으며
+    # **표면을 원문 위치로 되짚어 낱말에 배정한다.** 앞버전은 스트림을 앞에서부터 먹으며
     # `word.startswith(...)` 로 맞췄는데, 낱말 사이의 기호(`[`, `*`, `:`)도 스트림에 있어서
     # 정렬이 어긋났고 **그 낱말의 형태소를 통째로 버렸다** — `[파티룸] 디제잉 정책` 이
     # `['파티룸','디제잉']` 이 됐다(형태소 5개 소실). 위치로 배정하면 기호가 몇 개든 상관없다.
@@ -211,12 +211,12 @@ def compound_names(text: str) -> list[str]:
         값은    = 값(NNG) + 은(JX)              → **아니다** — 조사가 떨어진 것은 정상이다
         같은    = 같(VA) + 은(ETM)              → 아니다
 
-    ⚠ 앞선 두 판은 이 구분이 없어 351개·314개짜리 쓰레기 목록을 냈다(Notion 식별자 조각,
+    ⚠ 앞선 두 개 버전은 이 구분이 없어 351개·314개짜리 쓰레기 목록을 냈다(Notion 식별자 조각,
     그리고 `값은`·`거부한다` 같은 활용형). 그 목록으로는 "지정 보호" 가 무차별과 구별되지 않아
     측정 자체가 성립하지 않았다.
 
     ⚠ 이 규칙은 mecab 이 **동사로 오분석**하는 이름은 못 잡는다(클러버 = 클(VA+ETM)+러버,
-    레퍼럴 = 레+퍼럴(VA+ETM)). 그건 이 판의 범위 밖이고, 문서에 적어 둔다.
+    레퍼럴 = 레+퍼럴(VA+ETM)). 그건 이 버전의 범위 밖이고, 문서에 적어 둔다.
     """
     mecab = _get_mecab()
     if mecab is None:
@@ -230,7 +230,7 @@ def compound_names(text: str) -> list[str]:
         if not parsed:
             continue
         # **`tokenize_korean` 을 부르지 않는다.** bm25.py 안에서 그 함수를 부르는 것은
-        # `MecabTokenizer` 하나여야 한다는 이음매 불변식이 있고(`test_tokenizer_seam`),
+        # `MecabTokenizer` 하나여야 한다는 접합부 불변식이 있고(`test_tokenizer_seam`),
         # 여기 필요한 것은 어차피 태그와 표면뿐이다.
         tags, surfaces = [], []
         for line in parsed.strip().split("\n"):
@@ -249,9 +249,9 @@ def compound_names(text: str) -> list[str]:
 class ProtectedTermTokenizer:
     """형태소 + **목록에 있는 낱말의 표면형만**.
 
-    무차별 판(`SurfaceFormTokenizer`)은 모든 낱말에 텀을 더해 매치 수를 키웠고, 그 이득을 긴
+    무차별 버전(`SurfaceFormTokenizer`)은 모든 낱말에 텀을 더해 매치 수를 키웠고, 그 이득을 긴
     문서가 가져가 키워드 경로가 내려갔다(0.879 → 0.818, `tests/eval/tokenizer-surface/`).
-    여기서는 **지정된 낱말에만** 붙이므로 그 기제가 성립하지 않는다.
+    여기서는 **지정된 낱말에만** 붙이므로 그 메커니즘이 성립하지 않는다.
 
     목록은 호출자가 준다. 이 클래스는 목록을 만들지 않는다 — 어디서 왔는지가 코드가 아니라
     실행 기록에 남아야 한다.
@@ -292,7 +292,7 @@ def active_tokenizer() -> Tokenizer:
 
 @contextmanager
 def use_tokenizer(tokenizer: Tokenizer | None):
-    """토크나이저를 한 실행 동안 갈아끼운다 — **평가 하니스 전용**.
+    """토크나이저를 한 실행 동안 갈아끼운다 — **평가 하네스 전용**.
 
     색인과 질의가 같은 객체를 쓰도록 한 곳에서만 갈아끼운다. 색인은 mecab 으로, 질의는 nori 로
     돈 실행은 그럴듯한 숫자를 내지만 아무 의미가 없다 (SPEC §4.4).

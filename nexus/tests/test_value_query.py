@@ -42,7 +42,7 @@ async def test_live_value_high_confidence_fresh():
 async def test_drift_noted_when_stored_hash_differs():
     svc = ValueQueryService(FakeRepo([_claim(value_symbol_hash="OLD")]), CodeValueResolver(FIX))
     res = await svc.query_value("Basic", "default", "INTERNAL")
-    assert res[0].value == "5"  # 값 자체는 항상 현재값(결정론)
+    assert res[0].value == "5"  # 값 자체는 항상 현재값(결정성)
     assert res[0].drifted is True
     assert "변경" in res[0].note
 

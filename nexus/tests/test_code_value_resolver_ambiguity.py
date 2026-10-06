@@ -1,6 +1,6 @@
 """해석기는 **모호하면 답하지 않는다** — 그리고 한정자를 실제로 쓴다.
 
-**왜 이 파일이 있나 (2026-08-25 실측).** 첫 판은 `value_source` 의 한정자를 버리고
+**왜 이 파일이 있나 (2026-08-25 실측).** 첫 버전은 `value_source` 의 한정자를 버리고
 (`rpartition(".")` 로 심볼만 취함) `*.java` 전체에서 **첫 매치**를 돌려줬다. 대상 코드베이스를
 실제로 측정해 보니:
 
@@ -31,7 +31,7 @@ def _java(root: Path, rel: str, body: str) -> None:
 def test_same_name_different_values_is_refused(tmp_path):
     """두 클래스가 같은 이름을 **다른 값**으로 가지면 답하지 않는다.
 
-    옛 판은 `rglob` 순서가 고른 쪽을 확신하는 문장으로 내보냈다. 이 검사가 그것을 막는다.
+    옛 버전은 `rglob` 순서가 고른 쪽을 확신하는 문장으로 내보냈다. 이 검사가 그것을 막는다.
     """
     _java(tmp_path, "a/Alpha.java", "class Alpha { public static final int LIMIT = 10; }")
     _java(tmp_path, "b/Beta.java", "class Beta { public static final int LIMIT = 99; }")
@@ -66,7 +66,7 @@ def test_qualifier_disambiguates(tmp_path):
 def test_nonexistent_qualifier_is_not_found(tmp_path):
     """없는 클래스명으로는 값이 나오면 안 된다.
 
-    옛 판은 한정자를 버렸기 때문에 `SomeClass.LIMIT` 이 태연히 `10` 을 냈다 — 실측된 동작이다.
+    옛 버전은 한정자를 버렸기 때문에 `SomeClass.LIMIT` 이 태연히 `10` 을 냈다 — 실측된 동작이다.
     """
     _java(tmp_path, "a/Alpha.java", "class Alpha { public static final int LIMIT = 10; }")
 
@@ -123,12 +123,12 @@ def test_missing_repo_says_so(tmp_path):
     assert "코드 경로가 없다" in r.reason
 
 
-# ── 결정론 ────────────────────────────────────────────────────────────────────
+# ── 결정성 ────────────────────────────────────────────────────────────────────
 
 def test_resolution_does_not_depend_on_filesystem_order(tmp_path):
     """같은 값이 여러 곳에 있을 때 고르는 파일이 기계마다 달라지면 안 된다.
 
-    옛 판은 `rglob` 이 준 순서를 그대로 썼다 — 그 순서는 OS·파일시스템이 정한다.
+    옛 버전은 `rglob` 이 준 순서를 그대로 썼다 — 그 순서는 OS·파일시스템이 정한다.
     """
     for name in ("zeta/Z.java", "alpha/A.java", "mid/M.java"):
         cls = Path(name).stem

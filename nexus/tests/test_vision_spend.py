@@ -1,6 +1,6 @@
-"""그림 판독이 **장부에 오르는가**.
+"""그림 기계 판독이 **원장에 오르는가**.
 
-2026-08-25 재적재는 판독 39건을 공급자로 보내고 "지출 0" 으로 보고됐다. 거짓말을 한 것이 아니라
+2026-08-25 재적재는 기계 판독 39건을 공급자로 보내고 "지출 0" 으로 보고됐다. 거짓말을 한 것이 아니라
 **세는 곳이 없었다** — `dev_spend` 를 부르는 곳은 평가 스크립트 둘뿐이었고 적재 경로는 아니었다.
 
 여기서 측정하는 것은 대부분 **세어져야 하는데 안 세어지던 입력**이다.
@@ -86,9 +86,9 @@ def test_a_reader_that_ignores_usage_out_still_counts_the_call():
     assert sink == [None] and spend_of(sink).calls == 1
 
 
-# ── 배선: 장부가 실제 경로에서 채워지는가 ────────────────────────────────────
+# ── 와이어링: 원장이 실제 경로에서 채워지는가 ────────────────────────────────────
 #
-# 단위 검사만으로는 부족하다는 것이 이 리포의 반복된 경험이다 — 배선이 끊긴 채로 초록인 검사가
+# 단위 검사만으로는 부족하다는 것이 이 리포의 반복된 경험이다 — 와이어링이 끊긴 채로 초록인 검사가
 # 여러 번 있었다. 그래서 `apply` 를 통째로 돌린다.
 
 from nexus.ingest import vision_store  # noqa: E402
@@ -142,7 +142,7 @@ def test_the_ledger_is_filled_through_the_real_path(monkeypatch):
 
 
 def test_a_cache_hit_is_not_a_call(monkeypatch):
-    """이미 읽은 바이트는 공급자로 나가지 않는다 — 장부에 오르면 지출이 부풀려진다."""
+    """이미 읽은 바이트는 공급자로 나가지 않는다 — 원장에 오르면 지출이 부풀려진다."""
     spend = Spend()
     reader = _apply(monkeypatch, spend, cached=True)
     assert reader.calls == 0 and spend.calls == 0
@@ -150,7 +150,7 @@ def test_a_cache_hit_is_not_a_call(monkeypatch):
 
 def test_without_a_ledger_the_reader_contract_is_unchanged(monkeypatch):
     """`spend` 를 안 주면 `usage_out` 을 **아예 넘기지 않는다.** 늘 넘기면 그 인자를 모르는
-    판독기가 TypeError 를 내고, 그 예외는 판독 실패로 삼켜져 **조용히 그림이 안 읽힌다.**"""
+    판독기가 TypeError 를 내고, 그 예외는 기계 판독 실패로 삼켜져 **조용히 그림이 안 읽힌다.**"""
     seen = {}
 
     class _Old:

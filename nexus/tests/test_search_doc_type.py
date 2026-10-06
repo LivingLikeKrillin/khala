@@ -1,4 +1,4 @@
-"""축-A doc_type 가 *검색 HTTP 응답*까지 도달하는지 가드.
+"""차원-A doc_type 가 *검색 HTTP 응답*까지 도달하는지 가드 검사.
 
 S3 가 doc_type 을 SearchHit/EvidenceSnippet/format_for_llm 에 보존했지만, HTTP 직렬화
 (`/search` 의 results, `/search/answer` 의 evidence_snippets)가 필드를 떨궈 웹 클라이언트가

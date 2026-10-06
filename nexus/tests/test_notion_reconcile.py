@@ -145,7 +145,7 @@ def test_plan_empty_scope_is_not_a_refusal():
     assert plan.revive == []
 
 
-# ── import_notion 배선 (§3.3 순서: 적재 → 재조정) ─────────────────────────────
+# ── import_notion 와이어링 (§3.3 순서: 적재 → 재조정) ─────────────────────────────
 
 class _IndexedSource:
     """live_index 를 제공하는 페이크 소스."""

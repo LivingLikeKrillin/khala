@@ -19,7 +19,7 @@
 
 ⚠ **처음 측정은 3/5 였고 그것은 라벨의 구멍이었다** (2026-08-29). 시스템은 `hard-delete`·
 `물리 삭제` 로 답하는데 라벨엔 `Hard-Delete` 만 있었다. 표기를 넓히고 다시 재니 5/5 다.
-그 사이 나는 없는 병("답변이 낡은 쪽을 고른다")에 처방을 만들어 측정까지 했고, 사전 규칙이
+그 사이 나는 없는 병("답변이 스테일 쪽을 고른다")에 조치 방법을 만들어 측정까지 했고, 사전 규칙이
 그것을 기각했다. **실패를 진단하기 전에 실패한 답변을 읽어라** — 점수는 어느 값이 빠졌는지만
 알려 주고, 그 값이 정말 빠졌는지는 안 알려 준다.
 
@@ -67,7 +67,7 @@ async def corrections_for(hits, tenant, clearance, *, search, exclude_rids=None,
     """1차 근거가 부른 이름에 대한 **정정 문서** 청크. 실패는 삼키되 조용하지 않게.
 
     ``search`` 는 `hybrid_search` 를 받는다 — 이 모듈이 검색 구현을 알 필요가 없고,
-    테스트가 진짜 DB 없이 배선을 확인할 수 있다.
+    테스트가 진짜 DB 없이 와이어링을 확인할 수 있다.
 
     ⛔ **중첩 검색은 바깥 질의의 종류 제외를 물고 가야 한다 (실측 2026-09-20).** 이 패스는
     새 질의를 만들어 `search` 를 **다시** 부르는데, 그 호출이 제외를 안 들고 가면 방금
@@ -105,7 +105,7 @@ async def corrections_for(hits, tenant, clearance, *, search, exclude_rids=None,
 async def code_values_for(question, tenant, clearance, *, config, pool):
     """질문에 걸린 claim 의 **코드 현재값**.
 
-    ⛔ **왜 이 배선이 필요했나 (2026-08-30).** 코드 값 해석기도, claim 표도, 전용 CLI 도
+    ⛔ **왜 이 와이어링이 필요했나 (2026-08-30).** 코드 값 해석기도, claim 표도, 전용 CLI 도
     다 있었는데 **답변 경로가 부르는 곳이 없었다**. 그래서 슬랙에서 *"파티 이름 몇 자까지"*
     를 물으면 문서만 보고 답했고, 코드가 다른 값을 갖고 있어도 화면에 나타날 길이 없었다.
     이 리포가 반복해서 데인 모양이다 — 만들어 놓고 읽는 쪽이 없다.
@@ -149,7 +149,7 @@ def code_value_from(claim, *, value, source, drifted):
     """claim 하나 → 패킷의 `CodeValue`. 코드 값도 판정도 없으면 None.
 
     판정은 코드 값을 못 읽어도 붙는다 — 정원처럼 해석기가 못 읽는 모양에도 판정은 있고,
-    그 판정이 안 보이면 답변은 문서의 낡은 값을 낸다(A27). 어긋남은 **여기서** 계산한다:
+    그 판정이 안 보이면 답변은 문서의 스테일 값을 낸다(A27). 불일치는 **여기서** 계산한다:
     판정 값이 있고 코드 값이 읽혔는데 둘이 다르면 참. 값 없는 판정("기각, 대체 미정")은
     비교할 것이 없으니 거짓이다.
     """
@@ -176,9 +176,9 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
     """**답변용 근거 패킷은 이 함수 하나로 만든다.**
 
     답변 경로가 셋이다(HTTP · CLI · A2A). 각자 `assemble_packet` 을 부르면, 보강을 한 곳에만
-    붙이는 배선이 가능해지고 **그 조합은 검사가 초록인 채로 프로덕션에서 조용히 틀린다** —
+    붙이는 와이어링이 가능해지고 **그 조합은 검사가 초록인 채로 프로덕션에서 조용히 틀린다** —
     이 리포가 `build_prompts` 주석에 이미 적어 둔 실패다. 2026-08-29 에 내가 그대로 반복했고
-    (api.py 한 곳만 배선), 그래서 여기로 모은다.
+    (api.py 한 곳만 와이어링), 그래서 여기로 모은다.
 
     검색만 하는 경로는 이 함수를 부르지 않는다. 정정 확인 패스의 3.5배가 거기서는 그대로
     사용자에게 보인다.
@@ -204,13 +204,13 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
     search_cfg = (config or {}).get("search", {}) or {}
     fill = list(result.fill or [])
     # ⛔ **제외 목록을 인자로 받지 않는다 — `result` 에서 읽는다.** 답변 경로가 셋인데
-    # 표면마다 넘기게 두면 하나가 잊고, 그 조합은 검사가 초록인 채로 틀린다(이 함수가
+    # API 표면마다 넘기게 두면 하나가 잊고, 그 조합은 검사가 초록인 채로 틀린다(이 함수가
     # 생긴 이유 그대로). 검색이 무엇을 뺐는지는 이미 `SearchResult` 에 실려 있으므로,
     # 여기서 그것을 읽으면 **검색과 보강이 어긋나는 것이 표현 불가능**해진다.
     excluded_types = tuple(getattr(result, "excluded_doc_types", ()) or ())
     if search_cfg.get("reconcile_pass"):
         # ⛔ **터진 것을 담을 자리도 `result` 에서 읽는다** — 제외 목록과 같은 이유다.
-        #    표면마다 받으면 하나가 잊고, 그 조합은 검사가 초록인 채로 틀린다.
+        #    API 표면마다 받으면 하나가 잊고, 그 조합은 검사가 초록인 채로 틀린다.
         fill += await corrections_for(result.hits, tenant, clearance, search=search,
                                       exclude_rids={f.rid for f in fill},
                                       embedding_svc=embedding_svc, config=config,
@@ -222,20 +222,20 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
             result.hits, tenant, clearance, exclude_rids={f.rid for f in fill},
             exclude_doc_types=excluded_types, failed=result.enrichment_failed)]
     if search_cfg.get("cross_reference_fill"):
-        # ⛔ **가리키기만 하는 절이 가리킨 절을 데리고 온다** (`search/crossrefs.py`).
-        #    조각내기가 `§5` 와 `§4` 를 갈라 놓으면 조각 5 는 혼자 가고, 받는 쪽은 조건 없는
-        #    포인터를 받는다 — 설명 층의 탐색 줄이 두 판 다 0/1 이었던 자리다.
+        # ⛔ **가리키기만 하는 절이 참조 필을 데리고 온다** (`search/crossrefs.py`).
+        #    조각내기가 `§5` 와 `§4` 를 갈라 놓으면 청크 5 는 혼자 가고, 받는 쪽은 조건 없는
+        #    포인터를 받는다 — 설명 레이어의 탐색 줄이 두 버전 다 0/1 이었던 자리다.
         #
         # ⭐ **여기 붙이는 이유**는 이 함수가 생긴 이유 그대로다: 답변 경로 셋이 전부 여기로
-        #    모이므로 **표면 누락이 표현 불가능**해진다. 조각내기에 붙이면 코퍼스가 부풀고,
+        #    모이므로 **API 표면 누락이 표현 불가능**해진다. 조각내기에 붙이면 코퍼스가 부풀고,
         #    검색에 붙이면 top-k 예산을 먹는다.
         from nexus.search.crossrefs import referenced_chunks
         fill += [_as_hit(r) for r in await referenced_chunks(
             result.hits, tenant, clearance, exclude_rids={f.rid for f in fill},
             failed=result.enrichment_failed)]
-    # `result.spans` 는 SPEC-nexus-stage-spans 캡처(기본 꺼짐, None). 여기서 넘기지 않으면
+    # `result.spans` 는 SPEC-nexus-stage-spans 캡처(기본 비활성화, None). 여기서 넘기지 않으면
     # 답변 경로의 packet span 은 영원히 못 남는다 — 답변 경로 셋이 전부 이 함수 하나로 모이므로
-    # (docstring 참조), 캡처 배선도 여기 한 곳이면 된다.
+    # (docstring 참조), 캡처 와이어링도 여기 한 곳이면 된다.
     packet = await assemble_packet(result.hits, result.graph, tenant, fill=fill,
                                    clearance=clearance, spans=getattr(result, "spans", None))
     if search_cfg.get("code_values") and question and pool is not None:
@@ -245,15 +245,15 @@ async def packet_for_answer(result, tenant, clearance, *, config, search,
         except Exception:                                   # noqa: BLE001
             # 답변을 막지 않는다. 코드 값은 덤이고, 여기서 터지면 질문 전체가 죽는다.
             logger.warning("code_values_failed", tenant=tenant)
-    # 이 답이 **무엇을 뒤졌는지** 패킷에 실어 보낸다. 표면마다 붙이면 하나가 조용히 빠지고,
+    # 이 답이 **무엇을 뒤졌는지** 패킷에 실어 보낸다. API 표면마다 붙이면 하나가 조용히 빠지고,
     # 그 조합은 검사가 초록인 채로 프로덕션에서 틀린다 — 이 파일이 이미 데인 자리다(F2).
     packet.searched_tenants = [tenant] if isinstance(tenant, str) else list(tenant)
-    # 그리고 **어떤 코드가 이 꾸러미와 프롬프트를 만들었는지**. 같은 자리, 같은 이유다 — 옛 판은
+    # 그리고 **어떤 코드가 이 근거 묶음과 프롬프트를 만들었는지**. 같은 자리, 같은 이유다 — 옛 버전은
     # 비스트림 경로의 기록에만 남았고 스트리밍 경로(웹 채팅)는 기록에도 없었다.
     from nexus.llm.prompt_version import prompt_version
     packet.prompt_version = prompt_version()
-    # **어떤 코퍼스를, 어떤 검색 설정으로.** 같은 자리, 같은 이유. 코퍼스 판은 읽을 수 있는
-    # 문서만 세므로 DB 가 있어야 한다 — 없으면(평가 하니스 · 검사) 모른다고 남긴다.
+    # **어떤 코퍼스를, 어떤 검색 설정으로.** 같은 자리, 같은 이유. 코퍼스 버전은 읽을 수 있는
+    # 문서만 세므로 DB 가 있어야 한다 — 없으면(평가 하네스 · 검사) 모른다고 남긴다.
     from nexus.search.versions import corpus_version, search_fingerprint
     packet.search_fingerprint = search_fingerprint(config)
     packet.corpus_version = (await corpus_version(tenant, clearance, pool)

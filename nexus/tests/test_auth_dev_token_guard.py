@@ -1,4 +1,4 @@
-"""NEXUS_DEV_TOKEN 약함 가드: 약한 토큰이면 경고, strict 모드(NEXUS_REQUIRE_STRONG_DEV_TOKEN=1)면 부트 거부."""
+"""NEXUS_DEV_TOKEN 약함 가드 검사: 약한 토큰이면 경고, strict 모드(NEXUS_REQUIRE_STRONG_DEV_TOKEN=1)면 부트 거부."""
 import pytest
 
 from nexus.auth.config import AuthConfig

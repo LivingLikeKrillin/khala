@@ -1,10 +1,10 @@
-"""근거 문서에 붙은 **갱신 부채**를 읽는 순간에 알린다 (2026-08-18).
+"""답변 근거 문서에 붙은 **갱신 부채**를 읽는 순간에 알린다 (2026-08-18).
 
 라이브 정책 코퍼스를 처음 측정하던 날, 답변 8건 중 2건의 실패 원인이 시스템이 아니라 **문서**였다:
 한 문서가 "이용약관은 아직 기획되지 않음" 이라고 적으면서 같은 문서에 실제 약관 본문을 담고
 있었다. 읽는 사람은 그 사실을 알 방법이 없었다.
 
-**여기 오는 것은 결정론으로 확인되는 부채뿐이다.** 의미적 모순 판정은 심판 모델이 필요하고
+**여기 오는 것은 결정론적으로 확인되는 부채뿐이다.** 의미적 모순 판정은 심판 모델이 필요하고
 그 길은 근거를 들어 기각됐다(DocPrism: 98% 플래그, 정확도 14%). 모순은 답변자가 서술할 수
 있고, 시스템은 그것을 보증하지 않는다.
 """
@@ -93,7 +93,7 @@ async def test_an_empty_string_means_not_superseded(monkeypatch):
 
 
 def test_the_same_title_is_not_repeated_once_per_document():
-    """제목이 겹치는 문서가 근거에 여럿 들어오는 것이 **그 부채의 정의**다. 접지 않으면
+    """제목이 겹치는 문서가 답변 근거에 여럿 들어오는 것이 **그 부채의 정의**다. 접지 않으면
     부채를 알리는 줄이 그 자체로 소음이 된다 — 라이브에서 같은 문장이 세 번 나왔다."""
     line = describe([DocDebt(f"d{i}", "겹친 제목", "", 8) for i in range(3)])
 
@@ -106,7 +106,7 @@ async def test_a_row_of_the_wrong_shape_does_not_take_the_answer_down(monkeypatc
     from nexus.search import doc_debt
 
     async def _wrong_shape(*a, **k):
-        return [{"chunk_rid": "c1", "candidate": "Alpha"}]      # 다른 층의 행
+        return [{"chunk_rid": "c1", "candidate": "Alpha"}]      # 다른 계층의 행
 
     monkeypatch.setattr(doc_debt.db, "fetch_all", _wrong_shape)
     assert await doc_debt.debts_for_docs("t", "INTERNAL", ["d1"]) == {}

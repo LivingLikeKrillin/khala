@@ -1,4 +1,4 @@
-"""문서 생애주기 HTTP 계약 — SPEC-nexus-document-lifecycle §4.3 · §4.4 · §5.
+"""문서 생명주기 HTTP 계약 — SPEC-nexus-document-lifecycle §4.3 · §4.4 · §5.
 
 여기서 고정하는 것:
   · origin 유도 (notion / upload / file), 잘못된 접미사는 URL 을 **추측하지 않는다**

@@ -27,7 +27,7 @@ def test_a_clean_corpus_reports_zero_and_that_zero_is_usable():
 
 
 def test_nothing_to_look_at_is_not_a_result():
-    """⛔ 0건을 보고 '낡은 것 0' 이라고 적으면 없는 사실을 만든다."""
+    """⛔ 0건을 보고 '스테일한 것 0' 이라고 적으면 없는 사실을 만든다."""
     assert _v(0, 0)["usable"] is False
 
 
@@ -44,7 +44,7 @@ def test_an_empty_shuffled_control_kills_the_verdict():
 
 
 def test_everything_mismatching_is_read_as_our_own_tokeniser_not_the_corpus():
-    """⚠ 전수 불일치는 코퍼스가 전부 낡은 것보다 **이 스크립트가 색인기와 다른 것**이 훨씬
+    """⚠ 전수 불일치는 코퍼스가 전부 스테일한 것보다 **이 스크립트가 색인기와 다른 것**이 훨씬
     그럴듯하다. 그 수를 결함으로 보고하면 존재하지 않는 사고를 만든다."""
     v = _v(466, 466)
     assert v["usable"] is False and "토큰화가 색인기와" in v["why"]

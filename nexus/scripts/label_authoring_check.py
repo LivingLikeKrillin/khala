@@ -5,7 +5,7 @@
 때마다 만료된다. 옮기는 것은 맞는데, **13건을 다 쓰고 나서 게이트에 걸리면** 그때 고치는 것은
 이미 점수를 본 뒤의 수정이 된다.
 
-`ko_eval_labels.check` 가 보는 것(필수 칸·gold 존재·제목 베끼기·층)은 그대로 부르고, 여기 더하는
+`ko_eval_labels.check` 가 보는 것(필수 필드·gold 존재·제목 베끼기·계층)은 그대로 부르고, 여기 더하는
 것은 **저술 규칙 둘**이다 (`tests/eval/answer-facts/README.md` §저술 규칙):
 
   ① 요구가 **gold 본문에서 성립**한다 — 없으면 어떤 답도 통과 못 하는 질의다.
@@ -36,8 +36,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.ko_eval_answer_quality import facts_present  # noqa: E402
 from scripts.ko_eval_labels import STRATA, load  # noqa: E402
 
-#: 저술 규칙이 요구하는 칸. `ko_eval_labels.REQUIRED_FIELDS` 와 겹치지만 여기서 먼저 본다 —
-#: 칸이 없으면 아래 두 규칙을 **적용조차 못 하고**, 그때 나오는 오류는 원인을 안 가리킨다.
+#: 저술 규칙이 요구하는 필드. `ko_eval_labels.REQUIRED_FIELDS` 와 겹치지만 여기서 먼저 본다 —
+#: 필드가 없으면 아래 두 규칙을 **적용조차 못 하고**, 그때 나오는 오류는 원인을 안 가리킨다.
 NEEDED = ("id", "query", "stratum", "gold", "must_contain", "rationale")
 
 
@@ -79,7 +79,7 @@ def authoring_problems(q: dict, gold_body: str, control_body: str | None) -> lis
 
 
 def balance_after(existing: list[dict], removed: set[str], added: list[dict]) -> dict[str, int]:
-    """교체 뒤 층별 답변가능 수. 40건은 다섯 층에 8건씩으로 지어졌다."""
+    """교체 뒤 계층별 답변가능 수. 40건은 다섯 계층에 8건씩으로 지어졌다."""
     out = dict.fromkeys(STRATA, 0)
     for q in existing:
         if q.get("answerable") and q["id"] not in removed:

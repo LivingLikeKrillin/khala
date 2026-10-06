@@ -135,7 +135,7 @@ async def test_another_tenants_anchors_do_not_leak(corpus):
 
 
 async def test_a_deleted_name_arrives_with_its_commit_and_date(corpus):
-    """이름만으로는 문서를 못 고친다. 언제·왜 지워졌는지가 붙어야 처분이 된다."""
+    """이름만으로는 문서를 못 고친다. 언제·왜 지워졌는지가 붙어야 조치가 된다."""
     out = await statuses_for_chunks(_TENANT, list(corpus.values()))
 
     gone = out[corpus["c2"]].deleted

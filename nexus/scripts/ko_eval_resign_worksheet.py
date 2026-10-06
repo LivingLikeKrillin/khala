@@ -1,11 +1,11 @@
-"""재서명 워크시트 — 사람이 무엇에 서명하는지 **읽을 수 있게** 펼쳐 놓는다.
+"""재사인오프 워크시트 — 사람이 무엇에 사인오프하는지 **읽을 수 있게** 펼쳐 놓는다.
 
-SPEC-nexus-answer-quality-ruler §3.3 은 재서명을 "바뀐 문서를 다시 읽고 rationale·must_contain·
+SPEC-nexus-answer-quality-ruler §3.3 은 재사인오프를 "바뀐 문서를 다시 읽고 rationale·must_contain·
 gold·not_gold 를 확인하는 사람의 행위" 로 정의한다. 그런데 라이브 해시를 계산해 주는 도구만 있고
 **무엇이 바뀌었는지** 보여 주는 도구가 없으면, 실제로 일어나는 일은 계산된 `corpus:` 블록을 통째로
 붙여넣는 것이다 — §4 가 이름을 붙여 둔 실패("읽지 않고 재서명하도록 훈련시킨다") 그 자체다.
 
-그래서 이 스크립트는 해시를 **주지 않는다**. 얼린 스냅샷 테넌트(`ko_eval_packb`)와 지금 측정하는
+그래서 이 스크립트는 해시를 **주지 않는다**. 동결된 스냅샷 테넌트(`ko_eval_packb`)와 지금 측정하는
 테넌트의 **본문을 청크 단위로 대조**해서 들어온 텍스트·나간 텍스트를 보여 주고, 각 질의의
 `must_contain` 요구가 **지금 본문에서 여전히 성립하는지**를 기계적으로 표시한다. 서명용 블록은
 맨 끝 부록에 있고, 그 앞을 읽어야 도달한다.
@@ -48,13 +48,13 @@ EXCERPT = 700
 
 
 def signed_bodies(labels: dict, manifest: dict | None) -> tuple[dict[str, str | None], str]:
-    """**서명된 본문 해시**와 그 값이 어디서 왔는지 → ({문서키: hex}, 출처 이름).
+    """**사인오프된 본문 해시**와 그 값이 어디서 왔는지 → ({문서키: hex}, 출처 이름).
 
-    ⛔ 정본은 라벨 자신의 `corpus.bodies` 다. 관문(`ko_eval_labels.expired`)이 보는 것이 그것이고,
-    워크시트가 다른 것을 보면 사람은 **관문이 막지도 않은 문서**를 다시 읽게 된다.
+    ⛔ 정본은 라벨 자신의 `corpus.bodies` 다. 게이트(`ko_eval_labels.expired`)가 보는 것이 그것이고,
+    워크시트가 다른 것을 보면 사람은 **게이트가 막지도 않은 문서**를 다시 읽게 된다.
 
     실측 2026-09-03 에 실제로 갈라져 있었다. Pack B 의 판정 문서 20건에 대해 매니페스트 기준으로는
-    15건이 달라졌고 `corpus.bodies` 기준으로는 8건이었다 — 매니페스트는 2026-08-07 에 얼린 팩의
+    15건이 달라졌고 `corpus.bodies` 기준으로는 8건이었다 — 매니페스트는 2026-08-07 에 동결된 팩의
     해시이고 라벨은 2026-08-12 에 다시 서명됐기 때문이다. 워크시트는 그 차이만큼 사람에게 없는
     일을 시키고 있었다. 매니페스트는 **라벨이 결속을 안 들고 있을 때만** 쓴다(옛 라벨).
     """
@@ -66,7 +66,7 @@ def signed_bodies(labels: dict, manifest: dict | None) -> tuple[dict[str, str | 
 
 
 #: `signed_bodies` 의 출처를 사람이 읽는 말로. 워크시트 머리에 **어느 해시로 판정했는지**가 적혀야
-#: 한다 — 그것이 관문과 같은지 다른지가 이 문서의 신뢰도 전부다.
+#: 한다 — 그것이 게이트와 같은지 다른지가 이 문서의 신뢰도 전부다.
 SOURCE_TEXT = {"corpus.bodies": "라벨의 `corpus.bodies` (관문이 보는 것과 같다)",
                "manifest": "매니페스트 (라벨에 `corpus.bodies` 가 없다)"}
 
@@ -83,8 +83,8 @@ def _requirement_state(groups: list[list[str]] | None, body: str) -> list[tuple[
     out = []
     for group, present in zip(groups or [], ok):
         hit = next((alt for alt in group if _norm(alt) in normalized), "")
-        # 후보를 `|` 로 이으면 마크다운 표의 칸이 갈라진다 — `["잠금해제", "해금"]` 이 실제로
-        # 칸 넷짜리 줄을 만들었다(2026-09-03). 표를 읽으라고 만든 문서에서 표가 깨지면
+        # 후보를 `|` 로 이으면 마크다운 표의 필드가 갈라진다 — `["잠금해제", "해금"]` 이 실제로
+        # 필드 넷짜리 줄을 만들었다(2026-09-03). 표를 읽으라고 만든 문서에서 표가 깨지면
         # 사람은 그 줄을 안 읽는다.
         out.append((" 또는 ".join(f"`{alt}`" for alt in group), present, hit))
     return out
@@ -162,7 +162,7 @@ async def _run(args) -> int:
 
     drifted = {k: v for k, v in judged.items() if live_sha.get(k) != signed_sha.get(k)}
     stale_qids = sorted({q["id"] for qs in drifted.values() for q in qs})
-    #: 서명된 본문을 실제로 들고 있는 스냅샷 문서만 '이전' 이 된다.
+    #: 사인오프된 본문을 실제로 들고 있는 스냅샷 문서만 '이전' 이 된다.
     has_before = {k for k in drifted if frozen_sha.get(k) == signed_sha.get(k)}
 
     L: list[str] = []
@@ -312,7 +312,7 @@ async def _run(args) -> int:
                 w("  - [ ] gold 승격 · [ ] not_gold · [ ] 판단 보류")
             w("")
 
-    # ── 부록: 서명 블록 ──────────────────────────────────────────────────────
+    # ── 부록: 사인오프 블록 ──────────────────────────────────────────────────────
     w("## 부록 — 위를 다 읽은 뒤에 붙여넣을 `corpus:` 블록")
     w("")
     w("**A·B 를 읽지 않았다면 여기서 멈춰라.** 이 블록을 붙여넣는 행위가 "
@@ -344,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--tenant", default="default", help="지금 측정하는 테넌트")
     p.add_argument("--snapshot", default="ko_eval_packb", help="얼린 스냅샷 테넌트")
     # 라벨셋이 인자인 이유: 결속은 `packb-labels.yaml` 만의 것이 아니다. 정책·멀티홉 라벨도 같은
-    # `corpus:` 블록을 들고 같은 관문에 막히는데, 그것들을 펼칠 방법이 없어 사람이 읽을 것이
+    # `corpus:` 블록을 들고 같은 게이트에 막히는데, 그것들을 펼칠 방법이 없어 사람이 읽을 것이
     # 없었다. 산출물 이름도 라벨에서 딴다 — 고정 경로 하나면 두 번째 실행이 첫 번째를 덮는다.
     p.add_argument("--labels", type=Path, default=LABELS, help="라벨 파일")
     p.add_argument("--manifest", type=Path, default=MANIFEST,

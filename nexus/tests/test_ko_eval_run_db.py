@@ -1,16 +1,16 @@
-"""한국어 평가셋 실행 — 팩 적재 → 키워드 경로 → 바닥값 (SPEC-nexus-korean-retrieval-eval §4.5, §6).
+"""한국어 평가셋 실행 — 팩 적재 → 키워드 경로 → 하한값 (SPEC-nexus-korean-retrieval-eval §4.5, §6).
 
-**바닥값이 '첫 실행이 낸 값' 이면 그건 표준이 아니다.** 그래서 두 가지가 함께 있다:
+**하한값이 '첫 실행이 낸 값' 이면 그건 표준이 아니다.** 그래서 두 가지가 함께 있다:
 
-- **절대 하한** — Recall@10 ≥ 0.50, 미스 ≤ 10/40. 실행이 이보다 낮으면 그건 바닥값이 아니라
+- **절대 하한** — Recall@10 ≥ 0.50, 미스 ≤ 10/40. 실행이 이보다 낮으면 그건 하한값이 아니라
   고장 신고다(색인·팩·라벨 중 하나가 틀렸다는 뜻). **그 하한이 실제로 울렸다**: 첫 측정이 미스
   12/40 이었고, 조사 결과 키워드 경로의 동점 정렬이 비결정적이라는 프로덕션 결함이 나왔다
-  (SPEC-nexus-deterministic-retrieval-order). 고친 뒤에야 바닥값을 기록했다.
-- **음성 대조군** — 질의 조립을 역사적 결함(`AND`)으로 되돌리면 재현율이 무너져야 한다. 바닥값
-  상수가 아니라 **같은 실행의 기준선**과 비교하므로, 바닥값이 흔들리는 동안에도 이빨은 살아 있다.
+  (SPEC-nexus-deterministic-retrieval-order). 고친 뒤에야 하한값을 기록했다.
+- **음성 대조군** — 질의 조립을 역사적 결함(`AND`)으로 되돌리면 재현율이 무너져야 한다. 하한값
+  상수가 아니라 **같은 실행의 베이스라인**과 비교하므로, 하한값이 흔들리는 동안에도 이빨은 살아 있다.
 
 이 스위트는 mecab-ko 가 있어야 의미가 있다(프로덕션 토크나이저). 없으면 공백 분리로 내려앉고,
-다른 평가 하니스로 측정한 숫자는 바닥값이 아니다 — CI 는 이미지 안에서 돌린다.
+다른 평가 하네스로 측정한 숫자는 하한값이 아니다 — CI 는 이미지 안에서 돌린다.
 """
 
 from __future__ import annotations
@@ -34,10 +34,10 @@ pytestmark = [
 
 _TENANT = "ko_eval"
 
-#: **바닥값 — 2026-08-03 기록** (pack=ko-k8s-2026-08-01 · labels revision=2 · mecab-ko · 키워드 경로).
+#: **하한값 — 2026-08-03 기록** (pack=ko-k8s-2026-08-01 · labels revision=2 · mecab-ko · 키워드 경로).
 #:
 #: 실측 Recall@10 0.7708 · MRR@10 0.5642 · 미스 4/40 이고, **재적재 2회가 소수점까지 같았다.**
-#: 처음엔 같은 팩을 다시 적재할 때마다 0.700~0.775 로 흔들려서 바닥값을 못 박았다 — SPEC §4.5 의
+#: 처음엔 같은 팩을 다시 적재할 때마다 0.700~0.775 로 흔들려서 하한값을 못 박았다 — SPEC §4.5 의
 #: 절대 하한이 그때 울렸고, 조사 결과 키워드 경로의 동점 정렬에 전순서 키가 없다는 프로덕션 결함이
 #: 나왔다(SPEC-nexus-deterministic-retrieval-order). 그게 고쳐진 뒤에야 여기 숫자가 의미를 갖는다.
 #:
@@ -45,8 +45,8 @@ _TENANT = "ko_eval"
 #: `Konnectivity` 라 쓴 것을 질의가 음차로 부르고, q025 는 `taint`(단수) 대 `Taints`(복수),
 #: q032 는 `sysctl` 이 본문에서 코드 블록에 갇혀 있다. 층별로도 갈린다(spacing 0.917 vs mixed 0.625).
 #:
-#: 바닥값은 실측에서 부동소수 흔들림만큼만 아래에 둔다. 올리면 진보이고, 내리면 같은 커밋에서
-#: 이유를 말해야 한다. **라벨 리비전이 바뀌면(풀 판정으로 gold 가 늘면) 같은 커밋에서 다시 측정한다.**
+#: 하한값은 실측에서 부동소수 흔들림만큼만 아래에 둔다. 올리면 진보이고, 내리면 같은 커밋에서
+#: 이유를 말해야 한다. **라벨 리비전이 바뀌면(풀링 판정으로 gold 가 늘면) 같은 커밋에서 다시 측정한다.**
 FLOORS_PACK = "ko-k8s-2026-08-01"
 FLOORS_LABEL_REVISION = 2
 FLOORS_MEASURED = "2026-08-03"
@@ -54,7 +54,7 @@ KEYWORD_RECALL10_MIN = 0.76
 KEYWORD_MRR10_MIN = 0.55
 KEYWORD_MISSES_MAX = 4
 
-#: 절대 하한 (§4.5). 바닥값은 이 위에 있어야 한다 — 아래면 고장이지 표준이 아니다.
+#: 절대 하한 (§4.5). 하한값은 이 위에 있어야 한다 — 아래면 고장이지 표준이 아니다.
 SANITY_RECALL_MIN = 0.50
 SANITY_MISSES_MAX = 10
 
@@ -83,7 +83,7 @@ async def corpus(db_pool):
     db._pool = None
 
 
-# ── 측정 전에 평가 하니스를 검사한다 ──────────────────────────────────────────────────
+# ── 측정 전에 평가 하네스를 검사한다 ──────────────────────────────────────────────────
 
 
 def test_the_labels_pass_their_gate_against_this_pack(labels):
@@ -98,7 +98,7 @@ def test_the_label_gate_fires_on_a_gold_that_is_not_in_the_pack(labels):
 
 
 def test_the_floors_cite_the_label_revision_they_were_measured_on(labels):
-    """라벨이 바뀌면(풀 판정으로 gold 가 늘면) 분모가 바뀐다 — 바닥값도 같은 커밋에서 다시 박는다."""
+    """라벨이 바뀌면(풀링 판정으로 gold 가 늘면) 분모가 바뀐다 — 하한값도 같은 커밋에서 다시 박는다."""
     assert labels["revision"] == FLOORS_LABEL_REVISION
     assert labels["pack"] == FLOORS_PACK
 
@@ -106,7 +106,7 @@ def test_the_floors_cite_the_label_revision_they_were_measured_on(labels):
 def test_the_recorded_floors_sit_above_the_sanity_bound():
     """'첫 실행이 낸 값' 이 곧 표준이 되는 것을 막는 독립 하한 (§4.5).
 
-    이 하한은 실제로 울렸다 — 첫 실행이 미스 12/40 을 내서 바닥값 기록을 막았고, 그 조사가
+    이 하한은 실제로 울렸다 — 첫 실행이 미스 12/40 을 내서 하한값 기록을 막았고, 그 조사가
     동점 정렬 결함을 찾아냈다. 장식이 아니다.
     """
     assert KEYWORD_RECALL10_MIN >= SANITY_RECALL_MIN
@@ -135,7 +135,7 @@ async def test_the_corpus_is_far_larger_than_the_window(corpus):
 
 
 async def test_the_keyword_leg_runs_over_the_whole_answerable_set(corpus, labels):
-    """바닥값과 무관하게 항상 도는 부분 — 분모와 실행 자체."""
+    """하한값과 무관하게 항상 도는 부분 — 분모와 실행 자체."""
     leg = await run_keyword_leg(labels, _TENANT, corpus)
     assert leg.n == 40, "분모는 답변가능 40건이다 (답변불가 5건은 어떤 집계에도 안 들어간다)"
     assert 0.0 <= leg.recall <= 1.0
@@ -152,7 +152,7 @@ async def test_the_keyword_leg_holds_its_floors(corpus, labels):
 async def test_and_semantics_collapses_recall_against_the_same_run(corpus, labels):
     """음성 대조군 — **같은 실행 안에서** OR 과 AND 를 비교한다.
 
-    바닥값 상수와 따로 두는 이유: 바닥값이 흔들리거나 보류인 상황에서도 "이 스위트가 무엇을
+    하한값 상수와 따로 두는 이유: 하한값이 흔들리거나 보류인 상황에서도 "이 스위트가 무엇을
     잡을 수 있는가" 는 여전히 확인되어야 한다. 같은 코퍼스·같은 적재본에서 질의 조립만 역사적
     결함(`AND`)으로 되돌리면 재현율이 무너져야 한다.
     """

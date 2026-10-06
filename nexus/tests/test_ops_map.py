@@ -155,7 +155,7 @@ def test_the_map_speaks_the_language_the_question_uses():
     """`prod` 옆에 `운영` 을 적는다 — 라이브에서 이것 때문에 실패했다.
 
     표에는 `prod` 만 있고 질문은 `운영 환경에는 어떤 서비스가 떠 있나` 였다. 문서는 찾았는데
-    표가 담긴 절이 근거에 못 들어왔다. 요약 문장이 **표와 같은 절**에 있어야 한다.
+    표가 담긴 절이 답변 근거에 못 들어왔다. 요약 문장이 **표와 같은 절**에 있어야 한다.
     """
     from nexus.ingest.sources.ops_map import deploy_topology
 

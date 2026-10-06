@@ -1,16 +1,16 @@
-"""융합이 **문서 합의**를 셀 수 있다 — 사전 등록 F1, 요청 칸 `fusion_doc_agreement`(기본 꺼짐).
+"""융합이 **문서 일치**를 셀 수 있다 — 사전 등록 F1, 요청 필드 `fusion_doc_agreement`(기본 비활성화).
 
 ⛔ **왜 (2026-10-01).** R01(`search_log` 1823)에서 SOP-01 은 네 경로 중 **셋**이 찾았는데 짚은
-절이 갈렸다(원문 벡터 §5 9위 · 식별자 BM25 §2 22위 · 식별자 벡터 §6 8위). RRF 는 **조각 단위**로
-합하므로 셋의 기여가 한 조각에 모이지 않았고, 가장 높은 §5 가 26위에서 컷 20 에 잘렸다
-(`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` §1). 같은 기제가 09-20 사건 D 에도 있었다.
+절이 갈렸다(원문 벡터 §5 9위 · 식별자 BM25 §2 22위 · 식별자 벡터 §6 8위). RRF 는 **청크 단위**로
+합하므로 셋의 기여가 한 청크에 모이지 않았고, 가장 높은 §5 가 26위에서 컷오프 20 에 잘렸다
+(`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` §1). 같은 메커니즘이 09-20 사례 D 에도 있었다.
 
 F1 의 정의(사전 등록 §2 그대로):
 
-    문서 점수 = Σ_경로 w · 1/(k + 그 경로에서 그 문서의 가장 높은 조각 순위 + 1)
-    조각 최종 점수 = 조각 RRF + 그 조각의 문서 점수
+    문서 점수 = Σ_경로 w · 1/(k + 그 경로에서 그 문서의 가장 높은 청크 순위 + 1)
+    청크 최종 점수 = 청크 RRF + 그 청크의 문서 점수
 
-경로마다 **문서의 최고 조각 하나만** 센다 — 조각이 많은 긴 문서가 조각 수로 오르지 않게.
+경로마다 **문서의 최고 청크 하나만** 센다 — 청크가 많은 긴 문서가 청크 수로 오르지 않게.
 
 ⚠ **이것은 처치이고 판정이 아니다.** 이 파일이 지키는 것은 켜질 때만 켜지고, 꺼졌을 때 오늘과
 **비트까지** 같은 것, 그리고 켰다는 사실이 결과 · 응답 · 기록까지 가는 것이다. 값이 좋은지는
@@ -70,7 +70,7 @@ def test_a_chunk_gets_its_own_rrf_plus_its_document_s_agreement():
 
 
 def test_a_document_counts_once_per_path_not_once_per_chunk():
-    """조각이 다섯인 문서가 한 경로에서 다섯 번 세면 긴 문서가 조각 수로 이긴다."""
+    """청크가 다섯인 문서가 한 경로에서 다섯 번 세면 긴 문서가 청크 수로 이긴다."""
     one_leg = [ChannelResults(bm25=[(f"c{i}", i) for i in range(1, 6)], weight=1.0)]
     on = _scores(fuse_channels(one_leg, K, doc_of={f"c{i}": "doc_c" for i in range(1, 6)}))
 
@@ -78,7 +78,7 @@ def test_a_document_counts_once_per_path_not_once_per_chunk():
 
 
 def test_the_r01_shape_turns_over():
-    """세 경로가 다른 절로 짚은 문서가 한 경로가 1위로 짚은 문서를 넘는다 — 기제가 겨누는 자리."""
+    """세 경로가 다른 절로 짚은 문서가 한 경로가 1위로 짚은 문서를 넘는다 — 메커니즘이 겨누는 자리."""
     today = [f["rid"] for f in fuse_channels(R01, K)]
     on = [f["rid"] for f in fuse_channels(R01, K, doc_of=DOC)]
 
@@ -97,7 +97,7 @@ def test_a_chunk_without_a_document_is_an_error_not_a_silent_zero():
 _LEGS = {
     # 원문: 다른 문서 B 가 1위, 문서 A 의 a5 가 2위
     "질의": [LegHit("b1", 1, "doc_b", 3.0), LegHit("a5", 2, "doc_a", 2.0)],
-    # 식별자: 문서 A 의 **다른 조각** 둘
+    # 식별자: 문서 A 의 **다른 청크** 둘
     "ID_TOKEN": [LegHit("a2", 1, "doc_a", 1.5), LegHit("a6", 2, "doc_a", 1.0)],
 }
 _DOC_OF = {h.rid: h.doc_rid for hits in _LEGS.values() for h in hits}
@@ -143,7 +143,7 @@ async def test_off_by_default_the_search_is_today_s(stub_legs):
 
 @pytest.mark.asyncio
 async def test_on_the_document_two_paths_agree_on_wins_and_the_result_says_so(stub_legs):
-    """⛔ **켰다는 사실이 결과 객체에 실려야 한다** — 평가 하니스 · span 기록은 요청을 못 본다.
+    """⛔ **켰다는 사실이 결과 객체에 실려야 한다** — 평가 하네스 · span 기록은 요청을 못 본다.
 
     `identifier_channel_asked` 가 선언만 된 채 회귀 측정에 쓰여 80건이 「안 켰음」으로
     적힌 적이 있다(2026-09-20). 그래서 제품을 돌리고 결과 객체를 읽는다.
@@ -155,7 +155,7 @@ async def test_on_the_document_two_paths_agree_on_wins_and_the_result_says_so(st
     assert _fusion_detail(on)["doc_agreement"] is True
 
 
-# ── 배선: 요청 칸 → 검색 → 응답 · 기록 ───────────────────────────────────────
+# ── 와이어링: 요청 필드 → 검색 → 응답 · 기록 ───────────────────────────────────────
 
 def test_the_flag_is_an_answer_request_field_and_off_by_default():
     from nexus.api import AnswerRequest, SearchRequest
@@ -179,7 +179,7 @@ def test_the_answer_paths_hand_the_flag_to_the_search_and_echo_it():
 
 
 def test_the_record_carries_what_the_search_did():
-    """기록에는 **결과가 한 것**을 남긴다. 칸이 없는 결과(옛 대역)는 None — 모른다이지 꺼짐이 아니다."""
+    """기록에는 **결과가 한 것**을 남긴다. 필드가 없는 결과(옛 대역)는 None — 모른다이지 꺼짐이 아니다."""
     from nexus.search.hybrid import SearchResult
     from nexus.search.signals import extract_signals
 

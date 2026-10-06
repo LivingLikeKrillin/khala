@@ -7,7 +7,7 @@ ON CONFLICT 는 `content_hash` 를 갱신하고 `_save_chunks` 의 ON CONFLICT �
 갱신하지 않았다. 그래서 문서를 한 번이라도 고쳐 재적재하면 두 값이 갈라지고, 그 뒤의
 soft_delete → revive 는 **청크를 0건 되살린 채 문서만 active 로 세운다.**
 
-그 상태의 이름은 유령 문서다: 목록·개수·커버리지에는 건강하게 보이는데 어떤 경로도
+그 상태의 이름은 고스트 문서다: 목록·개수·커버리지에는 건강하게 보이는데 어떤 경로도
 읽지 못한다. 라이브 `default` 에서 실제로 하나 나왔다(`SLACK_BOT.md`, 청크 12개 전부
 soft_deleted, 해시 불일치) — 팀이 묻는 코퍼스다.
 
@@ -131,7 +131,7 @@ def test_reingest_moves_the_chunk_generation_key_forward():
 
 
 def test_revive_after_an_edit_brings_the_chunks_back():
-    """세대 키가 갈리면 revive 가 문서만 살리고 청크는 죽은 채 둔다 — 유령 문서."""
+    """세대 키가 갈리면 revive 가 문서만 살리고 청크는 죽은 채 둔다 — 고스트 문서."""
     from nexus import db
     from nexus.ingest.chunker import ChunkData
     from nexus.ingest.pipeline import _save_chunks, _save_document
@@ -168,7 +168,7 @@ def test_revive_after_an_edit_brings_the_chunks_back():
 def test_status_reports_a_document_no_bridge_can_read():
     """커버리지는 청크를 센다 — 청크가 0건인 문서는 그 모집단에 아예 없다.
 
-    그래서 유령은 커버리지 100% 로 보인다. 문서 단위로 따로 세어야 보인다.
+    그래서 고스트 문서는 커버리지 100% 로 보인다. 문서 단위로 따로 세어야 보인다.
     """
     from nexus import db
     from nexus.index.embed_health import fetch_unreachable_documents
@@ -188,7 +188,7 @@ def test_status_reports_a_document_no_bridge_can_read():
         col_q, cls_q = _make_inputs("docs/secret.md", "hash-q", quarantined=True)
         await _save_document(col_q, cls_q, _TENANT)
 
-        # 3) 유령 — active 인데 살아 있는 청크가 0건
+        # 3) 고스트 문서 — active 인데 살아 있는 청크가 0건
         col_g, cls_g = _make_inputs("docs/ghost.md", "hash-g")
         rid_g = await _save_document(col_g, cls_g, _TENANT)
         await _save_chunks(
@@ -210,7 +210,7 @@ def test_status_reports_a_document_no_bridge_can_read():
 def test_nexus_status_names_the_unreachable_document(monkeypatch):
     """감지기가 아니라 **전달**을 검사한다 — 이 리포는 그 실패를 이미 한 번 기록했다.
 
-    `nexus status` 를 실제로 실행해 유령의 **이름**이 사람 눈앞에 오는지 본다. 함수만
+    `nexus status` 를 실제로 실행해 고스트 문서의 **이름**이 사람 눈앞에 오는지 본다. 함수만
     검사하면 `cli.py` 에서 호출부가 사라져도 초록이다.
     """
     from typer.testing import CliRunner
@@ -220,7 +220,7 @@ def test_nexus_status_names_the_unreachable_document(monkeypatch):
     from nexus.ingest.chunker import ChunkData
     from nexus.ingest.pipeline import _save_chunks, _save_document
 
-    # 전용 테넌트로 심는다 — 예시는 테넌트별 배열이라, 다른 테스트의 유령이 섞여도
+    # 전용 테넌트로 심는다 — 예시는 테넌트별 배열이라, 다른 테스트의 고스트 문서가 섞여도
     # 이 테넌트의 줄은 결정적이다.
     tenant = "ghost_surface"
 
@@ -252,7 +252,7 @@ def test_nexus_status_names_the_unreachable_document(monkeypatch):
 
 
 def test_a_healthy_corpus_reports_nothing():
-    """대조군: 유령이 없으면 행도 없다 — 늘 울리는 경보는 경보가 아니다."""
+    """대조군: 고스트 문서가 없으면 행도 없다 — 늘 발동하는 경보는 경보가 아니다."""
     from nexus.index.embed_health import fetch_unreachable_documents
     from nexus.ingest.chunker import ChunkData
     from nexus.ingest.pipeline import _save_chunks, _save_document

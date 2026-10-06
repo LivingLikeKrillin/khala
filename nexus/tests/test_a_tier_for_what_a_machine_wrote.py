@@ -1,16 +1,16 @@
-"""기계가 **쓴** 근거는 기계가 **읽은** 근거와 다른 말을 듣는다.
+"""기계가 **쓴** 답변 근거는 기계가 **읽은** 답변 근거와 다른 말을 듣는다.
 
-⛔ **왜 생겼나 (2026-09-23).** 설명 층이 제 LLM 설명을 코퍼스로 되돌린다. 「LLM 산출이 LLM
+⛔ **왜 생겼나 (2026-09-23).** 설명 레이어가 제 LLM 설명을 코퍼스로 되돌린다. 「LLM 산출이 LLM
 근거가 되는」 순환은 테넌트와 신원으로 막았다 — 사건 바퀴는 그 테넌트에 **닿을 수 없다.**
 
-그런데 닿아도 되는 질의(운영자 질의)에서는 그 근거가 **사람이 쓴 문서와 같은 얼굴로** 들어온다.
+그런데 닿아도 되는 질의(운영자 질의)에서는 그 답변 근거가 **사람이 쓴 문서와 같은 얼굴로** 들어온다.
 등급이 없으면 답을 쓰는 모델이 둘을 같은 것으로 다루고, 인용은 그 구별을 약속하지 못한다.
 
 ⭐ **핵심 정식화는 설명 층이 줬다**: *이력의 근거로 쓰고 원인의 근거로는 쓰지 마라.*
 LLM 산출은 **무엇이 언제 있었나**에는 쓸 만하고 **왜**에는 못 쓴다.
 
 ⛔ **첫 초안의 한 줄을 물렸다.** *"원인은 그 설명이 인용한 사람의 문서에서 다시 확인하라"* 는
-**모델이 못 지킨다** — 그 문서가 이번 꾸러미에 있을 수도 없을 수도 있다. 못 할 일을 시키면
+**모델이 못 지킨다** — 그 문서가 이번 근거 묶음에 있을 수도 없을 수도 있다. 못 할 일을 시키면
 무시하거나 **한 척한다.** 지킬 수 있는 모양은 금지다.
 """
 
@@ -30,8 +30,8 @@ _READ = P.MACHINE_READ
 def test_the_two_machine_tiers_do_not_share_a_sentence():
     """⛔ **이것이 이 파일의 핵심 단언이다.**
 
-    상수 하나를 붙이던 판은 등급이 둘일 때 맞았다. 셋이 되면 **둘 중 하나가 거짓을 받는다** —
-    기계가 쓴 근거에 *"그림에서 읽었다"* 가 붙는다. 거짓인 주석은 없는 주석보다 나쁘다.
+    상수 하나를 붙이던 버전은 등급이 둘일 때 맞았다. 셋이 되면 **둘 중 하나가 거짓을 받는다** —
+    기계가 쓴 답변 근거에 *"그림에서 읽었다"* 가 붙는다. 거짓인 주석은 없는 주석보다 나쁘다.
     """
     assert P.note_for(_WROTE) != P.note_for(_READ)
     assert P.mark(_WROTE) != P.mark(_READ)
@@ -56,7 +56,7 @@ def test_the_new_tier_asks_for_a_note_and_a_mark():
 def test_the_note_does_not_use_the_citation_word():
     """⛔ **`출처` 를 쓰면 인용 안으로 빨려 들어간다** (실측 2026-08-10, 이 모듈 머리말).
 
-    앞선 판에서 라벨이 인용 문자열에 흡수돼 검증기가 제목을 못 찾았고, **멀쩡한 답 2건이
+    앞선 버전에서 라벨이 인용 문자열에 흡수돼 검증기가 제목을 못 찾았고, **멀쩡한 답 2건이
     환각으로 분류**됐다. 새 등급이 같은 함정을 다시 밟지 않는지 여기서 본다.
     """
     assert "출처" not in P.note_for(_WROTE)
@@ -66,7 +66,7 @@ def test_the_note_does_not_use_the_citation_word():
 def test_the_note_forbids_rather_than_asks_for_something_impossible():
     """⭐ **모델이 지킬 수 있는 모양인가.**
 
-    「다시 확인하라」는 그 문서가 꾸러미에 없으면 못 한다. 금지는 언제나 지킬 수 있다.
+    「다시 확인하라」는 그 문서가 근거 묶음에 없으면 못 한다. 금지는 언제나 지킬 수 있다.
     """
     note = P.note_for(_WROTE)
     assert "단정하지 마라" in note, "지킬 수 있는 금지가 없다"
@@ -76,7 +76,7 @@ def test_the_note_forbids_rather_than_asks_for_something_impossible():
 def test_the_note_carries_every_obligation_the_source_asked_for():
     """⛔ **이 검사가 한 번 틀렸다 (2026-09-23).**
 
-    앞 판은 *"의무 넷"* 을 셌는데, 그 넷은 **내가 줄인 문구에서 뽑은 것**이었다. 원본은
+    앞 버전은 *"의무 넷"* 을 셌는데, 그 넷은 **내가 줄인 문구에서 뽑은 것**이었다. 원본은
     다섯이었고 첫째가 *"인용하되 LLM 산출이라 밝혀라"* 다. **줄인 글로 쓴 검사는 줄인 글을
     자기 자신과 대조할 뿐이다** — 초록이었고, 뜻은 빠져 있었다.
 
@@ -93,8 +93,8 @@ def test_the_note_carries_every_obligation_the_source_asked_for():
 def test_the_note_says_not_to_cite_the_interpreter_instead():
     """⛔ **실물이 그렇게 났다 (첫 운영자 질의, 2026-09-23).**
 
-    답이 사건 사실 셋을 이 등급의 조각 하나에서만 가져다 쓰고, 인용은 그 사실을 **해석한
-    사람 문서**로 갔다. 계약은 지켰는데 근거를 근거라고 안 밝혔고, 그래서 표시가 나올 자리가
+    답이 사례 사실 셋을 이 등급의 청크 하나에서만 가져다 쓰고, 인용은 그 사실을 **해석한
+    사람 문서**로 갔다. 계약은 지켰는데 답변 근거를 답변 근거라고 안 밝혔고, 그래서 표시가 나올 자리가
     없었다. 「인용해라」만으로는 그 답이 이미 인용을 하고 있었으므로 안 걸린다.
     """
     note = P.note_for(_WROTE)
@@ -104,11 +104,11 @@ def test_the_note_says_not_to_cite_the_interpreter_instead():
 def test_citing_this_is_not_a_ban_on_citing_the_others():
     """⛔ **그 절이 한 번 너무 멀리 갔다 (실측 2026-09-23).**
 
-    앞 판은 *"해석한 다른 문서를 **대신** 인용하지 마라"* 였고, 넷째 운영자 질의에서 **사람
-    근거 인용이 0** 이 됐다 — 앞 세 판이 2~3건씩 인용하던 사람 문서가 통째로 빠졌다.
+    앞 버전은 *"해석한 다른 문서를 **대신** 인용하지 마라"* 였고, 넷째 운영자 질의에서 **사람
+    답변 근거 인용이 0** 이 됐다 — 앞 세 버전이 2~3건씩 인용하던 사람 문서가 통째로 빠졌다.
     「대신」이 하는 일을 모델이 흘리면 *"해석한 문서를 인용하지 마라"* 가 된다.
 
-    ⚠ 그 판의 조각 배합은 **앞 판과 같았고**(기계 19 · 사람 12), 이 등급의 문서는 절 이름이
+    ⚠ 그 버전의 청크 배합은 **앞 버전과 같았고**(기계 19 · 사람 12), 이 등급의 문서는 절 이름이
     번호로 시작하지 않아 `crossrefs` 가 가져올 절이 **0 건**이다 — 재고 나서 D 를 배제했다.
     """
     note = P.note_for(_WROTE)
@@ -118,10 +118,10 @@ def test_citing_this_is_not_a_ban_on_citing_the_others():
 
 
 def test_the_note_forbids_laundering_a_citation_out_of_the_document():
-    """⛔⛔ **같은 판에서 나온 둘째 — 인용 세탁 (2026-09-23).**
+    """⛔⛔ **같은 버전에서 나온 둘째 — 인용 세탁 (2026-09-23).**
 
     그 설명 문서의 카드 줄 안에 `[출처: 인터페이스 계약 명세서 …]` 가 **글자로 적혀 있었고**,
-    답이 그것을 **제 인용으로 옮겨 적었다.** 그 사람 문서는 이번 꾸러미에 없었다. 지난 LLM
+    답이 그것을 **제 인용으로 옮겨 적었다.** 그 사람 문서는 이번 근거 묶음에 없었다. 지난 LLM
     답의 인용이 새 답의 인용으로 승격된다 — **한 세대에 한 번씩 근거 없이 신뢰가 오른다.**
 
     ⚠ **오늘 걸린 것은 우연이다.** 그 문서가 없어서 `verified:false` 가 났다. 있었으면
@@ -135,7 +135,7 @@ def test_the_note_forbids_laundering_a_citation_out_of_the_document():
 def test_an_unmatched_citation_keeps_its_raw_string(monkeypatch):
     """⭐ **검증기는 제 일을 했다** — 여기서 고칠 것이 없다는 것을 박아 둔다.
 
-    세탁된 인용이 `verified: false` 로 났다. 꾸러미에 그 문서가 없으므로 **맞는 판정**이다.
+    세탁된 인용이 `verified: false` 로 났다. 근거 묶음에 그 문서가 없으므로 **맞는 판정**이다.
     그리고 제목·절을 **임의로 가르지 않고 원문 그대로 남긴다** — 대조할 이름이 없는데
     쉼표에서 자르면 **없는 절 이름을 만들어 낸다.**
     """
@@ -156,12 +156,12 @@ def test_an_unmatched_citation_keeps_its_raw_string(monkeypatch):
 
 
 def test_the_note_names_no_producer():
-    """⚠ **등급은 어휘이지 어느 층의 것이 아니다.** 다른 기계가 써도 같은 말이어야 한다."""
+    """⚠ **등급은 어휘이지 어느 계층의 것이 아니다.** 다른 기계가 써도 같은 말이어야 한다."""
     for name in ("narrator", "picasso", "khala"):
         assert name not in P.note_for(_WROTE)
 
 
-# ── 근거 꾸러미가 **그 등급의** 주석을 싣는가 ────────────────────────────────
+# ── 근거 묶음이 **그 등급의** 주석을 싣는가 ────────────────────────────────
 
 @pytest.mark.parametrize("tier,expect", [(_WROTE, _WROTE), (_READ, _READ), (P.AUTHORED, None)])
 def test_the_packet_carries_the_note_that_belongs_to_the_tier(tier, expect):
@@ -184,15 +184,15 @@ def test_the_packet_carries_the_note_that_belongs_to_the_tier(tier, expect):
 
 
 def test_the_rule_is_stated_once_and_the_mark_rides_on_each_chunk():
-    """⛔⛔ **조각마다 붙이던 판은 꾸러미의 52% 가 같은 문장 열두 벌이었다** (실측 2026-09-23).
+    """⛔⛔ **청크마다 붙이던 버전은 근거 묶음의 52% 가 같은 문장 열두 벌이었다** (실측 2026-09-23).
 
     등급 문장이 한 줄일 때는 값이 쌌다. 기계가 **쓴** 등급의 문장은 여섯 문장 354자이고,
-    조각마다 붙자 근거보다 주석이 길어졌다.
+    청크마다 붙자 답변 근거보다 주석이 길어졌다.
 
-    ⛔ **그리고 이 비용은 기계 조각이 많을수록 커진다** — 즉 **사람 근거가 가장 주목받아야
-    할 때 가장 묻힌다.** 넷째 운영자 질의에서 사람 근거 인용이 0 이 된 판이 그 모양이었다.
+    ⛔ **그리고 이 비용은 기계 청크가 많을수록 커진다** — 즉 **사람 답변 근거가 가장 주목받아야
+    할 때 가장 묻힌다.** 넷째 운영자 질의에서 사람 답변 근거 인용이 0 이 된 버전이 그 모양이었다.
 
-    ⇒ 규칙은 위에서 **한 번**, 조각마다 남는 것은 **짧은 표시**다.
+    ⇒ 규칙은 위에서 **한 번**, 청크마다 남는 것은 **짧은 표시**다.
     """
     from nexus.search.evidence_packet import EvidencePacket, EvidenceSnippet, format_for_llm
 
@@ -211,7 +211,7 @@ def test_the_rule_is_stated_once_and_the_mark_rides_on_each_chunk():
     assert P.note_for(_WROTE) in text, "규칙이 아예 없다"
 
 
-# ── 선언 — 문서가 자칭하지 않는다 ────────────────────────────────────────────
+# ── 명시적 선언 — 문서가 자칭하지 않는다 ────────────────────────────────────────────
 
 def test_the_declaration_is_configuration_not_a_file_claim():
     """⛔ 자칭을 허용하면 **안 적은 문서가 사람 글로 신뢰된다** (`external_spec` 과 같은 논증)."""
@@ -221,7 +221,7 @@ def test_the_declaration_is_configuration_not_a_file_claim():
 
 
 def test_this_deployment_declares_the_explanation_tenant():
-    """⭐ 배포 대조군 — 선언이 없으면 위의 모든 검사가 **빈 집합에 대고** 초록이다."""
+    """⭐ 배포 대조군 — 명시적 선언이 없으면 위의 모든 검사가 **빈 집합에 대고** 초록이다."""
     import pathlib
 
     import yaml
@@ -237,7 +237,7 @@ def test_the_ingest_lets_the_tenant_win_over_the_chunker():
     """⛔ **기본 인자로 받지 않는다** — 안 넘긴 호출부가 조용히 「사람 글」로 앉힌다.
 
     오늘 같은 모양에 한 번 데였다(`weak_evidence` 가 스트리밍 경로에서 기본값으로 떨어진 것,
-    #537). 그래서 마지막 관문이 **테넌트를 보고** 정한다.
+    #537). 그래서 마지막 게이트가 **테넌트를 보고** 정한다.
     """
     import inspect
 

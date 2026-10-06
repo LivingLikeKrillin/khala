@@ -250,24 +250,24 @@ ANSWER_CONTEXT_MAX = 8000
 
 
 class RequestModel(BaseModel):
-    """요청 본문의 공통 규약 — **모르는 칸은 거절한다.**
+    """요청 본문의 공통 규약 — **알 수 없는 필드는 거절한다.**
 
-    ⛔ **왜 (실측 2026-09-23).** pydantic 의 기본값은 `extra="ignore"` 다. 모르는 칸은 200 과
-    함께 조용히 없던 일이 된다 — 오타든, 낡은 깃발이든, 이 표면에 없는 깃발이든 결과가 같다.
+    ⛔ **왜 (실측 2026-09-23).** pydantic 의 기본값은 `extra="ignore"` 다. 알 수 없는 필드는 200 과
+    함께 조용히 없던 일이 된다 — 오타든, 스테일 깃발이든, 이 API 표면에 없는 깃발이든 결과가 같다.
     호출자에게는 **켰는데 안 걸린 것**과 **애초에 켤 수 없는 것**이 구별되지 않는다.
 
-    ⭐ **가정이 아니라 소비자가 적어 둔 것이다.** 설명 층 클라이언트 머리말에 우리 표면
-    하나가 **덫으로 적혀** 있고 그쪽은 그것을 우회한다 — *"켜서 보내면 200 이 오는데 처치는
+    ⭐ **가정이 아니라 소비자가 적어 둔 것이다.** 설명 레이어 클라이언트 머리말에 우리 API 표면
+    하나가 **함정으로 적혀** 있고 그쪽은 그것을 우회한다 — *"켜서 보내면 200 이 오는데 처치는
     안 걸린다 … 응답에 실리지도 않아서 버려졌다는 것을 알 방법이 없다."* 여기서 422 를 내면
-    그 덫이 없어진다. 판을 한 번 돌리고 나서가 아니라 **경계에서** 알게 된다.
+    그 함정이 없어진다. 버전을 한 번 돌리고 나서가 아니라 **경계에서** 알게 된다.
 
-    ⚠ **되울림을 대신하지 않는다.** 이것이 잡는 것은 *모르는 이름*뿐이다. 이름이 멀쩡한데
+    ⚠ **에코를 대신하지 않는다.** 이것이 잡는 것은 *모르는 이름*뿐이다. 이름이 멀쩡한데
     값이 안 먹은 것, 범위가 조용히 넓어진 것은 여전히 **응답이 말해야** 잡힌다
     (`excluded_doc_types` · `identifier_channel_asked` · `searched_tenants` 가 그 자리다).
-    둘은 같은 이음매의 반대쪽 반이다.
+    둘은 같은 접합부의 반대쪽 반이다.
 
-    ⭐ **한 곳에 둔다.** 모델마다 적으면 정책이 갈리고, 그러면 같은 오타가 한 표면에서는
-    422 이고 다른 표면에서는 통과한다 — **갈리는 것이 조용한 것보다 나쁘다.**
+    ⭐ **한 곳에 둔다.** 모델마다 적으면 정책이 갈리고, 그러면 같은 오타가 한 API 표면에서는
+    422 이고 다른 API 표면에서는 통과한다 — **갈리는 것이 조용한 것보다 나쁘다.**
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -328,7 +328,7 @@ class AnswerRequest(RequestModel):
     history: list[Turn] = Field(default_factory=list)   # U2: 받아서 버린다 (SearchRequest 와 같다)
     #: **답변 경로의 예산은 20 이다** (검색 전용 경로는 10 그대로).
     #:
-    #: 2026-08-30 파일럿 질문에서 잡혔다: 한 계열 12개를 다 물어야 답이 되는 질문에 근거가
+    #: 2026-08-30 파일럿 질문에서 잡혔다: 한 계열 12개를 다 물어야 답이 되는 질문에 답변 근거가
     #: 5개만 왔다. 12개는 **코퍼스에 다 있었고 랭킹도 20 안에 다 갖고 있었다** — 우리가 10에서
     #: 자르고 있었을 뿐이다. 실측(값마다 숫자 경계를 물려 채점, 3회씩):
     #:
@@ -336,12 +336,12 @@ class AnswerRequest(RequestModel):
     #:     "자세히 설명해줘"    8·6·8 /12   →  11·11·10 /12
     #:     단일 값 15문항       14/15       →  14/15 (실패 항목까지 동일)
     #:     검색 지연            156~238ms   →  같음
-    #:     근거 분량            8,163자     →  19,184자  ← **이것이 값이다**
+    #:     답변 근거 분량            8,163자     →  19,184자  ← **이것이 값이다**
     #:
     #: 근거가 135% 는다. 키리스 브리지에서는 지출이 0이지만 유료 백엔드에서는 그대로 비용이다 —
     #: 그 배포는 이 값을 10 으로 되돌리고 집합 질문을 포기하거나, 더 나은 방아쇠를 만들어야 한다.
     #: ⛔ **어휘로 집합 의도를 판정하는 방아쇠는 이미 기각했다**: `플레이리스트` 안의 `리스트` 로
-    #: 오검출하고, 정작 이 사건의 질문("자세히 설명해줘")은 못 잡았다.
+    #: 오검출하고, 정작 이 사례의 질문("자세히 설명해줘")은 못 잡았다.
     top_k: int = 20
     route: str = "auto"
     classification_max: str = "INTERNAL"
@@ -353,9 +353,9 @@ class AnswerRequest(RequestModel):
     #: 같은 SQL 을 낸다.
     #:
     #: ⛔ **권한이 아니다.** 좁히기만 하고 넓히지 못한다 — 여기 없는 종류가 이 값 때문에
-    #: 더 들어오는 일은 없다. 등급·테넌트와 같은 칸에 두고 읽지 마라(`search/doc_type_filter.py`).
+    #: 더 들어오는 일은 없다. 등급·테넌트와 같은 필드에 두고 읽지 마라(`search/doc_type_filter.py`).
     #:
-    #: **왜 `top_k` 뒤가 아닌가 (실측 2026-09-20).** `picasso` 에서 사건 분류 질의를 여섯
+    #: **왜 `top_k` 뒤가 아닌가 (실측 2026-09-20).** `picasso` 에서 사례 분류 질의를 여섯
     #: 모양으로 돌리니 설계 일지 한 편이 상위 20 중 **5~7 자리**를 매번 차지했다. 뒤에서
     #: 걸러 내면 그 자리는 빈 채로 남는다 — 예산을 이미 쓴 뒤이기 때문이다.
     #:
@@ -369,35 +369,35 @@ class AnswerRequest(RequestModel):
     #: 측정 대상이다 — 켜서 T0 와 견주라고 만든 것이지, 켜는 것이 기본이 되면 그 측정이
     #: 성립하지 않는다.
     #:
-    #: 켜도 질의에 식별자가 없으면 **발화하지 않는다.** 발화 여부는 응답의
-    #: `identifier_channel` 로 온다(빈 목록 = 발화 안 함).
+    #: 켜도 질의에 식별자가 없으면 **발동하지 않는다.** 발동 여부는 응답의
+    #: `identifier_channel` 로 온다(빈 목록 = 발동 안 함).
     identifier_channel: bool = False
-    #: 융합에 **문서 합의**를 더한다 — 같은 문서를 다른 절로 짚은 경로들의 표를 문서로 모은다
+    #: 융합에 **문서 일치**를 더한다 — 같은 문서를 다른 절로 짚은 경로들의 표를 문서로 모은다
     #: (`search/hybrid.py::_add_document_agreement`, `docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` F1).
     #:
     #: ⛔ **기본은 꺼짐이고, 꺼져 있으면 융합은 오늘과 비트까지 같다.** `identifier_channel` 과
     #: 같은 이유다 — 처치이고 측정 대상이며, 켜는 것은 판정 뒤에 따로 정한다. 켜면 **모든
-    #: 질의의 순위가 움직인다**(이 처치의 알려진 대가).
+    #: 질의의 순위가 움직인다**(이 처치의 알려진 비용).
     fusion_doc_agreement: bool = False
     #: 요청자가 준 자료 — **답변 프롬프트에만** 들어가고 검색(BM25 · 벡터 · 식별자 채널)·재작성기·
     #: 충분성 판정자·질문 원문 보존에는 안 닿는다(`llm/prompts.py` 의 `ANSWER_CONTEXT_*`).
     #:
-    #: ⛔ **왜 `query` 가 아닌가 (2026-09-27, 설명 층 자문).** 진단 경로의 후보 목록을 `query` 에
-    #: 실으면 검색이 그 글로 돈다 — 측정해 온 경로가 달라지고 후보 이름이 근거 순위를 끌고 간다.
+    #: ⛔ **왜 `query` 가 아닌가 (2026-09-27, 설명 레이어 자문).** 진단 경로의 후보 목록을 `query` 에
+    #: 실으면 검색이 그 글로 돈다 — 측정해 온 경로가 달라지고 후보 이름이 답변 근거 순위를 끌고 간다.
     #:
     #: 상한을 넘으면 **422 로 거절하고 자르지 않는다** — 조용히 자르면 호출자는 무엇이 빠졌는지
     #: 모른 채 틀린 판단을 받는다. 기록에는 길이와 해시만 남는다(migration 046). 비었거나 공백뿐이면
     #: 안 준 것과 같고, 그때 프롬프트는 오늘과 바이트 단위로 같다. 응답의 `answer_context_len` 이
     #: 실제로 쓴 길이를 돌려준다.
     answer_context: str | None = Field(default=None, max_length=ANSWER_CONTEXT_MAX)
-    #: **검색에만** 쓰는 글 — 주면 검색 쪽(원문 경로 · 식별자 채널 · 엔티티 · 경로 이름 · 묶음의
+    #: **검색에만** 쓰는 글 — 주면 검색 쪽(원문 경로 · 식별자 채널 · 엔티티 · 경로 이름 · 근거 묶음의
     #: 코드 값 맞추기)이 `query` 대신 이것을 읽고, 답 쪽(답변 프롬프트 · 숫자 검증 · 충분성 판정자 ·
     #: 질문 원문 보존)은 계속 `query` 를 읽는다. `answer_context` 의 거울이다 — 그것은 답에만,
     #: 이것은 검색에만 닿는다.
     #:
-    #: ⛔ **왜 (2026-10-05, 소비자 측정 둘).** 물음을 뗀 짧은 글로 검색하면 근거가 좋아졌는데,
+    #: ⛔ **왜 (2026-10-05, 소비자 측정 둘).** 물음을 뗀 짧은 글로 검색하면 답변 근거가 좋아졌는데,
     #: 그 글을 `query` 로 보내려면 물음을 `answer_context` 로 옮겨야 했고 진단 경로에서 그 자리
-    #: 옮김이 답의 형식을 깨뜨렸다. 칸을 나누면 검색은 짧은 글로 돌고 질문 자리는 오늘 그대로다.
+    #: 옮김이 답의 형식을 깨뜨렸다. 필드를 나누면 검색은 짧은 글로 돌고 질문 자리는 오늘 그대로다.
     #:
     #: 주면 **재작성기가 돌지 않는다** — 검색 글은 호출자가 이미 쓴 것이고, 재작성문은 답변
     #: 프롬프트의 질문 자리로 들어가므로 돌리면 검색 글이 거기로 샌다. 비었거나 공백뿐이면 안 준
@@ -406,33 +406,33 @@ class AnswerRequest(RequestModel):
 
 
 class SearchAnswerRequest(AnswerRequest):
-    """`/search/answer` 의 요청. 스트림과 같고 칸이 **하나 더** 있다."""
+    """`/search/answer` 의 요청. 스트림과 같고 필드가 **하나 더** 있다."""
 
-    #: **생성을 건너뛰고 근거 묶음만** 돌려준다. 검색 · 묶음 · 판 칸은 생성하는 판과 같은
+    #: **생성을 건너뛰고 답변 근거 묶음만** 돌려준다. 검색 · 답변 근거 묶음 · 버전 필드는 생성하는 버전과 같은
     #: 처리기의 같은 코드가 만든다 — 따로 만든 엔드포인트는 언젠가 갈라지고, 갈라진 것은
     #: 측정이 아니다.
     #:
     #: ⛔ **왜 (2026-10-01).** 융합 처치의 주 변수는 검색만으로 정해지는데, 소비자의 길이 생성까지
-    #: 부르는 이 엔드포인트 하나라 두 판에 세 시간 남짓이 들었다. `/search` 는 같은 검색이 아니다
-    #: (식별자 채널 · 제외 종류가 없고, `top_k` 가 10 이고, 채움이 없다).
+    #: 부르는 이 엔드포인트 하나라 두 버전에 세 시간 남짓이 들었다. `/search` 는 같은 검색이 아니다
+    #: (식별자 채널 · 제외 종류가 없고, `top_k` 가 10 이고, 필이 없다).
     #:
-    #: 생성이 내는 칸은 **None** 으로 나간다(0 · False 면 「인용 0건」으로 읽힌다). 이력이 있으면
-    #: 재작성은 그대로 돈다 — 같은 검색이어야 하므로. 스트림에는 이 칸이 없다(422).
+    #: 생성이 내는 필드는 **None** 으로 나간다(0 · False 면 「인용 0건」으로 읽힌다). 이력이 있으면
+    #: 재작성은 그대로 돈다 — 같은 검색이어야 하므로. 스트림에는 이 필드가 없다(422).
     evidence_only: bool = False
 
 
-#: 생성이 내는 응답 칸. `evidence_only` 응답에서는 전부 **None**(측정 안 함)이다.
+#: 생성이 내는 응답 필드. `evidence_only` 응답에서는 전부 **None**(측정 안 함)이다.
 _NARRATION_KEYS = ("answer", "citations", "unverified_citations", "unverified_numbers",
                    "numbers", "usage", "abstained", "abstain_reason",
                    "llm_failed", "llm_failure_reason")
 
 
 def _ranked(snippets: list[dict], hits) -> list[dict]:
-    """근거 조각마다 **검색 순위**를 단다 — 상위 k 안이면 몇 위(1부터), 채움이면 None.
+    """답변 근거 청크마다 **검색 순위**를 단다 — 상위 k 안이면 몇 위(1부터), 필이면 None.
 
-    ⛔ 묶음은 상위 k 에 채움(절 채움 · 가리킨 절 · 짝 문서 · 정정 확인 패스)을 더한 것이고,
+    ⛔ 근거 묶음은 상위 k 에 필(섹션 필 · 참조 필 · 페어 문서 · 정정 확인 패스)을 더한 것이고,
     **`score` 로는 둘을 못 가른다** — 정정 확인 패스는 검색을 한 번 더 돈 결과라 점수가 있다.
-    09-20 뒤 picasso 답변 질의 33개 중 20개에서 묶음에 상위 k 밖의 문서가 있었다(2026-10-01).
+    09-20 뒤 picasso 답변 질의 33개 중 20개에서 근거 묶음에 상위 k 밖의 문서가 있었다(2026-10-01).
     서버가 아는 것(`SearchResult.hits`)을 싣는다 — 소비자가 다시 계산하면 답이 둘이 된다.
     """
     place = {h.rid: i + 1 for i, h in enumerate(hits)}
@@ -477,7 +477,7 @@ async def dev_token() -> NexusResponse:
 
 
 def _search_hit_to_dict(h) -> dict:
-    """SearchHit → /search 응답 dict. doc_type(축-A 타입, S3) 포함 — 웹 클라이언트 타입 배지용."""
+    """SearchHit → /search 응답 dict. doc_type(차원-A 타입, S3) 포함 — 웹 클라이언트 타입 배지용."""
     return {
         "rid": h.rid,
         "doc_rid": h.doc_rid,
@@ -490,9 +490,9 @@ def _search_hit_to_dict(h) -> dict:
         "vector_rank": h.vector_rank,
         "classification": h.classification,
         "doc_type": h.doc_type,
-        # ADR-0010 hop 5. 벗겨지면 읽는 사람이 저자 텍스트와 기계 텍스트를 구별할 수 없다.
+        # ADR-0010 hop 5. 벗겨지면 읽는 사람이 작성자 텍스트와 기계 판독 텍스트를 구별할 수 없다.
         "provenance_tier": getattr(h, "provenance_tier", "authored"),
-        # CRM 표식(`nexus/labels.py`) — 합성 자료인지가 여기서 드러나야 한다. 표식을 문서
+        # CRM 마커(`nexus/labels.py`) — 합성 자료인지가 여기서 드러나야 한다. 마커를 문서
         # 행에만 두면 읽는 사람 앞에는 지어낸 절차가 실제 운영 문서와 같은 얼굴로 온다.
         "labels": list(getattr(h, "labels", ()) or ()),
         "synthetic": SYNTHETIC_LABEL in (getattr(h, "labels", ()) or ()),
@@ -514,7 +514,7 @@ def _validate_route(route: str) -> None:
 
 def _search_text(req) -> str | None:
     """실제로 쓰이는 검색 글. **비었거나 공백뿐이면 안 준 것이다** — 검색 · 응답 · 기록이 이 한
-    규칙을 같이 쓴다(`effective_context` 와 같은 이유). `/search` 의 요청에는 칸이 없다."""
+    규칙을 같이 쓴다(`effective_context` 와 같은 이유). `/search` 의 요청에는 필드가 없다."""
     text = getattr(req, "search_text", None)
     return text if text and text.strip() else None
 
@@ -522,7 +522,7 @@ def _search_text(req) -> str | None:
 def _asked_query(req, search_query: str) -> str:
     """답변 프롬프트의 질문 자리에 갈 글. 검색 글을 받았으면 **질문**(`req.query`)이고, 아니면
     오늘처럼 검색에 쓴 질의(재작성됐으면 재작성문)다. 검색 글이 질문 자리로 새면 프롬프트가
-    「두 문장」 모양으로 바뀐다 — 그것이 이 칸이 피하려는 바로 그 변화다."""
+    「두 문장」 모양으로 바뀐다 — 그것이 이 필드가 피하려는 바로 그 변화다."""
     return req.query if _search_text(req) else search_query
 
 
@@ -587,7 +587,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
     # 옮긴다"* 고 적어 뒀는데 `/search/answer` 만 옮겨 갔다.
     #
     # 아래 세 줄은 그 답변 경로에서 그대로 가져온 것이다 — 사본을 만드는 게 아니라 같은
-    # 이음매를 쓰는 것이고, 거기 달린 두 실측(기본값 · 귀속)이 여기에도 그대로 걸린다.
+    # 접합부를 쓰는 것이고, 거기 달린 두 실측(기본값 · 귀속)이 여기에도 그대로 걸린다.
     asked_tenant = req.tenant if "tenant" in req.model_fields_set else None
     _scope, req.classification_max, _out = effective_read_scope(
         principal, asked_tenant, req.classification_max)
@@ -698,11 +698,11 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 # ⛔ **없으면 안 되는 이유가 이미 적혀 있었다** (`auth/scope.py`
                 # `resolve_read_scope`). 범위 밖 테넌트를 물어도 **오류를 내지 않는다** — 그
                 # 테넌트가 있는지를 흘리지 않으려고 일부러 그렇게 뒀고, 그 대신 *"응답에는
-                # 해소된 범위가 실린다"* 가 보상 통제다(비평 3R I-010). 답변 경로는 싣고
+                # 해소된 범위가 실린다"* 가 보상 통제다(크리틱 3R I-010). 답변 경로는 싣고
                 # 있었고 여기는 `_scope` 를 계산해 신호에만 남겼다 — **보상 통제의 절반만
                 # 있었다.** 호출자는 코퍼스 X 를 묻고 Y 로 답을 받고도 아무 신호를 못 받는다.
                 #
-                # ⚠ 그리고 `tenant` 는 **칸 이름을 오타 내면** `model_fields_set` 에 안 들어가
+                # ⚠ 그리고 `tenant` 는 **필드 이름을 오타 내면** `model_fields_set` 에 안 들어가
                 # 「안 물었다」가 되고, 그러면 범위가 좁아지는 게 아니라 `read_scope` 전체로
                 # **넓어진다.** *"좁힐 수만 있고 넓힐 수 없다"* 가 오타 하나로 뒤집히는 자리다.
                 "searched_tenants": list(_scope),
@@ -710,7 +710,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
                 # 구별되지 않는다. 좁혔는데 안 좁혀진 만큼이 여기 보인다.
                 "n_unknown_origin_time": result.n_unknown_origin_time,
                 "timing_ms": result.timing_ms,
-                # 죽은 경로는 호출자에게도 보여야 한다 — 로그에만 있으면 "건강해 보이는" 상태가
+                # 실패한 경로는 호출자에게도 보여야 한다 — 로그에만 있으면 "건강해 보이는" 상태가
                 # 그대로다 (SPEC-nexus-embedding-cutover-seam §4.5).
                 "degraded": result.degraded,
                 "enrichment_failed": result.enrichment_failed,
@@ -728,7 +728,7 @@ async def search(req: SearchRequest, principal: Principal = Depends(get_principa
 
 # ── 답변 피드백 (SPEC-nexus-answer-feedback) ─────────────────────────────────
 #
-# **왜 HTTP 인가.** 저장 층은 DB 를 직접 쓰는데, 슬랙 봇은 nexus 의 **HTTP 클라이언트**이고
+# **왜 HTTP 인가.** 저장 계층은 DB 를 직접 쓰는데, 슬랙 봇은 nexus 의 **HTTP 클라이언트**이고
 # 읽기 전용 principal 토큰 하나만 든다 — DB 자격증명이 없다. 봇에 `DATABASE_URL` 을 주는
 # 한 줄이 더 싸지만, 그러면 봇이 등급·격리를 우회해 모든 문서를 읽을 수 있게 되고 그 토큰을
 # 읽기 전용으로 묶어 둔 이유가 사라진다. 리포의 구조가 이미 답이다: 기능 → HTTP 엔드포인트
@@ -798,7 +798,7 @@ async def feedback_vote(req: FeedbackVoteRequest,
 @app.post("/feedback/reason", response_model=NexusResponse)
 async def feedback_reason(req: FeedbackReasonRequest,
                           principal: Principal = Depends(get_principal)) -> NexusResponse:
-    """사유를 그 투표 행에 적는다. 가드에 걸리면 `applied: false` — 200 이되 거짓말은 안 한다."""
+    """사유를 그 투표 행에 적는다. 가드 검사에 걸리면 `applied: false` — 200 이되 거짓말은 안 한다."""
     from nexus.feedback import store
 
     effective_scope(principal)          # 인증만 — 사유는 투표 id 로 찾는다
@@ -824,7 +824,7 @@ async def search_answer(req: SearchAnswerRequest,
     asked_tenant = req.tenant if "tenant" in req.model_fields_set else None
     _scope, req.classification_max, _out = effective_read_scope(
         principal, asked_tenant, req.classification_max)
-    # ⛔ **`req.tenant` 에 목록을 넣지 않는다** (실측 2026-09-02). 첫 판은 원소가 둘이면
+    # ⛔ **`req.tenant` 에 목록을 넣지 않는다** (실측 2026-09-02). 첫 버전은 원소가 둘이면
     # 리스트를 넣었는데, 그 필드는 `str` 이고 `search_log.tenant` 도 TEXT 다. 적재가 조용히
     # 죽었고 — `record_search` 는 절대 raise 안 한다 — **범위를 붙인 그 시각부터 신호가 한 줄도
     # 안 쌓였다.** 하루 넘게 몰랐다.
@@ -888,22 +888,22 @@ async def search_answer(req: SearchAnswerRequest,
             fusion_doc_agreement=req.fusion_doc_agreement,
         )
 
-        # 답변용 근거 패킷은 한 함수로만 만든다 (`search/reconcile.py`).
+        # 답변 근거 패킷은 한 함수로만 만든다 (`search/reconcile.py`).
         packet = await packet_for_answer(
             search_result, _scope, req.classification_max,
             config=config, search=hybrid_search, embedding_svc=embedding_svc,
             question=_search_text(req) or req.query, pool=await db.get_pool())
 
-        # 요청자의 자료. **여기서 처음 쓰인다** — 위의 검색·재작성·꾸러미는 이 값을 본 적이 없다.
+        # 호출자 컨텍스트. **여기서 처음 쓰인다** — 위의 검색·재작성·근거 묶음은 이 값을 본 적이 없다.
         # 비었거나 공백뿐이면 안 준 것이다(`effective_context`, 프롬프트·응답·기록이 같은 규칙).
-        # 근거만 받는 요청에는 답변 프롬프트가 없으므로 **안 쓴 것**이다(응답 길이 0).
+        # 답변 근거만 받는 요청에는 답변 프롬프트가 없으므로 **안 쓴 것**이다(응답 길이 0).
         answer_context = None if req.evidence_only else effective_context(req.answer_context)
 
-        # LLM 답변 생성 — 근거만 받는 요청이면 근거까지 만들고 모델은 안 부른다.
+        # LLM 답변 생성 — 답변 근거만 받는 요청이면 답변 근거까지 만들고 모델은 안 부른다.
         answer_result = await generate_answer(
             narrate=not req.evidence_only,
             # **재작성된 질의**다 (검색 SPEC §2·§4 I3). 생략형 원문을 그대로 주면 답변자는
-            # 근거를 손에 쥐고도 "무엇을 가리키는지 모르겠다" 고 답한다 — 2026-08-13 라이브에서
+            # 답변 근거를 손에 쥐고도 "무엇을 가리키는지 모르겠다" 고 답한다 — 2026-08-13 라이브에서
             # 실제로 그랬다. ⛔ 단 **검색 글을 받았으면 질문**이다 — 검색 글은 검색에만 간다.
             query=_asked_query(req, search_query),
             # 그리고 **사용자가 실제로 친 문장**도 함께 (SPEC-nexus-multi-turn-narration §3.1).
@@ -912,7 +912,7 @@ async def search_answer(req: SearchAnswerRequest,
             #
             # **이력을 넣는 것과는 여전히 다른 일이다.** 가는 것은 문장 둘이고 둘 다 이번 턴의
             # 값이다 — 하나는 서버가 쓴 검색 질의, 하나는 요청 본문의 `req.query` 그대로.
-            # 앞 턴의 텍스트는 답변 프롬프트에 들어가지 않는다 (검색 SPEC §4 I3 / 서술 §4 I2).
+            # 앞 턴의 텍스트는 답변 프롬프트에 들어가지 않는다 (검색 SPEC §4 I3 / 생성 §4 I2).
             user_query=req.query,
             packet=packet,
             llm_svc=llm_svc,
@@ -924,12 +924,12 @@ async def search_answer(req: SearchAnswerRequest,
         )
 
         sig = extract_signals(
-            # ⛔ 근거만 받은 요청은 **다른 `path`** 로 적고 답을 넘기지 않는다. 답변 지표(인용
+            # ⛔ 답변 근거만 받은 요청은 **다른 `path`** 로 적고 답을 넘기지 않는다. 답변 지표(인용
             #    0건 비율 등)에 섞이면 생성하지 않은 요청이 「인용 0건 답변」으로 세어진다.
             search_result, None if req.evidence_only else answer_result,
             path="search_answer_evidence" if req.evidence_only else "search_answer",
-            # 근거 점유율은 **패킷**에서 센다 (SPEC-nexus-design-corpus-cutover §5.3). 히트만
-            # 세면 채운 절·짝 문서·정정 확인 패스가 빠져 답변이 기댄 코퍼스를 과소평가한다.
+            # 답변 근거 점유율은 **패킷**에서 센다 (SPEC-nexus-design-corpus-cutover §5.3). 히트만
+            # 세면 채운 절·페어 문서·정정 확인 패스가 빠져 답변이 기댄 코퍼스를 과소평가한다.
             evidence=packet.snippets,
             tenant=req.tenant, read_scope=_scope,
             clearance=req.classification_max, query=req.query,
@@ -946,8 +946,8 @@ async def search_answer(req: SearchAnswerRequest,
             search_text=_search_text(req),
             search_fingerprint=packet.search_fingerprint,
         )
-        # 판정자는 LLM 을 부른다 — 생성 없는 요청이 그것을 깨우면 이 칸을 둔 이유가 사라진다.
-        judge_input = None if req.evidence_only else JudgeInput(   # 답변이 받은 것과 같은 근거
+        # 판정자는 LLM 을 부른다 — 생성 없는 요청이 그것을 깨우면 이 필드를 둔 이유가 사라진다.
+        judge_input = None if req.evidence_only else JudgeInput(   # 답변이 받은 것과 같은 답변 근거
             query=req.query, evidence=format_for_llm(packet),
             config=_load_config(), llm_svc=llm_svc)
         await record_search(sig, judge_input=judge_input,
@@ -956,7 +956,7 @@ async def search_answer(req: SearchAnswerRequest,
             spans=getattr(search_result, "spans", None))
         data = {
                 "answer": answer_result.answer,
-                # 조각마다 상위 k 의 몇 위였나(채움은 None) — `_ranked` 머리말.
+                # 청크마다 상위 k 의 몇 위였나(필은 None) — `_ranked` 머리말.
                 "evidence_snippets": _ranked(answer_result.evidence_snippets, search_result.hits),
                 "graph_findings": answer_result.graph_findings,
                 "provenance": answer_result.provenance,
@@ -966,7 +966,7 @@ async def search_answer(req: SearchAnswerRequest,
                 "citations": answer_result.citations,
                 "unverified_citations": answer_result.unverified_citations,
                 "unverified_numbers": answer_result.unverified_numbers,
-                # ⛔ **수만 내면 무엇이 걸렸는지 못 본다** (설명 층 보고 2026-09-19). 목록은
+                # ⛔ **수만 내면 무엇이 걸렸는지 못 본다** (설명 레이어 보고 2026-09-19). 목록은
                 # `llm/answer.py` 가 이미 만들어 두고 있었고 전달만 없었다 — `timing_ms` 와
                 # 같은 모양이다. 읽는 쪽이 「지어낸 통계」인지 「인용의 절 번호」인지 가를 수
                 # 있어야 그 수가 쓸모가 있다.
@@ -976,14 +976,14 @@ async def search_answer(req: SearchAnswerRequest,
                 # 기권은 코드가 내린 판단이다. 답변 문장을 문자열 대조해서 알아내지 않는다.
                 "abstained": answer_result.abstained,
                 "abstain_reason": answer_result.abstain_reason,
-                # 근거는 있었지만 **잘 맞지 않았다**(search/confidence.py). 이 값이 응답에 없는
+                # 답변 근거는 있었지만 **잘 맞지 않았다**(search/confidence.py). 이 값이 응답에 없는
                 # 동안 표면들은 "잘 찾았다" 와 "제일 덜 나쁜 걸 골랐다" 를 구별할 수 없었고,
                 # 서버는 프롬프트만 바꾸고 그 사실을 혼자 알고 있었다.
                 "weak_evidence": answer_result.weak_evidence,
-                # ⛔ **판정만 내보내면 같은 문장이 한 층 아래에서 다시 참이 된다** (실측
-                # 2026-09-22). 소비자는 `weak_evidence` 를 받는데 그것이 문턱에 **겨우 걸린
+                # ⛔ **판정만 내보내면 같은 문장이 한 계층 아래에서 다시 참이 된다** (실측
+                # 2026-09-22). 소비자는 `weak_evidence` 를 받는데 그것이 임계값에 **겨우 걸린
                 # 것**인지 한참 밖인지 못 가른다 — 두 값은 서버만 갖고 있었다. 그리고 그
-                # 문턱(0.48 / 1.5)은 아직 가설이고, 옮길 트리거는 *중간 구간에서 발동한 질의*
+                # 임계값(0.48 / 1.5)은 아직 가설이고, 옮길 트리거는 *중간 구간에서 발동한 질의*
                 # 다. 그것을 볼 수 있는 쪽은 질의를 지은 소비자이지 서버가 아니다.
                 # ⚠ `None` 은 그 경로가 **못 낸 것**이다 — 0 이 아니다(`Confidence.weak` 가
                 # `None` 을 약함의 근거로 안 쓰는 것과 같은 이유).
@@ -992,7 +992,7 @@ async def search_answer(req: SearchAnswerRequest,
                 "degraded": search_result.degraded,
                 "enrichment_failed": search_result.enrichment_failed,
                 # **생성 실패는 답변이 아니다.** 이 플래그가 없는 동안 클라이언트는 둘을 구별할
-                # 수 없었고, 서버가 실패 자리에 넣는 근거 덤프를 답변으로 렌더했다.
+                # 수 없었고, 서버가 실패 자리에 넣는 답변 근거 덤프를 답변으로 렌더했다.
                 "llm_failed": answer_result.llm_failed,
                 # 그리고 **왜** 실패했는가. 불리언만으로는 "기다리면 되는 실패" 와 "사람이
                 # 결제해야 하는 실패" 가 같은 문장으로 나간다 (nexus/llm/failure.py).
@@ -1014,29 +1014,29 @@ async def search_answer(req: SearchAnswerRequest,
                 # 사전 등록 §5.5 의 음성 대조군이 요구하는 것이 정확히 그 구분이다.
                 "identifier_channel": search_result.identifier_channel,
                 "identifier_channel_asked": req.identifier_channel,
-                # 융합이 문서 합의를 셌는가(F1) — 넘긴 것과 같은 식을 돌려준다.
+                # 융합이 문서 일치를 셌는가(F1) — 넘긴 것과 같은 식을 돌려준다.
                 "fusion_doc_agreement": req.fusion_doc_agreement,
-                # **어떤 코드가 이 답의 꾸러미와 프롬프트를 만들었는가** (`llm/prompt_version.py`).
+                # **어떤 코드가 이 답의 근거 묶음과 프롬프트를 만들었는가** (`llm/prompt_version.py`).
                 # 기록에만 있던 동안 답을 받는 쪽은 *"어제와 같은 프롬프트인가"* 를 물을 방법이
-                # 없었다. 공유 이음매가 찍은 값이라 두 표면과 기록이 같은 값을 싣는다.
+                # 없었다. 공유 접합부가 찍은 값이라 두 API 표면과 기록이 같은 값을 싣는다.
                 "prompt_version": packet.prompt_version,
-                # 요청자 자료를 **실제로 쓴 길이**. 모르는 칸의 422 는 이름이 틀린 것만 막는다 —
+                # 호출자 컨텍스트를 **실제로 쓴 길이**. 알 수 없는 필드의 422 는 이름이 틀린 것만 막는다 —
                 # 빈 문자열이 조용히 「안 준 것」이 된 것은 이 값으로만 보인다. 0 = 안 썼다.
                 "answer_context_len": len(answer_context or ""),
                 # 실제로 검색에 쓴 길이 — 받은 쪽 처치 검사용. 안 썼으면 0.
                 "search_text_len": len(_search_text(req) or ""),
                 # **어떤 코퍼스에서, 어떤 검색 설정으로** (`search/versions.py`). 답이 어제와 다를 때
                 # 프롬프트 · 코퍼스 · 검색 스택 중 무엇이 움직였는지를 호출자가 가를 수 있게 한다.
-                # 코퍼스 판 빈 문자열 = 셀 DB 가 없었다(모른다).
+                # 코퍼스 버전 빈 문자열 = 셀 DB 가 없었다(모른다).
                 "corpus_version": packet.corpus_version,
                 "search_fingerprint": packet.search_fingerprint,
-                # 근거만 받은 요청인가 — 아래에서 생성 칸이 None 이 되는 이유다.
+                # 답변 근거만 받은 요청인가 — 아래에서 생성 필드가 None 이 되는 이유다.
                 "evidence_only": req.evidence_only,
         }
         if req.evidence_only:
-            # 생성을 안 했으므로 생성이 내는 칸은 **측정 안 함(None)** 이다. 0 · False 로 두면
+            # 생성을 안 했으므로 생성이 내는 필드는 **측정 안 함(None)** 이다. 0 · False 로 두면
             # 「인용 0건」·「생성 실패 안 함」으로 읽힌다 — 인용 0건은 이 리포가 세는 지표다.
-            # 칸을 빼지 않고 None 을 싣는다: 키로 읽는 소비자가 모양 때문에 깨지면 안 된다.
+            # 필드를 빼지 않고 None 을 싣는다: 키로 읽는 소비자가 모양 때문에 깨지면 안 된다.
             data.update(dict.fromkeys(_NARRATION_KEYS))
         return NexusResponse(data=data)
     except UnknownRoute as e:
@@ -1361,7 +1361,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
     asked_tenant = req.tenant if "tenant" in req.model_fields_set else None
     _scope, req.classification_max, _out = effective_read_scope(
         principal, asked_tenant, req.classification_max)
-    # 귀속은 단일 값, 범위는 로컬 `_scope` 로만 흐른다 — 목록을 `str` 칸에 넣었다가 적재가
+    # 귀속은 단일 값, 범위는 로컬 `_scope` 로만 흐른다 — 목록을 `str` 필드에 넣었다가 적재가
     # 34시간 조용히 죽은 것이 2026-09-02 이다.
     req.tenant = principal.tenant
     if _out:
@@ -1422,10 +1422,10 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             )
 
             # ⛔ **여기서 `assemble_packet` 을 직접 부르고 있었다** (외부 평가 F2).
-            # `packet_for_answer` 가 정정 확인 패스·짝 확장·코드 값을 붙이는 자리이고, 그
+            # `packet_for_answer` 가 정정 확인 패스·페어 확장·코드 값을 붙이는 자리이고, 그
             # docstring 이 *"답변용 근거 패킷은 이 함수 하나로 만든다 … 표면마다 붙이면 하나가
             # 조용히 빠진다"* 라고 적어 두었다. **웹 채팅이 타는 경로가 바로 그 하나였다.**
-            # 평가 실측(정책 8질의): 4건에서 근거가 적게 갔고 최대 19 → 13(−32%).
+            # 평가 실측(정책 8질의): 4건에서 답변 근거가 적게 갔고 최대 19 → 13(−32%).
             packet = await packet_for_answer(
                 search_result, _scope, req.classification_max,
                 config=config, search=hybrid_search, embedding_svc=embedding_svc,
@@ -1446,10 +1446,10 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     # 등급을 **말로 바꾼 것**도 같이 보낸다. ADR-0010 hop 5 는 API 응답을
                     # "and thereby the web client" 라고 적었는데 그 thereby 가 성립하지
                     # 않았다 — 웹도 슬랙도 등급을 받고도 안 그렸다. 표현계층이 어휘를
-                    # 지어내면 표면마다 다른 말이 되므로(`search/provenance.py` 머리말)
+                    # 지어내면 API 표면마다 다른 말이 되므로(`search/provenance.py` 머리말)
                     # 문자열은 여기서 만들어 보낸다.
                     "provenance_mark": _tier_mark(getattr(s, "provenance_tier", "authored")),
-                    # 스트리밍도 같은 사실을 낸다 — 표면마다 다른 근거를 보이면 안 된다.
+                    # 스트리밍도 같은 사실을 낸다 — API 표면마다 다른 답변 근거를 보이면 안 된다.
                     "code_anchors": _anchor_summary(getattr(s, "code_anchors", []),
                                                     getattr(s, "code_deleted", []),
                                                     getattr(s, "code_scan", None)),
@@ -1461,7 +1461,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             for _sn in _snips:
                 _ua = _sn.get("updated_at")
                 _sn["updated_at"] = _ua.isoformat() if _ua else None
-            # 비스트리밍과 같은 칸 — 표면마다 다른 근거를 보이면 안 된다(`_ranked` 머리말).
+            # 비스트리밍과 같은 필드 — API 표면마다 다른 답변 근거를 보이면 안 된다(`_ranked` 머리말).
             _snips = _ranked(_snips, search_result.hits)
             evidence_data = {
                 "evidence_snippets": _snips,
@@ -1471,7 +1471,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     for p in packet.provenance
                 ],
                 "route_used": route,
-                # 근거와 같은 이벤트에 실린다 — 근거가 왜 이것뿐인지를 설명하는 사실이라
+                # 답변 근거와 같은 이벤트에 실린다 — 답변 근거가 왜 이것뿐인지를 설명하는 사실이라
                 # 답변보다 먼저 도착해야 한다.
                 "degraded": search_result.degraded,
                 "enrichment_failed": search_result.enrichment_failed,
@@ -1502,7 +1502,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # ⛔ **이 경로는 적합도 계약을 아예 안 받고 있었다** (실측 2026-09-22). 아래
             # `build_prompts` 호출이 `weak_evidence` 를 안 넘겨 **기본 인자가 「약하지 않다」로
             # 조용히 떨어졌다.** 그래서 `search/confidence.py` 가 막으려던 바로 그 실패 —
-            # 이름을 물었는데 근거를 채워 표를 길게 답하는 것 — 이 **사람이 보는 표면**에서
+            # 이름을 물었는데 답변 근거를 채워 표를 길게 답하는 것 — 이 **사람이 보는 API 표면**에서
             # 그대로 살아 있었다. 비스트림만 계약을 지켰다.
             # ⚠ `build_prompts` 머리말은 "둘을 따로 조립하면 … 테스트가 초록인 채로 조용히
             # 틀린다" 고 적어 뒀는데, 이번 구멍은 따로 조립한 것이 아니라 **기본값**이었다.
@@ -1510,18 +1510,18 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 적어 뒀고, 여기가 그 실물이다.
             weak_evidence = search_result.confidence.weak
             # 요청자의 자료 — 비스트림과 **같은 규칙**(`effective_context`)으로 정한다. 한 경로만
-            # 받으면 조용히 갈린다(A44). 위의 검색·재작성·꾸러미는 이 값을 본 적이 없다.
+            # 받으면 조용히 갈린다(A44). 위의 검색·재작성·근거 묶음은 이 값을 본 적이 없다.
             answer_context = effective_context(req.answer_context)
             if not packet.snippets:
                 _payload = json.dumps({'text': '제공된 문서에서 해당 정보를 찾을 수 없습니다.'}, ensure_ascii=False)
                 yield f"event: answer_delta\ndata: {_payload}\n\n"
             elif not llm_svc.configured:
-                # 미설정(키 없음): 일시적 오류가 아니라 행동지침을 준다. 근거는 이미 위에서 전송됨.
+                # 미설정(키 없음): 일시적 오류가 아니라 행동지침을 준다. 답변 근거는 이미 위에서 전송됨.
                 _payload = json.dumps({'text': LLM_NOT_CONFIGURED_NOTICE}, ensure_ascii=False)
                 yield f"event: answer_delta\ndata: {_payload}\n\n"
             else:
                 evidence_text = format_for_llm(packet)
-                # 웹이 쓰는 것이 이 경로다 — 비스트림만 고치면 사람이 보는 표면은 그대로
+                # 웹이 쓰는 것이 이 경로다 — 비스트림만 고치면 사람이 보는 API 표면은 그대로
                 # 사용자 문장을 무시한다 (SPEC-nexus-multi-turn-narration §3.1).
                 system_prompt, user_prompt = build_prompts(
                     _asked_query(req, search_query), evidence_text, req.query,
@@ -1541,7 +1541,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                         {'text': '답변을 생성할 수 없습니다. 위 근거를 직접 확인해주세요.'}, ensure_ascii=False)
                     yield f"event: answer_delta\ndata: {_payload}\n\n"
 
-            # 4) 완료 이벤트 — 누적 답변의 인용·숫자를 근거와 대조해 함께 실어 보낸다.
+            # 4) 완료 이벤트 — 누적 답변의 인용·숫자를 답변 근거와 대조해 함께 실어 보낸다.
             full_answer = "".join(answer_parts)
             report = validate_citations(full_answer, packet)
             # evidence_text 는 위 else 분기에서만 잡히므로 여기서 안전하게 재구성(멱등·저비용).
@@ -1562,11 +1562,11 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             # 같은 규칙을 직접 채운다.
             #
             # `n_citations`/`unverified_citations` 는 **실제 LLM 답변이 나왔을 때만** 잰 값이다
-            # (`has_answer` = 근거가 있고 `llm_svc` 가 설정돼 있다). 그 조건이 거짓이면 `report` 는
+            # (`has_answer` = 답변 근거가 있고 `llm_svc` 가 설정돼 있다). 그 조건이 거짓이면 `report` 는
             # 고정 안내문(또는 빈 문자열)을 대조한 것이라 "측정" 이 아니다 — `None` 으로 남긴다.
             # 바로 위 `sig` 가 이미 같은 규칙을 쓰고 있으므로 새로 지어낸 값이 아니다.
             # `unverified_numbers` 도 같은 조건으로 `None` 이다 — `nreport` 도 같은 `full_answer`
-            # 를 대조한 것이다. `abstained` 는 근거 0건 분기의 조건 그 자체(`not packet.snippets`)라
+            # 를 대조한 것이다. `abstained` 는 답변 근거 0건 분기의 조건 그 자체(`not packet.snippets`)라
             # `has_answer` 와 무관하게 항상 안다. `llm_failed` 는 이미 추적하던 변수를 그대로 쓴다.
             answer_spans = getattr(search_result, "spans", None)
             if answer_spans is not None:
@@ -1586,7 +1586,7 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
             _u = usage_out[0] if usage_out else None   # 성공 완료 시 Usage(토큰 None 가능), 실패 시 없음
             sig = extract_signals(
                 search_result, None, path="search_answer_stream",
-                # 근거 점유율은 패킷에서 센다 (§5.3) — 히트만 세면 채움·짝·정정이 빠진다.
+                # 답변 근거 점유율은 패킷에서 센다 (§5.3) — 히트만 세면 필·짝·정정이 빠진다.
                 evidence=packet.snippets,
                 tenant=req.tenant, read_scope=_scope,
                 clearance=req.classification_max, query=req.query,
@@ -1600,8 +1600,8 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 prompt_tokens=_u.input_tokens if _u else None,
                 completion_tokens=_u.output_tokens if _u else None,
                 cost_usd=_u.cost_usd if _u else None,
-                # ⛔ 이 경로는 `AnswerResult` 없이 기록하므로 판을 **명시로** 넘긴다. 옛 판은 판을
-                # `AnswerResult` 에서만 읽어서, 웹 채팅이 타는 이 경로의 판이 기록에 한 번도 없었다.
+                # ⛔ 이 경로는 `AnswerResult` 없이 기록하므로 버전을 **명시로** 넘긴다. 옛 버전은 버전을
+                # `AnswerResult` 에서만 읽어서, 웹 채팅이 타는 이 경로의 버전이 기록에 한 번도 없었다.
                 prompt_version=packet.prompt_version,
                 answer_context=answer_context,
                 corpus_version=packet.corpus_version,
@@ -1626,14 +1626,14 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                     {"title": c.title, "section": c.section, "verified": c.verified,
                      "provenance_tier": getattr(c, "provenance_tier", "authored"),
                      # 비스트리밍과 **같은 값을 같은 이름으로** — 등급만 주면 소비자가
-                     # 표시 문자열을 지어내고, 그러면 등급이 표면마다 다른 뜻이 된다
+                     # 표시 문자열을 지어내고, 그러면 등급이 API 표면마다 다른 뜻이 된다
                      # (`search/provenance.py` 머리말). 아래 `numbers` 와 같은 이유다.
                      "provenance_mark": _tier_mark(getattr(c, "provenance_tier", "authored"))}
                     for c in report.citations
                 ],
                 "unverified_citations": report.unverified_count,
                 "unverified_numbers": nreport.unverified_count,
-                # 비스트리밍과 같은 값을 같은 이름으로 — 한 표면만 빠뜨리면 그 표면의
+                # 비스트리밍과 같은 값을 같은 이름으로 — 한 API 표면만 빠뜨리면 그 API 표면의
                 # 소비자만 조용히 못 본다.
                 "numbers": number_items(nreport),
                 "usage": (lambda u: {"input_tokens": u.input_tokens, "output_tokens": u.output_tokens,
@@ -1648,16 +1648,16 @@ async def search_answer_stream(req: AnswerRequest, principal: Principal = Depend
                 "excluded_doc_types": search_result.excluded_doc_types,
                 "identifier_channel": search_result.identifier_channel,
                 "identifier_channel_asked": req.identifier_channel,
-                # 융합이 문서 합의를 셌는가(F1) — 넘긴 것과 같은 식을 돌려준다.
+                # 융합이 문서 일치를 셌는가(F1) — 넘긴 것과 같은 식을 돌려준다.
                 "fusion_doc_agreement": req.fusion_doc_agreement,
                 # ⛔ **이 표면에는 `weak_evidence` 가 아예 없었다** (실측 2026-09-22). 바로 위
-                # 주석이 "한 표면만 빠뜨리면 그 표면의 소비자만 조용히 못 본다" 라고 적고
-                # 있는 동안, 이 경로의 소비자는 *판정 자체*를 못 봤다 — 서술 계약이 바뀐
+                # 주석이 "한 API 표면만 빠뜨리면 그 API 표면의 소비자만 조용히 못 본다" 라고 적고
+                # 있는 동안, 이 경로의 소비자는 *판정 자체*를 못 봤다 — 응답 계약이 바뀐
                 # 답을 받으면서 왜 짧은지 알 길이 없었다. 웹 채팅이 타는 경로가 여기다.
                 "weak_evidence": weak_evidence,
                 "top_distance": search_result.confidence.top_distance,
                 "top_bm25": search_result.confidence.top_bm25,
-                # 비스트리밍과 **같은 값을 같은 이름으로** — 공유 이음매가 찍은 판이다.
+                # 비스트리밍과 **같은 값을 같은 이름으로** — 공유 접합부가 찍은 버전이다.
                 "prompt_version": packet.prompt_version,
                 "answer_context_len": len(answer_context or ""),
                 # 실제로 검색에 쓴 길이 — 받은 쪽 처치 검사용. 안 썼으면 0.
@@ -1823,11 +1823,11 @@ async def search_explain(req: ExplainRequest,
                          principal: Principal = Depends(get_principal)) -> NexusResponse:
     """**기대한 문서가 몇 위였나.** 패킷에 못 든 문서까지 보인다.
 
-    ⛔ **왜 있나 (설명 층 보고 2026-09-20, 두 판 연속).** 소비자가 *"사건에 맞는 절차 문서만
-    근거에 안 온다"* 를 보고했는데, 그쪽이 볼 수 있는 것은 패킷에 **든** 조각의 제목뿐이라
+    ⛔ **왜 있나 (설명 레이어 보고 2026-09-20, 두 버전 연속).** 소비자가 *"사건에 맞는 절차 문서만
+    근거에 안 온다"* 를 보고했는데, 그쪽이 볼 수 있는 것은 패킷에 **든** 청크의 제목뿐이라
     *"빠진 문서가 21등인지 200등인지 구별할 수 없다"* 고 적었다. 우리 쪽은 그 질의 원문이
     없어 네 가지 모양으로 재현을 시도했고 네 번 다 반대 결과가 나왔다. 양쪽이 각자 절반만
-    보는 상태에서 처방을 고르면 그것은 추측이다.
+    보는 상태에서 조치 방법을 고르면 그것은 추측이다.
 
     ⭐ **값은 이미 쌓이고 있었다** — `search_span_candidate` 가 경로별 순위와 원점수를 남기는데
     그 표를 읽는 코드가 만료 작업 하나뿐이었다. 이 엔드포인트는 기능이 아니라 **읽을 자리**다.
@@ -1961,10 +1961,10 @@ async def status() -> NexusResponse:
 
             data["embedding_coverage"] = await fetch_coverage_by_tenant()
             # 커버리지의 사각지대 — 청크가 0건인 문서는 저 집계의 모집단에 없다(그래서 100% 로
-            # 보인다). 사람 표면(`nexus status`)에만 두면 에이전트는 같은 코퍼스를 건강하다고 읽는다.
+            # 보인다). 사람 API 표면(`nexus status`)에만 두면 에이전트는 같은 코퍼스를 건강하다고 읽는다.
             data["unreachable_documents"] = await fetch_unreachable_documents()
-            # 코드 인덱스의 신원도 같이 낸다 — 사람 표면에만 두면 에이전트는 같은 코퍼스를
-            # "어느 커밋 기준인지 모른 채" 읽는다 (표면 동등).
+            # 코드 인덱스의 식별 정보도 같이 낸다 — 사람 API 표면에만 두면 에이전트는 같은 코퍼스를
+            # "어느 커밋 기준인지 모른 채" 읽는다 (API 표면 동등).
             from nexus.index.anchor_store import code_index_health
             data["code_index"] = await code_index_health()
             data["embedding_waived"] = await fetch_waived_count()
@@ -2004,7 +2004,7 @@ async def status() -> NexusResponse:
 
             # 임베딩 세대 건전성 — 부분 재임베딩(mixed) 감지(SPEC-nexus-embed-generation-drift).
             # 출처 표 기반 (SPEC-nexus-embedding-provenance-grain §3.2). 행 라벨은 컬럼 둘을
-            # 한 칸으로 설명해서 거짓 혼합을 냈다.
+            # 한 필드로 설명해서 거짓 혼합을 냈다.
             from nexus.index.provenance import fetch_distribution, summarize
             data["embed_generations"] = summarize(
                 await fetch_distribution(configured_column(_load_config())))

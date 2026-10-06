@@ -1,10 +1,10 @@
-"""슬랙 봇 신원 — 봇이 보내는 토큰과 서버가 아는 토큰이 어긋날 수 없어야 한다.
+"""슬랙 봇 식별 정보 — 봇이 보내는 토큰과 서버가 아는 토큰이 어긋날 수 없어야 한다.
 
 compose 주석은 봇의 bearer 를 "gen-token 으로 발급한 읽기 전용 principal" 이라 적어 두었는데,
 그 principal 을 만드는 코드도 config 항목도 없었다. 봇을 띄웠다면 401 루프였다.
 
 그래서 **하나의 env 변수**에서 양쪽이 파생된다: 봇은 토큰을 보내고, 서버는 같은 변수의 해시로
-principal 을 만든다. 어긋남이 표현 불가능한 것이 이 설계의 요점이고, 아래 검사는 그 요점을 건다.
+principal 을 만든다. 불일치가 표현 불가능한 것이 이 설계의 요점이고, 아래 검사는 그 요점을 건다.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def _slack(cfg):
 
 
 def test_no_slack_token_means_no_slack_surface(monkeypatch):
-    """기본은 슬랙 표면 없음 — 토큰이 없으면 principal 도 없다."""
+    """기본은 슬랙 API 표면 없음 — 토큰이 없으면 principal 도 없다."""
     assert _slack(_load(monkeypatch)) is None
 
 
@@ -46,7 +46,7 @@ def test_the_bots_token_is_the_servers_principal(monkeypatch):
 
 
 def test_the_bot_is_read_only(monkeypatch):
-    """워크스페이스 전원에게 열리는 표면이 문서를 내리거나 소스를 고칠 수 있으면 안 된다."""
+    """워크스페이스 전원에게 열리는 API 표면이 문서를 내리거나 소스를 고칠 수 있으면 안 된다."""
     p = _slack(_load(monkeypatch, NEXUS_SLACK_TOKEN="t"))
     assert p["capabilities"] == []
 
@@ -62,7 +62,7 @@ def test_the_clearance_can_be_raised_deliberately(monkeypatch):
 
 
 def test_the_slack_identity_is_not_the_operator_identity(monkeypatch):
-    """`local-dev` 는 운영자 신원이고 `/auth/dev-token` 이 누구에게나 내준다 — 봇과 같은 신원을
+    """`local-dev` 는 운영자 식별 정보이고 `/auth/dev-token` 이 누구에게나 내준다 — 봇과 같은 식별 정보를
     쓰면 보존 허용목록이 '슬랙 사용자' 가 아니라 '접근 가능한 전원' 을 가리키게 된다."""
     cfg = _load(monkeypatch, NEXUS_SLACK_TOKEN="bot-token", NEXUS_DEV_TOKEN="dev-token-long-enough")
     names = {p["name"] for p in cfg.principals}
@@ -93,7 +93,7 @@ def test_a_second_corpus_becomes_its_own_principal(monkeypatch):
     assert p["tenant"] == "design_docs"
     assert p["clearance"] == "INTERNAL"
     assert p["token_sha256"] == hash_token("design-token")
-    assert p["capabilities"] == []      # 워크스페이스 전원에게 열리는 표면은 읽기 전용이다
+    assert p["capabilities"] == []      # 워크스페이스 전원에게 열리는 API 표면은 읽기 전용이다
 
 
 def test_the_second_corpus_inherits_the_bot_clearance_when_unset(monkeypatch):

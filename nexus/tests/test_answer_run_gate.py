@@ -1,7 +1,7 @@
-"""총점을 언제 내면 안 되는가 — `scripts/ko_eval_answer_run` 의 관문
+"""총점을 언제 내면 안 되는가 — `scripts/ko_eval_answer_run` 의 게이트
 (SPEC-nexus-answer-quality-ruler §3.2).
 
-**관문이 숫자 뒤에 있으면 숫자를 보고 평가 하니스를 고치게 된다.** 그래서 판단은 총점 출력 이전이고,
+**게이트가 숫자 뒤에 있으면 숫자를 보고 평가 하네스를 고치게 된다.** 그래서 판단은 총점 출력 이전이고,
 막힌 실행도 리포트는 쓴다 — 판정할 재료가 그 리포트 안에 있기 때문이다. 파일이 `partial` 로
 막혔다는 사실을 말하고, 사람의 기억이 그 자리를 대신하지 않는다.
 """
@@ -94,7 +94,7 @@ def test_the_two_reasons_are_reported_separately():
 # 뒤 다음 런에 덮여 복구 불가능해졌다. 누적 로그는 요약과 `ok` 맵만 담아 되살릴 수도 없었다.
 
 def test_the_report_path_carries_the_tag_and_the_run_log_does_not():
-    """리포트는 회차마다 갈라져야 하고, 누적 로그는 **한 파일이어야** 잡음 폭이 읽힌다."""
+    """리포트는 회차마다 갈라져야 하고, 누적 로그는 **한 파일이어야** 노이즈 밴드가 읽힌다."""
     r1, runs1 = run.resolve_paths(run.DEFAULT_LABELS, "rev6-r1")
     r2, runs2 = run.resolve_paths(run.DEFAULT_LABELS, "rev6-r2")
     assert r1 != r2, "두 회차가 같은 파일에 쓰면 앞 회차의 판정 재료가 사라진다"
@@ -122,7 +122,7 @@ def test_a_different_label_set_writes_to_different_files(tmp_path):
 def test_the_prefix_comes_from_the_pack_not_the_file_name(tmp_path):
     """파일 이름은 사람이 붙이고 팩 이름은 라벨이 선언한다.
 
-    이름에서 따던 첫 판은 Pack A 의 `answer-labels.yaml` 에서 `answer-answer-runs.jsonl` 을
+    이름에서 따던 첫 버전은 Pack A 의 `answer-labels.yaml` 에서 `answer-answer-runs.jsonl` 을
     만들었다 — 실제로 그렇게 찍혔다.
     """
     lp = tmp_path / "answer-labels.yaml"
@@ -255,13 +255,13 @@ def test_the_report_records_the_clearance_it_ran_with(tmp_path, monkeypatch):
     written = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
     assert written["clearance"] == "RESTRICTED"
     assert written["limit"] == 40
-    assert len(written["prompt_version"]) >= 8         # 프롬프트를 쓰는 코드에서 파생된 판
+    assert len(written["prompt_version"]) >= 8         # 프롬프트를 쓰는 코드에서 파생된 버전
 
 
 def test_the_prompt_version_follows_the_prompt(tmp_path, monkeypatch):
-    """판이 프롬프트를 실제로 따라가는지 — 상수를 적어 둔 것이면 이 검사가 잡는다.
+    """버전이 프롬프트를 실제로 따라가는지 — 상수를 적어 둔 것이면 이 검사가 잡는다.
 
-    판은 소스에서 파생되므로(`llm/prompt_version.py`) 소스의 규칙 목록을 고쳐 본다."""
+    버전은 소스에서 파생되므로(`llm/prompt_version.py`) 소스의 규칙 목록을 고쳐 본다."""
     from nexus.llm import prompt_version as V
 
     V._assembly_sources.cache_clear()
@@ -281,7 +281,7 @@ def test_the_prompt_version_follows_the_prompt(tmp_path, monkeypatch):
 
 
 def test_the_accumulated_log_carries_the_same_conditions(tmp_path):
-    """누적 로그가 조건을 빼면, 잡음 폭을 측정하는 그 파일만으로는 회차를 구별할 수 없다."""
+    """누적 로그가 조건을 빼면, 노이즈 밴드를 측정하는 그 파일만으로는 회차를 구별할 수 없다."""
     s = score_answer("a", "100 곡 [출처: 정답 문서]", [_cite("정답 문서")], {"정답 문서"},
                      [["100"]], known_titles=TENANT_TITLES)
     args = _args_full(tmp_path)
@@ -319,7 +319,7 @@ def test_without_out_dir_the_artifacts_still_live_beside_their_labels(tmp_path):
 
 
 def test_a_partial_run_writes_nothing_to_the_accumulated_log(tmp_path):
-    """`--limit` 로 잘린 회차는 잡음 폭이 아니다.
+    """`--limit` 로 잘린 회차는 노이즈 밴드가 아니다.
 
     누적 로그의 용도는 **같은 입력의 반복**에서 폭을 뽑는 것 하나다. 부분 회차가 섞이면 줄을 다
     읽어 평균을 내는 집계가 조용히 틀리고, 틀렸다는 표시가 파일 안에 없다.

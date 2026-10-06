@@ -22,7 +22,7 @@ _TENANT = "write_path_test"
 
 
 def _vec(text: str, dim: int) -> list[float]:
-    """텍스트에서 결정되는 벡터 — 상수를 돌려주는 가짜는 정렬 어긋남을 원리적으로 통과시킨다."""
+    """텍스트에서 결정되는 벡터 — 상수를 돌려주는 가짜는 정렬 불일치를 원리적으로 통과시킨다."""
     import hashlib
     import math
     import random

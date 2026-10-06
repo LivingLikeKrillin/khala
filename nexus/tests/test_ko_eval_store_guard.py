@@ -1,4 +1,4 @@
-"""평가 임베딩 저장소가 고아로 남지 않게 하는 가드 (SPEC-nexus-ko-eval-pool-sensitivity §5).
+"""평가 임베딩 저장소가 고아로 남지 않게 하는 가드 검사 (SPEC-nexus-ko-eval-pool-sensitivity §5).
 
 `clean_db` 는 `chunks`/`documents` 를 TRUNCATE 하는데 `ko_eval_embeddings` 는 남겨두었다. 남은 행은
 사라진 청크를 가리키는 **고아**가 되고, 청크를 문서로 접는 코드는 조용히 빈 목록을 읽는다.
@@ -87,7 +87,7 @@ def test_the_fold_names_the_mistake_instead_of_dying_on_an_unpack():
         collapse_to_documents(rows, chunk_doc)
     assert "LegHit" in str(e2.value)
 
-    # ③ 정상 경로와 빈 결과는 그대로다 — 가드가 채점을 바꾸면 안 된다
+    # ③ 정상 경로와 빈 결과는 그대로다 — 가드 검사가 채점을 바꾸면 안 된다
     assert collapse_to_documents([(h.rid, h.rank) for h in rows], chunk_doc) == ["a.md"]
     assert collapse_to_documents([("c2", 2), ("c1", 1)], chunk_doc) == ["a.md"]
     assert collapse_to_documents([], chunk_doc) == []

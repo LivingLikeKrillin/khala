@@ -1,4 +1,4 @@
-"""문서 생애주기 MCP 도구 — SPEC-nexus-document-lifecycle §4.6.
+"""문서 생명주기 MCP 도구 — SPEC-nexus-document-lifecycle §4.6.
 
 에이전트는 웹 UI 와 **같은 엔드포인트**를 쓴다. 그리고 사람이 확인 패널에서 읽는 문장을
 에이전트도 응답에서 읽는다 — 파괴적 행위의 결과를 한쪽만 아는 일은 없다.

@@ -1,4 +1,4 @@
-"""미해소 후보 분류 — 왜 없는지가 처분을 가른다 (nexus/index/history.py).
+"""미해소 후보 분류 — 왜 없는지가 조치를 가른다 (nexus/index/history.py).
 
 ⚠ 픽스처 Java 는 전부 여기서 지어낸 것이다.
 """
@@ -39,7 +39,7 @@ def repo(tmp_path: Path) -> Path:
 
 
 def test_deletion_map_finds_the_removal_with_its_reason(repo: Path):
-    """'없어졌다' 만으로는 처분이 안 된다. 언제·왜 까지 있어야 요청이 된다."""
+    """'없어졌다' 만으로는 조치가 안 된다. 언제·왜 까지 있어야 요청이 된다."""
     m = deletion_map(repo)
 
     assert "Goner" in m

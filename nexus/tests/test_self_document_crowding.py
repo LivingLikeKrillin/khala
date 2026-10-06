@@ -1,4 +1,4 @@
-"""근거 창의 얼마가 우리 자기 문서인가 (`OPEN.md` A57).
+"""답변 근거 창의 얼마가 우리 자기 문서인가 (`OPEN.md` A57).
 
 ⛔ 이 검사가 지키는 것 하나: **세는 단위가 문서가 아니라 청크여야 한다.** 실측 2026-09-03 에
 khala 리포 문서는 14건뿐인데 그 14건이 청크 197 · 14만 자를 싣고, 조직 문서 112건이 청크 269 ·
@@ -47,7 +47,7 @@ def test_a_mixed_window_is_the_fraction():
 
 
 def test_an_empty_window_does_not_divide():
-    """0으로 나누면 탐침이 죽고, 죽은 탐침은 '문제 없음' 과 구별이 안 된다."""
+    """0으로 나누면 프로브가 죽고, 죽은 프로브는 '문제 없음' 과 구별이 안 된다."""
     assert crowding([]) == 0.0
 
 
@@ -58,7 +58,7 @@ def _r(qid, crowd, gold_pop="org", in_window=True):
 
 
 def test_a_full_window_is_counted_separately_from_a_majority_one():
-    """10/10 과 6/10 을 한 칸에 담으면 이 항목의 실제 모양이 사라진다."""
+    """10/10 과 6/10 을 한 필드에 담으면 이 항목의 실제 모양이 사라진다."""
     v = verdict_rows([_r("a", 1.0), _r("b", 0.6), _r("c", 0.2)])
     assert v["full_windows"] == 1 and v["majority_windows"] == 2
 

@@ -1,9 +1,9 @@
-"""평가용 벡터 저장소 — 모델별 실험군, 거부 회계, 정확 스캔
+"""평가용 벡터 저장소 — 모델별 실험군, 거부 회계, 전수 스캔
 (SPEC-nexus-korean-embedding-comparison §4.1~§4.2).
 
 프로덕션 `chunks.embedding` 은 건드리지 않는다. 768 과 1024 를 나란히 두려면 차원 없는 `vector`
-컬럼이 필요하고, 그건 색인이 안 걸린다 — 1,900청크 정확 스캔이 공짜에 가까우니 오히려 설계다.
-ivfflat 후보 집합 흔들림이 비교에 섞이지 않는다.
+컬럼이 필요하고, 그건 색인이 안 걸린다 — 1,900청크 전수 스캔이 공짜에 가까우니 오히려 설계다.
+ivfflat 후보 집합 변동성이 비교에 섞이지 않는다.
 
 **해시가 둘인 이유**: 실험군마다 지시문 프리픽스가 달라서(`search_document: ` vs 없음) "실제 보낸
 문자열" 해시는 두 실험군이 절대 같을 수 없다. 그래서 공용 입력(프리픽스 이전)은 `input_sha256`,
@@ -224,7 +224,7 @@ async def arms_saw_the_same_inputs(con, tenant: str, pack: str) -> list[str]:
 
 async def vector_search(con, model: str, tenant: str, pack: str, query_vector: list[float],
                         top_k: int = 20) -> list[tuple[str, int]]:
-    """정확 스캔. 거부된 행은 애초에 후보가 아니다(프로덕션에서 NULL 임베딩이 그렇듯)."""
+    """전수 스캔. 거부된 행은 애초에 후보가 아니다(프로덕션에서 NULL 임베딩이 그렇듯)."""
     rows = await con.fetch(
         "SELECT chunk_rid FROM ko_eval_embeddings "
         "WHERE model=$1 AND tenant=$2 AND pack=$3 AND status='embedded' "

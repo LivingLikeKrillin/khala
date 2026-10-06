@@ -62,7 +62,7 @@ def test_the_whole_path_is_bounded_not_just_the_helper():
 
 
 def test_a_table_keeps_its_header_on_every_piece():
-    """표를 그냥 자르면 두 번째 조각부터 열의 뜻이 사라진다. 실제로 터진 것이 정책 표였다."""
+    """표를 그냥 자르면 두 번째 청크부터 열의 뜻이 사라진다. 실제로 터진 것이 정책 표였다."""
     pieces = _split_oversize(_pathological("table"), TARGET, "ko")
     assert len(pieces) > 1, "쪼개지지 않으면 이 검사는 아무것도 안 본다"
     for p in pieces:

@@ -186,7 +186,7 @@ def ingest(
                     typer.echo(f"  … 그 밖의 이유 {hidden}종")
                 if ref.get("total", 0) < gap:
                     # 거부 기록조차 없는 구멍이다. 적재 큐에 안 들어갔거나 프로세스가 중간에
-                    # 죽은 모양이고, 처방이 다르다.
+                    # 죽은 모양이고, 조치 방법이 다르다.
                     typer.echo(f"  이유가 기록되지 않은 것 {gap - ref.get('total', 0)}건 "
                                f"— 임베딩 단계에 도달조차 못 했을 수 있다")
                 typer.echo(f"  복구: nexus reembed run --tenant {tenant}")
@@ -345,7 +345,7 @@ def query(
         # 적는다(`default` 청크 466 · `design_docs` 청크 1519). 설계 질문에 `--tenant` 를
         # 빠뜨리면 정책 코퍼스만 본 결과가 확신 있게 나오고, 화면에는 그 사실이 없다 —
         # 답변 경로가 `searched_tenants` 로 고친 것과 **같은 결함이 같은 이유로** 여기 있었다
-        # (실측 2026-09-03 · 비평 3R I-010).
+        # (실측 2026-09-03 · 크리틱 3R I-010).
         #
         # ⚠ **0건일 때도 낸다.** 그때가 가장 필요하다: "없습니다" 가 *"코퍼스에 없다"* 인지
         # *"엉뚱한 코퍼스를 봤다"* 인지를 이 줄 하나가 가른다.
@@ -381,15 +381,15 @@ def query(
         from nexus.search.signals import JudgeInput, extract_signals, record_search
         sig = extract_signals(
             result, answer_result, path="cli",
-            # 근거 점유율은 패킷에서 센다 (§5.3). 답변을 안 만든 실행에는 패킷이 없고,
-            # 그때는 히트로 떨어진다 — 그 실행에는 채움·짝·정정도 없었으므로 같은 값이다.
+            # 답변 근거 점유율은 패킷에서 센다 (§5.3). 답변을 안 만든 실행에는 패킷이 없고,
+            # 그때는 히트로 떨어진다 — 그 실행에는 필·짝·정정도 없었으므로 같은 값이다.
             evidence=packet.snippets if answer_result is not None else None,
             tenant=tenant, clearance="INTERNAL", query=q,
             n_entities=len(entity_rids),
             latency_ms=int((time.time() - _t0) * 1000),
         )
         # await_persist=True: close_pool 이전에 적재 완료 — CLI 는 판정도 기다린다(설계).
-        # 답변을 만들지 않았으면 판정할 근거도 없다(packet/llm_svc 는 그 블록 안에서만 산다).
+        # 답변을 만들지 않았으면 판정할 답변 근거도 없다(packet/llm_svc 는 그 블록 안에서만 산다).
         _ji = None
         if answer_result is not None:
             from nexus.search.evidence_packet import format_for_llm
@@ -593,7 +593,7 @@ def status() -> None:
             typer.echo(f"설계 edge: {edges}  관측 edge: {obs}  격리: {quarantined}")
 
             # 임베딩 세대 건전성 — **출처 표**를 읽는다. 행 라벨(`chunks.embed_model`)은
-            # 컬럼 둘을 한 칸으로 설명해서 균일한 컬럼을 혼합이라 불렀다
+            # 컬럼 둘을 한 필드로 설명해서 균일한 컬럼을 혼합이라 불렀다
             # (SPEC-nexus-embedding-provenance-grain §1.3).
             from nexus.index.provenance import fetch_distribution, fetch_mismatch, summarize
             from nexus.index.vector_index import configured_column
@@ -614,7 +614,7 @@ def status() -> None:
                     if _mm:
                         typer.echo(f"⚠ 선언과 다른 세대의 벡터 {_mm}개 — 검색이 선언되지 않은 "
                                    f"공간에서 돈다")
-                except Exception:  # noqa: BLE001 — 선언 표가 없는 배포
+                except Exception:  # noqa: BLE001 — 명시적 선언 표가 없는 배포
                     pass
 
             # 벡터가 **그 행보다 나중에 쓰였는가** — 같은 출처 표의 `written_at` 을 읽는다.
@@ -684,7 +684,7 @@ def status() -> None:
                 mark = "⚠ " if gap and row_["tenant"] not in exempt else "  "
                 note = " (면제 — 일부러 비워 둔 코퍼스)" if row_["tenant"] in exempt else ""
                 # 두 벡터 컬럼을 **함께** 찍는다: 옛 컬럼의 구멍이 곧 롤백이 잃을 것이다
-                # (ADR-0009 의 "post-flip NULL gap" 미결 항목, §3.2).
+                # (ADR-0009 의 "post-flip NULL gap" 오픈 항목, §3.2).
                 typer.echo(
                     f"{mark}커버리지 {row_['tenant']:<16} 활성 {row_['active']:>5}  "
                     f"{col} {row_[col]:>5}  embedding {row_['embedding']:>5}  "
@@ -709,7 +709,7 @@ def status() -> None:
                         typer.echo(f"      · 이유가 기록되지 않은 것 {gap - ref['total']}건 "
                                    f"— 임베딩 단계에 도달조차 못 했을 수 있다")
 
-            # 코드 인덱스의 신원 — 문서↔코드 판정이 **어느 커밋 기준인지**. 이 줄이 없는 동안
+            # 코드 인덱스의 식별 정보 — 문서↔코드 판정이 **어느 커밋 기준인지**. 이 줄이 없는 동안
             # 심볼 10,659개·앵커 2,674개가 라이브에 앉아 있었고, 그 판정이 언제의 코드에
             # 대한 것인지 볼 방법이 없었다. 스캔이 없는 테넌트에는 한 줄도 안 찍는다.
             from nexus.index.anchor_store import code_index_health
@@ -723,8 +723,8 @@ def status() -> None:
                     f"  코드 인덱스 {c['tenant']:<16} {c['repo']} @{(c['scan_commit'] or '')[:12]} "
                     f"· 심볼 {c['symbol_count']:>5} · 앵커 {c['anchors']:>5} "
                     f"· 지워진 이름 {c['deleted_names']:>4} · 스캔 {when}")
-                # ⚠ 는 **읽지 못한 파일에만** 건다. 선언 0 파일은 정상이라 경보를 걸면 영원히
-                # 울린다 — 두 사실을 한 칸에 뭉쳐 세던 것이 migration 033 이 가른 것이다.
+                # ⚠ 는 **읽지 못한 파일에만** 건다. 명시적 선언 0 파일은 정상이라 경보를 걸면 영원히
+                # 울린다 — 두 사실을 한 필드에 뭉쳐 세던 것이 migration 033 이 가른 것이다.
                 if c["unreadable_files"]:
                     typer.echo(
                         f"   └ ⚠ 읽지 못한 파일 {c['unreadable_files']}건 — 그 파일의 심볼은 "
@@ -734,7 +734,7 @@ def status() -> None:
 
             # 어떤 경로도 읽을 수 없는 문서 (SPEC-nexus-index-completeness §3.1 의 사각지대).
             # 위 커버리지는 **청크**를 세므로 청크가 0건인 문서는 모집단 밖이다 — 그래서
-            # 유령 문서는 커버리지 100% 로 보인다. 그래서 `coverage` 가 아니라 이 함수의 행을
+            # 고스트 문서는 커버리지 100% 로 보인다. 그래서 `coverage` 가 아니라 이 함수의 행을
             # 직접 돈다: 문서가 전부 유령인 테넌트는 커버리지에 줄 자체가 없다.
             from nexus.index.embed_health import fetch_unreachable_documents
             try:
@@ -749,8 +749,8 @@ def status() -> None:
                     typer.echo(f"   · {uri}")
                 typer.echo(f"   └ nexus ingest --force --tenant {g['tenant']} 로 다시 청킹하라")
 
-            # 선언되지 않은 테넌트 (SPEC-nexus-generation-of-record §3.5). 선언이 없으면 §3.2 의
-            # 가드가 통과시키므로, 고쳐 놓고도 노출된 상태다 — 그 상태를 여기서 지목한다.
+            # 명시적 선언되지 않은 테넌트 (SPEC-nexus-generation-of-record §3.5). 명시적 선언이 없으면 §3.2 의
+            # 가드 검사가 통과시키므로, 고쳐 놓고도 노출된 상태다 — 그 상태를 여기서 지목한다.
             # 그림 판독기의 재현율 (SPEC-nexus-vision-reproducibility §2.3). 컬럼을 만들어 두고
             # 아무도 안 읽으면 신호가 아니다 — 이 리포가 그 실패를 이미 한 번 기록했다.
             # `machine_read` 청크가 없는 테넌트에는 **한 줄도 찍지 않는다**: 새 상시 경보를
@@ -777,7 +777,7 @@ def status() -> None:
 
             # 원본으로 돌아갈 수 없는 추출 (SPEC-nexus-vision-source-ref §5.9).
             # **추출 행 기준**으로 센다 — 청크와 추출은 조인되지 않는 별개 모집단이고, 청크 쪽
-            # 술어로 억제하면 청크 없는 추출(빈 판독)의 미해석 상태가 0 으로 보고된다.
+            # 술어로 억제하면 청크 없는 추출(빈 기계 판독)의 미해석 상태가 0 으로 보고된다.
             from nexus.ingest.vision_source import unresolvable_count
             try:
                 for row_ in [c for c in coverage if c["active"]]:
@@ -791,8 +791,8 @@ def status() -> None:
                             f"그림으로 돌아갈 수 없다. ADR-0010 §2 가 이 등급을 받아들인 "
                             f"근거가 그것이다")
                     if vs["retired_unresolvable"]:
-                        # ⚠ 가 아니다. 은퇴한 신원의 행은 어떤 걷기도 다시 닿지 않고(§5 가
-                        # 저장을 신원으로 키잉한다), 활성 인용은 전부 현 신원의 마커를 이고
+                        # ⚠ 가 아니다. 은퇴한 식별 정보의 행은 어떤 걷기도 다시 닿지 않고(§5 가
+                        # 저장을 식별 정보로 키잉한다), 활성 인용은 전부 현 식별 정보의 마커를 이고
                         # 있으므로 그것을 가리키는 인용이 없다. 안 꺼지는 경보로 만들지 않는다.
                         typer.echo(
                             f"     은퇴한 판독기의 추출 {vs['retired_unresolvable']}건은 참조가 "
@@ -889,7 +889,7 @@ def supersede(
     _run(_do())
 
 
-# ── 문서 생애주기 — SPEC-nexus-document-lifecycle §4.6 ──
+# ── 문서 생명주기 — SPEC-nexus-document-lifecycle §4.6 ──
 
 doc_app = typer.Typer(help="문서 생애주기 — 검색에서 내리고, 되돌린다.")
 app.add_typer(doc_app, name="doc")
@@ -1074,13 +1074,13 @@ def evidence_share_cmd(
     days: int = typer.Option(30, "--days", "-d", help="최근 며칠"),
     path: str = typer.Option("", "--path", help="이 경로만 (search_answer · cli · a2a …)"),
 ) -> None:
-    """근거가 **실제로 어느 코퍼스에서 왔는가** — 질문당 테넌트별 조각 수의 분포.
+    """답변 근거가 **실제로 어느 코퍼스에서 왔는가** — 질문당 테넌트별 청크 수의 분포.
 
     ⛔ `read_scope` 는 **읽을 수 있었던** 범위이고 이것은 **읽은 것**이다. 범위를 넓혀 놓고
-    근거가 여전히 한쪽에서만 오는 상태를, 그 칸으로는 고르게 오는 상태와 못 가른다
+    답변 근거가 여전히 한쪽에서만 오는 상태를, 그 필드로는 고르게 오는 상태와 못 가른다
     (SPEC-nexus-design-corpus-cutover §5.3).
 
-    **첫 회차는 관측이다.** 문턱을 두지 않는다 — 이 분포를 보고 사람이 정한다. 측정해 본 적
+    **첫 회차는 관측이다.** 임계값을 두지 않는다 — 이 분포를 보고 사람이 정한다. 측정해 본 적
     없는 수로 문을 만드는 것이 이 리포가 반복한 실수이고, 임계는 곧 또 하나의 안 읽는
     신호가 된다.
     """
@@ -1110,13 +1110,13 @@ def doc_age(
     """문서가 **낡았는가** — 원본 수정 시각 기준. 적재 시각과 나란히 낸다.
 
     ⛔ **두 나이는 다른 것이다** (실측 2026-09-02). `updated_at` 은 **우리가 적재한 때**라
-    재적재하면 모든 문서가 새것이 된다. 그 칸으로 재고 하마터면 *"126건 전부 3개월 이내"* 를
+    재적재하면 모든 문서가 새것이 된다. 그 필드로 재고 하마터면 *"126건 전부 3개월 이내"* 를
     **문서가 안 낡았다**로 보고할 뻔했다 — 그 수가 말한 것은 우리가 8월에 적재했다 뿐이다.
 
     그래서 둘을 **나란히** 낸다. 하나만 내면 읽는 사람이 방금 나처럼 오독한다.
 
     ⚠ `미상` 은 **모른다**이지 새것이 아니다. 원본이 수정 시각을 안 주는 경로(파일 적재)와
-    이 칸이 생기기 전에 적재된 행이 여기 들어온다.
+    이 필드가 생기기 전에 적재된 행이 여기 들어온다.
     """
 
     async def _do() -> None:
@@ -1239,13 +1239,13 @@ def ingest_notion(
     # 속하므로, 한 토큰으로 두 워크스페이스의 루트를 함께 걸으면 그 토큰이 못 보는 쪽이 통째로
     # `ObjectNotFound` 로 돌아온다 — 그리고 그 코드는 *공유 안 됨* 과 *삭제됨* 을 구분하지 않는다.
     # 009 가 예고한 "조용한 오독" 이 그것이고, `--reconcile` 과 만나면 남의 워크스페이스 문서를
-    # 사라진 것으로 판정한다. HTTP 표면은 `group_by_token()` 으로 이미 갈라 걷고 있었고
+    # 사라진 것으로 판정한다. HTTP API 표면은 `group_by_token()` 으로 이미 갈라 걷고 있었고
     # (`sources/api.py`), CLI 만 `--token-env` 하나를 전부에 적용하고 있었다.
     # `--dry-run` 은 이제 **적재까지** 마른다. 그래서 `--reconcile` 없이도 의미가 있다:
     # "지금 돌리면 무엇이 들어오나" 를 쓰기 없이 보는 것. `--force` 는 여전히 재조정 전용이다.
-    # ⛔ **예전엔 `--force` 단독을 거부했다.** 그런데 새 메타데이터 칸은 본문이 안 바뀐 문서에
+    # ⛔ **예전엔 `--force` 단독을 거부했다.** 그런데 새 메타데이터 필드는 본문이 안 바뀐 문서에
     # 영원히 안 채워진다(dedup 이 `_save_document` 자체를 건너뛴다). 그러면 백필하려고
-    # **파괴적인 `--reconcile`** 을 같이 켜야 했다 — 메타데이터 한 칸 때문에 문서를 지울 수
+    # **파괴적인 `--reconcile`** 을 같이 켜야 했다 — 메타데이터 한 필드 때문에 문서를 지울 수
     # 있는 경로를 여는 것은 거래가 안 맞는다. 039 에서 실제로 그 자리에 섰다.
     #
     # 이제 `--force` 단독 = **본문이 같아도 문서를 다시 저장한다**(파생 메타데이터 갱신).
@@ -1256,12 +1256,12 @@ def ingest_notion(
     )
 
     # ⛔ **적재가 이미 읽어 둔 그림 텍스트를 지우려 하는가** (사고 2026-09-02).
-    # 판독이 꺼진 채 재적재하면 그림 자리 표식이 빈 이미지로 바뀌고 `machine_read` 청크가
+    # 기계 판독이 꺼진 채 재적재하면 그림 플레이스홀더가 빈 이미지로 바뀌고 `machine_read` 청크가
     # 사라진다. 그날 466 → 385 로 지워졌고 라이브 답변이 값을 답하다가 기권으로 바뀌었다.
     # 경고도 확인도 없었다 — 끝났다는 출력만 초록이었다.
     totals = {"ingested": 0, "idempotent": 0, "empty": 0, "skipped": 0,
               "holes": 0, "would_ingest": 0}
-    # 이 실행이 공급자로 보낸 그림 판독. **그룹마다 리포트가 하나씩 오므로 여기서 합친다.**
+    # 이 실행이 공급자로 보낸 그림 기계 판독. **그룹마다 리포트가 하나씩 오므로 여기서 합친다.**
     from nexus.llm.dev_spend import Spend
     vision_spend = Spend()
     watermarks: list[str] = []
@@ -1274,7 +1274,7 @@ def ingest_notion(
     async def _walk() -> None:
         nonlocal report
         # ⛔ **적재가 이미 읽어 둔 그림 텍스트를 지우려 하는가** (사고 2026-09-02).
-        # 판독이 꺼진 채 재적재하면 그림 자리 표식이 빈 이미지로 바뀌고 `machine_read` 청크가
+        # 기계 판독이 꺼진 채 재적재하면 그림 플레이스홀더가 빈 이미지로 바뀌고 `machine_read` 청크가
         # 사라진다. 그날 466 → 385 로 지워졌고, 라이브 답변이 값을 답하다가 기권으로 바뀌었다.
         # 경고도 확인도 없었다 — **끝났다는 출력만 초록이었다.**
         #
@@ -1363,7 +1363,7 @@ def ingest_notion(
             f"empty={totals['empty']} skipped={totals['skipped']} "
             f"holes={totals['holes']} watermark={min(watermarks) if watermarks else ''}"
         )
-    # **판독은 돈이 나가는 유일한 경로다** — 그런데 2026-08-25 재적재는 39건을 보내고도
+    # **기계 판독은 돈이 나가는 유일한 경로다** — 그런데 2026-08-25 재적재는 39건을 보내고도
     # 아무 데도 안 적어서 "지출 0" 으로 보고됐다. 0 건이면 조용하고, 1건이라도 있으면 말한다.
     if vision_spend.calls:
         typer.echo(f"그림 판독: {vision_spend.summary()}")
@@ -1440,10 +1440,10 @@ def reembed_run(
         if all_tenants:
             typer.echo(f"대상 테넌트 {len(scopes)}개: {', '.join(scopes) or '(없음)'}")
 
-        # 세대 가드 (SPEC-nexus-generation-of-record §3.3). 초안은 이 명령을 **면제**했고,
-        # 비평이 그 구멍으로 사고가 그대로 재현된다고 지적했다: `--column embedding --model
-        # nomic-embed-text` 는 차원이 맞으므로 옛 가드를 통과하고, 검색되지 않는 세대를 다시
-        # 채운다. 그래서 여기서도 선언을 본다 — 다만 이 명령만이 선언을 **바꿀** 수 있다.
+        # 세대 가드 검사 (SPEC-nexus-generation-of-record §3.3). 초안은 이 명령을 **면제**했고,
+        # 크리틱이 그 구멍으로 사고가 그대로 재현된다고 지적했다: `--column embedding --model
+        # nomic-embed-text` 는 차원이 맞으므로 옛 가드 검사를 통과하고, 검색되지 않는 세대를 다시
+        # 채운다. 그래서 여기서도 명시적 선언을 본다 — 다만 이 명령만이 명시적 선언을 **바꿀** 수 있다.
         if not change_generation:
             for scope in scopes:
                 if scope:
@@ -1465,8 +1465,8 @@ def reembed_run(
             typer.echo(label + summary.render())
             failed += 0 if summary.ok else 1
 
-            # 컷오버가 **끝났을 때만** 선언을 남긴다 (§3.3). 사람에게 두 번째 명령을 기억시키는
-            # 설계는 잊히고, 절반 돌다 죽은 실행이 선언을 남기면 그 선언이 거짓이 된다.
+            # 컷오버가 **끝났을 때만** 명시적 선언을 남긴다 (§3.3). 사람에게 두 번째 명령을 기억시키는
+            # 설계는 잊히고, 절반 돌다 죽은 실행이 명시적 선언을 남기면 그 명시적 선언이 거짓이 된다.
             if change_generation and summary.ok and scope:
                 await declare(scope, column, model, by,
                               reason=f"reembed --change-generation ({summary.embedded}건)")
@@ -1493,7 +1493,7 @@ def generation_declare(
     tenant: str = typer.Option("default", "--tenant", "-t"),
     reason: str = typer.Option("", "--reason"),
 ) -> None:
-    """세대를 선언한다. append 이고, 이전 선언은 이력으로 남는다."""
+    """세대를 선언한다. append 이고, 이전 명시적 선언은 이력으로 남는다."""
     from nexus.index.generation import InvalidDeclaration, declare
 
     async def _go() -> int:
@@ -1804,7 +1804,7 @@ def code_scan(
     # **지워진 이름은 지금 같이 저장한다.** 문서가 부르는데 코드에 없는 이름의 이유는 셋인데
     # (외부 타입·미구현·삭제됨) 그중 삭제됨만이 읽는 사람에게 조치를 요구하고, 그 판정에는
     # git 이력이 필요하다. 여기서 한 번 훑어 두면 요청 경로는 조인만 하면 된다 —
-    # 답변마다 git 을 부를 수는 없다. 훑기는 `git log --diff-filter=D` **한 번**이다.
+    # 답변마다 git 을 부를 수는 없다. 스윕은 `git log --diff-filter=D` **한 번**이다.
     deletions = deletion_map(repo_path)
     deleted = [v for v in classify(sorted(deletions), imported=result.imported_names,
                                    deletions=deletions)
@@ -1821,8 +1821,8 @@ def code_scan(
                f"(선언 0: {result.no_symbol_files}개) @ {commit[:12]}")
     typer.echo(f"지워진 이름 {n_deleted}개 기록 — 문서가 이 이름을 부르면 답변이 "
                f"삭제 날짜와 함께 말합니다.")
-    # **읽지 못한 파일만** 경고다 (migration 033). 선언이 없는 파일(`__init__.py`·스크립트)은
-    # 평범한 사실이고, 둘을 한 칸에 세던 동안에는 여기에 경고를 걸 수 없었다 — 걸면 정상
+    # **읽지 못한 파일만** 경고다 (migration 033). 명시적 선언이 없는 파일(`__init__.py`·스크립트)은
+    # 평범한 사실이고, 둘을 한 필드에 세던 동안에는 여기에 경고를 걸 수 없었다 — 걸면 정상
     # 상태에서 영원히 울린다. 읽기 실패는 다르다: 그 파일의 심볼이 통째로 빠지므로 문서가
     # 그 이름을 부르면 **코드에 없는 이름**으로 판정된다(거짓 드리프트).
     if result.unreadable_files:
@@ -1947,7 +1947,7 @@ def code_drift(
                    f"ambiguous {refusals.get('ambiguous', 0)}")
 
         if classify_missing:
-            # 왜 없는지가 처분을 가른다. 프레임워크 클래스를 "사라졌다" 고 올리면
+            # 왜 없는지가 조치를 가른다. 프레임워크 클래스를 "사라졌다" 고 올리면
             # 받는 쪽이 목록 전체를 신뢰하지 않는다.
             from nexus.index.history import DELETED, EXTERNAL, classify, deletion_map
             from nexus.index.symbols import scan_repo

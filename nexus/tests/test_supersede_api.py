@@ -194,7 +194,7 @@ def test_superseded_old_ref_noops_200():
 
 
 def test_cross_tenant_old_rid_is_confined_not_superseded():
-    """테넌트 격리 회귀 가드: acme principal 이 rival 문서를 old_rid 로 지정해도 손대지 못한다.
+    """테넌트 격리 회귀 가드 검사: acme principal 이 rival 문서를 old_rid 로 지정해도 손대지 못한다.
 
     effective_scope 가 req.tenant 를 무시하고 principal.tenant(acme)로 강제하므로,
     supersede 는 acme 스코프에서 old_rid 를 못 찾아 400. rival 문서는 여전히 'active'.

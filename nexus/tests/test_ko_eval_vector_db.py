@@ -1,4 +1,4 @@
-"""평가용 벡터 경로 — 정확 스캔·스테일 가드·음성 대조군
+"""평가용 벡터 경로 — 전수 스캔·스테일 가드 검사·음성 대조군
 (SPEC-nexus-korean-embedding-comparison §4.1~§4.2, §6).
 
 **"같은 모델 두 번 돌리면 같은 결과" 는 결정성만 증명한다.** 그건 이 하니스가 모델 차이를
@@ -7,7 +7,7 @@
 이 경로는 아무것도 측정하고 있지 않다.
 
 임베딩은 여기서 가짜다(결정적 해시 기반). 실제 모델은 Unit 3 이고, 이 파일이 지키는 것은
-**배관과 가드**다 — 스테일 arm 이 조용히 채점되는 것을 막는 쪽이 모델보다 먼저다.
+**배관과 가드 검사**다 — 스테일 arm 이 조용히 채점되는 것을 막는 쪽이 모델보다 먼저다.
 """
 
 from __future__ import annotations
@@ -96,7 +96,7 @@ async def arm(db_pool):
     db._pool = None
 
 
-# ── 정확 스캔 ────────────────────────────────────────────────────────────────
+# ── 전수 스캔 ────────────────────────────────────────────────────────────────
 
 
 async def test_the_exact_scan_finds_the_document_its_own_vector_came_from(db_pool, arm):
@@ -123,7 +123,7 @@ async def test_the_arm_is_isolated_from_the_production_column(db_pool, arm):
     assert n == 0
 
 
-# ── 스테일 arm 가드 ──────────────────────────────────────────────────────────
+# ── 스테일 arm 가드 검사 ──────────────────────────────────────────────────────────
 
 
 async def test_a_fresh_arm_verifies(db_pool, arm):

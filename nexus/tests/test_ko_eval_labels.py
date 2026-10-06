@@ -36,7 +36,7 @@ def test_committed_labels_pass_every_gate(labels):
 
 
 def test_adjudicated_records_are_marked_as_such(labels):
-    """풀 판정으로 gold 가 늘어난 질의는 provenance 가 바뀐다 — 어떤 라벨이 어디서 왔는지 남는다."""
+    """풀링 판정으로 gold 가 늘어난 질의는 provenance 가 바뀐다 — 어떤 라벨이 어디서 왔는지 남는다."""
     adjudicated = [q for q in labels["queries"] if q["provenance"] == "adjudicated"]
     assert adjudicated, "풀 판정 기록이 없다"
     assert all(len(q["gold"]) >= 1 for q in adjudicated)
@@ -54,8 +54,8 @@ def test_every_stratum_carries_exactly_eight(labels):
 
 
 def test_labels_declare_a_revision_and_a_pack(labels):
-    """리비전은 바닥값이 어느 라벨판에 박혔는지를 말한다 — 풀 판정으로 gold 가 늘면 올라간다."""
-    assert labels["revision"] == 2          # rev1 → rev2: mecab·nori 풀 판정으로 gold 24건 추가
+    """리비전은 하한값이 어느 라벨판에 박혔는지를 말한다 — 풀링 판정으로 gold 가 늘면 올라간다."""
+    assert labels["revision"] == 2          # rev1 → rev2: mecab·nori 풀링 판정으로 gold 24건 추가
     assert labels["pack"] == "ko-k8s-2026-08-01"
 
 
@@ -63,7 +63,7 @@ def test_labels_declare_a_revision_and_a_pack(labels):
 
 
 def test_an_expected_lexeme_field_cannot_be_smuggled_in(labels):
-    """기존 스위트를 토크나이저 비교 불가로 만든 그 칸. 어느 깊이에서도 못 들어온다."""
+    """기존 스위트를 토크나이저 비교 불가로 만든 그 필드. 어느 깊이에서도 못 들어온다."""
     bad = copy.deepcopy(labels)
     _first_answerable(bad)["expected_lexeme"] = "식별"
     assert any("금지된 키" in p for p in _check(bad))
@@ -115,7 +115,7 @@ def test_a_query_that_restates_the_gold_title_fails(labels):
 
 
 def test_a_short_title_is_not_policed(labels):
-    """`파드`·`노드` 같은 짧은 제목까지 막으면 외래어·복합명사 층이 쓸 어휘가 없어진다."""
+    """`파드`·`노드` 같은 짧은 제목까지 막으면 외래어·복합명사 계층이 쓸 어휘가 없어진다."""
     ok = copy.deepcopy(labels)
     q = _first_answerable(ok)
     q["gold"] = ["concepts/architecture/nodes.md"]                 # 제목: '노드'
@@ -218,10 +218,10 @@ def test_the_title_copying_ban_still_applies_through_a_manifest(tmp_path, labels
     assert any("제목을 그대로 품고" in p for p in check(bad, corpus))
 
 
-# ── 서명은 리비전에 묶인다 ───────────────────────────────────────────────────
+# ── 사인오프는 리비전에 묶인다 ───────────────────────────────────────────────────
 #
 # 예전 게이트는 `reviewed_by` 가 있으면 통과시켰다. 검토가 끝난 **뒤** 판단 재료가 한 줄 더 붙어도
-# 아무것도 안 막았다. 2026-08-08 에 실제로 그럴 뻔했다 — 서명 뒤에 `must_contain`(이 답에 이 사실이
+# 아무것도 안 막았다. 2026-08-08 에 실제로 그럴 뻔했다 — 사인오프 뒤에 `must_contain`(이 답에 이 사실이
 # 있어야 한다)을 40건에 추가했다.
 
 
@@ -250,7 +250,7 @@ def test_the_revision_check_only_applies_to_agent_authored_labels(labels):
     assert not any("검토 리비전" in p or "reviewed_by 가 없다" in p for p in _check(human))
 
 
-# ── 라벨은 서명된 본문에 묶인다 (SPEC-nexus-answer-quality-ruler §3.3) ────────
+# ── 라벨은 사인오프된 본문에 묶인다 (SPEC-nexus-answer-quality-ruler §3.3) ────────
 #
 # **이 게이트가 없어서 이틀치 판독이 만료된 라벨 위에 얹혀 있었다.** 옛 게이트는 gold 가
 # 매니페스트에 *존재하는지*만 봤고, 실행은 라이브 테넌트를 측정했다. 그 사이 116문서 중 8건의 본문이
@@ -303,9 +303,9 @@ def test_a_not_gold_body_that_moved_expires_too(labels):
 
 
 def test_the_signed_form_in_the_spec_matches_what_the_run_computes(labels):
-    """서명 파일은 `sha256:<hex>`, 실행이 넘기는 것은 맨 `<hex>` — 둘은 같은 값이어야 한다.
+    """사인오프 파일은 `sha256:<hex>`, 실행이 넘기는 것은 맨 `<hex>` — 둘은 같은 값이어야 한다.
 
-    **이 테스트가 없어서 채점기를 실제로 서명하는 순간 40질의가 전부 만료됐다.** 옛 테스트들은 서명
+    **이 테스트가 없어서 채점기를 실제로 사인오프하는 순간 40질의가 전부 만료됐다.** 옛 테스트들은 사인오프
     쪽과 라이브 쪽을 같은 가짜 문자열로 만들어 비교해, 두 형식이 만나는 지점을 한 번도 측정하지
     않았다. 여기서는 양쪽을 **다른 형식으로** 준다.
     """
@@ -335,7 +335,7 @@ def test_a_disappeared_document_expires_its_query(labels):
 
 def test_a_live_run_needs_the_labels_to_say_what_they_were_signed_against(labels):
     """테넌트를 측정하는 실행은 결속을 요구한다. 얼어 있는 디스크 팩(Pack A)은 매니페스트 해시
-    가드가 같은 일을 하므로 요구하지 않는다 — 움직이는 것은 테넌트다."""
+    가드 검사가 같은 일을 하므로 요구하지 않는다 — 움직이는 것은 테넌트다."""
     unbound = check(labels, DEFAULT_PACK_DIR, require_corpus_binding=True)
     assert any("corpus.tenant 없음" in p for p in unbound)
     assert any("corpus.bodies 없음" in p for p in unbound)
@@ -355,7 +355,7 @@ def test_a_judged_document_with_no_signed_hash_fails(labels):
 #
 # 5층×8건 균형은 **한국어 형태소 비교 설계**의 규칙이다(SPEC-nexus-korean-embedding-comparison).
 # 라이브 코퍼스의 답변 회귀용 라벨처럼 다른 목적의 채점기를 그 틀에 밀어 넣으면 `stratum` 이 뜻을
-# 잃는다 — 없는 성질을 적어야 통과하기 때문이다. 그래서 **선언으로 켠다.**
+# 잃는다 — 없는 성질을 적어야 통과하기 때문이다. 그래서 **명시적 선언으로 켠다.**
 
 
 def _pack(**over):
@@ -386,7 +386,7 @@ def test_a_pack_that_declares_the_design_is_held_to_it():
 
 
 def test_the_shipped_ko_packs_still_declare_it():
-    """실수로 선언이 빠지면 그 팩의 균형 검사가 조용히 꺼진다 — 그게 이 검사의 이유다."""
+    """실수로 명시적 선언이 빠지면 그 팩의 균형 검사가 조용히 꺼진다 — 그게 이 검사의 이유다."""
     import pathlib
 
     import yaml

@@ -1,4 +1,4 @@
-"""재현율 컬럼과 표면 (DB 통합) — SPEC-nexus-vision-reproducibility §4.4~§4.7.
+"""재현율 컬럼과 API 표면 (DB 통합) — SPEC-nexus-vision-reproducibility §4.4~§4.7.
 
 컬럼은 **거짓말을 저장할 수 없어야** 하고, 값은 사람이 보는 자리에 닿아야 한다. 둘 다 이 리포가
 이미 한 번씩 실패한 자리다: 제약 없는 컬럼은 하니스 버그의 -1 을 정당한 비율로 저장하고,
@@ -63,8 +63,8 @@ async def test_status_counts_unmeasured_and_above_threshold(clean, db_pool):
     from nexus.ingest.vision_health import MAX_VARIATION, fetch_reader_health
 
     await _row(db_pool, "a")                      # 미측정
-    await _row(db_pool, "b", MAX_VARIATION)       # 문턱 이하 — 경고 아님
-    await _row(db_pool, "c", 0.9)                 # 문턱 초과
+    await _row(db_pool, "b", MAX_VARIATION)       # 임계값 이하 — 경고 아님
+    await _row(db_pool, "c", 0.9)                 # 임계값 초과
 
     h = await fetch_reader_health(_T)
     assert h["extractions"] == 3

@@ -1,4 +1,4 @@
-"""답변 숫자의 근거 대조 — SPEC-nexus-answer-number-verification §5.
+"""답변 숫자의 답변 근거 대조 — SPEC-nexus-answer-number-verification §5.
 
 validate_numbers 순수 함수: 답변의 유의미한 숫자가 LLM 이 본 것(evidence + query)에
 실재하는지 결정론적으로 대조한다. LLM 판정 없음.
@@ -18,7 +18,7 @@ def test_significant_number_present_is_grounded_absent_is_unverified():
                          evidence_text="측정 결과 점유율 47% 로 나타났다.")
     g = _by_value(r)
     assert g["47%"] is True
-    assert g["250"] is False           # 250 은 근거에 없음 (ms 는 숫자 토큰 밖)
+    assert g["250"] is False           # 250 은 답변 근거에 없음 (ms 는 숫자 토큰 밖)
     assert r.unverified_count == 1
 
 
@@ -54,7 +54,7 @@ def test_canonicalization_matches_surface_variants():
 
 
 def test_significance_filter_skips_bare_small_integers():
-    # bare 3 은 근거에 없어도 검사 대상이 아니다; 47(>=10)·3.14(소수)·50% 는 검사된다.
+    # bare 3 은 답변 근거에 없어도 검사 대상이 아니다; 47(>=10)·3.14(소수)·50% 는 검사된다.
     r = validate_numbers(
         "3 개의 서비스가 47 번 호출되며 비율은 3.14, 목표는 50% 이다.",
         evidence_text="근거에는 관련 수치가 없다.",
@@ -82,7 +82,7 @@ def test_duplicate_unverified_number_counted_once():
 
 
 def test_coincidental_collision_is_grounded_documented_miss():
-    # 무관한 47% 가 근거 어딘가에 있으면 grounded 로 본다(알려진 false negative).
+    # 무관한 47% 가 답변 근거 어딘가에 있으면 grounded 로 본다(알려진 false negative).
     r = validate_numbers("성장률은 47% 이다.",
                          evidence_text="전혀 다른 맥락의 오류율 47% 가 언급됨.")
     assert _by_value(r)["47%"] is True

@@ -27,7 +27,7 @@ class _Ref:
 
 
 class _FakeSource:
-    """`NotionSource` 의 걷기/변환 표면만 흉내낸다."""
+    """`NotionSource` 의 걷기/변환 API 표면만 흉내낸다."""
 
     def __init__(self, pages: dict[str, _Conv], broken: set[str] | None = None,
                  walk_error: Exception | None = None):
@@ -161,9 +161,9 @@ def test_the_pack_b_distance_is_computed_not_remembered():
 
 
 def test_the_corpus_view_reports_substance_without_gating_on_it():
-    """**한때 여기가 게이트였고, 그 문턱은 측정해 보지 않은 어림수였다.**
+    """**한때 여기가 게이트였고, 그 임계값은 측정해 보지 않은 어림수였다.**
 
-    2026-08-07 오전: 문서 116(바닥값 0.086, 통과)인데 본문 800자 이상이 19건인 것을 보고
+    2026-08-07 오전: 문서 116(하한값 0.086, 통과)인데 본문 800자 이상이 19건인 것을 보고
     "실질 문서 ≥ 60" 을 게이트로 박았다. 근거는 "gold 가 19건뿐이면 두 실험군이 같은 소수 문서를
     두고 겨뤄 무승부가 쌓인다" 였는데, 같은 날 오후에 **라벨 없이 재보니 반증됐다**: 상위10에
     뜬 서로 다른 문서 48건, 순위표가 갈리는 질의 12/30, 그중 8건이 2~3위에서 갈렸다

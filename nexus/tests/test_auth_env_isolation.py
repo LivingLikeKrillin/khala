@@ -21,7 +21,7 @@ from tests._auth_env import (
 _CONFIG = pathlib.Path(AuthConfig.__module__.replace(".", "/") + ".py")
 _SRC = (pathlib.Path(__file__).resolve().parents[1] / _CONFIG).read_text(encoding="utf-8")
 
-#: 신원과 무관한 것. 여기 넣을 때는 **왜 무관한지**를 같이 적는다.
+#: 식별 정보와 무관한 것. 여기 넣을 때는 **왜 무관한지**를 같이 적는다.
 _NOT_ABOUT_IDENTITY: dict[str, str] = {}
 
 
@@ -70,7 +70,7 @@ def test_the_isolation_actually_empties_the_config(configured_like_a_deployment,
 
 
 def test_without_the_isolation_the_config_is_not_empty(configured_like_a_deployment):
-    """⚠ **대조군.** 위 검사가 참이려면 이쪽이 거짓이어야 한다 — 안 지우면 신원이 생긴다는
+    """⚠ **대조군.** 위 검사가 참이려면 이쪽이 거짓이어야 한다 — 안 지우면 식별 정보가 생긴다는
     것을 확인해 두지 않으면, 격리가 아무 일도 안 하는데 통과하는 세상과 구별할 수 없다."""
     cfg = AuthConfig.from_dict({})
     assert cfg.principals, "지우지 않았는데도 비어 있다 — 이 검사가 무엇도 확인하지 못한다"
@@ -83,7 +83,7 @@ def test_without_the_isolation_the_config_is_not_empty(configured_like_a_deploym
 # "each file gets an autouse fixture" 라고 적었는데 **네 파일 중 아무것도 안 받았고**, 스위트는
 # 초록이었다. 설정된 기계에서만 6건이 빨갛고 CI 는 맨 상자라 볼 수 없다.
 #
-# 그래서 여기서는 결과가 아니라 **선언**을 본다 — 파일이 그 표시를 달고 있는가.
+# 그래서 여기서는 결과가 아니라 **명시적 선언**을 본다 — 파일이 그 표시를 달고 있는가.
 
 #: `from_dict` 를 부르지만 격리를 안 다는 파일. **왜 안 다는지**를 같이 적는다.
 _NOT_ISOLATED: dict[str, str] = {

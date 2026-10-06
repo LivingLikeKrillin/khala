@@ -94,7 +94,7 @@ async def test_all_ten_values_round_trip(pool):
     got = [r["sufficiency"] for r in await db.fetch_all(
         "SELECT sufficiency FROM search_log WHERE tenant='suff_rt' ORDER BY id")]
     assert got == values, "열 값이 서로 구별되어 저장되지 않는다"
-    # judged 는 둘뿐이다 — 실패값을 분모에 넣으면 공급자 장애가 근거 부족으로 읽힌다.
+    # judged 는 둘뿐이다 — 실패값을 분모에 넣으면 공급자 장애가 답변 근거 부족으로 읽힌다.
     judged = await db.fetch_val(
         "SELECT count(*) FROM search_log WHERE tenant='suff_rt' "
         "AND sufficiency IN ('sufficient','insufficient')")
@@ -104,7 +104,7 @@ async def test_all_ten_values_round_trip(pool):
 async def test_the_dead_legs_round_trip_and_null_keeps_its_meaning(pool):
     """`{vector}` · `{}` · NULL 이 서로 다른 값으로 저장된다 (migration 048).
 
-    NULL 은 「기록 안 함」이다 — 칸이 생기기 전의 행이 전부 그렇다. 그것이 `{}`(기록했고 죽은
+    NULL 은 「기록 안 함」이다 — 필드가 생기기 전의 행이 전부 그렇다. 그것이 `{}`(기록했고 죽은
     경로 없음)와 같아지면 옛 행이 전부 건강한 답으로 읽힌다.
     """
     import dataclasses
@@ -123,7 +123,7 @@ async def test_the_dead_legs_round_trip_and_null_keeps_its_meaning(pool):
 async def test_the_fusion_treatment_round_trips_and_null_keeps_its_meaning(pool):
     """true · false · NULL 이 서로 다른 값으로 저장된다 (migration 050).
 
-    NULL 은 「기록 안 함」이다 — 칸이 생기기 전의 행이 전부 그렇다. 그것이 false 와 같아지면
+    NULL 은 「기록 안 함」이다 — 필드가 생기기 전의 행이 전부 그렇다. 그것이 false 와 같아지면
     처치를 받았는지 모르는 옛 행이 전부 「안 받음」으로 읽힌다.
     """
     import dataclasses
@@ -201,7 +201,7 @@ async def test_a_raising_judge_still_leaves_the_row_and_records_error(pool, monk
 
 
 async def test_a_broken_prologue_keeps_the_row_as_uninstrumented(pool, monkeypatch):
-    """**이 파일의 핵심.** 계측기가 고장 나도 search_log 행은 남아야 한다 — 안 그러면 낡은
+    """**이 파일의 핵심.** 계측기가 고장 나도 search_log 행은 남아야 한다 — 안 그러면 스테일
     NEXUS_EMBEDDING_COLUMN 하나가 v_search_health 를 조용히 갉아먹는다.
 
     그리고 그 행은 NULL 이 아니라 `uninstrumented` 다: NULL 은 '이 마이그레이션 이전 행' 만

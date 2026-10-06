@@ -1,4 +1,4 @@
-"""소스 콘솔 HTTP 표면 (SPEC-nexus-notion-source-console §4.6).
+"""소스 콘솔 HTTP API 표면 (SPEC-nexus-notion-source-console §4.6).
 
 여기가 **정본**이다. 웹 뷰·MCP 툴·CLI 는 전부 이 엔드포인트 위의 얇은 클라이언트다.
 기능이 API 를 건너뛰면 사람도 에이전트도 그 기능을 잃는다.

@@ -2,7 +2,7 @@
 
 목적: nexus/.env 에 ANTHROPIC_API_KEY 가 없을 때 채팅 답변이 *일시적 API 오류와
 구분 불가한* '답변을 생성할 수 없습니다'로 떨어지지 않고, 키를 넣으라는 안내를 준다.
-근거+신뢰배지는 그대로 제공(System decides, LLM narrates 원칙 유지).
+답변 근거+신뢰배지는 그대로 제공(System decides, LLM narrates 원칙 유지).
 
 [[user-workflow-autonomous-prs]] · [[usability-first-overriding-priority]] 정렬:
 무키는 '버그'가 아니라 '미설정' — 사용자가 한 스텝으로 해소하도록 self-explanatory 하게.

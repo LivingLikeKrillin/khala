@@ -16,18 +16,18 @@ from __future__ import annotations
 from nexus import db
 
 #: CRM label — classification 레벨이 아니다. 거버넌스 밖(approved_hash 없음)임을 표시한다.
-#: **정본은 `nexus.labels` 로 옮겼다.** 라벨이 둘이 되면서(합성 표식이 붙었다) 선언이 한 곳에
+#: **정본은 `nexus.labels` 로 옮겼다.** 라벨이 둘이 되면서(합성 마커가 붙었다) 선언이 한 곳에
 #: 있어야 했고, `ingest` 와 `a2a` 가 서로를 못 끌어오므로 의존 없는 최상위 모듈이 유일한 자리다.
 #: 여기서는 재수출만 한다 — 기존 호출부의 import 경로를 깨지 않는다.
 from nexus.labels import EXTERNAL_LABEL  # noqa: E402,F401
 
-# 레거시 CSF kind → 축-A 정본 타입(S1). Arbiter doctypes 레지스트리의 aliases 미러 —
+# 레거시 CSF kind → 차원-A 정본 타입(S1). Arbiter doctypes 레지스트리의 aliases 미러 —
 # 패키지 디커플링 때문에 소량 중복한다.
 _KIND_ALIASES = {"SPEC": "DESIGN", "FLOW": "NOTE"}
 
 
 def normalize_csf_kind(kind: str) -> str:
-    """레거시 CSF kind → 축-A 정본 타입. alias 없으면 그대로."""
+    """레거시 CSF kind → 차원-A 정본 타입. alias 없으면 그대로."""
     return _KIND_ALIASES.get(kind, kind)
 
 

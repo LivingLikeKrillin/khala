@@ -110,7 +110,7 @@ def test_the_aggregate_separates_the_three_failures():
 
 # ── LLM 이 실패한 실행은 결과가 아니다 ───────────────────────────────────────
 #
-# 실패하면 `generate_answer` 는 답변 자리에 **근거 원문 덤프**를 넣는다. 요구한 사실은 그 문서에서
+# 실패하면 `generate_answer` 는 답변 자리에 **답변 근거 원문 덤프**를 넣는다. 요구한 사실은 그 문서에서
 # 뽑은 것이라 덤프 안에 당연히 있다 — 즉 실패할수록 사실 검사가 잘 통과한다.
 # 2026-08-08 에 실제로 3건 중 2건이 그렇게 '통과' 했고, 원인은 API 크레딧 부족이었다.
 
@@ -153,7 +153,7 @@ class TestSynthesisAndRecencyScoring:
                                          ["crew_partroom_id_IDX"], ans) is True
 
     def test_recency_allows_naming_the_old_value_while_rejecting_it(self):
-        """좋은 답은 낡은 값을 들면서 기각한다. 언급을 감점하면 그 답이 떨어진다."""
+        """좋은 답은 스테일 값을 들면서 기각한다. 언급을 감점하면 그 답이 떨어진다."""
         from scripts.ko_eval_answer_quality import asserts_current_not_stale
         ans = ("지금 쓰는 인덱스는 crew_partyroom_id_user_id_IDX 이다. "
                "예전 crew_partroom_id_IDX 는 DB-1 에서 대체됐다.")
@@ -161,14 +161,14 @@ class TestSynthesisAndRecencyScoring:
                                          ["crew_partroom_id_IDX"], ans) is True
 
     def test_recency_fails_when_the_old_value_is_the_conclusion(self):
-        """⛔ 이 리포가 실제로 겪은 실패다 — 답변이 낡은 값을 정본으로 읽었다."""
+        """⛔ 이 리포가 실제로 겪은 실패다 — 답변이 스테일 값을 정본으로 읽었다."""
         from scripts.ko_eval_answer_quality import asserts_current_not_stale
         ans = "crew_partroom_id_IDX 를 쓴다."
         assert asserts_current_not_stale(["crew_partyroom_id_user_id_IDX"],
                                          ["crew_partroom_id_IDX"], ans) is False
 
     def test_a_label_whose_current_value_hides_inside_the_stale_one_is_refused(self):
-        """부분일치가 낡은 값 안에서 지금 값을 찾아내 언제나 통과시킨다."""
+        """부분일치가 스테일 값 안에서 지금 값을 찾아내 언제나 통과시킨다."""
         from scripts.ko_eval_answer_quality import label_is_usable
         ok, why = label_is_usable(["DjWithProfileDto"], ["CurrentDjWithProfileDto"])
         assert ok is False and "부분열" in why
@@ -199,7 +199,7 @@ class TestSynthesisAndRecencyScoring:
         assert "서명" in text
 
     def test_a_signed_run_still_prints_the_ratio(self):
-        """대조군 — 서명 뒤에는 수가 나와야 한다. 안 그러면 게이트가 하니스를 없앤 것이다."""
+        """대조군 — 사인오프 뒤에는 수가 나와야 한다. 안 그러면 게이트가 하니스를 없앤 것이다."""
         from scripts.answer_fact_probe import summary_lines
         rows = [{"id": "R1", "pass": True, "asserted": True, "mentioned": True,
                  "distractor_seen": []},
@@ -228,7 +228,7 @@ class TestSynthesisAndRecencyScoring:
                 f"{q['id']}: 막힌 라벨에 기대값이 남아 있다"
 
     def test_a_second_value_under_its_own_heading_still_counts(self):
-        """⛔ 실물 사례(2026-08-28): 값 둘이 근거·답변에 다 있는데 실패로 찍혔다.
+        """⛔ 실물 사례(2026-08-28): 값 둘이 답변 근거·답변에 다 있는데 실패로 찍혔다.
         둘째 값이 소제목 밑에 앉았기 때문이고, 그건 다중 부분 답변의 정상 모양이다."""
         from scripts.ko_eval_answer_quality import asserts_all
         ans = ("## 추가되는 인덱스\n"

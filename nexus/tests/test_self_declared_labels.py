@@ -62,14 +62,14 @@ def test_an_unknown_label_is_not_silently_dropped():
     assert no == ["synthethic"]
 
 
-# ── 관문이 실제로 그 자리에 있는가 ─────────────────────────────────────────
+# ── 게이트가 실제로 그 자리에 있는가 ─────────────────────────────────────────
 
 def _src() -> str:
     return _PIPELINE.read_text(encoding="utf-8")
 
 
 def test_the_file_path_actually_writes_the_column():
-    """⛔ PR #500 이 놓친 자리. 읽는 쪽만 있고 쓰는 쪽이 없으면 표식은 없는 것이다."""
+    """⛔ PR #500 이 놓친 자리. 읽는 쪽만 있고 쓰는 쪽이 없으면 마커는 없는 것이다."""
     src = _src()
     assert "origin_updated_at, labels" in src, "INSERT 에 labels 컬럼이 없다"
     assert "labels = \"\"\" + label_merge" in src, "ON CONFLICT 에 labels 갱신이 없다"
@@ -83,7 +83,7 @@ def test_the_pipeline_does_not_keep_its_own_copy_of_the_rule():
 
 
 def test_the_refusal_is_counted_and_is_not_a_failure():
-    """문서는 정상 적재됐고 표식만 안 붙었다. `failed` 와 섞으면 읽는 사람이 딴 데를 고친다."""
+    """문서는 정상 적재됐고 마커만 안 붙었다. `failed` 와 섞으면 읽는 사람이 딴 데를 고친다."""
     from nexus.ingest.pipeline import IngestResult
     from nexus.ingest.runs_store import summarize
 
@@ -104,7 +104,7 @@ def test_the_allowed_set_is_not_empty_and_excludes_the_path_label():
 @pytest.mark.asyncio
 async def test_the_merge_keeps_the_path_label_and_drops_the_self_declared_one(db_pool):
     """⭐ **위 소스 검사는 문자열을 볼 뿐이다.** 실제 SQL 이 두 방향으로 도는지는 DB 가 답한다:
-    경로가 붙인 것은 살아남고, frontmatter 에서 뺀 것은 사라져야 한다 (못 끄면 표식이 아니다).
+    경로가 붙인 것은 살아남고, frontmatter 에서 뺀 것은 사라져야 한다 (못 끄면 마커가 아니다).
     """
     async with db_pool.acquire() as con:
         await con.execute(

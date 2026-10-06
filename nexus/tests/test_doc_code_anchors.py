@@ -38,7 +38,7 @@ def test_rejects_dotted_names_rather_than_guessing_the_last_segment():
 
 
 def test_rejects_reserved_words():
-    """예약어는 선언 이름이 될 수 없다 — 거부 분모를 정직하게 유지한다."""
+    """예약어는 명시적 선언 이름이 될 수 없다 — 거부 분모를 정직하게 유지한다."""
     assert extract_candidates("`public` 과 `class` 와 `void`") == []
 
 

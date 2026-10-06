@@ -53,7 +53,7 @@ def source_kind_for(source_uri: str) -> str:
 
     이 컬럼은 2026-08-13 까지 모든 행에 `git` 이었다 — Notion 페이지 108건까지. 값이 없어서가
     아니라 **세 번 버려져서**다: 컨버터가 `source_kind: wiki` 를 frontmatter 에 넣고(`notion.py`),
-    CSF 에는 그 칸이 없어 떨어지고, 파이프라인이 INSERT 에 `'git'` 을 **문자열 상수로** 박았다.
+    CSF 에는 그 필드가 없어 떨어지고, 파이프라인이 INSERT 에 `'git'` 을 **문자열 상수로** 박았다.
     제목과 그림 수가 앞서 똑같이 사라졌던 자리다(`_csf_to_markdown_file` 의 주석 둘).
 
     그래서 값을 세 홉에 걸쳐 나르는 대신 **URI 에서 유도한다** — 이 모듈이 이미 그렇게 하기로

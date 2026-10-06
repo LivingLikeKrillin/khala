@@ -1,11 +1,11 @@
 """답변 피드백 저장 (SPEC-nexus-answer-feedback U1, approved 2026-08-14).
 
 👎 는 **지표가 아니라 단서**다. 팀이 5명이라 비율은 영원히 안 나오고, 그 사실을 설계 전제로
-삼는다 — 그래서 이 층이 하는 일은 **수와 사유 코드를 정직하게 세는 것** 하나다.
+삼는다 — 그래서 이 계층이 하는 일은 **수와 사유 코드를 정직하게 세는 것** 하나다.
 
 지키는 불변식 (SPEC §4):
 
-  I1   표에 신원이 없다 (principal·user_id·그 파생 해시 컬럼 부재)
+  I1   표에 식별 정보가 없다 (principal·user_id·그 파생 해시 컬럼 부재)
   I2   `answer_key` 는 CSPRNG 이고 **발급→저장 경로를 실행해서** 확인한다
   I3   `answer_key` 는 이 두 표에만 있다 (principal 을 가진 표와 동거 금지)
   I5   투표는 INSERT — 두 번째 투표가 첫 투표를 덮지 않는다
@@ -59,7 +59,7 @@ async def clean_db(db_url):
         await dbmod.close_pool()
 
 
-# ── I2 — 키는 CSPRNG 이고, 발급한 값이 실제로 그 칸에 앉는다 ──────────────────
+# ── I2 — 키는 CSPRNG 이고, 발급한 값이 실제로 그 필드에 앉는다 ──────────────────
 
 def test_the_key_comes_from_a_csprng_not_a_counter():
     """**"두 번 부르면 다르다" 는 검사가 아니다** — 카운터도, 타임스탬프도 통과한다.
@@ -86,7 +86,7 @@ async def test_the_issued_key_is_the_one_that_lands_in_the_column(clean_db):
     assert row["answer_key"] == key, "발급한 값과 저장된 값이 다르다"
 
 
-# ── I1·I3 — 신원이 없고, 키가 다른 표와 동거하지 않는다 ───────────────────────
+# ── I1·I3 — 식별 정보가 없고, 키가 다른 표와 동거하지 않는다 ───────────────────────
 
 @pytest.mark.asyncio
 async def test_neither_table_has_an_identity_column(clean_db):
@@ -107,8 +107,8 @@ KEY_TABLES = {"answer_offered", "answer_vote", "search_answer_text"}
 @pytest.mark.asyncio
 async def test_the_key_never_sits_beside_an_identity(clean_db):
     """**이 검사가 실제로 지키는 것.** `retention_key` 에 건 교차표 검사와 같은 모양 —
-    `answer_key` 는 신원을 가진 표와 **동거하지 않는다**. 표 이름을 굳혀 두면 규칙의 *뜻*이
-    아니라 그때의 *목록*을 지키게 되고, 2026-08-30 에 실제로 그렇게 걸렸다: 신원 컬럼이 없는
+    `answer_key` 는 식별 정보를 가진 표와 **동거하지 않는다**. 표 이름을 굳혀 두면 규칙의 *뜻*이
+    아니라 그때의 *목록*을 지키게 되고, 2026-08-30 에 실제로 그렇게 걸렸다: 식별 정보 컬럼이 없는
     답변 보존 표를 더했는데 목록이 둘로 박혀 있어 빨간불이 났다."""
     from nexus import db
 
@@ -228,7 +228,7 @@ async def test_synthesized_rows_are_excluded_from_the_denominator(clean_db):
     assert counts["synthesized"] == 1
 
 
-# ── 사유 UPDATE 의 가드 셋 ────────────────────────────────────────────────────
+# ── 사유 UPDATE 의 가드 검사 셋 ────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_the_reason_lands_on_the_vote_it_was_asked_about(clean_db):

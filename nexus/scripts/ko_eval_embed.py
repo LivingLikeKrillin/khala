@@ -30,7 +30,7 @@ class TruncationRisk(RuntimeError):
 
 @dataclass
 class ArmProvenance:
-    """리포트에 그대로 실리는 실행 신원. 이게 없으면 재현도 반박도 못 한다 (§4.4)."""
+    """리포트에 그대로 실리는 실행 식별 정보. 이게 없으면 재현도 반박도 못 한다 (§4.4)."""
     model: str
     backend: str
     revision: str = ""
@@ -135,7 +135,7 @@ def _st_version() -> str:
     try:
         from importlib.metadata import version
         return f"sentence-transformers {version('sentence-transformers')}, torch {version('torch')}"
-    except Exception:      # noqa: BLE001 — 신원 정보는 있으면 좋고 없으면 비운다
+    except Exception:      # noqa: BLE001 — 식별 정보는 있으면 좋고 없으면 비운다
         return ""
 
 

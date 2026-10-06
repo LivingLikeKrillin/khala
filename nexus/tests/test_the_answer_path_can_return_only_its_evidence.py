@@ -2,21 +2,21 @@
 
 ⛔ **왜 생겼나 (2026-10-01).** 융합 처치(F1)의 주 변수는 검색만으로 정해진다
 (`docs/FUSION_DOCUMENT_AGREEMENT_PREREGISTRATION.md` §3). 그런데 소비자가 가진 길은 생성까지
-부르는 `/search/answer` 하나라, 두 판에 세 시간 남짓과 생성 74건이 들었다. `/search` 는 생성을
-안 하지만 **같은 검색이 아니다** — 식별자 채널 · 제외 종류 칸이 없어 422 이고, 기본 `top_k` 가
-10 이고, 채움 넷을 안 붙인다.
+부르는 `/search/answer` 하나라, 두 버전에 세 시간 남짓과 생성 74건이 들었다. `/search` 는 생성을
+안 하지만 **같은 검색이 아니다** — 식별자 채널 · 제외 종류 필드가 없어 422 이고, 기본 `top_k` 가
+10 이고, 필 넷을 안 붙인다.
 
-⭐ 그래서 **같은 처리기**에 칸 하나를 둔다. 처리기가 같아야 「같은 검색 · 같은 묶음」이 코드로
+⭐ 그래서 **같은 처리기**에 필드 하나를 둔다. 처리기가 같아야 「같은 검색 · 같은 묶음」이 코드로
 보장된다 — 따로 만든 엔드포인트는 언젠가 갈라지고, 갈라진 것은 측정이 아니다.
 
 이 파일이 지키는 것:
 
 - 켜면 모델을 **한 번도** 안 만진다 (재작성은 이력이 있을 때만 돈다 — 같은 검색이어야 하므로)
-- 근거 묶음은 생성하는 판과 **같은 코드**가 만든다
+- 근거 묶음은 생성하는 버전과 **같은 코드**가 만든다
 - 안 켜면 오늘과 같다
-- 생성이 내는 칸은 0 · False 가 아니라 **None** 이다 — 「인용 0건」·「실패 안 함」으로 읽히면 안 된다
+- 생성이 내는 필드는 0 · False 가 아니라 **None** 이다 — 「인용 0건」·「실패 안 함」으로 읽히면 안 된다
 - 기록에서 답변과 **갈라** 적고, 판정자(LLM)도 안 부른다
-- 스트림에는 칸이 없다 — 생성을 건너뛰는 스트림은 뜻이 없고, 모르는 칸은 422 다
+- 스트림에는 필드가 없다 — 생성을 건너뛰는 스트림은 뜻이 없고, 알 수 없는 필드는 422 다
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ from nexus.search.spans import SpanSet  # noqa: E402
 _TOKEN = "x" * 40
 _AUTH = {"Authorization": "Bearer " + _TOKEN}
 
-#: 생성이 내는 칸. 근거만 받은 응답에서 이 칸들은 **측정 안 함(None)** 이어야 한다.
+#: 생성이 내는 필드. 답변 근거만 받은 응답에서 이 필드들은 **측정 안 함(None)** 이어야 한다.
 GENERATION_KEYS = ("answer", "citations", "unverified_citations", "unverified_numbers",
                    "numbers", "usage", "abstained", "abstain_reason",
                    "llm_failed", "llm_failure_reason")
@@ -57,8 +57,8 @@ class _NoModel:
     """만지면 **기록된다** — 「생성을 안 한다」를 호출로 단언한다.
 
     ⛔ 예외만 던지면 안 된다. 생성 실패를 삼키는 것이 제품의 정책이라(`llm_failed`), 던진
-    예외는 그 자리에서 「생성 실패」가 되고 시험은 초록으로 남는다 — 가드를 일부러 깨 본
-    판에서 **실제로 그렇게 통과했다.** 그래서 기록을 남기고, 시험은 기록을 본다.
+    예외는 그 자리에서 「생성 실패」가 되고 시험은 초록으로 남는다 — 가드 검사를 일부러 깨 본
+    버전에서 **실제로 그렇게 통과했다.** 그래서 기록을 남기고, 시험은 기록을 본다.
     """
 
     def __getattr__(self, name):
@@ -74,7 +74,7 @@ def _fresh_touch_record():
 
 
 class _FakeModel:
-    """생성하는 판의 대조군 — 고정 답을 낸다."""
+    """생성하는 버전의 대조군 — 고정 답을 낸다."""
 
     configured = True
 
@@ -89,7 +89,7 @@ def _hit(rid: str, doc: str, title: str, score: float) -> SearchHit:
 
 
 def _result() -> SearchResult:
-    """상위 k 둘 + 채움 하나. 채움은 정정 확인 패스처럼 **점수가 있다**."""
+    """상위 k 둘 + 필 하나. 필은 정정 확인 패스처럼 **점수가 있다**."""
     r = SearchResult(route_used="hybrid_only")
     r.hits = [_hit("c1", "d1", "SOP-01", 0.05), _hit("c2", "d2", "운영 가이드", 0.04)]
     r.fill = [_hit("c9", "d9", "벤더 노트", 0.03)]
@@ -97,7 +97,7 @@ def _result() -> SearchResult:
     return r
 
 
-# ── 근거를 만드는 함수 층 ───────────────────────────────────────────────────────
+# ── 답변 근거를 만드는 함수 계층 ───────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_without_narration_the_evidence_is_built_and_the_model_is_never_touched():
@@ -112,7 +112,7 @@ async def test_without_narration_the_evidence_is_built_and_the_model_is_never_to
 
 @pytest.mark.asyncio
 async def test_the_bundle_is_the_one_the_answer_path_builds():
-    """⭐ **같은 코드가 만든다** — 생성하는 판과 근거 칸이 글자 그대로 같다."""
+    """⭐ **같은 코드가 만든다** — 생성하는 버전과 근거 필드가 글자 그대로 같다."""
     res = _result()
     packet = await assemble_packet(res.hits, None, "", fill=res.fill)
 
@@ -139,11 +139,11 @@ async def test_the_answer_stage_is_recorded_as_not_run():
     assert len(answer) == 1 and answer[0].fired is False
 
 
-# ── 엔드포인트 층 ───────────────────────────────────────────────────────────────
+# ── 엔드포인트 계층 ───────────────────────────────────────────────────────────────
 
 @pytest.fixture
 def client(monkeypatch):
-    """DB·임베딩·LLM 없이 **엔드포인트 본문**을 돌린다. 패킷 조립과 근거 변환은 진짜다."""
+    """DB·임베딩·LLM 없이 **엔드포인트 본문**을 돌린다. 패킷 조립과 답변 근거 변환은 진짜다."""
     from nexus import db
 
     monkeypatch.setenv("NEXUS_DEV_TOKEN", _TOKEN)
@@ -203,7 +203,7 @@ def test_what_generation_would_say_is_not_measured_rather_than_zero(client):
 
 
 def test_without_the_flag_the_model_is_called_as_today(client, monkeypatch):
-    """⭐ **대조군.** 칸을 안 보내면 생성한다 — 기본값이 오늘이다."""
+    """⭐ **대조군.** 필드를 안 보내면 생성한다 — 기본값이 오늘이다."""
     calls = []
 
     async def _generate(*a, **k):
@@ -223,7 +223,7 @@ def test_without_the_flag_the_model_is_called_as_today(client, monkeypatch):
 def test_evidence_only_is_recorded_apart_from_answers_and_wakes_no_judge(client, monkeypatch):
     """답변 지표(인용 0건 비율 등)에 섞이면 안 된다 — 기록의 `path` 가 다르다.
 
-    판정자는 LLM 을 부른다. 생성 없는 요청에서 그것이 돌면 이 칸을 만든 이유가 사라진다.
+    판정자는 LLM 을 부른다. 생성 없는 요청에서 그것이 돌면 이 필드를 만든 이유가 사라진다.
     """
     seen: dict = {}
 
@@ -254,7 +254,7 @@ def test_the_material_for_narration_is_not_used_when_nothing_is_narrated(client)
 
 
 def test_the_field_lives_only_where_it_works():
-    """스트림 · 검색 전용 요청에는 칸이 없다. 거기 보내면 조용히 생성하지 않고 422 다."""
+    """스트림 · 검색 전용 요청에는 필드가 없다. 거기 보내면 조용히 생성하지 않고 422 다."""
     assert "evidence_only" in api.SearchAnswerRequest.model_fields
     assert "evidence_only" not in api.AnswerRequest.model_fields
     assert "evidence_only" not in api.SearchRequest.model_fields

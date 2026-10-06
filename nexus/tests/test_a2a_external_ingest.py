@@ -247,7 +247,7 @@ def test_artifact_carries_normalized_doc_type():
         idempotent_hit=False, source_hash=csf["provenance"]["source_hash"],
     )
     artifact_json, _state, _reason = build_external_ingest_artifact(outcome, csf, "acme")
-    # artifact 의 DataPart 에 정규화된 축-A doc_type 이 실린다(라우팅은 불변, 메타만 carry).
+    # artifact 의 DataPart 에 정규화된 차원-A doc_type 이 실린다(라우팅은 불변, 메타만 carry).
     data = next(p["data"] for p in artifact_json["parts"] if p.get("kind") == "data")
     assert data["doc_type"] == "DESIGN"
 

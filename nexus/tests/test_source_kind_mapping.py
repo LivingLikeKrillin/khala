@@ -20,7 +20,7 @@ def test_the_uri_already_says_where_it_came_from(uri, kind):
 
 
 def test_every_origin_has_a_kind():
-    """`derive_origin` 에 갈래가 늘면 여기가 **KeyError 로** 터져야 한다 — 조용히 'git' 이
+    """`derive_origin` 에 하위 범주가 늘면 여기가 **KeyError 로** 터져야 한다 — 조용히 'git' 이
     되면 새 출처가 리포 파일로 위장한다."""
     from nexus.documents.origin import _KIND_BY_ORIGIN
 

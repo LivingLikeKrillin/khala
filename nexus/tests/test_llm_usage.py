@@ -1,7 +1,7 @@
 """LLM 토큰/비용 포착 — SPEC-nexus-llm-usage-capture §5.
 
 generate_full/stream(usage_out=)가 provider 가 보고한 토큰 + config 단가 기반 비용을 노출한다.
-generate()->str 및 기존 호출부는 무변경. 결정론·무예외(비용 미상은 None, 지어내지 않음).
+generate()->str 및 기존 호출부는 무변경. 결정성·무예외(비용 미상은 None, 지어내지 않음).
 """
 
 from __future__ import annotations

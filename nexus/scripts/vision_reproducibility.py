@@ -5,7 +5,7 @@
     measure   같은 그림을 두 번 읽어 비교한다. **아무것도 쓰지 않는다.**
     record    측정된 값을 `vision_extractions.reader_variation` 에 적는다.
 
-나누는 이유는 §2.1 이다: 같은 신원으로 두 번째 호출을 하는 것이 ADR-0010 §5 가 다루는 바로 그
+나누는 이유는 §2.1 이다: 같은 식별 정보로 두 번째 호출을 하는 것이 ADR-0010 §5 가 다루는 바로 그
 동작이라, 측정이 실수로 **기록이 되는 길**을 열어 두면 안 된다. 지금 그걸 막고 있는 것은
 `vision_store.save()` 의 우연한 `ON CONFLICT DO NOTHING` 하나뿐이고, 여기서는 저장 함수를
 아예 부르지 않는다.
@@ -36,7 +36,7 @@ from scripts.vision_crosscheck import _catalogue  # noqa: E402
 
 LOCAL = Path("/app/tests/eval/local")
 
-#: 실험군 이름 → (1회차 캐시, 2회차 캐시, 그 캐시에서 텍스트 꺼내는 법, 신원)
+#: 실험군 이름 → (1회차 캐시, 2회차 캐시, 그 캐시에서 텍스트 꺼내는 법, 식별 정보)
 ARMS = {
     "gemini": ("crosscheck-gemini-nothink.json", "crosscheck-gemini-nothink-r2.json",
                lambda v: v["text"], None),

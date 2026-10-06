@@ -18,7 +18,7 @@ import os
 import httpx
 from mcp.server import MCPServer
 
-# 등급 어휘는 한 곳에서 온다 — 표면마다 다른 문장을 지어내면 등급이 표면마다 다른 뜻이 된다.
+# 등급 체계는 한 곳에서 온다 — API 표면마다 다른 문장을 지어내면 등급이 API 표면마다 다른 뜻이 된다.
 from nexus.mcp.lines import code_values_lines
 from nexus.search.provenance import mark as _tier_mark
 
@@ -73,9 +73,9 @@ def _with_history(body: dict, history: list[dict] | None) -> dict:
 #: 시각 범위도 같은 규칙이다 — 안 물었으면 키를 안 보낸다. 보내면 `None` 이 "안 물었다" 가
 #: 아니라 "그 값" 이 되고, 그러면 미상 건수가 `None`(미측정) 대신 0 으로 나가 뜻이 뒤집힌다.
 def _synthetic_mark(row: dict) -> str:
-    """합성 자료 표식. **없으면 빈 문자열** — 실제 자료에 아무 글자도 안 붙인다.
+    """합성 데이터 마커. **없으면 빈 문자열** — 실제 자료에 아무 글자도 안 붙인다.
 
-    `_tier_mark` 와 같은 자리에 같은 이유로 붙는다: 에이전트 표면에서 표식이 벗겨지면
+    `_tier_mark` 와 같은 자리에 같은 이유로 붙는다: 에이전트 API 표면에서 마커가 벗겨지면
     지어낸 절차가 실제 운영 문서와 같은 얼굴로 근거에 실리고, 그 답을 사람이 다시 검증할
     길이 없다(ADR-0010 §4 와 같은 논증).
     """
@@ -150,7 +150,7 @@ async def nexus_search(
     data = result["data"]
     lines = []
     for i, r in enumerate(data.get("results", []), 1):
-        # ADR-0010 hop 6 — 에이전트 표면. 여기서 등급이 벗겨지면 에이전트는 그림에서 읽은 표를
+        # ADR-0010 hop 6 — 에이전트 API 표면. 여기서 등급이 벗겨지면 에이전트는 그림에서 읽은 표를
         # 저자가 쓴 문장과 같은 것으로 다루고, 그 답을 사람이 다시 검증할 길이 없다.
         tier = _tier_mark(r.get("provenance_tier"))
         lines.append(
@@ -236,7 +236,7 @@ async def nexus_answer(
         sources = [p["source_uri"] for p in provenance[:3]]
         lines.append(f"\n출처: {', '.join(sources)}")
 
-    # 코드 현재 값과 소유자 판정 — HTTP 응답에는 있는데 이 표면만 빠뜨리면 에이전트가 못 본다.
+    # 코드 현재 값과 소유자 판정 — HTTP 응답에는 있는데 이 API 표면만 빠뜨리면 에이전트가 못 본다.
     lines.extend(code_values_lines(data))
     lines.extend(_unknown_time_note(data))
     lines.append(f"경로: {data.get('route_used', 'N/A')}")
@@ -657,7 +657,7 @@ async def nexus_sync_status(run_id: str = "") -> str:
     return "\n".join(lines)
 
 
-# ── 문서 생애주기 — SPEC-nexus-document-lifecycle §4.6 ──
+# ── 문서 생명주기 — SPEC-nexus-document-lifecycle §4.6 ──
 # 웹 UI 와 **같은 엔드포인트**. 사람이 확인 패널에서 읽는 문장을 에이전트도 응답에서 읽는다.
 
 _HIDE_NOTE = "검색에서 사라집니다. 문서와 청크는 지워지지 않으며 언제든 되돌릴 수 있습니다."
@@ -686,7 +686,7 @@ async def nexus_documents_search(
 ) -> str:
     """인덱싱된 문서를 **제목으로** 찾는다. 내용 검색은 nexus_search 를 쓴다.
 
-    다른 문서 생애주기 도구들이 요구하는 rid 를 얻는 경로다.
+    다른 문서 생명주기 도구들이 요구하는 rid 를 얻는 경로다.
 
     Args:
         q: 제목 부분일치 (대소문자 무시). 비우면 전체.

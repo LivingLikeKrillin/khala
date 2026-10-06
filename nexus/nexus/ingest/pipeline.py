@@ -50,11 +50,11 @@ class IngestResult:
     #: 벤더 원문으로 식별돼 **거절한** 수. `failed` 와 다른 사건이다 — 실패는 우리 쪽 문제이고
     #: 이것은 규율이 작동한 것이다. 한 수로 뭉치면 읽는 사람이 고칠 자리를 잘못 찾는다.
     refused_vendor: int = 0
-    #: 문서는 살아 있고 **조각만** 빠진 수. 문서 격리(위)와 다른 사건이다.
+    #: 문서는 살아 있고 **청크만** 빠진 수. 문서 격리(위)와 다른 사건이다.
     quarantined_chunks: int = 0
     #: frontmatter 가 선언했지만 **자칭할 수 없어** 안 받은 라벨의 수. 실패가 아니다 —
-    #: 문서는 정상 적재됐고 그 표식만 안 붙었다. 0 이 아니면 대개 오타이거나, 경로가
-    #: 붙여야 할 표식을 문서가 자칭한 것이다.
+    #: 문서는 정상 적재됐고 그 마커만 안 붙었다. 0 이 아니면 대개 오타이거나, 경로가
+    #: 붙여야 할 마커를 문서가 자칭한 것이다.
     refused_labels: int = 0
     failed: int = 0
     errors: list[dict] = field(default_factory=list)
@@ -66,7 +66,7 @@ class IngestResult:
     #: `nexus status` 에 있다 (§2.5). 그래서 "0 건 남았다" 와 "안 측정했다" 를 구분해 둔다.
     coverage: dict | None = None
     #: 구멍의 **이유** (`embed_refusals` 집계). `None` 은 "못 측정했다".
-    #: 커버리지가 크기를 말하고 이것이 처방을 말한다 — 수만 보여 주면 읽는 사람이 할 수 있는 것은
+    #: 커버리지가 크기를 말하고 이것이 조치 방법을 말한다 — 수만 보여 주면 읽는 사람이 할 수 있는 것은
     #: 같은 실패를 다시 부르는 것뿐이다.
     refusals: dict | None = None
 
@@ -76,7 +76,7 @@ def machine_written_tenants(config: dict | None = None) -> frozenset[str]:
 
     ⛔ **문서가 자칭하지 않는다.** `labels.py` 가 `external_spec` 에 적어 둔 것과 같은 이유다 —
     이것은 *"나는 그 경로로 들어왔다"* 는 **경로에 대한 주장**이고, 자칭을 허용하면 안 적은
-    문서가 사람 글로 신뢰된다. 선언이 설정에 있으므로 **적재 명령이 무엇이든 같은 값이 앉는다.**
+    문서가 사람 글로 신뢰된다. 명시적 선언이 설정에 있으므로 **적재 명령이 무엇이든 같은 값이 앉는다.**
 
     ⚠ 추론하지 않는다 — `served_corpora` 와 같은 이유다. 「이 테넌트 이름이 기계 같으니」로
     읽으면 평가 팩과 실험 테넌트가 같이 걸리고, 그러면 사람이 쓴 코퍼스가 LLM 산출로 찍힌다.
@@ -109,13 +109,13 @@ ORIGIN_TIME_KEYS = ("origin_last_edited", "updated")
 def origin_updated_at(frontmatter: dict) -> datetime | None:
     """원본이 말하는 **문서 자신의** 마지막 수정 시각. 못 읽으면 `None`.
 
-    ⛔ **`documents.updated_at` 과 다른 것이다** (실측 2026-09-02). 그 칸은 우리 적재 시각이라
-    재적재하면 모든 문서가 새것이 된다 — *"문서가 낡았나"* 를 구조상 못 묻는다. 오늘 그 칸으로
+    ⛔ **`documents.updated_at` 과 다른 것이다** (실측 2026-09-02). 그 필드는 우리 적재 시각이라
+    재적재하면 모든 문서가 새것이 된다 — *"문서가 낡았나"* 를 구조상 못 묻는다. 오늘 그 필드로
     재고 하마터면 *"126건 전부 3개월 이내"* 를 **문서가 안 낡았다**로 보고할 뻔했다.
 
     값은 이미 오고 있었다(노션 커넥터가 frontmatter 에 싣는다). **저장되는 자리가 없었을 뿐**이다.
 
-    ⛔ **파일 경로는 이 칸을 한 번도 채운 적이 없었다 (실측 2026-09-20).** 이유가 둘이고 둘 다
+    ⛔ **파일 경로는 이 필드를 한 번도 채운 적이 없었다 (실측 2026-09-20).** 이유가 둘이고 둘 다
     이 함수 안에 있었다.
 
     1. **키가 하나뿐이었다.** 이 함수는 `origin_last_edited` 만 봤는데 그 이름은 노션 커넥터가
@@ -128,8 +128,8 @@ def origin_updated_at(frontmatter: dict) -> datetime | None:
        사람만 통과하는 규칙은 규칙이 아니다.
 
     ⚠ **날짜만 있는 값은 그날 자정(UTC)으로 읽는다.** 시각을 지어내지 않으려면 그 방향밖에
-    없다. 다만 그 선택에 대가가 있다 — 시각 범위 질의(`origin_since`)는 `IS NULL` 을 안
-    떨구고 채워진 값은 떨군다. 즉 이 칸을 채우는 것은 그 문서를 **거를 수 있게** 만드는
+    없다. 다만 그 선택에 비용이 있다 — 시각 범위 질의(`origin_since`)는 `IS NULL` 을 안
+    떨구고 채워진 값은 떨군다. 즉 이 필드를 채우는 것은 그 문서를 **거를 수 있게** 만드는
     일이다. 모르던 것이 알려지는 것이므로 의도한 것이지만, 조용히 일어나면 안 된다.
 
     ⚠ **절대 예외를 내지 않는다.** 원본이 준 문자열 하나 때문에 적재가 죽으면, 얻은 것보다
@@ -372,13 +372,13 @@ async def _save_chunks(
 
     saved = 0
     bad = quarantined_idx or set()
-    # **격리된 조각의 원문은 저장하지 않는다.** 문서 단위 격리는 청크를 아예 안 만들었으므로
-    # 비밀이 DB 에 안 들어갔다. 조각 단위로 바꾸면서 그 성질을 잃으면, 오검출을 살리려다
+    # **격리된 청크의 원문은 저장하지 않는다.** 문서 단위 격리는 청크를 아예 안 만들었으므로
+    # 비밀이 DB 에 안 들어갔다. 청크 단위로 바꾸면서 그 성질을 잃으면, 오검출을 살리려다
     # 진짜 비밀을 테이블에 앉히게 된다. 자리는 남기되(회계·재적재 대조용) 내용은 표식뿐이다.
     reason = classification.quarantine_reason or "PII detected"
     withheld = f"[격리됨 — {reason}. 원문은 저장하지 않는다]"
     # **위치로 고른다.** `chunk.chunk_index` 는 절마다 0 부터 다시 세므로 문서 안에서
-    # 고유하지 않다 — 그것으로 맞추면 엉뚱한 조각이 빠진다.
+    # 고유하지 않다 — 그것으로 맞추면 엉뚱한 청크가 빠진다.
     for pos, chunk in enumerate(chunks):
         rid = chunk_rid(parent_rid, chunk.section_path, chunk.chunk_index)
         now = datetime.now(timezone.utc)
@@ -435,7 +435,7 @@ async def _save_chunks(
             #    뜻이 없다. 그리고 이것을 `_save_chunks` 의 기본 인자로 받으면 **안 넘긴
             #    호출부가 조용히 「사람 글」로 앉힌다** — 오늘 같은 모양에 한 번 데였다
             #    (`weak_evidence` 가 스트리밍 경로에서 기본값으로 떨어진 것, #537).
-            #    마지막 관문에서 테넌트를 보고 정하면 빠뜨릴 자리가 없다.
+            #    마지막 게이트에서 테넌트를 보고 정하면 빠뜨릴 자리가 없다.
             MACHINE_WRITTEN if tenant in machine_written_tenants()
             else getattr(chunk, "provenance_tier", "authored"),
             source_kind_for(collected.canonical_uri),
@@ -450,7 +450,7 @@ async def _save_chunks(
     #
     # **이벤트를 `(rid, new_content_hash)` 로 겨눈다.** 처음엔 `_save_document` 가 이벤트 id 를
     # 돌려주게 고쳤는데, 그 반환형 변경이 검사 20여 곳을 건드렸다 — 그리고 rid 와 새 해시는
-    # 이미 그 이벤트의 신원이라, 굳이 세 번째 이름을 두 층에 걸쳐 나를 이유가 없다.
+    # 이미 그 이벤트의 신원이라, 굳이 세 번째 이름을 두 계층에 걸쳐 나를 이유가 없다.
     # ⛔ *"이 rid 의 가장 최근 이벤트"* 로는 절대 겨누지 마라 — 그건 동시 적재가 생기는 날
     # 조용히 엉뚱한 행을 채운다.
     #
@@ -589,7 +589,7 @@ async def run_ingest(
     config = _load_config(config_path)
     result = IngestResult()
 
-    # 0. 이 프로세스가 해석한 세대가 코퍼스의 선언과 같은가 (SPEC-nexus-generation-of-record §3.2).
+    # 0. 이 프로세스가 해석한 세대가 코퍼스의 명시적 선언과 같은가 (SPEC-nexus-generation-of-record §3.2).
     # **collect 보다도 먼저** 본다: "아무것도 쓰기 전에 거부한다" 는 문서 한 행도 안 남긴다는 뜻이다.
     # 모든 쓰기 경로(CLI·HTTP·A2A·ingest-notion)가 이 함수로 모이므로 검사는 여기 한 곳이면 된다.
     if not skip_index:
@@ -639,8 +639,8 @@ async def run_ingest(
                 collected.content, classification.language, config,
                 trust_vision_markers=getattr(collected, "vision_extracted", False))
 
-            # Quarantine Gate — **조각 단위로 뺀다.** 문서를 통째로 버리는 것은 성한 청크가
-            # 하나도 없을 때뿐이다. 라이브에서 한 조각의 오검출이 148KB 문서를 지웠다.
+            # Quarantine Gate — **청크 단위로 뺀다.** 문서를 통째로 버리는 것은 성한 청크가
+            # 하나도 없을 때뿐이다. 라이브에서 한 청크의 오검출이 148KB 문서를 지웠다.
             bad = (quarantined_chunk_indexes(chunks, config.get("pii_patterns", {}))
                    if classification.is_quarantined else set())
             whole_document = classification.is_quarantined and (

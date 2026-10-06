@@ -1,8 +1,8 @@
-"""절 채움을 **진짜 Postgres 에** 대고, **네 표면이 지나는 경로 전체로** 돌린다.
+"""섹션 필을 **진짜 Postgres 에** 대고, **네 API 표면이 지나는 경로 전체로** 돌린다.
 
-이 리포는 '테스트 초록인데 동작 안 함' 을 네 형태로 겪었고 그중 둘이 여기 걸린다: 배선 누락과
+이 리포는 '테스트 초록인데 동작 안 함' 을 네 형태로 겪었고 그중 둘이 여기 걸린다: 와이어링 누락과
 사본이 정본 회귀 검사 밖. 그래서 단언하는 것은 함수의 반환값이 아니라 **LLM 프롬프트에 그 절의 본문이
-실제로 들어갔는가**다 — 채움이 어디서 끊겨도 이 검사가 빨간불이 된다.
+실제로 들어갔는가**다 — 필이 어디서 끊겨도 이 검사가 빨간불이 된다.
 
 그리고 일부러 깨뜨린다: 상한을 못 채운 문서는 안 채워지는가, **등급이 막은 절은 새지 않는가**.
 """
@@ -99,14 +99,14 @@ def _cfg(cap: int) -> dict:
 
 
 async def _search(cap: int, clearance: str = "INTERNAL"):
-    # embedding_svc 없이 = BM25 경로만. 채움은 벡터와 무관하고, 키 없이 돌아야 한다.
+    # embedding_svc 없이 = BM25 경로만. 필은 벡터와 무관하고, 키 없이 돌아야 한다.
     return await hybrid.hybrid_search(
         _QUERY, tenant=_TENANT, clearance=clearance, top_k=10,
         embedding_svc=None, config=_cfg(cap))
 
 
 async def test_saturated_doc_fills_the_section_no_ranking_reached(corpus):
-    """어휘를 공유하지 않아 **어떤 랭킹으로도 못 오는 절**이 근거에 들어온다."""
+    """어휘를 공유하지 않아 **어떤 랭킹으로도 못 오는 절**이 답변 근거에 들어온다."""
     res = await _search(cap=2)
 
     assert all(_ANSWER not in (h.chunk_text or "") for h in res.hits), \
@@ -117,7 +117,7 @@ async def test_saturated_doc_fills_the_section_no_ranking_reached(corpus):
 
 
 async def test_fill_reaches_the_llm_prompt(corpus):
-    """**배선 전체.** 검색 → 패킷 → 프롬프트. 어디서 끊겨도 여기서 빨간불."""
+    """**와이어링 전체.** 검색 → 패킷 → 프롬프트. 어디서 끊겨도 여기서 빨간불."""
     res = await _search(cap=2)
     packet = await assemble_packet(res.hits, res.graph, _TENANT, fill=res.fill)
     prompt = format_for_llm(packet)
@@ -142,13 +142,13 @@ async def test_unsaturated_doc_is_not_filled(corpus):
 
 
 async def test_oversized_doc_is_not_merged(corpus):
-    """큰 문서는 통째로 안 붙인다 — 근거가 문서로 바뀌는 것을 막는 유일한 상한."""
+    """큰 문서는 통째로 안 붙인다 — 답변 근거가 문서로 바뀌는 것을 막는 유일한 상한."""
     res = await _search(cap=2)
     assert "정책 C" not in {f.doc_title for f in res.fill}
 
 
 async def test_clearance_gate_holds_for_filled_sections(corpus):
-    """**등급이 막은 절은 새지 않는다.** 채움은 보강이지 우회로가 아니다."""
+    """**등급이 막은 절은 새지 않는다.** 필은 보강이지 우회로가 아니다."""
     res = await _search(cap=2)
     packet = await assemble_packet(res.hits, res.graph, _TENANT, fill=res.fill)
     assert _SECRET not in format_for_llm(packet)

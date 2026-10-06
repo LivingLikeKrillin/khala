@@ -2,10 +2,10 @@
 
 옛 채점기는 `grounded AND cites_gold AND has_facts` 하나로만 셌다. 셋 중 무엇이 어긋나든 같은
 `failed` 칸에 들어가므로, **정직한 기권**(검색이 근거를 못 줘서 답변자가 없다고 밝힘)과
-**오답**(근거를 받고도 틀림)이 구별되지 않는다. 2026-08-10 에 그 뭉침 때문에 "답변 품질이
+**오답**(답변 근거를 받고도 틀림)이 구별되지 않는다. 2026-08-10 에 그 뭉침 때문에 "답변 품질이
 내려갔다" 를 잘못 읽었다 — 실제로는 검색 결함이 대부분이었고 답변자는 그때마다 정직했다.
 
-세분도는 Google 의 *Sufficient Context*(arXiv:2411.06037)가 쓴 **근거 충분성 × 결과** 2축에
+세분도는 Google 의 *Sufficient Context*(arXiv:2411.06037)가 쓴 **답변 근거 충분성 × 결과** 2축에
 맞췄다. 더 잘게 쪼개지 않는 이유는 칸마다 **다른 곳을 고치라고 말해야** 뜻이 있고, 40건을
 16칸으로 나누면 어느 칸도 유의하지 않기 때문이다.
 """
@@ -90,7 +90,7 @@ REAL_HEDGES = [
      [["시뮬레이션"]]),
 ]
 
-#: 같은 날 실행의 **닫는 문장**이다. 답을 다 하고 근거의 등급을 밝힌 것이라, 거절이지만 선두가
+#: 같은 날 실행의 **닫는 문장**이다. 답을 다 하고 답변 근거의 등급을 밝힌 것이라, 거절이지만 선두가
 #: 아니다. 배달된 본문은 다른 조직의 정책 내용이라 여기서는 중립 문장으로 세운다.
 REAL_TRAILING_CAVEAT = (
     "요약 흐름은 위 표와 같습니다. 각 단계는 근거의 화면 정의에서 그대로 옮겼습니다.\n\n"
@@ -115,8 +115,8 @@ def test_a_hedge_that_still_delivers_the_answer_is_not_an_abstention():
 
 
 def test_a_trailing_caveat_does_not_turn_an_answer_into_an_abstention():
-    """이 규칙의 첫 판(세그먼트만 보고 배달 여부로 판정)이 만든 **새 오탐**이다. 새 45건 표본이
-    바로 반증했고, 그래서 '선두' 조건이 붙었다. 기록해 두지 않으면 다음 판에서 되돌아온다."""
+    """이 규칙의 첫 버전(세그먼트만 보고 배달 여부로 판정)이 만든 **새 오탐**이다. 새 45건 표본이
+    바로 반증했고, 그래서 '선두' 조건이 붙었다. 기록해 두지 않으면 다음 버전에서 되돌아온다."""
     assert refuses(REAL_TRAILING_CAVEAT) is True, "거절 세그먼트 자체는 있다"
     assert leads_with_refusal(REAL_TRAILING_CAVEAT) is False
     s = score_answer("q", REAL_TRAILING_CAVEAT, [], set(), [["요약"]])
@@ -252,7 +252,7 @@ def test_a_right_answer_citing_the_wrong_document_is_incorrect():
 
 
 def test_a_failed_llm_call_is_unmeasurable_not_incorrect():
-    """실패한 호출은 결과가 아니다. 답변 자리에 근거 덤프가 들어가 사실검사가 거저 통과한다."""
+    """실패한 호출은 결과가 아니다. 답변 자리에 답변 근거 덤프가 들어가 사실검사가 거저 통과한다."""
     s = AnswerScore(qid="q", grounded=True, cites_gold=True, facts=[True], llm_failed=True)
     assert s.outcome == "unmeasurable" and s.ok is False
 
@@ -328,17 +328,17 @@ def test_a_tier_note_swallowed_into_a_citation_is_the_shape_that_misled_us():
 
 
 def test_the_rule_catches_a_phrasing_the_first_version_missed():
-    """**목록은 바로 다음 실행에서 뚫렸다.** 첫 판은 관찰한 문구 3개를 나열했고, 다음 실행에서
+    """**목록은 바로 다음 실행에서 뚫렸다.** 첫 버전은 관찰한 문구 3개를 나열했고, 다음 실행에서
     네 번째 표현이 나왔다 — 그리고 기권이 오답으로, 다시 **환각으로** 세어졌다.
 
-    그래서 문구가 아니라 구조로 잡는다: 거절은 *근거를 지목하며* 부정한다.
+    그래서 문구가 아니라 구조로 잡는다: 거절은 *답변 근거를 지목하며* 부정한다.
     """
     assert is_abstention("제공된 근거로는 해당 질문에 답변하기 어렵습니다.")
     assert is_abstention("검색된 자료에서는 해당 수치를 찾을 수 없습니다.")
 
 
 def test_an_answer_whose_content_is_negative_is_not_an_abstention():
-    """내용이 부정인 **답변**은 근거를 지목하지 않는다 — 그것이 구조 규칙의 근거다.
+    """내용이 부정인 **답변**은 답변 근거를 지목하지 않는다 — 그것이 구조 규칙의 근거다.
     2026-08-10 실행에서 실제로 나온 문장들이다."""
     for text in ("차감되지 않습니다. 해금 형태로 오픈됩니다.",
                  "토큰 없이 호출하면 401로 실패합니다.",

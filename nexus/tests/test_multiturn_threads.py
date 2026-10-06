@@ -1,4 +1,4 @@
-"""멀티턴 스레드 평가 하니스 — 커밋된 평가 하니스가 스스로 성립하는지 지킨다 (SPEC-nexus-multi-turn-retrieval §3.4).
+"""멀티턴 스레드 평가 하네스 — 커밋된 평가 하네스가 스스로 성립하는지 지킨다 (SPEC-nexus-multi-turn-retrieval §3.4).
 
 `multiturn-threads.yaml` 은 리포에 들어간다. 코퍼스도 gold 도 이미 리포에 있으므로 누구나
 재현할 수 있고, 그 말은 **검사가 사람의 기억을 대신할 수 있다**는 뜻이다.
@@ -41,7 +41,7 @@ def labels():
     return load(LABELS)
 
 
-# ── 평가 하니스가 자기 라벨과 맞물리는가 ────────────────────────────────────────────────
+# ── 평가 하네스가 자기 라벨과 맞물리는가 ────────────────────────────────────────────────
 
 def test_the_thread_file_passes_its_own_gate(threads, labels):
     assert gate_reasons(threads, labels) == []
@@ -55,7 +55,7 @@ def test_every_thread_points_at_an_answerable_labelled_query(threads, labels):
 
 
 def test_gold_is_inherited_never_re_authored(threads):
-    """스레드 파일은 gold 를 갖지 않는다 — 가지는 순간 두 번째 평가 하니스가 생기고, 둘은 갈라진다.
+    """스레드 파일은 gold 를 갖지 않는다 — 가지는 순간 두 번째 평가 하네스가 생기고, 둘은 갈라진다.
 
     같은 이유로 이 리포는 등급 목록과 채점 규칙의 사본을 없앤 적이 있다
     (memory: suspect-the-instrument-first §2026-08-12~13, 사본은 고치지 말고 없애라).
@@ -64,7 +64,7 @@ def test_gold_is_inherited_never_re_authored(threads):
         assert set(t) == {"qid", "turn1", "turn2"}, f"{t['qid']}: 스레드에 gold 를 적지 마라"
 
 
-# ── 평가 하니스가 측정하려는 것을 실제로 측정하는가 ─────────────────────────────────────────────
+# ── 평가 하네스가 측정하려는 것을 실제로 측정하는가 ─────────────────────────────────────────────
 
 def test_the_follow_up_drops_something_the_query_had(threads, labels):
     """turn2 는 원 질의에서 **무언가를 떨어뜨려야** 한다. 안 그러면 생략형 실험군 = 독립형 팔이다.
@@ -110,7 +110,7 @@ def test_every_arm_is_assembled_in_one_place(threads, labels):
 # ── 집계가 거짓말하지 않는가 ───────────────────────────────────────────────────
 
 def test_mrr_counts_the_misses_as_zero():
-    """못 찾은 질의를 빼고 평균 내면 **적게 찾을수록 좋아 보인다.** 그 평가 하니스는 거꾸로 간다."""
+    """못 찾은 질의를 빼고 평균 내면 **적게 찾을수록 좋아 보인다.** 그 평가 하네스는 거꾸로 간다."""
     rows = [
         {a: {"hits": 1, "rank": 1} for a in ARMS},
         {a: {"hits": 0, "rank": None} for a in ARMS},
@@ -130,12 +130,12 @@ def test_the_control_arm_gates_the_run():
 
 
 def test_the_committed_baseline_is_the_one_the_runner_checks(threads):
-    """베이스라인은 스레드 파일에 산다 — 실행기에 하드코딩하면 평가 하니스를 고치는 사람이 못 본다."""
+    """베이스라인은 스레드 파일에 산다 — 실행기에 하드코딩하면 평가 하네스를 고치는 사람이 못 본다."""
     base = threads["baseline"]
     assert set(ARMS) <= set(base)
     for arm in ARMS:
         assert set(base[arm]) == {"found", "mrr"}
-    # 기록된 격차가 이 평가 하니스의 존재 이유다. 사라지면 SPEC 을 다시 읽어야 한다.
+    # 기록된 격차가 이 평가 하네스의 존재 이유다. 사라지면 SPEC 을 다시 읽어야 한다.
     assert base["standalone"]["found"] > base["elliptical"]["found"]
     # 그리고 싸구려 하한은 판정 실험군에서 무너진다 — 그래서 재작성을 측정하는 것이다.
     assert base["drift_concat"]["mrr"] < base["concat"]["mrr"]

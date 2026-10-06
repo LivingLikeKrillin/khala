@@ -1,6 +1,6 @@
 """브리지가 한 건 도는 동안 **다른 것도 받는가**, 그리고 줄 선 것은 줄 섰다고 말하는가.
 
-⛔ **실측 2026-09-19, 설명 층 보고.** 서버가 `HTTPServer` 였다 — 합성 한 건이 2분 도는 동안
+⛔ **실측 2026-09-19, 설명 레이어 보고.** 서버가 `HTTPServer` 였다 — 합성 한 건이 2분 도는 동안
 소켓이 다른 아무것도 받지 않는다. 밖에서 건 `curl http://127.0.0.1:8900/` 이 그대로
 타임아웃했다. 그리고 이 브리지를 부르는 것은 설명 층만이 아니다: 주기 재적재
 (`nexus-reingest`)도 같은 문을 친다. 줄을 세우는 곳이 없어서 조용히 겹쳤다.
@@ -67,7 +67,7 @@ def test_generation_is_serialised_by_default():
 
 def test_a_queued_request_is_told_it_queued_not_that_it_was_slow():
     """⛔ 조용히 더 기다리게 하면 부르는 쪽은 자기 벽에서 죽고 그것을 *"합성이 느리다"* 로
-    읽는다. 줄 선 것과 느린 것은 다른 사건이고 처방이 다르다."""
+    읽는다. 줄 선 것과 느린 것은 다른 사건이고 조치 방법이 다르다."""
     holder = threading.Thread(
         target=bridge.handle_generate,
         args=({"prompt": "q"}, None),
@@ -98,7 +98,7 @@ def test_the_gate_is_released_even_when_the_run_fails():
 
 
 def test_the_gate_is_released_after_a_timeout():
-    """타임아웃이 바로 그 사건이다 — 설명 층이 본 순서가 타임아웃 둘 뒤였다."""
+    """타임아웃이 바로 그 사건이다 — 설명 레이어가 본 순서가 타임아웃 둘 뒤였다."""
     import subprocess
 
     def slow(argv, prompt, timeout):
@@ -127,7 +127,7 @@ def test_refused_before_the_gate_does_not_hold_it():
     assert bridge._GATE._value == before
 
 def test_queueing_does_not_eat_the_request_budget():
-    """⛔ **라이브가 잡은 내 첫 판의 결함** (2026-09-19). 문 앞에서 요청 자신의 `timeout`
+    """⛔ **라이브가 잡은 내 첫 버전의 결함** (2026-09-19). 문 앞에서 요청 자신의 `timeout`
     만큼 기다리게 했더니, 앞 건이 2분 걸릴 때 뒤 요청은 자기 예산을 전부 대기에 쓰거나
     부르는 쪽이 자기 벽에서 먼저 죽었다 — 503 을 볼 사람이 아무도 없었다.
 

@@ -1,4 +1,4 @@
-"""멀티턴 검색 평가 하니스 — 후속 질문이 검색을 어디서 잃는지 측정한다 (SPEC-nexus-multi-turn-retrieval §3.4).
+"""멀티턴 검색 평가 하네스 — 후속 질문이 검색을 어디서 잃는지 측정한다 (SPEC-nexus-multi-turn-retrieval §3.4).
 
 **절대점수를 측정하지 않는다.** 두 코퍼스가 답변 품질 천장에 닿았으므로(memory:
 khala-answer-quality-harness) 그 수는 아무것도 말하지 않는다. 여기서 측정하는 것은 **같은 정보
@@ -12,7 +12,7 @@ khala-answer-quality-harness) 그 수는 아무것도 말하지 않는다. 여�
     drift_concat   앞에 다른 화제 한 턴 + 위     — 그 하한이 무너지는 조건 (판정 실험군)
 
 **LLM 을 부르지 않는다.** 검색만 본다 — 문서 단위 Recall@10 과 MRR. 그래서 돈이 안 들고,
-결정적이며(2회 실행 바이트 동일), 답변 품질 평가 하니스의 천장에 걸리지 않는다.
+결정적이며(2회 실행 바이트 동일), 답변 품질 평가 하네스의 천장에 걸리지 않는다.
 
     docker exec nexus-app python scripts/ko_eval_multiturn.py --tenant ko_eval_packa
 """
@@ -76,7 +76,7 @@ def arm_queries(thread: dict, query: str, drift: str) -> dict[str, str]:
 def gate_reasons(threads: dict, labels: dict) -> list[str]:
     """스레드 파일이 자기 라벨과 맞물리는가. 비어 있어야 실행이 결과가 된다.
 
-    관문이 뒤에 있으면 숫자를 보고 평가 하니스를 고치게 된다(`ko_eval_answer_run.py` 와 같은 이유).
+    게이트가 뒤에 있으면 숫자를 보고 평가 하네스를 고치게 된다(`ko_eval_answer_run.py` 와 같은 이유).
     """
     reasons: list[str] = []
     by_id = {q["id"]: q for q in labels.get("queries") or []}
@@ -111,7 +111,7 @@ async def run_arm(query: str, gold: set[str], svc, *, tenant: str, clearance: st
     """(gold 적중 문서 수, 첫 gold 의 문서 순위 | None).
 
     **순위까지 측정하는 이유**: Recall@10 은 굵은 자다. gold 를 10위 안에 붙들어 두면서 9위로
-    밀어냈다면 Recall 로는 무승부지만 근거 패킷은 순위로 잘린다.
+    밀어냈다면 Recall 로는 무승부지만 답변 근거 패킷은 순위로 잘린다.
     """
     from nexus.search import hybrid
 
@@ -176,11 +176,11 @@ async def _run(args) -> int:
     threads = yaml.safe_load(args.threads.read_text(encoding="utf-8"))
     labels = load(args.labels)
 
-    # ── 관문 1: 라벨이 자기 코퍼스에 대해 성립하는가 ────────────────────────────
+    # ── 게이트 1: 라벨이 자기 코퍼스에 대해 성립하는가 ────────────────────────────
     if problems := check(labels, ManifestPack(args.manifest), require_corpus_binding=True):
         print("✗ 라벨 게이트 실패 — 측정 이전에 평가 하니스가 틀렸다:", *problems[:4], sep="\n  ")
         return 1
-    # ── 관문 2: 스레드가 그 라벨과 맞물리는가 ──────────────────────────────────
+    # ── 게이트 2: 스레드가 그 라벨과 맞물리는가 ──────────────────────────────────
     if problems := gate_reasons(threads, labels):
         print("✗ 스레드 게이트 실패:", *problems[:6], sep="\n  ")
         return 1
@@ -207,7 +207,7 @@ async def _run(args) -> int:
         pool = await db.get_pool()
         async with pool.acquire() as con:
             live = await tenant_bodies(con, args.tenant)
-        # 라벨이 서명된 본문과 지금 측정하는 본문이 같은가. 다르면 그 질의의 gold 는 사라진
+        # 라벨이 사인오프된 본문과 지금 측정하는 본문이 같은가. 다르면 그 질의의 gold 는 사라진
         # 텍스트에 대한 주장이다.
         if stale := expired(labels, {k: v["sha"] for k, v in live.items()}):
             print(f"✗ 만료된 라벨 {len(stale)}건 — 사람이 다시 읽고 서명해야 한다: "

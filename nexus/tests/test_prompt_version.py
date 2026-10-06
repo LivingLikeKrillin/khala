@@ -1,12 +1,12 @@
-"""프롬프트 판이 **잊을 수 없는 방식으로** 남는가 — 그리고 **프롬프트를 쓰는 코드 전부**를 보는가.
+"""프롬프트 버전이 **잊을 수 없는 방식으로** 남는가 — 그리고 **프롬프트를 쓰는 코드 전부**를 보는가.
 
 `PROMPT_VERSION = 3` 같은 상수는 고치는 사람이 올려야 하고, 그 규율은 반드시 한 번 깨진다 —
 깨진 순간 기록은 조용히 거짓이 된다. 그래서 값은 코드에서 파생된다.
 
-⛔ **그런데 파생의 재료가 좁았다 (실측 2026-09-27).** 옛 지문은 `SYSTEM_PROMPT` ·
-`USER_REQUEST_RULE` · `build_user_prompt` 소스 셋만 찍었다. 근거가 약할 때 붙는 규칙(08-18),
-근거 꾸러미를 글로 바꾸는 `format_for_llm`(코드 값 절 · 판정 · 인용 문법 벗기기 · 등급 주석),
-꾸러미를 채우는 `packet_for_answer` 는 전부 밖이었다. 그래서 08-29 ~ 09-23 의 답변 572행이
+⛔ **그런데 파생의 재료가 좁았다 (실측 2026-09-27).** 옛 핑거프린트는 `SYSTEM_PROMPT` ·
+`USER_REQUEST_RULE` · `build_user_prompt` 소스 셋만 찍었다. 답변 근거가 약할 때 붙는 규칙(08-18),
+근거 묶음을 글로 바꾸는 `format_for_llm`(코드 값 절 · 판정 · 인용 문법 벗기기 · 등급 주석),
+근거 묶음을 채우는 `packet_for_answer` 는 전부 밖이었다. 그래서 08-29 ~ 09-23 의 답변 572행이
 **한 값**이다 — 그 사이 모델이 받는 글은 여러 번 바뀌었다.
 
 ⇒ 재료를 **함수 목록**이 아니라 **모듈 목록**으로 잡고, 그 목록에 빠진 것이 없는지를 이름이
@@ -37,13 +37,13 @@ def test_the_same_code_gives_the_same_value():
 
 
 def test_the_two_prompts_are_told_apart():
-    """턴당 프롬프트가 둘이다. 한 칸에 뭉뚱그리면 어느 쪽이 바뀌었는지 못 본다."""
+    """턴당 프롬프트가 둘이다. 한 필드에 뭉뚱그리면 어느 쪽이 바뀌었는지 못 본다."""
     assert V.prompt_version() != V.rewrite_prompt_sha()
 
 
 def test_every_listed_module_is_really_read():
     """목록의 오타는 **조용히** 재료를 줄인다 — 못 읽은 모듈은 빈 문자열이 되고, 빈 문자열은
-    언제나 같은 값이라 그 모듈을 고쳐도 판이 안 바뀐다. 옛 결함과 같은 모양이다."""
+    언제나 같은 값이라 그 모듈을 고쳐도 버전이 안 바뀐다. 옛 결함과 같은 모양이다."""
     unread = [m for m in V.ASSEMBLY_MODULES if not V._module_source(m)]
     assert not unread, f"소스를 못 읽은 모듈: {unread}"
 
@@ -64,7 +64,7 @@ def test_changing_any_assembly_module_changes_the_value(module, monkeypatch):
 
 
 def test_the_weak_evidence_rule_moves_the_value(monkeypatch):
-    """옛 지문이 놓친 첫 조각 — 08-18 에 붙은 물러남 규칙. 그 문장을 고치면 판이 바뀌어야 한다."""
+    """옛 핑거프린트가 놓친 첫 조각 — 08-18 에 붙은 물러남 규칙. 그 문장을 고치면 버전이 바뀌어야 한다."""
     from nexus.llm import prompts as P
 
     before = V.prompt_version()
@@ -90,7 +90,7 @@ def test_an_unreadable_source_does_not_break_the_answer_path(monkeypatch):
 
 
 def test_the_query_and_evidence_do_not_enter_the_value():
-    """질의·근거를 넣으면 모든 행이 서로 달라 아무것도 구분하지 못한다 — 그리고 텍스트가 샌다."""
+    """질의·답변 근거를 넣으면 모든 행이 서로 달라 아무것도 구분하지 못한다 — 그리고 텍스트가 샌다."""
     assert V.fingerprint("시스템", "템플릿") == V.fingerprint("시스템", "템플릿")
     # 조각 경계가 있어야 이어붙임 모호성이 없다: ("ab","c") 와 ("a","bc") 는 달라야 한다.
     assert V.fingerprint("ab", "c") != V.fingerprint("a", "bc")
@@ -122,8 +122,8 @@ def _nexus_modules_run_by(fn) -> set[str]:
 
 
 def _a_packet_that_takes_every_branch():
-    """`format_for_llm` 의 갈래를 전부 타는 꾸러미 — 등급 셋 · 앵커 · 지운 이름 · 인용 문법이
-    든 본문 · 코드 값(판정 있음/없음, 어긋남) · 그래프(설계·관측)."""
+    """`format_for_llm` 의 하위 범주를 전부 타는 근거 묶음 — 등급 셋 · 앵커 · 지운 이름 · 인용 문법이
+    든 본문 · 코드 값(판정 있음/없음, 불일치) · 그래프(설계·관측)."""
     from nexus.index.anchors import CHANGED, FRESH
     from nexus.repositories.graph import EdgeResult, ObservedEdgeResult, SubGraph
     from nexus.search.anchor_status import AnchorStatus, DeletedMention
@@ -163,7 +163,7 @@ def _a_packet_that_takes_every_branch():
 
 
 def _write_one_prompt():
-    """꾸러미는 **추적 밖에서** 만든다. 안에서 만들면 데이터클래스 생성자(그래프 · 앵커)가
+    """근거 묶음은 **추적 밖에서** 만든다. 안에서 만들면 데이터클래스 생성자(그래프 · 앵커)가
     「프롬프트를 쓰는 코드」로 잡힌다 — 이 검사가 처음 돌았을 때 실제로 그렇게 잘못 걸렸다."""
     from nexus.llm.prompts import build_prompts
     from nexus.search.evidence_packet import format_for_llm
@@ -172,7 +172,7 @@ def _write_one_prompt():
 
     def write():
         evidence_text = format_for_llm(packet)
-        # 재작성이 문장을 바꾼 턴 · 근거가 약한 턴 — 시스템 프롬프트의 갈래 둘을 다 탄다.
+        # 재작성이 문장을 바꾼 턴 · 답변 근거가 약한 턴 — 시스템 프롬프트의 하위 범주 둘을 다 탄다.
         build_prompts("재작성된 질의", evidence_text, "사용자가 친 문장", weak_evidence=True)
 
     return write
@@ -198,7 +198,7 @@ def test_the_trace_really_sees_the_prompt_being_written():
 
 
 def test_the_coverage_check_can_fail():
-    """**고친 가드는 일부러 깨 봐라.** 목록에서 하나를 빼면 그 모듈이 걸려야 한다."""
+    """**고친 가드 검사는 일부러 깨 봐라.** 목록에서 하나를 빼면 그 모듈이 걸려야 한다."""
     ran = _nexus_modules_run_by(_write_one_prompt())
     shorter = set(V.ASSEMBLY_MODULES) - {"nexus.search.provenance"}
     assert "nexus.search.provenance" in (ran - shorter)
@@ -225,14 +225,14 @@ def test_an_answer_row_carries_the_version_the_answer_carried():
 
 
 def test_the_streaming_row_takes_the_version_it_is_given():
-    """스트리밍 경로는 `AnswerResult` 없이 기록한다 — 판을 **명시로** 넘긴다. 옛 판은 이 경로의
-    판을 한 번도 안 남겼다(`answer` 가 `None` 이라 빈 문자열이었다)."""
+    """스트리밍 경로는 `AnswerResult` 없이 기록한다 — 버전을 **명시로** 넘긴다. 옛 버전은 이 경로의
+    버전을 한 번도 안 남겼다(`answer` 가 `None` 이라 빈 문자열이었다)."""
     sig = _sig(path="search_answer_stream", prompt_version="a1b2c3d4e5f6")
     assert sig.prompt_version == "a1b2c3d4e5f6"
 
 
 def test_a_search_only_row_claims_no_prompt():
-    """검색 전용 경로에 답변 프롬프트의 판을 적으면 그것은 거짓이다."""
+    """검색 전용 경로에 답변 프롬프트의 버전을 적으면 그것은 거짓이다."""
     assert _sig().prompt_version == ""
 
 
@@ -255,7 +255,7 @@ def test_the_signal_carries_the_fingerprint_not_the_prompt():
 
 
 async def test_the_shared_seam_stamps_the_version():
-    """답변 경로 넷이 전부 지나는 자리에서 찍는다 — 표면마다 붙이면 하나가 조용히 빠진다."""
+    """답변 경로 넷이 전부 지나는 자리에서 찍는다 — API 표면마다 붙이면 하나가 조용히 빠진다."""
     from nexus.search import reconcile
 
     class _R:
@@ -269,7 +269,7 @@ async def test_the_shared_seam_stamps_the_version():
 
 
 async def test_the_answer_carries_what_the_packet_was_stamped_with():
-    """기권(근거 0건)도 조립은 돌았다 — 판은 **LLM 을 불렀는가**와 무관하게 실린다."""
+    """기권(답변 근거 0건)도 조립은 돌았다 — 버전은 **LLM 을 불렀는가**와 무관하게 실린다."""
     from nexus.llm.answer import generate_answer
     from nexus.search.evidence_packet import EvidencePacket
 

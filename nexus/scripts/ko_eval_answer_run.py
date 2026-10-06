@@ -2,8 +2,8 @@
 
 이 리포는 검색을 엄격하게 측정해 왔고 답변은 한 번도 안 측정했다. 이것이 그 첫 실행이다.
 
-**관문을 먼저 통과해야 결과로 친다** (`ko_eval_packb_run.py` 와 같은 이유): 라벨 게이트가
-막으면 숫자를 내지 않는다. 관문이 뒤에 있으면 숫자를 보고 평가 하니스를 고치게 된다.
+**게이트를 먼저 통과해야 결과로 친다** (`ko_eval_packb_run.py` 와 같은 이유): 라벨 게이트가
+막으면 숫자를 내지 않는다. 게이트가 뒤에 있으면 숫자를 보고 평가 하네스를 고치게 된다.
 
 **LLM 을 부른다 — 돈이 든다.** 질의 하나에 한 번, 기본 40건. `--limit` 로 줄일 수 있고, 무엇을
 부를지는 `NEXUS_LLM_PROVIDER` 가 정한다(키 없이 도는 claude-code 브리지 포함).
@@ -13,7 +13,7 @@
 **산출물은 라벨 파일 옆에 앉고, Pack A 에서는 그 자리를 git 이 추적한다.** 즉 기본값으로 돌리면
 이 실행이 측정 대상의 리포를 고친다. 남기지 않으려면 `--out-dir` 로 자리를 옮긴다(격리 실행).
 그리고 `--limit` 로 잘린 회차는 누적 로그에 **들어가지 않는다** — 그 파일은 같은 입력의 반복에서
-잡음 폭을 뽑는 자리이고, 부분 회차가 섞이면 줄을 다 읽어 평균을 내는 집계가 조용히 틀린다.
+변동폭을 뽑는 자리이고, 부분 회차가 섞이면 줄을 다 읽어 평균을 내는 집계가 조용히 틀린다.
 
     docker exec nexus-app python scripts/ko_eval_answer_run.py --limit 5
     docker exec nexus-app python scripts/ko_eval_answer_run.py --out-dir /tmp/eval   # 격리
@@ -49,7 +49,7 @@ def resolve_paths(labels_path: Path, tag: str, out_dir: Path | None = None) -> t
     2026-08-12 에 충분성 런의 격자(파라메트릭 2건이 어느 질의였는지)가 40초 뒤 다음 런에 덮여
     복구 불가능해졌다. 누적 로그는 요약과 `ok` 맵만 담으므로 그것으로도 되살릴 수 없었다.
 
-    **접두는 라벨의 `pack` 필드에서 딴다.** 파일 이름에서 따던 첫 판은 Pack A 라벨
+    **접두는 라벨의 `pack` 필드에서 딴다.** 파일 이름에서 따던 첫 버전은 Pack A 라벨
     (`answer-labels.yaml`)에서 `answer-answer-runs.jsonl` 을 만들었다 — 파일 이름은 사람이
     붙이는 것이고 팩 이름은 라벨이 이미 선언하는 것이다(게이트가 `pack` 을 요구한다).
 
@@ -84,7 +84,7 @@ def resolve_paths(labels_path: Path, tag: str, out_dir: Path | None = None) -> t
 def ledger_blocked(n_scored: int, n_answerable: int) -> str | None:
     """누적 로그에 넣으면 **안 되는** 이유. 비어 있어야 이 회차가 변동 폭 계산에 들어간다.
 
-    누적 로그의 용도는 하나다 — **같은 입력을 반복했을 때의 잡음 폭**. `--limit` 로 잘린 회차가
+    누적 로그의 용도는 하나다 — **같은 입력을 반복했을 때의 변동폭**. `--limit` 로 잘린 회차가
     같은 파일에 섞이면 순진한 집계(줄을 다 읽고 평균을 내는 것)가 조용히 틀리고, 틀렸다는 표시가
     파일 안에 없다. 리포트는 그래도 쓰이므로 부분 회차의 재료가 사라지지는 않는다.
 
@@ -111,7 +111,7 @@ def append_run(args, llm, summary: dict, scores: list, sufficiency: dict[str, st
     2026-08-12 에 "파라메트릭 2건" 이 어느 질의였는지 40초 만에 복구 불가능해졌다. 가장
     진단적인 산출물이 가장 안 남는 구조였다.
 
-    함수로 떼어 둔 이유는 **배선을 행동으로 걸 수 있게** 하려는 것이다. 2026-08-08 에 누적 쓰기가
+    함수로 떼어 둔 이유는 **와이어링을 행동으로 걸 수 있게** 하려는 것이다. 2026-08-08 에 누적 쓰기가
     편집 실패로 통째로 빠진 채 3회 실행이 다 돌았고(`--tag` 는 먹었으므로 새 버전처럼 보였다),
     그때 박은 검사는 소스에 `RUNS.open(` 문자열이 있는지 보는 것이었다 — 이름을 바꾸자 깨졌고,
     애초에 문자열은 그 코드가 **돌았다는** 것을 증명하지 않는다.
@@ -144,7 +144,7 @@ async def unreadable_gold(con, labels: dict, tenant: str, clearance: str) -> dic
     2026-08-12 에 q002 가 4런 연속 실패했고 원인은 랭킹이 아니었다: gold 인
     `tutorials/security/apparmor.md` 가 경로 규칙(`**/security/**`)으로 RESTRICTED 인데
     실행은 INTERNAL 로 돌아, `classification <= clearance` 가 그 문서를 원천 배제했다.
-    **시스템이 정책을 지킨 것을 평가 하니스가 검색 실패로 적고 있었다.**
+    **시스템이 정책을 지킨 것을 평가 하네스가 검색 실패로 적고 있었다.**
 
     라벨은 못 읽는 문서를 gold 로 가질 수 없다 — 그런 질의는 통과가 불가능하고, 불가능한
     질의를 섞어 낸 총점은 시스템이 아니라 등급 설정을 측정하는 수다.
@@ -181,11 +181,11 @@ def run_conditions(args) -> dict:
     **모델 이름만으로는 부족하다.** 답을 만드는 것은 (모델 × 프롬프트 × 등급 × 상한)이고, 그중
     셋이 기록되지 않으면 "지난주보다 좋아졌다" 는 문장은 검증 불가능한 말이 된다.
 
-    프롬프트의 판은 그것을 만드는 코드에서 파생되므로(`llm/prompt_version.py`) 사람이 올릴 것이
+    프롬프트의 버전은 그것을 만드는 코드에서 파생되므로(`llm/prompt_version.py`) 사람이 올릴 것이
     없다 — 올리는 규율은 반드시 한 번 깨지고, 깨진 순간 기록이 조용히 거짓이 된다.
 
     ⚠ 2026-09-30 까지의 회차는 이 자리에 `answer_prompt_sha` 를 적었다. 재료가 좁았던 옛 지문이라
-    (근거 꾸러미를 글로 바꾸는 코드를 못 봤다) **이름을 바꿔 적는다** — 두 정의를 한 키로 비교하지
+    (근거 묶음을 글로 바꾸는 코드를 못 봤다) **이름을 바꿔 적는다** — 두 정의를 한 키로 비교하지
     않게.
     """
     from nexus.llm.prompt_version import prompt_version
@@ -200,7 +200,7 @@ def run_conditions(args) -> dict:
 def gate_reasons(summary: dict, expired_qids: list[str] | None = None) -> list[str]:
     """총점을 내면 안 되는 이유들. 비어 있어야 실행이 결과가 된다.
 
-    관문을 **뒤**에 두면 숫자를 보고 평가 하니스를 고치게 되므로, 이 판단은 총점 출력 이전에 한다.
+    게이트를 **뒤**에 두면 숫자를 보고 평가 하네스를 고치게 되므로, 이 판단은 총점 출력 이전에 한다.
     """
     reasons = []
     if qids := summary.get("unadjudicated_qids"):
@@ -272,9 +272,9 @@ async def _run(args) -> int:
         print("  다른 자리에 쓰려면 --out-dir 를 준다 (격리 실행).")
     print()
 
-    # **평가 하니스는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
+    # **평가 하네스는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
     # 코드 기본값(`diversity_per_doc_cap=3`)으로 돌고, 배포는 config.yaml 의 5 로 돈다 —
-    # 즉 평가 하니스가 아무도 안 쓰는 설정을 측정하게 된다 (2026-08-18 발견).
+    # 즉 평가 하네스가 아무도 안 쓰는 설정을 측정하게 된다 (2026-08-18 발견).
     svc, llm = embedding_service_from_config(), LLMService()
     search_cfg = _load_config()
     if args.section_fill:
@@ -286,7 +286,7 @@ async def _run(args) -> int:
     require_free(llm, allow_paid=args.paid, what="답변 품질 실행")
     spend = Spend()
     pool = await db.get_pool()
-    # **팩이 아니라 테넌트의 제목이다.** 팩은 2026-08-07 에 얼린 116건이고 테넌트는 적재마다
+    # **팩이 아니라 테넌트의 제목이다.** 팩은 2026-08-07 에 동결된 116건이고 테넌트는 적재마다
     # 자란다. 지난주 들어온 문서를 인용한 정답을 오답으로 세면 SPEC §1.2 가 새 문서에 되살아난다.
     async with pool.acquire() as con:
         known_titles = {r["title"] for r in await con.fetch(
@@ -312,7 +312,7 @@ async def _run(args) -> int:
             return 1
         print("  남은 gold 로 통과할 수 있어 실행은 계속한다 — 다만 그 라벨은 절반이 죽어 있다.\n")
 
-    # ── 라벨이 서명된 본문과 지금 측정하는 본문이 같은가 ──────────────────────────
+    # ── 라벨이 사인오프된 본문과 지금 측정하는 본문이 같은가 ──────────────────────────
     stale = expired(labels, {k: v["sha"] for k, v in live.items()})
     if stale:
         signed = (labels.get("corpus") or {}).get("bodies") or {}
@@ -352,15 +352,15 @@ async def _run(args) -> int:
                                         confidence=result.confidence)
             spend.add(ans.usage, kind="answer")
             # **첫 실패에서 멈춘다.** 계속 돌면 실패한 실행의 집계가 리포트로 남고, 그것을 나중에
-            # '답변 품질' 로 읽게 된다 — 실제로 3건 중 2건이 근거 덤프 덕에 '사실 통과' 로 찍혔다.
+            # '답변 품질' 로 읽게 된다 — 실제로 3건 중 2건이 답변 근거 덤프 덕에 '사실 통과' 로 찍혔다.
             if ans.llm_failed:
                 print(f"✗ {q['id']}: LLM 호출이 실패했다 — 이 상태의 숫자는 결과가 아니다.")
                 print("  답변 자리에는 근거 원문이 들어가므로 사실 검사가 거저 통과한다.")
                 print(f"  받은 것: {ans.answer[:80]}…")
                 return 1
-            # **LLM 이 본 그 문자열**을 채점기에 같이 넘긴다 — 못 낸 사실이 근거에 있었는지가
-            # 검색 결함과 서술 결함을 가르는 유일한 재료다(감사 B3). 패킷 필드를 골라 다시
-            # 조립하면 프롬프트에 없던 것을 근거로 세게 되므로 프로덕션과 같은 함수를 쓴다.
+            # **LLM 이 본 그 문자열**을 채점기에 같이 넘긴다 — 못 낸 사실이 답변 근거에 있었는지가
+            # 검색 결함과 생성 결함을 가르는 유일한 재료다(감사 B3). 패킷 필드를 골라 다시
+            # 조립하면 프롬프트에 없던 것을 답변 근거로 세게 되므로 프로덕션과 같은 함수를 쓴다.
             evidence_text = format_for_llm(packet)
             s = score_answer(q["id"], ans.answer, ans.citations,
                              {titles[g] for g in q["gold"]}, q.get("must_contain") or [],
@@ -369,10 +369,10 @@ async def _run(args) -> int:
                              known_titles=known_titles, evidence_text=evidence_text)
             scores.append(s)
 
-            # ── 축 1: 근거가 충분했는가 ────────────────────────────────────
+            # ── 차원 1: 답변 근거가 충분했는가 ────────────────────────────────────
             # 이것 없이는 기권이 **정직한 기권**(검색 결함)인지 **과잉 기권**(답할 수 있었는데
             # 안 함)인지 못 가른다. 오답도 마찬가지로 생성 결함과 환각이 안 갈린다.
-            # 판정자는 답변을 보지 않는다 — 질의와 근거만 본다(nexus/llm/sufficiency.py).
+            # 판정자는 답변을 보지 않는다 — 질의와 답변 근거만 본다(nexus/llm/sufficiency.py).
             if args.sufficiency:
                 from nexus.llm.sufficiency import judge
                 v = await judge(q["query"], evidence_text, llm)
@@ -417,7 +417,7 @@ async def _run(args) -> int:
 
     # ── 대조군이 거절하지 않았다면, 그것은 **환각 판정이 아니라 재판정 대상**이다 ──
     # 코퍼스가 답을 얻었을 수도 있고(2026-08-10 에 스크린샷 44장이 그렇게 했다) 답변자가
-    # 지어냈을 수도 있다. 평가 하니스는 둘을 못 가른다 — 그러니 이름만 부르고 멈춘다.
+    # 지어냈을 수도 있다. 평가 하네스는 둘을 못 가른다 — 그러니 이름만 부르고 멈춘다.
     if answered := [c["qid"] for c in controls if not c["refused"]]:
         print(f"\n  ‼ 대조군 {len(answered)}건이 거절하지 않았다: {', '.join(answered)}")
         print("    코퍼스가 답을 얻었는지(라벨을 answerable 로 뒤집어야 한다) 답변자가 지어냈는지")
@@ -427,7 +427,7 @@ async def _run(args) -> int:
 
     # ── 판정할 거리는 총점보다 먼저 나온다 ────────────────────────────────────
     # **미판정은 오답이 아니다.** 사실을 배달했고 인용이 해소되는데 라벨이 그 문서를 판정한 적이
-    # 없으면 이 평가 하니스는 모른다 — 모르는 채로 총점을 찍으면 그 총점이 판정을 대신하게 된다.
+    # 없으면 이 평가 하네스는 모른다 — 모르는 채로 총점을 찍으면 그 총점이 판정을 대신하게 된다.
     if a["adjudication_candidates"]:
         print("\n  판정 대기 — 라벨이 한 번도 읽지 않은 문서를 인용했다:")
         for qid, cited in a["adjudication_candidates"].items():
@@ -462,7 +462,7 @@ async def _run(args) -> int:
 
     _write_report(args, labels, llm, a, rows, partial=False, controls=controls)
 
-    # **부분 회차는 누적 로그에 넣지 않는다.** 그 파일의 용도는 같은 입력의 반복에서 잡음 폭을
+    # **부분 회차는 누적 로그에 넣지 않는다.** 그 파일의 용도는 같은 입력의 반복에서 변동폭을
     # 뽑는 것 하나이고, 잘린 회차가 섞이면 줄을 다 읽어 평균을 내는 집계가 조용히 틀린다.
     # 판단은 쓰는 함수 안에 있다 — 여기서는 결과만 받는다.
     blocked = append_run(args, llm, a, scores, sufficiency, answerable=len(answerable))
@@ -499,7 +499,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST, help="팩 매니페스트")
     ap.add_argument("--tenant", default="default", help="측정하는 테넌트(라벨의 서명 테넌트와 같아야 한다)")
     # 등급은 **측정하는 조건**이지 상수가 아니다. 하드코딩돼 있던 동안, 그 등급으로 못 읽는 문서를
-    # gold 로 가진 질의는 어떤 질의문으로도 통과할 수 없었고 평가 하니스는 그것을 "검색 실패" 로 적었다.
+    # gold 로 가진 질의는 어떤 질의문으로도 통과할 수 없었고 평가 하네스는 그것을 "검색 실패" 로 적었다.
     ap.add_argument("--clearance", default="INTERNAL",
                     help="이 등급으로 읽을 수 있는 것만 검색된다. gold 가 이보다 위면 실행이 거부된다")
     ap.add_argument("--model", default="", help="브리지에 넘길 모델. 비우면 백엔드 기본값")

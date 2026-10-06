@@ -5,14 +5,14 @@
 오지 않았다.
 
 여기서 지키는 것:
-  · 근거 0건(사용자 몫) → 코퍼스 카드가 **붙는다**.
+  · 답변 근거 0건(사용자 몫) → 코퍼스 카드가 **붙는다**.
   · 코퍼스가 비었거나 등급 때문에 안 보이는 것(운영자 몫) → **안 붙는다**. 0건을 자랑하는
     카드가 되고, 사용자가 질문을 바꿔도 소용없는 상황에 방향 안내를 주는 것이기 때문이다.
   · 진단(`/visibility`)이 실패하면 → **안 붙는다**. 진단이 답변을 어지럽히지 않는다.
-  · 근거는 있는데 잘 안 맞을 때(`weak_evidence`) → 카드가 아니라 **한 줄**. 근거 제목은
+  · 답변 근거는 있는데 잘 안 맞을 때(`weak_evidence`) → 카드가 아니라 **한 줄**. 답변 근거 제목은
     이미 답변 아래 그려져 있다.
 
-**핸들러를 통째로 돌린다.** 이 리포는 "단위 테스트는 초록인데 배선이 끊긴" 사고를 네 번 겪었다.
+**핸들러를 통째로 돌린다.** 이 리포는 "단위 테스트는 초록인데 와이어링이 끊긴" 사고를 네 번 겪었다.
 그래서 여기서는 `handle_mention` 이 실제로 게시한 블록을 본다.
 """
 
@@ -78,7 +78,7 @@ async def _ask(monkeypatch, posted, **wire):
     return _text_of(seen[-1])
 
 
-# ── 근거 0건: 사용자 몫이면 방향을 준다 ────────────────────────────────────────
+# ── 답변 근거 0건: 사용자 몫이면 방향을 준다 ────────────────────────────────────────
 
 async def test_no_evidence_gets_the_card_of_what_the_bot_does_know(monkeypatch, posted):
     body = await _ask(monkeypatch, posted, snippets=[])
@@ -108,7 +108,7 @@ async def test_a_failed_diagnostic_stays_silent(monkeypatch, posted):
     assert "제가 가진 문서 밖입니다" not in body
 
 
-# ── 근거는 있는데 잘 안 맞을 때: 카드가 아니라 한 줄 ───────────────────────────
+# ── 답변 근거는 있는데 잘 안 맞을 때: 카드가 아니라 한 줄 ───────────────────────────
 
 async def test_weak_evidence_gets_one_line_not_the_card(monkeypatch, posted):
     body = await _ask(monkeypatch, posted, snippets=[{"doc_title": "t"}], weak=True)

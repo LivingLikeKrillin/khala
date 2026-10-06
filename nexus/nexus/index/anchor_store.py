@@ -56,8 +56,8 @@ async def replace_scan(tenant: str, repo: str, result: ScanResult, commit: str) 
                    no_symbol_files = EXCLUDED.no_symbol_files,
                    scanned_at = now()
             """,
-            # 옛 칸(`unparsed_files`)에는 **합**을 그대로 넣는다. 읽는 곳이 아직 남아 있고,
-            # 뜻이 바뀐 칸을 조용히 두면 옛 독자가 다른 값을 읽는다 (migration 033).
+            # 옛 필드(`unparsed_files`)에는 **합**을 그대로 넣는다. 읽는 곳이 아직 남아 있고,
+            # 뜻이 바뀐 필드를 조용히 두면 옛 독자가 다른 값을 읽는다 (migration 033).
             tenant, repo, commit, len(rows),
             result.unreadable_files + result.no_symbol_files,
             result.unreadable_files, result.no_symbol_files,
@@ -68,7 +68,7 @@ async def replace_scan(tenant: str, repo: str, result: ScanResult, commit: str) 
 
 
 async def code_index_health(tenant: str | None = None) -> list[dict]:
-    """코드 인덱스의 **신원과 구멍** — 테넌트·리포별 한 줄 (SPEC-nexus-doc-code-anchors).
+    """코드 인덱스의 **식별 정보와 구멍** — 테넌트·리포별 한 줄 (SPEC-nexus-doc-code-anchors).
 
     문서↔코드 판정("이 문단이 부른 이름이 지금도 있다")은 **어느 커밋을 사실로 삼았는가**에
     통째로 매달려 있다. 그런데 그 커밋도, 그 인덱스의 구멍도 `nexus status` 에 한 줄도 없었다 —

@@ -30,7 +30,7 @@ ENV_PATH = pathlib.Path(bridge.__file__).resolve().parents[2] / ".env"
 def _restore_environment():
     """⛔ **이 파일은 `os.environ` 을 쓴다 — 그러니 되돌려 놓는다.**
 
-    첫 판이 안 되돌려서 검사 둘을 깨뜨렸다: 실물 `.env` 를 읽는 순간 임베딩 세대가
+    첫 버전이 안 되돌려서 검사 둘을 깨뜨렸다: 실물 `.env` 를 읽는 순간 임베딩 세대가
     프로세스 전체에 퍼져, 배포 대조군과 span 게이트가 다른 세대를 보게 됐다.
     ⭐ 이 리포는 그 모양에 이미 데였다(#503) — **주변 환경을 읽는 검사는 기계를 시험한다.**
     """
@@ -56,9 +56,9 @@ def test_the_file_only_fills_the_bridges_own_blanks(monkeypatch, tmp_path):
     (`ENV_PREFIX` 머리말, 실측 2026-09-22).
     """
     monkeypatch.setenv("NEXUS_LLM_BRIDGE_TIMEOUT", "77")
-    # ⛔ **빈 칸 검사에 토큰 칸을 쓰지 않는다.** 배포 환경에 이미 값이 있으면 단언이 실패하고,
+    # ⛔ **빈 필드 검사에 토큰 필드를 쓰지 않는다.** 배포 환경에 이미 값이 있으면 단언이 실패하고,
     #    pytest 가 그 **실제 값을 diff 로 찍는다** — 이 리포는 자격 증명이 기록에 찍힌 사고를
-    #    이미 여러 건 갖고 있다. 비밀이 아닌 칸으로 같은 계약을 확인한다.
+    #    이미 여러 건 갖고 있다. 비밀이 아닌 필드로 같은 계약을 확인한다.
     monkeypatch.delenv("NEXUS_LLM_BRIDGE_QUEUE_WAIT", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     fake = tmp_path / "nexus" / ".env"
@@ -85,7 +85,7 @@ def test_a_missing_file_is_not_an_error(monkeypatch, tmp_path):
 def test_importing_the_module_does_not_touch_the_environment(monkeypatch):
     """⛔ **import 만으로 `os.environ` 이 바뀌면 그 프로세스의 다른 모든 것이 바뀐다.**
 
-    첫 판이 그렇게 만들었다가 검사 셋을 깨뜨렸다 — `.env` 의 임베딩 세대가 흘러들어
+    첫 버전이 그렇게 만들었다가 검사 셋을 깨뜨렸다 — `.env` 의 임베딩 세대가 흘러들어
     배포 대조군과 span 게이트가 다른 세대를 보게 됐다. 이 리포는 그 모양에 이미 데였다(#503).
     """
     monkeypatch.delenv("NEXUS_LLM_BRIDGE_TIMEOUT", raising=False)
@@ -138,7 +138,7 @@ def test_the_limits_in_the_file_are_the_ones_the_gate_uses(monkeypatch, tmp_path
 
 
 def test_main_sets_up_the_gate_after_it_reads_the_file():
-    """파일보다 먼저 세우면 위 검사가 막은 바로 그 판이 된다 — 파일을 읽고도 옛 한도로 선다."""
+    """파일보다 먼저 세우면 위 검사가 막은 바로 그 버전이 된다 — 파일을 읽고도 옛 한도로 선다."""
     import inspect
 
     src = inspect.getsource(bridge.main)

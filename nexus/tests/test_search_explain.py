@@ -4,7 +4,7 @@
 근거에 안 온다"* 를 보고했는데 그쪽이 볼 수 있는 것은 패킷에 **든** 조각의 제목뿐이라
 *"빠진 문서가 21등인지 200등인지 구별할 수 없다"* 고 적었다. 우리 쪽은 질의 원문이 없어
 네 모양으로 재현을 시도했고 네 번 다 반대 결과였다. 양쪽이 각자 절반만 보는 상태에서
-처방을 고르면 추측이다.
+조치 방법을 고르면 추측이다.
 
 ⭐ **값은 이미 쌓이고 있었다** — `search_span_candidate` 가 경로별 순위·원점수를 남기는데
 읽는 코드가 만료 작업 하나뿐이었다(실측 55,027행). 이 단위는 기능이 아니라 **읽을 자리**다.
@@ -62,10 +62,10 @@ def test_it_reads_the_record_and_does_not_re_run_the_search():
         assert forbidden not in src, f"{forbidden} 를 부른다 — 기록이 아니라 재실행이다"
 
 
-# ── 배선: 실제로 기록에서 읽어 오는가 ────────────────────────────────────────
+# ── 와이어링: 실제로 기록에서 읽어 오는가 ────────────────────────────────────────
 
 async def _seed_run(pool, tenant: str, query: str, titles_ranks):
-    """`search_log` 한 행 + span 하나 + 후보들. 문서·조각도 같이 심는다."""
+    """`search_log` 한 행 + span 하나 + 후보들. 문서·청크도 같이 심는다."""
     from nexus.search.signals import query_sha256
 
     async with pool.acquire() as con:

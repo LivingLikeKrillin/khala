@@ -24,7 +24,7 @@ def test_the_document_key_survives_a_change_of_tenant():
 
 
 def test_the_body_hash_notices_a_changed_document():
-    """이 해시가 곧 '얼렸다' 의 의미다. 안 바뀌면 얼린 것이 아니다."""
+    """이 해시가 곧 '얼렸다' 의 의미다. 안 바뀌면 동결된 것이 아니다."""
     base = _body_hash(["첫 청크", "둘째 청크"])
     assert base == _body_hash(["첫 청크", "둘째 청크"])
     assert base != _body_hash(["첫 청크", "둘째 청크 수정"])
@@ -108,7 +108,7 @@ def test_the_gate_is_the_measured_disagreement_not_a_document_count():
 
     검정력을 예고하는 것은 문서 수가 아니라 **두 실험군의 순위가 갈리는 자리**다. 문서 수는 구하기
     쉬운 양이었고, 갈리는 자리는 한 번 더 물어야 나오는 양이었다 — §6.2 가 지적한 실수를 그
-    처방에서 그대로 반복했다.
+    조치 방법에서 그대로 반복했다.
     """
     from scripts.ko_eval_packb import SHALLOW_MIN
 

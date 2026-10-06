@@ -103,11 +103,11 @@ async def index_chunk_embedding(
         )
         # 출처는 **컬럼별**로 (SPEC-nexus-embedding-provenance-grain §3.1). 단건·배치 **둘 다**
         # 남겨야 한다 — 한쪽만 고치면 그 경로로 쓰인 벡터가 조용히 미상이 된다.
-        # 행 라벨(`chunks.embed_model`)은 더 쓰지 않는다 (027) — 한 칸이 컬럼 둘을 설명할 수
+        # 행 라벨(`chunks.embed_model`)은 더 쓰지 않는다 (027) — 한 필드가 컬럼 둘을 설명할 수
         # 없어서 거짓이었고, 여기가 그 거짓을 만들던 자리다.
         await provenance.record(chunk_rid=chunk_rid, column_name=col,
                                 model=embedding_svc.get_model_name())
-        # 성공하면 이전 거부 기록을 지운다 — 낡은 거부가 남으면 멀쩡한 청크가 병들어 보인다.
+        # 성공하면 이전 거부 기록을 지운다 — 스테일 거부가 남으면 멀쩡한 청크가 병들어 보인다.
         await clear_refusal(chunk_rid, col)
         return True
 

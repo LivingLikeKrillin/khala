@@ -2,7 +2,7 @@
 
 LLM 이 뱉은 답변의 **유의미한 숫자**가, LLM 에게 실제로 보여준 것(evidence + query + 요청자
 자료)에 실재하는지 결정론적으로 대조한다. "System decides, LLM narrates": 지어낸 통계는 시스템이
-값-일치로 판정하고, LLM 은 서술만 한다. #134(인용 존재검증)의 숫자판.
+값-일치로 판정하고, LLM 은 생성만 한다. #134(인용 존재검증)의 숫자버전.
 
 숫자마다 **어디서 찾았는지**(`found_in`)도 남긴다(2026-09-30). 참/거짓 하나로는 「근거에 있었다」와
 「요청자 자료에서 옮겨 적었다」를 못 가르고, 소비자에게 그 둘은 뜻이 다르다. 한 값으로 고르지 않고
@@ -21,7 +21,7 @@ from dataclasses import dataclass
 _VERSION = re.compile(r"\d+(?:\.\d+){2,}")
 # 숫자 토큰: 선택적 통화기호 + 정수부 + 선택적 소수 + 인접 % (부호는 안 잡음).
 # 정수부는 **천 단위 쉼표가 제자리에 있을 때만** 쉼표를 받는다(`1,000` · `12,500`).
-# ⛔ 옛 판 `\d[\d,]*` 는 문장부호 쉼표까지 먹었다(실측 2026-09-27) — `-15,` 가 "15," 로 나갔고
+# ⛔ 옛 버전 `\d[\d,]*` 는 문장부호 쉼표까지 먹었다(실측 2026-09-27) — `-15,` 가 "15," 로 나갔고
 #    (표시만 틀림) `30,40` 을 한 수 3040 으로 읽었다(판정까지 틀림).
 _NUM = re.compile(r"[$₩]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?")
 
@@ -71,7 +71,7 @@ def _numbers(text: str) -> list[str]:
 def validate_numbers(
     answer_text: str, evidence_text: str, query: str = "", context: str = ""
 ) -> NumberReport:
-    """답변의 유의미한 숫자를 evidence+query(+요청자 자료)의 숫자와 값-대조. 순수·무예외.
+    """답변의 유의미한 숫자를 evidence+query(+호출자 컨텍스트)의 숫자와 값-대조. 순수·무예외.
 
     `context` 는 요청자가 준 자료(`answer_context`)다. 모델에게 **보여 준 것**이므로 대조 범위에
     든다 — 빼면 자료에서 옮겨 적은 수(대상 번호 · 한도)가 「지어낸 수」로 세어져
@@ -98,7 +98,7 @@ def validate_numbers(
 
 
 def number_items(report: NumberReport) -> list[dict]:
-    """응답의 `numbers` 항목. **두 답변 표면이 이 함수 하나로 만든다** — 표면마다 식을 적으면
-    한쪽에만 칸이 붙고, 그 조합은 검사가 초록인 채로 조용히 갈린다(A44)."""
+    """응답의 `numbers` 항목. **두 답변 API 표면이 이 함수 하나로 만든다** — API 표면마다 식을 적으면
+    한쪽에만 필드가 붙고, 그 조합은 검사가 초록인 채로 조용히 갈린다(A44)."""
     return [{"value": n.value, "grounded": n.grounded, "found_in": list(n.found_in)}
             for n in report.numbers]

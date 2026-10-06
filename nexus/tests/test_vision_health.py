@@ -53,7 +53,7 @@ def test_token_classes_do_not_leak():
 
 
 def test_a_mixed_script_identifier_is_one_token():
-    """앞선 판은 ASCII 에 앵커돼 `툴팁_사용가이드_02` 를 `02` 로 잘랐다.
+    """앞선 버전은 ASCII 에 앵커돼 `툴팁_사용가이드_02` 를 `02` 로 잘랐다.
 
     조각을 "이 문자열이 그림에 있습니까" 로 물으면 거의 답할 수 없고 — 2026-08-11 판정에서
     대조군 하나가 그래서 뒤집혔다 — 서로 다른 식별자를 읽은 두 판독이 그 조각에서 **일치로**
@@ -90,7 +90,7 @@ def test_dash_range_is_not_folded_and_that_is_pinned():
 
 
 def test_variation_endpoints():
-    """§4.1 — 평가 하니스의 양 끝."""
+    """§4.1 — 평가 하네스의 양 끝."""
     assert variation("Ava_01 60", "Ava_01 60") == 0.0
     assert variation("Ava_01", "ZZZ_99") == 1.0
 

@@ -1,4 +1,4 @@
-"""적재가 세대 선언에 복종하는가 — REAL Postgres. SPEC-nexus-generation-of-record §6-3·4·7·8.
+"""적재가 세대 명시적 선언에 복종하는가 — REAL Postgres. SPEC-nexus-generation-of-record §6-3·4·7·8.
 
 2026-08-10 의 사고를 고친 코드에 대고 다시 재현한다: 호스트가 해석한 768 세대로 1024 코퍼스에
 적재하려 하면 **아무것도 쓰지 않고** 멈춰야 한다.
@@ -75,7 +75,7 @@ async def test_a_mismatched_generation_refuses_before_writing_anything(clean, tm
 
 
 async def test_a_matching_generation_ingests_as_before(clean, tmp_path, monkeypatch):
-    """§6-3 — 선언과 같으면 아무것도 달라지지 않는다."""
+    """§6-3 — 명시적 선언과 같으면 아무것도 달라지지 않는다."""
     from nexus.index import generation as gen
     from nexus.ingest.pipeline import run_ingest
 
@@ -103,7 +103,7 @@ async def test_an_undeclared_tenant_still_ingests(clean, tmp_path, monkeypatch):
 
 
 async def test_changing_the_text_invalidates_every_vector_column(clean, tmp_path, monkeypatch):
-    """§6-7·8 — 이것이 낡은 벡터를 만든 결함이다. 레지스트리를 열거해 단언한다."""
+    """§6-7·8 — 이것이 스테일 벡터를 만든 결함이다. 레지스트리를 열거해 단언한다."""
     from nexus import db
     from nexus.index.vector_index import VECTOR_COLUMNS
     from nexus.ingest.pipeline import run_ingest

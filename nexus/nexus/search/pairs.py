@@ -1,4 +1,4 @@
-"""짝 문서 확장 — **설계와 구현 계획은 같은 일의 두 문서다.**
+"""페어 문서 확장 — **설계와 구현 계획은 같은 일의 두 문서다.**
 
 **왜 있나.** 팀은 한 가지 일을 문서 둘로 쓴다: `specs/<날짜>-<슬러그>-design.md` 와
 `plans/<날짜>-<슬러그>.md`. 설계는 *왜* 와 *무엇* 을 갖고, 계획은 *어느 파일* 과 *어떤 순서*
@@ -68,7 +68,7 @@ def mates_from(rows: list[dict]) -> dict[str, list[str]]:
 async def paired_chunks(hits, tenant: str | Sequence[str], clearance: str, *,
                         exclude_rids=None, exclude_doc_types=(),
                         failed: list | None = None) -> list[dict]:
-    """상위 히트 문서들의 **짝 문서** 청크. 실패는 삼키되 조용하지 않게.
+    """상위 히트 문서들의 **페어 문서** 청크. 실패는 삼키되 조용하지 않게.
 
     ⛔ **짝은 히트 밖의 문서를 데려온다 (실측 2026-09-20).** 이 조회는 `/specs/`·`/plans/`
     아래 문서를 찾아 히트 문서의 짝으로 붙이므로, 바깥 질의가 그 종류를 후보에서 뺐더라도

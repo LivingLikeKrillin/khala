@@ -1,6 +1,6 @@
 """`claude` 의 **오류가 답으로 나가지 않는가** — 브리지가 출력의 **모양**을 보고 가른다.
 
-⛔ **왜 생겼나 (2026-09-27, 설명 층 자문).** 브리지는 `claude -p --output-format text` 의 stdout 을
+⛔ **왜 생겼나 (2026-09-27, 설명 레이어 자문).** 브리지는 `claude -p --output-format text` 의 stdout 을
 그대로 답으로 돌려줬다. `claude` 가 오류를 **stdout 에 글로** 쓰고 0 으로 끝나면 그 문장이 200 과
 함께 **답변**으로 나간다. 인용 검증도 숫자 검증도 그것을 오류로 못 본다 — 인용 없는 짧은 답일
 뿐이다. 사용 한도 안내가 그 모양의 후보였고, 그 경우 `llm_failed` 가 안 서서 재시도할 쪽은
@@ -99,7 +99,7 @@ def _events(*events) -> str:
 
 
 def test_the_image_path_does_not_pass_an_error_off_as_extracted_text():
-    """판독 경로도 같은 구멍이다 — API 오류는 **assistant 문장**으로도 흐른다."""
+    """기계 판독 경로도 같은 구멍이다 — API 오류는 **assistant 문장**으로도 흐른다."""
     out = _events(
         {"type": "system", "subtype": "init"},
         {"type": "assistant", "message": {"content": [{"type": "text", "text": "API Error: 529 overloaded"}]}},

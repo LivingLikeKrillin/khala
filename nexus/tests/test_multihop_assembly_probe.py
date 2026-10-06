@@ -23,7 +23,7 @@ def _arms(**kw):
     return out
 
 
-# ── §5.1 결정론 대조군 ───────────────────────────────────────────────────────
+# ── §5.1 결정론적 대조군 ───────────────────────────────────────────────────────
 
 def test_a_drifting_base_stops_before_any_verdict():
     """회차가 갈리면 '실험군당 1회' 라는 전제가 거짓이다 — 그 위의 판정은 판정이 아니다."""
@@ -40,7 +40,7 @@ def test_determinism_names_only_the_queries_that_moved():
 
 
 def test_a_query_missing_from_the_second_round_counts_as_drift():
-    """빠진 질의를 '같다' 로 세면 결정론 대조군이 통과하는 척한다."""
+    """빠진 질의를 '같다' 로 세면 결정론적 대조군이 통과하는 척한다."""
     a = {"rows": [{"qid": "m01", "text_sha256": "x"}]}
     assert determinism(a, {"rows": []}) == ["m01"]
 
@@ -48,7 +48,7 @@ def test_a_query_missing_from_the_second_round_counts_as_drift():
 # ── §5.2 음성 대조군 ─────────────────────────────────────────────────────────
 
 def test_fill_off_matching_base_falsifies_the_mechanism():
-    """절 채움을 꺼도 같으면 §1 의 기제 서술이 틀린 것이다 — 후보를 고를 자리가 아니다."""
+    """섹션 필을 꺼도 같으면 §1 의 메커니즘 서술이 틀린 것이다 — 후보를 고를 자리가 아니다."""
     arms = [_arm("base", 2, 8, 1000), _arm("fill-off", 2, 8, 800),
             _arm("hits-5", 4, 8, 1100)]
     v = verdict(arms, [])
@@ -79,7 +79,7 @@ def test_a_policy_gain_alongside_the_multihop_gain_is_fine():
 # ── §5.5 값의 상한 ───────────────────────────────────────────────────────────
 
 def test_an_arm_over_the_cost_ceiling_is_refused_however_good_it_looks():
-    """4/4 라도 근거가 두 배면 안 받는다. 상한은 결과를 보기 전에 박혔다."""
+    """4/4 라도 답변 근거가 두 배면 안 받는다. 상한은 결과를 보기 전에 박혔다."""
     over = 1000 * COST_CEILING + 1
     assert verdict(_arms(**{"hits-10": (4, 8, over)}), [])["adopt"] is None
 
@@ -92,7 +92,7 @@ def test_an_arm_exactly_at_the_ceiling_is_still_a_candidate():
 # ── §5.4 여럿이면 가장 싼 것 ─────────────────────────────────────────────────
 
 def test_the_cheapest_candidate_wins_not_the_highest_scoring_one():
-    """더 많이 맞히는 실험군이 아니라 **근거가 덜 느는** 실험군을 고른다고 미리 적었다."""
+    """더 많이 맞히는 실험군이 아니라 **답변 근거가 덜 느는** 실험군을 고른다고 미리 적었다."""
     v = verdict(_arms(**{"hits-10": (4, 8, 1400), "hits-5": (3, 8, 1050)}), [])
     assert v["adopt"] == "hits-5"
     assert [c["arm"] for c in v["candidates"]] == ["hits-5", "hits-10"]
@@ -126,8 +126,8 @@ def test_totals_counts_each_group_separately():
 
 # ── 사람이 읽는 표가 반대를 말하지 않는가 ────────────────────────────────────
 #
-# 첫 판은 비율을 그대로 백분율로 찍었다: 0.706 → `+71%`, 1.00 → `+100%`, 거기에 문자열 치환을
-# 덧대 `+00%` 를 만들었다. **근거가 3할 줄어든 실험군이 7할 늘어난 것처럼** 보였다. 판정은 원래
+# 첫 버전은 비율을 그대로 백분율로 찍었다: 0.706 → `+71%`, 1.00 → `+100%`, 거기에 문자열 치환을
+# 덧대 `+00%` 를 만들었다. **답변 근거가 3할 줄어든 실험군이 7할 늘어난 것처럼** 보였다. 판정은 원래
 # 값으로 계산하므로 결과는 안 틀렸지만, 표가 반대를 말하면 그 표를 근거로 다음 결정이 난다.
 
 from scripts.multihop_assembly_probe import cost_delta  # noqa: E402
@@ -201,7 +201,7 @@ def test_a_chunk_only_the_keyword_leg_found_is_flagged_too():
 
 
 def test_a_chunk_neither_leg_found_is_not_a_fusion_problem():
-    """양쪽 다 못 잡았으면 융합 탓이 아니다 — 처방이 다르므로 같은 이름으로 부르면 안 된다."""
+    """양쪽 다 못 잡았으면 융합 탓이 아니다 — 조치 방법이 다르므로 같은 이름으로 부르면 안 된다."""
     assert not one_leg_only({"bm25_rank": None, "vector_rank": None})
 
 

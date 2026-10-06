@@ -44,7 +44,7 @@ async def supersede(old_rid: str, new_rid: str, tenant: str) -> str:
 async def resolve_active_doc(ref: str, tenant: str) -> str:
     """ref(rid | source_uri | basename)를 **active** 문서 rid 로 확정. 위반 시 ValueError. 스펙 §4.1.
 
-    구현은 `nexus.documents.resolve.resolve_doc(active_only=True)` 에 있다. 생애주기 명령들
+    구현은 `nexus.documents.resolve.resolve_doc(active_only=True)` 에 있다. 생명주기 명령들
     (hide/restore/unsupersede)은 상태를 가리지 않는 같은 해석기를 쓴다 — 두 벌의 SQL 이
     갈라지면 '이 경로가 어느 문서냐' 는 답이 명령마다 달라진다.
 

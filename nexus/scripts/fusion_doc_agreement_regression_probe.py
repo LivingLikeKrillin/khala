@@ -10,16 +10,16 @@
    돌려 코퍼스를 글자 그대로 같게 둔다. 두 실험군 다 `api._search_channels` 를 지난다(라이브 그 함수).
 2. **골든 문서가 있는 라벨** — 골든 문서가 **상위 10**(문서 단위)에 오는가. `top_k` 10 은 T2 회귀와
    같은 값이다(그 표와 나란히 읽게). 라벨 집합마다 Recall@10(건수)과 MRR 을 적는다.
-3. **골든이 없는 라벨**(`expect` 사실) — 답변 경로와 같은 검색(`top_k` 20)과 같은 묶음
-   (`packet_for_answer`)을 만들고, 기대 사실이 그 묶음의 글(`format_for_llm`, 모델이 보는 문자열)에
+3. **골든이 없는 라벨**(`expect` 사실) — 답변 경로와 같은 검색(`top_k` 20)과 같은 근거 묶음
+   (`packet_for_answer`)을 만들고, 기대 사실이 그 근거 묶음의 글(`format_for_llm`, 모델이 보는 문자열)에
    있는가. 판정은 `answer_fact_probe` 의 것을 그대로 쓴다(`required_groups` · 그 파일의 `_norm`).
-   **LLM 을 안 부른다** — 처치는 검색만 건드리고, 생성의 흔들림을 처치의 효과로 적지 않는다.
+   **LLM 을 안 부른다** — 처치는 검색만 건드리고, 생성의 변동성을 처치의 효과로 적지 않는다.
 4. **판정** — 라벨 집합 **하나라도** F1 의 Recall@10 건수 · MRR · 사실 건수가 T0 보다 **낮으면 기각**.
    같거나 높으면 그 집합은 회귀 없음. 유의성은 주장하지 않는다(사전 등록 §4.3).
 5. **음성 대조군** — F1 실험군의 결과 객체가 `fusion_doc_agreement=True` 를 들고 오지 않은 질의가
-   하나라도 있으면 이 판은 **무효**다(스위치가 안 닿은 것). T0 쪽이 True 여도 무효.
+   하나라도 있으면 이 버전은 **무효**다(스위치가 안 닿은 것). T0 쪽이 True 여도 무효.
 6. **부 변수(기술만, 판정에 안 씀)** — 검색 구간 지연 중앙값 · 상위 10 의 한 문서 쏠림(가장 많은
-   문서의 조각 비율) 평균 · 출력이 갈린 질의 수.
+   문서의 청크 비율) 평균 · 출력이 갈린 질의 수.
 7. 경로가 죽으면(`degraded`) 그 상태의 수는 결과가 아니다 — 멈춘다. 만료된 라벨은 **실험군 비교에는
    넣고**(같은 날 같은 코퍼스라 비교는 선다) 표시한다.
 
@@ -118,7 +118,7 @@ async def _run(args) -> int:
                     if r.degraded:
                         print(f"✗ 경로가 죽었다({r.degraded}) — 이 상태의 수는 결과가 아니다")
                         return 1
-                    # 사전 등록 5 — 결과 객체가 「켰는가」를 들고 와야 이 판이 선다.
+                    # 사전 등록 5 — 결과 객체가 「켰는가」를 들고 와야 이 버전이 선다.
                     row[f"applied_{arm}"] = r.fusion_doc_agreement
                     row[f"share_{arm}"] = _max_doc_share(r.hits[:GOLD_TOP_K])
                     results[arm] = r
@@ -203,7 +203,7 @@ async def _run(args) -> int:
               f"F1 {t['mean_max_doc_share_F1']:.3f}")
     REPORT.write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"  리포트: {REPORT}")
-    # 사전 등록 5 — 스위치가 안 닿았으면 이 판은 무효다.
+    # 사전 등록 5 — 스위치가 안 닿았으면 이 버전은 무효다.
     if t["applied_F1"] != t["queries"] or t["applied_T0"]:
         print("  ⛔ 처치가 결과 객체에 안 닿았다(또는 대조군에 닿았다) — 이 판은 무효다")
         return 1

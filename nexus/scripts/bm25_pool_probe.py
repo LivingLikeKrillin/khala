@@ -3,13 +3,13 @@
 규칙은 `docs/BM25_POOL_PREREGISTRATION.md` 이고 **이 파일보다 먼저 커밋된다.** 여기 있는 것은
 그 문서 §2·§4·§5 를 옮긴 것이고, 규칙을 고치려면 그 문서를 먼저 고쳐야 한다.
 
-앞 판(`multihop_assembly_probe.py`)과 갈리는 곳 둘:
+앞 버전(`multihop_assembly_probe.py`)과 갈리는 곳 둘:
 
-  · **기제를 직접 관측한다.** 앞 판의 음성 대조군은 *동률*을 "기제가 아니다" 로 읽었는데, 동률은
+  · **메커니즘을 직접 관측한다.** 앞 버전의 음성 대조군은 *동률*을 "메커니즘이 아니다" 로 읽었는데, 동률은
     *안 돎*과 *돌지만 쓸모없음*을 한꺼번에 뜻했다. 여기서는 정답 청크가 그 실험군에서 **BM25 풀에
     실제로 들어왔는가**를 본다.
-  · **지연을 측정한다.** 그 축은 결정론이 아니므로 질의당 여러 회차를 돌리고, **문턱을 ms 로 미리
-    박지 않는다** — 잡음 폭을 같은 실행에서 만든다(`base` vs `base-again`).
+  · **지연을 측정한다.** 그 차원은 결정성이 아니므로 질의당 여러 회차를 돌리고, **임계값을 ms 로 미리
+    박지 않는다** — 노이즈 플로어를 같은 실행에서 만든다(`base` vs `base-again`).
 
     docker exec nexus-app python -m scripts.bm25_pool_probe \\
         --labels /app/tests/eval/local/policy-multihop-labels.yaml \\
@@ -40,7 +40,7 @@ CLEARANCE = "INTERNAL"
 #: `vector_top_k` 는 건드리지 않는다: 둘을 같이 올리면 어느 쪽이 값을 냈는지 못 가른다.
 ARMS: list[tuple[str, int]] = [("base", 20), ("pool-25", 25), ("pool-30", 30), ("pool-40", 40)]
 
-#: 사전 등록 §3. 지연은 결정론이 아니라 반복이 필요하다. 10 의 근거는 검정력이 아니라 **비용이
+#: 사전 등록 §3. 지연은 결정성이 아니라 반복이 필요하다. 10 의 근거는 검정력이 아니라 **비용이
 #: 제약이 아니라는 것**이다 — 12질의 × 10회 × 실험군 = 몇 분이고 LLM 이 없어 지출이 0 이다.
 LATENCY_REPEATS = 10
 
@@ -49,7 +49,7 @@ COST_CEILING = 1.50
 
 
 def cost_delta(arm_value: float, base_value: float) -> str:
-    """변화율. `base` 는 `+0%`, 3할 줄면 `-29%`. (앞 판에서 비율을 그대로 찍어 표가 반대를 말했다.)"""
+    """변화율. `base` 는 `+0%`, 3할 줄면 `-29%`. (앞 버전에서 비율을 그대로 찍어 표가 반대를 말했다.)"""
     if not base_value:
         return "?"
     return f"{arm_value / base_value - 1:+.0%}"
@@ -70,7 +70,7 @@ def verdict(arms: list[dict], drift: list[str], noise_band: float) -> dict:
         # 늘어날 때 규칙이 조용히 좁아진다.
         if any(a[g]["covered"] < base[g]["covered"] for g in regression_groups(base)):
             continue
-        # §5.2 기제 대조군 — 좋아졌는데 청크가 풀에 안 들어왔으면 값이 다른 데서 온 것이다.
+        # §5.2 메커니즘 대조군 — 좋아졌는데 청크가 풀에 안 들어왔으면 값이 다른 데서 온 것이다.
         # **새로 커버된 질의마다** 본다. 실험군당 참/거짓 하나로는 "어느 질의에서 들어왔는가" 를
         # 못 판다 — 무딘 답은 규칙이 묻지 않은 것에 답하는 것이다.
         gained = set(covered_qids(a)) - set(covered_qids(base))
@@ -85,10 +85,10 @@ def verdict(arms: list[dict], drift: list[str], noise_band: float) -> dict:
             "arm": a["arm"], "bm25_top_k": a["bm25_top_k"],
             "multihop": a["multihop"]["covered"], "policy": a["policy"]["covered"],
             "chars_ratio": round(grew, 3), "latency_ratio": round(slower, 3),
-            # 잡음 폭 안이면 대가라고 부르지 않는다(§5.5).
+            # 변동폭 안이면 대가라고 부르지 않는다(§5.5).
             "latency_is_measurable": abs(a["median_ms"] - base["median_ms"]) > noise_band,
         })
-    # §5.6 — 풀 증가가 가장 작은 것. 커버리지도 근거 분량도 아니다(이유는 사전 등록 §0).
+    # §5.6 — 풀 증가가 가장 작은 것. 커버리지도 답변 근거 분량도 아니다(이유는 사전 등록 §0).
     candidates.sort(key=lambda c: c["bm25_top_k"])
     return {"stopped_at": None, "candidates": candidates,
             "improved_without_the_mechanism": noted,
@@ -100,7 +100,7 @@ def verdict(arms: list[dict], drift: list[str], noise_band: float) -> dict:
 def table(arms: list[dict]) -> list[str]:
     """결과 표. **그룹을 코드에 박지 않는다.**
 
-    첫 판은 두 칸(`멀티홉`·`정책`)을 박아 뒀고, Pack B 를 회귀 집합에 얹은 실행에서 그 열이
+    첫 버전은 두 필드(`멀티홉`·`정책`)를 박아 뒀고, Pack B 를 회귀 집합에 얹은 실행에서 그 열이
     아예 안 찍혔다(2026-09-02). 판정 함수는 모든 그룹을 봤으므로 결과는 옳았지만, **읽는
     사람에게는 새 회귀 집합이 없는 것처럼 보였다** — 판정이 무엇 위에서 났는지가 표에 없으면
     그 표는 판정을 뒷받침하지 못한다.
@@ -163,8 +163,8 @@ async def run_arm(name: str, pool: int, groups: dict[str, list[dict]], tenant: l
 
     for group, queries in groups.items():
         for q in queries:
-            # ⚠ 범위는 **목록**으로 넘긴다 — 2026-09-02 에 문자열을 넘긴 호출부에서 절 채움과
-            # 짝 확장이 조용히 죽었고 검사 열셋이 전부 초록이었다.
+            # ⚠ 범위는 **목록**으로 넘긴다 — 2026-09-02 에 문자열을 넘긴 호출부에서 섹션 필과
+            # 페어 확장이 조용히 죽었고 검사 열셋이 전부 초록이었다.
             timings = []
             for _ in range(repeats):
                 t0 = time.perf_counter()
@@ -178,8 +178,8 @@ async def run_arm(name: str, pool: int, groups: dict[str, list[dict]], tenant: l
             text = format_for_llm(packet)
             present = facts_present(q.get("must_contain"), text)
 
-            # §5.2 기제 관측 — 정답 청크가 **이 실험군의 BM25 풀에** 들어왔는가.
-            # ⚠ **질의별로** 남긴다. 첫 판은 실험군당 참/거짓 하나였고, 그러면 "어느 질의에서
+            # §5.2 메커니즘 관측 — 정답 청크가 **이 실험군의 BM25 풀에** 들어왔는가.
+            # ⚠ **질의별로** 남긴다. 첫 버전은 실험군당 참/거짓 하나였고, 그러면 "어느 질의에서
             # 들어왔는가" 를 못 판다 — 실제로 m01 은 들어오고 m02 는 안 들어온 회차를 하나의
             # `True` 로 뭉쳤다(2026-09-02). 판정은 안 바뀌었지만 규칙이 묻는 것보다 무딘 답이었다.
             if holder_rid and group == "multihop":
@@ -225,7 +225,7 @@ async def _run(args) -> int:
             (p.stem.replace("-labels", ""), p) for p in args.control]:
         labels = load(path)
         qs = answerable(labels)
-        # §7.2 만료된 라벨은 **뺀다.** 사라진 텍스트에 대한 주장을 지금 근거에 대 보는 것은
+        # §7.2 만료된 라벨은 **뺀다.** 사라진 텍스트에 대한 주장을 지금 답변 근거에 대 보는 것은
         # 아무것도 측정하지 않는다. 그리고 **몇 건을 뺐는지 말한다** — 조용히 빼면 분모가
         # 말없이 달라지고, 그 분모로 나온 비율이 인용된다.
         stale = await stale_qids(labels, tenant)
@@ -300,7 +300,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="회귀 검사 라벨. 쉼표로 여러 개",
                    type=lambda v: [Path(x.strip()) for x in v.split(",") if x.strip()])
     p.add_argument("--tenant", default="default", help="쉼표로 여러 개")
-    # 기제 관측 대상. 조직 문서의 값이라 리포에 못 적는다 — 실행할 때 준다.
+    # 메커니즘 관측 대상. 조직 문서의 값이라 리포에 못 적는다 — 실행할 때 준다.
     p.add_argument("--fact", default="", help="정답 청크를 찾을 문자열 (기제 대조군을 켠다)")
     p.add_argument("--repeats", type=int, default=LATENCY_REPEATS, help="질의당 지연 반복")
     p.add_argument("--out", type=Path, required=True, help="결과 파일. gitignore 된 곳에")

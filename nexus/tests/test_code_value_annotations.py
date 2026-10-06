@@ -99,7 +99,7 @@ def test_the_same_field_with_different_limits_is_refused(tmp_path):
 
 
 def test_the_qualifier_narrows_it(tmp_path):
-    """한정자를 붙이면 갈린다 — 그것이 처방으로 제시되는 이유다."""
+    """한정자를 붙이면 갈린다 — 그것이 조치 방법으로 제시되는 이유다."""
     _java(tmp_path, "a/CreateVirtualMemberRequest.java",
           "public class CreateVirtualMemberRequest { @Size(max = 20) private String nickname; }")
     _java(tmp_path, "b/CreateAdministratorRequest.java",
@@ -110,7 +110,7 @@ def test_the_qualifier_narrows_it(tmp_path):
 
 
 def test_an_annotation_written_in_a_comment_is_not_code(tmp_path):
-    """⛔ 대조군. javadoc 의 예시를 코드로 읽으면 낡은 값이 확신하는 문장으로 나간다."""
+    """⛔ 대조군. javadoc 의 예시를 코드로 읽으면 스테일 값이 확신하는 문장으로 나간다."""
     _java(tmp_path, "a/Doc.java", """
 public class Doc {
     /** 예전에는 @Size(max = 999) 였다. */
@@ -124,7 +124,7 @@ public class Doc {
 
 
 def test_a_missing_annotation_says_what_is_missing(tmp_path):
-    """처방이 갈려야 한다 — claim 을 고칠 일인지 배포를 고칠 일인지."""
+    """조치 방법이 갈려야 한다 — claim 을 고칠 일인지 배포를 고칠 일인지."""
     _java(tmp_path, "a/Plain.java", "public class Plain { private String title; }")
     r = CodeValueResolver(tmp_path).resolve("Plain.title@Size.max")
     assert r.found is False
@@ -183,7 +183,7 @@ def test_resolve_at_says_the_file_moved_rather_than_guessing(tmp_path):
 
 
 def test_resolve_at_says_the_symbol_left_rather_than_falling_back_to_a_scan(tmp_path):
-    """⛔ 여기서 전체 훑기로 되돌아가면 요청 하나가 50초를 문다."""
+    """⛔ 여기서 전체 스윕으로 되돌아가면 요청 하나가 50초를 문다."""
     _java(tmp_path, "a/Req.java", "public class Req { private String title; }")
     _java(tmp_path, "b/Other.java", "public class Other { @Size(max = 9) private String title; }")
 

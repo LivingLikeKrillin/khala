@@ -60,7 +60,7 @@ async def test_a_claim_that_does_not_bind_is_named_with_its_reason(tmp_path):
     assert rep.total == 2
     assert rep.bound == 1
     assert [c for c, _ in rep.unbound] == ["typo"]
-    # 이유가 처방을 갈라야 한다 — claim 을 고칠 일이지 배포를 고칠 일이 아니다.
+    # 이유가 조치 방법을 갈라야 한다 — claim 을 고칠 일이지 배포를 고칠 일이 아니다.
     assert "찾지 못했다" in rep.unbound[0][1]
 
 
@@ -91,7 +91,7 @@ async def test_a_missing_code_mount_says_so_rather_than_looking_like_a_bad_claim
 
 @pytest.mark.asyncio
 async def test_an_ambiguous_source_is_reported_as_ambiguous_not_missing(tmp_path):
-    """처방이 다르다 — 한정자를 붙이라는 말이 나와야 한다."""
+    """조치 방법이 다르다 — 한정자를 붙이라는 말이 나와야 한다."""
     src = _repo_with(tmp_path, "a/A.java",
                      "public class A { @Size(max = 20) private String nickname; }")
     (src / "b").mkdir(parents=True, exist_ok=True)

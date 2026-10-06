@@ -113,7 +113,7 @@ class TestFormatAnswer:
     def test_no_block_exceeds_slacks_per_block_limit(self):
         """자르기는 답변에만 있으면 안 된다 — Slack 은 **모든** 텍스트에 상한을 건다.
 
-        근거·그래프·출처는 지금 짧아서 안 걸릴 뿐이고, 문서 제목 하나가 길어지면 같은 자리에서
+        답변 근거·그래프·출처는 지금 짧아서 안 걸릴 뿐이고, 문서 제목 하나가 길어지면 같은 자리에서
         같은 방식으로 죽는다. 검사는 블록 전체를 훑는다.
         """
         data = self._make_answer_data()

@@ -58,7 +58,7 @@ def verify_access_jwt(
     leeway_seconds: int = 60,
     now: float | None = None,
 ) -> VerifiedIdentity:
-    """검증하고 신원을 돌려준다. 어떤 실패도 AccessJwtError. 시간은 주입 가능(테스트).
+    """검증하고 식별 정보를 돌려준다. 어떤 실패도 AccessJwtError. 시간은 주입 가능(테스트).
 
     절차(SPEC §4.1):
       1. 세 조각으로 나눈다.

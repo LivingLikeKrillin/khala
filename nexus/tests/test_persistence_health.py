@@ -47,7 +47,7 @@ def test_the_output_warns_that_silence_is_not_failure():
 
 
 def test_a_missing_table_is_not_the_same_as_zero_rows():
-    """표가 없는 것과 0행은 다른 사실이다 — 처방도 다르다."""
+    """표가 없는 것과 0행은 다른 사실이다 — 조치 방법도 다르다."""
     out = describe([_h(exists=False, rows=0, last_write=None, hours_since=None)])
     assert "표가 없다" in out
 
@@ -60,7 +60,7 @@ def test_a_never_written_table_says_so():
 @pytestmark_db
 @pytest.mark.asyncio
 async def test_it_reads_a_real_database(db_pool):
-    """⛔ 배선 검사. 표를 손으로 만든 검사만 있으면 질의가 틀려도 초록이다."""
+    """⛔ 와이어링 검사. 표를 손으로 만든 검사만 있으면 질의가 틀려도 초록이다."""
     from nexus import db
     from nexus.health.persistence import check
 

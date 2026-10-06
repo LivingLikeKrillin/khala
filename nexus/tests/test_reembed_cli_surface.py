@@ -1,7 +1,7 @@
 """재임베딩 CLI 가 **광고하는 옵션을 실제로 가지고 있는가** (SPEC-nexus-embedding-cutover-seam §4.3, §4.6).
 
 이 파일이 존재하는 이유는 구체적이다: `--all-tenants` 를 `run` 과 `status` 양쪽에 넣었다고 적어
-놓고 실제로는 `run` 에만 들어간 채 머지됐다. 치환이 조용히 빗나갔고, 어떤 테스트도 CLI 표면을 보지
+놓고 실제로는 `run` 에만 들어간 채 머지됐다. 치환이 조용히 빗나갔고, 어떤 테스트도 CLI API 표면을 보지
 않았으며, 런북의 절차는 `status --all-tenants` 를 부른다 — 컷오버 당일에 "No such option" 으로
 멈추는 종류의 결함이다.
 
@@ -85,7 +85,7 @@ def test_the_check_survives_the_thing_that_broke_it(command, monkeypatch):
 
 
 def test_the_agreeing_pair_is_not_rejected_by_that_guard():
-    """음성 대조군 — 무엇이든 거부하는 가드는 가드가 아니다. (DB 가 없으니 그 다음에 실패한다.)"""
+    """음성 대조군 — 무엇이든 거부하는 가드 검사는 가드 검사가 아니다. (DB 가 없으니 그 다음에 실패한다.)"""
     result = runner.invoke(app, ["reembed", "run", "--column", "embedding_1024",
                                  "--model", "KURE-v1", "--tenant", "t"])
     assert "차원이 다르다" not in (result.stdout + str(result.stderr))

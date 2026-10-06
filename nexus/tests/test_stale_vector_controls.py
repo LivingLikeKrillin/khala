@@ -2,7 +2,7 @@
 
 ⛔ **무엇이 있었나.** 대조군이 *`updated_at` 이 특정 날짜인 행* 으로 정의돼 있었다. 그 날짜의
 행이 사라지자 대조군이 빈 집합이 됐고, 코드는 대조군 줄을 **아예 안 찍은 채 판정을 냈다.**
-그때 나온 `0/466` 은 *낡은 게 없다* 와 *이 계측기는 아무것도 못 가른다* 에 똑같이 들어맞았다.
+그때 나온 `0/466` 은 *스테일한 게 없다* 와 *이 계측기는 아무것도 못 가른다* 에 똑같이 들어맞았다.
 
 ⭐ **그래서 여기서 지키는 것은 수가 아니라 침묵의 금지다**: 대조군이 비면 그것 자체가 실패이고,
 판정은 안 나온다.
@@ -91,7 +91,7 @@ def test_an_empty_positive_control_withholds_the_verdict():
 
 
 def test_an_empty_negative_control_withholds_the_verdict_and_says_how_to_fix_it():
-    """말만 하고 처방을 안 주면 다음 사람이 그냥 무시한다."""
+    """말만 하고 조치 방법을 안 주면 다음 사람이 그냥 무시한다."""
     ok, why = controls_allow_a_verdict(1.0, negative_control([], FRESH_COSINE), FRESH_COSINE)
     assert not ok and "--fresh" in why
 

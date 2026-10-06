@@ -40,7 +40,7 @@ async def seeded(db_pool):
 
 
 async def test_a_hidden_document_can_be_named_by_its_path(seeded):
-    """숨긴 문서는 active 가 아니다. 되돌리려면 이름으로 부를 수 있어야 한다."""
+    """숨김 문서는 active 가 아니다. 되돌리려면 이름으로 부를 수 있어야 한다."""
     from nexus.documents.resolve import resolve_doc
 
     assert await resolve_doc("specs/hidden.md", _T) == "doc_hidden"

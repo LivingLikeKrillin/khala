@@ -54,7 +54,7 @@ async def main() -> None:
         digest = hashlib.sha256("|".join(rids).encode()).hexdigest()[:12]
         print(f"warmup={args.warmup} hits={len(rids)} 순서포함해시={digest}")
 
-        # 검색이 같아도 **프롬프트**가 다를 수 있다 — 근거 조립(절 채움·정정 패스·짝 확장·
+        # 검색이 같아도 **프롬프트**가 다를 수 있다 — 답변 근거 조립(섹션 필·정정 패스·페어 확장·
         # 코드 값)이 붙는 것들이 프로세스 상태에 걸려 있으면 거기서 갈린다.
         from nexus.llm.prompts import build_prompts
         from nexus.search.evidence_packet import format_for_llm

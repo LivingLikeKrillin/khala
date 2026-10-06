@@ -27,8 +27,8 @@ _DB = os.getenv("NEXUS_TEST_DB_URL")
 async def _db_pool():
     """`nexus.db` 의 전역 풀을 **이 모듈이 열고 닫는다** (`test_spans_purge_db.py` 와 같은 관례).
 
-    ⛔ **`autouse` 가 관례의 핵심이다.** 첫 판은 요청형 픽스처로 세 검사에만 걸었더니 스위트
-    전체에서 뒤따르는 모듈 30건이 죽었다 — 이 파일만 돌리면 초록이라 안 보인다. 그 다음 판은
+    ⛔ **`autouse` 가 관례의 핵심이다.** 첫 버전은 요청형 픽스처로 세 검사에만 걸었더니 스위트
+    전체에서 뒤따르는 모듈 30건이 죽었다 — 이 파일만 돌리면 초록이라 안 보인다. 그 다음 버전은
     반대로 닫기를 지웠더니 풀이 다른 이벤트 루프에 묶인 채 남아 이 파일 안에서 둘이 죽었다.
     **여는 것과 닫는 것은 같은 범위에 있어야 한다.**
     """
@@ -80,7 +80,7 @@ async def test_superseded_and_soft_deleted_chunks_do_not_count_as_reach(clean_db
     정정당한 옛 문서가 여전히 '코퍼스에 있다' 로 세어져 이 검사가 정반대를 말한다.
     """
     pool = await db.get_pool()
-    # ⛔ 상태마다 **다른 바늘**을 쓴다. 사이에 `TRUNCATE` 를 넣었던 판은 이 파일 밖의 픽스처가
+    # ⛔ 상태마다 **다른 바늘**을 쓴다. 사이에 `TRUNCATE` 를 넣었던 버전은 이 파일 밖의 픽스처가
     # 깔아 둔 행까지 지워 스위트 전체를 흔들었다 — 검사는 자기 자리만 건드린다.
     for state, needle in (("soft_deleted", "needlecanary1"), ("superseded", "needlecanary2")):
         await _seed("default", f"{state} 문장에 {needle} 가 있다")

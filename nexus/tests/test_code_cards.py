@@ -3,7 +3,7 @@
 ⚠ 여기 Java 는 전부 지어낸 것이다. 대상 저장소의 소스를 픽스처로 복사하지 말 것.
 
 이 파일에서 가장 중요한 것은 **소스 경계** 검사다. 앞 단위는 이름·경로·줄·해시만 저장했으므로
-"소스 미저장" 이 자명했지만, 카드는 소스를 막 읽은 모델이 쓴 산문이라 자명하지 않다.
+"소스 미저장" 이 자명했지만, 코드 카드는 소스를 막 읽은 모델이 쓴 산문이라 자명하지 않다.
 """
 
 from __future__ import annotations
@@ -102,7 +102,7 @@ def test_rejects_a_card_missing_behavior():
 
 
 def test_spans_come_from_the_caller_not_the_model():
-    """모델이 말한 경로·줄은 틀릴 수 있고, 틀린 포인터는 카드를 통째로 버리게 만든다."""
+    """모델이 말한 경로·줄은 틀릴 수 있고, 틀린 포인터는 코드 카드를 통째로 버리게 만든다."""
     raw = '{"subject":"a","behavior":"b","spans":[{"file_path":"WRONG.java"}]}'
 
     card = parse_card(raw, spans=[SPAN], commit_sha="c", generator="g")
@@ -117,7 +117,7 @@ def test_a_clean_card_passes():
 
 
 def test_a_verbatim_source_line_in_prose_is_a_violation():
-    """모델이 설명 대신 코드를 옮겨 적으면, 그 순간 카드가 유출 경로가 된다."""
+    """모델이 설명 대신 코드를 옮겨 적으면, 그 순간 코드 카드가 유출 경로가 된다."""
     leaked = _card(behavior="이 메서드는 if (attempts >= MAX_ATTEMPTS) { 를 검사한다.")
 
     problems = check_card(leaked, {"Widget.java:10-15": SRC})
@@ -142,7 +142,7 @@ def test_a_number_in_prose_is_allowed():
 
 
 def test_short_source_lines_do_not_trigger_false_violations():
-    """`}` 나 `);` 까지 대조하면 모든 카드가 걸린다."""
+    """`}` 나 `);` 까지 대조하면 모든 코드 카드가 걸린다."""
     ok = _card(behavior="분기하고 전송한다. }")
 
     assert check_card(ok, {"Widget.java:10-15": SRC}) == []
@@ -180,7 +180,7 @@ def test_a_span_that_does_not_exist_is_a_violation():
 
 
 def test_card_has_no_source_like_field():
-    """필드 이름 수준에서도 막는다 — 나중에 누가 스니펫 칸을 추가하면 여기서 걸린다."""
+    """필드 이름 수준에서도 막는다 — 나중에 누가 스니펫 필드를 추가하면 여기서 걸린다."""
     banned = {"source", "text", "body", "snippet", "content", "code", "lines"}
     assert banned.isdisjoint(Card.__dataclass_fields__.keys())
 
@@ -208,7 +208,7 @@ def test_unchanged_spans_are_fresh():
 
 
 def test_a_changed_span_is_stale():
-    """설명이 참이었던 코드가 움직였다 — 카드에 관한 사실이지 코드에 관한 사실이 아니다."""
+    """설명이 참이었던 코드가 움직였다 — 코드 카드에 관한 사실이지 코드에 관한 사실이 아니다."""
     assert card_state(_card(), {("Widget.java", "dispatch"): "h2"}) == STALE
 
 
@@ -231,10 +231,10 @@ def test_staleness_needs_no_model():
         assert token not in src
 
 
-# ------------------------------------------------- 생성기 (경계·신원)
+# ------------------------------------------------- 생성기 (경계·식별 정보)
 
 def test_generator_id_carries_model_and_prompt_version():
-    """프롬프트가 바뀌면 카드의 의미가 바뀐다. 세대가 섞이지 않게 신원을 싣는다."""
+    """프롬프트가 바뀌면 코드 카드의 의미가 바뀐다. 세대가 섞이지 않게 식별 정보를 싣는다."""
     from nexus.index.card_gen import PROMPT_VERSION, generator_id
 
     gid = generator_id("some-model")
@@ -244,7 +244,7 @@ def test_generator_id_carries_model_and_prompt_version():
 
 
 def test_source_collection_stops_at_the_byte_cap(tmp_path):
-    """한 카드가 저장소를 다 읽지 않게 — §6.4 가 게이트하는 비용이 여기서 샌다."""
+    """한 코드 카드가 저장소를 다 읽지 않게 — §6.4 가 게이트하는 비용이 여기서 샌다."""
     from nexus.index.card_gen import collect_sources
 
     (tmp_path / "Big.java").write_text("\n".join(f"line {i};" for i in range(500)),
@@ -278,7 +278,7 @@ def test_callees_finds_called_names():
 
 
 def test_prompt_contains_the_source_but_the_card_does_not(tmp_path):
-    """소스는 프롬프트까지만 간다. 카드에는 서술과 포인터만 남는다."""
+    """소스는 프롬프트까지만 간다. 코드 카드에는 서술과 포인터만 남는다."""
     from nexus.index.card_gen import build_prompt
 
     prompt = build_prompt("dispatch", {"Widget.java:10-15": SRC})
@@ -286,7 +286,7 @@ def test_prompt_contains_the_source_but_the_card_does_not(tmp_path):
     assert "MAX_ATTEMPTS" in prompt                       # 프롬프트에는 있고
     card = _card(code_terms=("dispatch",))
     blob = f"{card.subject} {card.behavior}"
-    assert "too many attempts" not in blob                # 카드 산문에는 없다
+    assert "too many attempts" not in blob                # 코드 카드 산문에는 없다
 
 
 # ------------------------------------------------- §6.1 재현성 측정
@@ -301,7 +301,7 @@ def test_identical_runs_agree_completely():
 
 
 def test_five_runs_give_ten_pairs_not_one_number():
-    """2회는 구간 없는 점추정이다. 측정하려는 것이 흔들림인데 흔들림을 못 본다."""
+    """2회는 구간 없는 점추정이다. 측정하려는 것이 변동성인데 변동성을 못 본다."""
     from nexus.index.cards import term_agreement
 
     a = term_agreement([("결제",)] * 5)
@@ -320,7 +320,7 @@ def test_disagreement_shows_up_as_a_range_not_just_a_mean():
 
 
 def test_case_and_space_are_normalised_but_nothing_else():
-    """동의어 병합까지 하면 측정 코드가 생성기의 흔들림을 가려버린다."""
+    """동의어 병합까지 하면 측정 코드가 생성기의 변동성을 가려버린다."""
     from nexus.index.cards import term_agreement
 
     assert term_agreement([("결제 ", "Retry"), ("결제", "retry")]).mean == 1.0
@@ -335,7 +335,7 @@ def test_a_single_run_cannot_be_measured():
 
 def test_generator_id_refuses_a_non_string_model():
     """`LLMService` 의 첫 인자는 모델 이름이지 설정이 아니다. 설정을 넘긴 적이 있고,
-    그대로 두면 `auth.principals` 를 포함한 설정 전체가 모든 카드에 저장됐을 것이다."""
+    그대로 두면 `auth.principals` 를 포함한 설정 전체가 모든 코드 카드에 저장됐을 것이다."""
     from nexus.index.card_gen import generator_id
 
     with pytest.raises(TypeError):

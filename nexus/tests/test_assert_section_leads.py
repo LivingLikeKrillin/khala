@@ -35,7 +35,7 @@ CONFLICT_ANSWER = """**문서와 코드가 서로 다른 값을 말합니다. �
 
 
 def test_the_shape_that_wobbled_now_passes():
-    """⛔ 기준선 5회에서 라벨 다섯이 이 모양 때문에 회차마다 갈렸다."""
+    """⛔ 베이스라인 5회에서 라벨 다섯이 이 모양 때문에 회차마다 갈렸다."""
     assert koq.asserts_value(["50자"], CONFLICT_ANSWER) is True
 
 

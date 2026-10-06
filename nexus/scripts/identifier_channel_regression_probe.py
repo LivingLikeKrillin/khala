@@ -7,8 +7,8 @@
 ⛔ **판정 규칙을 결과를 보기 전에 적는다.** 아래 두 줄이 이 실행의 사전 등록이다.
 
 1. **회귀 변수 = 골든 문서가 상위 k 에 오는가**(문서 단위). 실험군별로 센다. LLM 을 안 부른다 —
-   처치는 검색만 건드리고, 답변 층은 검색이 준 것 위에서만 움직인다.
-2. **검색 출력이 두 실험군에서 글자 그대로 같으면 답변 층을 안 돌린다.** 같은 조각이 같은
+   처치는 검색만 건드리고, 답변 계층은 검색이 준 것 위에서만 움직인다.
+2. **검색 출력이 두 실험군에서 글자 그대로 같으면 답변 계층을 안 돌린다.** 같은 청크가 같은
    순서로 오면 답변 점수가 움직일 자리는 브리지 잡음뿐이고, 그 잡음을 처치의 효과로 적는
    것이 이 리포가 막으려는 바로 그것이다. **하나라도 다르면 그 라벨만 답변까지 돌린다.**
 
@@ -16,7 +16,7 @@
 무시됐다* 를 구별하지 못한다. 그래서 질의마다 **채널이 무엇으로 발화했는가**를 같이 적는다.
 
 ⛔ **채널을 손으로 조립하지 않는다.** 두 실험군 다 `api._search_channels` 를 지난다 — 라이브
-요청이 지나는 그 함수다. 여기서 베끼면 이 평가 하니스는 **아무도 안 지나는 경로**를 측정한다
+요청이 지나는 그 함수다. 여기서 베끼면 이 평가 하네스는 **아무도 안 지나는 경로**를 측정한다
 (이 리포가 2026-08-29 에 실제로 그랬다). 두 실험군의 차이는 그 함수의 인자 하나뿐이다.
 
     docker exec nexus-app python -m scripts.identifier_channel_regression_probe
@@ -50,7 +50,7 @@ def label_files() -> list[Path]:
     """`corpus.tenant` 로 **자기 코퍼스를 선언한** 라벨만. 기본값으로 고르지 않는다.
 
     ⛔ 말없이 고른 `default` 가 2026-09-05 사고의 재료였다(`ko_eval_corpus_reach` 머리말).
-    선언이 없는 파일은 이 실행의 대상이 아니고, 그 사실을 리포트에 적는다.
+    명시적 선언이 없는 파일은 이 실행의 대상이 아니고, 그 사실을 리포트에 적는다.
     """
     out = []
     for p in sorted(LOCAL_DIR.glob("*.yaml")):
@@ -92,7 +92,7 @@ async def _run(args) -> int:
             labels = yaml.safe_load(path.read_text(encoding="utf-8"))
             scope = [t.strip() for t in labels["corpus"]["tenant"].split(",") if t.strip()]
             queries = [q for q in labels["queries"] if q.get("answerable", True)]
-            # **서명된 본문이 움직였으면 절대 점수를 안 찍는다.** 실험군 비교는 같은 날
+            # **사인오프된 본문이 움직였으면 절대 점수를 안 찍는다.** 실험군 비교는 같은 날
             # 같은 코퍼스라 그대로 서지만, 만료된 라벨의 총점은 성적이 아니다.
             stale: dict = {}
             if (labels.get("corpus") or {}).get("bodies"):
@@ -112,8 +112,8 @@ async def _run(args) -> int:
                         sq, tenant=scope, clearance="INTERNAL", top_k=args.top_k,
                         embedding_svc=svc, config=cfg, channels=channels,
                         # ⛔ **결과 객체가 「켰는가」를 들고 다녀야 한다.** 여기서 안 넘기면
-                        # 「켰는데 발화 안 함」이 「안 켰음」으로 기록되고, §5.5 의 두 칸이
-                        # 한 칸으로 뭉친다 — 2026-09-20 첫 판이 실제로 그랬다.
+                        # 「켰는데 발화 안 함」이 「안 켰음」으로 기록되고, §5.5 의 두 필드가
+                        # 한 필드로 뭉친다 — 2026-09-20 첫 버전이 실제로 그랬다.
                         identifier_channel_asked=ident)
                     elapsed[arm] = (time.perf_counter() - t0) * 1000
                     if r.degraded:

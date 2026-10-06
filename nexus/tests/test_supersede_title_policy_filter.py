@@ -82,7 +82,7 @@ async def test_the_title_never_reaches_the_prompt(corpus, case):
 async def test_the_fact_survives_even_when_the_name_cannot(corpus, case):
     """이름은 못 줘도 **은퇴했다는 사실**은 준다 — 그것은 읽는 사람이 보고 있는 문서의 사실이다.
 
-    감추면 낡은 근거를 낡은 줄 모르고 읽는다. 그래서 여기서 갈라 둔다.
+    감추면 스테일 답변 근거를 스테일인 줄 모르고 읽는다. 그래서 여기서 갈라 둔다.
     """
     debts = await doc_debt.debts_for_docs(_TENANT, "INTERNAL", [corpus[case]])
     debt = debts[corpus[case]]

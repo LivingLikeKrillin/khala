@@ -1,9 +1,9 @@
-"""근거 점유율 — 순수 계산 + **행이 실제로 앉는가**.
+"""답변 근거 점유율 — 순수 계산 + **행이 실제로 앉는가**.
 
 **무엇을 지키나 (SPEC-nexus-design-corpus-cutover §5.3).** `read_scope` 는 *읽을 수 있었던*
-범위이고 이 값은 *읽은 것*이다. 둘이 갈리는 상태 — 범위를 넓혀 놓고 근거가 여전히 한쪽에서만
+범위이고 이 값은 *읽은 것*이다. 둘이 갈리는 상태 — 범위를 넓혀 놓고 답변 근거가 여전히 한쪽에서만
 오는 것 — 을 보려고 만든 칸이므로, **패킷에서 세는가**가 이 파일의 핵심 단언이다. 히트만
-세면 채운 절·짝 문서·정정 확인 패스가 빠지고, 그 셋이 바로 컷오버가 설계 코퍼스에서
+세면 채운 절·페어 문서·정정 확인 패스가 빠지고, 그 셋이 바로 컷오버가 설계 코퍼스에서
 끌어오는 근거다.
 
 ⚠ 그리고 **행이 앉는지**를 따로 묻는다. 이 리포는 필드가 있는 것과 행이 앉는 것이 다르다는
@@ -33,20 +33,20 @@ def test_counts_are_ordered_by_size_then_name():
 
 
 def test_encode_is_a_string_a_text_column_can_hold():
-    """⛔ 목록을 `str` 칸에 넣었다가 적재가 34시간 조용히 죽었다. 직렬화는 여기 하나뿐이다."""
+    """⛔ 목록을 `str` 필드에 넣었다가 적재가 34시간 조용히 죽었다. 직렬화는 여기 하나뿐이다."""
     out = ES.encode([_Piece("design_docs")] * 6 + [_Piece("default")] * 4)
     assert out == "design_docs:6,default:4"
     assert isinstance(out, str)
 
 
 def test_no_evidence_is_none_not_an_empty_string():
-    """빈 문자열은 *근거 0* 과 *형식 오류* 를 못 가른다. `None` 하나만 쓴다."""
+    """빈 문자열은 *답변 근거 0* 과 *형식 오류* 를 못 가른다. `None` 하나만 쓴다."""
     assert ES.encode([]) is None
     assert ES.encode(None) is None
 
 
 def test_a_piece_without_a_tenant_is_counted_not_dropped():
-    """⛔ 버리면 분모가 조용히 줄고 그러면 비율이 틀린다. 이 이름이 보이면 배선이 빠진 것."""
+    """⛔ 버리면 분모가 조용히 줄고 그러면 비율이 틀린다. 이 이름이 보이면 와이어링이 빠진 것."""
     assert ES.encode([_Piece("default"), _Piece("")]) == "(미상):1,default:1"
 
 
@@ -89,7 +89,7 @@ def test_a_big_enough_sample_gets_percentages():
     assert "표본이 아니다" not in big
 
 
-# ── 배선: 패킷에서 세는가, 그리고 행이 앉는가 ────────────────────────────────
+# ── 와이어링: 패킷에서 세는가, 그리고 행이 앉는가 ────────────────────────────────
 
 pytestmark_db = pytest.mark.skipif(
     not os.getenv("NEXUS_TEST_DB_URL"), reason="NEXUS_TEST_DB_URL 필요")
@@ -107,7 +107,7 @@ def _sig(**kw):
 
 
 def test_the_signal_falls_back_to_hits_when_no_packet_is_given():
-    """새 호출부가 아무것도 안 해도 이 칸이 비지 않는다."""
+    """새 호출부가 아무것도 안 해도 이 필드가 비지 않는다."""
     from nexus.search.hybrid import SearchHit, SearchResult
     from nexus.search.signals import extract_signals
 
@@ -119,7 +119,7 @@ def test_the_signal_falls_back_to_hits_when_no_packet_is_given():
 
 
 def test_an_explicit_packet_wins_over_the_hits():
-    """답변 경로는 패킷을 넘긴다 — 채움·짝·정정이 히트에 없기 때문이다."""
+    """답변 경로는 패킷을 넘긴다 — 필·짝·정정이 히트에 없기 때문이다."""
     from nexus.search.hybrid import SearchHit, SearchResult
     from nexus.search.signals import extract_signals
 
@@ -177,7 +177,7 @@ async def _seed_doc(con, tenant: str, uri_tail: str, title: str, texts: list[str
 
 @pytest.fixture
 async def two_tenant_corpus(db_pool):
-    """두 코퍼스에 각각 걸리는 문서. A 는 다양성 상한을 채워 **채움**도 같이 건다."""
+    """두 코퍼스에 각각 걸리는 문서. A 는 다양성 상한을 채워 **필**도 같이 건다."""
     from nexus import db
 
     previous_pool = db._pool
@@ -202,7 +202,7 @@ async def test_the_share_counts_the_packet_not_the_hits(two_tenant_corpus):
     """⛔ **이 파일의 핵심 단언.**
 
     채운 절은 랭킹을 거치지 않으므로 `result.hits` 에 없다. 히트만 세면 답변이 기댄 코퍼스를
-    과소평가하고, 그러면 이 칸은 컷오버가 값을 냈는지 못 말한다.
+    과소평가하고, 그러면 이 필드는 컷오버가 값을 냈는지 못 말한다.
     """
     from nexus.search import hybrid
     from nexus.search.reconcile import packet_for_answer

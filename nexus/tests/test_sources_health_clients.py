@@ -1,4 +1,4 @@
-"""연결 진단의 에이전트 표면 — SPEC-nexus-notion-connection-health §4.5.
+"""연결 진단의 에이전트 API 표면 — SPEC-nexus-notion-connection-health §4.5.
 
 같은 엔드포인트, 세 클라이언트. 그리고 **403 을 초록으로 칠하지 않는다** — capability 가 없어
 못 봤다는 것과 연결이 멀쩡하다는 것은 다른 말이다.
@@ -45,7 +45,7 @@ async def test_health_reports_the_integration_and_each_root(calls):
     assert seen[0] == ("get", "/sources/notion/health")
     assert "실증 테스트" in out and "어느 워크스페이스" in out
     assert "System Architecture" in out
-    assert "bbb" in out and "Connections" in out          # 처방을 그대로 전달한다
+    assert "bbb" in out and "Connections" in out          # 조치 방법을 그대로 전달한다
 
 
 async def test_an_invalid_token_is_not_dressed_up_as_working(calls):
@@ -72,7 +72,7 @@ async def test_a_403_surfaces_as_a_failure_not_as_a_healthy_connection(calls):
 async def test_sync_status_reports_pages_that_had_no_body(calls):
     """31개를 연결했는데 12개만 적재됐다. 나머지가 어디 갔는지 화면이 말해야 한다.
 
-    `empty` 는 counts 에 이미 있었다. 어느 표면도 읽지 않았을 뿐이다 — 사용자는
+    `empty` 는 counts 에 이미 있었다. 어느 API 표면도 읽지 않았을 뿐이다 — 사용자는
     "왜 12개지?" 에 답을 얻을 수 없었다.
     """
     _, set_reply = calls

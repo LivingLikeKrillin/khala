@@ -61,7 +61,7 @@ async def finish_run(
     walked_roots: list[str] | None = None,
 ) -> None:
     # `reason` 은 보통 `str(예외)[:500]` 이다. 이 컬럼은 자격증명이 DB 에 **영구히** 남을 수 있는
-    # 유일한 경로이고, 실행 기록을 보여주는 모든 표면에서 읽힌다. 값으로 지운다 — 패턴이 아니라
+    # 유일한 경로이고, 실행 기록을 보여주는 모든 API 표면에서 읽힌다. 값으로 지운다 — 패턴이 아니라
     # 정확한 문자열로 (SPEC-nexus-notion-connection-health §4.6).
     reason = redact(reason, os.getenv("NOTION_TOKEN", ""))
     await db.execute(

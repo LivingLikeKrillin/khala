@@ -1,7 +1,7 @@
 """인용 사후검증 — SPEC-nexus-citation-validation §4·§6.
 
 LLM 없이 순수 함수로 검증한다: 답변의 [출처: …] 를 packet 의 실제 스니펫 제목과 대조해
-verified/unverified 를 판정. 그리고 generate_answer 배선(주입 LLM)까지.
+verified/unverified 를 판정. 그리고 generate_answer 와이어링(주입 LLM)까지.
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ def test_malformed_fragment_does_not_raise():
     assert isinstance(rep.unverified_count, int)   # 예외 없이 반환
 
 
-# ── §4.2 generate_answer 배선 ─────────────────────────────────────────────────
+# ── §4.2 generate_answer 와이어링 ─────────────────────────────────────────────────
 
 class _FakeLLM:
     def __init__(self, answer):
@@ -200,7 +200,7 @@ def test_text_after_a_bracketed_title_still_scans():
 
 # ── 섹션 분리자 (2026-08-12, Pack A 3런) ─────────────────────────────────────
 #
-# 프롬프트는 `[출처: 제목, 섹션]` 을 지시하고 근거 헤더는 `[제목] (섹션)` 인데, 모델은
+# 프롬프트는 `[출처: 제목, 섹션]` 을 지시하고 답변 근거 헤더는 `[제목] (섹션)` 인데, 모델은
 # `[출처: 제목 > 섹션]` 도 쓴다. 검증기는 콤마만 알아서 문자열 전체를 제목으로 읽었고,
 # **실재하는 문서가 미검증으로 세어졌다** — Pack A 런당 5~8건, 지어낸 출처는 0건.
 # Pack B 문서는 짧아 섹션을 붙일 일이 드물어 이 결함이 드러나지 않았다.
@@ -240,7 +240,7 @@ def test_a_title_that_contains_the_separator_is_matched_whole():
 
 def test_nested_sections_keep_the_whole_locator():
     """섹션이 여러 겹이면 **경로 전체**가 섹션으로 남는다 — 중간을 잘라내면 독자가 그 자리로
-    못 돌아간다. (첫 판 단언은 `예시` 만 남을 줄 알았는데, 실제 동작이 더 낫다.)"""
+    못 돌아간다. (첫 버전 단언은 `예시` 만 남을 줄 알았는데, 실제 동작이 더 낫다.)"""
     c = _one("리소스 쿼터 > 쿼터 및 클러스터 용량 > 예시")
     assert c.verified is True and c.title == "리소스 쿼터"
     assert c.section == "쿼터 및 클러스터 용량 > 예시"
@@ -250,7 +250,7 @@ def test_the_prompt_forbids_back_references():
     """`[출처: 동일 문서]` 는 검증기가 해소할 수 없고, 해소해 주면 안 된다.
 
     되받는 인용은 그 줄만 읽는 사람에게 아무것도 가리키지 못한다. 검증기를 넓혀 받아 주면
-    평가 하니스가 답변자에게 아첨하게 되므로, 막는 자리는 프롬프트다.
+    평가 하네스가 답변자에게 아첨하게 되므로, 막는 자리는 프롬프트다.
 
     **이 검사가 증명하는 것은 규칙이 거기 있다는 것뿐이다.** 규칙이 지켜지는지는 실행에서만
     보인다(r6 에서 3건, r7 에서 0건 — 변동 수준이라 개선을 실증하지 못했다).
@@ -271,11 +271,11 @@ def test_a_back_reference_is_still_unverified():
 # ── 접두사 없는 인용 (2026-08-17 라이브에서 나온 형태) ─────────────────────────
 #
 # 설계문서 코퍼스 10개 질문 실측에서 **2개가 `[출처:` 접두사를 빼고** `[ADR-003: …, Decision]`
-# 처럼 적었다. 근거는 멀쩡히 붙어 있었는데 검증기가 0건으로 세서, 응답과 웹 인용 스트립에
+# 처럼 적었다. 답변 근거는 멀쩡히 붙어 있었는데 검증기가 0건으로 세서, 응답과 웹 인용 스트립에
 # **인용 없는 답변**으로 보였다. 검증기가 만든 손해다.
 #
 # 규칙: 접두사 없는 대괄호는 **해소될 때만** 인용이다. 안 해소되면 무시한다 —
-# 산문의 대괄호(체크박스·각주·코드)를 미검증 인용으로 세면 경보가 울리다 못해 무의미해진다.
+# 산문의 대괄호(체크박스·각주·코드)를 미검증 인용으로 세면 경보가 발동하다 못해 무의미해진다.
 
 
 def test_a_citation_without_the_prefix_still_counts_when_it_resolves():

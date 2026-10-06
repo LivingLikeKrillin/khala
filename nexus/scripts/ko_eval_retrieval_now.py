@@ -1,4 +1,4 @@
-"""검색만 측정하는 평가 하니스 — LLM 을 한 번도 부르지 않는다.
+"""검색만 측정하는 평가 하네스 — LLM 을 한 번도 부르지 않는다.
 
 답변 하니스(`ko_eval_answer_run.py`)는 질의당 한 번 LLM 을 부르고, 그 키가 없으면 아무 숫자도
 못 낸다. 그런데 오늘 코퍼스를 바꾼 것들(재적재·벡터 무효화·청크 텍스트 변경)이 부술 수 있는 것은
@@ -52,14 +52,14 @@ async def _run(args) -> int:
     print(f"✓ 관문 통과 — 라벨 revision {labels['revision']} · 질의 {len(queries)}건 "
           f"(테넌트 {TENANT}, LLM 미사용)\n")
 
-    # **평가 하니스는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
+    # **평가 하네스는 배포와 같은 설정으로 돌아야 한다.** 이 인자가 없으면 `hybrid_search` 는
     # 코드 기본값(`diversity_per_doc_cap=3`)으로 돌고, 배포는 config.yaml 의 5 로 돈다 —
-    # 즉 평가 하니스가 아무도 안 쓰는 설정을 측정하게 된다 (2026-08-18 발견).
+    # 즉 평가 하네스가 아무도 안 쓰는 설정을 측정하게 된다 (2026-08-18 발견).
     svc = embedding_service_from_config()
     search_cfg = _load_config()
     pool = await db.get_pool()
     # **같은 라벨·같은 테넌트를 재므로 같은 만료가 여기에도 걸린다.** 답변 쪽에만 게이트를 달면
-    # 만료된 라벨로 측정한 숫자가 이 문으로 그대로 나온다(SPEC-nexus-answer-quality-ruler §3.3).
+    # 만료된 라벨로 측정한 숫자가 이 진입점으로 그대로 나온다(SPEC-nexus-answer-quality-ruler §3.3).
     async with pool.acquire() as con:
         stale = expired(labels, {k: v["sha"] for k, v in (await tenant_bodies(con, TENANT)).items()})
     if stale:

@@ -1,8 +1,8 @@
-"""스냅샷을 **서명된 본문**에 맞추는 규칙 (`OPEN.md` A55).
+"""스냅샷을 **사인오프된 본문**에 맞추는 규칙 (`OPEN.md` A55).
 
-⛔ 왜 있나 (실측 2026-09-03). 재서명 워크시트는 스냅샷과 지금 본문을 대조해 무엇이 달라졌는지
-보여 준다. 그런데 스냅샷이 서명 시점과 묶여 있지 않아 스스로 흘러갔고, 본문이 달라진 문서
-13장 중 **5장은 서명된 본문이 어디에도 없었다**. 결속은 해시만 저장하므로 복원되지 않는다.
+⛔ 왜 있나 (실측 2026-09-03). 재사인오프 워크시트는 스냅샷과 지금 본문을 대조해 무엇이 달라졌는지
+보여 준다. 그런데 스냅샷이 사인오프 시점과 묶여 있지 않아 스스로 흘러갔고, 본문이 달라진 문서
+13장 중 **5장은 사인오프된 본문이 어디에도 없었다**. 결속은 해시만 저장하므로 복원되지 않는다.
 볼 것이 없는 사람이 하는 일은 계산된 블록을 붙여넣는 것이고, 워크시트는 정확히 그것을 막으려고 있다.
 
 안전 조건 하나: **지금 본문이 곧 서명된 본문인 문서만 맞춘다.** 아래 검사는 전부 그 한 줄이
@@ -15,13 +15,13 @@ from scripts.ko_eval_packb import alignment_plan
 
 
 def test_a_signed_body_that_the_snapshot_lacks_is_refreshed():
-    """서명 == 라이브 != 스냅샷 — 서명이 이미 이 본문을 가리키므로 잃을 대조 근거가 없다."""
+    """사인오프 == 라이브 != 스냅샷 — 사인오프가 이미 이 본문을 가리키므로 잃을 대조 근거가 없다."""
     refresh, _ = alignment_plan({"a": "x"}, {"a": "x"}, {"a": "old"})
     assert refresh == ["a"]
 
 
 def test_an_expired_document_is_never_touched():
-    """⛔ 이게 이 규칙의 핵심이다 — 서명 != 라이브면 스냅샷의 옛 본문이 **유일한** 대조 기준이다."""
+    """⛔ 이게 이 규칙의 핵심이다 — 사인오프 != 라이브면 스냅샷의 옛 본문이 **유일한** 대조 기준이다."""
     refresh, left = alignment_plan({"a": "signed"}, {"a": "live"}, {"a": "signed"})
     assert refresh == [] and "만료" in left[0]
 
@@ -57,7 +57,7 @@ def test_every_signed_document_is_accounted_for():
 
 
 def test_only_the_signed_documents_are_considered():
-    """서명 밖의 문서를 맞추면 아무도 판정하지 않은 본문을 기준점으로 삼는 것이다."""
+    """사인오프 밖의 문서를 맞추면 아무도 판정하지 않은 본문을 기준점으로 삼는 것이다."""
     refresh, left = alignment_plan({"a": "x"}, {"a": "x", "z": "q"}, {"a": "old", "z": "old"})
     assert refresh == ["a"] and not any("z" in line for line in left)
 

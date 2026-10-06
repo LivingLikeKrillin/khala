@@ -1,11 +1,11 @@
-"""`reembed` 와 세대 선언 — REAL Postgres. SPEC-nexus-generation-of-record §6-6.
+"""`reembed` 와 세대 명시적 선언 — REAL Postgres. SPEC-nexus-generation-of-record §6-6.
 
-초안은 이 명령을 **면제**했다. 비평이 그 구멍을 지적했다: `--column embedding --model
-nomic-embed-text` 는 차원이 맞으므로 옛 가드를 통과하고, 검색되지 않는 세대를 그대로 다시
-채운다 — 사고가 면제된 문으로 재현된다.
+초안은 이 명령을 **면제**했다. 크리틱이 그 구멍을 지적했다: `--column embedding --model
+nomic-embed-text` 는 차원이 맞으므로 옛 가드 검사를 통과하고, 검색되지 않는 세대를 그대로 다시
+채운다 — 사고가 면제된 진입점으로 재현된다.
 
-그래서 규칙이 둘이다: 평소엔 선언에 복종하고, **컷오버일 때만** 선언을 바꾼다. 그리고 컷오버는
-끝났을 때만 선언을 남긴다 — 절반 돌다 죽은 실행이 남긴 선언은 거짓이다.
+그래서 규칙이 둘이다: 평소엔 명시적 선언에 복종하고, **컷오버일 때만** 명시적 선언을 바꾼다. 그리고 컷오버는
+끝났을 때만 명시적 선언을 남긴다 — 절반 돌다 죽은 실행이 남긴 명시적 선언은 거짓이다.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ async def test_a_completed_cutover_leaves_the_new_declaration(clean):
 
 
 async def test_a_failed_cutover_leaves_the_old_declaration_standing(clean):
-    """절반 돌다 죽은 실행은 아무것도 선언하지 않는다 — 선언이 옛 세대를 가리키는 것이 참이다."""
+    """절반 돌다 죽은 실행은 아무것도 선언하지 않는다 — 명시적 선언이 옛 세대를 가리키는 것이 참이다."""
     from nexus.index import generation as gen
 
     await gen.declare(_T, "embedding", "nomic-embed-text", "alice")

@@ -1,6 +1,6 @@
 """문서 **자신의** 시각으로 검색 범위를 좁힌다 — 그리고 모르는 것을 밖으로 내몰지 않는다.
 
-⛔ **`updated_at` 이 아니다.** 그 칸은 우리 적재 시각이라 재적재하면 모든 문서가 새것이 된다.
+⛔ **`updated_at` 이 아니다.** 그 필드는 우리 적재 시각이라 재적재하면 모든 문서가 새것이 된다.
 `documents.origin_updated_at`(migration 039)이 원본이 말하는 문서 자신의 마지막 수정 시각이고,
 *"어제도 같은 일 있었나"* 를 물을 수 있는 유일한 칸이다. `ingest/pipeline.py:origin_updated_at`
 가 그 값을 frontmatter 의 `origin_last_edited` 에서 읽는다.
@@ -41,7 +41,7 @@ def origin_window_predicate(column: str, param: int,
                             window: OriginWindow) -> tuple[str, list[object]]:
     """`(SQL 조각, 바인딩할 값들)`. 조각은 `AND` 로 시작하고, 안 물었으면 빈 문자열이다.
 
-    `column` 은 `documents` 별칭을 포함한 칸 이름(예: `d.origin_updated_at`)이고, `param` 은
+    `column` 은 `documents` 별칭을 포함한 필드 이름(예: `d.origin_updated_at`)이고, `param` 은
     이 조각이 쓸 **첫** 바인딩 번호다. 번호를 호출부가 세게 두면 다리 하나를 고칠 때 다른 하나가
     조용히 어긋난다 — `tenant_predicate` 와 같은 이유로 같은 모양을 쓴다.
 

@@ -193,7 +193,7 @@ async def test_a_failed_lookup_does_not_take_the_search_down(monkeypatch):
 
 # ------------------------------------------------- 지워진 이름 (②b)
 #
-# 문서가 부르는데 코드에 없는 이름의 이유는 셋이고 처분이 다르다: 외부 타입(문서 잘못 아님) ·
+# 문서가 부르는데 코드에 없는 이름의 이유는 셋이고 조치가 다르다: 외부 타입(문서 잘못 아님) ·
 # 미구현(설계 문서에선 정상) · **지워짐**(드리프트). 라이브 실측 비율은 99 : 1,354 : 63 이었다.
 # 셋을 안 가르고 다 올리면 목록이 신뢰를 잃는다 — 그래서 여기 오는 것은 세 번째뿐이다.
 
@@ -301,7 +301,7 @@ def test_the_summary_says_what_it_compared_against():
 
 
 def test_the_summary_says_it_does_not_know_when_there_is_no_scan():
-    """`None` 은 빠뜨린 것이 아니라 **모른다**는 값이다. 키 자체가 없으면 표면이 옛 문구로 돈다."""
+    """`None` 은 빠뜨린 것이 아니라 **모른다**는 값이다. 키 자체가 없으면 API 표면이 옛 문구로 돈다."""
     out = summarize(FRESH_ANCHORS)
 
     assert "scan" in out
@@ -356,9 +356,9 @@ async def test_a_missing_scan_row_reads_as_unknown_not_as_fresh(monkeypatch):
 
 
 def test_every_surface_that_summarises_also_passes_the_basis():
-    """⛔ 표면 둘이 각자 요약을 만든다 — 하나만 고치면 그쪽만 기준을 말한다.
+    """⛔ API 표면 둘이 각자 요약을 만든다 — 하나만 고치면 그쪽만 기준을 말한다.
 
-    이 리포는 정확히 그 모양으로 데였다(2026-09-02, 스트리밍 경로만 근거 조립을 직접 불러
+    이 리포는 정확히 그 모양으로 데였다(2026-09-02, 스트리밍 경로만 답변 근거 조립을 직접 불러
     정정·짝·코드 값이 웹 채팅에서만 빠졌다). 그래서 **소스를 읽어서** 센다 — 호출을 흉내
     내면 어느 한쪽을 안 부르는 실수를 그대로 통과시킨다.
     """

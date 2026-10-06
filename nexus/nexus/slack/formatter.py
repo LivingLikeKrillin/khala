@@ -66,9 +66,9 @@ def format_answer(answer_data: dict) -> list[dict]:
             path = s.get("section_path", "")
             score = s.get("score", 0)
             # ⛔ 등급 표시가 여기까지 와야 한다 (ADR-0010 §4). 2026-09-11 까지 이 줄은
-            # 제목·절·점수만 그렸고, 그래서 **팀이 실제로 답을 읽는 표면**에서 그림에서
+            # 제목·절·점수만 그렸고, 그래서 **팀이 실제로 답을 읽는 API 표면**에서 그림에서
             # 기계가 읽은 표가 사람이 쓴 문장과 똑같이 보였다. 문자열은 서버가 만들어
-            # 보낸다 — 표현계층이 어휘를 지어내면 표면마다 다른 말이 된다.
+            # 보낸다 — 표현계층이 어휘를 지어내면 API 표면마다 다른 말이 된다.
             tier = s.get("provenance_mark", "")
             evidence_lines.append(f"*[{i}]* {title} > {path}{tier}  _(score: {score:.2f})_")
 

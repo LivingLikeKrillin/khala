@@ -54,7 +54,7 @@ def pytest_sessionstart(session) -> None:
 
     `clean_db` 와 여러 픽스처가 TRUNCATE 를 한다. NEXUS_TEST_DB_URL 을 개발 DB 로 두고 돌리면
     코퍼스가 사라지고 테스트는 초록으로 끝난다 — 실제로 그렇게 한 번 날렸다. URL 은 믿지 않는다
-    (포트·DB 이름은 환경마다 다르고 CI 는 5432 를 쓴다). DB 안의 선언만 믿는다.
+    (포트·DB 이름은 환경마다 다르고 CI 는 5432 를 쓴다). DB 안의 명시적 선언만 믿는다.
     """
     db_url = os.getenv("NEXUS_TEST_DB_URL")
     if not db_url:

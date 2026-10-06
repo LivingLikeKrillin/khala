@@ -116,7 +116,7 @@ def test_claude_not_executable_is_502_not_crash():
     assert "claude" in body["error"]
 
 
-# ── 이미지 판독: 문은 그대로 닫혀 있는가 ─────────────────────────────────────
+# ── 이미지 기계 판독: 문은 그대로 닫혀 있는가 ─────────────────────────────────────
 
 def test_vision_argv_keeps_every_door_closed():
     """이미지를 CLI 로 넘기는 통상 경로는 경로 + `Read` 툴인데 ADR-0010 §6 이 그걸 금지한다.

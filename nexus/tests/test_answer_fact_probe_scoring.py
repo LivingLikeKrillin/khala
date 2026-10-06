@@ -1,12 +1,12 @@
 """채점기가 **모순 라벨을 볼 수 있는가.**
 
-⛔ **왜 이 파일이 있나 (2026-08-31, 첫 서명 회차).** 소유자가 서명한 직후 점수를 냈더니
+⛔ **왜 이 파일이 있나 (2026-08-31, 첫 사인오프 회차).** 소유자가 사인오프한 직후 점수를 냈더니
 A-10(닉네임 모순 라벨)이 `언급=실패 · 주장=통과` 로 찍혔다. **2판은 1판의 부분집합**이어야
 하므로 그 조합은 성립할 수 없고, 그것이 결함을 드러냈다.
 
 결함은 둘이었다.
 
-1. `type: conflict` 갈래가 `ok` 를 다시 계산하지 않았다. 모순 라벨은 `expect` 가 비고
+1. `type: conflict` 하위 범주가 `ok` 를 다시 계산하지 않았다. 모순 라벨은 `expect` 가 비고
    `expect_all` 만 갖는데 `ok` 는 위에서 `expect` 로만 계산돼 `any([])` = False 였다 —
    **답이 무엇이든 1판 실패.**
 2. `mentioned` 가 `expect` 없는 라벨에서 무조건 False 였다. 그래서 요약이 `1판 14/15` 를
@@ -59,7 +59,7 @@ def test_normalisation_ignores_spaces_and_commas():
 
 
 def test_the_summary_does_not_make_a_ratio_before_signature():
-    """⛔ 대조군 — 서명 전에 분수가 나오면 점수를 보고 라벨을 고칠 수 있다."""
+    """⛔ 대조군 — 사인오프 전에 분수가 나오면 점수를 보고 라벨을 고칠 수 있다."""
     import re
     rows = [{"id": "X", "pass": True, "asserted": True, "mentioned": True,
              "distractor_seen": [], "chars": 10}]
@@ -72,7 +72,7 @@ def test_the_summary_does_not_make_a_ratio_before_signature():
 #
 # ⛔ **왜 이 묶음이 있나.** 이 채점기는 "요구한 사실이 답에 없다" 까지만 말했고, 그 하나의
 # 신호가 셋을 뭉쳤다 — 검색이 못 물어온 것 · 물어왔는데 안 뽑은 것(FP4) · 반만 뽑은
-# 것(FP7). 실패를 보고도 **검색을 고칠지 서술을 고칠지 알 수 없었다.**
+# 것(FP7). 실패를 보고도 **검색을 고칠지 생성을 고칠지 알 수 없었다.**
 #
 # 여기 검사는 전부 순수 함수에 건다. 판정 규칙은 DB 도 LLM 도 필요 없고, 필요하게 만들면
 # 이 규칙이 통합 실행 안에서만 확인되어 아무도 안 돌리게 된다.
@@ -88,7 +88,7 @@ def test_pass_when_every_required_fact_is_in_the_answer():
 
 
 def test_upstream_when_the_missing_fact_was_not_in_the_evidence_either():
-    """검색이 못 물어온 것을 서술 실패로 세면 고칠 곳을 잘못 짚는다."""
+    """검색이 못 물어온 것을 생성 실패로 세면 고칠 곳을 잘못 짚는다."""
     a = probe.attribute(TWO, probe._norm("근거에는 12자 만 있다"),
                         probe._norm("12자 입니다"))
     assert a["verdict"] == "upstream"
@@ -112,7 +112,7 @@ def test_mixed_is_not_forced_into_one_bucket():
     """⛔ 한쪽으로 몰아 세는 순간 이 판정이 거짓말을 한다."""
     three = TWO + [["16자"]]
     a = probe.attribute(three, probe._norm("근거: 12자 그리고 8자"),
-                        probe._norm("12자 입니다"))          # 8자=근거O·답X, 16자=근거X·답X
+                        probe._norm("12자 입니다"))          # 8자=답변 근거O·답X, 16자=답변 근거X·답X
     assert a["verdict"] == "mixed"
 
 
@@ -131,7 +131,7 @@ def test_required_groups_reads_both_label_shapes_the_way_scoring_does():
 def test_the_pass_verdict_agrees_with_the_probe_s_own_first_judgement():
     """⭐ 이 검사가 "점수는 하나도 안 바뀌었다" 를 지킨다.
 
-    귀속의 `pass` 는 1판과 **같은 규칙**이어야 한다 — `expect_all` 은 모든 묶음,
+    귀속의 `pass` 는 1버전과 **같은 규칙**이어야 한다 — `expect_all` 은 모든 묶음,
     `expect` 는 표기 후보 중 하나. 둘이 갈리면 실행 중 경고가 뜨지만, 그 경고를 보기 전에
     여기서 걸린다.
     """
@@ -154,16 +154,16 @@ def test_the_pass_verdict_agrees_with_the_probe_s_own_first_judgement():
 def test_a_differently_worded_evidence_reads_as_upstream_not_fp4():
     """⚠ **알고 있는 기울기를 검사로 박아 둔다.**
 
-    부분일치는 무르다. 같은 사실이 근거에 다른 말로 적혀 있으면 여기서는 "근거에 없음" 이
+    부분일치는 무르다. 같은 사실이 답변 근거에 다른 말로 적혀 있으면 여기서는 "답변 근거에 없음" 이
     되고, 그러면 FP4 가 적게·검색 쪽이 많게 세어진다. 그 방향을 모른 채 수를 읽으면
-    서술 결함을 검색 결함으로 오진한다. 그래서 FP4/FP7 은 하한, 검색 쪽은 상한이다.
+    생성 결함을 검색 결함으로 오진한다. 그래서 FP4/FP7 은 하한, 검색 쪽은 상한이다.
     """
     a = probe.attribute([["8자"]], probe._norm("최대 여덟 글자까지"), probe._norm("모르겠습니다"))
     assert a["verdict"] == "upstream"
 
 
 def test_the_breakdown_never_prints_a_ratio():
-    """서명 전 총점 금지와 같은 규칙 — 한 번 찍힌 수는 인용된다."""
+    """사인오프 전 총점 금지와 같은 규칙 — 한 번 찍힌 수는 인용된다."""
     rows = [{"id": "A-1", "verdict": "fp4"}, {"id": "A-2", "verdict": "pass"}]
     text = "\n".join(probe.attribution_lines(rows))
     assert "A-1" in text and "FP4" in text

@@ -45,14 +45,14 @@ def test_a_group_is_reached_when_any_spelling_is():
 
 
 def test_aiming_is_wrong_only_in_the_degenerate_case():
-    """**문턱을 만들지 않는다.** 전부 못 닿을 때만 멈춘다 — 비율은 지어낸 수가 된다."""
+    """**임계값을 만들지 않는다.** 전부 못 닿을 때만 멈춘다 — 비율은 지어낸 수가 된다."""
     assert aiming_is_wrong([[False], [False, False]]) is True
     assert aiming_is_wrong([[False], [True, False]]) is False   # 하나라도 닿으면 측정이다
     assert aiming_is_wrong([]) is False
 
 
 def test_labels_with_nothing_to_reach_do_not_make_the_aim_look_wrong():
-    """요구 사실이 없는 라벨(대조군)은 닿을 것이 원래 없다 — 분모에 넣으면 안 된다."""
+    """필수 사실이 없는 라벨(대조군)은 닿을 것이 원래 없다 — 분모에 넣으면 안 된다."""
     assert aiming_is_wrong([[], []]) is False
     assert aiming_is_wrong([[], [False]]) is True
     assert aiming_is_wrong([[], [True]]) is False
@@ -66,8 +66,8 @@ def test_unreachable_labels_are_named_not_silently_dropped():
 # ── 어느 코퍼스를 물을 것인가 (`OPEN.md` A87) ─────────────────────────────────
 
 def test_the_label_declaration_is_used_when_no_tenant_is_given():
-    """선언 자리는 **이미 있었다** — `corpus.tenant` 는 Pack B 계열이 쓰고
-    `ko_eval_labels.check` 가 `require_corpus_binding` 에서 요구한다. 새 칸을 만들지 않는다."""
+    """명시적 선언 자리는 **이미 있었다** — `corpus.tenant` 는 Pack B 계열이 쓰고
+    `ko_eval_labels.check` 가 `require_corpus_binding` 에서 요구한다. 새 필드를 만들지 않는다."""
     tenant, note = resolve_tenant({"corpus": {"tenant": "design_docs"}}, "")
     assert tenant == "design_docs"
     assert "design_docs" in note
@@ -94,7 +94,7 @@ def test_nobody_saying_which_corpus_is_a_refusal_not_a_default():
 
 
 def test_a_blank_declaration_is_not_a_declaration():
-    """빈 문자열·공백만 있는 선언을 통과시키면 검사가 조용히 꺼진다."""
+    """빈 문자열·공백만 있는 명시적 선언을 통과시키면 검사가 조용히 꺼진다."""
     for block in ({"corpus": {"tenant": ""}}, {"corpus": {"tenant": "   "}}, {"corpus": {}}):
         with pytest.raises(UndeclaredCorpus):
             resolve_tenant(block, "")

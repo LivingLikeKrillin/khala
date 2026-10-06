@@ -121,7 +121,7 @@ def test_alignment_syntax_still_counts(sep):
 # ── "짧게" ────────────────────────────────────────────────────────────────────
 
 def test_shorter_is_relative_to_the_previous_answer():
-    """절대 문턱은 질문마다 뜻이 달라진다 — 300자가 짧은 질문도, 긴 질문도 있다."""
+    """절대 임계값은 질문마다 뜻이 달라진다 — 300자가 짧은 질문도, 긴 질문도 있다."""
     assert F.check("shorter", "짧은 답", prior="아주 " * 100 + "긴 답") is True
     assert F.check("shorter", "아주 " * 100, prior="짧은 답") is False
 

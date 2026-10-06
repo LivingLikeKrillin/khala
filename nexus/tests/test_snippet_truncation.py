@@ -1,4 +1,4 @@
-"""근거 스니펫 경계 truncation — SPEC-nexus-snippet-boundary-truncation §6.
+"""답변 근거 스니펫 경계 truncation — SPEC-nexus-snippet-boundary-truncation §6.
 
 _truncate_snippet 순수 함수: 단어/문장 중간을 자르지 않고, 가능한 많이 남기며 경계에서 자른다.
 """

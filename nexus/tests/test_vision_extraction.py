@@ -133,10 +133,10 @@ def test_the_identity_moves_with_the_prompt(monkeypatch):
 
 
 def test_bumping_the_answer_model_does_not_move_the_extractor_identity(monkeypatch):
-    """**행동으로 단언한다.** 앞선 판은 소스에서 문자열을 grep 했는데, 그러면 안 된다고 설명하는
+    """**행동으로 단언한다.** 앞선 버전은 소스에서 문자열을 grep 했는데, 그러면 안 된다고 설명하는
     주석에 걸린다 — 표현이 아니라 행동을 측정해야 한다.
 
-    공유 상수였다면 답변 모델의 EOL 교체가 추출기 신원을 조용히 바꾸고, 저장된 추출을 전부
+    공유 상수였다면 답변 모델의 EOL 교체가 추출기 식별 정보를 조용히 바꾸고, 저장된 추출을 전부
     무효화하며, 무관한 변경의 부작용으로 44장을 다시 읽게 만든다.
     """
     from nexus.providers.llm import LLMService
@@ -157,7 +157,7 @@ def test_the_vision_model_is_overridable_on_its_own(monkeypatch):
 # ── 절단: 두 종류를 모두 잡는가 ───────────────────────────────────────────────
 
 def test_a_response_cut_off_by_max_tokens_is_marked_truncated():
-    """**앞선 판이 놓친 것.** 문자 상한만 표시했는데, 한국어 2048 토큰은 8000자를 만들 수 없다 —
+    """**앞선 버전이 놓친 것.** 문자 상한만 표시했는데, 한국어 2048 토큰은 8000자를 만들 수 없다 —
     표시되는 절단은 도달 불가였고 실제로 걸리는 절단은 표시가 없었다. 조밀한 명세표가 절반만
     담긴 채 "완전한 추출" 로 여섯 hop 을 통과한다는 뜻이다."""
     r = _Reader("| 아바타 | 해금 |\n|---|---|\n| A | 1200")
@@ -241,7 +241,7 @@ def test_a_document_with_no_images_is_entirely_authored():
 
 
 def test_an_unbalanced_marker_does_not_tier_authored_prose_as_machine_read():
-    """잘린 문서나 손으로 편집된 body 로 저자 산문이 기계 텍스트로 찍히면 안 된다."""
+    """잘린 문서나 손으로 편집된 body 로 저자 산문이 기계 판독 텍스트로 찍히면 안 된다."""
     doc = f"# 제목\n\n사람이 쓴 문단\n{vision.VISION_BEGIN}\n짝 없는 꼬리\n"
     chunks = _chunk(doc)
     assert chunks and all(c.provenance_tier == "authored" for c in chunks)
@@ -280,7 +280,7 @@ def test_markers_are_honoured_when_the_caller_wrote_them():
 # ── 39 → 35 회귀를 만든 두 결함 ───────────────────────────────────────────────
 
 def test_the_image_marker_lives_inside_the_block():
-    """밖에 두면 청커가 그 한 줄을 저자 조각으로 보고 **내용 없는 61자 chunk** 로 잘라낸다.
+    """밖에 두면 청커가 그 한 줄을 저자 청크로 보고 **내용 없는 61자 chunk** 로 잘라낸다.
     2026-08-10 실측에서 문서마다 6~11개씩 생겼다."""
     block = vision.build_block(vision.Extraction("표", "m/abc12345", "s" * 64))
     lines = [ln for ln in block.split("\n") if ln.strip()]
@@ -294,7 +294,7 @@ def test_the_image_marker_lives_inside_the_block():
 
 
 def test_authored_prose_is_not_shredded_by_interleaved_images():
-    """**회귀의 나머지 절반.** 그림이 문단 사이에 있으면 앞뒤 저자 텍스트가 각각 다른 chunk 로
+    """**회귀의 나머지 절반.** 그림이 문단 사이에 있으면 앞뒤 작성자 텍스트가 각각 다른 chunk 로
     갈렸다. 정책 문장이 61~335자 파편이 되어, 검색이 찾아내도 답에 필요한 맥락이 그 안에 없다.
 
     그림은 산문 사이에 끼어든 것이지 산문을 끊은 것이 아니다 — 이어 붙여도 혼합 chunk 는

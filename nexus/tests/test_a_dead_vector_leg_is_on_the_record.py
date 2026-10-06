@@ -1,8 +1,8 @@
-"""죽은 경로가 **기록에 남고**, 질의 임베딩이 **기다릴 만큼 기다린다**.
+"""실패한 경로가 **기록에 남고**, 질의 임베딩이 **기다릴 만큼 기다린다**.
 
 ⛔ **왜 생겼나 (2026-10-01).** 소비자의 측정 첫 호출에서 벡터 경로가 `ReadTimeout` 으로 죽었다.
-응답은 `degraded: ["vector"]` 를 실었지만 소비자 기록기가 그 칸을 버렸고, 이쪽 `search_log` 에는
-**그 칸이 없었다** — 앱 로그를 읽고서야 알았다. 기록으로는 `top_distance IS NULL` 로 짐작만 할 수
+응답은 `degraded: ["vector"]` 를 실었지만 소비자 기록기가 그 필드를 버렸고, 이쪽 `search_log` 에는
+**그 필드가 없었다** — 앱 로그를 읽고서야 알았다. 기록으로는 `top_distance IS NULL` 로 짐작만 할 수
 있었고, 그것은 첫 채널만 보며 벡터를 안 쓰는 경로(`keyword_only`)와 섞인다.
 
 원인은 사이드카 질의 한도 10초였다. 검색 한 번은 켜진 채널마다 벡터 경로를 동시에 띄우므로
@@ -38,7 +38,7 @@ def test_nothing_died_is_recorded_as_an_empty_list_not_as_unknown():
 
 
 def test_a_double_without_the_field_is_unknown_not_healthy():
-    """칸이 없는 더블을 「죽은 것 없음」으로 적으면, 모르는 것을 안다고 적는 것이다."""
+    """필드가 없는 더블을 「죽은 것 없음」으로 적으면, 모르는 것을 안다고 적는 것이다."""
     class _Bare:
         hits: list = []
         graph = None
@@ -69,8 +69,8 @@ async def _bound(monkeypatch, sig) -> tuple[dict[str, str], tuple]:
 
 @pytest.mark.asyncio
 async def test_every_placeholder_of_the_insert_is_bound_exactly_once(monkeypatch):
-    """⚠ 이 INSERT 는 자리 번호가 칸 순서를 안 따른다(`read_scope` 가 `$36`). 칸을 더하는
-    사람이 번호를 하나 잘못 적어도 다른 칸에 조용히 들어간다 — 번호와 인자 수를 맞춰 본다."""
+    """⚠ 이 INSERT 는 자리 번호가 필드 순서를 안 따른다(`read_scope` 가 `$36`). 필드를 더하는
+    사람이 번호를 하나 잘못 적어도 다른 필드에 조용히 들어간다 — 번호와 인자 수를 맞춰 본다."""
     bound, args = await _bound(monkeypatch, _extract(SearchResult()))
     numbers = sorted(int(v[1:]) for v in bound.values() if v.startswith("$"))
     assert numbers == list(range(1, len(args) + 1))

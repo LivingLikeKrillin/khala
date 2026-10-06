@@ -1,6 +1,6 @@
 """`nexus doc hide|restore` · `nexus unsupersede` — REAL Postgres. SPEC §4.6.
 
-CLI 는 경로로 문서를 부른다. 숨긴 문서는 active 가 아니므로 상태를 가리지 않는 해석기가
+CLI 는 경로로 문서를 부른다. 숨김 문서는 active 가 아니므로 상태를 가리지 않는 해석기가
 필요하다 — 이게 없으면 되돌리려는 사람이 rid 를 손으로 옮겨 적어야 한다.
 """
 

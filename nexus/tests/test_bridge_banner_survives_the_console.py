@@ -12,9 +12,9 @@
 ⚠ **가장 늦게 발견되는 부류다** — 대화형 콘솔에서는 안 나기도 해서, 손으로 띄우면 멀쩡하고
 무인으로 띄우면 죽는다.
 
-⭐ 이 리포는 같은 처방을 **이미 두 곳에** 갖고 있었다(`scripts/check_readme_counts.py::_say` ·
+⭐ 이 리포는 같은 조치 방법을 **이미 두 곳에** 갖고 있었다(`scripts/check_readme_counts.py::_say` ·
 훅의 stdin 디코딩). 브리지만 빠져 있었다. 그래서 이 파일이 지키는 것은 함수 하나가 아니라
-**그 처방이 여기에도 걸려 있다**는 사실이다.
+**그 조치 방법이 여기에도 걸려 있다**는 사실이다.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def test_a_plain_console_still_gets_the_ordinary_print(monkeypatch):
 def test_main_prints_through_the_guard_not_through_print():
     """⛔ **금지 단언은 호출을 겨눈다.**
 
-    `main` 안에 맨 `print(` 가 남아 있으면 이 처방이 절반만 걸린 것이다. 부분 문자열로
+    `main` 안에 맨 `print(` 가 남아 있으면 이 조치 방법이 절반만 걸린 것이다. 부분 문자열로
     `"print"` 를 금지하면 주석·docstring 을 물으므로, 줄 단위로 **호출 모양**만 본다.
     """
     import inspect
@@ -88,7 +88,7 @@ def test_the_module_starts_under_a_cp949_pipe():
     지나왔다는 증거가 못 된다. 그래서 토큰은 주고 **서버만 대신 세운다** — 배너를 지나
     `serve_forever` 까지 가고, 거기서 곧장 돌아온다.
 
-    ⛔ 포트를 막는 방식은 안 쓴다. 첫 판이 그렇게 했다가 포트가 **실제로 열려** 60초를
+    ⛔ 포트를 막는 방식은 안 쓴다. 첫 버전이 그렇게 했다가 포트가 **실제로 열려** 60초를
     기다렸다 — 시동을 확인하려는 검사가 시동에 성공해서 걸린 것이다.
     """
     code = (

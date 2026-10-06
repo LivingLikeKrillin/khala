@@ -158,7 +158,7 @@ def test_record_audit_persists_to_a2a_audit_table():
         assert rows[0]["denied"] is False and rows[0]["task_state"] == "completed"
         assert rows[0]["evidence_count"] == 2
         assert rows[1]["denied"] is True and rows[1]["reason"] == "forbidden_no_capability"
-        # 2026-08-14 뒤집힘: 길이만 남는다. 지문은 평문에서 재계산돼 principal 로 이어졌다
+        # 2026-08-14 뒤집힘: 길이만 남는다. 핑거프린트는 평문에서 재계산돼 principal 로 이어졌다
         # (SPEC-nexus-audit-query-hash). 컬럼은 역사적 행 때문에 남지만 새 행은 NULL 이다.
         assert rows[1]["query_sha256"] is None
         assert rows[1]["query_len"] == len("비밀")

@@ -98,7 +98,7 @@ async def collect_files(
             #
             # ⭐ 후자가 실물로 나왔다: 마운트된 39개 중 BOM 이 셋이고, 제목이 `1. 맥락 및
             # 배경` 으로 겹친 문서가 **정확히 그 셋**이었다. 인용은 `title` 로 문서를
-            # 가리키므로, 셋이 인용에서 서로 구별되지 않았다. 설명 층이 근거 목록에서
+            # 가리키므로, 셋이 인용에서 서로 구별되지 않았다. 설명 레이어가 답변 근거 목록에서
             # 그 제목을 보고 알려 줬다 — 이쪽 검사는 아무것도 안 울렸다.
             #
             # `utf-8-sig` 는 BOM 이 있으면 떼고 없으면 `utf-8` 과 같다.
@@ -129,17 +129,17 @@ async def collect_files(
         #
         # ⛔ **본문 해시만 보면 라벨 수정이 통째로 안 보인다.** `content_hash` 는 스펙 ⑥ 대로
         # frontmatter 를 뺀 본문만 센다. 그래서 `labels:` 한 줄만 고친 파일은 "안 바뀜" 으로
-        # 건너뛰고, **표식은 영원히 옛 값으로 남는다.** 2026-09-18 에 실제로 그랬다 — 합성
+        # 건너뛰고, **마커는 영원히 옛 값으로 남는다.** 2026-09-18 에 실제로 그랬다 — 합성
         # 코퍼스 안내 문서에 `labels: [synthetic]` 을 붙였는데 재적재가 조용히 무시했고,
         # `--force` 를 알아야만 붙일 수 있었다. 아는 사람만 되는 것은 되는 게 아니다.
         #
         # 그렇다고 frontmatter 전체를 해시에 넣지는 않는다 — 그러면 아무 메타데이터나 고쳐도
-        # 전량 재색인이 돌고, 스펙 ⑥ 이 그걸 피하려고 본문만 센 것이다. **DB 에 앉는 표식**
+        # 전량 재색인이 돌고, 스펙 ⑥ 이 그걸 피하려고 본문만 센 것이다. **DB 에 앉는 마커**
         # 하나만 비교한다.
         #
         # ⛔ **상태와 무관하게 비교한다 (2026-10-01).** 예전에는 `status = 'active'` 행만 봤다. 그러면
-        # 숨긴 문서(`soft_deleted`·`superseded`)는 비교할 행이 없어 **매 주기 「바뀜」**이 됐다 —
-        # 정시 재적재가 숨긴 설계 명세 하나를 매시 156 조각으로 다시 만들었다. 재적재는 숨긴 문서를
+        # 숨김 문서(`soft_deleted`·`superseded`)는 비교할 행이 없어 **매 주기 「바뀜」**이 됐다 —
+        # 정시 재적재가 숨긴 설계 명세 하나를 매시 156 청크로 다시 만들었다. 재적재는 숨김 문서를
         # 되살리지 않으므로(`pipeline._save_document` 는 `status` 를 안 건드린다) 다시 읽어도 바뀌는
         # 것이 없다. 본문이 **실제로** 바뀌었을 때만 한 번 읽어 최신으로 둔다.
         if not force:
@@ -153,7 +153,7 @@ async def collect_files(
                 if row is not None and row["content_hash"] == content_hash:
                     declared, _refused = declarable(fm.get("labels"))
                     stored = set(row["labels"] or ())
-                    # 경로가 붙인 표식은 이 비교에 넣지 않는다 — 문서가 선언할 수 없는 것을
+                    # 경로가 붙인 마커는 이 비교에 넣지 않는다 — 문서가 선언할 수 없는 것을
                     # 선언 안 했다고 매번 재적재하면 무한히 "바뀜" 이다.
                     if set(declared) == (stored & SELF_DECLARABLE):
                         logger.debug("file_unchanged", path=relative)
@@ -173,7 +173,7 @@ async def collect_files(
             canonical_uri=canonical_uri,
             # 이 본문의 비전 마커를 우리가 썼는가. **마지막 칸이다** — 여기서 안 읽으면
             # frontmatter 에 실어 보내도 청커까지 안 닿고, 추출 텍스트가 마커만 벗겨진 채
-            # 저자 텍스트로 세탁된다 (ADR-0010 §3·§4). 2026-08-10 라이브에서 실제로 그랬다.
+            # 작성자 텍스트로 세탁된다 (ADR-0010 §3·§4). 2026-08-10 라이브에서 실제로 그랬다.
             # 없으면 False — 남의 문서가 마커를 흉내 내도 저자 산문이 machine_read 로 안 찍힌다.
             vision_extracted=bool(fm.get("vision_extracted", False)),
         ))

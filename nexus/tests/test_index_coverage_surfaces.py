@@ -30,11 +30,11 @@ class _Recorder:
 
 
 def test_exemption_is_declared_never_inferred():
-    """§3.3 — 이름이나 0 커버리지로 추론하지 않는다. 선언만 면제다."""
+    """§3.3 — 이름이나 0 커버리지로 추론하지 않는다. 명시적 선언만 면제다."""
     assert exempt_tenants({"index": {"coverage_exempt_tenants": ["ko_eval_arm"]}}) == {"ko_eval_arm"}
     assert exempt_tenants({}) == set()
     assert exempt_tenants(None) == set()
-    # 이름이 아무리 평가 팩처럼 생겨도 선언 없이는 면제가 아니다
+    # 이름이 아무리 평가 팩처럼 생겨도 명시적 선언 없이는 면제가 아니다
     assert "ko_eval_packb" not in exempt_tenants({"index": {"coverage_exempt_tenants": []}})
 
 
@@ -44,7 +44,7 @@ def test_exemption_is_declared_never_inferred():
 ])
 async def test_a_declared_tenant_is_quiet_and_an_undeclared_one_is_not(
         monkeypatch, exempt, expected):
-    """§6-6 — 같은 상태(커버리지 0)가 선언 하나로 error 와 info 로 갈린다."""
+    """§6-6 — 같은 상태(커버리지 0)가 명시적 선언 하나로 error 와 info 로 갈린다."""
     rec = _Recorder()
     monkeypatch.setattr("nexus.index.embed_health.logger", rec)
     monkeypatch.setattr(

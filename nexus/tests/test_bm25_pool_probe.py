@@ -3,7 +3,7 @@
 규칙이 코드에만 있고 검사가 없으면 결과를 본 뒤에 조용히 바뀐다. 여기 검사는 §5 의 일곱 조항을
 하나씩 걸고, **막아야 할 것이 막히는지**를 같이 건다.
 
-⭐ 이 판에서 새로 생긴 조항은 §5.2 **기제 대조군**이다. 앞 사전 등록은 *동률*을 "기제가 아니다"
+⭐ 이 버전에서 새로 생긴 조항은 §5.2 **메커니즘 대조군**이다. 앞 사전 등록은 *동률*을 "메커니즘이 아니다"
 로 읽었는데 동률은 *안 돎*과 *돌지만 쓸모없음*을 한꺼번에 뜻했다. 여기서는 정답 청크가 그
 실험군의 BM25 풀에 **실제로 들어왔는가**를 직접 본다.
 """
@@ -16,7 +16,7 @@ from scripts.bm25_pool_probe import COST_CEILING, cost_delta, determinism, total
 def _arm(name, pool, multihop, policy, chars=1000, ms=200, entered=True):
     """멀티홉 4건 중 앞에서부터 `multihop` 건이 커버됐다고 본다.
 
-    ⚠ 첫 판의 이 도우미는 `rows` 를 안 만들었고, 그래서 §5.2 를 **질의별로** 읽도록 고쳤을 때
+    ⚠ 첫 버전의 이 도우미는 `rows` 를 안 만들었고, 그래서 §5.2 를 **질의별로** 읽도록 고쳤을 때
     다섯 검사가 한꺼번에 깨졌다 — 픽스처가 규칙이 보는 모양을 안 담고 있었던 것이다.
     """
     qids = [f"m{i:02d}" for i in range(1, 5)]
@@ -35,7 +35,7 @@ def _arms(*rest):
     return [_arm("base", 20, 2, 8, entered=False), *rest]
 
 
-# ── §5.1 결정론 대조군 ───────────────────────────────────────────────────────
+# ── §5.1 결정성 대조군 ───────────────────────────────────────────────────────
 
 def test_a_drifting_base_stops_before_any_verdict():
     v = verdict(_arms(_arm("pool-25", 25, 4, 8)), ["m01"], 5.0)
@@ -49,7 +49,7 @@ def test_determinism_names_only_the_queries_that_moved():
     assert determinism(a, {"rows": []}) == ["m01", "m02"]
 
 
-# ── §5.2 기제 대조군 (이 판의 새 조항) ───────────────────────────────────────
+# ── §5.2 메커니즘 대조군 (이 버전의 새 조항) ───────────────────────────────────────
 
 def test_an_arm_that_improves_without_the_chunk_entering_is_not_a_candidate():
     """좋아졌는데 청크가 풀에 안 들어왔으면 값이 다른 데서 온 것이다 — 설명 못 하는 이득이다."""
@@ -98,7 +98,7 @@ def test_the_two_ceilings_are_the_same_number_as_the_previous_preregistration():
 
 
 def test_latency_inside_the_noise_band_is_reported_as_unmeasurable():
-    """잡음 폭 안의 차이를 대가라고 부르면, 없는 비용으로 실험군을 떨어뜨리게 된다."""
+    """노이즈 범위 내의 차이를 대가라고 부르면, 없는 비용으로 실험군을 떨어뜨리게 된다."""
     v = verdict(_arms(_arm("pool-25", 25, 4, 8, ms=203)), [], noise_band=5.0)
     assert v["candidates"][0]["latency_is_measurable"] is False
 
@@ -111,7 +111,7 @@ def test_latency_outside_the_noise_band_is_reported_as_a_cost():
 # ── §5.6 여럿이면 풀이 가장 작은 것 ──────────────────────────────────────────
 
 def test_the_smallest_pool_wins_not_the_highest_scoring_one():
-    """§0 때문이다 — 풀이 커질수록 지문 분절과 기록된 평가 조건과의 어긋남이 커진다."""
+    """§0 때문이다 — 풀이 커질수록 핑거프린트 파편화와 기록된 평가 조건과의 불일치가 커진다."""
     v = verdict(_arms(_arm("pool-40", 40, 4, 8), _arm("pool-25", 25, 3, 8)), [], 5.0)
     assert v["adopt"] == "pool-25"
     assert [c["arm"] for c in v["candidates"]] == ["pool-25", "pool-40"]
@@ -146,9 +146,9 @@ def test_totals_carries_both_costs():
     assert t["multihop"] == {"covered": 1, "n": 1}
 
 
-# ── 질의별 기제 관측 (2026-09-02, 실물이 드러낸 무딤) ────────────────────────
+# ── 질의별 메커니즘 관측 (2026-09-02, 실물이 드러낸 무딤) ────────────────────────
 #
-# 첫 판은 `chunk_entered_pool` 이 실험군당 참/거짓 **하나**였다. 실제 실행에서 m01 은 풀에
+# 첫 버전은 `chunk_entered_pool` 이 실험군당 참/거짓 **하나**였다. 실제 실행에서 m01 은 풀에
 # 들어오고 m02 는 안 들어왔는데 그 둘이 하나의 `True` 로 뭉쳤다. 판정은 안 바뀌었지만(새로
 # 커버된 것은 m01 뿐이고 그건 실제로 들어왔다) 규칙이 묻는 것보다 무딘 답이었다.
 
@@ -215,7 +215,7 @@ def test_regression_groups_never_include_the_treatment_arm():
 
 # ── 표가 판정이 선 자리를 보여주는가 (2026-09-02) ────────────────────────────
 #
-# 첫 판의 표는 `멀티홉`·`정책` 두 칸을 코드에 박아 뒀다. Pack B 23건을 회귀 집합에 얹은 실행에서
+# 첫 버전의 표는 `멀티홉`·`정책` 두 필드를 코드에 박아 뒀다. Pack B 23건을 회귀 집합에 얹은 실행에서
 # 그 열이 **아예 안 찍혔다.** 판정 함수는 모든 그룹을 봤으므로 결과는 옳았지만, 읽는 사람에게는
 # 새 회귀 집합이 없는 것처럼 보였다 — 판정이 무엇 위에서 났는지가 표에 없으면 그 표는 판정을
 # 뒷받침하지 못한다.

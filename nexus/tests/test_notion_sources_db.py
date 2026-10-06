@@ -180,7 +180,7 @@ def test_startup_sweep_leaves_a_live_run_alone():
     _run(inner)
 
 
-# ── 브라우저에서 잡아낸 두 결함의 회귀 가드 ─────────────────────────────────
+# ── 브라우저에서 잡아낸 두 결함의 회귀 가드 검사 ─────────────────────────────────
 
 def test_counts_and_plan_come_back_as_objects_not_json_strings():
     """asyncpg 는 JSONB 를 str 로 준다. 디코딩하지 않으면 UI 는 전부 0 을 보여주고

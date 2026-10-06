@@ -51,7 +51,7 @@ class TestRRFFusion:
         assert fused[0]["vector_rank"] is None
 
     def test_returns_full_deduped_union_no_cut(self):
-        # 컷은 이제 _diversify 몫 — fusion 은 전체 병합 리스트를 돌려준다.
+        # 컷오프는 이제 _diversify 몫 — fusion 은 전체 병합 리스트를 돌려준다.
         bm25 = [(f"chunk_{i}", i + 1) for i in range(20)]
         vector = [(f"chunk_{i+10}", i + 1) for i in range(20)]
         fused = _rrf_fusion(bm25, vector, k=60)
@@ -130,12 +130,12 @@ class _Row(dict):
 
 
 async def test_the_search_function_never_runs_the_visibility_query(monkeypatch):
-    """`hybrid_search` 는 이 진단을 부르지 않는다 — 첫 판이 그렇게 했다가 CI 를 40분 세웠다.
+    """`hybrid_search` 는 이 진단을 부르지 않는다 — 첫 버전이 그렇게 했다가 CI 를 40분 세웠다.
 
     `hybrid_search` 는 DB 없이 도는 단위 테스트 수백 개가 부르는 함수다. 거기에 DB 왕복 하나를
     얹으면 죽은 이벤트 루프에 묶인 전역 asyncpg 풀을 집고, 커넥션이 열린 트랜잭션째 남아
     `documents` 에 AccessShareLock 을 쥔다 — 뒤따르는 모든 TRUNCATE 가 그 뒤에 줄을 선다.
-    두 번째 판(응답 조립 + 타임아웃)도 같은 이유로 매달렸다: 붙들고 있던 것은 질의가 아니라
+    두 번째 버전(응답 조립 + 타임아웃)도 같은 이유로 매달렸다: 붙들고 있던 것은 질의가 아니라
     커넥션이었다. 그래서 진단은 자기 엔드포인트에만 산다.
     """
     touched = []
@@ -158,7 +158,7 @@ async def test_the_search_function_never_runs_the_visibility_query(monkeypatch):
 
 # ── 가중 채널 융합 (SPEC-nexus-multi-turn-retrieval §3.3, U3) ────────────────────
 #
-# 채널 = 무엇을 물었나(재작성/원문). 경로 = 어떻게 찾았나(BM25/vector). 축이 둘이고,
+# 채널 = 무엇을 물었나(재작성/원문). 경로 = 어떻게 찾았나(BM25/vector). 차원이 둘이고,
 # 가중은 **채널당 한 번** 걸린다.
 
 from nexus.search.hybrid import ChannelResults, fuse_channels  # noqa: E402
@@ -210,7 +210,7 @@ def test_a_low_weight_channel_still_puts_its_documents_in_the_result():
 
 
 def test_the_best_rank_per_leg_survives_across_channels():
-    """칸은 둘인데 채널은 넷의 순위를 만든다 — 고르지 않으면 나중 채널이 앞 채널을 덮는다."""
+    """필드는 둘인데 채널은 넷의 순위를 만든다 — 고르지 않으면 나중 채널이 앞 채널을 덮는다."""
     fused = fuse_channels([
         ChannelResults(bm25=[("a", 5)], name="rewritten"),
         ChannelResults(bm25=[("a", 2)], name="original"),

@@ -3,12 +3,12 @@
 세 가지를 한 파일에 묶는다. 셋 다 같은 재료(작은 픽스처 코퍼스 + 값싼 LLM 더블)를 쓴다:
 
 1. **동치성** — `spans.enabled` 를 켜고 끄고 같은 질의를 돌려, 히트와 `search_log` 값이
-   (생성 의존 칸을 빼고) **바이트 단위로 같은지** 본다. `test_spans_gate_db.py` 가 "캡처가
+   (생성 의존 필드를 빼고) **바이트 단위로 같은지** 본다. `test_spans_gate_db.py` 가 "캡처가
    맞는 것을 담는가" 를 본다면 이 시험은 "캡처가 **아무것도 안 건드리는가**" 를 본다 — 둘 다
    있어야 "관측 전용" 이라는 주장이 성립한다.
 2. **파괴 경로** — span 저장을 실제 제약 위반으로 실패시켜, "배치가 유실됐다" 는 사실이
    `spans_expected IS NOT NULL AND search_span 행 0개` 라는 조합으로 **기록되는가**를 본다.
-3. **비용 관측** — 요청당 후보·span 행 수를 세어 찍는다. 문턱도 단언도 없다.
+3. **비용 관측** — 요청당 후보·span 행 수를 세어 찍는다. 임계값도 단언도 없다.
 
 **LLM 은 실제로 부르지만 값을 지어내지 않는다.** 이 리포의 기존 `_FakeLLM` 더블들(예:
 `test_citation_validation.py`)은 전부 `Usage(None, None, None, "fake")` 를 돌려준다 —
@@ -118,7 +118,7 @@ async def _seed() -> dict[str, str]:
 
 
 async def _run_once(query_text: str, path: str, spans_enabled: bool, llm) -> tuple[object, object, dict]:
-    """검색 → 패킷 조립 → 답변 → 신호 적재, 네 표면이 공유하는 것과 같은 순서(reconcile.py 참조)."""
+    """검색 → 패킷 조립 → 답변 → 신호 적재, 네 API 표면이 공유하는 것과 같은 순서(reconcile.py 참조)."""
     cfg = {"search": {}, "spans": {"enabled": spans_enabled, "max_candidates_per_span": 100}}
     result = await hybrid_search(
         query_text, tenant=_TENANT, clearance="INTERNAL", top_k=10,
@@ -143,12 +143,12 @@ async def _run_once(query_text: str, path: str, spans_enabled: bool, llm) -> tup
 _PATH_ON = "test_spans_equiv_on"
 _PATH_OFF = "test_spans_equiv_off"
 
-#: 답변에서 유도되는 칸 — 생성은 재현 가능하지 않으므로 뺀다(작업 지시문의 명시 목록).
+#: 답변에서 유도되는 필드 — 생성은 재현 가능하지 않으므로 뺀다(작업 지시문의 명시 목록).
 _EXCLUDE_ANSWER_DERIVED = {
     "latency_ms", "spans_expected", "completion_tokens", "cost_usd",
     "n_citations", "unverified_citations",
 }
-#: 행 신원·벽시계 칸 — 캡처 여부와 무관하게 매 실행 다르다. 작업 지시문의 목록에는 없지만
+#: 행 식별 정보·벽시계 필드 — 캡처 여부와 무관하게 매 실행 다르다. 작업 지시문의 목록에는 없지만
 #: 빼지 않으면 `id`/`ts`/`sufficiency_at` 하나만으로 모든 실행이 "달라졌다" 고 나온다.
 _EXCLUDE_STRUCTURAL = {"id", "ts", "sufficiency_at", "path"}
 
@@ -247,7 +247,7 @@ _COST_QUERIES = [_QUERY, "gizmo status", "diagnostics notes for gizmo"]
 
 @pytest.mark.integration
 async def test_fixture_cost_observation(clean_db):
-    """비용 관측 — **단언도 문턱도 없다.**
+    """비용 관측 — **단언도 임계값도 없다.**
 
     ⚠ 여기서 찍는 수는 이 파일의 두 문서·세 질의 픽스처에서 나온 값이다. 픽스처는 문서 두
     건이라 융합·diversify 단계의 후보 수가 프로덕션 코퍼스와 자릿수부터 다르다 — "프로덕션

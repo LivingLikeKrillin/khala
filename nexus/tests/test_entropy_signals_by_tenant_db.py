@@ -1,7 +1,7 @@
 """DB-backed tests for 마이그레이션 034 — 테넌트별 엔트로피 신호 + `identityless_chunks`.
 
 **무엇을 지키는 검사인가.** 이 뷰는 하중을 받는다: ADR-0006 이 그것을 Slice-2 의 demand-pull
-트리거로 지정했고, 여러 SPEC 처분이 *"gated on v_entropy_signals"* 로 보류돼 있다. 그런데
+트리거로 지정했고, 여러 SPEC 조치가 *"gated on v_entropy_signals"* 로 보류돼 있다. 그런데
 전역 집계라 버릴 평가 테넌트가 신호를 삼켰다(2026-08-25 라이브: 전역 정확중복 61,425 vs
 `default` 0).
 
@@ -164,10 +164,10 @@ def test_title_collision_stays_in_its_own_tenant():
     _run(inner)
 
 
-# ── 새 신호: 색인 텍스트에 신원이 없는 청크 ─────────────────────────────────────
+# ── 새 신호: 색인 텍스트에 식별 정보가 없는 청크 ─────────────────────────────────────
 
 def test_identityless_chunk_counted_and_the_three_ways_out():
-    """`search_text` 에 문서 신원이 하나도 안 들어가는 청크만 센다.
+    """`search_text` 에 문서 식별 정보가 하나도 안 들어가는 청크만 센다.
 
     `search_text = COALESCE(context_prefix, '[' || section_path || ']') || ' ' || chunk_text`
     이므로 빠져나가는 길은 셋이다: 접두사가 있거나 · 섹션이 `root` 가 아니거나 · 본문이 제목을
@@ -195,7 +195,7 @@ def test_identityless_chunk_counted_and_the_three_ways_out():
 
 
 def test_empty_title_is_identityless():
-    """제목이 빈 문서는 어디에도 신원이 없다 — `position('' in x)` 이 1 을 돌려주는 바람에
+    """제목이 빈 문서는 어디에도 식별 정보가 없다 — `position('' in x)` 이 1 을 돌려주는 바람에
     조용히 통과하면 안 된다."""
     async def inner():
         await _doc("doc_untitled", _A, "", content_hash="c5")

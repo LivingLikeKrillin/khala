@@ -3,10 +3,10 @@
 **지시문 형식이 두 군데 있으면 언젠가 갈라진다.** 그래서 정책은 `EmbeddingService` 한 곳에 있고,
 사이드카는 받은 문자열을 그대로 임베딩한다. 여기서 지키는 것은 그 정책의 네 갈래다:
 
-- 모델 기본값 (카드에서 온 값)
+- 모델 기본값 (코드 카드에서 온 값)
 - 설정이 덮는다
 - **빈 문자열은 "지시문 없음" 이라는 적극적 값**이고 미지정과 다르다
-- 카드에 지시문이 없는 모델에 지시문을 주면 **기동을 막는다** — 그게 한국어 임베딩 비교가 제거한
+- 코드 카드에 지시문이 없는 모델에 지시문을 주면 **기동을 막는다** — 그게 한국어 임베딩 비교가 제거한
   교란(한 모델 형식을 다른 모델에 씌우기)의 재유입 경로다
 """
 
@@ -63,7 +63,7 @@ def test_the_registry_values_come_from_model_cards_not_guesses():
 
 
 def test_the_default_backend_is_unchanged(monkeypatch):
-    """이 유닛은 프로덕션 동작을 바꾸지 않는다 — 사이드카는 다음 유닛이 켠다."""
+    """이 태스크는 프로덕션 동작을 바꾸지 않는다 — 사이드카는 다음 태스크가 켠다."""
     monkeypatch.delenv("EMBEDDING_BACKEND", raising=False)
     svc = EmbeddingService()
     assert svc.backend == "ollama"

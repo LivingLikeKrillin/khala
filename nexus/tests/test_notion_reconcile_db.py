@@ -3,7 +3,7 @@
 SPEC-nexus-notion-reconciliation §3.2(containment) · §3.4(primitives).
 
 핵심 불변식 둘:
-  1. revive 는 **현재 세대 청크만** 되살린다 (낡은 superseded 세대는 죽은 채로).
+  1. revive 는 **현재 세대 청크만** 되살린다 (스테일 superseded 세대는 죽은 채로).
   2. superseded 문서는 prune 도 revive 도 되지 않는다.
 
 NOTE(Windows + pytest-asyncio): test_supersede_db.py 와 동일하게 자체 SelectorEventLoop +
@@ -36,10 +36,10 @@ _RID_BARE = notion_doc_rid(_TENANT, "pageB")    # active, prov_inputs={} (백필
 _RID_GIT = "doc_gitgitgitgi"                    # notion 아님
 _RID_QUAR = notion_doc_rid(_TENANT, "pageQ")    # quarantined — provenance 를 쓰면 안 된다
 
-# pageA 의 청크: 현재 세대(hash=chash-a2) + 낡은 세대(hash=chash-a1, 이미 superseded)
+# pageA 의 청크: 현재 세대(hash=chash-a2) + 스테일 세대(hash=chash-a1, 이미 superseded)
 _CHUNK_A_CUR = chunk_rid(_RID_A, "", 0)
 _CHUNK_A_OLD = chunk_rid(_RID_A, "", 1)
-# pageD(soft_deleted) 의 청크: 현재 세대 + 낡은 세대
+# pageD(soft_deleted) 의 청크: 현재 세대 + 스테일 세대
 _CHUNK_D_CUR = chunk_rid(_RID_DEL, "", 0)
 _CHUNK_D_OLD = chunk_rid(_RID_DEL, "", 1)
 
@@ -67,11 +67,11 @@ async def _seed(conn) -> None:
             rid, _TENANT, "u", doc_rid_, text, status, chash, 0,
         )
 
-    # pageA: 현재 세대 active + 낡은 세대 superseded
+    # pageA: 현재 세대 active + 스테일 세대 superseded
     await chunk(_CHUNK_A_CUR, _RID_A, "active", "chash-a2", "현재 본문")
     await chunk(_CHUNK_A_OLD, _RID_A, "superseded", "chash-a1", "낡은 본문")
     # pageD(soft_deleted): 현재 세대는 superseded 로 기록돼 있다(파이프라인이 non-active 부모의
-    # 청크를 superseded 로 쓴다) + 진짜 낡은 세대도 superseded
+    # 청크를 superseded 로 쓴다) + 진짜 스테일 세대도 superseded
     await chunk(_CHUNK_D_CUR, _RID_DEL, "superseded", "chash-d2", "현재 본문 D")
     await chunk(_CHUNK_D_OLD, _RID_DEL, "superseded", "chash-d1", "낡은 본문 D")
 
@@ -158,7 +158,7 @@ def test_soft_delete_hides_doc_and_its_active_chunks_only():
         cur = await db.fetch_one("SELECT status FROM chunks WHERE rid=$1", _CHUNK_A_CUR)
         old = await db.fetch_one("SELECT status FROM chunks WHERE rid=$1", _CHUNK_A_OLD)
         assert cur["status"] == "soft_deleted"
-        assert old["status"] == "superseded"   # 낡은 세대는 건드리지 않는다
+        assert old["status"] == "superseded"   # 스테일 세대는 건드리지 않는다
 
     _run(inner)
 
@@ -188,7 +188,7 @@ def test_soft_delete_refuses_superseded_doc():
 # ── §3.4 revive ───────────────────────────────────────────────────────────────
 
 def test_revive_restores_only_the_current_chunk_generation():
-    """되살릴 때 낡은 세대 청크가 함께 부활하면 '죽은 텍스트'가 검색에 돌아온다."""
+    """되살릴 때 스테일 세대 청크가 함께 부활하면 '죽은 텍스트'가 검색에 돌아온다."""
     from nexus import db
     from nexus.lifecycle import revive
 
@@ -201,7 +201,7 @@ def test_revive_restores_only_the_current_chunk_generation():
         cur = await db.fetch_one("SELECT status FROM chunks WHERE rid=$1", _CHUNK_D_CUR)
         old = await db.fetch_one("SELECT status FROM chunks WHERE rid=$1", _CHUNK_D_OLD)
         assert cur["status"] == "active"        # hash == documents.content_hash
-        assert old["status"] == "superseded"    # 낡은 세대는 죽은 채로
+        assert old["status"] == "superseded"    # 스테일 세대는 죽은 채로
 
     _run(inner)
 
@@ -233,7 +233,7 @@ def test_revive_never_resurrects_a_superseded_doc():
 def test_write_source_roots_refreshes_only_the_walked_roots():
     """이번에 걸은 root 에 대해서만 귀속을 갱신하고, 걷지 않은 root 의 기록은 보존한다.
 
-    I-010 회귀 가드. 통째로 덮어쓰면 rootB 를 걷지 않은 실행이 'P 는 B 에도 걸려 있다'는
+    I-010 회귀 가드 검사. 통째로 덮어쓰면 rootB 를 걷지 않은 실행이 'P 는 B 에도 걸려 있다'는
     사실을 지워버리고, 다음 실행에서 P 가 B 밑에 살아있는데도 prune 후보가 된다.
     """
     from nexus import db

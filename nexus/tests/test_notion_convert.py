@@ -214,7 +214,7 @@ def test_a_page_of_screenshots_becomes_short_rather_than_huge():
 #
 # 고쳐지지 않은 쪽은 **부모 문서**다. `_collect` 은 `child_database` 를 알고 행을 재귀하는데
 # 변환기는 그 블록을 모른다 — 미지원 블록으로 떨어지고, `rich_text` 도 `caption` 도 없어서
-# **아무것도, 표식조차 안 남는다.** 그래서 「프로필/아바타 정책」의 정정 문구가 *"정본은 아래
+# **아무것도, 마커조차 안 남는다.** 그래서 「프로필/아바타 정책」의 정정 문구가 *"정본은 아래
 # 「아바타 해금 조건」 데이터베이스"* 라고 가리키는데 **본문의 그 자리는 비어 있다.**
 
 
@@ -243,7 +243,7 @@ def test_a_database_without_a_title_still_leaves_a_trace():
 
 
 def test_an_ordinary_table_is_still_rendered_as_a_table():
-    """회귀 검사 — 데이터베이스 갈래를 더하면서 일반 표를 가로채면 안 된다."""
+    """회귀 검사 — 데이터베이스 하위 범주를 더하면서 일반 표를 가로채면 안 된다."""
     from nexus.ingest.sources.notion_convert import blocks_to_markdown
 
     children = {"t1": [{"type": "table_row", "table_row": {"cells": [_rich("가"), _rich("나")]}}]}

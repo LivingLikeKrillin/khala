@@ -1,7 +1,7 @@
 """슬랙 스레드 이력 읽기 (SPEC-nexus-multi-turn-retrieval §1.3).
 
 라이브 슬랙 없이 검사한다: `client` 는 우리가 만든 가짜이고, 그 가짜는 **입력에 반응한다** —
-상수를 돌려주는 가짜는 정렬 어긋남을 원리적으로 통과시킨다(memory: suspect-the-instrument-first).
+상수를 돌려주는 가짜는 정렬 불일치를 원리적으로 통과시킨다(memory: suspect-the-instrument-first).
 """
 
 from __future__ import annotations
@@ -137,7 +137,7 @@ async def test_history_failures_never_block_the_answer(err):
     assert await T.read_history(c, {"channel": "C1", "ts": "3", "thread_ts": "1"}) == []
 
 
-# ── 배선: 읽은 이력이 실제로 서버까지 가는가 ────────────────────────────────────
+# ── 와이어링: 읽은 이력이 실제로 서버까지 가는가 ────────────────────────────────────
 #
 # "함수는 맞는데 아무도 안 부른다" 가 이 리포의 최근 결함 넷 중 셋이었다. 그래서 여기서는
 # 핸들러부터 HTTP 바디까지 **경로 전체**를 태운다.

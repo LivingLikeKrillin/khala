@@ -1,4 +1,4 @@
-"""문서 제목 파생 — 결정론 파싱(LLM 미개입).
+"""문서 제목 파생 — 결정론적 파싱(LLM 미개입).
 
 우선순위: frontmatter `title` → 본문 첫 ATX 헤딩 → 폴백(파일명).
 notion deposit 등 frontmatter title·선두 H1 없이 적재된 문서의 제목이 파일명(UUID)으로

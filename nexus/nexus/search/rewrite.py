@@ -102,8 +102,8 @@ def _clean(text: str) -> str:
 class Rewrite:
     """재작성의 결과 **와 그 흔적** (SPEC §3.5, U4).
 
-    문자열만 돌려주던 판은 usage 를 버렸다. 그러면 재작성 호출의 비용이 어디에도 안 남거나,
-    더 나쁘게는 답변 비용 칸에 섞여 `budget.py::measured_averages` 를 편향시킨다.
+    문자열만 돌려주던 버전은 usage 를 버렸다. 그러면 재작성 호출의 비용이 어디에도 안 남거나,
+    더 나쁘게는 답변 비용 필드에 섞여 `budget.py::measured_averages` 를 편향시킨다.
     """
     query: str
     #: 재작성기를 **불렀는가** (이력이 있었는가). 실패해도 True — 비용은 이미 났을 수 있다.
@@ -145,7 +145,7 @@ async def rewrite(query: str, history, llm_svc, *, timeout_s: float = TIMEOUT_S)
     if not _acceptable(candidate, query):
         logger.warning("rewrite_rejected", chars=len(candidate or ""), query_chars=len(query))
         # **비용은 났다.** 결과를 버려도 usage 는 들고 나간다 — 버린 호출이 공짜인 척하면
-        # 재작성의 실제 비용이 장부에서 사라진다.
+        # 재작성의 실제 비용이 원장에서 사라진다.
         return Rewrite(query=query, called=True, usage=usage)
     if candidate != query:
         logger.info("rewrite_applied", chars=len(candidate))

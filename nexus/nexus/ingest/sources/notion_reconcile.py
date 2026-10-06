@@ -40,7 +40,7 @@ def notion_doc_rid(tenant: str, page_id: str) -> str:
 class ScopeRow:
     """재조정 범위에 든 문서 한 건 (prov_inputs ⊆ walked_roots 인 것만).
 
-    content_hash·title 은 계획 지문(plan_hash)과 사람이 읽을 미리보기에 쓴다.
+    content_hash·title 은 계획 핑거프린트(plan_hash)와 사람이 읽을 미리보기에 쓴다.
     """
 
     rid: str
@@ -112,7 +112,7 @@ async def write_source_roots(
     살아있는 페이지가 prune 된다. 반대로 무조건 append 하면 더 이상 닿지 않는 root 가 영원히
     남아 그 문서는 절대 prune 되지 않는다. 걸은 root 만 갱신하는 것이 유일하게 옳다.
 
-    quarantined 행에는 절대 쓰지 않는다(sink 의 label/doc_type 가드와 동일 규칙).
+    quarantined 행에는 절대 쓰지 않는다(sink 의 label/doc_type 가드 검사와 동일 규칙).
     멱등 히트에도 호출되어야 백필이 성립한다.
     """
     walked_set = set(walked)
@@ -142,7 +142,7 @@ async def backfill_source_roots(tenant: str, walked_roots: set[str], live_by_rid
     경고로 적었다 — 경고는 수정이 아니다.
 
     열거(live_index)는 since 와 무관하게 전체를 걷는다. 그러니 여기서 직접 쓴다.
-    dry-run 에서도 쓴다: 낡은 귀속 위에서 계산한 미리보기는 거짓말이다. 문서의 **상태**는
+    dry-run 에서도 쓴다: 스테일 귀속 위에서 계산한 미리보기는 거짓말이다. 문서의 **상태**는
     건드리지 않으므로 "dry-run 은 아무것도 적용하지 않는다"는 여전히 참이다.
     """
     for rid, reached in live_by_rid.items():

@@ -1,4 +1,4 @@
-"""코드 심볼 인덱스 + 스냅샷 가드 (SPEC-nexus-doc-code-anchors §3.1, §3.5).
+"""코드 심볼 인덱스 + 스냅샷 가드 검사 (SPEC-nexus-doc-code-anchors §3.1, §3.5).
 
 ⚠ 이 파일의 Java 는 전부 **여기서 지어낸 것**이다. 대상 저장소의 소스를 픽스처로 복사하지
    말 것 — 그 순간 공개 리포가 그 저장소의 코드를 담게 되고, 지문 스캐너는 코드 구조를 보지
@@ -127,7 +127,7 @@ def test_symbol_row_has_no_text_like_field():
 def test_scan_counts_unparsed_files_as_a_denominator(tmp_path: Path):
     """읽히지만 **선언이 안 나오는** 파일은 `no_symbol_files` 다 (migration 033 이 가른 쪽).
 
-    옛 `unparsed_files` 는 이것과 *읽기 실패* 를 한 칸에 셌다. 이 파일은 읽히므로 여기서
+    옛 `unparsed_files` 는 이것과 *읽기 실패* 를 한 필드에 셌다. 이 파일은 읽히므로 여기서
     세어지는 것이 맞고, 그래서 이 수에는 경보를 걸지 않는다.
     """
     (tmp_path / "Good.java").write_text(SAMPLE, encoding="utf-8")
@@ -141,7 +141,7 @@ def test_scan_counts_unparsed_files_as_a_denominator(tmp_path: Path):
     assert any(r.symbol_name == "WidgetDispatcher" for r in result.symbols)
 
 
-# ---------------------------------------------------------------- 가드
+# ---------------------------------------------------------------- 가드 검사
 
 def _git(repo: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=repo, check=True,
@@ -302,7 +302,7 @@ def test_scan_walks_both_languages_and_skips_vendor_dirs(tmp_path: Path):
     assert result.scanned_files == 2            # 벤더는 분모에도 안 들어간다
 
 
-# ------------------------------------------- 가드가 무엇을 사실로 삼았는지 말하는가
+# ------------------------------------------- 가드 검사가 무엇을 사실로 삼았는지 말하는가
 
 def test_context_names_the_branch_and_the_head_date(repo: Path):
     """이게 없어서 3주 된 피처 브랜치를 조용히 사실로 보고한 적이 있다."""

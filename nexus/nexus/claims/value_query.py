@@ -1,6 +1,6 @@
 """ValueQueryService — concept → 매칭 claim의 현재값을 코드에서 재읽기.
 
-값 조회는 결정론(코드 상수) → confidence=high, 조회 시 재읽기 → fresh.
+값 조회는 결정론적(코드 상수) → confidence=high, 조회 시 재읽기 → fresh.
 저장 hash와 현재 hash가 다르면 drifted 표기(값 자체는 현재값으로 정확).
 소스 해석 실패 → 정직 표기(거짓말 금지 = 캘리브레이션).
 """
@@ -40,7 +40,7 @@ class ValueQueryService:
             if not r.found:
                 # 해석기가 **왜** 못 냈는지를 그대로 전한다. "심볼이 없다"(claim 을 고쳐라)와
                 # "모호해서 답하지 않았다"(한정자를 붙여라)와 "코드 경로가 없다"(배포를 고쳐라)는
-                # 처방이 전부 다르다. 한 문장으로 뭉개면 읽는 사람이 어디를 볼지 모른다.
+                # 조치 방법이 전부 다르다. 한 문장으로 뭉개면 읽는 사람이 어디를 볼지 모른다.
                 out.append(
                     ValueAnswer(c.claim_id, c.statement, None, c.value_source,
                                 "low", False,

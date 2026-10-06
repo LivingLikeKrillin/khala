@@ -75,7 +75,7 @@ async def resolve_source(tenant: str, chunk_text: str) -> SourceRef | Unresolvab
         "WHERE tenant = $1 AND left(image_sha256, $2) = $3 AND extractor_identity = $4",
         tenant, HANDLE_CHARS, handle, identity)
     if not rows:
-        return Unresolvable("no extraction row")      # 행이 지워졌거나 신원이 옮겨졌다
+        return Unresolvable("no extraction row")      # 행이 지워졌거나 식별 정보가 옮겨졌다
     if len(rows) > 1:
         raise AmbiguousHandle(
             f"식별자 {handle} 가 {len(rows)}개 행에 걸렸다 (tenant={tenant}) — "
@@ -93,11 +93,11 @@ async def unresolvable_count(tenant: str) -> dict:
     술어로 억제하면 청크가 없는 추출의 미해석 상태가 0 으로 보고된다.
 
     **현 판독기와 은퇴한 판독기를 가른다.** SPEC 이 예상하지 못한 것이 실적재에서 나왔다:
-    ADR-0010 §5 는 저장을 `(bytes, extractor_identity)` 로 키잉하므로 걷기는 **현 신원의 행만**
-    만난다. 은퇴한 신원의 44 행은 어떤 걷기도 다시 닿지 않고, 합쳐 세면 영원히 안 꺼지는 ⚠ 가
+    ADR-0010 §5 는 저장을 `(bytes, extractor_identity)` 로 키잉하므로 걷기는 **현 식별 정보의 행만**
+    만난다. 은퇴한 식별 정보의 44 행은 어떤 걷기도 다시 닿지 않고, 합쳐 세면 영원히 안 꺼지는 ⚠ 가
     된다 — 이 리포가 방금 다른 자리에서 지운 실패 모양 그대로다.
 
-    그리고 그것은 부정확하기도 하다: 활성 인용은 전부 현 신원의 마커를 이고 있으므로, 은퇴한
+    그리고 그것은 부정확하기도 하다: 활성 인용은 전부 현 식별 정보의 마커를 이고 있으므로, 은퇴한
     행을 가리키는 인용은 **없다**. 세되, 경보로 세지 않는다.
     """
     from nexus import db
