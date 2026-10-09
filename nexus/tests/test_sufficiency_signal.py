@@ -283,7 +283,7 @@ def test_the_fingerprint_moves_with_the_tokenizer():
 
 
 def test_the_fingerprint_moves_with_snippet_length():
-    """스니펫 길이는 근거 본문을 바꾼다 — 이 리포는 그 값 하나로 답변 품질이 갈린 적이 있다."""
+    """스니펫 길이는 답변 근거 본문을 바꾼다 — 이 리포는 그 값 하나로 답변 품질이 갈린 적이 있다."""
     a = S.evidence_fingerprint({"search": {"snippet_max_chars": 300}})
     b = S.evidence_fingerprint({"search": {"snippet_max_chars": 1200}})
     assert a != b

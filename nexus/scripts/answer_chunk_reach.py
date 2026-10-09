@@ -53,7 +53,7 @@ def hangul_ratio(text: str) -> float:
     return len(HANGUL.findall(text or "")) / max(len(text or ""), 1)
 
 
-#: 한 묶음의 판정. **순수 함수로 뺀 이유가 있다** — 첫 판은 이 조합이 DB 함수 안에 있었고,
+#: 한 묶음의 판정. **순수 함수로 뺀 이유가 있다** — 첫 버전은 이 조합이 DB 함수 안에 있었고,
 #: 벡터 판정을 통째로 지워도 검사가 **전부 초록이었다**. 크기를 2배로 과장하는 파손이 안 잡혔다.
 def group_verdict(chunks: int, bm25: bool | None, vector: bool | None) -> str:
     """`absent`(코퍼스에 답이 없다) · `reachable` · `bm25_blind`(벡터만 길이 있다) ·

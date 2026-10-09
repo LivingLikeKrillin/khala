@@ -28,7 +28,7 @@ from pathlib import Path
 import yaml
 
 STRATA = ("loanword", "compound", "particle", "mixed", "spacing")
-#: 층 균형 검사를 켜는 선언값. 이 값을 적은 라벨만 5층×8건 규칙을 받는다.
+#: 계층 균형 검사를 켜는 선언값. 이 값을 적은 라벨만 5계층×8건 규칙을 받는다.
 STRATA_DESIGN = "ko-morphology"
 UNANSWERABLE = "unanswerable"
 PER_STRATUM = 8
