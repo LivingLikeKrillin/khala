@@ -2,7 +2,7 @@
 
 ⛔ **그래프는 융합에 들어가지 않는다.** 이 줄이 오래 `"BM25 + Vector + Graph 3-way"` 였고
 `nexus/CLAUDE.md` 는 이미 정정했는데 이 파일만 그대로였다(외부 평가 P4). 그래프는 라우터가
-고른 경로에서 **따로** 조회되어 근거에 붙고, RRF 는 두 경로만 융합한다.
+고른 경로에서 **따로** 조회되어 답변 근거에 붙고, RRF 는 두 경로만 융합한다.
 
 모든 검색은 base_filter(tenant, classification, quarantine, status)를 적용한다.
 """
@@ -62,7 +62,7 @@ class SearchHit:
     #: 문서 단위 Recall@10 은 1.000 이었다 — 검색만 측정하는 자에는 안 보이던 구간이다.
     chunk_text: str = ""
     #: 이 청크가 속한 문서가 담은 이미지 수. 신호원이지 랭킹 입력이 아니다 — 그림에 갇힌
-    #: 내용 때문에 답을 못 내는 비율을 측정하려면 근거가 어디서 왔는지 알아야 한다 (migration 011).
+    #: 내용 때문에 답을 못 내는 비율을 측정하려면 답변 근거가 어디서 왔는지 알아야 한다 (migration 011).
     doc_n_images: int = 0
     #: 이 텍스트가 어떻게 존재하게 됐는가 (ADR-0010). 'authored' | 'machine_read'.
     #: **여섯 hop 전부를 통과해야 한다** — 어느 한 곳에서 벗겨지면 읽는 사람이 둘을 구별할 수
@@ -89,7 +89,7 @@ class SearchHit:
     #:
     #: 읽기 범위가 목록이 된 뒤로 한 답변의 근거는 여러 테넌트에서 온다. `search_log.tenant` 는
     #: 귀속용 단일 값이고 `read_scope` 는 **읽을 수 있었던** 범위라, 둘 다 *"이 답이 실제로 어느
-    #: 코퍼스에 기댔는가"* 를 말하지 못한다 — 범위를 넓혀 놓고 근거가 한쪽에서만 오는 상태와
+    #: 코퍼스에 기댔는가"* 를 말하지 못한다 — 범위를 넓혀 놓고 답변 근거가 한쪽에서만 오는 상태와
     #: 고르게 오는 상태가 기록에서 같아 보인다. 그 차이가 여기 있다.
     tenant: str = ""
 
@@ -120,12 +120,12 @@ class SearchResult:
     #: 안 들어간다** — 사람이 보는 목록·Recall·Top-1 은 이 필드가 있든 없든 같다.
     fill: list[SearchHit] = field(default_factory=list)
     #: 이번 검색이 얼마나 **잘 맞았는가**(`search/confidence.py`). 융합이 지우는 신호라 경로에서
-    #: 직접 들고 온다. **랭킹에 쓰지 않는다** — 서술 계약에만 쓴다.
+    #: 직접 들고 온다. **랭킹에 쓰지 않는다** — 응답 계약에만 쓴다.
     confidence: Confidence = field(default_factory=Confidence)
     #: 이번 요청의 단계 span (SPEC-nexus-stage-spans). **순수 데이터** — 여기서 DB 를 안 건드린다.
     #: `spans.enabled` 가 꺼져 있으면 None 이고, 그러면 아무것도 안 쌓인다.
     spans: "SpanSet | None" = None
-    #: 돌려준 근거 중 **원본 시각을 모르는** 건수. 시각 범위를 **안 물었으면 `None`** 이다.
+    #: 돌려준 답변 근거 중 **원본 시각을 모르는** 건수. 시각 범위를 **안 물었으면 `None`** 이다.
     #: 0 으로 내보내면 "물었고 전부 안다" 와 구별되지 않는다 — `search/time_window.py` 참조.
     n_unknown_origin_time: int | None = None
     #: 식별자 채널이 **무엇으로 발화했나** (`search/identifiers.py`, 사전 등록 T2).
@@ -330,7 +330,7 @@ def degrades_the_leg(exc: BaseException) -> bool:
     `nexus/CLAUDE.md` 가 금지하는 것은 **죽은 DB 를 우회해 답하는 것**이지 한 경로의 degrade 가
     아니다. 그 둘의 차이는 무엇이 없어졌느냐다: **DB 는 두 경로가 함께 서 있는 기반**이고,
     임베딩 백엔드는 한 경로의 서버다. 기반이 없으면 어떤 답도 신뢰할 수 없으니 크게 실패해야 하고,
-    한 경로의 서버가 없으면 다른 경로의 답은 여전히 근거 위에 있다 — 더 나쁘지만, 나쁘다고 표시된다.
+    한 경로의 서버가 없으면 다른 경로의 답은 여전히 답변 근거 위에 있다 — 더 나쁘지만, 나쁘다고 표시된다.
 
     그래서 분류는 **좁게** 하고, 애매하면 503 으로 보낸다: 잘못된 503 은 보이는 장애지만 잘못된
     degrade 는 조용히 나빠진 답이고, 이 코드베이스는 후자를 이미 두 번 치렀다(재적재마다 흔들리던
@@ -540,7 +540,7 @@ def _add_document_agreement(scores: dict[str, dict], channels: list[ChannelResul
     §5 가 26위에서 컷오프 20 에 잘렸다. 이 항은 그 경로들의 표를 문서로 모은다.
 
     **경로마다 문서의 최고 청크 하나만** 센다. 청크마다 세면 청크가 많은 긴 문서가 청크 수로
-    오른다 — 그 대가는 사전 등록 부 변수 5(한 문서 쏠림)로 따로 측정한다.
+    오른다 — 그 비용은 사전 등록 부 변수 5(한 문서 쏠림)로 따로 측정한다.
 
     ⛔ 문서를 모르는 청크는 `KeyError` 다. 0 을 더하면 「합의 없음」과 같은 값이 되고, 그러면
     터진 것이 빈 것처럼 보인다.
@@ -625,7 +625,7 @@ _SENT_RE = re.compile(r'[.!?。]["\')\]」』]*(?=\s|$)')
 
 
 def _truncate_snippet(text: str, max_chars: int) -> str:
-    """근거 스니펫을 경계에서 자른다 — 단어/문장 중간 안 자름(SPEC-nexus-snippet-boundary-truncation).
+    """답변 근거 스니펫을 경계에서 자른다 — 단어/문장 중간 안 자름(SPEC-nexus-snippet-boundary-truncation).
 
     이 스니펫은 dual-mode: LLM 프롬프트 + 사람 API 표면(웹/Slack/API) 양쪽이 본다.
     """
@@ -756,7 +756,7 @@ async def _fill_sections(
         source_uri=r["source_uri"],
         source_version=r["source_version"] or "",
         # 미리보기는 검색 결과와 같은 규칙으로 자른다. 이 절들은 사람 목록에 안 나가지만,
-        # 스니펫이 비어 있으면 옛 호출부가 `text` 로 떨어질 때 근거가 통째로 빈다.
+        # 스니펫이 비어 있으면 옛 호출부가 `text` 로 떨어질 때 답변 근거가 통째로 빈다.
         snippet=_truncate_snippet(r["chunk_text"], 300),
         chunk_text=r["chunk_text"],
         doc_n_images=r["n_images"] or 0,
@@ -966,7 +966,7 @@ async def hybrid_search(
         ]
         spans.add_diversify(candidates=diversify_cands, top_k=top_k, per_doc_cap=per_doc_cap)
 
-    # 상한을 꽉 채운 문서 = 검색이 몰표를 준 문서. 그 안의 **남은 절**을 근거에 채운다.
+    # 상한을 꽉 채운 문서 = 검색이 몰표를 준 문서. 그 안의 **남은 절**을 답변 근거에 채운다.
     # 순위에는 넣지 않는다 (SPEC 근거는 `search/section_fill.py` 머리말).
     #
     # **기본값이 꺼짐인 이유는 취향이 아니다.** 이 규칙은 쿼리를 **하나 더** 쏘고, 그러면 설정을

@@ -85,7 +85,7 @@ def resolve_tenant(labels: dict, cli_tenant: str) -> tuple[str, str]:
     명시적 선언 자리는 **이미 있다** — `corpus.tenant` 는 Pack B 계열이 쓰고 `ko_eval_labels.check`
     가 `require_corpus_binding` 에서 요구한다. 새 필드를 만들지 않고 그것을 읽는다.
 
-    - 라벨이 선언하고 `--tenant` 가 없으면 → 선언을 쓴다
+    - 라벨이 선언하고 `--tenant` 가 없으면 → 명시적 선언을 쓴다
     - 둘 다 있으면 → **`--tenant` 가 이기되 크게 말한다.** 조용한 불일치가 사고의 모양이다
     - 둘 다 없으면 → `UndeclaredCorpus`. 사람이 한 줄 적는 것이 옳은 처방이다
     """

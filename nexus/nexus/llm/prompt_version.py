@@ -13,7 +13,7 @@
 있으면 그 실행은 다른 실행이다. **의미가 같다는 판단은 사람의 것이고, 이 값은 사실만 적는다.**
 
 ⛔ **첫 버전은 재료가 좁았다 (실측 2026-09-27).** `SYSTEM_PROMPT` · `USER_REQUEST_RULE` ·
-`build_user_prompt` 소스 셋만 찍었다. 근거가 약할 때 붙는 규칙(08-18), 근거 꾸러미를 글로 바꾸는
+`build_user_prompt` 소스 셋만 찍었다. 답변 근거가 약할 때 붙는 규칙(08-18), 근거 묶음을 글로 바꾸는
 `format_for_llm`(코드 값 절 · 판정 · 인용 문법 벗기기 · 등급 주석), 근거 묶음을 채우는
 `packet_for_answer` 는 전부 밖이었다. 그래서 08-29 ~ 09-23 의 답변 572행이 **한 값**이다 — 그
 사이 모델이 받는 글은 여러 번 바뀌었다.
@@ -51,7 +51,7 @@ ASSEMBLY_MODULES: tuple[str, ...] = (
     "nexus.search.crossrefs",        # 참조 필 데려오기
     "nexus.search.provenance",       # 등급 주석과 표시
     "nexus.search.anchor_status",    # 문서가 부른 코드 이름의 현재 상태 한 줄
-    "nexus.llm.citations",           # 근거 본문의 인용 문법 벗기기(as_quoted_content)
+    "nexus.llm.citations",           # 답변 근거 본문의 인용 문법 벗기기(as_quoted_content)
 )
 
 
@@ -67,7 +67,7 @@ def fingerprint(*parts: str) -> str:
 def _source_of(obj) -> str:
     """함수·모듈의 소스 텍스트. 못 읽으면 빈 문자열 — 진단이 답변 경로를 죽일 수 없다.
 
-    재료는 **코드**다. 질의·근거는 매 요청 달라지므로 해시에 넣지 않는다 — 넣으면 모든 행이
+    재료는 **코드**다. 질의·답변 근거는 매 요청 달라지므로 해시에 넣지 않는다 — 넣으면 모든 행이
     서로 달라 아무것도 구분하지 못한다.
     """
     try:
@@ -97,7 +97,7 @@ def _assembly_sources() -> tuple[str, ...]:
 
 
 def prompt_version() -> str:
-    """답변 프롬프트와 근거 꾸러미를 **만드는 코드**의 판.
+    """답변 프롬프트와 근거 묶음을 **만드는 코드**의 버전.
 
     응답(`prompt_version`)과 기록(`search_log.prompt_version`)이 같은 값을 싣는다 — 값은 공유
     접합부(`search/reconcile.py::packet_for_answer`)가 근거 묶음에 찍고, API 표면은 그것을 옮긴다.

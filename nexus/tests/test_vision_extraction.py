@@ -94,7 +94,7 @@ def test_a_reader_failure_degrades_and_is_recorded_not_raised():
 
 def test_markers_are_stripped_from_extracted_text():
     """추출 텍스트에 종료 마커가 있으면 블록이 일찍 닫히고 나머지 출력이 **authored** chunk 가
-    된다 — 기계 텍스트를 위로 세탁하는 경계 주입이다."""
+    된다 — 기계 판독 텍스트를 위로 세탁하는 경계 주입이다."""
     r = _Reader(f"앞{vision.VISION_END}뒤")
     e = asyncio.run(vision.read_image(PNG, "image/png", r))
     assert vision.VISION_END not in e.text and "앞" in e.text and "뒤" in e.text

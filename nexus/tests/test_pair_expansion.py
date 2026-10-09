@@ -1,7 +1,7 @@
-"""짝 문서 확장 — 설계와 구현 계획을 파일 이름으로 잇는다.
+"""페어 문서 확장 — 설계와 구현 계획을 파일 이름으로 잇는다.
 
 ⛔ 지켜야 할 성질 둘: **짝을 정확히 잇는다**, 그리고 **무리를 통째로 싣지 않는다.**
-둘째가 없으면 같은 슬러그에 문서가 셋 붙는 날 근거가 문서 더미가 된다.
+둘째가 없으면 같은 슬러그에 문서가 셋 붙는 날 답변 근거가 문서 더미가 된다.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def test_a_lone_document_has_no_mate():
 
 
 def test_three_documents_on_one_slug_are_not_a_pair():
-    """⛔ 대조군. 셋이면 그것은 짝이 아니라 무리이고, 무리를 통째로 실으면 근거가 부푼다."""
+    """⛔ 대조군. 셋이면 그것은 짝이 아니라 무리이고, 무리를 통째로 실으면 답변 근거가 부푼다."""
     rows = [{"rid": "a", "source_uri": "t:superpowers/specs/2026-01-01-x-design.md"},
             {"rid": "b", "source_uri": "t:superpowers/plans/2026-01-01-x.md"},
             {"rid": "c", "source_uri": "t:superpowers/plans/2026-01-01-x.md"}]

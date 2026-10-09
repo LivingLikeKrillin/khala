@@ -242,7 +242,7 @@ async def main() -> int:
         return 2
     if tenant_note:
         print(tenant_note)
-    # ⛔ **서명 전 라벨로 점수를 내지 않는다** (README §3판). 키가 없는 옛 라벨 파일은
+    # ⛔ **사인오프 전 라벨로 점수를 내지 않는다** (README §3판). 키가 없는 옛 라벨 파일은
     #    이미 서명된 것으로 읽는다 — 새 규칙이 옛 측정을 소급해서 막으면 안 된다.
     signed = bool(labels.get("signed_off", True))
     if not signed and not args.for_signature:

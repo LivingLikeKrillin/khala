@@ -54,7 +54,7 @@ async def _post(path: str, payload: dict) -> dict:
     r.raise_for_status()
     return r.json().get("data", {}) or {}
 
-#: 답변에 붙는 근거 개수의 상한. `formatter` 가 `[:5]` 로 자르므로 블록 수가 그 위로 안 간다 —
+#: 답변에 붙는 답변 근거 개수의 상한. `formatter` 가 `[:5]` 로 자르므로 블록 수가 그 위로 안 간다 —
 #: I8 의 "최대 개수" 를 이름으로 고정한다(안 그러면 예산 검사가 임의 표본이 된다).
 EVIDENCE_CEILING = 5
 
