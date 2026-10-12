@@ -60,7 +60,7 @@ def origin_window_predicate(column: str, param: int,
 
 
 def count_unknown(origin_times: list[datetime | None], window: OriginWindow) -> int | None:
-    """돌려준 근거 중 시각을 모르는 건수. **안 물었으면 `None`** — 세지 않은 것이다.
+    """돌려준 답변 근거 중 시각을 모르는 건수. **안 물었으면 `None`** — 세지 않은 것이다.
 
     `0` 을 돌려주면 "물었고 전부 시각을 안다" 는 뜻이 된다. 안 물은 요청과 그것을 같은 값으로
     내보내면 호출자가 둘을 못 가른다.

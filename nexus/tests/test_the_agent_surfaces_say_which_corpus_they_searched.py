@@ -127,7 +127,7 @@ def test_the_a2a_artifact_still_carries_the_resolved_tenant():
 
     여기서 고정하는 것은 ① 그 사실이 아티팩트에 있다 ② **요청이 아니라 해소된 값**이다.
     a2a 는 `effective_scope` 로 principal 의 테넌트를 쓰므로, 호출자가 다른 것을 물어도
-    이 칸은 실제로 뒤진 것을 말해야 한다.
+    이 필드는 실제로 뒤진 것을 말해야 한다.
     """
     from nexus.a2a.mapping import build_grounded_artifact
     from nexus.llm.answer import AnswerResult

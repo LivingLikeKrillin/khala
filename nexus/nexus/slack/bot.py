@@ -144,9 +144,9 @@ def _known_corpus_card(err: NexusCallError) -> list[dict]:
 
 
 def _fit_note(payload: dict, token: str | None) -> list[dict]:
-    """근거는 잡혔지만 **잘 맞지 않을 때**의 한 줄(`weak_evidence`, search/confidence.py).
+    """답변 근거는 잡혔지만 **잘 맞지 않을 때**의 한 줄(`weak_evidence`, search/confidence.py).
 
-    여기서 카드를 펼치지 않는 이유: 이 경우엔 근거 문서 제목이 이미 답변 아래 그려져 있다
+    여기서 카드를 펼치지 않는 이유: 이 경우엔 답변 근거 문서 제목이 이미 답변 아래 그려져 있다
     (`formatter.format_answer`). 빠진 것은 *이 코퍼스가 무엇을 담고 있나* 하나뿐이다.
 
     **막지 않는다.** 임계값은 표본 13개짜리 가설이므로(`FAR_DISTANCE`), 오탐의 비용이 잘못된
@@ -297,8 +297,8 @@ async def _call_nexus_api(query: str, history: list[dict] | None = None,
 
     payload = data["data"]
 
-    # **생성 실패를 답변으로 내보내지 않는다.** 서버는 LLM 이 죽으면 `answer` 자리에 근거 원문
-    # 덤프를 넣는다(llm/answer.py). 근거가 있으니 아래 분기는 통과하고, 사용자는 실패를 답변으로
+    # **생성 실패를 답변으로 내보내지 않는다.** 서버는 LLM 이 죽으면 `answer` 자리에 답변 근거 원문
+    # 덤프를 넣는다(llm/answer.py). 답변 근거가 있으니 아래 분기는 통과하고, 사용자는 실패를 답변으로
     # 읽는다. 2026-08-13 크레딧 소진 때 실제로 그 덤프가 슬랙으로 나갔다.
     if payload.get("llm_failed"):
         reason = payload.get("llm_failure_reason")
@@ -306,7 +306,7 @@ async def _call_nexus_api(query: str, history: list[dict] | None = None,
         raise NexusCallError(_OUTCOME_BY_REASON.get(reason, Outcome.GENERATION_FAILED))
 
     if not payload.get("evidence_snippets"):
-        # 근거 0건의 세 가지 원인은 서로 다른 사실이고, 고칠 사람도 다르다. 여기서만 서버에
+        # 답변 근거 0건의 세 가지 원인은 서로 다른 사실이고, 고칠 사람도 다르다. 여기서만 서버에
         # 되묻는다 — 답이 나온 질의에는 이 왕복이 붙지 않는다.
         if _documents_count(token) == 0:
             raise NexusCallError(Outcome.EMPTY_CORPUS)

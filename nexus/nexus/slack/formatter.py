@@ -57,7 +57,7 @@ def format_answer(answer_data: dict) -> list[dict]:
     # 구분선
     blocks.append({"type": "divider"})
 
-    # 근거 (Evidence Snippets)
+    # 답변 근거 (Evidence Snippets)
     snippets = answer_data.get("evidence_snippets", [])
     if snippets:
         evidence_lines = []

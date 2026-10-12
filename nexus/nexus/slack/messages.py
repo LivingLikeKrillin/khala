@@ -13,13 +13,13 @@ from enum import Enum
 class Outcome(str, Enum):
     BAD_TOKEN = "bad_token"            # Nexus 401 — 운영자용
     UNAVAILABLE = "unavailable"        # 503 / 연결 불가
-    EMPTY_GROUNDING = "empty_grounding"  # 근거 0건 (볼 수 있는 문서는 있음)
+    EMPTY_GROUNDING = "empty_grounding"  # 답변 근거 0건 (볼 수 있는 문서는 있음)
     EMPTY_CORPUS = "empty_corpus"      # 문서 0건
     #: 코퍼스는 있는데 이 등급으로 **보이는 문서가 0건** — 검색 실패가 아니라 설정 결함이다.
     #: 이것이 EMPTY_GROUNDING 에 섞여 있던 동안, 봇은 "문서에서 못 찾았다" 고 답했다. 뒤진
     #: 문서가 하나도 없었으므로 그 문장은 거짓이었고, 팀은 그것을 코퍼스의 한계로 읽었을 것이다.
     NO_VISIBLE_DOCS = "no_visible_docs"
-    #: LLM 생성 실패. 답변 자리에 근거 덤프가 들어오므로 **그대로 올리면 실패가 답변이 된다.**
+    #: LLM 생성 실패. 답변 자리에 답변 근거 덤프가 들어오므로 **그대로 올리면 실패가 답변이 된다.**
     #: 사유를 모르거나 분류되지 않은 경우가 여기다.
     GENERATION_FAILED = "generation_failed"
     #: 크레딧/청구 소진. **기다려도 영원히 안 된다** — 사람이 결제해야 한다.

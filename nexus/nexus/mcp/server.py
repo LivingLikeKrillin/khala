@@ -76,7 +76,7 @@ def _synthetic_mark(row: dict) -> str:
     """합성 데이터 마커. **없으면 빈 문자열** — 실제 자료에 아무 글자도 안 붙인다.
 
     `_tier_mark` 와 같은 자리에 같은 이유로 붙는다: 에이전트 API 표면에서 마커가 벗겨지면
-    지어낸 절차가 실제 운영 문서와 같은 얼굴로 근거에 실리고, 그 답을 사람이 다시 검증할
+    지어낸 절차가 실제 운영 문서와 같은 얼굴로 답변 근거에 실리고, 그 답을 사람이 다시 검증할
     길이 없다(ADR-0010 §4 와 같은 논증).
     """
     return " [합성]" if row.get("synthetic") else ""
@@ -118,7 +118,7 @@ async def nexus_search(
     """Nexus 하이브리드 검색 (BM25 + Vector + Graph).
 
     조직 내부 문서와 운영 데이터를 통합 검색한다.
-    결과에는 근거 snippet, 점수, 그래프 관계가 포함된다.
+    결과에는 답변 근거 snippet, 점수, 그래프 관계가 포함된다.
 
     Args:
         query: 검색 질의 (한국어/영어)
@@ -187,9 +187,9 @@ async def nexus_answer(
     origin_since: str | None = None,
     origin_until: str | None = None,
 ) -> str:
-    """Nexus 검색 + LLM 근거 기반 답변 생성.
+    """Nexus 검색 + LLM 답변 근거 기반 답변 생성.
 
-    검색 결과를 바탕으로 LLM이 근거를 인용하며 답변한다.
+    검색 결과를 바탕으로 LLM이 답변 근거를 인용하며 답변한다.
     모든 답변에는 출처 chunk와 문서 포인터가 포함된다.
 
     Args:
@@ -220,7 +220,7 @@ async def nexus_answer(
     data = result["data"]
     lines = [data.get("answer", "답변 없음")]
 
-    # 근거 표시
+    # 답변 근거 표시
     snippets = data.get("evidence_snippets", [])
     if snippets:
         lines.append("\n--- 근거 ---")

@@ -88,7 +88,7 @@ def test_every_such_spec_carries_a_backstop_record_or_is_declared_debt():
 
 
 def test_the_debt_list_only_names_specs_that_really_lack_a_record():
-    """빚 목록이 낡으면 그 자체가 거짓 경보다. 기록을 갖춘 SPEC 이 목록에 남아 있으면 실패."""
+    """부채 목록이 낡으면 그 자체가 거짓 경보다. 기록을 갖춘 SPEC 이 목록에 남아 있으면 실패."""
     debt = set((yaml.safe_load(DEBT.read_text(encoding="utf-8")) or {}).get("undeclared", []))
     have = {n for n, _, body in _linked_after_convention() if "\nbackstop:" in body}
     stale = sorted(debt & have)

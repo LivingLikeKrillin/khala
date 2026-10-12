@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class EvidenceSnippet:
-    """LLM에 전달할 개별 근거 조각."""
+    """LLM에 전달할 개별 답변 근거 청크."""
     chunk_rid: str
     doc_rid: str
     doc_title: str
@@ -49,11 +49,11 @@ class EvidenceSnippet:
     updated_at: datetime | None = None  # 신선도 판정용(SPEC-nexus-answer-staleness-warning)
     #: LLM 프롬프트에 들어가는 전문. 비면 `text` 로 떨어진다(옛 호출부 호환).
     full_text: str = ""
-    #: 이 근거가 어떻게 존재하게 됐는가 (ADR-0010). 프롬프트까지 따라간다 — 답을 쓰는 모델이
+    #: 이 답변 근거가 어떻게 존재하게 됐는가 (ADR-0010). 프롬프트까지 따라간다 — 답을 쓰는 모델이
     #: 저자가 쓴 문장과 기계가 그림에서 읽은 문장을 구별할 수 있어야 한다.
     provenance_tier: str = "authored"
     #: 문서에 붙은 CRM 마커(`nexus/labels.py`). 등급과 **같은 이유로** 여기까지 따라온다 —
-    #: 합성 자료를 근거로 쓴 답변은 그 사실을 달고 나가야 한다. hop 하나라도 빠지면 표식은
+    #: 합성 데이터를 답변 근거로 쓴 답변은 그 사실을 달고 나가야 한다. hop 하나라도 빠지면 마커는
     #: 없는 것과 같다.
     labels: list[str] = field(default_factory=list)
     #: 이 문단이 부른 코드 이름들의 **현재 상태**(SPEC-nexus-doc-code-anchors §3.4).
@@ -118,7 +118,7 @@ class EvidencePacket:
     snippets: list[EvidenceSnippet] = field(default_factory=list)
     graph: SubGraph | None = None
     provenance: list[Provenance] = field(default_factory=list)
-    #: 근거 문서에 붙은 **결정론적** 갱신 부채(supersede·제목 중복). 의미적 모순은 여기 없다 —
+    #: 답변 근거 문서에 붙은 **결정론적** 갱신 부채(supersede·제목 중복). 의미적 모순은 여기 없다 —
     #: 그건 답변자가 서술할 뿐 시스템이 보증하지 않는다 (`search/doc_debt.py`).
     debts: list[DocDebt] = field(default_factory=list)
     #: 질문에 걸린 claim 의 **코드 현재값**. 문서와 나란히 놓기 위한 것이고, 비면 프롬프트는
@@ -156,7 +156,7 @@ async def assemble_packet(
 ) -> EvidencePacket:
     """검색 결과에서 evidence packet 조립.
 
-    **네 표면(web API ×2 · A2A · CLI)이 전부 이 함수를 부른다.** 근거에 따라붙는 것은 여기서
+    **네 API 표면(web API ×2 · A2A · CLI)이 전부 이 함수를 부른다.** 답변 근거에 따라붙는 것은 여기서
     붙인다 — API 표면마다 사본을 만들면 어느 하나가 조용히 빠지고, 사람과 에이전트가 다른 답을
     받는다.
 
@@ -165,7 +165,7 @@ async def assemble_packet(
         graph: Graph 조회 결과 (optional)
         tenant: 앵커 상태 조회 범위. 비면 조회하지 않는다 — 앵커를 안 쓰는 호출부
             (테스트 픽스처·평가 하네스)가 DB 없이 패킷을 만들 수 있어야 한다.
-        fill: 상한을 채운 문서의 남은 절(`SearchResult.fill`). **순위가 아니라 근거**다 —
+        fill: 상한을 채운 문서의 남은 절(`SearchResult.fill`). **순위가 아니라 답변 근거**다 —
             뒤에 문서 순서로 붙는다. 안 주면 오늘과 바이트 단위로 같은 패킷이 나온다.
         spans: `SearchResult.spans` (SPEC-nexus-stage-spans). None 이면(기본, 캡처 꺼짐)
             packet span 을 안 남긴다 — 오늘과 바이트 단위로 같은 패킷이 나온다.
@@ -256,8 +256,8 @@ def format_for_llm(packet: EvidencePacket) -> str:
     #    등급 문장이 한 줄일 때 값이 쌌다. 기계가 **쓴** 등급의 문장은 여섯 문장 354자이고,
     #    그것이 청크마다 붙자 **근거 묶음의 52% 가 같은 문장 열두 벌**이 됐다.
     #
-    # ⛔⛔ **그리고 이 비용은 기계 조각이 많을수록 커진다** — 즉 **사람 근거가 가장 주목받아야
-    #    할 때 가장 묻힌다.** 넷째 운영자 질의에서 사람 근거 인용이 0 이 된 판이 그 모양이었다.
+    # ⛔⛔ **그리고 이 비용은 기계 청크가 많을수록 커진다** — 즉 **사람 답변 근거가 가장 주목받아야
+    #    할 때 가장 묻힌다.** 넷째 운영자 질의에서 사람 답변 근거 인용이 0 이 된 버전이 그 모양이었다.
     #
     # ⭐ 청크마다 남는 것은 **짧은 표시**다(`mark`). 그것이면 어느 청크에 어느 규칙이
     #    걸리는지 알 수 있고, 규칙 자체는 위에서 한 번 읽으면 된다.
@@ -279,7 +279,7 @@ def format_for_llm(packet: EvidencePacket) -> str:
         # 등급은 **프롬프트에 보인다**. 여기서 빠지면 답을 쓰는 모델이 기계가 읽은 표와 저자가
         # 쓴 문장을 같은 것으로 다루고, 인용은 그 구별을 약속하지 못한다 (ADR-0010 hop 3).
         # ⛔ **등급마다 다른 문장이다** (2026-09-23). 상수 하나를 붙이던 버전은 등급이 둘일
-        #    때 맞았고, 기계가 **쓴** 등급이 생기면서 틀렸다 — 그 근거에 "그림에서 읽었다" 가
+        #    때 맞았고, 기계가 **쓴** 등급이 생기면서 틀렸다 — 그 답변 근거에 "그림에서 읽었다" 가
         #    붙는다. 규칙은 위에서 한 번 말했고, 여기 남는 것은 **어느 규칙이 걸리는가**다.
         if (_m := prov_mark(getattr(s, "provenance_tier", "authored"))):
             parts.append(f"등급:{_m}")
@@ -296,7 +296,7 @@ def format_for_llm(packet: EvidencePacket) -> str:
         # `getattr` 인 이유: packet 을 손으로 만드는 호출부(테스트 픽스처, 다른 조립 경로)가
         # 이 필드를 모를 수 있다. 없으면 짧은 쪽으로 떨어진다 — 프롬프트가 비는 것보다 낫다.
         # ⛔ **인용 문법 그대로인 문자열을 모델에게 먹이지 않는다** (실측 2026-09-23).
-        #    기계가 **쓴** 근거의 본문에는 `[출처: …]` 가 글자로 들어 있다 — 그 층의 지난
+        #    기계가 **쓴** 답변 근거의 본문에는 `[출처: …]` 가 글자로 들어 있다 — 그 계층의 지난
         #    답이 남긴 것이다. 답이 그것을 **제 인용으로 옮겨 적었고**(그 문서는 근거 묶음에
         #    없었다), 등급 주석으로 막았는데 **넷 중 하나에서 다시 났다.**
         #
@@ -306,10 +306,10 @@ def format_for_llm(packet: EvidencePacket) -> str:
         #    댔는지는 그 문서의 내용이다.
         #
         # ⚠ 실측: 인용 문법이 든 청크는 `machine_written` **12개뿐**이고 사람 글 8,622개와
-        #    기계가 읽은 203개에는 **0건**이다. 그래서 다른 근거의 프롬프트는 안 바뀐다.
+        #    기계가 읽은 203개에는 **0건**이다. 그래서 다른 답변 근거의 프롬프트는 안 바뀐다.
         parts.append(f"\n{as_quoted_content(getattr(s, 'full_text', '') or s.text)}")
 
-    # 코드의 현재 값 — **문서가 아니다.** 그 구별이 프롬프트에 보여야 규칙 7(근거가 어긋나면
+    # 코드의 현재 값 — **문서가 아니다.** 그 구별이 프롬프트에 보여야 규칙 7(답변 근거가 어긋나면
     # 감추지 마라)이 볼 것을 갖는다. 비면 한 줄도 안 나가므로 오늘 프롬프트와 같다.
     # `getattr` 인 이유는 위 스니펫과 같다 — 패킷을 손으로 만드는 호출부(테스트 픽스처·다른
     # 조립 경로)가 이 필드를 모른다. 없으면 한 줄도 안 나간다.

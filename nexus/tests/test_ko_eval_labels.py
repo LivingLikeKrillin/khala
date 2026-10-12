@@ -351,7 +351,7 @@ def test_a_judged_document_with_no_signed_hash_fails(labels):
                for p in check(bound, DEFAULT_PACK_DIR, require_corpus_binding=True))
 
 
-# ── 층 검사는 선언한 팩에만 (2026-08-18) ────────────────────────────────────
+# ── 계층 검사는 선언한 팩에만 (2026-08-18) ────────────────────────────────────
 #
 # 5층×8건 균형은 **한국어 형태소 비교 설계**의 규칙이다(SPEC-nexus-korean-embedding-comparison).
 # 라이브 코퍼스의 답변 회귀용 라벨처럼 다른 목적의 채점기를 그 틀에 밀어 넣으면 `stratum` 이 뜻을

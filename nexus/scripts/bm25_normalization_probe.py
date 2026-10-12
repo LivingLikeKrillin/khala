@@ -122,7 +122,7 @@ async def main() -> int:
         finally:
             hybrid._bm25_search = original
 
-        # 사전등록 규칙 2: 파편이 오르고 대조군이 안 떨어지는 것만 후보.
+        # 사전 등록 규칙 2: 파편이 오르고 대조군이 안 떨어지는 것만 후보.
         from scripts.ko_eval_harness import verdict
         base = table[0]["hyb"]
         def rec(scores, kind):

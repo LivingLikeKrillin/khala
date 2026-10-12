@@ -130,7 +130,7 @@ def test_a_refusal_shaped_sentence_in_the_evidence_still_counts_as_evidence():
     """⛔ `delivered_text` 는 답변 근거에 걸지 않는다.
 
     그 규칙은 *답변자가 무엇을 배달했는가* 를 보는 것이고, 답변 근거는 배달된 것이 아니라
-    **주어진 것**이다. 게다가 `format_for_llm` 의 머리글이 "## 검색된 근거" 라서, 근거에
+    **주어진 것**이다. 게다가 `format_for_llm` 의 머리글이 "## 검색된 근거" 라서, 답변 근거에
     그 규칙을 걸면 답변 근거 첫 덩어리가 통째로 사라질 수 있다.
 
     ⚠ **첫 버전의 이 검사는 아무것도 안 지켰다.** 고의로 `delivered_text` 를 답변 근거에 걸어 보니

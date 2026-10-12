@@ -384,7 +384,7 @@ class LLMService:
     async def generate(
         self, system_prompt: str, user_message: str, max_tokens: int = 4096
     ) -> str:
-        """근거 기반 답변 생성. -> str 계약 불변(usage 무시). 기존 호출부 무변경."""
+        """답변 근거 기반 답변 생성. -> str 계약 불변(usage 무시). 기존 호출부 무변경."""
         return (await self.generate_full(system_prompt, user_message, max_tokens)).text
 
     async def vision_extract(

@@ -1,4 +1,4 @@
-"""답변 숫자의 근거 대조 — SPEC-nexus-answer-number-verification.
+"""답변 숫자의 답변 근거 대조 — SPEC-nexus-answer-number-verification.
 
 LLM 이 뱉은 답변의 **유의미한 숫자**가, LLM 에게 실제로 보여준 것(evidence + query + 요청자
 자료)에 실재하는지 결정론적으로 대조한다. "System decides, LLM narrates": 지어낸 통계는 시스템이
@@ -75,7 +75,7 @@ def validate_numbers(
 
     `context` 는 요청자가 준 자료(`answer_context`)다. 모델에게 **보여 준 것**이므로 대조 범위에
     든다 — 빼면 자료에서 옮겨 적은 수(대상 번호 · 한도)가 「지어낸 수」로 세어져
-    `unverified_numbers` 가 뜻을 잃는다. 근거에 있었는지를 따로 묻는 것은 다른 질문이다.
+    `unverified_numbers` 가 뜻을 잃는다. 답변 근거에 있었는지를 따로 묻는 것은 다른 질문이다.
     """
     places = {
         "evidence": {_canonical(t) for t in _numbers(evidence_text)},

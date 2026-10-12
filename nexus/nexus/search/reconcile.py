@@ -2,17 +2,17 @@
 
 **왜 있나 (2026-08-29 실측).** 라이브 코퍼스에 이런 자리가 있다: 어떤 필드가 지워졌다는 것을
 적은 변경 이력이 코퍼스에 **있는데**, 질문을 던지면 그 필드가 아직 있다고 말하는 옛 문서가
-대신 올라온다. 답변은 근거를 정확히 읽고 **낡은 사실**을 말한다. 경로로는 못 가른다 — 정정한
+대신 올라온다. 답변은 답변 근거를 정확히 읽고 **스테일 사실**을 말한다. 경로로는 못 가른다 — 정정한
 문서도 같은 `archive/` 아래 있었다.
 
-**무엇을 하나.** 1차 근거가 부른 **이름**(camelCase·PascalCase)을 뽑아, 그 이름에 변경 어휘를
+**무엇을 하나.** 1차 답변 근거가 부른 **이름**(camelCase·PascalCase)을 뽑아, 그 이름에 변경 어휘를
 붙여 한 번 더 검색한다. 정정 문서가 있으면 그때 올라온다. 그 뒤는 답변 계약이 맡는다 —
-근거가 서로 다르게 말하면 감추지 말라는 규칙이 이미 있고, 지금까지는 **한쪽만 와서** 그 규칙이
+답변 근거가 서로 다르게 말하면 감추지 말라는 규칙이 이미 있고, 지금까지는 **한쪽만 와서** 그 규칙이
 볼 것이 없었다.
 
-**측정 (라벨 3개 × 5회, 근거는 결정론이라 회차 무관)**::
+**측정 (라벨 3개 × 5회, 답변 근거는 결정론이라 회차 무관)**::
 
-    처치 대상 R2   1패스 0/5  →  2패스 5/5      (정정 문서가 근거에 들어옴: ✗ → ○)
+    처치 대상 R2   1패스 0/5  →  2패스 5/5      (정정 문서가 답변 근거에 들어옴: ✗ → ○)
     대조군  R1     3/5       →  5/5
     대조군  S1     5/5       →  5/5
     검색 지연      300 ms    →  1,065 ms       (답변 경로 끝단의 2% 안쪽)
@@ -44,18 +44,18 @@ logger = structlog.get_logger(__name__)
 CHANGE_WORDS = "삭제 제거 대체 전환 변경 폐기 deprecated removed"
 
 #: 2차 검색을 돌릴 이름 수와 이름당 가져올 청크 수. **넉넉하게 두지 않는다** —
-#: 2026-08-28 에 근거를 네 배로 불리고 점수를 하나도 못 산 실험이 있었다.
+#: 2026-08-28 에 답변 근거를 네 배로 불리고 점수를 하나도 못 산 실험이 있었다.
 MAX_NAMES = 3
 MAX_PER_NAME = 3
 
 #: 이름 후보. **camelCase·PascalCase 만** 본다. 영어 산문 낱말을 이름으로 오인하면 2차 검색이
-#: 잡음으로 채워지고, 그 잡음은 근거 자리를 정확히 먹는다.
+#: 잡음으로 채워지고, 그 잡음은 답변 근거 자리를 정확히 먹는다.
 _TOKEN = re.compile(r"\b[A-Za-z][A-Za-z0-9]{3,}\b")
 _HAS_CASE_SHIFT = re.compile(r"[a-z][A-Z]")
 
 
 def names_in(text: str, limit: int = MAX_NAMES) -> list[str]:
-    """근거가 부른 이름들, 많이 나온 순."""
+    """답변 근거가 부른 이름들, 많이 나온 순."""
     counts = collections.Counter(
         t for t in _TOKEN.findall(text or "") if _HAS_CASE_SHIFT.search(t))
     return [t for t, _ in counts.most_common(limit)]
@@ -64,7 +64,7 @@ def names_in(text: str, limit: int = MAX_NAMES) -> list[str]:
 async def corrections_for(hits, tenant, clearance, *, search, exclude_rids=None,
                           embedding_svc=None, config=None,
                           exclude_doc_types=(), failed: list | None = None) -> list:
-    """1차 근거가 부른 이름에 대한 **정정 문서** 청크. 실패는 삼키되 조용하지 않게.
+    """1차 답변 근거가 부른 이름에 대한 **정정 문서** 청크. 실패는 삼키되 조용하지 않게.
 
     ``search`` 는 `hybrid_search` 를 받는다 — 이 모듈이 검색 구현을 알 필요가 없고,
     테스트가 진짜 DB 없이 와이어링을 확인할 수 있다.
@@ -72,7 +72,7 @@ async def corrections_for(hits, tenant, clearance, *, search, exclude_rids=None,
     ⛔ **중첩 검색은 바깥 질의의 종류 제외를 물고 가야 한다 (실측 2026-09-20).** 이 패스는
     새 질의를 만들어 `search` 를 **다시** 부르는데, 그 호출이 제외를 안 들고 가면 방금
     후보에서 뺀 종류가 여기로 되돌아온다. 라이브에서 실제로 그랬다 — 제외를 걸었는데도
-    설계 일지 조각 둘이 근거에 앉았고, 히트에는 0건이었다.
+    설계 일지 청크 둘이 답변 근거에 앉았고, 히트에는 0건이었다.
     """
     if not hits:
         return []
@@ -92,7 +92,7 @@ async def corrections_for(hits, tenant, clearance, *, search, exclude_rids=None,
                 failed.append("corrections")
             continue
         # **상한은 여기서 건다.** `top_k` 를 넘겨 두고 상대가 지키리라 믿으면, 그 약속을
-        # 안 지키는 구현 하나에 근거가 통째로 부풀어 오른다. 검사가 이 자리를 잡았다.
+        # 안 지키는 구현 하나에 답변 근거가 통째로 부풀어 오른다. 검사가 이 자리를 잡았다.
         for h in list(found.hits)[:MAX_PER_NAME]:
             if h.rid not in seen:
                 seen.add(h.rid)

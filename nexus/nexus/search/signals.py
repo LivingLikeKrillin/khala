@@ -53,7 +53,7 @@ class SearchSignals:
     query_sha256: str
     query_len: int
     #: **검색이 돌려준 히트 수**(`len(hits)`)다. 응답의 `evidence_snippets` 와 **다른 것을
-    #: 센다** — 뒤엣것은 모델에게 실제로 간 근거 묶음이고, 조각이 히트보다 많을 수 있다.
+    #: 센다** — 뒤엣것은 모델에게 실제로 간 답변 근거 묶음이고, 청크가 히트보다 많을 수 있다.
     #:
     #: ⛔ 실측 2026-09-18, 같은 한 번의 호출: `top_k=8` → 기록 `n_snippets=8` · 응답
     #: `evidence_snippets=13`. 다른 에이전트가 이것을 관측 불일치로 읽고 장애를 의심했다.
@@ -98,7 +98,7 @@ class SearchSignals:
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     cost_usd: float | None = None
-    #: 근거가 **얼마나 잘 맞았는가**의 크기 (`search/confidence.py`). RRF 가 지워 버리는 값이라
+    #: 답변 근거가 **얼마나 잘 맞았는가**의 크기 (`search/confidence.py`). RRF 가 지워 버리는 값이라
     #: 경로에서 되살려 여기까지 들고 온다. **불리언(`weak`)을 남기지 않는다** — 그 값은 오늘의
     #: 임계값으로 계산된 것이고, 임계값을 옮기면 지나간 행의 뜻이 조용히 바뀐다. 거리와 점수는
     #: 임계값과 무관한 사실이다. 지금 임계값은 지어낸 질문 17개에서 나왔고, 다시 측정할 재료는
@@ -106,7 +106,7 @@ class SearchSignals:
     #: None = 그 경로가 안 돌았다(못 잼) ≠ 0(측정해서 낮음).
     top_distance: float | None = None
     top_bm25: float | None = None
-    #: 근거가 나온 문서 중 그림을 가진 것의 수 (migration 011). ADR-0002 가 요구하는 게이트
+    #: 답변 근거가 나온 문서 중 그림을 가진 것의 수 (migration 011). ADR-0002 가 요구하는 게이트
     #: 형식 — "관측된 기록된 비율이 설정 임계를 롤링 윈도에서 넘을 때" — 의 관측 쪽이다.
     #: **기능이 아니라 세는 일이다.** 이 값으로 무엇을 짓지 않는다.
     n_image_bearing_docs: int = 0
@@ -122,7 +122,7 @@ class SearchSignals:
     #: (SPEC-nexus-design-corpus-cutover §5.3, `search/evidence_share.py`).
     #:
     #: `read_scope` 는 **읽을 수 있었던** 범위이고 이것은 **읽은 것**이다. 둘이 갈리는 것이
-    #: 관측하려던 바로 그 상태다 — 범위를 넓혀 놓고 근거가 한쪽에서만 오는 경우.
+    #: 관측하려던 바로 그 상태다 — 범위를 넓혀 놓고 답변 근거가 한쪽에서만 오는 경우.
     #:
     #: ⚠ 테넌트 **이름과 개수**뿐이다. 청크 본문도, rid 도, 질의도 담지 않는다.
     evidence_tenants: str | None = None
@@ -248,7 +248,7 @@ def extract_signals(
         rewrite_prompt_tokens=getattr(getattr(rewrite, "usage", None), "input_tokens", None),
         rewrite_completion_tokens=getattr(getattr(rewrite, "usage", None), "output_tokens", None),
         rewrite_cost_usd=getattr(getattr(rewrite, "usage", None), "cost_usd", None),
-        # 근거가 그림 있는 문서에서 왔는가 — 게이트 신호원(migration 011). 문서 단위로 센다:
+        # 답변 근거가 그림 있는 문서에서 왔는가 — 게이트 신호원(migration 011). 문서 단위로 센다:
         # 같은 문서에서 스니펫이 셋 와도 "그림 있는 문서 하나" 다.
         n_image_bearing_docs=len({h.doc_rid for h in hits if getattr(h, "doc_n_images", 0) > 0}),
         llm_failed=failed,
@@ -309,7 +309,7 @@ class JudgeInput:
 
     `search_log` 는 원문 질의를 담은 적이 없고(init.sql, 원칙 #3) 이 SPEC 도 담지 않는다. 신호
     객체에 텍스트 필드를 하나라도 만들면 그 불변식은 관례가 되고, 관례는 다음 컬럼에서 깨진다.
-    그래서 질의·근거는 인자로만 흐르고 `_persist` 가 끝나면 닿을 수 없다.
+    그래서 질의·답변 근거는 인자로만 흐르고 `_persist` 가 끝나면 닿을 수 없다.
     """
     query: str
     evidence: str
@@ -320,7 +320,7 @@ class JudgeInput:
 def _enabled_for(tenant: str | None) -> bool:
     """이 배포·이 tenant 에서 판정자가 켜져 있는가. **기본 off.**
 
-    켜는 것은 원문 질의와 근거 텍스트가 공급자로 나가는 것을 받아들이는 행위다. 그리고 그 결정은
+    켜는 것은 원문 질의와 답변 근거 텍스트가 공급자로 나가는 것을 받아들이는 행위다. 그리고 그 결정은
     배포 단위가 아니라 **코퍼스 단위**여야 한다 — 한 배포가 여러 tenant 를 담으므로 전역 플래그
     하나면 한 사람이 모두를 대신 결정하게 된다. 목록에 없으면 꺼진 것이고 `*` 는 없다.
     """

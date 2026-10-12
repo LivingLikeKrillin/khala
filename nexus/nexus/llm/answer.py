@@ -76,7 +76,7 @@ class AnswerResult:
     n_stale: int = 0
     # 기권 — **코드가 내리는 판단**이지 답변 문장에서 읽어내는 것이 아니다.
     #
-    # 기권은 이미 있었다: 근거가 하나도 없으면 LLM 을 부르지 않고 정해진 문장을 돌려준다. 그런데
+    # 기권은 이미 있었다: 답변 근거가 하나도 없으면 LLM 을 부르지 않고 정해진 문장을 돌려준다. 그런데
     # 그 사실이 **문장 안에만** 있어서 기계가 읽을 수 없었다 — 한국어 문자열 대조 말고는. 그래서
     # 평가 라벨의 '답변불가' 5건이 어느 집계에도 안 들어갔다(KOREAN_SEARCH_QUALITY.md §2.3:
     # "Nexus 에 기권 기제가 없어 측정할 것이 없다").
@@ -86,7 +86,7 @@ class AnswerResult:
     # 내리고 있던 판단 하나뿐이다.
     abstained: bool = False
     abstain_reason: str = ""        # "" | "no_evidence"
-    #: 근거는 있었지만 **잘 맞지 않았다**. 기권이 아니다 — 답은 나가되 짧게 물러난다.
+    #: 답변 근거는 있었지만 **잘 맞지 않았다**. 기권이 아니다 — 답은 나가되 짧게 물러난다.
     #: API 표면이 사용자에게 알릴 수 있도록 결과에 남긴다(`search/confidence.py`).
     weak_evidence: bool = False
     #: 이 답의 근거 묶음과 프롬프트를 만든 **코드의 버전** (`llm/prompt_version.py`). 근거 묶음에 찍힌
@@ -121,7 +121,7 @@ async def generate_answer(
     answer_context: str | None = None,
     narrate: bool = True,
 ) -> AnswerResult:
-    """근거 기반 답변 생성.
+    """답변 근거 기반 답변 생성.
 
     Args:
         query: 검색에 사용한 질의 — 멀티턴에서는 재작성된 문장이다
@@ -138,7 +138,7 @@ async def generate_answer(
         answer_context: 요청자가 준 자료(`AnswerRequest.answer_context`). **답변 프롬프트에만**
             들어가고 검색에는 안 닿는다. 없으면 프롬프트는 오늘과 바이트 단위로 같다.
         narrate: False 면 **근거까지만** 만들고 모델을 안 부른다(`evidence_only` 요청).
-            근거 칸은 생성하는 판과 같은 코드가 만든다 — 그래서 이 함수 안에서 갈린다.
+            근거 필드는 생성하는 버전과 같은 코드가 만든다 — 그래서 이 함수 안에서 갈린다.
 
     Returns:
         AnswerResult
@@ -171,7 +171,7 @@ async def generate_answer(
                                       getattr(s, "code_deleted", []),
                                       getattr(s, "code_scan", None)),
             # CRM 마커(`nexus/labels.py`) — 등급과 같은 자리, 같은 이유로 응답까지 간다.
-            # 합성 자료임을 근거 옆에 못 달면, 지어낸 절차가 실제 운영 문서와 같은 얼굴로
+            # 합성 자료임을 답변 근거 옆에 못 달면, 지어낸 절차가 실제 운영 문서와 같은 얼굴로
             # 인용된다. 검색이 잘될수록 나쁜 종류의 결함이다.
             "labels": list(getattr(s, "labels", ()) or ()),
             "synthetic": SYNTHETIC_LABEL in (getattr(s, "labels", ()) or ()),
@@ -179,7 +179,7 @@ async def generate_answer(
         }
         for s in packet.snippets
     ]
-    # 근거 신선도 판정(결정론) — TTL 초과 근거를 스니펫별 staleness + 답변레벨 n_stale 로.
+    # 답변 근거 신선도 판정(결정론적) — TTL 초과 답변 근거를 스니펫별 staleness + 답변레벨 n_stale 로.
     snippets, result.n_stale = annotate_staleness(
         snippets, datetime.now(timezone.utc), _load_staleness_ttl())
     for sn in snippets:                      # datetime → ISO 문자열(응답 직렬화용)
@@ -204,7 +204,7 @@ async def generate_answer(
             ],
         }
 
-    # 근거 문서 부채 — 응답까지 간다(표현계층이 배지를 달 수 있어야 한다).
+    # 답변 근거 문서 부채 — 응답까지 간다(표현계층이 배지를 달 수 있어야 한다).
     result.doc_debts = summarize_debt(getattr(packet, "debts", []))
 
     # Provenance (source_version 포함)
@@ -243,7 +243,7 @@ async def generate_answer(
         return result
 
     evidence_text = format_for_llm(packet)
-    # 적합도는 **막는 판정이 아니라 서술 계약**이다. 근거 0건만 답을 막는다(위).
+    # 적합도는 **막는 판정이 아니라 응답 계약**이다. 답변 근거 0건만 답을 막는다(위).
     result.weak_evidence = bool(confidence is not None and confidence.weak)
     system_prompt, user_prompt = build_prompts(query, evidence_text, user_query,
                                                weak_evidence=result.weak_evidence,
@@ -263,7 +263,7 @@ async def generate_answer(
         result.citations = [
             {"title": c.title, "section": c.section, "verified": c.verified,
              "provenance_tier": getattr(c, "provenance_tier", "authored"),
-             # ⛔ **등급만 주면 소비자가 문자열을 지어낸다** (실측 2026-09-23). 근거 스니펫은
+             # ⛔ **등급만 주면 소비자가 문자열을 지어낸다** (실측 2026-09-23). 답변 근거 스니펫은
              #    위에서 `provenance_mark` 를 받는데 인용은 등급 값만 받고 있었다 — 그런데
              #    **읽는 사람이 보는 것은 인용 목록**이다.
              #
