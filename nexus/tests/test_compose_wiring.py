@@ -89,3 +89,38 @@ def test_the_checkpoint_is_pinned_to_a_commit(tmp_path):
     revision = json.loads(proc.stdout)["services"]["nexus-embed"]["environment"]["EMBED_REVISION"]
     assert len(revision) == 40 and all(c in "0123456789abcdef" for c in revision), (
         f"EMBED_REVISION={revision!r} — 40자 커밋 해시여야 한다")
+
+
+#: 로컬 개발 배포(base + override)에서 저절로 돌아와야 하는 것들. 재적재 잡은 base 에 이미 있다.
+LOCAL_SELF_RESTARTING = ("nexus-db", "nexus-embed", "nexus-ollama", "nexus-app", "nexus-slack")
+
+
+def _resolved_local_services(tmp_path: Path) -> dict:
+    """`docker compose up -d` 가 자동으로 얹는 조합(base + override)의 최종 서비스 정의."""
+    env_file = tmp_path / ".env"
+    env_file.write_text("", encoding="utf-8")
+    proc = subprocess.run(
+        ["docker", "compose", "-f", str(ROOT / "docker-compose.yml"),
+         "-f", str(ROOT / "docker-compose.override.yml"), "--env-file", str(env_file),
+         "--profile", "embed", "--profile", "slack", "--profile", "reingest",
+         "config", "--format", "json"],
+        # 재적재 잡의 시동 스크립트에 한국어가 있다 — 지역 인코딩(cp949)으로 읽으면 깨진다.
+        capture_output=True, text=True, encoding="utf-8", cwd=ROOT, timeout=120)
+    if proc.returncode != 0:
+        pytest.fail(f"docker compose config 실패: {proc.stderr[:400]}")
+    return json.loads(proc.stdout)["services"]
+
+
+def test_the_local_stack_comes_back_by_itself(tmp_path):
+    """2026-10-14 · 10-16 에 엔진이 컨테이너를 255 로 내렸을 때 **재적재 잡만** 돌아왔다 —
+    `restart` 가 붙은 것이 그것 하나였다. 나머지는 사람이 알아챌 때까지(4.5시간 · 하루 가까이) 꺼져 있었다."""
+    services = _resolved_local_services(tmp_path)
+    missing = [name for name in LOCAL_SELF_RESTARTING
+               if services[name].get("restart") != "unless-stopped"]
+    assert not missing, f"엔진이 내려도 저절로 안 돌아오는 서비스: {missing}"
+
+
+def test_the_one_shot_pull_still_runs_once(tmp_path):
+    """음성 대조군 — 모델을 받고 끝나는 컨테이너에 재시작을 붙이면 매번 다시 받는다."""
+    services = _resolved_local_services(tmp_path)
+    assert services["nexus-ollama-init"].get("restart") == "no"

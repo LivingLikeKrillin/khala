@@ -1,7 +1,8 @@
 # 개발 편의 오버레이 — `docker compose up -d` 시 자동 병합된다.
 # .env에서 시크릿/경로를 읽는다 (.env.example 참고).
 # 목적: (1) Ollama 임베딩 모델 자동 pull, (2) 대상 코드 마운트,
-#       (3) 로컬 dev 웹 온램프 — NEXUS_DEV_TOKEN 주입(웹이 자동 Bearer 사용, INTERNAL local-dev principal).
+#       (3) 로컬 dev 웹 온램프 — NEXUS_DEV_TOKEN 주입(웹이 자동 Bearer 사용, INTERNAL local-dev principal),
+#       (4) 엔진이 컨테이너를 내려도 저절로 돌아오기 — 아래 `restart` 들.
 # 앱이 쓰는 시크릿(NOTION_TOKEN·ANTHROPIC_API_KEY)은 여기가 아니라 베이스 compose 에 있다 —
 # 오버레이는 얹고 빼는 것이라, 여기 적은 자격증명은 그 오버레이를 안 얹는 배포에서 사라진다.
 # ⚠️ 이 오버레이는 *로컬 전용*이다. prod 에 쓰지 말 것(NEXUS_DEV_TOKEN 은 INTERNAL 코퍼스 접근을 연다).
@@ -21,8 +22,26 @@ services:
       - "until ollama list >/dev/null 2>&1; do echo 'waiting for ollama...'; sleep 2; done; ollama pull nomic-embed-text"
     restart: "no"
 
+  # ── 엔진이 내려도 저절로 돌아온다 ──
+  # 2026-10-14 · 10-16 에 Docker 엔진이 컨테이너를 한꺼번에 255 로 내렸고, 그때 돌아온 것은
+  # `restart` 가 붙은 재적재 잡 하나였다. 나머지는 사람이 알아챌 때까지(4.5시간 · 하루 가까이) 꺼져 있었고,
+  # 그동안 재적재는 사이드카에 못 닿아 매시 건너뛰었다. 슬랙 봇과 재적재가 상시 도는 로컬
+  # 배포라 prod 오버레이와 같은 정책을 둔다. `docker stop` 으로 멈춘 것은 그대로 멈춰 있다.
+  nexus-db:
+    restart: unless-stopped
+
+  nexus-embed:
+    restart: unless-stopped
+
+  nexus-ollama:
+    restart: unless-stopped
+
+  nexus-slack:
+    restart: unless-stopped
+
   # ── 앱: 로컬 dev 웹 토큰 주입 + 대상 코드 마운트 ──
   nexus-app:
+    restart: unless-stopped
     environment:
       # 로컬 dev 웹 온램프용 고정 토큰(.env 로 덮어쓰기 가능). 설정 시 앱이 INTERNAL local-dev
       # principal 을 등록하고 웹이 /auth/dev-token 으로 받아 자동 사용한다. 리포 config 는 불변.
