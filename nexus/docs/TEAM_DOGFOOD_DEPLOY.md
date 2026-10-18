@@ -51,7 +51,7 @@ task up:prod     # 리포 루트에서. 재빌드 + 기동. 임베딩 모델도 
 |---|---|---|
 | uvicorn | `--reload` (watcher) | reload 없음 |
 | 코드 | `.:/app` 바인드 마운트 | **이미지에 구움**(재현 가능) |
-| 재시작 | 없음 | `unless-stopped` (재부팅 후 자동 복구) |
+| 재시작 | `unless-stopped` (override, 재적재 잡은 base) | `unless-stopped` (재부팅 후 자동 복구) |
 | app 포트 | `0.0.0.0:8000` | **`127.0.0.1:8000`** (cloudflared만 접근) |
 | db·ollama | 호스트에 5432·11434 게시 | **미게시** (컨테이너 네트워크 전용) |
 | dev 토큰 | 약한 기본값 폴백 | **강값 필수** — 없으면 compose 실패 |
