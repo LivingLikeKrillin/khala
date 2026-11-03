@@ -15,9 +15,5 @@
   { "issue_id": "I-014", "disposition": "accepted" },
   { "issue_id": "I-015", "disposition": "accepted" },
   { "issue_id": "I-016", "disposition": "accepted" },
-  { "issue_id": "I-017", "disposition": "accepted" },
-  { "issue_id": "I-018", "disposition": "accepted" },
-  { "issue_id": "I-019", "disposition": "accepted" },
-  { "issue_id": "I-020", "disposition": "accepted" },
-  { "issue_id": "I-021", "disposition": "accepted" }
+  { "issue_id": "I-017", "disposition": "accepted" }
 ]

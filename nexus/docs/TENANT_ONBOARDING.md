@@ -177,12 +177,18 @@ docker exec nexus-app python -m nexus.cli auth --help     # gen-token 등
 이 리포의 CLAUDE.md 가 「조직 지식은 khala 를 먼저 치라」고 적어 두고도 두 달간 0회 쓰였다.
 부를 방법이 없었기 때문이다. 새 프로젝트에선 **처음부터** 셋을 같이 한다.
 
-1. 그 프로젝트 리포의 CLAUDE.md 에 같은 문구를 넣는다 — `--tenant <tenant>` 와 `--no-answer`
-   기본을 명시해서.
-2. 에이전트 principal 에 질의 텍스트 보존을 켠다. 켜는 명령은 **아직 없다** — `query-text` 에는
-   `status | purge | export | disable` 만 있고, 켜는 것은 `query_retention` 행 삽입이다
-   (`tests/test_query_text_retention.py:80` 의 INSERT 가 모양). 사람 principal 은 고지 뒤 옵트인
-   원칙을 지킨다. 에이전트의 질문에는 그 비용이 없다.
+1. 그 프로젝트 리포의 CLAUDE.md 에 같은 문구를 넣되, 입구는 **MCP(`NEXUS_MCP_TOKEN`) 또는 HTTP
+   bearer 토큰**으로 적는다. ⛔ **CLI `docker exec … query` 를 권하지 마라** — CLI 는 principal 을
+   넘기지 않아 질문이 보존되지 않고(`cli.py:398-400`), 그러면 아래 3 의 분모에 안 잡힌다. 이 리포의
+   CLAUDE.md 가 CLI 를 권하는 것은 khala 자기 작업용이다. MCP 서버는 토큰을 넘기는 HTTP 클라이언트라
+   API 가 principal 을 풀고 보존이 된다(`mcp/server.py:33-40`).
+2. 에이전트 principal 에 질의 텍스트 보존을 켠다. principal 은 **`tenant=<tenant>` · `read_tenants`
+   하나 · clearance 고정**으로 발급한다 — API 가 보존 정책을 `principal.tenant` 로 찾기 때문이다
+   (`api.py:822-835`). 켜는 명령은 **아직 없다** — `query-text` 에는 `status | purge | export | disable`
+   만 있고, 켜는 것은 `query_retention` 행 삽입이다(`tests/test_query_text_retention.py:80` 의 INSERT 가
+   모양). `notice_shown` 이 비면 principal 과 무관하게 거부되므로 고지 참조를 넣어야 한다. 사람
+   principal 은 고지 뒤 옵트인 원칙을 지킨다. 에이전트의 질문에도 사람이 준 문장이 실릴 수 있으니
+   보존 기간은 짧게(권고 30일).
 3. 첫 주에 `nexus.cli feedback --tenant <tenant>` · `evidence-share` · `doc-age` 를 한 번씩 돌려
    **분모가 0 이 아닌지** 본다. 0 이면 코퍼스 문제가 아니라 배선 문제다.
 
